@@ -1,0 +1,12 @@
+node_modules/
+dist/
+out/
+.DS_Store
+*.log
+.vite/
+coverage/
+.env
+.env.*
+*.pem
+*.p12
+experiments/*/results/*.json

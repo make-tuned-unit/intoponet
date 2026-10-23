@@ -1,0 +1,22 @@
+{
+  "name": "intoponet",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A privacy-first spatial browser for exploring the living web.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "node scripts/launch-desktop.cjs",
+    "start": "node scripts/launch-desktop.cjs",
+    "preview": "node scripts/launch-desktop.cjs preview",
+    "build": "npm run build --workspace @intoponet/desktop",
+    "benchmark:electron": "electron experiments/electron-compositor/main.cjs",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

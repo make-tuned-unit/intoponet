@@ -1,0 +1,40 @@
+{
+  "name": "@intoponet/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "node ../../scripts/launch-desktop.cjs",
+    "start": "node ../../scripts/launch-desktop.cjs",
+    "dev:raw": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "node ../../scripts/launch-desktop.cjs preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@intoponet/browser-api": "0.1.0",
+    "@intoponet/field-snapshot": "0.1.0",
+    "@intoponet/frequency-field": "0.1.0",
+    "@intoponet/local-knowledge": "0.1.0",
+    "@intoponet/protection-engine": "0.1.0",
+    "@react-three/fiber": "^9.0.4",
+    "lucide-react": "^0.468.0",
+    "motion": "^12.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "three": "^0.172.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@types/react": "^19.0.3",
+    "@types/react-dom": "^19.0.2",
+    "@types/three": "^0.172.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^45.0.0",
+    "electron-vite": "^3.0.0",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.7",
+    "vitest": "^5.0.5"
+  }
+}

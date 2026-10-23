@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      html, body, canvas { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+      body { background: #07111b; }
+      canvas { display: block; }
+      output {
+        position: fixed;
+        left: 22px;
+        bottom: 18px;
+        color: #9bb7b9;
+        font: 11px -apple-system, sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="field"></canvas>
+    <output>Electron native-view compositor benchmark</output>
+    <script>
+      const canvas = document.querySelector('#field')
+      const context = canvas.getContext('2d', { alpha: false })
+      const resize = () => {
+        const ratio = Math.min(devicePixelRatio, 2)
+        canvas.width = innerWidth * ratio
+        canvas.height = innerHeight * ratio
+        context.setTransform(ratio, 0, 0, ratio, 0, 0)
+      }
+      addEventListener('resize', resize)
+      resize()
+      const draw = (now) => {
+        const width = innerWidth
+        const height = innerHeight
+        context.fillStyle = '#07111b'
+        context.fillRect(0, 0, width, height)
+        for (let index = 0; index < 9; index += 1) {
+          const x = width * (0.16 + index * 0.095) + Math.sin(now / 1400 + index) * 34
+          const y = height * (0.35 + (index % 3) * 0.16) + Math.cos(now / 1100 + index) * 28
+          const radius = 90 + (index % 4) * 22
+          const gradient = context.createRadialGradient(x, y, 0, x, y, radius)
+          gradient.addColorStop(0, index % 2 ? 'rgba(80,217,199,.28)' : 'rgba(166,155,232,.24)')
+          gradient.addColorStop(1, 'rgba(7,17,27,0)')
+          context.fillStyle = gradient
+          context.fillRect(x - radius, y - radius, radius * 2, radius * 2)
+        }
+        requestAnimationFrame(draw)
+      }
+      requestAnimationFrame(draw)
+    </script>
+  </body>
+</html>

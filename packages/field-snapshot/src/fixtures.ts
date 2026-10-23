@@ -1,0 +1,71 @@
+import { aggregateSnapshot } from './aggregate'
+import type { FieldSnapshot, SourceRecord } from './types'
+
+const stamp = '2026-10-23T00:00:00.000Z'
+
+export const syntheticRegistry: SourceRecord[] = [
+  {
+    id: 'fixture-open-knowledge',
+    kind: 'synthetic-fixture',
+    title: 'Synthetic open-knowledge fixture',
+    url: 'https://fixtures.intoponet.test/open-knowledge',
+    licence: 'cc0',
+    attribution: 'Intoponet synthetic fixture. Not a published source.',
+    retrievedAt: stamp,
+    lat: 40.7,
+    lon: -74,
+    radiusKm: 800,
+    topics: ['open-knowledge'],
+    weight: 1,
+    publishedAt: stamp,
+  },
+  {
+    id: 'fixture-civic-memory',
+    kind: 'synthetic-fixture',
+    title: 'Synthetic civic-memory fixture',
+    url: 'https://fixtures.intoponet.test/civic-memory',
+    licence: 'cc0',
+    attribution: 'Intoponet synthetic fixture. Not a published source.',
+    retrievedAt: stamp,
+    lat: 35.7,
+    lon: 139.8,
+    radiusKm: 800,
+    topics: ['civic-memory'],
+    weight: 1,
+    publishedAt: stamp,
+  },
+  {
+    id: 'fixture-local-archives',
+    kind: 'synthetic-fixture',
+    title: 'Synthetic local-archives fixture',
+    url: 'https://fixtures.intoponet.test/local-archives',
+    licence: 'cc0',
+    attribution: 'Intoponet synthetic fixture. Not a published source.',
+    retrievedAt: stamp,
+    lat: 4.7,
+    lon: -74.1,
+    radiusKm: 800,
+    topics: ['local-archives'],
+    weight: 1,
+    publishedAt: stamp,
+  },
+  {
+    id: 'fixture-open-research',
+    kind: 'synthetic-fixture',
+    title: 'Synthetic open-research fixture',
+    url: 'https://fixtures.intoponet.test/open-research',
+    licence: 'cc0',
+    attribution: 'Intoponet synthetic fixture. Not a published source.',
+    retrievedAt: stamp,
+    lat: -33.9,
+    lon: 18.4,
+    radiusKm: 800,
+    topics: ['open-research'],
+    weight: 1,
+    publishedAt: stamp,
+  },
+]
+
+export function demoFieldSnapshot(): FieldSnapshot {
+  return aggregateSnapshot(syntheticRegistry)
+}

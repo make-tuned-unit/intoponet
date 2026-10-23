@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "resolvedAt": "2026-10-23T16:26:00Z",
+  "sourceManifest": "https://cef-builds.spotifycdn.com/index.json",
+  "platform": "macosarm64",
+  "channel": "stable",
+  "distributionType": "standard",
+  "cefVersion": "156.0.8+g426920c+chromium-156.0.8078.48",
+  "chromiumVersion": "156.0.8078.48",
+  "archive": {
+    "name": "cef_binary_156.0.8+g426920c+chromium-156.0.8078.48_macosarm64.tar.bz2",
+    "url": "https://cef-builds.spotifycdn.com/cef_binary_156.0.8%2Bg426920c%2Bchromium-156.0.8078.48_macosarm64.tar.bz2",
+    "sizeBytes": 312217692,
+    "sha1": "eb21183aca830a875e54bca9826af0ab42a96268"
+  },
+  "sandboxCompatibility": "3b66cadf26145637",
+  "cefProjectTemplate": {
+    "repository": "https://github.com/chromiumembedded/cef-project.git",
+    "commit": "3aec7049cf63a36876d7a6ef538842d6af314482"
+  }
+}
