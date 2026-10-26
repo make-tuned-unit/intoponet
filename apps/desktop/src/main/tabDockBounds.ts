@@ -57,3 +57,24 @@ export function shouldCloseTabDockFromNativeMouse(input: {
   if (input.eventType === 'mouseDown') return true
   return input.eventType === 'mouseMove' && !input.held
 }
+
+/**
+ * Full-screen toolbar auto-hide: pointer movement into the page tucks the
+ * toolbar away unless one of its controls has focus; a click always does.
+ */
+export function shouldHideChromeFromNativeMouse(input: {
+  isActivePage: boolean
+  fullWidth: boolean
+  revealed: boolean
+  held: boolean
+  eventType: string
+}): boolean {
+  if (!input.isActivePage || !input.fullWidth || !input.revealed) return false
+  if (input.eventType === 'mouseDown') return true
+  return input.eventType === 'mouseMove' && !input.held
+}
+
+/** macOS traffic lights float over the page while the toolbar is tucked away. */
+export function windowButtonsVisible(fullWidth: boolean, pageAttached: boolean, chromeRevealed: boolean): boolean {
+  return !fullWidth || !pageAttached || chromeRevealed
+}

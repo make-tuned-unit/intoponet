@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { SavedBookmark, SavedCollection } from './localLibrary'
-import { bookmarkHost, groupBookmarks, groupOf, hostHue, moveBookmarkToGroup, siteLabel, UNSORTED_GROUP_ID } from './bookmarkGroups'
+import { attachCaptures, bookmarkHost, formatDuration, groupBookmarks, groupOf, hostHue, moveBookmarkToGroup, siteLabel, UNSORTED_GROUP_ID } from './bookmarkGroups'
 
 const bookmark = (url: string, title: string): SavedBookmark => ({ url, title, topic: 'General browsing', savedAt: '2026-10-26T12:00:00.000Z' })
 const bank = bookmark('https://www.bank.example/login', 'My Bank')
@@ -56,5 +56,36 @@ describe('bookmark groups', () => {
     expect(siteLabel('https://www.bbc.co.uk/news')).toBe('bbc')
     expect(siteLabel('https://x.com/home')).toBe('x')
     expect(siteLabel('https://localhost:3000/')).toBe('localhost:3000')
+  })
+})
+
+describe('captures alongside bookmark groups', () => {
+  const capture = (id: string, groupId: string | null, createdAt: string, title = id) => ({ id, title, sourceUrl: `https://${id}.example/`, createdAt, groupId })
+
+  it('files captures by group, newest first, with orphans in Unsorted', () => {
+    const groups = groupBookmarks([bank], [collection('money', 'Money', [bank.url])])
+    const result = attachCaptures(groups, [
+      capture('old', 'money', '2026-10-25T10:00:00.000Z'),
+      capture('new', 'money', '2026-10-26T10:00:00.000Z'),
+      capture('loose', null, '2026-10-26T09:00:00.000Z'),
+      capture('orphan', 'deleted-group', '2026-10-26T08:00:00.000Z'),
+    ])
+    expect(result.map((group) => group.id)).toEqual(['money', UNSORTED_GROUP_ID])
+    expect(result[0]?.captures.map((item) => item.id)).toEqual(['new', 'old'])
+    expect(result[1]?.captures.map((item) => item.id)).toEqual(['loose', 'orphan'])
+    expect(result[1]?.bookmarks).toEqual([])
+  })
+
+  it('filters captures by title and source address', () => {
+    const result = attachCaptures(groupBookmarks([], []), [
+      capture('a', null, '2026-10-26T10:00:00.000Z', 'Statement October'),
+      capture('b', null, '2026-10-26T10:00:00.000Z', 'Holiday photos'),
+    ], 'statement')
+    expect(result[0]?.captures.map((item) => item.id)).toEqual(['a'])
+  })
+
+  it('formats recording durations', () => {
+    expect(formatDuration(7_400)).toBe('0:07')
+    expect(formatDuration(750_000)).toBe('12:30')
   })
 })

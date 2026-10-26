@@ -11,6 +11,8 @@ import {
   session,
   WebContentsView,
   clipboard,
+  protocol,
+  shell,
   systemPreferences,
 } from 'electron'
 import type { MenuItemConstructorOptions } from 'electron'
@@ -29,9 +31,23 @@ import {
   dockReserveTarget,
   pageViewBoundsForDock,
   shouldCloseTabDockFromNativeMouse,
+  shouldHideChromeFromNativeMouse,
+  windowButtonsVisible,
   TAB_DOCK_TWEEN_MS,
 } from './tabDockBounds'
 import { shellShortcutForInput } from './shellShortcuts'
+import { ENCRYPTED_DNS, networkPrivacySnapshot, WEBRTC_POLICY } from './networkPrivacy'
+let encryptedDnsActive = false
+import { CaptureLibrary, migrateEncryptedCaptures } from './captureStore'
+import { CaptureService } from './captureService'
+import { CAPTURE_SCHEME, captureChannels, parseCaptureCommand } from '@intoponet/browser-api'
+
+// Private capture media scheme (served to the app window's default session
+// only; web pages run in a separate partition and cannot reach it).
+protocol.registerSchemesAsPrivileged([
+  { scheme: CAPTURE_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } },
+])
+let captures: CaptureService | null = null
 import { browserContextActions, type BrowserContextAction } from './browserContextMenu'
 import {
   browserHostChannels,
@@ -57,6 +73,9 @@ let activeTabId: string | null = null
 let browserFullWidth = false
 let tabDockOpen = false
 let tabDockHeld = false
+let chromeRevealed = false
+let chromeHeld = false
+let tabRailExpanded = false
 /** Animated dock reservation; null when resting at its target. */
 let dockReserveNow: number | null = null
 let dockTweenTimer: ReturnType<typeof setTimeout> | null = null
@@ -228,6 +247,7 @@ function protectionSnapshot(): ProtectionSnapshot {
     ...counts,
     adsEnabled: categories.ads,
     trackersEnabled: categories.trackers,
+    network: networkPrivacySnapshot(encryptedDnsActive),
   }
 }
 
@@ -333,8 +353,10 @@ function wireProtectionSession(): void {
 function attachPageView(): void {
   if (!window || !pageView || pageAttached) return
   window.contentView.addChildView(pageView)
+  pageView.setVisible(true)
   applyPageViewBounds()
   pageAttached = true
+  updateWindowButtons()
   schedulePersistentStateSave()
   emitPanelState()
 }
@@ -533,10 +555,12 @@ function rememberTab(view: WebContentsView): void {
 }
 
 function detachActive(): void {
+  captures?.pageChanged('tab-changed', pageView)
   if (window && pageView && pageAttached) {
     pageView.webContents.stopFindInPage('clearSelection')
     window.contentView.removeChildView(pageView)
     pageAttached = false
+    updateWindowButtons()
   }
 }
 
@@ -666,6 +690,7 @@ function buildView(): WebContentsView {
   })
 
   view.setBackgroundColor('#ffffff')
+  view.webContents.setWebRTCIPHandlingPolicy(WEBRTC_POLICY)
   view.webContents.on('before-mouse-event', (_event, input) => {
     if (shouldCloseTabDockFromNativeMouse({
       isActivePage: pageView === view,
@@ -676,6 +701,20 @@ function buildView(): WebContentsView {
     })) {
       setBrowserTabDockOpen(false)
       emit({ type: 'tab-dock-state', open: false })
+    }
+    if (shouldHideChromeFromNativeMouse({
+      isActivePage: pageView === view,
+      fullWidth: browserFullWidth,
+      revealed: chromeRevealed,
+      held: chromeHeld,
+      eventType: input.type,
+    })) {
+      setChromeRevealed(false)
+      emit({ type: 'chrome-state', revealed: false })
+    }
+    if (tabRailExpanded && pageView === view && (input.type === 'mouseMove' || input.type === 'mouseDown')) {
+      tabRailExpanded = false
+      emit({ type: 'tab-rail-state', expanded: false })
     }
   })
   // Shell shortcuts would otherwise be swallowed by the focused page.
@@ -867,8 +906,22 @@ function setPanelBounds(bounds: BrowserPanelBounds): void {
   schedulePersistentStateSave()
 }
 
+function updateWindowButtons(): void {
+  if (process.platform !== 'darwin' || !window || window.isDestroyed()) return
+  window.setWindowButtonVisibility(windowButtonsVisible(browserFullWidth, pageAttached, chromeRevealed))
+}
+
+function setChromeRevealed(revealed: boolean, hold = false): void {
+  chromeRevealed = revealed
+  chromeHeld = revealed && hold
+  updateWindowButtons()
+}
+
 function setBrowserFullWidth(enabled: boolean): void {
   browserFullWidth = enabled
+  chromeRevealed = false
+  chromeHeld = false
+  updateWindowButtons()
   if (!enabled) {
     tabDockOpen = false
     tabDockHeld = false
@@ -993,6 +1046,12 @@ async function handleBrowserCommand(
     case 'set-full-width':
       setBrowserFullWidth(command.enabled)
       return null
+    case 'set-chrome-revealed':
+      setChromeRevealed(command.revealed, command.hold === true)
+      return null
+    case 'set-tab-rail-expanded':
+      tabRailExpanded = command.expanded
+      return null
     case 'set-tab-dock-open':
       setBrowserTabDockOpen(command.open, command.hold === true)
       return null
@@ -1100,6 +1159,12 @@ function createWindow(): void {
 }
 
 app.whenReady().then(async () => {
+  try {
+    app.configureHostResolver({ secureDnsMode: ENCRYPTED_DNS.mode, secureDnsServers: ENCRYPTED_DNS.servers })
+    encryptedDnsActive = true
+  } catch {
+    encryptedDnsActive = false
+  }
   await loadExceptions()
   const restoredState = await loadPersistentState()
   if (restoredState) {
@@ -1122,6 +1187,18 @@ app.whenReady().then(async () => {
   wireDownloadSession()
   wireProtectionSession()
 
+  const captureLibrary = new CaptureLibrary(
+    join(app.getPath('userData'), 'capture-library'),
+    // Test runs point this at a temporary folder instead of ~/Pictures.
+    process.env['INTOPONET_CAPTURE_ROOT'] || join(app.getPath('pictures'), 'Intoponet'),
+    { trash: (path) => shell.trashItem(path) },
+  )
+  captures = new CaptureService(captureLibrary, { window: () => window, pageView: () => pageView, pageAttached: () => pageAttached })
+  // Import anything saved by the earlier encrypted store, once.
+  void migrateEncryptedCaptures(join(app.getPath('userData'), 'captures'), captureLibrary, async (sealed) => (await safeStorage.decryptStringAsync(sealed)).result)
+    .catch(() => 0)
+  protocol.handle(CAPTURE_SCHEME, (request) => captures!.respond(request))
+  ipcMain.handle(captureChannels.command, (_event, value: unknown) => captures!.handle(parseCaptureCommand(value)))
   ipcMain.handle(
     browserHostChannels.command,
     (_event, value: unknown) => handleBrowserCommand(parseBrowserHostCommand(value)),

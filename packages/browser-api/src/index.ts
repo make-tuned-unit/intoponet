@@ -73,6 +73,16 @@ export type PageTabSnapshot = {
   active: boolean
 }
 
+export type NetworkPrivacySnapshot = {
+  /** DNS-over-HTTPS configured for all lookups. */
+  encryptedDns: boolean
+  dnsProviders: string
+  /** WebRTC cannot reveal local/private IP addresses. */
+  webrtcLocalIpHidden: boolean
+  /** Reserved for a future tunnel; nothing routes through a VPN today. */
+  vpn: 'not-configured'
+}
+
 export type ProtectionSnapshot = {
   origin: string
   enabled: boolean
@@ -80,6 +90,7 @@ export type ProtectionSnapshot = {
   blockedTrackers: number
   adsEnabled: boolean
   trackersEnabled: boolean
+  network?: NetworkPrivacySnapshot
 }
 
 export type PrivateLibraryReadResult =
@@ -98,11 +109,15 @@ export type BrowserHostEvent =
   | { type: 'protection-state'; protection: ProtectionSnapshot }
   | { type: 'tabs'; tabs: PageTabSnapshot[] }
   | { type: 'tab-dock-state'; open: boolean }
+  /** Full-screen toolbar auto-hide: the pointer moved into the page. */
+  | { type: 'chrome-state'; revealed: boolean }
+  /** The pointer moved into the page while the tab rail was expanded. */
+  | { type: 'tab-rail-state'; expanded: boolean }
   /** Shell shortcuts pressed while the native page view had keyboard focus. */
   | { type: 'shortcut'; action: ShellShortcut }
   | { type: 'field-snapshot'; payload: string }
 
-export type ShellShortcut = 'focus-launcher' | 'toggle-bookmarks'
+export type ShellShortcut = 'focus-launcher' | 'toggle-bookmarks' | 'capture'
 
 export interface BrowserHostApi {
   open(intent: NavigationIntent): Promise<void>
@@ -121,6 +136,10 @@ export interface BrowserHostApi {
   setFullWidth(enabled: boolean): Promise<void>
   /** `hold` keeps the dock open while the pointer crosses the page (e.g. typing in its search). */
   setTabDockOpen(open: boolean, hold?: boolean): Promise<void>
+  /** Full-screen toolbar reveal; `hold` keeps it while a control has focus. */
+  setChromeRevealed(revealed: boolean, hold?: boolean): Promise<void>
+  /** Expanded (unpinned) tab rail collapses when the pointer enters the page. */
+  setTabRailExpanded(expanded: boolean): Promise<void>
   getState(): Promise<BrowserPanelSnapshot>
   getProtection(): Promise<ProtectionSnapshot>
   setSiteProtection(enabled: boolean): Promise<void>
@@ -157,6 +176,8 @@ export type BrowserHostCommand =
   | { type: 'set-bounds'; bounds: BrowserPanelBounds }
   | { type: 'set-full-width'; enabled: boolean }
   | { type: 'set-tab-dock-open'; open: boolean; hold?: boolean }
+  | { type: 'set-chrome-revealed'; revealed: boolean; hold?: boolean }
+  | { type: 'set-tab-rail-expanded'; expanded: boolean }
   | { type: 'get-state' }
   | { type: 'get-protection' }
   | { type: 'set-site-protection'; enabled: boolean }
@@ -186,6 +207,8 @@ const commandTypes = new Set<BrowserHostCommand['type']>([
   'set-bounds',
   'set-full-width',
   'set-tab-dock-open',
+  'set-chrome-revealed',
+  'set-tab-rail-expanded',
   'get-state',
   'get-protection',
   'set-site-protection',
@@ -282,6 +305,13 @@ export function parseBrowserHostCommand(value: unknown): BrowserHostCommand {
       if (typeof value['open'] !== 'boolean') throw new Error('Invalid tab-dock state.')
       if (value['hold'] !== undefined && typeof value['hold'] !== 'boolean') throw new Error('Invalid tab-dock hold.')
       return { type, open: value['open'], ...(value['hold'] === true ? { hold: true } : {}) }
+    case 'set-tab-rail-expanded':
+      if (typeof value['expanded'] !== 'boolean') throw new Error('Invalid tab rail state.')
+      return { type, expanded: value['expanded'] }
+    case 'set-chrome-revealed':
+      if (typeof value['revealed'] !== 'boolean') throw new Error('Invalid toolbar state.')
+      if (value['hold'] !== undefined && typeof value['hold'] !== 'boolean') throw new Error('Invalid toolbar hold.')
+      return { type, revealed: value['revealed'], ...(value['hold'] === true ? { hold: true } : {}) }
     case 'set-site-protection':
       if (typeof value['enabled'] !== 'boolean') {
         throw new Error('Invalid site protection flag.')
@@ -327,3 +357,5 @@ export function parseBrowserHostCommand(value: unknown): BrowserHostCommand {
       throw new Error('Unknown browser-host command.')
   }
 }
+
+export * from './captures'

@@ -85,6 +85,53 @@ the dock animation matches. Reduced motion and reduced transparency are
 honoured. Real-window evidence is in `experiments/shell-ui-qa/evidence`.
 Hands-on VoiceOver review and keyboard drag alternatives remain open.
 
+Page captures were also added on 2026-10-26.
+
+- **What it does.** The browser toolbar's Capture button (or ⇧⌘S, even
+  from a focused page) freezes the visible page under a glass crop
+  overlay. From there you can save a PNG screenshot or start a silent
+  recording of the selected area.
+- **Recording.** Recordings come from the page's own compositor frames,
+  cropped in the main process and encoded on-device as WebM. No OS
+  screen-recording permission is needed, and no other window is captured.
+- **Storage.** Captures are encrypted at rest with AES-256-GCM. A
+  per-library key is sealed by safeStorage (Keychain). Media is served only
+  to the app window, over a private `intoponet-capture://` scheme.
+- **Organization.** Captures share groups with bookmarks (Collections). The
+  pane shows them as thumbnail grids with an All / Pages / Captures filter
+  and drag-to-move. A viewer offers copy, export, open source and delete.
+- **Deletion.** "Delete library" now also deletes captures and their key.
+
+Not covered yet:
+
+- recording audio;
+- full-page (scroll) capture;
+- a keyboard alternative to drag between groups;
+- a VoiceOver review.
+
+The shell revision that followed changed several things:
+
+- **Captures move to Finder.** Captures are now ordinary PNG/WebM files in
+  `~/Pictures/Intoponet/<Group>/`, with readable names. Folders rename with
+  their groups, and captures from deleted groups move to `Unsorted`. Finder
+  renames and moves are followed by inode. Groups, the toast and the viewer
+  each offer one-click "Show in Finder". Earlier encrypted captures migrate
+  once. Trade-off: files you can open in Finder are not app-encrypted;
+  they rely on FileVault.
+- **Favicon tab rail in panel mode.** A rail replaces the tab row under
+  the browser panel; the user chose it after a tab-UI research review. It
+  expands on hover and the page glides aside, because native views cannot
+  be overlaid. It can be pinned as vertical tabs and is a keyboard tablist.
+  Rail, panel and bookmarks pane now share top and bottom edges.
+- **Full-screen toolbar tucks away.** In full screen the toolbar collapses
+  to a 10px rail, revealed on hover. The traffic lights hide with it.
+- **Secondary tools fold away.** Copy, find, print, pin and absorb fold into
+  a hover "more" cluster in both modes.
+- **Network privacy on by default.** DNS-over-HTTPS (Quad9 and Mullvad, in
+  automatic mode) and WebRTC limited to the public interface. The status
+  shows in the protection panel. There is no VPN tunnel yet (user decision):
+  the UI states that sites can still see the public IP.
+
 Next: review field visibility and the ten synthetic scenes; verify the full-size
 place index and connect bounded lookup to navigation; connect trusted window
 coverage to dynamics and prove count-preserving geography rollups before tiles.

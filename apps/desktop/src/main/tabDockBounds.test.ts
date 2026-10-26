@@ -5,6 +5,8 @@ import {
   easeOutCubic,
   pageViewBoundsForDock,
   shouldCloseTabDockFromNativeMouse,
+  shouldHideChromeFromNativeMouse,
+  windowButtonsVisible,
   TAB_DOCK_HEIGHT_PX,
   TAB_DOCK_REVEAL_PX,
   TAB_DOCK_TWEEN_MS,
@@ -106,5 +108,23 @@ describe('dock reservation tween', () => {
     const bounds = pageViewBoundsForDock(panel, viewportHeight, true, true, 60)
     expect(bounds.y + bounds.height).toBe(viewportHeight - 60)
     expect(pageViewBoundsForDock(panel, viewportHeight, false, true, 60)).toEqual(panel)
+  })
+})
+
+describe('full-screen toolbar auto-hide', () => {
+  const base = { isActivePage: true, fullWidth: true, revealed: true, held: false }
+  it('tucks away when the pointer moves into the page, unless a control has focus', () => {
+    expect(shouldHideChromeFromNativeMouse({ ...base, eventType: 'mouseMove' })).toBe(true)
+    expect(shouldHideChromeFromNativeMouse({ ...base, held: true, eventType: 'mouseMove' })).toBe(false)
+    expect(shouldHideChromeFromNativeMouse({ ...base, held: true, eventType: 'mouseDown' })).toBe(true)
+    expect(shouldHideChromeFromNativeMouse({ ...base, fullWidth: false, eventType: 'mouseMove' })).toBe(false)
+    expect(shouldHideChromeFromNativeMouse({ ...base, revealed: false, eventType: 'mouseDown' })).toBe(false)
+  })
+
+  it('shows traffic lights unless a full-screen page has the toolbar tucked away', () => {
+    expect(windowButtonsVisible(false, true, false)).toBe(true)
+    expect(windowButtonsVisible(true, false, false)).toBe(true)
+    expect(windowButtonsVisible(true, true, false)).toBe(false)
+    expect(windowButtonsVisible(true, true, true)).toBe(true)
   })
 })

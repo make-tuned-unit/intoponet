@@ -1,5 +1,12 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import {
+  CAPTURE_SCHEME,
+  captureChannels,
+  type CaptureApi,
+  type CaptureCommand,
+  type CaptureEvent,
+  type CaptureRecord,
+  type PendingCapture,
   browserHostChannels,
   type BrowserHostApi,
   type BrowserHostCommand,
@@ -70,6 +77,12 @@ const browserHost: BrowserHostApi = {
   setFullWidth: async (enabled) => {
     await invoke({ type: 'set-full-width', enabled })
   },
+  setTabRailExpanded: async (expanded) => {
+    await invoke({ type: 'set-tab-rail-expanded', expanded })
+  },
+  setChromeRevealed: async (revealed, hold) => {
+    await invoke({ type: 'set-chrome-revealed', revealed, ...(hold ? { hold: true } : {}) })
+  },
   setTabDockOpen: async (open, hold) => {
     await invoke({ type: 'set-tab-dock-open', open, ...(hold ? { hold: true } : {}) })
   },
@@ -109,4 +122,31 @@ const browserHost: BrowserHostApi = {
   },
 }
 
-contextBridge.exposeInMainWorld('intoponet', Object.freeze({ browserHost }))
+const captureInvoke = (command: CaptureCommand): Promise<unknown> => ipcRenderer.invoke(captureChannels.command, command)
+
+const captures: CaptureApi = {
+  begin: () => captureInvoke({ type: 'begin' }) as Promise<PendingCapture>,
+  cancel: async (pendingId) => { await captureInvoke({ type: 'cancel', pendingId }) },
+  saveImage: (pendingId, crop, groupId) => captureInvoke({ type: 'save-image', pendingId, crop, groupId }) as Promise<CaptureRecord>,
+  startRecording: async (pendingId, crop) => { await captureInvoke({ type: 'start-recording', pendingId, crop }) },
+  stopFrames: async () => { await captureInvoke({ type: 'stop-frames' }) },
+  saveVideo: (pendingId, bytes, mimeType, durationMs, groupId) =>
+    captureInvoke({ type: 'save-video', pendingId, bytes, mimeType, durationMs, groupId }) as Promise<CaptureRecord>,
+  list: () => captureInvoke({ type: 'list' }) as Promise<CaptureRecord[]>,
+  update: (id, patch) => captureInvoke({ type: 'update', id, ...patch }) as Promise<CaptureRecord>,
+  remove: async (id) => { await captureInvoke({ type: 'delete', id }) },
+  removeAll: async () => { await captureInvoke({ type: 'delete-all' }) },
+  reveal: async (id) => { await captureInvoke({ type: 'reveal', id }) },
+  openFolder: async (groupId) => { await captureInvoke({ type: 'open-folder', groupId }) },
+  syncGroups: async (groups) => { await captureInvoke({ type: 'sync-groups', groups }) },
+  copyImage: async (id) => { await captureInvoke({ type: 'copy-image', id }) },
+  setPageHidden: async (hidden) => { await captureInvoke({ type: 'set-page-hidden', hidden }) },
+  mediaUrl: (record, variant) => `${CAPTURE_SCHEME}://${variant}/${record.id}?v=${encodeURIComponent(record.createdAt)}`,
+  subscribe: (listener) => {
+    const handler = (_event: Electron.IpcRendererEvent, payload: CaptureEvent): void => listener(payload)
+    ipcRenderer.on(captureChannels.event, handler)
+    return () => ipcRenderer.removeListener(captureChannels.event, handler)
+  },
+}
+
+contextBridge.exposeInMainWorld('intoponet', Object.freeze({ browserHost, captures }))

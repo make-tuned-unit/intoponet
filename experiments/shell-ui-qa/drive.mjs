@@ -12,9 +12,10 @@ const outDir = resolve(process.argv[3] ?? join(import.meta.dirname, 'captures'))
 mkdirSync(outDir, { recursive: true })
 const port = 9333
 const profile = mkdtempSync(join(process.env.QA_TMP ?? tmpdir(), 'intoponet-shell-qa-'))
-const env = { ...process.env }
+const env = { ...process.env, INTOPONET_CAPTURE_ROOT: join(profile, 'Pictures', 'Intoponet') }
 delete env.ELECTRON_RUN_AS_NODE
-const app = spawn(join(repo, 'node_modules/.bin/electron'), [`--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, join(repo, 'apps/desktop/out/main/index.js')], { env, stdio: 'ignore' })
+const app = spawn(join(repo, 'node_modules/.bin/electron'), [`--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, join(repo, 'apps/desktop/out/main/index.js')], { env, stdio: ['ignore', process.env.QA_APP_LOG ? 'pipe' : 'ignore', 'ignore'] })
+if (process.env.QA_APP_LOG) app.stdout.on('data', (chunk) => process.stdout.write(`[app] ${chunk}`))
 const delay = (ms) => new Promise((r) => setTimeout(r, ms))
 
 async function target() {
@@ -58,7 +59,7 @@ const hover = (selector) => evaluate(`(() => { const el = document.querySelector
 try {
   await send('Runtime.enable')
   const { default: scenario } = await import(scenarioPath)
-  await scenario({ evaluate, shot, click, hover, delay, send })
+  await scenario({ evaluate, shot, click, hover, delay, send, profile })
 } finally {
   socket.close()
   app.kill()

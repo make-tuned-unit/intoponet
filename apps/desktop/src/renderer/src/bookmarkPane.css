@@ -8,7 +8,7 @@
 
 .app-shell {
   --pane-space: 0px;
-  transition: --pane-space 460ms var(--lg-spring);
+  transition: --pane-space 460ms var(--lg-spring), --rail-space 420ms var(--lg-spring);
 }
 
 .app-shell.bookmarks-open.page-open {
@@ -17,8 +17,8 @@
 }
 
 .app-shell .browser-panel:not(.full-width) {
-  left: calc(50% - var(--pane-space) / 2);
-  width: calc(100% - 56px - var(--pane-space));
+  left: calc(50% - var(--pane-space) / 2 + var(--rail-space) / 2);
+  width: calc(100% - 56px - var(--pane-space) - var(--rail-space));
 }
 
 .app-shell .browser-panel.full-width {
@@ -520,4 +520,28 @@
  * through beside the pane. */
 .app-shell.browser-full .topbar {
   visibility: hidden;
+}
+
+.bm-groups-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* One click to the group's Finder folder: quiet until hovered, brighter when it holds captures. */
+.bm-folder {
+  width: 26px;
+  height: 26px;
+  opacity: 0.45;
+  transition: opacity 200ms var(--lg-spring), color 200ms var(--lg-spring), background 200ms var(--lg-spring);
+}
+
+.bm-folder.has-captures {
+  opacity: 0.8;
+}
+
+.bm-group-header:hover .bm-folder,
+.bm-folder:focus-visible {
+  opacity: 1;
 }

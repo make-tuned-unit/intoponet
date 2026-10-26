@@ -28,6 +28,8 @@ import {
   Globe2,
   LockKeyhole,
   Library,
+  Aperture,
+  Ellipsis,
   MapPin,
   Pencil,
   Printer,
@@ -94,11 +96,22 @@ import {
 import { aggregateTopicTraffic, topicTrafficDemoResult } from './topicTraffic'
 import { inferUnifiedLauncherIntent } from './launcherIntent'
 import { TabDock } from './TabDock'
+import { TabRail } from './TabRail'
+import './shellChrome.css'
 import { BookmarkPane } from './BookmarkPane'
-import { moveBookmarkToGroup, UNSORTED_GROUP_ID } from './bookmarkGroups'
+import { groupOf, moveBookmarkToGroup, UNSORTED_GROUP_ID } from './bookmarkGroups'
+import { AnimatePresence } from 'motion/react'
+import type { CaptureCrop, CaptureRecord, PendingCapture } from '@intoponet/browser-api'
+import { CaptureOverlay, type CaptureMode } from './captures/CaptureOverlay'
+import { CaptureViewer } from './captures/CaptureViewer'
+import { CaptureToast, type CaptureToastState } from './captures/CaptureToast'
+import { RecordingPill } from './captures/RecordingPill'
+import { useCaptures } from './captures/useCaptures'
+import { useRecorder } from './captures/useRecorder'
 import { PinEditor, type PinEditorValue } from './PinEditor'
 
 const bookmarkPaneOpenKey = 'intoponet.bookmark-pane.open.v1'
+const captureGroupKey = 'intoponet.capture-group.v1'
 
 type LibraryTab = 'locations' | 'collections' | 'recent' | 'absorbed'
 type TopicLocationOption = PersonalTopicLocation & { topicId?: string }
@@ -211,6 +224,24 @@ export function App() {
     try { return localStorage.getItem(bookmarkPaneOpenKey) === '1' } catch { return false }
   })
   const [dockFocusRequest, setDockFocusRequest] = useState(0)
+  const [chromeRevealed, setChromeRevealed] = useState(false)
+  const [chromeHeld, setChromeHeld] = useState(false)
+  const [moreToolsOpen, setMoreToolsOpen] = useState(false)
+  const [railExpanded, setRailExpanded] = useState(false)
+  const [railPinned, setRailPinnedState] = useState(() => {
+    try { return localStorage.getItem('intoponet.tab-rail.pinned.v1') === '1' } catch { return false }
+  })
+  const setRailPinned = (pinned: boolean): void => {
+    setRailPinnedState(pinned)
+    if (!pinned) setRailExpanded(false)
+    try { localStorage.setItem('intoponet.tab-rail.pinned.v1', pinned ? '1' : '0') } catch { /* convenience only */ }
+  }
+  const { records: captureRecords, error: captureStoreError } = useCaptures()
+  const [captureSession, setCaptureSession] = useState<{ pending: PendingCapture; mode: CaptureMode } | null>(null)
+  const [viewerId, setViewerId] = useState<string | null>(null)
+  const [captureToast, setCaptureToast] = useState<CaptureToastState>(null)
+  const [freshCaptureId, setFreshCaptureId] = useState<string | null>(null)
+  const lastCaptureBounds = useRef<PendingCapture['viewBounds'] | null>(null)
   const [libraryTab, setLibraryTab] = useState<LibraryTab>('locations')
   const [pinEditor, setPinEditor] = useState<{ initial: PinEditorValue; originalUrl: string; restoreBrowser: boolean; restoreFullWidth: boolean } | null>(null)
   const [selectedPinUrl, setSelectedPinUrl] = useState('')
@@ -229,7 +260,7 @@ export function App() {
   const [error, setError] = useState('')
   const [libraryReadError, setLibraryReadError] = useState('')
   const panelBody = useRef<HTMLDivElement>(null)
-  const shortcutHandlers = useRef({ focusAddress: () => {}, toggleBookmarksPane: () => {} })
+  const shortcutHandlers = useRef({ focusAddress: () => {}, toggleBookmarksPane: () => {}, capture: () => {} })
   const tabStrip = useRef<HTMLDivElement>(null)
   const [tabEdges, setTabEdges] = useState({ overflow: false, atStart: true, atEnd: true })
   const input = useRef<HTMLInputElement>(null)
@@ -379,8 +410,21 @@ export function App() {
 
   useEffect(() => {
     const unsubscribe = window.intoponet.browserHost.subscribe((event) => {
+      if (event.type === 'tab-rail-state') {
+        if (!event.expanded) setRailExpanded(false)
+        return
+      }
+      if (event.type === 'chrome-state') {
+        setChromeRevealed(event.revealed)
+        if (!event.revealed) {
+          setChromeHeld(false)
+          setMoreToolsOpen(false)
+        }
+        return
+      }
       if (event.type === 'shortcut') {
         if (event.action === 'focus-launcher') shortcutHandlers.current.focusAddress()
+        else if (event.action === 'capture') shortcutHandlers.current.capture()
         else shortcutHandlers.current.toggleBookmarksPane()
         return
       }
@@ -512,6 +556,30 @@ export function App() {
     }
   }, [])
 
+  // Full-screen toolbar auto-hide: main tucks it away when the pointer
+  // enters the page; it also hides the traffic lights while tucked.
+  useEffect(() => {
+    void window.intoponet.browserHost.setChromeRevealed(chromeRevealed, chromeRevealed && chromeHeld)
+  }, [chromeHeld, chromeRevealed])
+
+  useEffect(() => {
+    if (!fullWidth || !panel.isVisible) {
+      setChromeRevealed(false)
+      setChromeHeld(false)
+    }
+  }, [fullWidth, panel.isVisible])
+
+  // An expanded (unpinned) tab rail collapses when the pointer enters the page.
+  useEffect(() => {
+    void window.intoponet.browserHost.setTabRailExpanded(railExpanded && !railPinned)
+  }, [railExpanded, railPinned])
+
+  // Keep Finder capture folders named after the bookmark groups.
+  useEffect(() => {
+    if (!libraryReady) return
+    void window.intoponet.captures.syncGroups(collections.map(({ id, label }) => ({ id, label }))).catch(() => undefined)
+  }, [collections, libraryReady])
+
   useEffect(() => {
     if (!libraryReady) return
     const payload = serializePrivateLibrary({
@@ -609,9 +677,14 @@ export function App() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (pinEditor) return
+      if (pinEditor || captureSession || viewerId) return
       const key = event.key.toLowerCase()
       const meta = event.metaKey || event.ctrlKey
+      if (meta && event.shiftKey && key === 's') {
+        event.preventDefault()
+        void startCapture('image')
+        return
+      }
       if (meta && key === 'l') {
         event.preventDefault()
         focusAddress()
@@ -728,7 +801,7 @@ export function App() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [activeTopic, bookmarks, bookmarksOpen, findOpen, fullWidth, libraryOpen, panel.canGoBack, panel.canGoForward, panel.isVisible, panel.url, pinEditor, pose, scale, selectedTopicId, selectedTopicLabel, shieldOpen, tabs.length])
+  }, [activeTopic, bookmarks, bookmarksOpen, captureSession, viewerId, findOpen, fullWidth, libraryOpen, panel.canGoBack, panel.canGoForward, panel.isVisible, panel.url, pinEditor, pose, scale, selectedTopicId, selectedTopicLabel, shieldOpen, tabs.length])
 
   const rememberScale = (
     next: ExplorationScale,
@@ -818,7 +891,80 @@ export function App() {
     input.current?.select()
   }
 
-  shortcutHandlers.current = { focusAddress, toggleBookmarksPane }
+  const captureGroups = useMemo(
+    () => [...collections.map((collection) => ({ id: collection.id, label: collection.label })), { id: UNSORTED_GROUP_ID, label: 'Unsorted' }],
+    [collections],
+  )
+
+  const groupLabel = (groupId: string | null): string =>
+    collections.find((collection) => collection.id === groupId)?.label ?? 'Unsorted'
+
+  /** Default group: the current page's bookmark group, else the last one used. */
+  const defaultCaptureGroup = (): string => {
+    if (panel.url && bookmarks.some((bookmark) => bookmark.url === panel.url)) {
+      const group = groupOf(collections, panel.url)
+      if (group !== UNSORTED_GROUP_ID) return group
+    }
+    let last: string | null = null
+    try { last = localStorage.getItem(captureGroupKey) } catch { /* convenience only */ }
+    return last && collections.some((collection) => collection.id === last) ? last : UNSORTED_GROUP_ID
+  }
+
+  const showCaptureSaved = (record: CaptureRecord): void => {
+    const bounds = lastCaptureBounds.current
+    const anchor = bounds
+      ? { x: bounds.x + bounds.width / 2, y: Math.max(8, bounds.y - 45) }
+      : { x: window.innerWidth / 2, y: 12 }
+    setCaptureToast({ record, groupLabel: groupLabel(record.groupId), anchor })
+    setFreshCaptureId(record.id)
+    window.setTimeout(() => setFreshCaptureId((current) => (current === record.id ? null : current)), 1600)
+  }
+
+  const recorder = useRecorder(showCaptureSaved, (message) => setError(message))
+
+  const startCapture = async (mode: CaptureMode = 'image'): Promise<void> => {
+    if (captureSession || recorder.state.status !== 'idle') return
+    if (!panel.isVisible || !panel.url) {
+      setNotice('Open a page to capture it')
+      return
+    }
+    closeFind()
+    setShieldOpen(false)
+    try {
+      const pending = await window.intoponet.captures.begin()
+      lastCaptureBounds.current = pending.viewBounds
+      setCaptureSession({ pending, mode })
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'This page could not be captured.')
+    }
+  }
+
+  const finishCaptureSession = (mode: CaptureMode, crop: CaptureCrop, groupId: string): void => {
+    const session = captureSession
+    if (!session) return
+    try { localStorage.setItem(captureGroupKey, groupId) } catch { /* convenience only */ }
+    const group = groupId === UNSORTED_GROUP_ID ? null : groupId
+    setCaptureSession(null)
+    if (mode === 'video') {
+      void recorder.start(session.pending.pendingId, crop, group)
+      return
+    }
+    void window.intoponet.captures.saveImage(session.pending.pendingId, crop, group)
+      .then(showCaptureSaved)
+      .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'The screenshot could not be saved.'))
+  }
+
+  const cancelCaptureSession = (): void => {
+    const session = captureSession
+    setCaptureSession(null)
+    if (session) void window.intoponet.captures.cancel(session.pending.pendingId)
+  }
+
+  const moveCapture = (id: string, groupId: string | null): void => {
+    void window.intoponet.captures.update(id, { groupId }).catch(() => setError('The capture could not be moved.'))
+  }
+
+  shortcutHandlers.current = { focusAddress, toggleBookmarksPane, capture: () => void startCapture('image') }
 
   const saveCurrentToGroup = (groupId: string): void => {
     if (!panel.url) return
@@ -899,6 +1045,7 @@ export function App() {
     }
     try {
       await window.intoponet.browserHost.deletePrivateLibrary()
+      await window.intoponet.captures.removeAll()
     } catch {
       setError('The private library could not be deleted. Existing data was left untouched.')
       return
@@ -913,7 +1060,8 @@ export function App() {
     setConfirmDelete(false)
     setLibraryReady(true)
     setLibraryReadError('')
-    setNotice('Private library deleted from this device')
+    setViewerId(null)
+    setNotice('Private library deleted. Captures were moved to the Trash.')
   }
 
   const toggleBookmark = (): void => {
@@ -1174,13 +1322,15 @@ export function App() {
     setTopicLocations({})
   }
 
+  const railVisible = panel.isVisible && !fullWidth && tabs.length > 0 && !fieldLabOpen
+
   const setBrowserFullWidth = (enabled: boolean): void => {
     setFullWidth(enabled)
     void window.intoponet.browserHost.setFullWidth(enabled)
   }
 
   return (
-    <main className={`app-shell${panel.isVisible ? ' page-open' : ''}${fullWidth && panel.isVisible ? ' browser-full' : ''}${tabs.length > 0 ? ' tabs-open' : ''}${bookmarksOpen ? ' bookmarks-open' : ''}`}>
+    <main className={`app-shell${panel.isVisible ? ' page-open' : ''}${fullWidth && panel.isVisible ? ' browser-full' : ''}${tabs.length > 0 ? ' tabs-open' : ''}${bookmarksOpen ? ' bookmarks-open' : ''}${railVisible ? ' rail-on' : ''}${railVisible && (railExpanded || railPinned) ? ' rail-open' : ''}`}>
       {!fieldLabOpen && <FrequencyField
         paused={reduceMotion || (fullWidth && panel.isVisible)}
         panelOpen={panel.isVisible}
@@ -1222,6 +1372,18 @@ export function App() {
         onNavigate={navigateFromLauncher}
         onToggleBookmarks={toggleBookmarksPane}
       />
+      <TabRail
+        tabs={tabs}
+        visible={railVisible}
+        expanded={railExpanded}
+        pinned={railPinned}
+        onExpandedChange={setRailExpanded}
+        onPinnedChange={setRailPinned}
+        onNewTab={() => {
+          setQuery('')
+          input.current?.focus()
+        }}
+      />
       <BookmarkPane
         open={bookmarksOpen && !fieldLabOpen}
         placement={fullWidth && panel.isVisible ? 'attached' : 'floating'}
@@ -1236,7 +1398,52 @@ export function App() {
         onDeleteGroup={removeCollection}
         onMove={(url, from, to) => persistCollections(moveBookmarkToGroup(collections, url, from, to))}
         onClose={() => setBookmarksOpen(false)}
+        captures={captureRecords}
+        freshCaptureId={freshCaptureId}
+        onOpenCapture={setViewerId}
+        onMoveCapture={moveCapture}
+        onOpenFolder={(groupId) => void window.intoponet.captures.openFolder(groupId).catch(() => setError('The capture folder could not be opened.'))}
       />
+      <AnimatePresence>
+        {captureSession && (
+          <CaptureOverlay
+            key={captureSession.pending.pendingId}
+            pending={captureSession.pending}
+            groups={captureGroups}
+            initialGroupId={defaultCaptureGroup()}
+            initialMode={captureSession.mode}
+            onCancel={cancelCaptureSession}
+            onConfirm={finishCaptureSession}
+          />
+        )}
+      </AnimatePresence>
+      <CaptureToast
+        toast={captureToast}
+        onDismiss={() => setCaptureToast(null)}
+        onView={(id) => {
+          setCaptureToast(null)
+          setViewerId(id)
+        }}
+      />
+      <AnimatePresence>
+        {viewerId && (
+          <CaptureViewer
+            key="capture-viewer"
+            records={captureRecords}
+            openId={viewerId}
+            groups={captureGroups}
+            onNavigate={setViewerId}
+            onClose={() => setViewerId(null)}
+            onMove={moveCapture}
+            onDelete={(id) => void window.intoponet.captures.remove(id).catch(() => setError('The capture could not be deleted.'))}
+            onOpenSource={(url) => {
+              setViewerId(null)
+              void window.intoponet.browserHost.open({ kind: 'url', value: url }).catch(() => setError('Navigation failed.'))
+            }}
+            notify={setNotice}
+          />
+        )}
+      </AnimatePresence>
       {!fieldLabOpen && <div className="field-wash" aria-hidden="true" />}
       {fieldLabOpen && <FieldLab onClose={() => setFieldLabOpen(false)} reducedMotion={reduceMotion} />}
 
@@ -1840,7 +2047,23 @@ export function App() {
 
       {panel.isVisible && !pinEditor && (
         <section className={`browser-panel${fullWidth ? ' full-width' : ''}`} aria-label="Web browser">
-          <div className="browser-chrome">
+          <div
+            className={`browser-chrome${fullWidth && !chromeRevealed ? ' is-tucked' : ''}`}
+            onPointerEnter={() => fullWidth && setChromeRevealed(true)}
+            onPointerLeave={(event) => {
+              if (fullWidth && !event.currentTarget.contains(document.activeElement)) setChromeRevealed(false)
+            }}
+            onFocusCapture={() => {
+              if (!fullWidth) return
+              setChromeRevealed(true)
+              setChromeHeld(true)
+            }}
+            onBlurCapture={(event) => {
+              if (event.currentTarget.contains(event.relatedTarget as Node | null)) return
+              setChromeHeld(false)
+            }}
+          >
+            {fullWidth && <span className="chrome-rail" aria-hidden="true" />}
             <div className="browser-controls">
               <button
                 type="button"
@@ -1910,38 +2133,82 @@ export function App() {
                     )}
                 </button>
               </div>
-              <button
-                type="button"
-                aria-label="Copy page address"
-                onClick={copyPageAddress}
-              >
-                <Copy size={14} />
-              </button>
-              <button
-                type="button"
-                className={findOpen ? 'selected' : ''}
-                aria-label="Find in page"
-                aria-pressed={findOpen}
-                onClick={openFind}
-              >
-                <Search size={15} />
-              </button>
-              <button
-                type="button"
-                aria-label="Print page"
-                onClick={() => void window.intoponet.browserHost.print()}
-              >
-                <Printer size={15} />
-              </button>
-              <button
-                type="button"
-                className={isBookmarked ? 'selected' : ''}
-                aria-label={isBookmarked ? 'Edit current page pin' : 'Pin current page to My map'}
-                aria-pressed={isBookmarked}
-                onClick={() => openPinEditor()}
-              >
-                <MapPin size={15} />
-              </button>
+              <AnimatePresence mode="popLayout" initial={false}>
+                {recorder.state.status !== 'idle' ? (
+                  <RecordingPill key="rec" state={recorder.state} onStop={() => void recorder.stop()} />
+                ) : (
+                  <button
+                    key="capture"
+                    type="button"
+                    className={captureSession ? 'selected' : ''}
+                    aria-label="Capture this page: screenshot or recording"
+                    title="Capture: screenshot or recording (⇧⌘S)"
+                    onClick={() => void startCapture('image')}
+                  >
+                    <Aperture size={15} />
+                  </button>
+                )}
+              </AnimatePresence>
+              <div className={`chrome-more${moreToolsOpen ? ' is-open' : ''}`} onPointerEnter={() => setMoreToolsOpen(true)} onPointerLeave={(event) => {
+                if (!event.currentTarget.contains(document.activeElement)) setMoreToolsOpen(false)
+              }} onFocusCapture={() => setMoreToolsOpen(true)} onBlurCapture={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setMoreToolsOpen(false)
+              }}>
+                <div className="chrome-more-tools" aria-hidden={!moreToolsOpen}>
+                  <button
+                    type="button"
+                    aria-label="Copy page address"
+                    onClick={copyPageAddress}
+                  >
+                    <Copy size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    className={findOpen ? 'selected' : ''}
+                    aria-label="Find in page"
+                    aria-pressed={findOpen}
+                    onClick={openFind}
+                  >
+                    <Search size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Print page"
+                    onClick={() => void window.intoponet.browserHost.print()}
+                  >
+                    <Printer size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    className={isBookmarked ? 'selected' : ''}
+                    aria-label={isBookmarked ? 'Edit current page pin' : 'Pin current page to My map'}
+                    aria-pressed={isBookmarked}
+                    onClick={() => openPinEditor()}
+                  >
+                    <MapPin size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Absorb this page"
+                    onClick={() => {
+                      setLibraryOpen(true)
+                      setLibraryTab('absorbed')
+                    }}
+                  >
+                    <Library size={15} />
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  className="chrome-more-toggle"
+                  aria-label={moreToolsOpen ? 'Hide more tools' : 'More tools: copy address, find, print, pin, absorb'}
+                  aria-expanded={moreToolsOpen}
+                  title="More tools"
+                  onClick={() => setMoreToolsOpen((open) => !open)}
+                >
+                  <Ellipsis size={16} />
+                </button>
+              </div>
               <button
                 type="button"
                 className={bookmarksOpen ? 'selected' : ''}
@@ -1951,16 +2218,6 @@ export function App() {
                 onClick={toggleBookmarksPane}
               >
                 <Bookmark size={15} fill={isBookmarked ? 'currentColor' : 'none'} />
-              </button>
-              <button
-                type="button"
-                aria-label="Absorb this page"
-                onClick={() => {
-                  setLibraryOpen(true)
-                  setLibraryTab('absorbed')
-                }}
-              >
-                <Library size={15} />
               </button>
               <button
                 type="button"
@@ -2072,6 +2329,18 @@ export function App() {
                   Block tracking
                 </label>
               </fieldset>
+              {protection.network && (
+                <div className="network-privacy">
+                  <strong>Network privacy</strong>
+                  <ul>
+                    <li className={protection.network.encryptedDns ? 'is-on' : 'is-off'}>
+                      Encrypted DNS{protection.network.encryptedDns ? ` · ${protection.network.dnsProviders}` : ' unavailable'}
+                    </li>
+                    <li className={protection.network.webrtcLocalIpHidden ? 'is-on' : 'is-off'}>Local IP hidden from WebRTC</li>
+                    <li className="is-pending">VPN not set up · sites can still see your public IP</li>
+                  </ul>
+                </div>
+              )}
               <button
                 type="button"
                 className="shield-toggle"
@@ -2086,7 +2355,7 @@ export function App() {
       )}
 
       <div className="command-dock">
-        {tabs.length > 0 && (
+        {tabs.length > 0 && !railVisible && (
           <div className="page-tab-row">
             {tabEdges.overflow && (
               <button
@@ -2178,6 +2447,11 @@ export function App() {
           <button type="button" onClick={() => setError('')} aria-label="Dismiss error">
             <X size={14} />
           </button>
+        </div>
+      )}
+      {captureStoreError && (
+        <div className="error-message" role="alert">
+          {captureStoreError}
         </div>
       )}
       {libraryReadError && (

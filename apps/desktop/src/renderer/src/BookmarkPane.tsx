@@ -1,31 +1,37 @@
-import { AnimatePresence, LayoutGroup, motion, useReducedMotion, type Transition } from 'motion/react'
-import { Bookmark, BookmarkPlus, Check, ChevronRight, FolderPlus, Pencil, Search, Trash2, X } from 'lucide-react'
+import { AnimatePresence, motion, useReducedMotion, type Transition } from 'motion/react'
+import type { CaptureRecord } from '@intoponet/browser-api'
+import { Bookmark, BookmarkPlus, Check, ChevronRight, FolderOpen, FolderPlus, Pencil, Play, Search, Trash2, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type KeyboardEvent } from 'react'
 import type { SavedBookmark, SavedCollection } from './localLibrary'
-import { bookmarkHost, groupBookmarks, groupOf, hostHue, siteLabel, UNSORTED_GROUP_ID } from './bookmarkGroups'
+import { attachCaptures, bookmarkHost, formatDuration, groupBookmarks, groupOf, hostHue, siteLabel, UNSORTED_GROUP_ID } from './bookmarkGroups'
 import { useGlassSheen } from './glass/useGlassSheen'
 import './glass/glass.css'
 import './bookmarkPane.css'
+import './captures/captures.css'
 
-const expandedKey = 'intoponet.bookmark-pane.expanded.v1'
+// Groups are open unless collapsed, so new and freshly loaded groups start open.
+const collapsedKey = 'intoponet.bookmark-pane.collapsed.v2'
+const filterKey = 'intoponet.bookmark-pane.filter.v1'
+type PaneFilter = 'all' | 'pages' | 'captures'
+const filters: Array<[PaneFilter, string]> = [['all', 'All'], ['pages', 'Pages'], ['captures', 'Captures']]
 const dragType = 'application/x-intoponet-bookmark'
 export const BOOKMARK_PANE_WIDTH_PX = 328
 
 const spring: Transition = { type: 'spring', stiffness: 420, damping: 38, mass: 0.9 }
 const softSpring: Transition = { type: 'spring', stiffness: 300, damping: 34 }
 
-function readExpanded(): Set<string> | null {
+function readCollapsed(): Set<string> {
   try {
-    const value = JSON.parse(localStorage.getItem(expandedKey) ?? 'null') as unknown
-    return Array.isArray(value) ? new Set(value.filter((item): item is string => typeof item === 'string')) : null
+    const value = JSON.parse(localStorage.getItem(collapsedKey) ?? '[]') as unknown
+    return new Set(Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [])
   } catch {
-    return null
+    return new Set()
   }
 }
 
-function writeExpanded(expanded: Set<string>): void {
+function writeCollapsed(collapsed: Set<string>): void {
   try {
-    localStorage.setItem(expandedKey, JSON.stringify([...expanded]))
+    localStorage.setItem(collapsedKey, JSON.stringify([...collapsed]))
   } catch {
     // Pane state is a convenience; storage failure must not break navigation.
   }
@@ -46,6 +52,13 @@ export type BookmarkPaneProps = {
   onDeleteGroup: (id: string) => void
   onMove: (url: string, fromGroupId: string, toGroupId: string) => void
   onClose: () => void
+  captures: CaptureRecord[]
+  /** Briefly highlighted after it is saved. */
+  freshCaptureId: string | null
+  onOpenCapture: (id: string) => void
+  onMoveCapture: (id: string, groupId: string | null) => void
+  /** Open the group's capture folder in Finder. */
+  onOpenFolder: (groupId: string | null) => void
 }
 
 function Monogram({ url }: { url: string }) {
@@ -91,12 +104,33 @@ function PaneBody({
   onDeleteGroup,
   onMove,
   onClose,
+  captures,
+  freshCaptureId,
+  onOpenCapture,
+  onMoveCapture,
+  onOpenFolder,
 }: BookmarkPaneProps) {
   const reduceMotion = useReducedMotion()
+  const [filter, setFilterState] = useState<PaneFilter>(() => {
+    try {
+      const stored = localStorage.getItem(filterKey)
+      return stored === 'pages' || stored === 'captures' ? stored : 'all'
+    } catch { return 'all' }
+  })
+  const setFilter = (next: PaneFilter): void => {
+    setFilterState(next)
+    try { localStorage.setItem(filterKey, next) } catch { /* convenience only */ }
+  }
   const surface = useGlassSheen<HTMLDivElement>()
   const searchInput = useRef<HTMLInputElement>(null)
   const [query, setQuery] = useState('')
-  const [expanded, setExpanded] = useState<Set<string>>(() => readExpanded() ?? new Set([UNSORTED_GROUP_ID, ...collections.map((c) => c.id)]))
+  const [collapsed, setCollapsed] = useState<Set<string>>(readCollapsed)
+  const reveal = (id: string): void => setCollapsed((current) => {
+    if (!current.has(id)) return current
+    const next = new Set(current)
+    next.delete(id)
+    return next
+  })
   const [hovered, setHovered] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState<string | null>(null)
   const [renaming, setRenaming] = useState<{ id: string; draft: string } | null>(null)
@@ -104,7 +138,9 @@ function PaneBody({
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [saveGroup, setSaveGroup] = useState<string>(UNSORTED_GROUP_ID)
 
-  const groups = useMemo(() => groupBookmarks(bookmarks, collections, query), [bookmarks, collections, query])
+  const groups = useMemo(() => attachCaptures(groupBookmarks(bookmarks, collections, query), captures, query), [bookmarks, captures, collections, query])
+  const showPages = filter !== 'captures'
+  const showCaptures = filter !== 'pages'
   const searching = query.trim().length > 0
   const currentSaved = currentPage ? bookmarks.some((bookmark) => bookmark.url === currentPage.url) : false
   const currentGroupId = currentPage && currentSaved ? groupOf(collections, currentPage.url) : null
@@ -112,26 +148,26 @@ function PaneBody({
     ? 'Unsorted'
     : collections.find((collection) => collection.id === currentGroupId)?.label
 
-  useEffect(() => writeExpanded(expanded), [expanded])
+  useEffect(() => writeCollapsed(collapsed), [collapsed])
   useEffect(() => {
     if (saveGroup !== UNSORTED_GROUP_ID && !collections.some((collection) => collection.id === saveGroup)) setSaveGroup(UNSORTED_GROUP_ID)
   }, [collections, saveGroup])
 
-  const toggle = (id: string): void => setExpanded((current) => {
+  const toggle = (id: string): void => setCollapsed((current) => {
     const next = new Set(current)
     if (next.has(id)) next.delete(id)
     else next.add(id)
     return next
   })
 
-  const isExpanded = (id: string, count: number) => (searching ? count > 0 : expanded.has(id))
+  const isExpanded = (id: string, count: number) => (searching ? count > 0 : !collapsed.has(id))
 
   const commitCreate = (): void => {
     const label = creating?.trim()
     setCreating(null)
     if (!label) return
     const id = onCreateGroup(label)
-    if (id) setExpanded((current) => new Set(current).add(id))
+    if (id) reveal(id)
   }
 
   const commitRename = (): void => {
@@ -143,10 +179,13 @@ function PaneBody({
     event.preventDefault()
     setDragOver(null)
     try {
-      const payload = JSON.parse(event.dataTransfer.getData(dragType)) as { url?: unknown; from?: unknown }
-      if (typeof payload.url === 'string' && typeof payload.from === 'string') {
+      const payload = JSON.parse(event.dataTransfer.getData(dragType)) as { kind?: unknown; url?: unknown; id?: unknown; from?: unknown }
+      if (payload.kind === 'capture' && typeof payload.id === 'string') {
+        onMoveCapture(payload.id, toGroupId === UNSORTED_GROUP_ID ? null : toGroupId)
+        reveal(toGroupId)
+      } else if (typeof payload.url === 'string' && typeof payload.from === 'string') {
         onMove(payload.url, payload.from, toGroupId)
-        setExpanded((current) => new Set(current).add(toGroupId))
+        reveal(toGroupId)
       }
     } catch {
       // Ignore drops that did not start from a bookmark row.
@@ -207,6 +246,15 @@ function PaneBody({
         </AnimatePresence>
       </label>
 
+      <div className="bm-filter" role="radiogroup" aria-label="Show">
+        {filters.map(([value, label]) => (
+          <button key={value} type="button" role="radio" aria-checked={filter === value} onClick={() => setFilter(value)}>
+            {filter === value && <motion.span layoutId="bm-filter-pill" className="bm-filter-pill" transition={spring} aria-hidden="true" />}
+            <span>{label}</span>
+          </button>
+        ))}
+      </div>
+
       {currentPage && (
         <motion.section layout="position" className="bm-current lg-inset" aria-label="Current page" transition={spring}>
           <Monogram url={currentPage.url} />
@@ -238,7 +286,7 @@ function PaneBody({
               if (currentSaved) onRemove(currentPage.url)
               else {
                 onSaveCurrent(saveGroup)
-                setExpanded((current) => new Set(current).add(saveGroup))
+                reveal(saveGroup)
               }
             }}
           >
@@ -247,10 +295,13 @@ function PaneBody({
         </motion.section>
       )}
 
-      <LayoutGroup id="bookmark-pane">
+      <div className="bm-groups-wrap">
         <div className="bm-groups" aria-label="Bookmark groups" onPointerLeave={() => setHovered(null)}>
           {groups.map((group) => {
-            const open = isExpanded(group.id, group.bookmarks.length)
+            const shownBookmarks = showPages ? group.bookmarks : []
+            const shownCaptures = showCaptures ? group.captures : []
+            const itemCount = shownBookmarks.length + shownCaptures.length
+            const open = isExpanded(group.id, itemCount)
             const bodyId = `bm-group-${group.id}`
             return (
               <motion.section
@@ -297,9 +348,20 @@ function PaneBody({
                         <ChevronRight size={14} />
                       </motion.span>
                       <span className="bm-group-label">{group.label}</span>
-                      <motion.span key={group.bookmarks.length} className="bm-group-count" initial={{ scale: 1.35, opacity: 0.4 }} animate={{ scale: 1, opacity: 1 }} transition={softSpring}>
-                        {group.bookmarks.length}
+                      <motion.span key={itemCount} className="bm-group-count" initial={{ scale: 1.35, opacity: 0.4 }} animate={{ scale: 1, opacity: 1 }} transition={softSpring}>
+                        {itemCount}
                       </motion.span>
+                    </button>
+                  )}
+                  {renaming?.id !== group.id && (
+                    <button
+                      type="button"
+                      className={`lg-icon-button bm-folder${group.captures.length > 0 ? ' has-captures' : ''}`}
+                      aria-label={`Show ${group.label} captures in Finder`}
+                      title="Show in Finder"
+                      onClick={() => onOpenFolder(group.id === UNSORTED_GROUP_ID ? null : group.id)}
+                    >
+                      <FolderOpen size={13} />
                     </button>
                   )}
                   {group.editable && renaming?.id !== group.id && (
@@ -336,12 +398,13 @@ function PaneBody({
                       exit={{ height: 0, opacity: 0 }}
                       transition={reduceMotion ? { duration: 0 } : { height: spring, opacity: { duration: 0.18 } }}
                     >
-                      {group.bookmarks.length === 0 ? (
-                        <p className="bm-empty">{searching ? 'No matches' : group.id === UNSORTED_GROUP_ID ? 'Save a page to start your bookmarks.' : 'Drag bookmarks here.'}</p>
-                      ) : (
+                      {itemCount === 0 && (
+                        <p className="bm-empty">{searching ? 'No matches' : group.id === UNSORTED_GROUP_ID ? 'Save a page or capture one to start.' : 'Drag bookmarks or captures here.'}</p>
+                      )}
+                      {shownBookmarks.length > 0 && (
                         <ul>
                           <AnimatePresence initial={false}>
-                            {group.bookmarks.map((bookmark, index) => {
+                            {shownBookmarks.map((bookmark, index) => {
                               const rowKey = `${group.id}:${bookmark.url}`
                               return (
                                 <motion.li
@@ -364,7 +427,7 @@ function PaneBody({
                                     title={bookmark.url}
                                     onDragStart={(event) => {
                                       event.dataTransfer.effectAllowed = 'move'
-                                      event.dataTransfer.setData(dragType, JSON.stringify({ url: bookmark.url, from: group.id }))
+                                      event.dataTransfer.setData(dragType, JSON.stringify({ kind: 'bookmark', url: bookmark.url, from: group.id }))
                                       event.dataTransfer.setData('text/uri-list', bookmark.url)
                                     }}
                                     onDragEnd={() => setDragOver(null)}
@@ -385,6 +448,41 @@ function PaneBody({
                           </AnimatePresence>
                         </ul>
                       )}
+                      {shownCaptures.length > 0 && (
+                        <ul className="bm-captures" aria-label={`Captures in ${group.label}`}>
+                          {shownCaptures.map((capture, index) => (
+                            <motion.li
+                              key={capture.id}
+                              layout="position"
+                              initial={{ opacity: 0, scale: 0.86, filter: 'blur(6px)' }}
+                              animate={{ opacity: 1, scale: 1, filter: 'blur(0px)', transition: { ...spring, delay: reduceMotion ? 0 : Math.min(index, 9) * 0.02 } }}
+                              exit={{ opacity: 0, scale: 0.86, transition: { duration: 0.16 } }}
+                            >
+                              <button
+                                type="button"
+                                className={`bm-capture${capture.id === freshCaptureId ? ' is-new' : ''}`}
+                                draggable
+                                title={`${capture.title}\n${new Date(capture.createdAt).toLocaleString()}`}
+                                aria-label={`${capture.kind === 'image' ? 'Screenshot' : 'Recording'}: ${capture.title}`}
+                                onDragStart={(event) => {
+                                  event.dataTransfer.effectAllowed = 'move'
+                                  event.dataTransfer.setData(dragType, JSON.stringify({ kind: 'capture', id: capture.id, from: group.id }))
+                                }}
+                                onDragEnd={() => setDragOver(null)}
+                                onClick={() => onOpenCapture(capture.id)}
+                              >
+                                <motion.img layoutId={`capture-${capture.id}`} src={window.intoponet.captures.mediaUrl(capture, 'thumb')} alt="" draggable={false} />
+                                {capture.kind === 'video' && (
+                                  <span className="bm-capture-badge">
+                                    <Play size={8} fill="currentColor" aria-hidden="true" />
+                                    {formatDuration(capture.durationMs ?? 0)}
+                                  </span>
+                                )}
+                              </button>
+                            </motion.li>
+                          ))}
+                        </ul>
+                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -392,7 +490,7 @@ function PaneBody({
             )
           })}
         </div>
-      </LayoutGroup>
+      </div>
 
       <footer className="bm-footer">
         <AnimatePresence mode="wait" initial={false}>

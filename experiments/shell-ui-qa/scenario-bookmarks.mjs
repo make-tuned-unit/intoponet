@@ -24,7 +24,7 @@ export default async function ({ evaluate, shot, click, delay }) {
   await delay(2500)
   // Seed through the app's sealed private-library API, then reload.
   await evaluate(`localStorage.setItem('intoponet.bookmark-pane.open.v1', '0');
-    localStorage.removeItem('intoponet.bookmark-pane.expanded.v1');
+    localStorage.removeItem('intoponet.bookmark-pane.collapsed.v2');
     window.intoponet.browserHost.writePrivateLibrary(${JSON.stringify(JSON.stringify({ schema: 'intoponet.private-library.v1', bookmarks, collections, recents: [], absorbed: [] }))})
       .then(() => { location.reload(); return true })`)
   await delay(3500)

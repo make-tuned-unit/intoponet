@@ -18,6 +18,17 @@ node experiments/shell-ui-qa/drive.mjs experiments/shell-ui-qa/scenario-bookmark
   - the dock and its search (⌘L).
 - `scenario-motion.mjs` captures mid-transition frames, to check that the
   page edge, pane and dock move together.
+- `scenario-captures.mjs` and `scenario-captures-full.mjs` cover screenshots
+  and recordings, in panel mode and full screen. Each walks the crop
+  overlay, saving, the recording pill, the pane thumbnails and the viewer.
+  Set `QA_APP_LOG=1` to stream the main process's stdout.
+- `scenario-chrome-folders.mjs` covers the full-screen toolbar auto-hide, the
+  "more" tools and the Finder group folders, including a group rename.
+- `scenario-rail.mjs` covers the favicon tab rail: collapsed, expanded,
+  pinned with the pane, and full screen.
+
+The driver sets `INTOPONET_CAPTURE_ROOT` to the throwaway profile, so test
+runs never write to your real `~/Pictures/Intoponet`.
 
 Capturing needs Screen Recording permission for the terminal. The profile is
 deleted after each run. `evidence/` holds the reviewed captures from

@@ -108,3 +108,41 @@ export function hostHue(host: string): number {
   for (let index = 0; index < host.length; index += 1) hash = (hash * 31 + host.charCodeAt(index)) | 0
   return Math.abs(hash) % 360
 }
+
+export type CaptureLike = { id: string; title: string; sourceUrl: string; createdAt: string; groupId: string | null }
+
+/**
+ * Captures for each group view, newest first. A capture whose group no
+ * longer exists (or has none) is Unsorted, so deleting a group never deletes
+ * captures. Adds an Unsorted view when only captures need it.
+ */
+export function attachCaptures<T extends CaptureLike>(
+  groups: BookmarkGroupView[],
+  captures: T[],
+  query = '',
+): Array<BookmarkGroupView & { captures: T[] }> {
+  const known = new Set(groups.filter((group) => group.editable).map((group) => group.id))
+  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
+  const visible = captures
+    .filter((capture) => {
+      const haystack = `${capture.title} ${capture.sourceUrl}`.toLowerCase()
+      return terms.every((term) => haystack.includes(term))
+    })
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+  const byGroup = new Map<string, T[]>()
+  for (const capture of visible) {
+    const id = capture.groupId && known.has(capture.groupId) ? capture.groupId : UNSORTED_GROUP_ID
+    byGroup.set(id, [...(byGroup.get(id) ?? []), capture])
+  }
+  const result = groups.map((group) => ({ ...group, captures: byGroup.get(group.id) ?? [] }))
+  if (!result.some((group) => group.id === UNSORTED_GROUP_ID) && byGroup.has(UNSORTED_GROUP_ID)) {
+    result.push({ id: UNSORTED_GROUP_ID, label: 'Unsorted', bookmarks: [], editable: false, captures: byGroup.get(UNSORTED_GROUP_ID) ?? [] })
+  }
+  return result
+}
+
+/** "0:07", "12:30" */
+export function formatDuration(ms: number): string {
+  const total = Math.max(0, Math.round(ms / 1000))
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`
+}
