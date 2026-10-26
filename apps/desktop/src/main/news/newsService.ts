@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { PublicItem } from '@intoponet/field-snapshot'
 import { createAtomicFeedStorage, FeedFetchService, type FeedRegistry, type FeedRegistrySource } from '../feed-service'
@@ -78,6 +78,16 @@ export function startNewsService(options: { userData: string; emit: (payload: st
   const feeds = newsFeedEntries()
   const meta = newsSourceMeta(feeds)
   const digestPath = join(options.userData, 'news-digest.json')
+  // Atomic writes interrupted by a quit leave `<file>.<uuid>.tmp` behind; tidy any older than an hour.
+  try {
+    for (const name of readdirSync(options.userData)) {
+      if (!/^news-feed-cache\.json\.[0-9a-f-]{36}\.tmp$/.test(name)) continue
+      const path = join(options.userData, name)
+      if (Date.now() - statSync(path).mtimeMs > 3_600_000) rmSync(path, { force: true })
+    }
+  } catch {
+    // Best effort only.
+  }
   let latest: string | null = null
   try {
     if (existsSync(digestPath)) latest = readFileSync(digestPath, 'utf8')

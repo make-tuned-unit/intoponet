@@ -1,3 +1,4 @@
+import { layaChannels, type LayaApi, type LayaCommand, type LayaHit, type LayaPassage, type LayaProgress, type LayaRelated, type LayaStatus, type LayaTheme } from '@intoponet/browser-api'
 import { knowledgeChannels, oldsChannels, type AbsorbPreview, type AbsorbRefusal, type KnowledgeApi, type KnowledgeCommand, type KnowledgeDocument, type KnowledgeHit, type KnowledgeRecord, type OldsApi, type OldsQuery, type OldsThread } from '@intoponet/browser-api'
 import { contextBridge, ipcRenderer } from 'electron'
 import {
@@ -169,4 +170,21 @@ const knowledge: KnowledgeApi = {
   removeAll: async () => { await knowledgeInvoke({ type: 'remove-all' }) },
 }
 
-contextBridge.exposeInMainWorld('intoponet', Object.freeze({ browserHost, captures, olds, knowledge }))
+const layaInvoke = (command: LayaCommand): Promise<unknown> => ipcRenderer.invoke(layaChannels.command, command)
+const laya: LayaApi = {
+  status: () => layaInvoke({ type: 'status' }) as Promise<LayaStatus>,
+  enable: () => layaInvoke({ type: 'enable' }) as Promise<LayaStatus>,
+  disable: ({ deleteModel }) => layaInvoke({ type: 'disable', deleteModel }) as Promise<LayaStatus>,
+  search: (query, limit) => layaInvoke(limit === undefined ? { type: 'search', query } : { type: 'search', query, limit }) as Promise<LayaHit[]>,
+  related: (input, limit) => layaInvoke({ type: 'related', ...input, ...(limit === undefined ? {} : { limit }) }) as Promise<LayaRelated[]>,
+  themes: () => layaInvoke({ type: 'themes' }) as Promise<LayaTheme[]>,
+  ask: (question, limit) => layaInvoke(limit === undefined ? { type: 'ask', question } : { type: 'ask', question, limit }) as Promise<LayaPassage[]>,
+  backfill: () => layaInvoke({ type: 'backfill' }) as Promise<LayaStatus>,
+  subscribe: (listener) => {
+    const handler = (_event: Electron.IpcRendererEvent, event: LayaProgress): void => listener(event)
+    ipcRenderer.on(layaChannels.event, handler)
+    return () => { ipcRenderer.removeListener(layaChannels.event, handler) }
+  },
+}
+
+contextBridge.exposeInMainWorld('intoponet', Object.freeze({ browserHost, captures, olds, knowledge, laya }))

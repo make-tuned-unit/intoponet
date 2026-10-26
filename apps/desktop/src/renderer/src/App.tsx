@@ -114,6 +114,7 @@ import { createGlobeProjection, type GlobeMarker } from './globe/GlobeMarkers'
 import { GlobeOverlay, type GlobeLabel } from './globe/GlobeOverlay'
 import { GlobeHeader, HoverCardContent, LayerCard, SignalPanel, type FieldView, type ListView } from './globe/GlobeHud'
 import { OldsPanel, type OldsState } from './olds/OldsPanel'
+import { MinePanel } from './globe/MinePanel'
 import type { AbsorbScope, KnowledgeRecord, OldsNode, OldsQuery } from '@intoponet/browser-api'
 import { AbsorbSheet, type AbsorbState } from './knowledge/AbsorbSheet'
 import { KnowledgeSheet } from './knowledge/KnowledgeSheet'
@@ -1953,6 +1954,15 @@ export function App() {
             : 'Loading public data…'}
         />
       )}
+      {!fieldLabOpen && fieldView === 'personal' && !designPreview && (
+        <MinePanel
+          pins={bookmarks}
+          records={knowledgeRecords}
+          onFly={(lat, lon) => flyToPoint(lat, lon, Math.min(pose.radius, 2.4))}
+          onOpenPin={selectMapPin}
+          onOpenRecord={(id) => openKnowledge(id)}
+        />
+      )}
       <AnimatePresence>
         {absorb && (
           <AbsorbSheet
@@ -1976,6 +1986,11 @@ export function App() {
               void window.intoponet.browserHost.open({ kind: 'url', value: url })
             }}
             onChanged={refreshKnowledge}
+            onHistory={(title, lang) => {
+              closeKnowledge()
+              if (panel.isVisible) void window.intoponet.browserHost.close()
+              loadOlds([{ query: { kind: 'wikipedia', title, lang }, label: title }])
+            }}
           />
         )}
       </AnimatePresence>

@@ -537,3 +537,260 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Laya */
+.knowledge-searchbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 18px 10px;
+}
+
+.knowledge-searchbar .knowledge-search {
+  flex: 1;
+  margin: 0;
+}
+
+.knowledge-mode {
+  display: flex;
+  padding: 3px;
+  border-radius: 12px;
+  background: var(--lg-inset-fill);
+}
+
+.knowledge-mode button {
+  height: 34px;
+  padding: 0 14px;
+  color: var(--muted);
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.knowledge-mode button.is-active {
+  color: var(--warm-white);
+  background: rgba(195, 182, 255, 0.18);
+}
+
+.laya-strip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 18px 12px;
+  padding: 10px 14px;
+  overflow: hidden;
+  border-radius: 14px;
+  color: #e4dcff;
+  background: linear-gradient(120deg, rgba(166, 155, 232, 0.14), rgba(80, 217, 199, 0.06));
+  box-shadow: inset 0 0 0 1px rgba(195, 182, 255, 0.22);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.laya-strip.is-on {
+  padding: 6px 12px;
+  font-size: 11.5px;
+}
+
+.laya-strip > div {
+  display: grid;
+  flex: 1;
+  gap: 3px;
+}
+
+.laya-strip small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.laya-strip .laya-error {
+  color: #ffb4a3;
+}
+
+.laya-strip > span:not(.laya-bar) {
+  flex: 1;
+}
+
+.laya-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: rgba(195, 182, 255, 0.12);
+}
+
+.laya-bar span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #c3b6ff, #50d9c7);
+  transition: width 300ms ease;
+}
+
+.laya-menu {
+  padding: 3px 9px;
+  color: var(--muted);
+  border: 1px solid rgba(214, 246, 241, 0.12);
+  border-radius: 8px;
+  background: transparent;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.laya-options {
+  position: absolute;
+  z-index: 2;
+  right: 12px;
+  top: calc(100% - 4px);
+  display: grid;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--glass-heavy);
+  box-shadow: var(--lg-shadow);
+}
+
+.laya-strip.is-on {
+  overflow: visible;
+}
+
+.laya-options button {
+  padding: 8px 12px;
+  color: var(--warm-white);
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.laya-options button:hover {
+  background: var(--lg-hover);
+}
+
+.knowledge-meaning {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 6px;
+  padding: 0 6px;
+  color: #d9d0ff;
+  border-radius: 999px;
+  background: rgba(195, 182, 255, 0.14);
+}
+
+.knowledge-themes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 2px 6px 10px;
+}
+
+.knowledge-themes button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  color: #e4dcff;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(195, 182, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(195, 182, 255, 0.2);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.knowledge-themes button.is-active {
+  background: rgba(195, 182, 255, 0.24);
+}
+
+.knowledge-themes small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.knowledge-passage {
+  display: grid !important;
+  gap: 6px !important;
+}
+
+.knowledge-quote {
+  color: var(--warm-white);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.knowledge-confidence {
+  display: block;
+  width: 80px;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(214, 246, 241, 0.1);
+}
+
+.knowledge-confidence span {
+  display: block;
+  height: 100%;
+  background: #c3b6ff;
+}
+
+.knowledge-related {
+  display: grid;
+  gap: 4px;
+  margin: 18px 0 4px 34px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(214, 246, 241, 0.08);
+}
+
+.knowledge-related h3 {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0 0 4px;
+  color: #c3b6ff;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.knowledge-related button {
+  display: grid;
+  gap: 3px;
+  padding: 8px 10px;
+  color: var(--warm-white);
+  border: 0;
+  border-radius: 10px;
+  background: rgba(195, 182, 255, 0.05);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.knowledge-related button:hover {
+  background: rgba(195, 182, 255, 0.12);
+}
+
+.knowledge-related strong {
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.knowledge-related span {
+  color: rgba(214, 236, 233, 0.75);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.knowledge-related small {
+  color: var(--muted);
+  font-size: 10.5px;
+}

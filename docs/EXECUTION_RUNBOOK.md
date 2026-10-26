@@ -258,6 +258,28 @@ each country's own outlets are publishing:
   - Absorb selection mode is tested only through the UI path.
   - Momentum needs about 48 h of observed coverage after a fresh install.
 
+**Laya v1 (2026-10-26).** Optional, on-device, off by default (LAY-001..006).
+
+- **Model and runtime:**
+  - Turning it on downloads `sentence-transformers/all-MiniLM-L6-v2` (Apache-2.0, 91 MB) at a pinned revision.
+  - Each file is checked against a pinned SHA-256 before use.
+  - Inference is a pure-JavaScript MiniLM forward pass and WordPiece tokenizer, so there are no new npm dependencies. Its outputs match the published sentence-transformers reference.
+  - It runs in worker threads with network modules stubbed to throw (tested) and no file access.
+- **Storage:** embeddings are encrypted with the knowledge key.
+- **Features:**
+  - Hybrid word and meaning search, fused by reciprocal rank.
+  - Related pages.
+  - Themes, using deterministic k-means.
+  - **Ask:** extractive only. It returns quoted passages with ¶ citations and a match strength, never generated text.
+- **UI:** an opt-in card in Knowledge, progress while downloading and indexing, a Search/Ask switch, theme chips, and "Related in your knowledge".
+- **Measured:** indexing three long articles took about 100 s on this Mac, and queries return in about 0.1 s. Evidence: `evidence/laya-*.png` (`scenario-laya.mjs`).
+- **Open:**
+  - English-only model.
+  - Indexing is slow for very long pages.
+  - No generative answers. This is deliberate until a local LLM is evaluated.
+
+The Mine globe now has a *Your places* panel listing pins and absorbed pages with their places. Absorbed Wikipedia pages also open The Olds from the Knowledge reader.
+
 Open on this slice: momentum and change between windows (needs comparable
 window evidence); news/RSS layers (registry approval); city-scale geometry; a
 VoiceOver review; and the Olds, Absorb extraction and Laya, which are still stubs.

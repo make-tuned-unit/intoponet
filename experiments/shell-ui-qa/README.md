@@ -44,6 +44,10 @@ node experiments/shell-ui-qa/drive.mjs experiments/shell-ui-qa/scenario-bookmark
   Wikipedia's Aurora article, a refused sign-in page, a cited Knowledge
   search, and absorbed places on the Mine globe.
 
+- `scenario-laya.mjs` absorbs three Wikipedia articles, turns Laya on (a
+  91 MB download into the throwaway profile), waits for indexing, then
+  covers Ask with citations, meaning search and related pages.
+
 The driver sets `INTOPONET_CAPTURE_ROOT` to the throwaway profile, so test
 runs never write to your real `~/Pictures/Intoponet`.
 

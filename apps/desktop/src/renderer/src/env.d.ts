@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-import type { BrowserHostApi, CaptureApi, KnowledgeApi, OldsApi } from '@intoponet/browser-api'
+import type { BrowserHostApi, CaptureApi, KnowledgeApi, LayaApi, OldsApi } from '@intoponet/browser-api'
 
 declare global {
   interface Window {
@@ -9,6 +9,7 @@ declare global {
       captures: CaptureApi
       olds: OldsApi
       knowledge: KnowledgeApi
+      laya: LayaApi
     }
   }
 }

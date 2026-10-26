@@ -42,6 +42,9 @@ export function knowledgeIdFor(url: string): string {
   return `kn-${createHash('sha256').update(parsed.toString()).digest('hex').slice(0, 24)}`
 }
 
+/** Notified after the stored documents change (used by Laya to keep embeddings in step). */
+export type KnowledgeChange = { type: 'put'; id: string } | { type: 'remove'; id: string } | { type: 'clear' }
+
 export class KnowledgeService {
   private readonly previews = new Map<string, PendingPreview>()
   private readonly index = new KnowledgeIndex()
@@ -54,6 +57,7 @@ export class KnowledgeService {
     crypto: KnowledgeCrypto | Promise<KnowledgeCrypto>
     getActivePage: () => KnowledgePage | null
     now?: () => number
+    onChange?: (change: KnowledgeChange) => void
   }) {
     this.now = options.now ?? Date.now
   }
@@ -173,7 +177,16 @@ export class KnowledgeService {
     const record = await store.put(document)
     this.previews.delete(previewId)
     this.index.add(record.id, record.url, record.title, document.paragraphs)
+    this.notify({ type: 'put', id: record.id })
     return record
+  }
+
+  private notify(change: KnowledgeChange): void {
+    try {
+      this.options.onChange?.(change)
+    } catch {
+      // Observers never break the store.
+    }
   }
 
   async list(): Promise<KnowledgeRecord[]> {
@@ -195,6 +208,7 @@ export class KnowledgeService {
   async remove(id: string): Promise<void> {
     await (await this.load()).remove(id)
     this.index.remove(id)
+    this.notify({ type: 'remove', id })
   }
 
   async update(id: string, patch: { note?: string | null; removeEntities?: string[]; title?: string }): Promise<KnowledgeRecord> {
@@ -231,6 +245,7 @@ export class KnowledgeService {
     await (await this.load()).removeAll()
     this.index.clear()
     this.previews.clear()
+    this.notify({ type: 'clear' })
   }
 }
 

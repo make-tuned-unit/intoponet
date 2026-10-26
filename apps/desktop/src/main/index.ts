@@ -42,8 +42,10 @@ let newsService: ReturnType<typeof startNewsService> | null = null
 let encryptedDnsActive = false
 import { CaptureLibrary, migrateEncryptedCaptures } from './captureStore'
 import { CaptureService } from './captureService'
-import { CAPTURE_SCHEME, captureChannels, knowledgeChannels, oldsChannels, parseCaptureCommand, parseKnowledgeCommand, parseOldsCommand } from '@intoponet/browser-api'
+import { CAPTURE_SCHEME, captureChannels, knowledgeChannels, layaChannels, parseLayaCommand, oldsChannels, parseCaptureCommand, parseKnowledgeCommand, parseOldsCommand } from '@intoponet/browser-api'
 import { KnowledgeService } from './knowledge/service'
+import { LayaService } from './laya/service'
+import { openLayaEmbedder } from './laya/openEmbedder'
 import { loadKnowledgeCrypto } from './knowledge/crypto'
 import { OldsService } from './olds/oldsService'
 
@@ -1211,16 +1213,31 @@ app.whenReady().then(async () => {
   ipcMain.handle(oldsChannels.command, (_event, value: unknown) => olds.thread(parseOldsCommand(value).query))
   // Absorb + local knowledge: extracted on this device, encrypted with an OS-keychain key, never sent anywhere.
   const knowledgeDir = join(app.getPath('userData'), 'knowledge')
+  const knowledgeCrypto = loadKnowledgeCrypto(knowledgeDir, {
+    available: () => safeStorage.isAsyncEncryptionAvailable(),
+    encrypt: (value) => safeStorage.encryptStringAsync(value),
+    decrypt: async (sealed) => (await safeStorage.decryptStringAsync(sealed)).result,
+  })
+  let laya: LayaService | null = null
   const knowledge = new KnowledgeService({
     dir: knowledgeDir,
-    crypto: loadKnowledgeCrypto(knowledgeDir, {
-      available: () => safeStorage.isAsyncEncryptionAvailable(),
-      encrypt: (value) => safeStorage.encryptStringAsync(value),
-      decrypt: async (sealed) => (await safeStorage.decryptStringAsync(sealed)).result,
-    }),
+    crypto: knowledgeCrypto,
     getActivePage: () => (pageAttached && pageView ? pageView.webContents : null),
+    onChange: (change) => laya?.onKnowledgeChange(change),
   })
   ipcMain.handle(knowledgeChannels.command, (_event, value: unknown) => knowledge.handle(parseKnowledgeCommand(value)))
+  // Laya: optional on-device meaning search over absorbed pages. Off until the user enables it;
+  // the model runs in workers with no network or file access.
+  laya = new LayaService({
+    dir: join(app.getPath('userData'), 'laya'),
+    crypto: knowledgeCrypto,
+    knowledge,
+    openEmbedder: openLayaEmbedder,
+    emit: (event) => { if (window && !window.isDestroyed()) window.webContents.send(layaChannels.event, event) },
+  })
+  ipcMain.handle(layaChannels.command, (_event, value: unknown) => laya!.handle(parseLayaCommand(value)))
+  app.once('will-quit', () => { void laya?.close() })
+  setTimeout(() => { void laya?.backfill().catch(() => undefined) }, 15_000).unref?.()
   ipcMain.handle(
     browserHostChannels.command,
     (_event, value: unknown) => handleBrowserCommand(parseBrowserHostCommand(value)),
