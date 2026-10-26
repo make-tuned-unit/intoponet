@@ -113,6 +113,7 @@ const browserHost: BrowserHostApi = {
     await invoke({ type: 'delete-private-library' })
   },
   getFieldSnapshot: () => invoke({ type: 'get-field-snapshot' }) as Promise<string | null>,
+  getNewsDigest: () => invoke({ type: 'get-news-digest' }) as Promise<string | null>,
   subscribe: (listener) => {
     const handler = (_event: Electron.IpcRendererEvent, payload: BrowserHostEvent): void => {
       listener(payload)

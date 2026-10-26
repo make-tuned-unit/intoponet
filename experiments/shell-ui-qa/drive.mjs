@@ -2,7 +2,7 @@
 // (including the native page view) with macOS screencapture.
 // Usage: node drive.mjs <scenario.mjs> <outDir>
 import { spawn, execFileSync } from 'node:child_process'
-import { mkdtempSync, mkdirSync, rmSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
@@ -53,13 +53,19 @@ const shot = async (name) => {
   execFileSync('screencapture', ['-x', '-o', `-R${box.x},${box.y},${box.w},${box.h}`, join(outDir, `${name}.png`)])
   console.log('shot', name)
 }
+// Renderer-only capture (no native page view), immune to other windows covering the app.
+const shotApp = async (name) => {
+  const { data } = await send('Page.captureScreenshot', { format: 'png' })
+  writeFileSync(join(outDir, `${name}.png`), Buffer.from(data, 'base64'))
+  console.log('shot', name)
+}
 const click = (selector) => evaluate(`(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (!el) throw new Error('missing ${selector}'); el.click(); return true })()`)
 const hover = (selector) => evaluate(`(() => { const el = document.querySelector(${JSON.stringify(selector)}); el.dispatchEvent(new PointerEvent('pointerover', { bubbles: true })); el.dispatchEvent(new PointerEvent('pointerenter', { bubbles: false })); return true })()`)
 
 try {
   await send('Runtime.enable')
   const { default: scenario } = await import(scenarioPath)
-  await scenario({ evaluate, shot, click, hover, delay, send, profile })
+  await scenario({ evaluate, shot, shotApp, click, hover, delay, send, profile })
 } finally {
   socket.close()
   app.kill()

@@ -158,6 +158,48 @@ and `FIELD_EXPERIENCE` without claiming either gate:
 - Evidence: `experiments/shell-ui-qa/evidence/globe-*.png`, from
   `scenario-globe.mjs`.
 
+**Local news for every country (2026-10-26).** A fourth layer shows what
+each country's own outlets are publishing:
+
+- 451 verified RSS/Atom feeds from 209 countries and territories. Parallel
+  research checked each feed live for freshness and domestic focus. Public
+  broadcasters and agencies came first, then major independent outlets.
+  Large countries also have a city outlet.
+- The only gap is Kiribati.
+- Registry and evidence: [`docs/data/news-feeds.json`](data/news-feeds.json),
+  built by `scripts/build-news-feeds.mjs`.
+- Only headline, link, id and publish time are kept, for 3 days. Polling is
+  every 20 minutes with conditional requests and backoff. Feeds that send
+  `Cache-Control: no-store` are kept in memory only, never on disk.
+- Placement:
+  - A story goes to a city only when its headline names a city of that
+    country, or the feed is a declared city outlet.
+  - Otherwise it counts at country scale.
+  - Accented names must match with accents ("Pará" never matches "para").
+  - The publisher's location is never used.
+- Brightness ranks each country's stories per feed over 48 h within this
+  layer only.
+- Engineering fixes needed for real-world feeds:
+  - A tolerant pre-pass (`sanitizeFeedXml`) strips bodies and media and
+    repairs entities and prefixes before the strict parser. Entity
+    declarations are still refused.
+  - Declared charsets are honoured.
+  - The private-address guard wrongly blocked all of 192.0.0.0/16, including
+    WordPress VIP news hosts. Only 192.0.0.0/24 and 192.0.2.0/24 are
+    reserved now, and TEST-NET-2/3 are added.
+  - The membrane input is capped at the texture work budget. Previously, more
+    than 488 signals crashed the globe.
+- In a cold start, 402 of 451 feeds were healthy and 188–207 countries had
+  news within about a minute. Evidence: `experiments/shell-ui-qa/evidence/news-*.png`
+  (`scenario-news.mjs`, renderer-only captures).
+- Open:
+  - Per-source terms review (`SOURCE_APPROVAL`); the research found no stated
+    RSS terms for any outlet.
+  - State-affiliated outlets are labelled in the registry, but not yet in the UI.
+  - Many "latest" feeds mix in world news.
+  - Momentum between windows.
+  - Syndication de-duplication across countries.
+
 Open on this slice: momentum and change between windows (needs comparable
 window evidence); news/RSS layers (registry approval); city-scale geometry; a
 VoiceOver review; and the Olds, Absorb extraction and Laya, which are still stubs.

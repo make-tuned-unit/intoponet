@@ -3,11 +3,15 @@ import { randomUUID } from 'node:crypto'
 import { isIP } from 'node:net'
 import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
-import { FEED_ADAPTER_LIMITS, isUtcTimestamp, parseFeedXml, parsePublicItem, type PublicItem } from '@intoponet/field-snapshot'
+import { FEED_ADAPTER_LIMITS, FEED_SANITIZE_LIMITS, feedCharset, isUtcTimestamp, parseFeedXml, parsePublicItem, sanitizeFeedXml, type PublicItem } from '@intoponet/field-snapshot'
 
 const CACHE_SCHEMA_VERSION = 1
 const MAX_CACHE_BYTES = 16 * 1024 * 1024
+/** Hard ceiling for reading/writing any feed cache file. */
+const MAX_STORED_CACHE_BYTES = 64 * 1024 * 1024
 const MAX_ENABLED_SOURCES = 32
+/** Ceiling for callers that opt into a larger registry (the per-country news layer). */
+const MAX_ENABLED_SOURCES_CEILING = 800
 const MAX_ITEMS_PER_SOURCE = 500
 const MAX_DEAD_LETTERS = 20
 const MIN_POLL_MS = 300_000
@@ -95,6 +99,19 @@ type FeedServiceOptions = {
   maxConcurrency?: number
   timeoutMs?: number
   maxResponseBytes?: number
+  /** Raise the enabled-source cap (default 32, at most 800). */
+  maxEnabledSources?: number
+  /** Called after every completed refresh, including scheduled ones. */
+  onResult?: (result: FeedFetchResult) => void
+  /** Coalesce cache writes; 0 (default) writes after every refresh. */
+  persistDebounceMs?: number
+  /** Persistent cache size limit in bytes (default 16 MB, at most 64 MB). */
+  maxCacheBytes?: number
+  /**
+   * Real-world mode for the news layer: accept larger responses, decode the
+   * declared charset, and strip bodies/media before the strict parser.
+   */
+  tolerant?: boolean
 }
 
 class FetchFailure extends Error {
@@ -127,17 +144,21 @@ function loopbackHost(hostname: string): boolean {
   return isIP(normalized) === 4 && Number(normalized.split('.')[0]) === 127
 }
 
-function privateIpv4(address: string): boolean {
+export function privateIpv4(address: string): boolean {
   const octets = address.split('.').map(Number)
-  const [a = 0, b = 0] = octets
+  const [a = 0, b = 0, c = 0] = octets
   return (
     a === 0 || a === 10 || a === 127 ||
     (a === 100 && b !== undefined && b >= 64 && b <= 127) ||
     (a === 169 && b === 254) ||
     (a === 172 && b !== undefined && b >= 16 && b <= 31) ||
     (a === 192 && b === 168) ||
-    (a === 192 && b === 0) ||
+    // Only 192.0.0.0/24 (IETF) and 192.0.2.0/24 (TEST-NET-1) are reserved;
+    // the rest of 192.0.0.0/16 is ordinary public space (e.g. WordPress VIP).
+    (a === 192 && b === 0 && (c === 0 || c === 2)) ||
     (a === 198 && b !== undefined && (b === 18 || b === 19)) ||
+    (a === 198 && b === 51 && c === 100) ||
+    (a === 203 && b === 0 && c === 113) ||
     a >= 224
   )
 }
@@ -255,7 +276,7 @@ function deadLetter(
   return { at, code: 'network', message: 'Feed request failed.' }
 }
 
-function validateRegistry(registry: FeedRegistry): Map<string, FeedRegistrySource> {
+function validateRegistry(registry: FeedRegistry, maxEnabled = MAX_ENABLED_SOURCES): Map<string, FeedRegistrySource> {
   if (!registry || !Array.isArray(registry.enabledSourceIds) || !Array.isArray(registry.sources)) {
     throw new Error('Feed registry must contain enabledSourceIds and sources arrays.')
   }
@@ -267,8 +288,8 @@ function validateRegistry(registry: FeedRegistry): Map<string, FeedRegistrySourc
   }
   const rows = new Map(registry.sources.map((source) => [source.sourceId, source]))
   if (rows.size !== registry.sources.length) throw new Error('Feed registry contains duplicate source IDs.')
-  if (registry.enabledSourceIds.length > MAX_ENABLED_SOURCES) {
-    throw new Error(`At most ${MAX_ENABLED_SOURCES} feed sources may be enabled.`)
+  if (registry.enabledSourceIds.length > maxEnabled) {
+    throw new Error(`At most ${maxEnabled} feed sources may be enabled.`)
   }
 
   const enabled = new Map<string, FeedRegistrySource>()
@@ -300,19 +321,19 @@ function validateRegistry(registry: FeedRegistry): Map<string, FeedRegistrySourc
   return enabled
 }
 
-export function createAtomicFeedStorage(filePath: string): FeedStorage {
+export function createAtomicFeedStorage(filePath: string, maxBytes = MAX_CACHE_BYTES): FeedStorage {
   return {
     async read() {
       try {
         const info = await stat(filePath)
-        if (info.size > MAX_CACHE_BYTES) return null
+        if (info.size > Math.min(maxBytes, MAX_STORED_CACHE_BYTES)) return null
         return await readFile(filePath, 'utf8')
       } catch {
         return null
       }
     },
     async write(serialized) {
-      if (Buffer.byteLength(serialized, 'utf8') > MAX_CACHE_BYTES) {
+      if (Buffer.byteLength(serialized, 'utf8') > Math.min(maxBytes, MAX_STORED_CACHE_BYTES)) {
         throw new Error('Feed cache exceeds its persistent size limit.')
       }
       const temporary = `${filePath}.${randomUUID()}.tmp`
@@ -349,7 +370,7 @@ function isState(value: unknown): value is FeedSourceState {
 }
 
 function parseStoredCache(serialized: string | null, sourceIds: Set<string>): FeedCacheSnapshot | null {
-  if (!serialized || Buffer.byteLength(serialized, 'utf8') > MAX_CACHE_BYTES) return null
+  if (!serialized || Buffer.byteLength(serialized, 'utf8') > MAX_STORED_CACHE_BYTES) return null
   try {
     const raw = JSON.parse(serialized) as Record<string, unknown>
     if (raw['schemaVersion'] !== CACHE_SCHEMA_VERSION || typeof raw['updatedAt'] !== 'string' ||
@@ -426,7 +447,7 @@ function mergeItems(existing: PublicItem[], incoming: PublicItem[], discoveredBe
   return [...byUrl.values()].sort((left, right) => left.id.localeCompare(right.id)).slice(-MAX_ITEMS_PER_SOURCE)
 }
 
-async function readLimitedBody(response: Response, maxBytes: number): Promise<string> {
+async function readLimitedBody(response: Response, maxBytes: number, tolerant = false): Promise<string> {
   const declared = Number(response.headers.get('content-length'))
   if (Number.isFinite(declared) && declared > maxBytes) {
     await response.body?.cancel().catch(() => undefined)
@@ -456,6 +477,14 @@ async function readLimitedBody(response: Response, maxBytes: number): Promise<st
   for (const chunk of chunks) {
     bytes.set(chunk, offset)
     offset += chunk.byteLength
+  }
+  if (tolerant) {
+    const charset = feedCharset(response.headers.get('content-type'), bytes)
+    try {
+      return new TextDecoder(charset === 'utf8' ? 'utf-8' : charset).decode(bytes)
+    } catch {
+      return new TextDecoder('utf-8').decode(bytes)
+    }
   }
   try {
     return new TextDecoder('utf-8', { fatal: true }).decode(bytes)
@@ -498,7 +527,7 @@ export class FeedFetchService {
   private running = false
 
   constructor(private readonly options: FeedServiceOptions) {
-    this.sources = validateRegistry(options.registry)
+    this.sources = validateRegistry(options.registry, optionInt(options.maxEnabledSources, MAX_ENABLED_SOURCES, 1, MAX_ENABLED_SOURCES_CEILING, 'maxEnabledSources'))
     this.mode = options.mode ?? 'production'
     this.fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis)
     this.now = options.now ?? defaultNow
@@ -509,9 +538,9 @@ export class FeedFetchService {
     this.timeoutMs = optionInt(options.timeoutMs, DEFAULT_TIMEOUT_MS, 1_000, 60_000, 'timeoutMs')
     this.maxResponseBytes = optionInt(
       options.maxResponseBytes,
-      FEED_ADAPTER_LIMITS.bytes,
+      options.tolerant ? FEED_SANITIZE_LIMITS.rawBytes : FEED_ADAPTER_LIMITS.bytes,
       1_024,
-      FEED_ADAPTER_LIMITS.bytes,
+      options.tolerant ? FEED_SANITIZE_LIMITS.rawBytes : FEED_ADAPTER_LIMITS.bytes,
       'maxResponseBytes',
     )
   }
@@ -617,7 +646,10 @@ export class FeedFetchService {
       const queued = this.queue.shift()
       if (!queued) return
       this.activeRequests += 1
-      void this.performRefresh(queued.sourceId).then(queued.resolve, queued.reject).finally(() => {
+      void this.performRefresh(queued.sourceId).then((result) => {
+        try { this.options.onResult?.(result) } catch { /* observers never break fetching */ }
+        queued.resolve(result)
+      }, queued.reject).finally(() => {
         this.activeRequests -= 1
         this.inFlight.delete(queued.sourceId)
         if (this.running) this.scheduleSource(queued.sourceId)
@@ -626,10 +658,35 @@ export class FeedFetchService {
     }
   }
 
+  private persistTimer: TimerHandle | null = null
+
   private async persist(): Promise<void> {
+    const debounce = this.options.persistDebounceMs ?? 0
+    if (debounce > 0) {
+      if (!this.persistTimer) {
+        this.persistTimer = this.setTimer(() => {
+          this.persistTimer = null
+          void this.writeCache().catch(() => undefined)
+        }, debounce)
+      }
+      return
+    }
+    await this.writeCache()
+  }
+
+  /** Write any pending debounced cache state now (e.g. on quit). */
+  async flush(): Promise<void> {
+    if (this.persistTimer) {
+      this.clearTimer(this.persistTimer)
+      this.persistTimer = null
+    }
+    await this.writeCache().catch(() => undefined)
+  }
+
+  private async writeCache(): Promise<void> {
     this.cache.updatedAt = timestamp(this.now())
     const serialized = JSON.stringify(this.cache)
-    if (Buffer.byteLength(serialized, 'utf8') > MAX_CACHE_BYTES) {
+    if (Buffer.byteLength(serialized, 'utf8') > optionInt(this.options.maxCacheBytes, MAX_CACHE_BYTES, 1_024, MAX_STORED_CACHE_BYTES, 'maxCacheBytes')) {
       throw new Error('Feed cache exceeds its persistent size limit.')
     }
     this.persistQueue = this.persistQueue.catch(() => undefined).then(() => this.options.storage.write(serialized))
@@ -757,7 +814,15 @@ export class FeedFetchService {
         await response.body?.cancel().catch(() => undefined)
         throw new FetchFailure('http-status', `Feed returned HTTP ${response.status}.`, response.status, retry)
       } else {
-        const body = await readLimitedBody(response, this.maxResponseBytes)
+        const raw = await readLimitedBody(response, this.maxResponseBytes, this.options.tolerant)
+        let body = raw
+        if (this.options.tolerant) {
+          try {
+            body = sanitizeFeedXml(raw)
+          } catch {
+            throw new FetchFailure('oversized', 'Feed response exceeded the byte limit.')
+          }
+        }
         let receivedItems: PublicItem[]
         try {
           receivedItems = await parseFeedXml(body, {

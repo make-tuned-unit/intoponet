@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { Globe2, MapPin } from 'lucide-react'
-import { normalizePlaceText, placeLabel, searchPlaces, type Place } from '../places/places'
+import { normalizePlaceText, placeLabel, searchPlaces, type Place } from '../../../shared/places/places'
 
 const FLY_PREFIX = /^(?:fly to|go to|take me to|explore|show me)\s+/i
 

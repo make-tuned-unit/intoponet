@@ -103,3 +103,18 @@ export function placeLabel(place: Place): string {
   parts.push(place.country)
   return parts.join(', ')
 }
+
+/** The country's own entry (capital or population centre, with an area-based radius). */
+export function countryPlace(countryCode: string): Place | null {
+  index ??= buildIndex()
+  return index.find((entry) => entry.place.kind === 'country' && entry.place.countryCode === countryCode)?.place ?? null
+}
+
+/** Cities and first-level regions inside one country, largest first. */
+export function placesInCountry(countryCode: string): Place[] {
+  index ??= buildIndex()
+  return index
+    .filter((entry) => entry.place.kind !== 'country' && entry.place.countryCode === countryCode)
+    .map((entry) => entry.place)
+    .sort((a, b) => b.population - a.population)
+}

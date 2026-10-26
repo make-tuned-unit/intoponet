@@ -121,6 +121,7 @@ import {
   GLOBE_LAYERS,
   globeSignalsFromSnapshot,
   layerCounts,
+  newsGlobeSignals,
   membraneSignals,
   nearbySignals,
   PIN_COLOR,
@@ -130,10 +131,11 @@ import {
   type GlobeWindow,
   interleaveLayers,
 } from './globe/globeSignals'
-import { PLACE_ATTRIBUTION, placeLabel, type Place } from './places/places'
+import { PLACE_ATTRIBUTION, placeLabel, type Place } from '../../shared/places/places'
+import { parseNewsDigest, type NewsDigest } from '../../shared/news/newsDigest'
 
 const bookmarkPaneOpenKey = 'intoponet.bookmark-pane.open.v1'
-const globePrefsKey = 'intoponet.globe.v1'
+const globePrefsKey = 'intoponet.globe.v2'
 
 type GlobePrefs = { view: FieldView; layers: GlobeLayerId[]; window: GlobeWindow; pins: boolean }
 
@@ -260,6 +262,7 @@ export function App() {
   }
   const setFieldView = (view: FieldView): void => updateGlobePrefs({ view })
   const [selectedSignalId, setSelectedSignalId] = useState<string | null>(null)
+  const [newsDigest, setNewsDigest] = useState<NewsDigest | null>(null)
   const [hoveredMarkerId, setHoveredMarkerId] = useState<string | null>(null)
   const [focusedPlace, setFocusedPlace] = useState<Place | null>(null)
   const [placeActive, setPlaceActive] = useState(-1)
@@ -393,7 +396,10 @@ export function App() {
       : fieldView === 'public'
         ? 'No eligible public source measurements are available.'
         : 'No session visits have been recorded yet.'
-  const allGlobeSignals = useMemo(() => globeSignalsFromSnapshot(eligiblePublicSnapshot), [eligiblePublicSnapshot])
+  const allGlobeSignals = useMemo(
+    () => [...newsGlobeSignals(newsDigest), ...globeSignalsFromSnapshot(eligiblePublicSnapshot)],
+    [newsDigest, eligiblePublicSnapshot],
+  )
   const globeLayerSet = useMemo(() => new Set(globePrefs.layers), [globePrefs.layers])
   const windowGlobeSignals = useMemo(
     () => filterGlobeSignals(allGlobeSignals, { layers: new Set(GLOBE_LAYER_ORDER), window: globePrefs.window, now: clock }),
@@ -545,6 +551,9 @@ export function App() {
         setError(`${event.reason} (${event.url})`)
         return
       }
+      if (event.type === 'news-digest') {
+        setNewsDigest(parseNewsDigest(event.payload))
+      }
       if (event.type === 'field-snapshot') {
         setPublicSnapshot(parseFieldSnapshot(event.payload))
       }
@@ -554,6 +563,9 @@ export function App() {
     void window.intoponet.browserHost.getTabs().then((nextTabs) => {
       activeTabId.current = nextTabs.find((tab) => tab.active)?.id ?? null
       setTabs(nextTabs)
+    })
+    void window.intoponet.browserHost.getNewsDigest().then((payload) => {
+      if (payload) setNewsDigest((current) => current ?? parseNewsDigest(payload))
     })
     void window.intoponet.browserHost.getFieldSnapshot().then((payload) => {
       if (payload) setPublicSnapshot(parseFieldSnapshot(payload))
@@ -1717,7 +1729,7 @@ export function App() {
           summary={fieldView === 'public'
             ? focusedPlace
               ? `${panelSignals.length} public ${panelSignals.length === 1 ? 'signal' : 'signals'} within ${Math.max(1_200, Math.round(focusedPlace.radiusKm * 3)).toLocaleString()} km of ${placeLabel(focusedPlace)}.`
-              : `${visibleGlobeSignals.length} public signals from ${GLOBE_LAYER_ORDER.filter((layer) => globeLayerSet.has(layer)).length} sources. Hover to preview, click to explore, or search a place below.`
+              : `${visibleGlobeSignals.length} public signals from ${globeLayerSet.size === 1 ? '1 source' : `${globeLayerSet.size} sources`}. Hover to preview, click to explore, or search a place below.`
             : `${bookmarks.filter((bookmark) => bookmark.fieldAnchor).length} pinned places · ${personalActivity.visits.length} visits this session. Nothing here is shared.`}
           trail={focusedPlace ? (focusedPlace.kind === 'country' ? [focusedPlace.name] : [focusedPlace.country, focusedPlace.name].filter((step, index, all) => step && all.indexOf(step) === index)) : []}
           onEarth={showEarth}

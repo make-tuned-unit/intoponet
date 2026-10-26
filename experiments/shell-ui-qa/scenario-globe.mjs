@@ -1,5 +1,5 @@
 // Living globe: live layers, hover, select, place search, filters, Mine view.
-export default async function ({ evaluate, shot, click, delay, send }) {
+export default async function ({ evaluate, shotApp: shot, click, delay, send }) {
   const mouse = async (type, x, y) => send('Input.dispatchMouseEvent', { type, x, y, button: type === 'mouseMoved' ? 'none' : 'left', buttons: type === 'mousePressed' ? 1 : 0, clickCount: 1 })
   // Wait for live public data (fresh profile, no cache).
   for (let i = 0; i < 60; i += 1) {

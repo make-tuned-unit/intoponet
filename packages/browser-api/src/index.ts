@@ -116,6 +116,8 @@ export type BrowserHostEvent =
   /** Shell shortcuts pressed while the native page view had keyboard focus. */
   | { type: 'shortcut'; action: ShellShortcut }
   | { type: 'field-snapshot'; payload: string }
+  /** Validated per-country local news digest (JSON). */
+  | { type: 'news-digest'; payload: string }
 
 export type ShellShortcut = 'focus-launcher' | 'toggle-bookmarks' | 'capture'
 
@@ -152,6 +154,7 @@ export interface BrowserHostApi {
   writePrivateLibrary(payload: string): Promise<void>
   deletePrivateLibrary(): Promise<void>
   getFieldSnapshot(): Promise<string | null>
+  getNewsDigest(): Promise<string | null>
   subscribe(listener: (event: BrowserHostEvent) => void): () => void
 }
 
@@ -190,6 +193,7 @@ export type BrowserHostCommand =
   | { type: 'write-private-library'; payload: string }
   | { type: 'delete-private-library' }
   | { type: 'get-field-snapshot' }
+  | { type: 'get-news-digest' }
 
 const commandTypes = new Set<BrowserHostCommand['type']>([
   'open',
@@ -221,6 +225,7 @@ const commandTypes = new Set<BrowserHostCommand['type']>([
   'write-private-library',
   'delete-private-library',
   'get-field-snapshot',
+  'get-news-digest',
 ])
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -341,6 +346,7 @@ export function parseBrowserHostCommand(value: unknown): BrowserHostCommand {
     case 'read-private-library':
     case 'delete-private-library':
     case 'get-field-snapshot':
+    case 'get-news-digest':
     case 'close':
     case 'restore':
     case 'back':

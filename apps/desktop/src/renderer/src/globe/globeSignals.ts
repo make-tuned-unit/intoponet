@@ -1,12 +1,13 @@
 import type { FieldSnapshot, SourceRecord } from '@intoponet/field-snapshot'
 import type { InterestSignal } from '../interestField'
+import type { NewsDigest, NewsHeadline } from '../../../shared/news/newsDigest'
 
 /**
  * Globe layers. Each layer is one measurement kind, so values are only ever
  * compared inside a layer (PRD FRQ-006, spec §15 rule 5): reading counts,
  * earthquake magnitude and natural-event presence never share a scale.
  */
-export type GlobeLayerId = 'reading' | 'quakes' | 'natural'
+export type GlobeLayerId = 'news' | 'reading' | 'quakes' | 'natural'
 export type GlobeWindow = '24h' | '7d' | '30d'
 
 export const GLOBE_LAYERS: Record<GlobeLayerId, {
@@ -19,6 +20,14 @@ export const GLOBE_LAYERS: Record<GlobeLayerId, {
   radiusKm: number
   describe: string
 }> = {
+  news: {
+    label: 'Local news',
+    source: 'Each country’s own outlets',
+    color: '#8fb8ff',
+    gain: 0.85,
+    radiusKm: 300,
+    describe: 'Headlines from verified local news feeds in each country. A story is placed at a city only when its headline names that city, or the outlet is a city outlet; otherwise it counts toward the whole country. Brightness is each country’s publishing pace per outlet over 48 hours, not importance. No marker means no working local feed yet.',
+  },
   reading: {
     label: 'Reading now',
     source: 'Wikipedia most-read',
@@ -45,7 +54,7 @@ export const GLOBE_LAYERS: Record<GlobeLayerId, {
   },
 }
 
-export const GLOBE_LAYER_ORDER: GlobeLayerId[] = ['reading', 'quakes', 'natural']
+export const GLOBE_LAYER_ORDER: GlobeLayerId[] = ['news', 'reading', 'quakes', 'natural']
 export const PIN_COLOR = '#a69be8'
 
 export const WINDOW_HOURS: Record<GlobeWindow, number> = { '24h': 24, '7d': 24 * 7, '30d': 24 * 30 }
@@ -89,6 +98,8 @@ export type GlobeSignal = {
   attribution: string
   licence: string
   sourceUrl: string
+  /** Local news only: the latest headlines behind this signal. */
+  headlines?: NewsHeadline[]
 }
 
 type ExtendedRecord = SourceRecord & {
@@ -218,21 +229,31 @@ export function filterGlobeSignals(
   return signals.filter((signal) => {
     if (!options.layers.has(signal.layer)) return false
     // The latest full reading day is always shown; it is the newest data there is.
-    if (signal.layer === 'reading') return true
+    if (signal.layer === 'reading' || signal.layer === 'news') return true
     const at = Date.parse(signal.observedAt)
     return !Number.isFinite(at) || at >= horizon
   })
 }
 
 export function layerCounts(signals: GlobeSignal[]): Record<GlobeLayerId, number> {
-  const counts: Record<GlobeLayerId, number> = { reading: 0, quakes: 0, natural: 0 }
+  const counts: Record<GlobeLayerId, number> = { news: 0, reading: 0, quakes: 0, natural: 0 }
   for (const signal of signals) counts[signal.layer] += 1
   return counts
 }
 
-/** Membrane input: each layer's own rank scaled by its gain. */
+/** Most signals the 512×256 membrane texture can rasterise within its work budget. */
+export const MEMBRANE_MAX_SIGNALS = 480
+
+/**
+ * Membrane input: each layer's own rank scaled by its gain. Past the
+ * texture's work budget the faintest are left out of the surface only; every
+ * signal still has its marker, label and list entry.
+ */
 export function membraneSignals(signals: GlobeSignal[], timestamp: string): InterestSignal[] {
-  return signals.map((signal) => ({
+  const strongest = signals.length > MEMBRANE_MAX_SIGNALS
+    ? [...signals].sort((a, b) => b.intensity * GLOBE_LAYERS[b.layer].gain - a.intensity * GLOBE_LAYERS[a.layer].gain).slice(0, MEMBRANE_MAX_SIGNALS)
+    : signals
+  return strongest.map((signal) => ({
     id: signal.id,
     lat: signal.lat,
     lon: signal.lon,
@@ -295,4 +316,77 @@ export function interleaveLayers(signals: GlobeSignal[]): GlobeSignal[] {
     for (const queue of queues) if (queue[i]) result.push(queue[i]!)
   }
   return result
+}
+
+/** Rank values to 0.3..1 inside one group. */
+function rankWithin(values: number[]): number[] {
+  const lo = Math.min(...values)
+  const hi = Math.max(...values)
+  return values.map((value) => 0.3 + 0.7 * (hi > lo ? (value - lo) / (hi - lo) : 0.6))
+}
+
+/**
+ * Local news as globe signals. Countries are ranked by stories per feed (so a
+ * country with more registered feeds doesn't look busier); named cities are
+ * ranked among themselves and drawn a little smaller.
+ */
+export function newsGlobeSignals(digest: NewsDigest | null): GlobeSignal[] {
+  if (!digest) return []
+  const window = `${digest.windowHours} h`
+  const countryRanks = rankWithin(digest.countries.map((country) => Math.log1p(country.storyCount / Math.max(1, country.feedCount))))
+  const placeRanks = rankWithin(digest.places.map((place) => Math.log1p(place.storyCount)))
+  const publishers = (headlines: NewsHeadline[]): string => [...new Set(headlines.map((headline) => headline.publisher))].slice(0, 3).join(', ')
+  const countries = digest.countries.flatMap((country, i): GlobeSignal[] => {
+    const first = country.headlines[0]
+    if (!first) return []
+    return [{
+      id: `news:country:${country.countryCode}`,
+      layer: 'news',
+      title: country.name,
+      kind: 'Local news',
+      summary: `${country.storyCount} ${country.storyCount === 1 ? 'story' : 'stories'} from ${country.outletCount} local ${country.outletCount === 1 ? 'outlet' : 'outlets'} in the last ${window}.`,
+      placeLabel: null,
+      lat: country.lat,
+      lon: country.lon,
+      url: first.url,
+      thumbnail: null,
+      measurement: `${country.storyCount} ${country.storyCount === 1 ? 'story' : 'stories'} · ${country.outletCount} ${country.outletCount === 1 ? 'outlet' : 'outlets'}`,
+      value: country.storyCount,
+      intensity: countryRanks[i]!,
+      radiusKm: country.radiusKm,
+      observedAt: country.latestAt ?? digest.generatedAt,
+      endedAt: null,
+      attribution: `Headlines and links from ${publishers(country.headlines)}`,
+      licence: 'link-only',
+      sourceUrl: first.url,
+      headlines: country.headlines,
+    }]
+  })
+  const places = digest.places.flatMap((place, i): GlobeSignal[] => {
+    const first = place.headlines[0]
+    if (!first) return []
+    return [{
+      id: `news:${place.id}`,
+      layer: 'news',
+      title: place.name,
+      kind: place.evidence === 'named-in-headline' ? 'Named in local headlines' : place.evidence === 'local-outlet' ? 'City outlet' : 'City news',
+      summary: `${place.storyCount} ${place.storyCount === 1 ? 'story' : 'stories'} ${place.evidence === 'named-in-headline' ? 'naming this place' : place.evidence === 'local-outlet' ? 'from a local outlet here' : 'from a local outlet here or naming this place'} in the last ${window}.`,
+      placeLabel: null,
+      lat: place.lat,
+      lon: place.lon,
+      url: first.url,
+      thumbnail: null,
+      measurement: `${place.storyCount} ${place.storyCount === 1 ? 'story' : 'stories'}`,
+      value: place.storyCount,
+      intensity: placeRanks[i]! * 0.85,
+      radiusKm: place.radiusKm,
+      observedAt: first.publishedAt,
+      endedAt: null,
+      attribution: `Headlines and links from ${publishers(place.headlines)}`,
+      licence: 'link-only',
+      sourceUrl: first.url,
+      headlines: place.headlines,
+    }]
+  })
+  return [...countries, ...places].sort((a, b) => b.intensity - a.intensity || a.id.localeCompare(b.id))
 }

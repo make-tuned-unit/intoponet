@@ -130,3 +130,4 @@ export {
   recordsFromEonet,
   weightFromEonet,
 } from './eonet'
+export { FEED_SANITIZE_LIMITS, feedCharset, sanitizeFeedXml } from './feed-sanitize'

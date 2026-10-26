@@ -3,7 +3,7 @@
 // Licence: GeoNames, CC BY 4.0, https://www.geonames.org/
 // Regenerate: node packages/place-catalog/scripts/build-bundled-places.mjs \
 //   --cities cities15000.txt --countries countryInfo.txt --admin1 admin1CodesASCII.txt \
-//   --out apps/desktop/src/renderer/src/places/placeData.ts
+//   --out apps/desktop/src/shared/places/placeData.ts
 
 /** [iso2, name, lat, lon, radiusKm, population] */
 export type CountryRow = [string, string, number, number, number, number]

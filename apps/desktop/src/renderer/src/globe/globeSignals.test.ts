@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { FieldSnapshot, SourceRecord } from '@intoponet/field-snapshot'
 import { latLonToOrbit } from '@intoponet/frequency-field'
-import { distanceKm, filterGlobeSignals, freshness, globeSignalsFromSnapshot, layerCounts, membraneSignals, nearbySignals } from './globeSignals'
+import { distanceKm, filterGlobeSignals, MEMBRANE_MAX_SIGNALS, freshness, globeSignalsFromSnapshot, layerCounts, membraneSignals, nearbySignals } from './globeSignals'
 import { poseToward, radiusForSpan } from './flyTo'
 
 const now = Date.parse('2026-10-26T12:00:00.000Z')
@@ -50,7 +50,7 @@ describe('globe signals', () => {
 
   it('maps public records to layers and drops synthetic fixtures', () => {
     expect(signals.map((s) => s.id).sort()).toEqual(['eonet-1', 'usgs-1', 'usgs-old', 'wiki-1', 'wiki-2'])
-    expect(layerCounts(signals)).toEqual({ reading: 2, quakes: 2, natural: 1 })
+    expect(layerCounts(signals)).toEqual({ news: 0, reading: 2, quakes: 2, natural: 1 })
     expect(signals.find((s) => s.id === 'eonet-1')).toMatchObject({ kind: 'Wildfire', summary: 'Wildfire · reported by IRWIN' })
     expect(signals.find((s) => s.id === 'usgs-1')?.kind).toBe('M6.8 earthquake')
     expect(signals.find((s) => s.id === 'wiki-1')?.measurement).toMatch(/^900,000 reads on Oct 25$/)
@@ -70,6 +70,13 @@ describe('globe signals', () => {
     expect(day.map((s) => s.id).sort()).toEqual(['usgs-1', 'wiki-1', 'wiki-2'])
     const week = filterGlobeSignals(signals, { layers, window: '7d', now })
     expect(week.map((s) => s.id)).toContain('usgs-old')
+  })
+
+  it('caps membrane input at the texture budget, keeping the strongest', () => {
+    const many = Array.from({ length: 700 }, (_, i) => ({ ...signals[0]!, id: `s${i}`, intensity: (i % 100) / 100 + 0.001 }))
+    const membrane = membraneSignals(many, snapshot.createdAt)
+    expect(membrane).toHaveLength(MEMBRANE_MAX_SIGNALS)
+    expect(Math.min(...membrane.map((s) => s.intensity))).toBeGreaterThan(0.2)
   })
 
   it('builds bounded membrane input', () => {

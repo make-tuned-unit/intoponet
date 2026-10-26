@@ -24,6 +24,7 @@ if (!app.isReady()) {
   )
 }
 import { cachedPublicField, startPublicFieldRefresh } from './public-field'
+import { startNewsService } from './news/newsService'
 import { readSealedPrivateLibrary } from './privateLibraryStorage'
 import { routeProtectionRequest } from './protectionRequest'
 import {
@@ -37,6 +38,7 @@ import {
 } from './tabDockBounds'
 import { shellShortcutForInput } from './shellShortcuts'
 import { ENCRYPTED_DNS, networkPrivacySnapshot, WEBRTC_POLICY } from './networkPrivacy'
+let newsService: ReturnType<typeof startNewsService> | null = null
 let encryptedDnsActive = false
 import { CaptureLibrary, migrateEncryptedCaptures } from './captureStore'
 import { CaptureService } from './captureService'
@@ -1093,6 +1095,8 @@ async function handleBrowserCommand(
       return null
     case 'get-field-snapshot':
       return cachedPublicField()
+    case 'get-news-digest':
+      return newsService?.latest() ?? null
   }
   emitPanelState()
   return panelState()
@@ -1216,6 +1220,13 @@ app.whenReady().then(async () => {
     emit({ type: 'field-snapshot', payload: JSON.stringify(snapshot) })
   })
   app.once('will-quit', stopPublicField)
+
+  // What each country's own outlets are reporting (headlines and links only).
+  newsService = startNewsService({
+    userData: app.getPath('userData'),
+    emit: (payload) => emit({ type: 'news-digest', payload }),
+  })
+  app.once('will-quit', () => newsService?.stop())
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

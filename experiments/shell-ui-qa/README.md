@@ -33,6 +33,12 @@ node experiments/shell-ui-qa/drive.mjs experiments/shell-ui-qa/scenario-bookmark
   view. Input goes through CDP `Input.*`, so hover and click hit real canvas
   picking.
 
+- `scenario-news.mjs` waits for the local-news digest to cover over 180
+  countries, then captures the world view and the Kenya, Brazil and Japan
+  inspectors. It uses `shotApp`, a renderer-only CDP capture, so other windows
+  on screen never appear in evidence. Prefer `shotApp` whenever no native web
+  page is on screen.
+
 The driver sets `INTOPONET_CAPTURE_ROOT` to the throwaway profile, so test
 runs never write to your real `~/Pictures/Intoponet`.
 

@@ -453,3 +453,15 @@ describe('FEED_FETCH service', () => {
     }
   })
 })
+
+describe('public address check', () => {
+  it('blocks reserved ranges but not public 192.0.x.x hosting', async () => {
+    const { privateIpv4 } = await import('./feed-service')
+    for (const address of ['10.1.2.3', '127.0.0.1', '192.168.1.1', '192.0.0.8', '192.0.2.10', '198.18.0.1', '198.51.100.7', '203.0.113.9', '100.64.0.1', '169.254.1.1']) {
+      expect(privateIpv4(address), address).toBe(true)
+    }
+    for (const address of ['192.0.66.98', '192.0.78.195', '8.8.8.8', '151.101.1.140']) {
+      expect(privateIpv4(address), address).toBe(false)
+    }
+  })
+})

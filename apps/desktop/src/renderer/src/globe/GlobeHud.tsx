@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion, type Transition } from 'motion/react'
-import { Activity, ArrowLeft, BookmarkPlus, BookOpen, ChevronRight, ExternalLink, Flame, Info, MapPin, Navigation, X } from 'lucide-react'
+import { Activity, ArrowLeft, BookmarkPlus, BookOpen, ChevronRight, ExternalLink, Flame, Info, MapPin, Navigation, Newspaper, X } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { useGlassSheen } from '../glass/useGlassSheen'
 import '../glass/glass.css'
@@ -16,6 +16,7 @@ import {
 
 const spring: Transition = { type: 'spring', stiffness: 420, damping: 36 }
 const layerIcon: Record<GlobeLayerId, ReactNode> = {
+  news: <Newspaper size={14} />,
   reading: <BookOpen size={14} />,
   quakes: <Activity size={14} />,
   natural: <Flame size={14} />,
@@ -222,7 +223,7 @@ function SignalRow({ signal, now, onSelect }: { signal: GlobeSignal; now: number
         <span className="globe-row-dot" aria-hidden="true" style={{ opacity: 0.45 + signal.intensity * 0.55 }} />
         <span className="globe-row-text">
           <strong>{signal.title}</strong>
-          <small>{signal.layer === 'reading' ? signal.measurement : `${signal.kind} · ${relativeTime(signal.observedAt, now)}`}</small>
+          <small>{signal.layer === 'reading' ? signal.measurement : signal.layer === 'news' ? `${signal.measurement} · ${relativeTime(signal.observedAt, now)}` : `${signal.kind} · ${relativeTime(signal.observedAt, now)}`}</small>
         </span>
       </button>
     </li>
@@ -288,10 +289,30 @@ export function SignalPanel({
             {selected.placeLabel && selected.placeLabel !== selected.title && <p className="globe-place"><MapPin size={12} aria-hidden="true" />{selected.placeLabel}</p>}
             {selected.summary && <p className="globe-detail-summary">{selected.summary}</p>}
             <dl className="globe-facts">
-              <div><dt>{selected.layer === 'reading' ? 'Readers' : selected.layer === 'quakes' ? 'Measured' : 'Reported'}</dt><dd>{selected.measurement}</dd></div>
-              <div><dt>{selected.layer === 'reading' ? 'Day' : 'Observed'}</dt><dd>{relativeTime(selected.observedAt, now)}</dd></div>
+              <div><dt>{selected.layer === 'reading' ? 'Readers' : selected.layer === 'quakes' ? 'Measured' : selected.layer === 'news' ? 'Published' : 'Reported'}</dt><dd>{selected.measurement}</dd></div>
+              <div><dt>{selected.layer === 'reading' ? 'Day' : selected.layer === 'news' ? 'Latest' : 'Observed'}</dt><dd>{relativeTime(selected.observedAt, now)}</dd></div>
               <div><dt>Rank in layer</dt><dd><span className="globe-meter" aria-label={`${Math.round(selected.intensity * 100)} of 100`}><span style={{ width: `${selected.intensity * 100}%` }} /></span></dd></div>
             </dl>
+            {selected.headlines?.length ? (
+              <section className="globe-headlines" aria-label="Latest headlines">
+                <div className="globe-headlines-top">
+                  <h3>Latest from local outlets</h3>
+                  <button type="button" className="lg-icon-button" aria-label="Fly here" title="Fly here" onClick={() => onFly(selected)}>
+                    <Navigation size={14} />
+                  </button>
+                </div>
+                <ul>
+                  {selected.headlines.map((headline) => (
+                    <li key={headline.url}>
+                      <button type="button" onClick={() => onOpen(headline.url)}>
+                        <strong>{headline.title}</strong>
+                        <small>{headline.publisher} · {relativeTime(headline.publishedAt, now)}{headline.place && headline.place !== selected.title ? ` · ${headline.place}` : ''}</small>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : (
             <div className="globe-actions">
               <button type="button" className="globe-primary" onClick={() => onOpen(selected.url)}>
                 <ExternalLink size={14} aria-hidden="true" />
@@ -303,7 +324,8 @@ export function SignalPanel({
               <button type="button" className="lg-icon-button" aria-label={saved ? 'Saved to bookmarks' : 'Save to bookmarks'} title={saved ? 'Saved' : 'Save to bookmarks'} aria-pressed={saved} onClick={() => onSave(selected)}>
                 <BookmarkPlus size={15} />
               </button>
-            </div>
+              </div>
+            )}
             {nearby.length > 0 && (
               <section className="globe-nearby" aria-label="Nearby">
                 <h3>Nearby</h3>

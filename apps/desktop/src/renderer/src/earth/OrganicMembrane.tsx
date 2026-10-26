@@ -13,7 +13,7 @@ import {
   ClampToEdgeWrapping,
   type WebGLRenderer,
 } from 'three'
-import { buildInterestTextureData, type InterestSignal } from '../interestField'
+import { buildInterestTextureData, INTEREST_FIELD_LIMITS, type InterestSignal } from '../interestField'
 import { ORGANIC_SHADER_CACHE_KEY, patchOrganicShader, type OrganicShaderUniforms } from './organicShader'
 
 export type OrganicMembraneSettings = {
@@ -274,7 +274,12 @@ export function OrganicMembrane({ signals, settings, phaseTimeSeconds, onMetrics
   const rendererLease = useMemo(() => ({}), [])
 
   const key = useMemo(() => snapshotKey(signals), [signals])
-  const targetData = useMemo(() => buildInterestTextureData(signals, 512, 256), [key])
+  // Never let an oversized input take the globe down: keep the strongest that fit the budget.
+  const targetData = useMemo(() => {
+    const budget = Math.floor(INTEREST_FIELD_LIMITS.rasterWork / (512 * 256))
+    const fitted = signals.length > budget ? [...signals].sort((a, b) => b.intensity - a.intensity).slice(0, budget) : signals
+    return buildInterestTextureData(fitted, 512, 256)
+  }, [key])
   const currentResources = useMemo(() => {
     const fromData = targetData.data.slice()
     const toData = targetData.data.slice()
