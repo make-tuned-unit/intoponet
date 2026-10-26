@@ -235,3 +235,23 @@ the honest reported performance for this capture.
 ### Native evidence checkpoint
 
 Final planetary/regional PNGs, three-material comparison, opaque check, and a 7.97-second actual-canvas MP4 are in `experiments/field-visual-qa/artifacts/`; see `organic-verification.json`. The final micro term uses two differently oriented domain-warped phases, not a regular latitude carrier. Browser tab opening and return-to-field were verified. The main app also showed 19 FPS / 35.6 ms GPU samples, so the 30 FPS lab observation is not a stable application-wide guarantee. Full aesthetic acceptance, city-resolved data/geometry, and 60 FPS remain open.
+
+### Live public sources — 2026-10-26
+
+The desktop field now refreshes three admitted public APIs while the app runs
+(`apps/desktop/src/main/public-field.ts`). Each source is fetched independently
+and falls back to its own cached records on failure:
+
+| Layer (topic id) | Source | Measurement | Cadence |
+|---|---|---|---|
+| `reading-now` | Wikimedia top-1000 pageviews for the last complete UTC day, plus GeoData coordinates | `wikimedia-pageviews`, scale `utc-day` | once per new day, checked ≤ every 3 h |
+| `seismic-record` | USGS M4.5+ past week (strongest 40) | `usgs-earthquake-magnitude` | every 20 min |
+| `natural-<category>` | NASA EONET open events, last 30 days | `nasa-eonet-event` (presence; magnitude kept with its own unit) | every 20 min |
+
+Only articles with their own primary coordinates are mapped (about 30–40 of the
+top 1,000 per day); people, media and most elections stay unmapped rather than
+receiving an inferred place. Footprint radii (300 km reading, 150 km events)
+are display footprints, not measured spread. The old four-anchor geosearch is
+no longer on the live path. Records carry optional `summary`, `placeLabel`,
+`thumbnail` and `endedAt` for the inspector. See the registry entries in
+[`public-source-registry.json`](data/public-source-registry.json).

@@ -1,0 +1,74 @@
+import { describe, expect, it } from 'vitest'
+import { CITY_ROWS, COUNTRY_ROWS, REGION_ROWS } from './placeData'
+import { normalizePlaceText, placeLabel, searchPlaces } from './places'
+
+describe('searchPlaces', () => {
+  it('finds major cities first', () => {
+    expect(placeLabel(searchPlaces('tokyo')[0]!)).toBe('Tokyo, Japan')
+    expect(placeLabel(searchPlaces('paris')[0]!)).toBe('Paris, France')
+    expect(placeLabel(searchPlaces('Halifax')[0]!)).toBe('Halifax, Nova Scotia, Canada')
+  })
+
+  it('puts an exactly named country first', () => {
+    const [first] = searchPlaces('japan')
+    expect(first).toMatchObject({ kind: 'country', countryCode: 'JP', name: 'Japan' })
+  })
+
+  it('ignores case and diacritics', () => {
+    expect(searchPlaces('sao paulo')[0]?.name).toBe('São Paulo')
+    expect(searchPlaces('ZÜRICH')[0]?.name).toBe('Zürich')
+  })
+
+  it('matches prefixes and aliases', () => {
+    expect(searchPlaces('nyc')[0]?.name).toBe('New York City')
+    expect(searchPlaces('uk')[0]?.id).toBe('country:GB')
+    expect(searchPlaces('buenos')[0]?.name).toBe('Buenos Aires')
+  })
+
+  it('needs at least two characters and respects the limit', () => {
+    expect(searchPlaces('x')).toEqual([])
+    expect(searchPlaces(' ')).toEqual([])
+    expect(searchPlaces('san', 3)).toHaveLength(3)
+  })
+
+  it('finds first-level regions of large countries', () => {
+    const region = searchPlaces('british columbia').find((place) => place.kind === 'region')
+    expect(region && placeLabel(region)).toBe('British Columbia, Canada')
+  })
+
+  it('formats labels', () => {
+    const portland = searchPlaces('portland').find((place) => place.countryCode === 'US')
+    expect(portland && placeLabel(portland)).toBe('Portland, Oregon, United States')
+  })
+
+  it('is fast once indexed', () => {
+    searchPlaces('warm up')
+    const start = performance.now()
+    for (const query of ['lon', 'new', 'sa', 'ber', 'mexico']) searchPlaces(query)
+    expect((performance.now() - start) / 5).toBeLessThan(10)
+  })
+})
+
+describe('bundled place data', () => {
+  it('is sane', () => {
+    expect(COUNTRY_ROWS.length).toBeGreaterThanOrEqual(195)
+    expect(CITY_ROWS.length).toBeGreaterThan(1000)
+    const ids = new Set<string>()
+    for (const [code, , lat, lon] of COUNTRY_ROWS) {
+      ids.add(`country:${code}`)
+      expect(Math.abs(lat)).toBeLessThanOrEqual(90)
+      expect(Math.abs(lon)).toBeLessThanOrEqual(180)
+    }
+    for (const [id, , , , lat, lon] of CITY_ROWS) {
+      ids.add(`city:${id}`)
+      expect(Math.abs(lat)).toBeLessThanOrEqual(90)
+      expect(Math.abs(lon)).toBeLessThanOrEqual(180)
+    }
+    for (const [key] of REGION_ROWS) ids.add(`region:${key}`)
+    expect(ids.size).toBe(COUNTRY_ROWS.length + CITY_ROWS.length + REGION_ROWS.length)
+  })
+
+  it('normalizes text', () => {
+    expect(normalizePlaceText("  Côte d'Ivoire ")).toBe('cote d ivoire')
+  })
+})

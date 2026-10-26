@@ -27,6 +27,12 @@ node experiments/shell-ui-qa/drive.mjs experiments/shell-ui-qa/scenario-bookmark
 - `scenario-rail.mjs` covers the favicon tab rail: collapsed, expanded,
   pinned with the pane, and full screen.
 
+- `scenario-globe.mjs` covers the living globe. It waits for live public
+  data on a fresh profile, then walks hover, select (inspector), place
+  suggestions, flying to Tokyo, layer and window filters, About, and the Mine
+  view. Input goes through CDP `Input.*`, so hover and click hit real canvas
+  picking.
+
 The driver sets `INTOPONET_CAPTURE_ROOT` to the throwaway profile, so test
 runs never write to your real `~/Pictures/Intoponet`.
 

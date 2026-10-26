@@ -4,6 +4,7 @@ export const fieldSnapshotSchema = 'intoponet.field-snapshot.v2' as const
 export type MeasurementKind =
   | 'wikimedia-pageviews'
   | 'usgs-earthquake-magnitude'
+  | 'nasa-eonet-event'
   | 'synthetic-fixture'
   | 'declared-index'
   | 'legacy-pageviews-weight'
@@ -42,6 +43,14 @@ export type SourceRecord = {
   weight: number
   publishedAt: string
   measurement: SourceMeasurement
+  /** Short plain-text description from the source (≤ 280 chars). */
+  summary?: string
+  /** Human-readable place, when the source names one (≤ 120 chars). */
+  placeLabel?: string
+  /** HTTPS preview image published by the source. */
+  thumbnail?: string
+  /** When the source reports the event as closed. */
+  endedAt?: string
 }
 
 export type SnapshotBand = {

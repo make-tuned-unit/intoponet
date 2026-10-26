@@ -132,6 +132,36 @@ The shell revision that followed changed several things:
   shows in the protection panel. There is no VPN tunnel yet (user decision):
   the UI states that sites can still see the public IP.
 
+The living-globe revision (also 2026-10-26) advances `SIGNAL_PRESENTATION`
+and `FIELD_EXPERIENCE` without claiming either gate:
+
+- **Live public layers.** Three admitted sources now feed the field and
+  refresh while the app runs: English Wikipedia's daily most-read articles
+  (only those with their own coordinates), USGS M4.5+ earthquakes from the
+  past week, and NASA EONET open natural events. Each is its own layer and
+  measurement kind, and each is ranked only against itself. See
+  [Field plan](FIELD_PLAN.md) and the source registry.
+- **The globe is explorable.** Glowing markers coloured by layer, with
+  collision-free labels for the strongest visible signals and a hover card.
+  A click flies the camera there and opens an inspector: measurement,
+  observed time, rank in layer, summary, provenance, Open source, Save
+  (bookmark plus map pin) and Nearby.
+- **Layer card.** Public/Mine, per-layer toggles with counts, a
+  Day/Week/Month window, My pins visibility, and an "About this data"
+  popover with coverage and attribution. The default view is Public.
+- **Fly to places.** The launcher suggests places from a bundled GeoNames
+  directory (244 countries, 2,551 cities, 295 regions; CC BY 4.0). An exact
+  name or "fly to …" flies; anything else still searches the web. The list
+  becomes "Near <place>".
+- **Accessible alternative (EXP-008).** The side list is a keyboard-operable,
+  non-spatial view of the same signals.
+- Evidence: `experiments/shell-ui-qa/evidence/globe-*.png`, from
+  `scenario-globe.mjs`.
+
+Open on this slice: momentum and change between windows (needs comparable
+window evidence); news/RSS layers (registry approval); city-scale geometry; a
+VoiceOver review; and the Olds, Absorb extraction and Laya, which are still stubs.
+
 Next: review field visibility and the ten synthetic scenes; verify the full-size
 place index and connect bounded lookup to navigation; connect trusted window
 coverage to dynamics and prove count-preserving geography rollups before tiles.

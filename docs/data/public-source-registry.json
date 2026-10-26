@@ -6,7 +6,8 @@
   "notes": [
     "A successful GET verifies point-in-time availability only; it is not permission or a reuse license.",
     "the 300-second polling target is a product target only where terms and observed response behavior permit; it is not a provider guarantee or a permission requirement.",
-    "validators and HTTP observations were recorded from direct GET requests on 2026-10-23 America/Halifax review date."
+    "validators and HTTP observations were recorded from direct GET requests on 2026-10-23 America/Halifax review date.",
+    "2026-10-26: the product owner admitted three public APIs (wikimedia-top-pageviews-en, nasa-eonet-v3-open, usgs-comcat-m45-week) for the desktop prototype's live field. enabledSourceIds still governs only the RSS/Atom feed pipeline and stays empty."
   ],
   "sources": [
     {
@@ -422,6 +423,112 @@
         "https://docs.bsky.app/docs/api/app-bsky-feed-get-author-feed",
         "https://bsky.social/about/support/tos",
         "https://atproto.com/specs/sync"
+      ]
+    },
+    {
+      "sourceId": "wikimedia-top-pageviews-en",
+      "kind": "public_api",
+      "url": "https://wikimedia.org/api/rest_v1/metrics/pageviews/top/en.wikipedia/all-access/{YYYY}/{MM}/{DD}",
+      "auxiliaryUrls": [
+        "https://en.wikipedia.org/w/api.php?action=query&prop=coordinates|description|pageimages"
+      ],
+      "publisherName": "Wikimedia Foundation (pageviews) / Wikipedia contributors (article metadata)",
+      "languageTags": [
+        "en"
+      ],
+      "declaredCoverage": {
+        "countryCodes": [],
+        "regionIds": [],
+        "cityIds": []
+      },
+      "geographicScope": "global",
+      "independentPublisherGroupId": "wikimedia",
+      "candidateState": "admitted-enabled",
+      "admission": {
+        "admittedBy": "product owner",
+        "admittedAt": "2026-10-26",
+        "scope": "desktop prototype live public field only; not a release approval"
+      },
+      "licenseStatus": "approved",
+      "licence": "Pageview data CC0; article titles/descriptions/thumbnails CC BY-SA 4.0 with attribution 'Wikipedia contributors'",
+      "termsUrl": "https://wikimedia.org/api/rest_v1/",
+      "rightsReviewStatus": "prototype-admitted",
+      "proposedPollingMinSeconds": 10800,
+      "activePollingMinSeconds": 10800,
+      "cadence": "One top-1000 list per UTC day; checked at most every 3 hours, fetched once per new day (top list + ~20 batched coordinate lookups, 350 ms apart, descriptive User-Agent).",
+      "retentionStatus": "Titles, short descriptions, thumbnail URLs, coordinates and view counts only; no article text.",
+      "coverageNotes": "English Wikipedia only. Only articles carrying their own primary coordinates are mapped (about 3-4% of the top 1000, ~30-40 per day); people, media and most elections have none and are never given an inferred location. Pageviews are global reading, not local participation or importance.",
+      "primaryEvidenceUrls": [
+        "https://doc.wikimedia.org/generated-data-platform/aqs/analytics-api/reference/page-views.html",
+        "https://www.mediawiki.org/wiki/Extension:GeoData"
+      ]
+    },
+    {
+      "sourceId": "nasa-eonet-v3-open",
+      "kind": "public_api",
+      "url": "https://eonet.gsfc.nasa.gov/api/v3/events?status=open&days=30&limit=200",
+      "publisherName": "NASA Earth Observatory Natural Event Tracker",
+      "languageTags": [
+        "en"
+      ],
+      "declaredCoverage": {
+        "countryCodes": [],
+        "regionIds": [],
+        "cityIds": []
+      },
+      "geographicScope": "global",
+      "independentPublisherGroupId": "nasa-eonet",
+      "candidateState": "admitted-enabled",
+      "admission": {
+        "admittedBy": "product owner",
+        "admittedAt": "2026-10-26",
+        "scope": "desktop prototype live public field only; not a release approval"
+      },
+      "licenseStatus": "approved",
+      "licence": "US Government work (public domain); each event links to its originating source (JTWC, NOAA NHC, IRWIN, NATICE, …)",
+      "termsUrl": "https://eonet.gsfc.nasa.gov/docs/v3",
+      "rightsReviewStatus": "prototype-admitted",
+      "proposedPollingMinSeconds": 1200,
+      "activePollingMinSeconds": 1200,
+      "cadence": "Every 20 minutes while the app runs.",
+      "retentionStatus": "Event id, title, category, latest point, magnitude/unit, source ids and links only.",
+      "coverageNotes": "Curated physical natural events (wildfires, storms, volcanoes, sea and lake ice, floods), not human interest. Category coverage is uneven (US wildfires dominate). Map point is the latest geometry, or a polygon centroid; the 150 km footprint is display-only.",
+      "primaryEvidenceUrls": [
+        "https://eonet.gsfc.nasa.gov/docs/v3"
+      ]
+    },
+    {
+      "sourceId": "usgs-comcat-m45-week",
+      "kind": "public_api",
+      "url": "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_week.geojson",
+      "publisherName": "U.S. Geological Survey",
+      "languageTags": [
+        "en"
+      ],
+      "declaredCoverage": {
+        "countryCodes": [],
+        "regionIds": [],
+        "cityIds": []
+      },
+      "geographicScope": "global",
+      "independentPublisherGroupId": "usgs",
+      "candidateState": "admitted-enabled",
+      "admission": {
+        "admittedBy": "product owner",
+        "admittedAt": "2026-10-26",
+        "scope": "desktop prototype live public field only; not a release approval"
+      },
+      "licenseStatus": "approved",
+      "licence": "US Government work (public domain)",
+      "termsUrl": "https://www.usgs.gov/information-policies-and-instructions/copyrights-and-credits",
+      "rightsReviewStatus": "prototype-admitted",
+      "proposedPollingMinSeconds": 1200,
+      "activePollingMinSeconds": 1200,
+      "cadence": "Every 20 minutes while the app runs (feed updates every minute).",
+      "retentionStatus": "Event id, place, magnitude, type, depth, time and link only.",
+      "coverageNotes": "Magnitude 4.5+ in the last 7 days, strongest 40 kept. Physical magnitude, not interest or severity of impact.",
+      "primaryEvidenceUrls": [
+        "https://earthquake.usgs.gov/earthquakes/feed/v1.0/geojson.php"
       ]
     }
   ],

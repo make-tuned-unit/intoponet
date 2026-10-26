@@ -4,7 +4,7 @@ export const usgsAttribution = 'U.S. Geological Survey, public domain'
 export const usgsFeed =
   'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_week.geojson'
 
-const maxEvents = 6
+const maxEvents = 40
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -20,7 +20,7 @@ export function recordsFromQuakes(payload: unknown, retrievedAt: string): Source
   const quakes = payload['features'].flatMap((feature): SourceRecord[] => {
     if (!isRecord(feature) || typeof feature['id'] !== 'string') return []
     if (!isRecord(feature['geometry']) || !Array.isArray(feature['geometry']['coordinates'])) return []
-    const [lon, lat] = feature['geometry']['coordinates']
+    const [lon, lat, depth] = feature['geometry']['coordinates']
     if (typeof lat !== 'number' || typeof lon !== 'number') return []
     if (!Number.isFinite(lat) || !Number.isFinite(lon)) return []
     if (!isRecord(feature['properties'])) return []
@@ -55,6 +55,8 @@ export function recordsFromQuakes(payload: unknown, retrievedAt: string): Source
           transformation: 'bounded-linear-magnitude-v1 (0.4 + (magnitude - 4.5) * 0.35, clamped to 0.3..2.2)',
           scale: typeof props['magType'] === 'string' ? props['magType'] : 'unspecified',
         },
+        placeLabel: place.slice(0, 120),
+        summary: `M${props['mag'].toFixed(1)} earthquake${typeof depth === 'number' && Number.isFinite(depth) ? ` · ${Math.round(depth)} km deep` : ''}`,
       },
     ]
   })

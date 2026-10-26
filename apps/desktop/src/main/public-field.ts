@@ -1,124 +1,198 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
-  hitsFromGeosearch,
+  eonetFeed,
+  pageInfoFromPayload,
   parseFieldSnapshot,
-  publicAnchors,
   publicFieldSnapshot,
-  recordsFromHits,
+  READING_NOW_LIMITS,
+  recordsFromEonet,
   recordsFromQuakes,
+  recordsFromTopArticles,
+  topArticlesFromPayload,
   usgsFeed,
-  viewsFromPayload,
-  wikipediaPageviewsUrl,
+  wikipediaPageInfoUrl,
+  wikipediaTopUrl,
   type FieldSnapshot,
+  type PageInfo,
   type SourceRecord,
 } from '@intoponet/field-snapshot'
 import { app } from 'electron'
 
-const userAgent = 'Intoponet/0.1 (local spatial browser; public field snapshot)'
-const refreshMs = 6 * 60 * 60 * 1000
+// Wikimedia asks API clients for a descriptive agent with a contact URL.
+const userAgent = 'Intoponet/0.1 (local spatial browser; public field snapshot; https://github.com/make-tuned-unit/intoponet)'
+/** Earthquakes and natural events. */
+export const PUBLIC_FIELD_REFRESH_MS = 20 * 60 * 1000
+/** Wikipedia publishes one top-articles list per UTC day; check at most this often. */
+export const READING_CHECK_MS = 3 * 60 * 60 * 1000
+const DAY_MS = 24 * 60 * 60 * 1000
+
+type SourceGroup = 'reading' | 'usgs' | 'eonet'
+const groupPrefix: Record<SourceGroup, string> = { reading: 'wikitop-', usgs: 'usgs-', eonet: 'eonet-' }
+
+class HttpError extends Error {
+  constructor(readonly status: number) {
+    super(`Public source responded ${status}`)
+  }
+}
 
 function cachePath(): string {
   return join(app.getPath('userData'), 'public-field-snapshot.json')
 }
 
-export function cachedPublicField(): string | null {
+let current: FieldSnapshot | null = null
+let readingCheckedAt = 0
+const failing = new Set<SourceGroup>()
+
+function readCache(): FieldSnapshot | null {
   if (!existsSync(cachePath())) return null
   try {
-    const snapshot = parseFieldSnapshot(readFileSync(cachePath(), 'utf8'))
-    return snapshot ? JSON.stringify(snapshot) : null
+    return parseFieldSnapshot(readFileSync(cachePath(), 'utf8'))
   } catch {
     return null
   }
 }
 
+/** Latest snapshot as JSON: in-memory first, then the on-disk cache. */
+export function cachedPublicField(): string | null {
+  current ??= readCache()
+  return current ? JSON.stringify(current) : null
+}
+
 async function getJson(url: string): Promise<unknown> {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const response = await fetch(url, {
-      headers: { 'user-agent': userAgent, accept: 'application/json' },
-      signal: AbortSignal.timeout(12_000),
+      headers: { 'user-agent': userAgent, 'api-user-agent': userAgent, accept: 'application/json' },
+      signal: AbortSignal.timeout(15_000),
     })
     if (response.status === 429 && attempt < 2) {
-      await new Promise((resolve) => setTimeout(resolve, 3_000 * (attempt + 1)))
+      await delay(3_000 * (attempt + 1))
       continue
     }
-    if (!response.ok) throw new Error(`Public source responded ${response.status}`)
+    if (!response.ok) throw new HttpError(response.status)
     return response.json() as Promise<unknown>
   }
-  throw new Error('Public source responded 429')
+  throw new HttpError(429)
 }
 
-async function fetchWikipediaRecords(): Promise<SourceRecord[]> {
-  const end = new Date()
-  const start = new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000)
-  const records: SourceRecord[] = []
-  for (const anchor of publicAnchors) {
-    const geo = new URL('https://en.wikipedia.org/w/api.php')
-    geo.searchParams.set('action', 'query')
-    geo.searchParams.set('list', 'geosearch')
-    geo.searchParams.set('gscoord', `${anchor.lat}|${anchor.lon}`)
-    geo.searchParams.set('gsradius', '10000')
-    geo.searchParams.set('gslimit', '4')
-    geo.searchParams.set('format', 'json')
-    const hits = hitsFromGeosearch(await getJson(geo.toString()))
-    const views = new Map<string, number>()
-    for (const hit of hits) {
-      try {
-        views.set(hit.title, viewsFromPayload(await getJson(wikipediaPageviewsUrl(hit.title, { start, end }))))
-      } catch {
-        views.set(hit.title, 0)
-      }
-    }
-    records.push(...recordsFromHits(hits, anchor.topic, views, new Date().toISOString(), { start, end }))
-    await new Promise((resolve) => setTimeout(resolve, 400))
-  }
-  return records
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-async function fetchUsgsRecords(): Promise<SourceRecord[]> {
-  return recordsFromQuakes(await getJson(usgsFeed), new Date().toISOString())
+function recordsOf(snapshot: FieldSnapshot | null, group: SourceGroup): SourceRecord[] {
+  return snapshot?.sources.filter((source) => source.id.startsWith(groupPrefix[group])) ?? []
 }
 
-function cachedByPrefix(snapshot: FieldSnapshot | null, prefix: string): SourceRecord[] {
-  return snapshot?.sources.filter((source) => source.id.startsWith(prefix)) ?? []
+function readingDayOf(snapshot: FieldSnapshot | null): string | null {
+  return recordsOf(snapshot, 'reading')[0]?.measurement.windowEnd ?? null
 }
 
-export async function loadPublicField(): Promise<FieldSnapshot | null> {
-  const cached = cachedPublicField()
-  const parsed = cached ? parseFieldSnapshot(cached) : null
-  const age = parsed ? Date.now() - Date.parse(parsed.createdAt) : Number.POSITIVE_INFINITY
-  const cacheFresh = Boolean(parsed) && age < refreshMs
-  const cacheHasUsgs = parsed?.coverageNote.includes('USGS') ?? false
-  if (cacheFresh && cacheHasUsgs) return parsed
-  let wiki: SourceRecord[] = []
-  let usgs: SourceRecord[] = []
-  let wikiFresh = false
-  let usgsFresh = false
-  if (cacheFresh) {
-    wiki = cachedByPrefix(parsed, 'wiki-')
-    wikiFresh = wiki.length > 0
-  } else {
+function utcMidnight(time: number): Date {
+  const date = new Date(time)
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
+}
+
+/** The newest complete UTC day Wikimedia has published, falling back one day. */
+export async function fetchReadingNow(now = Date.now()): Promise<SourceRecord[]> {
+  const retrievedAt = new Date(now).toISOString()
+  for (const back of [1, 2]) {
+    const day = new Date(utcMidnight(now).getTime() - back * DAY_MS)
+    let top
     try {
-      wiki = await fetchWikipediaRecords()
-      wikiFresh = wiki.length > 0
+      top = topArticlesFromPayload(await getJson(wikipediaTopUrl(day)))
     } catch (error) {
-      console.error(
-        'Wikipedia field refresh failed.',
-        error instanceof Error ? error.message : error,
-      )
+      if (error instanceof HttpError && error.status === 404) continue
+      throw error
     }
+    if (!top.length) continue
+    const pages = new Map<string, PageInfo>()
+    for (let index = 0; index < top.length; index += READING_NOW_LIMITS.titlesPerLookup) {
+      const batch = top.slice(index, index + READING_NOW_LIMITS.titlesPerLookup).map((article) => article.title)
+      for (const [title, info] of pageInfoFromPayload(await getJson(wikipediaPageInfoUrl(batch)))) pages.set(title, info)
+      await delay(350)
+    }
+    return recordsFromTopArticles(top, pages, day, retrievedAt)
   }
+  return []
+}
+
+export async function fetchQuakes(now = Date.now()): Promise<SourceRecord[]> {
+  return recordsFromQuakes(await getJson(usgsFeed), new Date(now).toISOString())
+}
+
+export async function fetchNaturalEvents(now = Date.now()): Promise<SourceRecord[]> {
+  return recordsFromEonet(await getJson(eonetFeed), new Date(now).toISOString())
+}
+
+async function attempt(group: SourceGroup, run: () => Promise<SourceRecord[]>): Promise<SourceRecord[] | null> {
   try {
-    usgs = await fetchUsgsRecords()
-    usgsFresh = true
+    const records = await run()
+    if (failing.delete(group)) console.info(`Public field source recovered: ${group}.`)
+    return records
   } catch (error) {
-    console.error('USGS field refresh failed.', error instanceof Error ? error.message : error)
+    // Log the first failure only; keep the cached records for this source.
+    if (!failing.has(group)) {
+      failing.add(group)
+      console.error(`Public field source ${group} failed; keeping cached records.`, error instanceof Error ? error.message : error)
+    }
+    return null
   }
-  if (!wikiFresh) wiki = cachedByPrefix(parsed, 'wiki-')
-  if (!usgsFresh) usgs = cachedByPrefix(parsed, 'usgs-')
-  const records = [...wiki, ...usgs]
-  if (records.length === 0) return parsed
-  const snapshot = publicFieldSnapshot(records, Date.now(), usgsFresh)
-  writeFileSync(cachePath(), JSON.stringify(snapshot), { encoding: 'utf8', mode: 0o644 })
+}
+
+/**
+ * Refresh each source independently. A failed source keeps its cached
+ * records; the old four-anchor geosearch records are no longer carried.
+ */
+export async function refreshPublicField(now = Date.now()): Promise<FieldSnapshot | null> {
+  current ??= readCache()
+  const previous = current
+  const expectedDay = utcMidnight(now - DAY_MS).toISOString().slice(0, 10).replace(/-/g, '')
+  const readingDue = readingDayOf(previous) !== expectedDay && now - readingCheckedAt >= READING_CHECK_MS
+  const [reading, usgs, eonet] = await Promise.all([
+    readingDue ? attempt('reading', () => fetchReadingNow(now)) : Promise.resolve(null),
+    attempt('usgs', () => fetchQuakes(now)),
+    attempt('eonet', () => fetchNaturalEvents(now)),
+  ])
+  if (readingDue) readingCheckedAt = now
+  const records = [
+    ...(reading && reading.length ? reading : recordsOf(previous, 'reading')),
+    ...(usgs ?? recordsOf(previous, 'usgs')),
+    ...(eonet ?? recordsOf(previous, 'eonet')),
+  ]
+  if (records.length === 0) return previous
+  const snapshot = publicFieldSnapshot(records, now, usgs !== null)
+  current = snapshot
+  try {
+    writeFileSync(cachePath(), JSON.stringify(snapshot), { encoding: 'utf8', mode: 0o644 })
+  } catch (error) {
+    console.error('Could not cache the public field snapshot.', error instanceof Error ? error.message : error)
+  }
   return snapshot
+}
+
+/** One-shot load kept for callers that only want the current snapshot. */
+export async function loadPublicField(): Promise<FieldSnapshot | null> {
+  return refreshPublicField()
+}
+
+/**
+ * Emit the cached field immediately, refresh now, then every 20 minutes.
+ * Returns a stop function; timers never keep the process alive.
+ */
+export function startPublicFieldRefresh(emit: (snapshot: FieldSnapshot) => void): () => void {
+  const cached = cachedPublicField()
+  if (cached && current) emit(current)
+  let running = false
+  const tick = (): void => {
+    if (running) return
+    running = true
+    void refreshPublicField()
+      .then((snapshot) => { if (snapshot) emit(snapshot) })
+      .catch((error: unknown) => console.error('Public field refresh failed.', error instanceof Error ? error.message : error))
+      .finally(() => { running = false })
+  }
+  tick()
+  const timer = setInterval(tick, PUBLIC_FIELD_REFRESH_MS)
+  timer.unref()
+  return () => clearInterval(timer)
 }

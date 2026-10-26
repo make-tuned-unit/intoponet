@@ -5,6 +5,7 @@ import type { OrganicMembraneMetrics, OrganicMembraneSettings } from './earth/Or
 import type { InterestSignal } from './interestField'
 import { useEffect, useState } from 'react'
 import { EarthScene } from './earth/EarthScene'
+import type { GlobeMarker, GlobeProjection } from './globe/GlobeMarkers'
 
 export function FrequencyField({
   paused = false,
@@ -14,8 +15,12 @@ export function FrequencyField({
   pose,
   bands,
   signals,
-  mapPins,
-  onPinSelect,
+  markers,
+  selectedMarkerId,
+  hoveredMarkerId,
+  projection,
+  onMarkerHover,
+  onMarkerSelect,
   membraneSettings,
   onDistanceChange,
   onPoseChange,
@@ -30,8 +35,12 @@ export function FrequencyField({
   pose?: OrbitPose | undefined
   bands?: FrequencyBand[] | undefined
   signals?: InterestSignal[] | undefined
-  mapPins?: { url: string; title: string; fieldAnchor?: { lat: number; lon: number; label: string } }[] | undefined
-  onPinSelect?: ((url: string) => void) | undefined
+  markers?: GlobeMarker[] | undefined
+  selectedMarkerId?: string | null
+  hoveredMarkerId?: string | null
+  projection?: GlobeProjection | undefined
+  onMarkerHover?: ((id: string | null) => void) | undefined
+  onMarkerSelect?: ((id: string | null) => void) | undefined
   membraneSettings?: OrganicMembraneSettings | undefined
   onDistanceChange?: ((radius: number) => void) | undefined
   onPoseChange?: ((pose: OrbitPose) => void) | undefined
@@ -56,8 +65,12 @@ export function FrequencyField({
       pose={pose}
       bands={bands}
       signals={signals}
-      mapPins={mapPins}
-      onPinSelect={onPinSelect}
+      markers={markers}
+      selectedMarkerId={selectedMarkerId ?? null}
+      hoveredMarkerId={hoveredMarkerId ?? null}
+      projection={projection}
+      onMarkerHover={onMarkerHover}
+      onMarkerSelect={onMarkerSelect}
       membraneSettings={membraneSettings}
       onDistanceChange={onDistanceChange}
       onPoseChange={onPoseChange}

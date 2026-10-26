@@ -120,8 +120,15 @@ export function recordsFromHits(
 
 export function coverageForRecords(records: SourceRecord[], usgsChecked = false): string {
   const wiki = records.some((record) => record.id.startsWith('wiki-'))
+  const reading = records.some((record) => record.id.startsWith('wikitop-'))
   const usgs = records.some((record) => record.id.startsWith('usgs-'))
+  const eonet = records.some((record) => record.id.startsWith('eonet-'))
   const parts: string[] = []
+  if (reading) {
+    parts.push(
+      'English Wikipedia\'s most-read articles for one day, mapped only where the article has its own coordinates (pageviews, not local participation)',
+    )
+  }
   if (wiki) {
     parts.push(
       'English Wikipedia articles near four public anchors, weighted by global pageview counts',
@@ -133,6 +140,9 @@ export function coverageForRecords(records: SourceRecord[], usgsChecked = false)
     )
   } else if (usgsChecked) {
     parts.push('USGS reported no magnitude 4.5 or greater earthquakes in the last week')
+  }
+  if (eonet) {
+    parts.push('NASA EONET open natural events from the last 30 days (presence, not human interest)')
   }
   if (parts.length === 0) return wikipediaCoverage
   return `${parts.join('; ')}. Measurement categories remain separate. Not the whole web and not a measure of importance.`
@@ -213,6 +223,7 @@ export function parseFieldSnapshot(raw: string): FieldSnapshot | null {
           weight,
           publishedAt: typeof item['publishedAt'] === 'string' ? item['publishedAt'] : '',
           measurement,
+          ...optionalDetails(item),
         },
       ]
     })
@@ -233,9 +244,36 @@ export function parseFieldSnapshot(raw: string): FieldSnapshot | null {
   }
 }
 
+const optionalLimits = { summary: 280, placeLabel: 120 } as const
+
+function plainText(value: unknown, limit: number): string | undefined {
+  if (typeof value !== 'string') return undefined
+  const text = value.replace(/[\u0000-\u001f\u007f]+/g, ' ').trim()
+  return text ? text.slice(0, limit) : undefined
+}
+
+/** Optional display details; invalid values are dropped, never fatal. */
+function optionalDetails(item: Record<string, unknown>): Pick<SourceRecord, 'summary' | 'placeLabel' | 'thumbnail' | 'endedAt'> {
+  const details: Pick<SourceRecord, 'summary' | 'placeLabel' | 'thumbnail' | 'endedAt'> = {}
+  const summary = plainText(item['summary'], optionalLimits.summary)
+  if (summary) details.summary = summary
+  const placeLabel = plainText(item['placeLabel'], optionalLimits.placeLabel)
+  if (placeLabel) details.placeLabel = placeLabel
+  if (typeof item['thumbnail'] === 'string' && item['thumbnail'].length <= 2048) {
+    try {
+      if (new URL(item['thumbnail']).protocol === 'https:') details.thumbnail = item['thumbnail']
+    } catch {
+      // Not a URL; drop it.
+    }
+  }
+  if (typeof item['endedAt'] === 'string' && Number.isFinite(Date.parse(item['endedAt']))) details.endedAt = item['endedAt']
+  return details
+}
+
 const measurementKinds = new Set<MeasurementKind>([
   'wikimedia-pageviews',
   'usgs-earthquake-magnitude',
+  'nasa-eonet-event',
   'synthetic-fixture',
   'declared-index',
   'legacy-pageviews-weight',

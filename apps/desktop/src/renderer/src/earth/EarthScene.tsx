@@ -1,4 +1,4 @@
-import { latLonToRender, type FrequencyBand } from '@intoponet/frequency-field'
+import type { FrequencyBand } from '@intoponet/frequency-field'
 import { Canvas, useFrame, useLoader } from '@react-three/fiber'
 import { Suspense, useRef } from 'react'
 import { Color, type MeshStandardMaterial, SRGBColorSpace, TextureLoader } from 'three'
@@ -17,6 +17,7 @@ import type { InterestSignal } from '../interestField'
 import { OrbitRig } from './OrbitRig'
 import { FrequencyLighting } from './FrequencyLighting'
 import { Atmosphere } from './Atmosphere'
+import { GlobeMarkers, type GlobeMarker, type GlobeProjection } from '../globe/GlobeMarkers'
 
 const EARTH_TINT = new Color('#74838a')
 const EARTH_FADE_MS = 1_400
@@ -60,8 +61,12 @@ export function EarthScene({
   anchor,
   bands,
   signals,
-  mapPins,
-  onPinSelect,
+  markers,
+  selectedMarkerId = null,
+  hoveredMarkerId = null,
+  projection,
+  onMarkerHover,
+  onMarkerSelect,
   membraneSettings,
   onDistanceChange,
   onPoseChange,
@@ -78,8 +83,12 @@ export function EarthScene({
   pose?: OrbitPose | undefined
   bands?: FrequencyBand[] | undefined
   signals?: InterestSignal[] | undefined
-  mapPins?: { url: string; title: string; fieldAnchor?: { lat: number; lon: number; label: string } }[] | undefined
-  onPinSelect?: ((url: string) => void) | undefined
+  markers?: GlobeMarker[] | undefined
+  selectedMarkerId?: string | null
+  hoveredMarkerId?: string | null
+  projection?: GlobeProjection | undefined
+  onMarkerHover?: ((id: string | null) => void) | undefined
+  onMarkerSelect?: ((id: string | null) => void) | undefined
   membraneSettings?: OrganicMembraneSettings | undefined
   onDistanceChange?: ((radius: number) => void) | undefined
   onPoseChange?: ((pose: OrbitPose) => void) | undefined
@@ -113,20 +122,17 @@ export function EarthScene({
         <EarthSphere reducedMotion={paused} />
       </Suspense>
       <Atmosphere dimmed={panelOpen} />
-      {/* Private saved locations are separate from observed interest geometry. */}
-      {!panelOpen && mapPins?.filter((pin) => pin.fieldAnchor).map((pin) => {
-        const point = latLonToRender(pin.fieldAnchor!.lat, pin.fieldAnchor!.lon)
-        return (
-          <mesh
-            key={pin.url}
-            position={[point.x * 1.04, point.y * 1.04, point.z * 1.04]}
-            onClick={(event) => { event.stopPropagation(); onPinSelect?.(pin.url) }}
-          >
-            <sphereGeometry args={[Math.max(0.0015, Math.min(0.014, ((pose?.radius ?? scaleDistance.earth) - 1.04) * 0.004)), 20, 12]} />
-            <meshBasicMaterial color="#a99aff" />
-          </mesh>
-        )
-      })}
+      {projection && markers && (
+        <GlobeMarkers
+          markers={panelOpen ? [] : markers}
+          selectedId={selectedMarkerId}
+          hoveredId={hoveredMarkerId}
+          projection={projection}
+          interactive={!panelOpen}
+          onHover={(id) => onMarkerHover?.(id)}
+          onSelect={(id) => onMarkerSelect?.(id)}
+        />
+      )}
       {signals === undefined ? (
         <FrequencyMembrane
           paused={phasePaused ?? paused}

@@ -64,7 +64,7 @@ import {
 import { FrequencyField } from './FrequencyField'
 import { FieldLab } from './FieldLab'
 import { resolveSelectedTopic, snapshotKind, syntheticTopics, topicOptions } from './fieldPresentation'
-import { signalsFromSnapshot, syntheticPreviewInterestSignals } from './interestField'
+import { syntheticPreviewInterestSignals } from './interestField'
 import type { InterestSignal } from './interestField'
 import { evaluateFrequencyEligibility, filterSnapshotForFrequencyEligibility } from './contentEligibility'
 import {
@@ -109,8 +109,49 @@ import { RecordingPill } from './captures/RecordingPill'
 import { useCaptures } from './captures/useCaptures'
 import { useRecorder } from './captures/useRecorder'
 import { PinEditor, type PinEditorValue } from './PinEditor'
+import { createGlobeProjection, type GlobeMarker } from './globe/GlobeMarkers'
+import { GlobeOverlay, type GlobeLabel } from './globe/GlobeOverlay'
+import { GlobeHeader, HoverCardContent, LayerCard, SignalPanel, type FieldView } from './globe/GlobeHud'
+import { PlaceSuggestions, placeMatches } from './globe/PlaceSuggestions'
+import { poseToward, radiusForSpan } from './globe/flyTo'
+import {
+  filterGlobeSignals,
+  freshness,
+  GLOBE_LAYER_ORDER,
+  GLOBE_LAYERS,
+  globeSignalsFromSnapshot,
+  layerCounts,
+  membraneSignals,
+  nearbySignals,
+  PIN_COLOR,
+  relativeTime,
+  type GlobeLayerId,
+  type GlobeSignal,
+  type GlobeWindow,
+  interleaveLayers,
+} from './globe/globeSignals'
+import { PLACE_ATTRIBUTION, placeLabel, type Place } from './places/places'
 
 const bookmarkPaneOpenKey = 'intoponet.bookmark-pane.open.v1'
+const globePrefsKey = 'intoponet.globe.v1'
+
+type GlobePrefs = { view: FieldView; layers: GlobeLayerId[]; window: GlobeWindow; pins: boolean }
+
+function readGlobePrefs(): GlobePrefs {
+  const fallback: GlobePrefs = { view: 'public', layers: [...GLOBE_LAYER_ORDER], window: '7d', pins: true }
+  try {
+    const raw = JSON.parse(localStorage.getItem(globePrefsKey) ?? 'null') as Partial<GlobePrefs> | null
+    if (!raw || typeof raw !== 'object') return fallback
+    return {
+      view: raw.view === 'personal' ? 'personal' : 'public',
+      layers: Array.isArray(raw.layers) ? raw.layers.filter((layer): layer is GlobeLayerId => GLOBE_LAYER_ORDER.includes(layer as GlobeLayerId)) : fallback.layers,
+      window: raw.window === '24h' || raw.window === '30d' ? raw.window : '7d',
+      pins: raw.pins !== false,
+    }
+  } catch {
+    return fallback
+  }
+}
 const captureGroupKey = 'intoponet.capture-group.v1'
 
 type LibraryTab = 'locations' | 'collections' | 'recent' | 'absorbed'
@@ -208,7 +249,23 @@ export function App() {
   const [libraryReady, setLibraryReady] = useState(false)
   const [publicSnapshot, setPublicSnapshot] = useState<FieldSnapshot | null>(null)
   const [personalActivity, setPersonalActivity] = useState(emptyPersonalActivity)
-  const [fieldView, setFieldView] = useState<'personal' | 'public'>('personal')
+  const [globePrefs, setGlobePrefs] = useState(readGlobePrefs)
+  const fieldView = globePrefs.view
+  const updateGlobePrefs = (patch: Partial<GlobePrefs>): void => {
+    setGlobePrefs((current) => {
+      const next = { ...current, ...patch }
+      try { localStorage.setItem(globePrefsKey, JSON.stringify(next)) } catch { /* convenience only */ }
+      return next
+    })
+  }
+  const setFieldView = (view: FieldView): void => updateGlobePrefs({ view })
+  const [selectedSignalId, setSelectedSignalId] = useState<string | null>(null)
+  const [hoveredMarkerId, setHoveredMarkerId] = useState<string | null>(null)
+  const [focusedPlace, setFocusedPlace] = useState<Place | null>(null)
+  const [placeActive, setPlaceActive] = useState(-1)
+  const [placesDismissed, setPlacesDismissed] = useState(false)
+  const [clock, setClock] = useState(() => Date.now())
+  const [globeProjection] = useState(createGlobeProjection)
   const [topicLocations, setTopicLocations] = useState<Record<string, PersonalTopicLocation>>({})
   const [designPreview, setDesignPreview] = useState(false)
   const [fieldLabOpen, setFieldLabOpen] = useState(
@@ -336,6 +393,16 @@ export function App() {
       : fieldView === 'public'
         ? 'No eligible public source measurements are available.'
         : 'No session visits have been recorded yet.'
+  const allGlobeSignals = useMemo(() => globeSignalsFromSnapshot(eligiblePublicSnapshot), [eligiblePublicSnapshot])
+  const globeLayerSet = useMemo(() => new Set(globePrefs.layers), [globePrefs.layers])
+  const windowGlobeSignals = useMemo(
+    () => filterGlobeSignals(allGlobeSignals, { layers: new Set(GLOBE_LAYER_ORDER), window: globePrefs.window, now: clock }),
+    [allGlobeSignals, globePrefs.window, clock],
+  )
+  const visibleGlobeSignals = useMemo(
+    () => windowGlobeSignals.filter((signal) => globeLayerSet.has(signal.layer)),
+    [windowGlobeSignals, globeLayerSet],
+  )
   const fieldSignals = useMemo(() => {
     if (designPreview) {
       return syntheticSignalsForTopic(previewTopic).map((signal) => ({
@@ -346,15 +413,8 @@ export function App() {
     }
     if (fieldView === 'personal') return personalVisitSignals(personalActivity, new Date().toISOString())
     if (!eligiblePublicSnapshot) return []
-    const eligibleSnapshot = eligiblePublicSnapshot
-    const topicIds = [...new Set([
-      ...eligibleSnapshot.sources.flatMap((source) => source.topics),
-      ...eligibleSnapshot.bands.flatMap((band) => band.topicIds),
-    ])]
-    return topicIds.flatMap((topicId) => signalsFromSnapshot(eligibleSnapshot, topicId))
-      .filter((signal) => signal.sourceType === 'public-aggregate')
-      .filter((signal, index, all) => all.findIndex((candidate) => candidate.id === signal.id) === index)
-  }, [designPreview, previewTopic, previewIntensity, previewRadiusScale, fieldView, personalActivity, eligiblePublicSnapshot])
+    return membraneSignals(visibleGlobeSignals, eligiblePublicSnapshot.createdAt)
+  }, [designPreview, previewTopic, previewIntensity, previewRadiusScale, fieldView, personalActivity, eligiblePublicSnapshot, visibleGlobeSignals])
   const topicLocationOptions = useMemo<TopicLocationOption[]>(() => {
     const seen = new Set<string>()
     const sourceAnchors = (eligiblePublicSnapshot?.sources ?? []).filter((source) => {
@@ -795,13 +855,15 @@ export function App() {
         setBookmarksOpen(false)
       } else if (event.key === 'Escape' && panel.isVisible) {
         void window.intoponet.browserHost.close()
+      } else if (event.key === 'Escape' && selectedSignalId && !isTypingTarget(event.target)) {
+        setSelectedSignalId(null)
       } else if (event.key === 'Escape' && scale !== 'earth') {
         rememberScale(zoomTowardEarth(scale))
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [activeTopic, bookmarks, bookmarksOpen, captureSession, viewerId, findOpen, fullWidth, libraryOpen, panel.canGoBack, panel.canGoForward, panel.isVisible, panel.url, pinEditor, pose, scale, selectedTopicId, selectedTopicLabel, shieldOpen, tabs.length])
+  }, [activeTopic, bookmarks, bookmarksOpen, captureSession, viewerId, findOpen, fullWidth, libraryOpen, panel.canGoBack, panel.canGoForward, panel.isVisible, panel.url, pinEditor, pose, scale, selectedSignalId, selectedTopicId, selectedTopicLabel, shieldOpen, tabs.length])
 
   const rememberScale = (
     next: ExplorationScale,
@@ -866,6 +928,11 @@ export function App() {
 
   const submit = (event: FormEvent): void => {
     event.preventDefault()
+    const place = placeActive >= 0 ? placeMatch.places[placeActive] : undefined
+    if (place) {
+      flyToPlace(place)
+      return
+    }
     const submittedDraft = query
     void navigateFromLauncher(submittedDraft).then(() => {
       if (input.current?.value === submittedDraft) setQuery('')
@@ -1274,6 +1341,9 @@ export function App() {
   }
 
   const showEarth = (): void => {
+    setFocusedPlace(null)
+    setSelectedSignalId(null)
+    focusedMapAnchor.current = null
     closeFind()
     setShieldOpen(false)
     setLibraryOpen(false)
@@ -1322,6 +1392,139 @@ export function App() {
     setTopicLocations({})
   }
 
+  // ---- Living globe ------------------------------------------------------
+  useEffect(() => {
+    const timer = window.setInterval(() => setClock(Date.now()), 60_000)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  const publicGlobe = fieldView === 'public' && !designPreview
+  const selectedSignal = useMemo(
+    () => (selectedSignalId ? allGlobeSignals.find((signal) => signal.id === selectedSignalId) ?? null : null),
+    [allGlobeSignals, selectedSignalId],
+  )
+  const pinMarkers = useMemo<GlobeMarker[]>(() => globePrefs.pins
+    ? bookmarks.flatMap((bookmark) => bookmark.fieldAnchor
+      ? [{ id: `pin:${bookmark.url}`, lat: bookmark.fieldAnchor.lat, lon: bookmark.fieldAnchor.lon, color: PIN_COLOR, size: 1, kind: 'pin' as const }]
+      : [])
+    : [], [bookmarks, globePrefs.pins])
+  const globeMarkers = useMemo<GlobeMarker[]>(() => [
+    ...(publicGlobe ? visibleGlobeSignals.map((signal) => ({
+      id: signal.id,
+      lat: signal.lat,
+      lon: signal.lon,
+      color: GLOBE_LAYERS[signal.layer].color,
+      size: signal.intensity,
+      kind: 'signal' as const,
+    })) : []),
+    ...pinMarkers,
+  ], [publicGlobe, visibleGlobeSignals, pinMarkers])
+  const globeLabels = useMemo<GlobeLabel[]>(() => {
+    const short = (text: string): string => (text.length > 34 ? `${text.slice(0, 32)}…` : text)
+    const signals = publicGlobe ? visibleGlobeSignals : []
+    const ordered = selectedSignal && signals.some((signal) => signal.id === selectedSignal.id)
+      ? [selectedSignal, ...signals.filter((signal) => signal.id !== selectedSignal.id)]
+      : signals
+    return [
+      ...ordered.slice(0, 16).map((signal) => ({ id: signal.id, text: short(signal.title), color: GLOBE_LAYERS[signal.layer].color })),
+      ...bookmarks.filter((bookmark) => globePrefs.pins && bookmark.fieldAnchor).slice(0, 12)
+        .map((bookmark) => ({ id: `pin:${bookmark.url}`, text: short(bookmark.title || bookmark.url), color: PIN_COLOR })),
+    ]
+  }, [publicGlobe, visibleGlobeSignals, selectedSignal, bookmarks, globePrefs.pins])
+  const hoverCard = useMemo(() => {
+    if (!hoveredMarkerId) return null
+    if (hoveredMarkerId.startsWith('pin:')) {
+      const bookmark = bookmarks.find((item) => `pin:${item.url}` === hoveredMarkerId)
+      return bookmark ? <HoverCardContent title={bookmark.title || bookmark.url} kind="My pin" detail={bookmark.fieldAnchor?.label ?? bookmark.topic} color={PIN_COLOR} /> : null
+    }
+    const signal = allGlobeSignals.find((item) => item.id === hoveredMarkerId)
+    return signal ? (
+      <HoverCardContent
+        title={signal.title}
+        kind={`${GLOBE_LAYERS[signal.layer].label} · ${signal.kind}`}
+        detail={signal.layer === 'reading' ? signal.measurement : `${signal.measurement} · ${relativeTime(signal.observedAt, clock)}`}
+        color={GLOBE_LAYERS[signal.layer].color}
+      />
+    ) : null
+  }, [hoveredMarkerId, bookmarks, allGlobeSignals, clock])
+  const panelSignals = useMemo(() => focusedPlace
+    ? nearbySignals(visibleGlobeSignals, focusedPlace, Math.max(1_200, focusedPlace.radiusKm * 3), 40)
+    : interleaveLayers(visibleGlobeSignals).slice(0, 40), [focusedPlace, visibleGlobeSignals])
+  const selectedNearby = useMemo(() => selectedSignal
+    ? nearbySignals(visibleGlobeSignals.filter((signal) => signal.id !== selectedSignal.id), selectedSignal, 900, 6)
+    : [], [selectedSignal, visibleGlobeSignals])
+  const fieldFreshness = freshness(eligiblePublicSnapshot, clock)
+  const placeMatch = useMemo(
+    () => (placesDismissed || panel.isVisible ? { places: [], preferred: -1 } : placeMatches(query)),
+    [query, placesDismissed, panel.isVisible],
+  )
+  useEffect(() => {
+    setPlaceActive(placeMatch.preferred)
+  }, [placeMatch])
+
+  const flyToPoint = (lat: number, lon: number, radius: number): void => {
+    const nextPose = poseToward(pose, lat, lon, radius)
+    const nextScale = scaleFromDistance(radius)
+    setScale(nextScale)
+    writeScale(nextScale)
+    setPose(nextPose)
+    writeExplorationState({
+      scale: nextScale,
+      geographicAnchor: { lat, lon },
+      selectedTopicId: selectedTopicId ?? null,
+      pose: nextPose,
+    })
+  }
+
+  const selectGlobeSignal = (signal: GlobeSignal): void => {
+    setSelectedSignalId(signal.id)
+    flyToPoint(signal.lat, signal.lon, Math.min(pose.radius, 3.1))
+  }
+
+  const selectGlobeMarker = (id: string | null): void => {
+    if (!id) {
+      setSelectedSignalId(null)
+      return
+    }
+    if (id.startsWith('pin:')) {
+      selectMapPin(id.slice(4))
+      return
+    }
+    const signal = allGlobeSignals.find((item) => item.id === id)
+    if (signal) selectGlobeSignal(signal)
+  }
+
+  const flyToPlace = (place: Place): void => {
+    setFocusedPlace(place)
+    setSelectedSignalId(null)
+    setQuery('')
+    setPlacesDismissed(false)
+    focusedMapAnchor.current = { id: place.id, label: placeLabel(place), lat: place.lat, lon: place.lon, radiusKm: place.radiusKm }
+    setBrowserFullWidth(false)
+    if (panel.isVisible) void window.intoponet.browserHost.close()
+    flyToPoint(place.lat, place.lon, radiusForSpan(place.radiusKm * (place.kind === 'city' ? 1.4 : 2.4)))
+  }
+
+  const saveGlobeSignal = (signal: GlobeSignal): void => {
+    if (bookmarks.some((bookmark) => bookmark.url === signal.url)) {
+      setNotice('Already in your bookmarks')
+      return
+    }
+    persistBookmarks(upsertBookmark(bookmarks, {
+      url: signal.url,
+      title: signal.title,
+      topic: GLOBE_LAYERS[signal.layer].label,
+      savedAt: new Date().toISOString(),
+      fieldAnchor: { lat: signal.lat, lon: signal.lon, label: (signal.placeLabel ?? signal.title).slice(0, 160) },
+    }))
+    setNotice('Saved to bookmarks and pinned on your map')
+  }
+
+  const toggleGlobeLayer = (layer: GlobeLayerId): void => {
+    const next = globeLayerSet.has(layer) ? globePrefs.layers.filter((item) => item !== layer) : [...globePrefs.layers, layer]
+    updateGlobePrefs({ layers: GLOBE_LAYER_ORDER.filter((item) => next.includes(item)) })
+  }
+
   const railVisible = panel.isVisible && !fullWidth && tabs.length > 0 && !fieldLabOpen
 
   const setBrowserFullWidth = (enabled: boolean): void => {
@@ -1339,12 +1542,12 @@ export function App() {
         anchor={selectedTopicLocation ? { lat: selectedTopicLocation.lat, lon: selectedTopicLocation.lon } : null}
         pose={pose}
         signals={fieldSignals}
-        mapPins={bookmarks.map(({ url, title, fieldAnchor }) => ({
-          url,
-          title,
-          ...(fieldAnchor ? { fieldAnchor } : {}),
-        }))}
-        onPinSelect={selectMapPin}
+        markers={globeMarkers}
+        selectedMarkerId={selectedSignalId}
+        hoveredMarkerId={hoveredMarkerId}
+        projection={globeProjection}
+        onMarkerHover={setHoveredMarkerId}
+        onMarkerSelect={selectGlobeMarker}
         membraneSettings={activityMembraneSettings}
         onOrganicMetrics={diagnosticsOpen ? setOrganicMetrics : undefined}
         onDistanceChange={(radius) => {
@@ -1504,67 +1707,105 @@ export function App() {
       )}
 
 
-      {!fieldLabOpen && <section className="exploration-context" aria-labelledby="field-title">
-        <p className="sr-only" role="status">
-          {scaleLabel(scale)}. {visibleTopicLabel}. {designPreview
-            ? 'Design preview. Synthetic frequency membrane, not public activity.'
-            : sourceMode === 'personal'
-            ? `Personal field. ${personalActivity.visits.length} eligible completed visits this session; ${unplacedPersonalVisitCount(personalActivity)} unplaced.`
-            : sourceMode === 'public'
-            ? `Public source measurements${selectedTopic?.measurements.length ? `: ${selectedTopic.measurements.join(', ')}.` : '.'}`
-            : sourceMode === 'mixed'
-              ? 'Mixed public and synthetic field.'
-              : sourceMode === 'prototype'
-                ? 'No eligible public source field is available.'
-                : 'No personal visits have been recorded in this session.'}
-        </p>
-        <div className="spatial-path" role="navigation" aria-label="Field scale">
-          <button type="button" className={scale === 'earth' ? 'current' : ''} aria-current={scale === 'earth' ? 'true' : undefined} onClick={showEarth}>
-            Earth
-          </button>
-          <ChevronRight size={14} />
-          <button
-            type="button"
-            className={scale === 'region' ? 'current' : ''}
-            aria-current={scale === 'region' ? 'true' : undefined}
-            onClick={showRegion}
-          >
-            Region
-          </button>
-          <ChevronRight size={14} />
-          <button
-            type="button"
-            className={scale === 'city' ? 'current' : ''}
-            aria-current={scale === 'city' ? 'true' : undefined}
-            onClick={showCity}
-          >
-            City
-          </button>
-          <ChevronRight size={14} />
-          <button
-            type="button"
-            className={scale === 'topic' ? 'current' : ''}
-            aria-current={scale === 'topic' ? 'true' : undefined}
-            onClick={() => rememberScale('topic', scaleDistance.topic, activeTopic)}
-          >
-            {visibleTopicLabel}
-          </button>
-        </div>
-        <h1 id="field-title">{visibleTopicLabel}</h1>
-        <p>{topicModeDescription} Move through the field, or go directly to any place on the web.</p>
-        {designPreview && scale === 'topic' && (syntheticTopicGraph[visibleTopicLabel]?.length ?? 0) > 0 && (
-          <div className="related-topics">
-            <span>Related · synthetic</span>
-            {syntheticTopicGraph[visibleTopicLabel]?.map((topic) => (
-              <button key={topic} type="button" onClick={() => designPreview ? setPreviewTopic(topic) : rememberTopic(topic)}>
-                {topic}
-              </button>
-            ))}
-          </div>
-        )}
-      </section>}
-
-      {!fieldLabOpen && <aside className="coverage-note">
+      {!fieldLabOpen && !designPreview && (
+        <GlobeHeader
+          title={focusedPlace ? focusedPlace.name : fieldView === 'public' ? 'Earth, live' : 'My Earth'}
+          eyebrow={fieldView === 'public'
+            ? `${fieldFreshness.label}${fieldFreshness.stale && eligiblePublicSnapshot ? ' · may be out of date' : ''}`
+            : 'Private · stays on this device'}
+          stale={fieldView === 'public' ? fieldFreshness.stale : false}
+          summary={fieldView === 'public'
+            ? focusedPlace
+              ? `${panelSignals.length} public ${panelSignals.length === 1 ? 'signal' : 'signals'} within ${Math.max(1_200, Math.round(focusedPlace.radiusKm * 3)).toLocaleString()} km of ${placeLabel(focusedPlace)}.`
+              : `${visibleGlobeSignals.length} public signals from ${GLOBE_LAYER_ORDER.filter((layer) => globeLayerSet.has(layer)).length} sources. Hover to preview, click to explore, or search a place below.`
+            : `${bookmarks.filter((bookmark) => bookmark.fieldAnchor).length} pinned places · ${personalActivity.visits.length} visits this session. Nothing here is shared.`}
+          trail={focusedPlace ? (focusedPlace.kind === 'country' ? [focusedPlace.name] : [focusedPlace.country, focusedPlace.name].filter((step, index, all) => step && all.indexOf(step) === index)) : []}
+          onEarth={showEarth}
+        />
+      )}
+      <p className="sr-only" role="status">{scaleLabel(scale)}.{focusedPlace ? ` ${placeLabel(focusedPlace)}.` : ''}{selectedSignal ? ` Selected ${selectedSignal.title}.` : ''}</p>
+      {!fieldLabOpen && !designPreview && (
+        <LayerCard
+          view={fieldView}
+          onViewChange={(view) => { setFieldView(view); setSelectedSignalId(null); setHoveredMarkerId(null) }}
+          layers={globeLayerSet}
+          counts={layerCounts(windowGlobeSignals)}
+          onToggleLayer={toggleGlobeLayer}
+          window={globePrefs.window}
+          onWindowChange={(window) => updateGlobePrefs({ window })}
+          pinsVisible={globePrefs.pins}
+          pinCount={bookmarks.filter((bookmark) => bookmark.fieldAnchor).length}
+          onTogglePins={() => updateGlobePrefs({ pins: !globePrefs.pins })}
+          coverageNote={eligiblePublicSnapshot?.coverageNote ?? 'No public snapshot yet.'}
+          placesAttribution={PLACE_ATTRIBUTION}
+          personal={(
+            <>
+              <p>{fieldProvenanceNote}</p>
+          {!designPreview && fieldView === 'personal' && (
+            <label className="field-preview-control personal-context-picker">
+              <span>Topic location · {currentPersonalTopic}</span>
+              <select
+                value={selectedTopicLocation?.id ?? ''}
+                onChange={(event) => {
+                  const selected = topicLocationOptions.find((location) => location.id === event.currentTarget.value) ?? null
+                  const topicId = selected?.topicId ?? currentPersonalTopic
+                  if (selected?.topicId) {
+                    setResearchTopic(selected.topicId)
+                  }
+                  setTopicLocations((current) => {
+                    const next = { ...current }
+                    if (!selected) delete next[currentPersonalTopic]
+                    else next[topicId] = selected
+                    return next
+                  })
+                }}
+              >
+                <option value="">No topic destination selected</option>
+                {topicLocationOptions.map((location) => <option key={location.id} value={location.id}>{location.label}</option>)}
+              </select>
+              <small title="Swells use a 1,200 km display footprint; this is not measured geographic spread.">Signals are placed at the topic destination, never the visitor’s location.</small>
+            </label>
+          )}
+          {!designPreview && fieldView === 'personal' && (
+            <button className="globe-ghost" type="button" onClick={clearPersonalActivity} disabled={personalActivity.visits.length === 0}>
+              Clear this session
+            </button>
+          )}
+{import.meta.env.DEV && (
+                <button className="globe-ghost" type="button" onClick={toggleDesignPreview}>Design preview</button>
+              )}
+            </>
+          )}
+        />
+      )}
+      {!fieldLabOpen && publicGlobe && (
+        <SignalPanel
+          heading={focusedPlace ? `Near ${focusedPlace.name}` : 'Highlights'}
+          signals={panelSignals}
+          selected={selectedSignal}
+          nearby={selectedNearby}
+          now={clock}
+          saved={!!selectedSignal && bookmarks.some((bookmark) => bookmark.url === selectedSignal.url)}
+          onSelect={selectGlobeSignal}
+          onClear={() => setSelectedSignalId(null)}
+          onOpen={(url) => void window.intoponet.browserHost.open({ kind: 'url', value: url })}
+          onSave={saveGlobeSignal}
+          onFly={(signal) => flyToPoint(signal.lat, signal.lon, 1.9)}
+          emptyText={eligiblePublicSnapshot
+            ? focusedPlace ? 'No public signals observed near here in this window. That means no coverage, not no interest.' : 'Turn on a layer to see public signals.'
+            : 'Loading public data…'}
+        />
+      )}
+      {!fieldLabOpen && (
+        <GlobeOverlay
+          projection={globeProjection}
+          labels={globeLabels}
+          hoverId={hoveredMarkerId}
+          hoverCard={hoverCard}
+          hidden={panel.isVisible}
+        />
+      )}
+      {!fieldLabOpen && import.meta.env.DEV && designPreview && <aside className="coverage-note">
         <span className="coverage-pulse" aria-hidden="true" />
         <div>
           <strong>{designPreview ? 'Design preview · synthetic' : sourceMode === 'personal' ? 'Personal field · this session only' : sourceMode === 'public' || sourceMode === 'mixed' ? 'Public source field' : 'Public field unavailable'}</strong>
@@ -1680,23 +1921,6 @@ export function App() {
           </div>
         )}
       </aside>}
-      {!fieldLabOpen && fieldView === 'public' && !designPreview && selectedTopicSources.some((source) => source.kind === 'public-record') && (
-        <ul className="field-sources" aria-label="Public source records">
-          {selectedTopicSources.filter((source) => source.kind === 'public-record').slice(0, 6).map((source) => (
-            <li key={source.id}>
-              <button
-                type="button"
-                onClick={() =>
-                  void window.intoponet.browserHost.open({ kind: 'url', value: source.url })
-                }
-              >
-                {source.title}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-
       {libraryOpen && (
         <aside className="bookmark-drawer" aria-labelledby="bookmark-heading">
           <div className="drawer-heading">
@@ -2020,30 +2244,6 @@ export function App() {
           )}
         </aside>
       )}
-
-      {!fieldLabOpen && <section className="accessible-signals" aria-label="Field topics">
-        {menuTopics.map((topic) => (
-            <button
-              key={topic.id}
-              type="button"
-              aria-pressed={designPreview
-                ? previewTopic === topic.label
-                : fieldView === 'personal'
-                  ? (researchTopic ?? 'General browsing') === topic.id
-                  : selectedTopicId === topic.id}
-              onClick={() => designPreview ? setPreviewTopic(topic.label) : rememberTopic(topic.label)}
-            >
-              <span>{topic.label}</span>
-              <small>{fieldView === 'personal' && !designPreview
-                ? 'Session topic for completed page activity'
-                : topic.kind === 'public'
-                ? topic.measurements.join(' · ') || 'Public source topic'
-                : topic.kind === 'mixed'
-                  ? 'Public and synthetic sources'
-                  : 'Synthetic topic'}</small>
-            </button>
-        ))}
-      </section>}
 
       {panel.isVisible && !pinEditor && (
         <section className={`browser-panel${fullWidth ? ' full-width' : ''}`} aria-label="Web browser">
@@ -2412,15 +2612,40 @@ export function App() {
           </div>
         )}
         <form className="command-launcher unified-launcher" onSubmit={submit}>
+          <PlaceSuggestions
+            places={placeMatch.places}
+            active={placeActive}
+            onHover={setPlaceActive}
+            onPick={flyToPlace}
+          />
           <label className="command-input">
-            <span className="sr-only">Search, explore a topic, or enter a web address</span>
+            <span className="sr-only">Search, fly to a place, or enter a web address</span>
             <input
               ref={input}
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search, explore a topic, or enter a web address"
+              onChange={(event) => { setQuery(event.target.value); setPlacesDismissed(false) }}
+              onKeyDown={(event) => {
+                const count = placeMatch.places.length
+                if (!count) return
+                if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                  event.preventDefault()
+                  const step = event.key === 'ArrowDown' ? 1 : -1
+                  // -1 means "search the web" with no place highlighted.
+                  setPlaceActive((current) => ((current + 1 + step + count + 1) % (count + 1)) - 1)
+                } else if (event.key === 'Escape') {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  setPlacesDismissed(true)
+                }
+              }}
+              placeholder="Search, fly to a place, or enter a web address"
               autoComplete="off"
               spellCheck
+              role="combobox"
+              aria-expanded={placeMatch.places.length > 0}
+              aria-controls="place-suggestions"
+              aria-autocomplete="list"
+              aria-activedescendant={placeActive >= 0 && placeMatch.places.length ? `place-option-${placeActive}` : undefined}
             />
           </label>
           <button className="go-button" type="submit" aria-label="Go">

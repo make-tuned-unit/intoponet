@@ -23,7 +23,7 @@ if (!app.isReady()) {
     'WebContentsForceDark,WebContentsForceDarkVariations',
   )
 }
-import { cachedPublicField, loadPublicField } from './public-field'
+import { cachedPublicField, startPublicFieldRefresh } from './public-field'
 import { readSealedPrivateLibrary } from './privateLibraryStorage'
 import { routeProtectionRequest } from './protectionRequest'
 import {
@@ -1210,9 +1210,12 @@ app.whenReady().then(async () => {
   }
   emitTabs()
 
-  void loadPublicField().then((snapshot) => {
-    if (snapshot) emit({ type: 'field-snapshot', payload: JSON.stringify(snapshot) })
+  // Cached field now, then live refreshes (earthquakes/natural events every
+  // 20 minutes; Wikipedia's daily most-read when a new day is published).
+  const stopPublicField = startPublicFieldRefresh((snapshot) => {
+    emit({ type: 'field-snapshot', payload: JSON.stringify(snapshot) })
   })
+  app.once('will-quit', stopPublicField)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
