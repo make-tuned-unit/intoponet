@@ -32,6 +32,47 @@ def sha1(path: Path) -> str:
     return digest.hexdigest()
 
 
+def sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def write_scenario_contract_header(destination: Path) -> None:
+    benchmark_root = REPOSITORY_ROOT / "experiments/compositor-benchmark"
+    contract = json.loads((benchmark_root / "contract.json").read_text())
+    artifacts = {
+        "workloadSha256": sha256(benchmark_root / "scenario.html"),
+        **{asset: sha256(benchmark_root / asset) for asset in contract["assets"]},
+    }
+    scenario = json.dumps(
+        {"version": contract["version"], "contract": contract, "artifacts": artifacts},
+        separators=(",", ":"),
+    )
+    bounds = contract["initialBounds"]
+    settled = contract["settledBounds"]
+    header = f'''#ifndef INTOPONET_COMPOSITOR_SCENARIO_CONTRACT_H_
+#define INTOPONET_COMPOSITOR_SCENARIO_CONTRACT_H_
+
+struct ScenarioBounds {{ int x; int y; int width; int height; }};
+constexpr int kScenarioViewportWidth = {contract["viewport"]["width"]};
+constexpr int kScenarioViewportHeight = {contract["viewport"]["height"]};
+constexpr int kScenarioTransitionDurationMs = {contract["transitionDurationMs"]};
+constexpr int kScenarioInitialWaitMs = {contract["initialWaitMs"]};
+constexpr int kScenarioScrollDownWaitMs = {contract["scrollDownWaitMs"]};
+constexpr int kScenarioScrollUpWaitMs = {contract["scrollUpWaitMs"]};
+constexpr int kScenarioCloseSettleWaitMs = {contract["closeSettleWaitMs"]};
+constexpr ScenarioBounds kScenarioInitialBounds = {{{bounds["x"]}, {bounds["y"]}, {bounds["width"]}, {bounds["height"]}}};
+constexpr ScenarioBounds kScenarioSettledBounds = {{{settled["x"]}, {settled["y"]}, {settled["width"]}, {settled["height"]}}};
+constexpr char kScenarioJson[] = R"INTOPONET_JSON({scenario})INTOPONET_JSON";
+
+#endif  // INTOPONET_COMPOSITOR_SCENARIO_CONTRACT_H_
+'''
+    destination.write_text(header)
+
+
 def replace_once(path: Path, before: str, after: str) -> None:
     contents = path.read_text()
     if after in contents:
@@ -91,6 +132,7 @@ add_subdirectory(${CEF_ROOT}/tests/ceftests)""",
 
     native_source = HERE / "native"
     minimal_source = source / "examples/minimal"
+    write_scenario_contract_header(minimal_source / "compositor_scenario_contract.h")
     shutil.copy2(native_source / "compositor_host_mac.h", minimal_source)
     compositor_contents = (native_source / "compositor_host_mac.mm").read_text()
     compositor_contents = compositor_contents.replace(

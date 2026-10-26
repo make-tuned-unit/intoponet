@@ -1,18 +1,15 @@
 import type {
   BrowserPanelSnapshot,
   FindInPageResult,
-  NavigationIntent,
   PageTabSnapshot,
   ProtectionSnapshot,
 } from '@intoponet/browser-api'
-import { inferLauncherIntent } from '@intoponet/browser-api'
-import { demoFieldSnapshot, parseFieldSnapshot, snapshotLabel, bandsFromSnapshot } from '@intoponet/field-snapshot'
+import { demoFieldSnapshot, parseFieldSnapshot, snapshotLabel } from '@intoponet/field-snapshot'
 import type { FieldSnapshot } from '@intoponet/field-snapshot'
 import { latLonToOrbit, syntheticTopicGraph } from '@intoponet/frequency-field'
 import {
   absorbPage,
   historicalFixtures,
-  parsePrivateLibrary,
   privateLibrarySchema,
   relationshipLabel,
   searchAbsorbed,
@@ -25,13 +22,13 @@ import {
   Bookmark,
   ChevronLeft,
   ChevronRight,
-  Compass,
   Copy,
   Expand,
   FolderPlus,
   Globe2,
   LockKeyhole,
   Library,
+  MapPin,
   Pencil,
   Printer,
   RefreshCw,
@@ -63,8 +60,24 @@ import {
   type OrbitPose,
 } from './exploration'
 import { FrequencyField } from './FrequencyField'
+import { FieldLab } from './FieldLab'
+import { resolveSelectedTopic, snapshotKind, syntheticTopics, topicOptions } from './fieldPresentation'
+import { signalsFromSnapshot, syntheticPreviewInterestSignals } from './interestField'
+import type { InterestSignal } from './interestField'
+import { evaluateFrequencyEligibility, filterSnapshotForFrequencyEligibility } from './contentEligibility'
+import {
+  emptyPersonalActivity,
+  personalTrafficVisits,
+  personalVisitSignals,
+  recordPersonalVisit,
+  unplacedPersonalVisitCount,
+  PERSONAL_DISPLAY_RADIUS_KM,
+  type PersonalTopicLocation,
+} from './personalInterest'
+import type { OrganicMembraneMetrics, OrganicMembraneSettings } from './earth/OrganicMembrane'
 import {
   createCollection,
+  parseStoredPrivateLibrary,
   readBookmarks,
   readCollections,
   readRecents,
@@ -78,9 +91,13 @@ import {
   type SavedBookmark,
   type SavedCollection,
 } from './localLibrary'
+import { aggregateTopicTraffic, topicTrafficDemoResult } from './topicTraffic'
+import { inferUnifiedLauncherIntent } from './launcherIntent'
+import { TabDock } from './TabDock'
+import { PinEditor, type PinEditorValue } from './PinEditor'
 
-type LauncherMode = NavigationIntent['kind']
 type LibraryTab = 'locations' | 'collections' | 'recent' | 'absorbed'
+type TopicLocationOption = PersonalTopicLocation & { topicId?: string }
 
 const emptyPanel: BrowserPanelSnapshot = {
   url: '',
@@ -98,6 +115,35 @@ const emptyProtection: ProtectionSnapshot = {
   blockedTrackers: 0,
   adsEnabled: true,
   trackersEnabled: true,
+}
+
+const syntheticFixtureTopicIds: Record<string, string> = {
+  'Open knowledge': 'world-knowledge',
+  'Local archives': 'local-archives',
+  'Civic memory': 'civic-memory',
+  'Open research': 'public-research',
+}
+const romanColosseumTopicLocation: PersonalTopicLocation & { topicId: string } = {
+  id: 'topic-location:roman-colosseum',
+  topicId: 'Roman Colosseum',
+  label: 'Roman Colosseum, Rome',
+  lat: 41.8902,
+  lon: 12.4922,
+  radiusKm: PERSONAL_DISPLAY_RADIUS_KM,
+}
+const activityMembraneSettings: OrganicMembraneSettings = {
+  macro: 1,
+  meso: 1,
+  micro: 1,
+  material: 'glass',
+  paused: false,
+  quality: 'auto',
+}
+
+function syntheticSignalsForTopic(topic: string): InterestSignal[] {
+  const fixtureTopicId = syntheticFixtureTopicIds[topic] ?? topic
+  const matching = syntheticPreviewInterestSignals.filter((signal) => signal.topicId === fixtureTopicId)
+  return (matching.length ? matching : syntheticPreviewInterestSignals).map((signal) => ({ ...signal }))
 }
 
 function originLabel(url: string): string {
@@ -120,12 +166,12 @@ function tabCaption(tab: PageTabSnapshot): string {
 }
 
 export function App() {
-  const [mode, setMode] = useState<LauncherMode>('topic')
   const [query, setQuery] = useState('')
   const [panel, setPanel] = useState<BrowserPanelSnapshot>(emptyPanel)
   const [activeTopic, setActiveTopic] = useState(
     () => localStorage.getItem(topicKey) ?? 'Open knowledge',
   )
+  const [researchTopic, setResearchTopic] = useState<string | null>(null)
   const [scale, setScale] = useState<ExplorationScale>(readScale)
   const [pose, setPose] = useState<OrbitPose>(
     () =>
@@ -144,8 +190,22 @@ export function App() {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [libraryReady, setLibraryReady] = useState(false)
   const [publicSnapshot, setPublicSnapshot] = useState<FieldSnapshot | null>(null)
+  const [personalActivity, setPersonalActivity] = useState(emptyPersonalActivity)
+  const [fieldView, setFieldView] = useState<'personal' | 'public'>('personal')
+  const [topicLocations, setTopicLocations] = useState<Record<string, PersonalTopicLocation>>({})
+  const [designPreview, setDesignPreview] = useState(false)
+  const [fieldLabOpen, setFieldLabOpen] = useState(
+    () => import.meta.env.DEV && new URLSearchParams(window.location.search).get('fieldLab') === '1',
+  )
+  const [previewIntensity, setPreviewIntensity] = useState(1.25)
+  const [previewRadiusScale, setPreviewRadiusScale] = useState(1.2)
+  const [previewTopic, setPreviewTopic] = useState<string>(syntheticTopics[0])
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false)
+  const [organicMetrics, setOrganicMetrics] = useState<OrganicMembraneMetrics | null>(null)
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [libraryTab, setLibraryTab] = useState<LibraryTab>('locations')
+  const [pinEditor, setPinEditor] = useState<{ initial: PinEditorValue; originalUrl: string; restoreBrowser: boolean; restoreFullWidth: boolean } | null>(null)
+  const [selectedPinUrl, setSelectedPinUrl] = useState('')
   const [collectionDraft, setCollectionDraft] = useState('')
   const [expandedCollection, setExpandedCollection] = useState('')
   const [renamingCollection, setRenamingCollection] = useState('')
@@ -159,37 +219,148 @@ export function App() {
   const [fullWidth, setFullWidth] = useState(false)
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
+  const [libraryReadError, setLibraryReadError] = useState('')
   const panelBody = useRef<HTMLDivElement>(null)
   const tabStrip = useRef<HTMLDivElement>(null)
   const [tabEdges, setTabEdges] = useState({ overflow: false, atStart: true, atEnd: true })
   const input = useRef<HTMLInputElement>(null)
   const findInput = useRef<HTMLInputElement>(null)
-  const lastSyncedUrl = useRef('')
-  const launcherFocused = useRef(false)
+  const pinBrowserClose = useRef<Promise<void> | null>(null)
+  const activeTabId = useRef<string | null>(null)
   const topicReturnPose = useRef<OrbitPose | null>(null)
+  const focusedMapAnchor = useRef<PersonalTopicLocation | null>(null)
   const sealWarned = useRef(false)
+  const researchTopicRef = useRef(researchTopic)
+  const topicLocationsRef = useRef(topicLocations)
+  const seenFrequencyNavigationIds = useRef(new Set<string>())
+  researchTopicRef.current = researchTopic
+  topicLocationsRef.current = topicLocations
   const [reduceMotion, setReduceMotion] = useState(
     () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
   )
 
-  const fieldBands = useMemo(
-    () => (publicSnapshot ? bandsFromSnapshot(publicSnapshot, scale) : undefined),
-    [publicSnapshot, scale],
+  const eligiblePublicSnapshot = useMemo(
+    () => publicSnapshot ? filterSnapshotForFrequencyEligibility(publicSnapshot).snapshot : null,
+    [publicSnapshot],
   )
+  const personalTopicLabels = useMemo(
+    () => [...new Set([researchTopic ?? 'General browsing', ...personalActivity.visits.map((visit) => visit.topicId)])].sort((a, b) => a.localeCompare(b)),
+    [researchTopic, personalActivity],
+  )
+  const currentPersonalTopic = researchTopic ?? 'General browsing'
+  const selectedTopicLocation = topicLocations[currentPersonalTopic] ?? null
+  const topicTrafficVisits = useMemo(
+    () => personalTrafficVisits(personalActivity, currentPersonalTopic, selectedTopicLocation),
+    [currentPersonalTopic, personalActivity, selectedTopicLocation?.id],
+  )
+  const topicTraffic = useMemo(() => selectedTopicLocation
+    ? aggregateTopicTraffic({
+      destinationId: selectedTopicLocation.id,
+      topicId: currentPersonalTopic,
+      visits: topicTrafficVisits,
+      now: new Date().toISOString(),
+      currentWindowMs: 24 * 60 * 60 * 1_000,
+    })
+    : null, [currentPersonalTopic, selectedTopicLocation, topicTrafficVisits])
+  const availableTopics = useMemo(() => eligiblePublicSnapshot
+    ? topicOptions(eligiblePublicSnapshot)
+    : personalTopicLabels.map((label) => ({ id: label, label, kind: 'synthetic' as const, measurements: ['Session activity'] })),
+  [eligiblePublicSnapshot, personalTopicLabels])
+  const selectedTopic = resolveSelectedTopic(availableTopics, activeTopic)
+  const selectedTopicLabel = selectedTopic?.label ?? (fieldView === 'public' ? 'Public activity' : activeTopic)
+  const selectedTopicId = selectedTopic?.id
+  const visibleTopicLabel = designPreview ? previewTopic : fieldView === 'personal' ? 'Personal visits' : 'Public activity'
+  const menuTopics = designPreview
+    ? syntheticTopics.map((label) => ({ id: label, label, kind: 'synthetic' as const, measurements: ['Synthetic fixture'] }))
+    : fieldView === 'personal'
+      ? personalTopicLabels.map((label) => ({ id: label, label, kind: 'synthetic' as const, measurements: ['Personal session activity'] }))
+      : availableTopics
+  const launcherTopics = designPreview ? [] : menuTopics
+  const selectedTopicSources = eligiblePublicSnapshot?.sources.filter((source) => selectedTopicId && source.topics.includes(selectedTopicId)) ?? []
+  const selectedTopicKind = designPreview ? 'synthetic' : selectedTopic?.kind ?? (fieldView === 'public' ? 'public' : 'synthetic')
+  const sourceMode = designPreview
+    ? 'synthetic'
+    : fieldView === 'personal'
+      ? 'personal'
+      : eligiblePublicSnapshot?.sources.some((source) => source.kind === 'public-record')
+        ? snapshotKind(eligiblePublicSnapshot)
+        : 'prototype'
+  const topicModeDescription = designPreview
+    ? 'Synthetic design preview. Not public activity.'
+    : fieldView === 'personal'
+      ? `Session-only personal activity across topics. New completed pages are tagged “${researchTopic ?? 'General browsing'}”.`
+      : selectedTopicKind === 'public'
+    ? `Public source measurements${selectedTopic?.measurements.length ? `: ${selectedTopic.measurements.join(', ')}.` : '.'}`
+    : selectedTopicKind === 'mixed'
+      ? `Mixed public and synthetic topic${selectedTopic?.measurements.length ? `: ${selectedTopic.measurements.join(', ')}.` : '.'}`
+      : fieldView === 'public'
+        ? 'No eligible public source measurements are available.'
+        : 'No session visits have been recorded yet.'
+  const fieldSignals = useMemo(() => {
+    if (designPreview) {
+      return syntheticSignalsForTopic(previewTopic).map((signal) => ({
+        ...signal,
+        intensity: Math.min(1, signal.intensity * previewIntensity),
+        radiusKm: Math.min(20_100, signal.radiusKm * previewRadiusScale),
+      }))
+    }
+    if (fieldView === 'personal') return personalVisitSignals(personalActivity, new Date().toISOString())
+    if (!eligiblePublicSnapshot) return []
+    const eligibleSnapshot = eligiblePublicSnapshot
+    const topicIds = [...new Set([
+      ...eligibleSnapshot.sources.flatMap((source) => source.topics),
+      ...eligibleSnapshot.bands.flatMap((band) => band.topicIds),
+    ])]
+    return topicIds.flatMap((topicId) => signalsFromSnapshot(eligibleSnapshot, topicId))
+      .filter((signal) => signal.sourceType === 'public-aggregate')
+      .filter((signal, index, all) => all.findIndex((candidate) => candidate.id === signal.id) === index)
+  }, [designPreview, previewTopic, previewIntensity, previewRadiusScale, fieldView, personalActivity, eligiblePublicSnapshot])
+  const topicLocationOptions = useMemo<TopicLocationOption[]>(() => {
+    const seen = new Set<string>()
+    const sourceAnchors = (eligiblePublicSnapshot?.sources ?? []).filter((source) => {
+      if (source.kind !== 'public-record') return false
+      const key = `${source.lat}|${source.lon}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return Number.isFinite(source.lat) && source.lat >= -90 && source.lat <= 90 &&
+        Number.isFinite(source.lon) && source.lon >= -180 && source.lon <= 180
+    }).slice(0, 100).map((source) => ({
+      id: source.id,
+      label: `${source.title} · ${source.lat.toFixed(2)}, ${source.lon.toFixed(2)}`,
+      lat: source.lat,
+      lon: source.lon,
+      radiusKm: PERSONAL_DISPLAY_RADIUS_KM,
+    }))
+    return [romanColosseumTopicLocation, ...sourceAnchors]
+  }, [eligiblePublicSnapshot])
+  const pinLocationOptions = useMemo(() => {
+    const known = [...topicLocationOptions, ...Object.values(topicLocations)]
+    const seen = new Set<string>()
+    return known.flatMap((location) => {
+      if (seen.has(location.id)) return []
+      seen.add(location.id)
+      return [{ id: location.id, label: location.label, lat: location.lat, lon: location.lon }]
+    })
+  }, [topicLocationOptions, topicLocations])
   const fieldNote = publicSnapshot ? snapshotLabel(publicSnapshot) : demoFieldSnapshot().coverageNote
+  const fieldProvenanceNote = designPreview
+    ? 'Synthetic radial preview for visual QA. Not public activity; observed sources remain unchanged. Surface shading · glow off.'
+    : fieldView === 'personal'
+      ? `This session: ${personalActivity.visits.length} eligible visits · ${unplacedPersonalVisitCount(personalActivity)} without a topic destination. Nothing is shared.`
+      : publicSnapshot
+        ? `${fieldNote} Adult or ineligible public records are filtered before rendering.`
+        : 'No public snapshot is available. Design preview is synthetic and explicitly labeled.'
+
+  useEffect(() => {
+    if (!publicSnapshot || !selectedTopic || activeTopic === selectedTopic.label) return
+    setActiveTopic(selectedTopic.label)
+    localStorage.setItem(topicKey, selectedTopic.label)
+  }, [activeTopic, publicSnapshot, selectedTopic])
   const isBookmarked = useMemo(
     () => bookmarks.some((bookmark) => bookmark.url === panel.url),
     [bookmarks, panel.url],
   )
   const isSecureOrigin = panel.url.startsWith('https:')
-  const inferredKind = useMemo(() => {
-    try {
-      return query.trim() ? inferLauncherIntent(query, mode).kind : mode
-    } catch {
-      return mode
-    }
-  }, [mode, query])
-
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)')
     const onChange = (): void => setReduceMotion(media.matches)
@@ -202,6 +373,29 @@ export function App() {
       if (event.type === 'panel-state') {
         setPanel(event.panel)
         setError('')
+        return
+      }
+      if (event.type === 'frequency-visit') {
+        if (seenFrequencyNavigationIds.current.has(event.navigationId)) return
+        seenFrequencyNavigationIds.current.add(event.navigationId)
+        if (seenFrequencyNavigationIds.current.size > 1_024) {
+          seenFrequencyNavigationIds.current = new Set([...seenFrequencyNavigationIds.current].slice(-512))
+        }
+        const topicId = (researchTopicRef.current ?? 'General browsing').trim().slice(0, 160)
+        const eligibility = evaluateFrequencyEligibility({
+          url: event.url,
+          title: event.title,
+          topic: topicId,
+          rating: event.rating,
+        })
+        setPersonalActivity((current) => recordPersonalVisit(current, {
+          url: event.url,
+          title: event.title,
+          topicId,
+          timestamp: new Date().toISOString(),
+          eligible: eligibility.eligible,
+          topicLocation: topicLocationsRef.current[topicId] ?? null,
+        }).state)
         return
       }
       if (event.type === 'find-result') {
@@ -221,6 +415,11 @@ export function App() {
         return
       }
       if (event.type === 'tabs') {
+        const nextActiveTabId = event.tabs.find((tab) => tab.active)?.id ?? null
+        if (activeTabId.current && nextActiveTabId && activeTabId.current !== nextActiveTabId) {
+          setQuery('')
+        }
+        activeTabId.current = nextActiveTabId
         setTabs(event.tabs)
         return
       }
@@ -234,7 +433,10 @@ export function App() {
     })
     void window.intoponet.browserHost.getState().then(setPanel)
     void window.intoponet.browserHost.getProtection().then(setProtection)
-    void window.intoponet.browserHost.getTabs().then(setTabs)
+    void window.intoponet.browserHost.getTabs().then((nextTabs) => {
+      activeTabId.current = nextTabs.find((tab) => tab.active)?.id ?? null
+      setTabs(nextTabs)
+    })
     void window.intoponet.browserHost.getFieldSnapshot().then((payload) => {
       if (payload) setPublicSnapshot(parseFieldSnapshot(payload))
     })
@@ -253,34 +455,43 @@ export function App() {
   }, [panel.title, panel.url])
 
   useEffect(() => {
-    if (!panel.url) return
-    if (launcherFocused.current) return
-    if (!query || query === lastSyncedUrl.current) {
-      setQuery(panel.url)
-      lastSyncedUrl.current = panel.url
-      setMode('url')
-    }
-  }, [panel.url, query])
-
-  useEffect(() => {
     let cancelled = false
     void window.intoponet.browserHost
       .readPrivateLibrary()
-      .then((raw) => {
+      .then((result) => {
         if (cancelled) return
-        const parsed = raw ? parsePrivateLibrary(raw) : null
-        if (parsed) {
-          setBookmarks(parsed.bookmarks)
-          setCollections(parsed.collections)
-          setRecents(parsed.recents)
-          setAbsorbed(parsed.absorbed)
-          writeBookmarks(parsed.bookmarks)
-          writeCollections(parsed.collections)
+        if (result.status === 'error') {
+          const reason = {
+            'encryption-unavailable':
+              'On-device encryption is unavailable, so the saved private library could not be opened.',
+            'decrypt-failed': 'The saved private library could not be decrypted.',
+            'reencrypt-failed':
+              'The saved private library opened, but its encryption could not be refreshed.',
+          }[result.reason]
+          setLibraryReadError(`${reason} Existing data was left untouched, and changes will not be autosaved. Confirm Delete library to reset it.`)
+          return
         }
+        const parsed = parseStoredPrivateLibrary(result.payload)
+        if (parsed.status === 'invalid') {
+          setLibraryReadError('The saved private library has an unsupported or damaged format. Existing data was left untouched, and changes will not be autosaved. Confirm Delete library to reset it.')
+          return
+        }
+        if (parsed.status === 'valid') {
+          setBookmarks(parsed.library.bookmarks)
+          setCollections(parsed.library.collections)
+          setRecents(parsed.library.recents)
+          setAbsorbed(parsed.library.absorbed)
+          writeBookmarks(parsed.library.bookmarks)
+          writeCollections(parsed.library.collections)
+        }
+        setLibraryReadError('')
+        setError('')
         setLibraryReady(true)
       })
       .catch(() => {
-        if (!cancelled) setLibraryReady(true)
+        if (!cancelled) {
+          setLibraryReadError('The saved private library could not be read. Existing data was left untouched, and changes will not be autosaved. Confirm Delete library to reset it.')
+        }
       })
     return () => {
       cancelled = true
@@ -384,14 +595,13 @@ export function App() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
+      if (pinEditor) return
       const key = event.key.toLowerCase()
       const meta = event.metaKey || event.ctrlKey
       if (meta && key === 'l') {
         event.preventDefault()
-        if (panel.url && !query) {
+        if (panel.url) {
           setQuery(panel.url)
-          lastSyncedUrl.current = panel.url
-          setMode('url')
         }
         input.current?.focus()
         input.current?.select()
@@ -474,14 +684,14 @@ export function App() {
         setPose(next)
         writeExplorationState({
           scale,
-          geographicAnchor: defaultAnchor(activeTopic),
-          selectedTopicId: activeTopic,
+          geographicAnchor: focusedMapAnchor.current ?? defaultAnchor(selectedTopicLabel),
+          selectedTopicId: selectedTopicId ?? activeTopic,
           pose: next,
         })
       }
       if (event.key === 'Escape' && fullWidth) {
         event.preventDefault()
-        setFullWidth(false)
+        setBrowserFullWidth(false)
       } else if (event.key === 'Escape' && shieldOpen) {
         event.preventDefault()
         setShieldOpen(false)
@@ -498,7 +708,7 @@ export function App() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [activeTopic, findOpen, fullWidth, libraryOpen, panel.canGoBack, panel.canGoForward, panel.isVisible, panel.url, pose, query, scale, shieldOpen, tabs.length])
+  }, [activeTopic, findOpen, fullWidth, libraryOpen, panel.canGoBack, panel.canGoForward, panel.isVisible, panel.url, pinEditor, pose, scale, selectedTopicId, selectedTopicLabel, shieldOpen, tabs.length])
 
   const rememberScale = (
     next: ExplorationScale,
@@ -509,7 +719,8 @@ export function App() {
       topicReturnPose.current = pose
     }
     const restored = restoreAfterTopic(scale, next, topicReturnPose.current)
-    const anchor = defaultAnchor(topic)
+    const anchor = focusedMapAnchor.current ?? defaultAnchor(topic)
+    const topicId = availableTopics.find((option) => option.id === topic || option.label === topic)?.id ?? topic
     const aim = latLonToOrbit(anchor.lat, anchor.lon)
     const nextPose = restored ?? {
       theta: next === 'earth' ? pose.theta : aim.theta,
@@ -522,32 +733,42 @@ export function App() {
     writeExplorationState({
       scale: next,
       geographicAnchor: anchor,
-      selectedTopicId: topic,
+      selectedTopicId: topicId,
       pose: nextPose,
     })
   }
 
   const rememberTopic = (topic: string): void => {
+    focusedMapAnchor.current = null
     setActiveTopic(topic)
+    setResearchTopic(topic)
     localStorage.setItem(topicKey, topic)
     rememberScale('topic', scaleDistance.topic, topic)
   }
 
   const submit = (event: FormEvent): void => {
     event.preventDefault()
-    const value = query.trim()
+    const submittedDraft = query
+    const value = submittedDraft.trim()
     if (!value) return
     setError('')
-    const intent = inferLauncherIntent(value, mode)
+    let intent: ReturnType<typeof inferUnifiedLauncherIntent>
+    try {
+      intent = inferUnifiedLauncherIntent(value, launcherTopics)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Could not understand that search or address.')
+      return
+    }
     if (intent.kind === 'topic') {
       rememberTopic(intent.value)
       setQuery('')
-      lastSyncedUrl.current = ''
       void window.intoponet.browserHost.close()
       return
     }
-    lastSyncedUrl.current = intent.kind === 'url' ? intent.value : ''
-    void window.intoponet.browserHost.open(intent).catch((reason: unknown) => {
+    if (intent.kind === 'search') setResearchTopic(intent.value)
+    void window.intoponet.browserHost.open(intent).then(() => {
+      if (input.current?.value === submittedDraft) setQuery('')
+    }).catch((reason: unknown) => {
       setError(reason instanceof Error ? reason.message : 'Navigation failed.')
     })
   }
@@ -597,9 +818,15 @@ export function App() {
     URL.revokeObjectURL(url)
   }
 
-  const deleteLibrary = (): void => {
+  const deleteLibrary = async (): Promise<void> => {
     if (!confirmDelete) {
       setConfirmDelete(true)
+      return
+    }
+    try {
+      await window.intoponet.browserHost.deletePrivateLibrary()
+    } catch {
+      setError('The private library could not be deleted. Existing data was left untouched.')
       return
     }
     setBookmarks([])
@@ -610,7 +837,8 @@ export function App() {
     writeCollections([])
     localStorage.removeItem('intoponet.recents.v1')
     setConfirmDelete(false)
-    void window.intoponet.browserHost.deletePrivateLibrary()
+    setLibraryReady(true)
+    setLibraryReadError('')
     setNotice('Private library deleted from this device')
   }
 
@@ -626,6 +854,108 @@ export function App() {
             savedAt: new Date().toISOString(),
           }),
     )
+  }
+
+  const openPinEditor = (bookmark?: SavedBookmark): void => {
+    const currentBookmark = bookmark ?? bookmarks.find((item) => item.url === panel.url)
+    const url = currentBookmark?.url ?? panel.url
+    if (!url) return
+    const topic = currentBookmark?.topic ?? researchTopic ?? 'General browsing'
+    const topicLocation = topicLocations[topic]
+    const anchor = currentBookmark
+      ? currentBookmark.fieldAnchor
+      : topicLocation ? { lat: topicLocation.lat, lon: topicLocation.lon, label: topicLocation.label } : undefined
+    setPinEditor({
+      originalUrl: url,
+      restoreBrowser: panel.isVisible,
+      restoreFullWidth: panel.isVisible && fullWidth,
+      initial: {
+        url,
+        title: (currentBookmark?.title || panel.title || originLabel(url)).slice(0, 180),
+        topic,
+        note: currentBookmark?.note ?? '',
+        ...(anchor ? { fieldAnchor: anchor } : {}),
+      },
+    })
+    setSelectedPinUrl(url)
+    setLibraryOpen(false)
+    setFullWidth(false)
+    void window.intoponet.browserHost.setFullWidth(false)
+    if (panel.isVisible) {
+      closeFind()
+      pinBrowserClose.current = window.intoponet.browserHost.close()
+    }
+  }
+
+  const finishPinEditor = (restoreBrowser: boolean, restoreFullWidth: boolean): void => {
+    const closing = pinBrowserClose.current
+    pinBrowserClose.current = null
+    setPinEditor(null)
+    setFullWidth(restoreBrowser && restoreFullWidth)
+    void (async () => {
+      await closing
+      await window.intoponet.browserHost.setFullWidth(restoreBrowser && restoreFullWidth)
+      if (restoreBrowser) await window.intoponet.browserHost.restore()
+    })()
+  }
+
+  const savePin = (value: PinEditorValue): void => {
+    if (!pinEditor) return
+    const existing = bookmarks.find((bookmark) => bookmark.url === pinEditor.originalUrl)
+    const bookmark: SavedBookmark = {
+      url: value.url,
+      title: value.title,
+      topic: value.topic,
+      savedAt: existing?.savedAt ?? new Date().toISOString(),
+      note: value.note,
+      ...(value.fieldAnchor ? { fieldAnchor: value.fieldAnchor } : {}),
+    }
+    const retained = bookmarks.filter((item) => item.url !== pinEditor.originalUrl)
+    persistBookmarks(upsertBookmark(retained, bookmark))
+    if (pinEditor.originalUrl !== value.url) {
+      persistCollections(collections.map((collection) => ({
+        ...collection,
+        memberUrls: collection.memberUrls.map((url) => url === pinEditor.originalUrl ? value.url : url),
+      })))
+    }
+    setSelectedPinUrl(value.url)
+    finishPinEditor(pinEditor.restoreBrowser, pinEditor.restoreFullWidth)
+  }
+
+  const showPinOnGlobe = (bookmark: SavedBookmark): void => {
+    const anchor = bookmark.fieldAnchor
+    if (!anchor) return
+    closeFind()
+    setLibraryOpen(false)
+    setShieldOpen(false)
+    setActiveTopic(bookmark.topic)
+    focusedMapAnchor.current = {
+      id: `bookmark:${bookmark.url}`,
+      label: anchor.label,
+      lat: anchor.lat,
+      lon: anchor.lon,
+      radiusKm: PERSONAL_DISPLAY_RADIUS_KM,
+    }
+    localStorage.setItem(topicKey, bookmark.topic)
+    if (shouldSnapshotBeforeTopic(scale, 'topic')) topicReturnPose.current = pose
+    const aim = latLonToOrbit(anchor.lat, anchor.lon)
+    const nextPose: OrbitPose = { ...aim, radius: scaleDistance.topic }
+    setScale('topic')
+    writeScale('topic')
+    setPose(nextPose)
+    writeExplorationState({
+      scale: 'topic',
+      geographicAnchor: { lat: anchor.lat, lon: anchor.lon },
+      selectedTopicId: selectedTopicId ?? null,
+      pose: nextPose,
+    })
+    if (panel.isVisible) void window.intoponet.browserHost.close()
+  }
+
+  const selectMapPin = (url: string): void => {
+    setSelectedPinUrl(url)
+    setLibraryOpen(true)
+    setLibraryTab('locations')
   }
 
   const updateBookmarkNote = (url: string, note: string): void => {
@@ -653,19 +983,19 @@ export function App() {
 
   const openRecent = (page: RecentPage): void => {
     setLibraryOpen(false)
-    lastSyncedUrl.current = page.url
-    setQuery(page.url)
-    setMode('url')
-    void window.intoponet.browserHost.open({ kind: 'url', value: page.url })
+    const currentDraft = input.current?.value ?? ''
+    void window.intoponet.browserHost.open({ kind: 'url', value: page.url }).then(() => {
+      if (input.current?.value === currentDraft) setQuery('')
+    })
   }
 
   const openBookmark = (bookmark: SavedBookmark): void => {
     rememberTopic(bookmark.topic)
     setLibraryOpen(false)
-    lastSyncedUrl.current = bookmark.url
-    setQuery(bookmark.url)
-    setMode('url')
-    void window.intoponet.browserHost.open({ kind: 'url', value: bookmark.url })
+    const currentDraft = input.current?.value ?? ''
+    void window.intoponet.browserHost.open({ kind: 'url', value: bookmark.url }).then(() => {
+      if (input.current?.value === currentDraft) setQuery('')
+    })
   }
 
   const addCollection = (event: FormEvent): void => {
@@ -746,8 +1076,6 @@ export function App() {
   const fillLauncherFromPage = (): void => {
     if (!panel.url) return
     setQuery(panel.url)
-    lastSyncedUrl.current = panel.url
-    setMode('url')
     input.current?.focus()
     input.current?.select()
   }
@@ -757,16 +1085,43 @@ export function App() {
     void window.intoponet.browserHost.find(findQuery, { findNext, forward })
   }
 
+  const toggleDesignPreview = (): void => {
+    if (designPreview) {
+      setDiagnosticsOpen(false)
+      setOrganicMetrics(null)
+    }
+    setDesignPreview((current) => !current)
+  }
+
+  const clearPersonalActivity = (): void => {
+    setPersonalActivity(emptyPersonalActivity)
+    setResearchTopic(null)
+    setTopicLocations({})
+  }
+
+  const setBrowserFullWidth = (enabled: boolean): void => {
+    setFullWidth(enabled)
+    void window.intoponet.browserHost.setFullWidth(enabled)
+  }
+
   return (
     <main className={`app-shell${panel.isVisible ? ' page-open' : ''}${fullWidth && panel.isVisible ? ' browser-full' : ''}${tabs.length > 0 ? ' tabs-open' : ''}`}>
-      <FrequencyField
+      {!fieldLabOpen && <FrequencyField
         paused={reduceMotion || (fullWidth && panel.isVisible)}
         panelOpen={panel.isVisible}
         scale={scale}
-        topic={activeTopic}
-        anchor={defaultAnchor(activeTopic)}
+        topic={visibleTopicLabel}
+        anchor={selectedTopicLocation ? { lat: selectedTopicLocation.lat, lon: selectedTopicLocation.lon } : null}
         pose={pose}
-        bands={fieldBands}
+        signals={fieldSignals}
+        mapPins={bookmarks.map(({ url, title, fieldAnchor }) => ({
+          url,
+          title,
+          ...(fieldAnchor ? { fieldAnchor } : {}),
+        }))}
+        onPinSelect={selectMapPin}
+        membraneSettings={activityMembraneSettings}
+        onOrganicMetrics={diagnosticsOpen ? setOrganicMetrics : undefined}
         onDistanceChange={(radius) => {
           const next = scaleFromDistance(radius)
           setPose((current) => ({ ...current, radius }))
@@ -776,13 +1131,15 @@ export function App() {
           setPose(next)
           writeExplorationState({
             scale,
-            geographicAnchor: defaultAnchor(activeTopic),
+            geographicAnchor: focusedMapAnchor.current ?? defaultAnchor(activeTopic),
             selectedTopicId: activeTopic,
             pose: next,
           })
         }}
-      />
-      <div className="field-wash" aria-hidden="true" />
+      />}
+      <TabDock tabs={tabs} fullWidth={fullWidth} visible={panel.isVisible} />
+      {!fieldLabOpen && <div className="field-wash" aria-hidden="true" />}
+      {fieldLabOpen && <FieldLab onClose={() => setFieldLabOpen(false)} reducedMotion={reduceMotion} />}
 
       <header className="topbar">
         <button
@@ -803,17 +1160,47 @@ export function App() {
             <LockKeyhole size={13} />
             Personal field stays on this device
           </div>
+          {import.meta.env.DEV && (
+            <button
+              type="button"
+              className="bookmark-library-button"
+              aria-pressed={fieldLabOpen}
+              onClick={() => setFieldLabOpen((open) => !open)}
+            >
+              {fieldLabOpen ? 'Close field lab' : 'Field lab'}
+            </button>
+          )}
           <button type="button" className="bookmark-library-button" onClick={showLibrary}>
-            <Library size={14} />
-            Saved
+            <MapPin size={14} />
+            My map
             {bookmarks.length > 0 && <span>{bookmarks.length}</span>}
           </button>
         </div>
       </header>
 
-      <section className="exploration-context" aria-labelledby="field-title">
+      {pinEditor && (
+        <PinEditor
+          initial={pinEditor.initial}
+          locations={pinLocationOptions}
+          onCancel={() => finishPinEditor(pinEditor.restoreBrowser, pinEditor.restoreFullWidth)}
+          onSave={savePin}
+        />
+      )}
+
+
+      {!fieldLabOpen && <section className="exploration-context" aria-labelledby="field-title">
         <p className="sr-only" role="status">
-          {scaleLabel(scale)}. {activeTopic}. Synthetic frequency membrane, not public activity.
+          {scaleLabel(scale)}. {visibleTopicLabel}. {designPreview
+            ? 'Design preview. Synthetic frequency membrane, not public activity.'
+            : sourceMode === 'personal'
+            ? `Personal field. ${personalActivity.visits.length} eligible completed visits this session; ${unplacedPersonalVisitCount(personalActivity)} unplaced.`
+            : sourceMode === 'public'
+            ? `Public source measurements${selectedTopic?.measurements.length ? `: ${selectedTopic.measurements.join(', ')}.` : '.'}`
+            : sourceMode === 'mixed'
+              ? 'Mixed public and synthetic field.'
+              : sourceMode === 'prototype'
+                ? 'No eligible public source field is available.'
+                : 'No personal visits have been recorded in this session.'}
         </p>
         <div className="spatial-path" role="navigation" aria-label="Field scale">
           <button type="button" className={scale === 'earth' ? 'current' : ''} aria-current={scale === 'earth' ? 'true' : undefined} onClick={showEarth}>
@@ -842,38 +1229,144 @@ export function App() {
             type="button"
             className={scale === 'topic' ? 'current' : ''}
             aria-current={scale === 'topic' ? 'true' : undefined}
-            onClick={() => rememberTopic(activeTopic)}
+            onClick={() => rememberScale('topic', scaleDistance.topic, activeTopic)}
           >
-            {activeTopic}
+            {visibleTopicLabel}
           </button>
         </div>
-        <h1 id="field-title">{activeTopic}</h1>
-        <p>
-          A quiet field of relationships. Move through it, or go directly to any
-          place on the web.
-        </p>
-        {scale === 'topic' && (syntheticTopicGraph[activeTopic]?.length ?? 0) > 0 && (
+        <h1 id="field-title">{visibleTopicLabel}</h1>
+        <p>{topicModeDescription} Move through the field, or go directly to any place on the web.</p>
+        {designPreview && scale === 'topic' && (syntheticTopicGraph[visibleTopicLabel]?.length ?? 0) > 0 && (
           <div className="related-topics">
             <span>Related · synthetic</span>
-            {syntheticTopicGraph[activeTopic]?.map((topic) => (
-              <button key={topic} type="button" onClick={() => rememberTopic(topic)}>
+            {syntheticTopicGraph[visibleTopicLabel]?.map((topic) => (
+              <button key={topic} type="button" onClick={() => designPreview ? setPreviewTopic(topic) : rememberTopic(topic)}>
                 {topic}
               </button>
             ))}
           </div>
         )}
-      </section>
+      </section>}
 
-      <aside className="coverage-note">
+      {!fieldLabOpen && <aside className="coverage-note">
         <span className="coverage-pulse" aria-hidden="true" />
         <div>
-          <strong>{publicSnapshot ? 'Public field' : 'Visual prototype'}</strong>
-          <span>{fieldNote}</span>
+          <strong>{designPreview ? 'Design preview · synthetic' : sourceMode === 'personal' ? 'Personal field · this session only' : sourceMode === 'public' || sourceMode === 'mixed' ? 'Public source field' : 'Public field unavailable'}</strong>
+          <span>{fieldProvenanceNote}</span>
         </div>
-      </aside>
-      {publicSnapshot && (
-        <ul className="field-sources" aria-label="Original sources">
-          {publicSnapshot.sources.slice(0, 6).map((source) => (
+        <div className="field-preview-controls">
+          <div className="field-mode-switch" role="group" aria-label="Field activity source">
+            <button className="field-preview-toggle" type="button" aria-pressed={fieldView === 'personal'} onClick={() => { setDesignPreview(false); setFieldView('personal') }}>Personal visits</button>
+            <button className="field-preview-toggle" type="button" aria-pressed={fieldView === 'public'} onClick={() => { setDesignPreview(false); setFieldView('public') }}>Public sources</button>
+          </div>
+          {!designPreview && fieldView === 'personal' && (
+            <label className="field-preview-control personal-context-picker">
+              <span>Topic location · {currentPersonalTopic}</span>
+              <select
+                value={selectedTopicLocation?.id ?? ''}
+                onChange={(event) => {
+                  const selected = topicLocationOptions.find((location) => location.id === event.currentTarget.value) ?? null
+                  const topicId = selected?.topicId ?? currentPersonalTopic
+                  if (selected?.topicId) {
+                    setResearchTopic(selected.topicId)
+                  }
+                  setTopicLocations((current) => {
+                    const next = { ...current }
+                    if (!selected) delete next[currentPersonalTopic]
+                    else next[topicId] = selected
+                    return next
+                  })
+                }}
+              >
+                <option value="">No topic destination selected</option>
+                {topicLocationOptions.map((location) => <option key={location.id} value={location.id}>{location.label}</option>)}
+              </select>
+              <small title="Swells use a 1,200 km display footprint; this is not measured geographic spread.">Signals are placed at the topic destination, never the visitor’s location.</small>
+              <small>Roman Colosseum is a curated destination. Selecting it tags future visits “Roman Colosseum.”</small>
+            </label>
+          )}
+          {!designPreview && fieldView === 'personal' && (
+            <button className="field-preview-toggle" type="button" onClick={clearPersonalActivity} disabled={personalActivity.visits.length === 0}>
+              Clear this session
+            </button>
+          )}
+          {!designPreview && fieldView === 'personal' && (
+            <details className="topic-traffic-inspector">
+              <summary>Topic traffic</summary>
+              {!selectedTopicLocation || !topicTraffic ? (
+                <p>Select a topic destination to inspect its local activity.</p>
+              ) : (
+                <>
+                  <p><strong>{topicTraffic.current.totalVisits}</strong> eligible visits in the last 24 hours for {currentPersonalTopic}.</p>
+                  <p>Visitor-country breakdown: unavailable. Origin countries are not collected.</p>
+                  <p>{topicTraffic.current.unknownOriginVisits} visits have unknown country origin.</p>
+                  <p>{topicTraffic.spike.status === 'no-baseline' ? 'No earlier comparison window is available.' : topicTraffic.spike.status === 'insufficient-baseline' ? 'Not enough session history for a comparison.' : `Session visit rate: ${topicTraffic.spike.status}.`}</p>
+                </>
+              )}
+            </details>
+          )}
+        </div>
+        {import.meta.env.DEV && (
+          <div className="field-preview-controls">
+            <button className="field-preview-toggle" type="button" aria-pressed={designPreview} onClick={toggleDesignPreview}>
+            {designPreview ? (fieldView === 'personal' ? 'Personal visits' : publicSnapshot ? 'Public sources' : 'Observed field') : 'Design preview'}
+            </button>
+            {designPreview && (
+              <div className="field-preview-sliders">
+                <label className="field-preview-control">
+                  <span>Synthetic intensity</span>
+                  <input className="field-preview-slider" type="range" min="0.25" max="1.5" step="0.05" value={previewIntensity} onChange={(event) => setPreviewIntensity(Number(event.currentTarget.value))} />
+                </label>
+                <label className="field-preview-control">
+                  <span>Synthetic radius scale</span>
+                  <input className="field-preview-slider" type="range" min="0.5" max="1.5" step="0.05" value={previewRadiusScale} onChange={(event) => setPreviewRadiusScale(Number(event.currentTarget.value))} />
+                </label>
+              </div>
+            )}
+            {designPreview && (
+              <details className="topic-traffic-inspector">
+                <summary>Synthetic traffic example · Roman Colosseum</summary>
+                {(() => {
+                  const originName = (countryCode: string | null): string => countryCode === 'BO'
+                    ? 'Bolivia'
+                    : countryCode === 'IT'
+                      ? 'Italy'
+                      : countryCode === null ? 'Unknown' : countryCode
+                  return (
+                    <div className="topic-traffic-demo">
+                      <p>Synthetic example only · not observed traffic.</p>
+                      <table>
+                        <thead><tr><th>Origin</th><th>Current 24h share</th><th>Previous 24h rate</th><th>Change</th></tr></thead>
+                        <tbody>{topicTrafficDemoResult.countryTrends.map((row) => (
+                          <tr key={row.countryCode ?? 'unknown'}>
+                            <th scope="row">{originName(row.countryCode)}</th>
+                            <td>{row.currentPercent.toFixed(0)}% · {row.currentVisits}</td>
+                            <td>{row.baselineRatePerHour.toFixed(2)}/h</td>
+                            <td>{row.ratio === null ? '—' : `${row.ratio.toFixed(1)}×`}</td>
+                          </tr>
+                        ))}</tbody>
+                      </table>
+                    </div>
+                  )
+                })()}
+              </details>
+            )}
+            {designPreview && (
+              <details className="field-preview-diagnostics" onToggle={(event) => {
+                const open = event.currentTarget.open
+                setDiagnosticsOpen(open)
+                if (!open) setOrganicMetrics(null)
+              }}>
+                <summary>Render diagnostics</summary>
+                <pre>{organicMetrics ? JSON.stringify({ fps: organicMetrics.fps, frameMs: organicMetrics.frameMs, drawCalls: organicMetrics.drawCalls, triangles: organicMetrics.triangles, gpuTimeMs: organicMetrics.gpuTimeMs, gpuTiming: organicMetrics.gpuTiming }, null, 2) : 'Waiting for renderer metrics…'}</pre>
+              </details>
+            )}
+          </div>
+        )}
+      </aside>}
+      {!fieldLabOpen && fieldView === 'public' && !designPreview && selectedTopicSources.some((source) => source.kind === 'public-record') && (
+        <ul className="field-sources" aria-label="Public source records">
+          {selectedTopicSources.filter((source) => source.kind === 'public-record').slice(0, 6).map((source) => (
             <li key={source.id}>
               <button
                 type="button"
@@ -895,7 +1388,7 @@ export function App() {
               <span>Private library</span>
               <h2 id="bookmark-heading">
                 {libraryTab === 'locations'
-                  ? 'Saved locations'
+                  ? 'My map'
                   : libraryTab === 'collections'
                     ? 'Collections'
                     : libraryTab === 'absorbed'
@@ -995,8 +1488,22 @@ export function App() {
                       >
                         <strong>{bookmark.title}</strong>
                         <span>{originLabel(bookmark.url)}</span>
-                        <small>Saved from {bookmark.topic}</small>
+                        <small>Topic · {bookmark.topic}</small>
                       </button>
+                      <div className="bookmark-pin-actions">
+                        <span>{bookmark.fieldAnchor ? `Map pin · ${bookmark.fieldAnchor.label}` : 'Conceptual pin · no geographic location'}</span>
+                        {bookmark.fieldAnchor && (
+                          <button type="button" onClick={() => showPinOnGlobe(bookmark)}>Show on globe</button>
+                        )}
+                        <button type="button" onClick={() => openPinEditor(bookmark)}>Edit pin</button>
+                      </div>
+                      {selectedPinUrl === bookmark.url && (
+                        <div className="bookmark-pin-detail" role="status">
+                          <strong>{bookmark.title}</strong>
+                          <span>{bookmark.fieldAnchor ? `${bookmark.fieldAnchor.label} · ${bookmark.fieldAnchor.lat.toFixed(4)}, ${bookmark.fieldAnchor.lon.toFixed(4)}` : 'This page is saved without a geographic claim.'}</span>
+                          {bookmark.note && <small>{bookmark.note}</small>}
+                        </div>
+                      )}
                       <label className="bookmark-note">
                         <span className="sr-only">Private note for {bookmark.title}</span>
                         <input
@@ -1198,23 +1705,31 @@ export function App() {
         </aside>
       )}
 
-      <section className="accessible-signals" aria-label="Field topics">
-        {(['Open knowledge', 'Local archives', 'Civic memory', 'Open research'] as const).map(
-          (topic) => (
+      {!fieldLabOpen && <section className="accessible-signals" aria-label="Field topics">
+        {menuTopics.map((topic) => (
             <button
-              key={topic}
+              key={topic.id}
               type="button"
-              aria-pressed={activeTopic === topic}
-              onClick={() => rememberTopic(topic)}
+              aria-pressed={designPreview
+                ? previewTopic === topic.label
+                : fieldView === 'personal'
+                  ? (researchTopic ?? 'General browsing') === topic.id
+                  : selectedTopicId === topic.id}
+              onClick={() => designPreview ? setPreviewTopic(topic.label) : rememberTopic(topic.label)}
             >
-              <span>{topic}</span>
-              <small>Synthetic topic</small>
+              <span>{topic.label}</span>
+              <small>{fieldView === 'personal' && !designPreview
+                ? 'Session topic for completed page activity'
+                : topic.kind === 'public'
+                ? topic.measurements.join(' · ') || 'Public source topic'
+                : topic.kind === 'mixed'
+                  ? 'Public and synthetic sources'
+                  : 'Synthetic topic'}</small>
             </button>
-          ),
-        )}
-      </section>
+        ))}
+      </section>}
 
-      {panel.isVisible && (
+      {panel.isVisible && !pinEditor && (
         <section className={`browser-panel${fullWidth ? ' full-width' : ''}`} aria-label="Web browser">
           <div className="browser-chrome">
             <div className="browser-controls">
@@ -1312,6 +1827,15 @@ export function App() {
               <button
                 type="button"
                 className={isBookmarked ? 'selected' : ''}
+                aria-label={isBookmarked ? 'Edit current page pin' : 'Pin current page to My map'}
+                aria-pressed={isBookmarked}
+                onClick={() => openPinEditor()}
+              >
+                <MapPin size={15} />
+              </button>
+              <button
+                type="button"
+                className={isBookmarked ? 'selected' : ''}
                 aria-label={isBookmarked ? 'Remove bookmark' : 'Bookmark page'}
                 aria-pressed={isBookmarked}
                 onClick={toggleBookmark}
@@ -1333,7 +1857,7 @@ export function App() {
                 aria-label={fullWidth ? 'Exit full width' : 'Full width'}
                 aria-pressed={fullWidth}
                 className={fullWidth ? 'selected' : ''}
-                onClick={() => setFullWidth((current) => !current)}
+                onClick={() => setBrowserFullWidth(!fullWidth)}
               >
                 {fullWidth ? <Shrink size={15} /> : <Expand size={15} />}
               </button>
@@ -1342,7 +1866,7 @@ export function App() {
                 aria-label="Close screen"
                 onClick={() => {
                   closeFind()
-                  setFullWidth(false)
+                  setBrowserFullWidth(false)
                   void window.intoponet.browserHost.close()
                 }}
               >
@@ -1508,53 +2032,16 @@ export function App() {
             )}
           </div>
         )}
-        <form className="command-launcher" onSubmit={submit}>
-          <div className="mode-switcher" aria-label="Command type">
-            <button
-              type="button"
-              className={mode === 'topic' ? 'active' : ''}
-              onClick={() => setMode('topic')}
-            >
-              <Compass size={15} /> Explore
-            </button>
-            <button
-              type="button"
-              className={mode === 'search' ? 'active' : ''}
-              onClick={() => setMode('search')}
-            >
-              <Search size={15} /> Search
-            </button>
-            <button
-              type="button"
-              className={mode === 'url' ? 'active' : ''}
-              onClick={() => setMode('url')}
-            >
-              <Globe2 size={15} /> URL
-            </button>
-          </div>
+        <form className="command-launcher unified-launcher" onSubmit={submit}>
           <label className="command-input">
-            <span className="sr-only">
-              {mode === 'topic' ? 'Explore a topic' : mode === 'search' ? 'Search the web' : 'Open a URL'}
-            </span>
+            <span className="sr-only">Search, explore a topic, or enter a web address</span>
             <input
               ref={input}
               value={query}
-              onFocus={() => {
-                launcherFocused.current = true
-              }}
-              onBlur={() => {
-                launcherFocused.current = false
-              }}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder={
-                mode === 'topic'
-                  ? 'Explore a subject'
-                  : mode === 'search'
-                    ? 'Search the web'
-                    : 'Enter a web address'
-              }
+              placeholder="Search, explore a topic, or enter a web address"
               autoComplete="off"
-              spellCheck={mode !== 'url'}
+              spellCheck
             />
           </label>
           <button className="go-button" type="submit" aria-label="Go">
@@ -1562,7 +2049,6 @@ export function App() {
           </button>
         </form>
         <span className="shortcut-hint">
-          {inferredKind !== mode ? 'Looks like a web address · ' : ''}
           ⌘L  ⌘F  ⌃⇥  [ ]
         </span>
       </div>
@@ -1584,11 +2070,16 @@ export function App() {
           </button>
         </div>
       )}
+      {libraryReadError && (
+        <div className="error-message" role="alert">
+          {libraryReadError}
+        </div>
+      )}
 
-      <div className="scale-indicator" aria-hidden="true">
+      {!fieldLabOpen && <div className="scale-indicator" aria-hidden="true">
         <span />
         <small>{scaleLabel(scale)}</small>
-      </div>
+      </div>}
     </main>
   )
 }

@@ -28,9 +28,11 @@ export function latLonToRender(latDeg: number, lonDeg: number): Vec3 {
   const lon = degToRad(lonDeg)
   const cosLat = Math.cos(lat)
   return {
-    x: cosLat * Math.sin(lon),
+    // Matches SphereGeometry's UVs with the standard equirectangular map:
+    // longitude 0 is centered on the texture and faces +X; -90 faces +Z.
+    x: cosLat * Math.cos(lon),
     y: Math.sin(lat),
-    z: -cosLat * Math.cos(lon),
+    z: -cosLat * Math.sin(lon),
   }
 }
 
@@ -61,6 +63,16 @@ export function normalize(value: Vec3): Vec3 {
   const magnitude = length(value)
   if (magnitude === 0) return { x: 0, y: 0, z: 0 }
   return { x: value.x / magnitude, y: value.y / magnitude, z: value.z / magnitude }
+}
+
+/** Stable orthonormal tangent frame for finite differences on any sphere axis. */
+export function stableTangentBasis(direction: Vec3): { tangent: Vec3; bitangent: Vec3 } {
+  const unit = normalize(direction)
+  const normal = length(unit) > 0 ? unit : { x: 0, y: 1, z: 0 }
+  const reference = Math.abs(normal.y) < 0.9 ? { x: 0, y: 1, z: 0 } : { x: 1, y: 0, z: 0 }
+  const tangent = normalize(cross(reference, normal))
+  const bitangent = normalize(cross(normal, tangent))
+  return { tangent, bitangent }
 }
 
 export function angleBetween(a: Vec3, b: Vec3): number {

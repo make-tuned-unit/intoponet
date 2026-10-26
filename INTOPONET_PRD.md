@@ -90,6 +90,7 @@ Resources may have physical coordinates, conceptual associations, both, or neith
 - **WEB-007:** Standard back, forward, reload, find, copy/paste, downloads, print, permissions, and keyboard shortcuts.
 - **WEB-008:** Direct navigation must be fast; users must never have to travel through the field to pay a bill or access a specific URL.
 - **WEB-009:** Define policy for pop-ups, external protocol handlers, password management, autofill, media DRM, extensions, downloads, and site isolation before public beta.
+- **WEB-010:** Browser page chrome provides a visible, keyboard-accessible pin action in both panel and full-width Focus mode. Pinning a page creates or edits a private Bookmark; it does not publish a signal or absorb page content.
 
 ### 4.4 Footprints, bookmarks, collections
 
@@ -99,6 +100,10 @@ Resources may have physical coordinates, conceptual associations, both, or neith
 - **MEM-004:** Collections group related visits/bookmarks/absorbed sources locally, with explanation of relationships.
 - **MEM-005:** Users can rename, merge, split, pin, move, export and delete collections.
 - **MEM-006:** Personal field overlays do not change the shared public field.
+- **MEM-007:** A user can pin the current browser resource into their personal world view, assign one or more user-selected topics/tags, and optionally attach a real geographic anchor. Anchors must come from a place the user selects or an explicitly placed map point; never use visitor/device location implicitly or invent coordinates for conceptual topics or unlocated resources.
+- **MEM-008:** Users can edit or unpin a saved resource, revisit its original page, and show/hide its marker on their personal map. A pin is a local bookmark overlay, not public-field activity.
+- **MEM-009:** Browser pinning and map markers are private and stored locally. They remain distinct from Footprints, Absorb, and Beacons: pinning does not create visit history, index page content, or transmit a public recommendation.
+- **MEM-010:** The pin workflow and personal markers are usable with keyboard and assistive technology. Native browser content, origin/security indicators, permission prompts and page controls must remain accessible and not be obscured by the pin control or map overlay.
 
 ### 4.5 Absorb and Laya
 
@@ -391,6 +396,7 @@ Never transform an `analogous_to` or `preceded_by` edge into a causal claim with
 
 - All private history and Laya data have user-configurable retention and one-click deletion.
 - Export resources, notes, bookmarks, collection membership, graph nodes/edges and citations in documented portable JSON/JSON-LD or compatible formats.
+- Bookmark export includes the selected topic/tag associations and optional anchor coordinates plus anchor provenance/type (user-selected place or user-placed point). Version the added fields and preserve import of existing records whose `field_anchor_json` is null or uses the earlier format; migrations must not assign inferred coordinates.
 - No mandatory account or cloud synchronization.
 - If device-to-device sync is ever added, it must be explicitly opted in, end-to-end encrypted with user-held keys, and reviewed against the strict “personal data never off device” requirement. Under the current requirement, **do not implement sync that transfers personal data to another device** without revisiting that product decision.
 - Device backups are controlled by OS settings; provide warnings and options for excluding local knowledge stores from cloud backups where feasible.
@@ -484,6 +490,8 @@ Build equivalent CEF and Electron prototypes: a real HTTPS page animated above a
 
 Full-screen synthetic field explicitly marked demo, liquid-glass controls, command launcher, URL navigation, Chromium panels, local state persistence, bookmark flag, keyboard shortcuts and accessible alternative. **Gate:** browse an arbitrary HTTPS website, use forms, close/restore panel and return to original field state.
 
+**Personal world pin status: PARTIAL — pending verification.** The browser pin/bookmark workflow is not considered complete until the browser action works in panel and full-width modes, private records round-trip through persistence and backward-compatible export/import, and the selected marker is visibly shown/hidden and revisited on the personal map. The first implementation supports one topic tag, a note, and an optional known or manually entered geographic anchor. Native checks verified the browser pin editor, save and page restoration, My map listing, Show on globe camera focus and a violet marker, editing a geographic pin into a conceptual pin, and deleting the temporary test record. Persistence tests verify legacy compatibility, coordinate validation and anchor round-trips. Multiple tags, marker filtering/hiding, and full-width/focus restoration acceptance remain pending; this checkpoint is not full PRD acceptance.
+
 ### Phase 2 — Real-world field (6–10 additional weeks, estimate)
 
 Limited licensed/open sources, versioned public snapshots, Earth-to-local exploration, explainable activity metrics, coverage confidence and original-source panels. **Gate:** real attributable source updates drive a region's field; simulated data is never misrepresented.
@@ -554,6 +562,7 @@ Measure opt-in study outcomes: time to useful original source, direct URL task c
 | P1-03 | P0 | Command launcher | Direct URL and explore-topic modes |
 | P1-04 | P0 | Animated website panel | Open, resize, focus, close, restore |
 | P1-05 | P1 | Local bookmark store | Saved field token and deletion |
+| P1-06 | P1 | Browser page to personal-world pin | Pin action in panel and full-width chrome; select topic/tag and optional explicitly sourced geographic anchor; save/edit/unpin/revisit; show/hide the local marker on the map; backward-compatible export/import; keyboard and native-content occlusion checks. **Status: partial, pending verification.** |
 | P2-01 | P0 | Source registry and provenance | Every field source attributable |
 | P2-02 | P0 | Public snapshot schema | Versioned reproducible field input |
 | P2-03 | P1 | Globe/local camera transitions | Context-preserving semantic zoom |

@@ -19,6 +19,25 @@ Results are written to `results/latest.json` and a timestamped file. Generated
 results are intentionally ignored by Git until the run hardware and conditions
 have been reviewed and the evidence is ready to publish.
 
+The runner reads `../compositor-benchmark/contract.json` for the shared window
+geometry and timing. Each capture records that contract plus SHA-256 hashes of
+the workload page and media asset. The CEF build embeds the same contract and
+hashes when it is built.
+
+After one fresh run from each candidate, check that the captures are truly
+matched and print a neutral comparison:
+
+```sh
+python3 experiments/compositor-benchmark/compare.py \
+  experiments/electron-compositor/results/latest.json \
+  experiments/cef-compositor/results/latest.json
+```
+
+The check fails if either result came from a different contract, workload or
+asset, or if Chromium/runtime platform/display metadata does not match. It
+reports video readiness and errors as observations; a failure is still valid
+evidence and does not make a result incomparable by itself.
+
 ## What the first runner measures
 
 - requestAnimationFrame average, p95 and p99 timing in the website renderer

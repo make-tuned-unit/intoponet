@@ -1,0 +1,54 @@
+{
+  "formatVersion": 1,
+  "dataset": "GeoNames place catalog",
+  "snapshotDate": "2026-10-23",
+  "sourceScope": "allCountries-populated-features",
+  "coverageNote": "Populated feature (P) records in this GeoNames snapshot; not a guarantee of all real-world settlements or service coverage.",
+  "sourceFiles": {
+    "countries": {
+      "file": "countryInfo.txt",
+      "sha256": "c55f638cfaafb4fe45a9aa15120a0f1f78e8a34a8e1847d7b9320cf740fbc9ab"
+    },
+    "admin1": {
+      "file": "admin1CodesASCII.txt",
+      "sha256": "55153d45d5347e658eed69c1064563e929c6e199d51ed0649a61d2e629711d44"
+    },
+    "admin2": {
+      "file": "admin2Codes.txt",
+      "sha256": "c412444c5bedaa0372a5227eddd096daa72467de9273bf1d1be3cdfc53e43a3d"
+    },
+    "places": {
+      "file": "allCountries.txt",
+      "sha256": "d17e21de863ebf25b932a8aad1f172349ffc42c28db8551dccc2e15b406a3b3e"
+    }
+  },
+  "counts": {
+    "countries": 252,
+    "admin1": 3865,
+    "admin2": 47642,
+    "populatedPlaces": 5232029
+  },
+  "output": {
+    "file": "places.ndjson",
+    "sha256": "16bfa8698f600c7c7a4d2fd283b58859c80a3d118211494a985a7ce30f12c751"
+  },
+  "license": "CC-BY-4.0",
+  "attribution": "GeoNames (https://www.geonames.org/)",
+  "generatedAt": "2026-10-24T00:52:27.108Z",
+  "verification": {
+    "reviewer": "project planning agent",
+    "scope": "Full GeoNames allCountries feature-class P extract, not guaranteed all real-world settlements",
+    "streamedCounts": {
+      "country": 252,
+      "admin1": 3865,
+      "admin2": 47642,
+      "populated-place": 5232029
+    },
+    "populatedCountryCodes": 248,
+    "danglingParents": 0,
+    "populatedWithoutParent": 0,
+    "outputHashVerified": true,
+    "sourceLastModified": "2026-10-23T01:55:51Z",
+    "runtimeIntegration": "not yet wired; catalog in temporary review directory"
+  }
+}

@@ -27,6 +27,12 @@ The resulting sandboxed app is:
 
 `/Volumes/PermagentBuilds/IntoponetCEF/build/Release/minimal.app`
 
+The build reads `experiments/compositor-benchmark/contract.json`, generates a
+header for the native comparator, and embeds the same scenario contract and
+SHA-256 hashes of the workload page and declared media assets in each result.
+The native window bounds and waits use those generated values. Rebuild after
+changing the contract, workload, or assets.
+
 The sandboxed native-child compositor now builds and emits
 `engine-compositor-result-v1`. Five cold runs are summarized in `BASELINE.md`.
 This is compositor evidence, not an engine decision. Higher-refresh, IME,
@@ -64,3 +70,15 @@ performs poorly.
 
 The comparator is not considered implemented until it builds and runs locally.
 This file prevents an unverified scaffold from being counted as CEF evidence.
+
+Compare fresh captures with the shared checker:
+
+```sh
+python3 experiments/compositor-benchmark/compare.py \
+  experiments/electron-compositor/results/latest.json \
+  experiments/cef-compositor/results/latest.json
+```
+
+The checker rejects differing scenario contracts, workload or asset hashes,
+Chromium versions, platforms, or captured display/hardware metadata. It reports
+video success or failure without treating either outcome as an engine decision.

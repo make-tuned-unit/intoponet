@@ -1,0 +1,836 @@
+{
+  "schema": "intoponet.execution-dag.v1",
+  "updated": "2026-10-24",
+  "statusMeaning": {
+    "verified": "Acceptance evidence reviewed by the planning agent; unlocks dependents",
+    "active": "Assigned to a worker; does not unlock dependents",
+    "planned": "May be assigned when all dependencies are verified",
+    "blocked": "External decision, evidence, licence, or permission is missing"
+  },
+  "nodes": [
+    {
+      "id": "BASE",
+      "title": "Repository baseline",
+      "deps": [],
+      "status": "verified",
+      "owner": "planner",
+      "accept": "npm run typecheck, npm test, and npm run build pass on the current checkout",
+      "evidence": "2026-10-23: 38 unit tests, all workspace typechecks, and Electron production build passed"
+    },
+    {
+      "id": "LIBRARY_RECOVERY",
+      "title": "Preserve sealed library on key or decrypt failure",
+      "deps": [
+        "BASE"
+      ],
+      "status": "verified",
+      "owner": "cheap-worker",
+      "accept": "An unreadable existing seal produces a visible error and cannot be overwritten by empty autosave; regression test covers the failure",
+      "evidence": "2026-10-23: planner reviewed typed read failures, invalid-payload stop, atomic re-encryption and confirmed-delete path; desktop regression tests and full typecheck/test/build passed"
+    },
+    {
+      "id": "PROTECTION_CONTEXT",
+      "title": "Scope request blocking and counters to the originating tab",
+      "deps": [
+        "BASE"
+      ],
+      "status": "verified",
+      "owner": "cheap-worker",
+      "accept": "Request context is derived from the originating WebContents; two-tab origin, exception, navigation timing and counter behavior pass focused tests",
+      "evidence": "2026-10-23: planner reviewed main/index.ts request routing and pending-navigation store; protection-engine tests cover two tabs, early subresources, redirects, failures and cleanup; full typecheck/test/build passed. Native integration is a separate node"
+    },
+    {
+      "id": "PROTECTION_NATIVE",
+      "title": "Verify per-tab protection in real Chromium",
+      "deps": [
+        "PROTECTION_CONTEXT"
+      ],
+      "status": "verified",
+      "owner": "cheap-worker",
+      "accept": "Real Electron WebContentsViews share a session but retain independent site exceptions and counters; blocked fixture requests do not reach the server; early loads are attributed correctly",
+      "evidence": "2026-10-23: planner reviewed experiments/protection-native/probe.ts and evidence.json. Electron 45 native probe passed with site A allowed 2 fixture scripts and protected site B blocked both before the server; counters 0/0 and 1/1. Edge cases are a separate node"
+    },
+    {
+      "id": "PROTECTION_EDGE_COVERAGE",
+      "title": "Probe request interception edge cases",
+      "deps": [
+        "PROTECTION_NATIVE"
+      ],
+      "status": "planned",
+      "owner": "cheap-worker",
+      "accept": "Native tests cover redirects, failed navigation, service workers and requests without a WebContents ID; unsupported interception is documented and bounded in protection claims",
+      "evidence": "Current native probe covers two tabs and early resources only"
+    },
+    {
+      "id": "PUBLIC_BOUNDARY",
+      "title": "Document public-field network boundary",
+      "deps": [
+        "BASE"
+      ],
+      "status": "verified",
+      "owner": "cheap-worker",
+      "accept": "Threat model names actual Wikipedia/Wikimedia and USGS egress, cache, stale/failure behavior, and separation from private library; code references are checked",
+      "evidence": "2026-10-23: planner compared docs/architecture/threat-model.md with apps/desktop/src/main/public-field.ts, main/index.ts, and field-snapshot adapters; documented endpoints, cache, fallback, private separation and remaining risks"
+    },
+    {
+      "id": "G0_HARNESS",
+      "title": "Automate repeatable compositor scenarios and result capture",
+      "deps": [
+        "BASE"
+      ],
+      "status": "verified",
+      "owner": "cheap-worker",
+      "accept": "Shared versioned scenario contract and asset hashes are wired into both candidate runners; a comparison command rejects mismatched synthetic result pairs",
+      "evidence": "2026-10-23: planner reviewed shared contract, CEF header generation, Electron wiring and compare.py; Python/Node syntax and synthetic matched/mismatched comparison checked. CEF rebuild blocked by read-only external volume and remains G0_BENCH work"
+    },
+    {
+      "id": "G0_BENCH",
+      "title": "Complete matched Electron and CEF compositor matrix",
+      "deps": [
+        "G0_HARNESS"
+      ],
+      "status": "blocked",
+      "owner": "planner",
+      "accept": "Both engines have recorded 60/120 Hz, IME, VoiceOver, video, WebGL, forms, resize, permissions, crash, memory, battery and packaging evidence on stated hardware",
+      "evidence": "Current 30 Hz baselines: experiments/*/BASELINE.md. Requires verified 60/120 Hz display, hands-on IME/VoiceOver and complete CEF media/packaging runs"
+    },
+    {
+      "id": "G0_SECURITY",
+      "title": "Inventory browser host security and policy gaps",
+      "deps": [
+        "BASE"
+      ],
+      "status": "verified",
+      "owner": "cheap-worker",
+      "accept": "ADR-007 inventories implemented, untested and decision-required browser policy for both candidates without claiming security approval",
+      "evidence": "2026-10-23: planner reviewed docs/architecture/ADR-007-browser-policy.md against Electron host and compositor evidence; no security test or policy approval is inferred"
+    },
+    {
+      "id": "G0_SECURITY_TESTS",
+      "title": "Exercise matched browser security and capability scenarios",
+      "deps": [
+        "G0_SECURITY"
+      ],
+      "status": "blocked",
+      "owner": "planner",
+      "accept": "Both candidates have recorded packaged sandbox/site-isolation, cert, popup, permission, download, protocol, WebRTC, credential/passkey, update and crash results; ADR-007 decisions are signed off",
+      "evidence": "CEF browser policy host and matched security harness are not yet built; updater/CVE owner and policy decisions remain open"
+    },
+    {
+      "id": "G0",
+      "title": "ADR-001 and ADR-002 engine decision",
+      "deps": [
+        "G0_BENCH",
+        "G0_SECURITY_TESTS"
+      ],
+      "status": "planned",
+      "owner": "planner",
+      "accept": "Maintainers publish a measured engine and rendering strategy decision with rejected alternatives, limitations and security signoff",
+      "evidence": "ADR-001 remains proposed"
+    },
+    {
+      "id": "SHELL",
+      "title": "Complete browser shell behavior on selected host",
+      "deps": [
+        "G0",
+        "LIBRARY_RECOVERY"
+      ],
+      "status": "planned",
+      "owner": "cheap-worker",
+      "accept": "Direct URL, search, forms, tabs/windows, origin, navigation, downloads, print, permissions, crash restore and context persistence work in native journeys",
+      "evidence": "Electron prototype implements part of this provisionally"
+    },
+    {
+      "id": "FIELD_VISUAL_QA",
+      "title": "Make the membrane legible against Earth",
+      "deps": [
+        "FIELD_SYNTHETIC_GATE"
+      ],
+      "status": "planned",
+      "owner": "cheap-worker",
+      "accept": "Captured planet/region/city views visibly show a separate, bounded, gently moving membrane and geographically anchored corridors without obscuring continents; reduced motion and contrast remain usable",
+      "evidence": "2026-10-23: corrected GPU uCount=0 and phase-frozen coverage visibility; deterministic probe and isolated reduced-motion captures in experiments/field-visual-qa. Captures now show a circular blob/patch, so Earth spec visual acceptance remains open; user-shared reference redirects to login here Written v1.1 specification now supplies the visual acceptance target; inaccessible shared chat is no longer a prerequisite.",
+      "specRefs": [
+        {
+          "path": "docs/INTOPONET_LIVING_FREQUENCY_TOPOGRAPHY_SPEC (1).md",
+          "sections": "1, 6, 10–14, 20 A"
+        }
+      ]
+    },
+    {
+      "id": "EARTH",
+      "title": "Validate Earth phases A–F and accessible alternative",
+      "deps": [
+        "G0",
+        "FIELD_VISUAL_QA",
+        "FIELD_TILES"
+      ],
+      "status": "planned",
+      "owner": "cheap-worker",
+      "accept": "Recognizable Earth and bounded membrane; continuous Earth to region to city to topic and exact return; browser frame, keyboard/list alternative, reduced motion and 60 fps evidence Preserve geographic signal identity through interruptible planet/region/city/topic LOD; open actual Chromium glass side panel (mobile bottom sheet when supported), reduce background motion/contrast and restore exact camera/selection on close.",
+      "evidence": "Current Electron renderer has provisional A–F behavior without full native or performance validation",
+      "specRefs": [
+        {
+          "path": "docs/INTOPONET_LIVING_FREQUENCY_TOPOGRAPHY_SPEC (1).md",
+          "sections": "8–11, 15, 19"
+        }
+      ]
+    },
+    {
+      "id": "PROTECTION_RULES",
+      "title": "Licensed native network and cosmetic protection",
+      "deps": [
+        "G0",
+        "PROTECTION_EDGE_COVERAGE"
+      ],
+      "status": "blocked",
+      "owner": "cheap-worker",
+      "accept": "Licence/attribution review precedes list integration; default-on regular/private profiles, authenticated atomic updates/rollback, cosmetics, exceptions, no telemetry, compatibility and performance tests pass",
+      "evidence": "Fixture-only engine exists; filter-list and dependency licence review missing"
+    },
+    {
+      "id": "G1",
+      "title": "V1 browser shell gate",
+      "deps": [
+        "SHELL",
+        "EARTH",
+        "PROTECTION_RULES"
+      ],
+      "status": "planned",
+      "owner": "planner",
+      "accept": "Arbitrary HTTPS form and direct URL pass; field viewpoint restores; native focus, accessibility, security identity, reduced motion and ad/tracker blocking are witnessed",
+      "evidence": "Unit/typecheck/build alone are insufficient"
+    },
+    {
+      "id": "SOURCE_GOVERNANCE",
+      "title": "Public source eligibility, licence and provenance policy",
+      "deps": [
+        "BASE"
+      ],
+      "status": "verified",
+      "owner": "cheap-worker",
+      "accept": "ADR-005 records current endpoints, fields, licence claims needing review, attribution, cadence, coverage, distinct semantics and unresolved governance decisions",
+      "evidence": "2026-10-23: planner reviewed docs/architecture/ADR-005-public-source-governance.md against the current adapters; source-policy references and unresolved rights/semantics are explicit. Approval is a separate node"
+    },
+    {
+      "id": "SOURCE_APPROVAL",
+      "title": "Approve each public source's rights and use",
+      "deps": [
+        "FEED_REGISTRY"
+      ],
+      "status": "blocked",
+      "owner": "planner",
+      "accept": "Record per-source admission decisions with evidence for rights, attribution, access terms, refresh limits and retained fields. Admit eligible news/social feeds individually; unresolved Wikipedia or USGS policy does not block unrelated sources.",
+      "evidence": "2026-10-23: Hinckley & Bosworth metadata pilot admitted by planner with OGL attribution, 30-day product retention and excluded fields; no runtime enabling. Remaining multi-country pilot sources and legacy wiki/USGS component policy unresolved."
+    },
+    {
+      "id": "SIGNAL_SEMANTICS",
+      "title": "Type and separate public source measurements",
+      "deps": [
+        "SOURCE_GOVERNANCE"
+      ],
+      "status": "verified",
+      "owner": "cheap-worker",
+      "accept": "Versioned snapshot retains raw unit, measurement kind, exact source URL/window and provenance; aggregation separates unlike groups; legacy data does not claim unknown raw values",
+      "evidence": "2026-10-23: planner reviewed v2 field-snapshot schema, v1 migration, shared pageview URL builder and grouping tests; 14 field-snapshot tests plus full typecheck/test/build passed. Renderer distinction is a separate node"
+    },
+    {
+      "id": "SIGNAL_PRESENTATION",
+      "title": "Expose distinct measurements in the field UI",
+      "deps": [
+        "SIGNAL_SEMANTICS",
+        "FIELD_DYNAMICS"
+      ],
+      "status": "planned",
+      "owner": "cheap-worker",
+      "accept": "Expose news/public-social publication activity and measured change with time, geography, category and measurement filters, provenance, uncertainty, stale state and non-spatial records. Keep pageviews and physical magnitude separate. Motion reflects temporal data; reduced motion preserves information. Explicitly label observed-public-activity/about-location. Inspector distinguishes observed, low_observed, insufficient and stale states; report last observation/fetch and methodology, never an unsupported LIVE label.",
+      "evidence": "Current renderer still blends all GPU segments into one membrane appearance",
+      "specRefs": [
+        {
+          "path": "docs/INTOPONET_LIVING_FREQUENCY_TOPOGRAPHY_SPEC (1).md",
+          "sections": "2, 7, 15, 17–19"
+        }
+      ]
+    },
+    {
+      "id": "FIELD_PIPELINE",
+      "title": "Reproducible versioned public field pipeline",
+      "deps": [
+        "FEED_REPLAY_QA",
+        "PUBLIC_BOUNDARY",
+        "SOURCE_APPROVAL",
+        "FIELD_SYNTHETIC_GATE"
+      ],
+      "status": "planned",
+      "owner": "cheap-worker",
+      "accept": "Run admitted news and public-social feeds through continuous fetching, deduplication, history and versioned deterministic snapshots; verify attributable live refresh, explicit coverage/staleness and bounded storage with no private input. Publish versioned hierarchical tiles and topic/provenance manifests compatible with FIELD_TILES, including observation windows, normalization/schema versions and freshness. Prove a limited admitted multi-country RSS pilot before global expansion.",
+      "evidence": "Current Wikipedia/USGS adapters and v2 snapshot are prototype scaffolding, not the intended news/social pipeline.",
+      "specRefs": [
+        {
+          "path": "docs/INTOPONET_LIVING_FREQUENCY_TOPOGRAPHY_SPEC (1).md",
+          "sections": "16, 19–20 B"
+        }
+      ]
+    },
+    {
+      "id": "FIELD_EXPERIENCE",
+      "title": "Explainable real source field and filters",
+      "deps": [
+        "G1",
+        "SOURCE_SHADER_PROOF",
+        "SIGNAL_PRESENTATION"
+      ],
+      "status": "planned",
+      "owner": "cheap-worker",
+      "accept": "Region, time, category and measurement filters show original sources, coverage and uncertainty; synthetic/public state is unmistakable; a non-spatial view works",
+      "evidence": "Current renderer has limited live snapshot display",
+      "specRefs": [
+        {
+          "path": "docs/INTOPONET_LIVING_FREQUENCY_TOPOGRAPHY_SPEC (1).md",
+          "sections": "11, 20"
+        }
+      ]
+    },
+    {
+      "id": "G2",
+      "title": "Source-driven discovery gate",
+      "deps": [
+        "FIELD_EXPERIENCE",
+        "FIELD_HARDENING"
+      ],
+      "status": "planned",
+      "owner": "planner",
+      "accept": "Witness repeated news and public-social updates changing the field over time, with source-inspectable geography, independent-source deduplication, decay, coverage and outage indicators; reproduce recorded snapshots and verify no private-data flow.",
+      "evidence": "",
+      "specRefs": [
+        {
+          "path": "docs/INTOPONET_LIVING_FREQUENCY_TOPOGRAPHY_SPEC (1).md",
+          "sections": "20"
+        }
+      ]
+    },
+    {
+      "id": "PRIVATE_STORE",
+      "title": "Encrypted local store and lifecycle",
+      "deps": [
+        "LIBRARY_RECOVERY"
+      ],
+      "status": "planned",
+      "owner": "cheap-worker",
+      "accept": "ADR-004 covers key/backup/recovery; migrated encrypted store supports optional footprints, private mode, inspect, export, delete, retention and offline access",
+      "evidence": "Current safeStorage sealed JSON and basic export/delete are provisional"
+    },
+    {
+      "id": "ABSORB",
+      "title": "Explicit source absorption and provenance",
+      "deps": [
+        "PRIVATE_STORE",
+        "G1"
+      ],
+      "status": "planned",
+      "owner": "cheap-worker",
+      "accept": "User previews scope; allowed content is extracted locally with citation spans and status; sensitive content excluded; inspect, correct, remove and reindex work",
+      "evidence": "Current implementation stores only user-written excerpts"
+    },
+    {
+      "id": "LAYA",
+      "title": "Optional offline semantic retrieval",
+      "deps": [
+        "ABSORB"
+      ],
+      "status": "planned",
+      "owner": "cheap-worker",
+      "accept": "Local embeddings and retrieval cite saved sources; model is optional, hash verified, network isolated, and prompt injection has no privileged effect; browser works with Laya off",
+      "evidence": "Current keyword search has no model or semantic retrieval"
+    },
+    {
+      "id": "G3",
+      "title": "Private knowledge gate",
+      "deps": [
+        "LAYA"
+      ],
+      "status": "planned",
+      "owner": "planner",
+      "accept": "Absorb to cited offline retrieval journey passes with outbound Laya traffic blocked, sensitive exclusion, export/delete and no-model fallback verified",
+      "evidence": ""
+    },
+    {
+      "id": "OLDS_CORPUS",
+      "title": "Curated historical events and typed evidence graph",
+      "deps": [
+        "SOURCE_GOVERNANCE"
+      ],
+      "status": "planned",
+      "owner": "cheap-worker",
+      "accept": "Licensed event/edge corpus records time, relationship type, citation, attribution, confidence and contested interpretations; analogy/sequence never imply cause",
+      "evidence": "Current graph contains synthetic fixtures only"
+    },
+    {
+      "id": "OLDS_UI",
+      "title": "Historical time exploration and original sources",
+      "deps": [
+        "G2",
+        "OLDS_CORPUS"
+      ],
+      "status": "planned",
+      "owner": "cheap-worker",
+      "accept": "Forward/back temporal navigation, competing interpretations and real archive panels are accessible and independently auditable User-controlled historical time is distinct from observation, snapshot-transition and material-phase clocks.",
+      "evidence": "",
+      "specRefs": [
+        {
+          "path": "docs/INTOPONET_LIVING_FREQUENCY_TOPOGRAPHY_SPEC (1).md",
+          "sections": "7, 8, 15"
+        }
+      ]
+    },
+    {
+      "id": "G4",
+      "title": "The Olds gate",
+      "deps": [
+        "OLDS_UI"
+      ],
+      "status": "planned",
+      "owner": "planner",
+      "accept": "Multi-step history journey is source-auditable and does not present analogy or chronology as causation",
+      "evidence": ""
+    },
+    {
+      "id": "BEACON_CONSENT",
+      "title": "Isolated beacon publisher and exact consent preview",
+      "deps": [
+        "G2",
+        "PRIVATE_STORE"
+      ],
+      "status": "planned",
+      "owner": "cheap-worker",
+      "accept": "Only a reviewed minimal payload leaves the device on explicit action; private history/graph/embeddings are inaccessible; withdrawal and replication limits are explained",
+      "evidence": ""
+    },
+    {
+      "id": "BEACON_ABUSE",
+      "title": "Beacon abuse, moderation and operator policy",
+      "deps": [
+        "BEACON_CONSENT"
+      ],
+      "status": "blocked",
+      "owner": "planner",
+      "accept": "ADR-006 resolves privacy-preserving uniqueness, bounded prominence, reporting, contestation, moderation and anti-brigading pilot evidence",
+      "evidence": "Open research and governance decision"
+    },
+    {
+      "id": "FEDERATION",
+      "title": "Independent public-field operation",
+      "deps": [
+        "G2",
+        "BEACON_ABUSE"
+      ],
+      "status": "planned",
+      "owner": "cheap-worker",
+      "accept": "ADR-008 and operator docs let independent nodes exchange versioned public data with provenance, revocation and abuse controls",
+      "evidence": ""
+    },
+    {
+      "id": "G5",
+      "title": "Federation pilot gate",
+      "deps": [
+        "FEDERATION"
+      ],
+      "status": "planned",
+      "owner": "planner",
+      "accept": "Consent, privacy and anti-brigading tests pass with documented moderation and independent operator setup",
+      "evidence": ""
+    },
+    {
+      "id": "RELEASE",
+      "title": "Public beta safety and open-source release",
+      "deps": [
+        "G1",
+        "PROTECTION_RULES",
+        "G2",
+        "G3"
+      ],
+      "status": "planned",
+      "owner": "planner",
+      "accept": "Signed builds/updates, CVE owner, dependency/SBOM/licence review, LICENSE/NOTICE/SECURITY/CONTRIBUTING, independent security and accessibility reviews, no unauthorized egress",
+      "evidence": "Not currently a releasable general-public browser"
+    },
+    {
+      "id": "COMMUNITY_NETWORK",
+      "title": "Separate community connectivity research and permitted pilot",
+      "deps": [
+        "BASE"
+      ],
+      "status": "blocked",
+      "owner": "planner",
+      "accept": "Router/ISP/spectrum review precedes isolated guest-network pilot; measured roaming, cost, security and 10–20 site coverage reported",
+      "evidence": "Independent research track; no browser release dependency"
+    },
+    {
+      "id": "FEED_REGISTRY",
+      "title": "Define news and public social feed pilot",
+      "deps": [
+        "SOURCE_GOVERNANCE"
+      ],
+      "status": "verified",
+      "owner": "cheap-worker",
+      "accept": "Document concrete official RSS/Atom candidates, availability evidence, source independence, language/region gaps, per-source use/attribution/cadence policy and enabled versus candidate state. Feed availability alone is not reuse permission. Pilot includes diverse local feeds from several countries and at least one small city. Registry records BCP47 languages, declared geography, independent publisher group, rights status, fetch validators and health. Verify availability/terms/rates/retention before each connector is implemented.",
+      "evidence": "2026-10-23: planner reviewed nine documented candidates including local feeds in CA/GB/NZ and working Hinckley small-town/borough RSS. Registry includes source groups, geography/language, HTTP observations and per-source rights/cadence evidence. Hinckley metadata scoped admission recorded; all runtime endpoints remain disabled. Multi-country live admission is FIELD_PIPELINE work, not claimed here.",
+      "specRefs": [
+        {
+          "path": "docs/INTOPONET_LIVING_FREQUENCY_TOPOGRAPHY_SPEC (1).md",
+          "sections": "4, 16, 20 B"
+        }
+      ]
+    },
+    {
+      "id": "FEED_ADAPTERS",
+      "title": "Normalize RSS and Atom public records",
+      "deps": [
+        "INTEREST_CONTRACT",
+        "SOURCE_CANDIDATE_RESEARCH"
+      ],
+      "status": "verified",
+      "owner": "cheap-worker",
+      "accept": "Fixture tests cover RSS/Atom namespaces, IDs and canonical URLs, publication/update/first-seen timestamps, invalid dates, bounded untrusted XML parsing, safe links and provenance. Preserve unknown geography; no article-body crawling or private inputs. This node is a generic parser tested with controlled RSS/Atom fixtures; it does not enable or fetch candidate publishers. Per-source connector implementation/admission follows FEED_REGISTRY/SOURCE_APPROVAL.",
+      "evidence": "2026-10-23: planner reviewed bounded offline XML subset parser, SHA256 identities, XML namespace/base/language handling and revision tests. Field-snapshot suite30 tests and typecheck passed. No live fetch; GeoRSS intentionally unlocated pending evidence mapping; only supported common RSS/Atom metadata subset claimed.",
+      "specRefs": [
+        {
+          "path": "docs/INTOPONET_LIVING_FREQUENCY_TOPOGRAPHY_SPEC (1).md",
+          "sections": "5, 16–17"
+        }
+      ]
+    },
+    {
+      "id": "FEED_FETCH",
+      "title": "Continuously refresh registered public feeds",
+      "deps": [
+        "FEED_REGISTRY",
+        "FEED_ADAPTERS",
+        "PUBLIC_BOUNDARY"
+      ],
+      "status": "verified",
+      "owner": "cheap-worker",
+      "accept": "Conditional HTTP requests, source-specific cadence, Retry-After/backoff, timeouts and byte limits, redirect/host policy and atomic persistent cache pass local server tests; restart does not lose cursors. Live enablement requires per-source admission. Use idempotent durable jobs, deduplication keys and dead-letter handling. Target permitted RSS polling at 2–5 minutes, with slower provider-specific cadence taking precedence; persist published/discovered/processed timestamps and measured freshness. This is a bounded pilot scheduler, not a large backend.",
+      "evidence": "2026-10-23: planner reviewed service and13 focused tests (desktop36 total pass), conditional fetching/304/restart, bounded stream/cache, atomic owner-only storage, backoff/deferred cursors, safe redirects/DNS checks and no-store signal. Production DNS preflight is not pinned transport; only reviewed endpoints allowed. No browser runtime wiring yet.",
+      "specRefs": [
+        {
+          "path": "docs/INTOPONET_LIVING_FREQUENCY_TOPOGRAPHY_SPEC (1).md",
+          "sections": "7, 16, 20 B"
+        }
+      ]
+    },
+    {
+      "id": "FEED_HISTORY",
+      "title": "Deduplicate and retain changing public activity",
+      "deps": [
+        "FEED_ADAPTERS"
+      ],
+      "status": "verified",
+      "owner": "cheap-worker",
+      "accept": "Stable identities and revisions distinguish publish/update/observe times; syndicated copies do not count as independent voices; windowed snapshots retain bounded metadata history and deterministic replay. Fixture tests cover repeats, edits, late arrivals, missing dates and outages without fabricated activity.",
+      "evidence": "2026-10-23: planner reviewed strict snapshot parsing, deterministic revisions/replay, normalized clocks, retention/orphan handling and one-origin syndication semantics.43 field-snapshot tests passed. Public-only history, future/missing dates excluded from activity, outage preserves observations; no live/UI wiring yet.",
+      "specRefs": [
+        {
+          "path": "docs/INTOPONET_LIVING_FREQUENCY_TOPOGRAPHY_SPEC (1).md",
+          "sections": "7, 16–18"
+        }
+      ]
+    },
+    {
+      "id": "FIELD_DYNAMICS",
+      "title": "Derive field change from news and social activity",
+      "deps": [
+        "EVENT_GEOGRAPHY"
+      ],
+      "status": "active",
+      "owner": "cheap-worker",
+      "accept": "Versioned deterministic aggregation measures qualified independent publication activity separately from views or magnitude; applies documented caps, decay and change between comparable windows. Geographic relevance has evidence/confidence, unknown/global records remain non-spatial, coverage loss is not reported as waning interest. IDs distinguish measurement groups. Use rolling geographic/language/coverage-cohort baselines and consistent counts across scales; separate intensity and momentum from geographic/coverage confidence. Never multiply uncertainty into false zero activity. Record publisher caps, anomaly flags and normalization version.",
+      "evidence": "2026-10-24: planner reviewed and required corrections to approved/as-of-visible lineage aggregation, independent corroboration vs syndication, publisher caps preserving raw counts, actual item-language cohorts, stable measurement IDs, explicit comparable coverage, uncertainty and output validation. Independent root suite passed 68 field-snapshot tests (11 dynamics), 159 total tests, all typechecks and production build. Foundational aggregation is implemented; live per-window coverage evidence, hierarchy rollup/count conservation and tile/renderer integration remain unverified. Momentum intentionally stays null without complete comparable window evidence.",
+      "specRefs": [
+        {
+          "path": "docs/INTOPONET_LIVING_FREQUENCY_TOPOGRAPHY_SPEC (1).md",
+          "sections": "15, 17–19"
+        }
+      ]
+    },
+    {
+      "id": "FEED_REPLAY_QA",
+      "title": "Verify a changing news and social field end to end",
+      "deps": [
+        "FEED_FETCH",
+        "FIELD_DYNAMICS"
+      ],
+      "status": "planned",
+      "owner": "cheap-worker",
+      "accept": "Replay multi-window news and public-social fixtures through real ingestion: a new independent report changes the field, syndication does not inflate it, aging decays it, edits do not invent new interest, and feed outage shows stale/coverage loss. Inspect original URLs and assert zero private-data input.",
+      "evidence": "2026-10-23: required by user clarification and PRD FRQ-001–008 / section 9; implementation not yet verified",
+      "specRefs": [
+        {
+          "path": "docs/INTOPONET_LIVING_FREQUENCY_TOPOGRAPHY_SPEC (1).md",
+          "sections": "10, 18, 20"
+        }
+      ]
+    },
+    {
+      "id": "INTEREST_CONTRACT",
+      "title": "Define validated interest, band and tile contracts",
+      "deps": [
+        "SIGNAL_SEMANTICS"
+      ],
+      "status": "verified",
+      "owner": "cheap-worker",
+      "accept": "Versioned InterestSignal, FrequencyBand, SourceRecord, PublicItem, TileObservation and provenance manifests keep activity, intensity, momentum, geographic confidence and coverage separate. Validate finite ranges, coordinates, bounded radii/payloads, UTC timestamps and stable IDs; global/unknown signals have no invented anchors. Reject feed-provided code/shaders; distinguish synthetic from public data and about-location from audience-location.",
+      "evidence": "2026-10-23: planner reviewed interest-contract.ts and focused hostile-input/provenance tests. Strict bounded parsers cover all specified entities, UTC/ranges, synthetic/public distinction and item-source-URL reference integrity. Full workspace typecheck, 63 tests and production build passed; final provenance hardening rechecked with field-snapshot tests/typecheck. Structural validation does not establish rights, geographic truth or independent-source counts.",
+      "specRefs": [
+        {
+          "path": "docs/INTOPONET_LIVING_FREQUENCY_TOPOGRAPHY_SPEC (1).md",
+          "sections": "3–5, 16–19"
+        }
+      ]
+    },
+    {
+      "id": "FIELD_GEOMETRY",
+      "title": "Prove deterministic data-reactive membrane geometry",
+      "deps": [
+        "FIELD_GEOMETRY_KERNEL",
+        "FIELD_TILES"
+      ],
+      "status": "planned",
+      "owner": "cheap-worker",
+      "accept": "Interactive fixed-seed fixtures show intensity changing height and reach changing width at the correct WGS84/Y-up location; finite-width corridors and broad envelopes combine with bounded smooth displacement. Fixed data preserves centers, widths and baseline amplitudes at different frame rates. No mountains, spots, arbitrary stripes or fabricated activity.",
+      "evidence": "2026-10-23: kernel and lab interaction separately verified. Current short broad fixture reads as colored patch; final flowing corridor geometry and appearance remain unaccepted. Texture pipeline needed before final visual proof.",
+      "specRefs": [
+        {
+          "path": "docs/INTOPONET_LIVING_FREQUENCY_TOPOGRAPHY_SPEC (1).md",
+          "sections": "1–2, 6–7, 10–14"
+        }
+      ]
+    },
+    {
+      "id": "FIELD_TILES",
+      "title": "Build multiscale field textures and four clocks",
+      "deps": [
+        "FIELD_GEOMETRY_KERNEL"
+      ],
+      "status": "active",
+      "owner": "cheap-worker",
+      "accept": "Renderer-independent tile/texture pipeline carries intensity, momentum, confidence and coverage with provenance/version manifests; no per-vertex loops over thousands of signals. Verify poles/antimeridian, smooth normals, seams and coherent LOD. Separate observation, 10–30-second snapshot interpolation, decorative phase and historical clocks. Reduced motion freezes phase while preserving meaningful updates.",
+      "evidence": "2026-10-24: planner reviewed bounded global/local textures, coherent LOD construction, four-clock metadata/helpers, signed-channel CPU/GPU agreement, provenance/version validation and interrupted fades. Required and verified local edge clamping, metadata-sensitive versions and contributor provenance retention. Root suite: 29 frequency-field tests; full workspace 159 tests, typecheck/build passed. Chrome synthetic lab showed matching CPU/GPU sample bytes, linked program and snapshot transition progressing to 0.7384 while phaseTime remained 0. Renderer now separates synthetic/public transitions. Visual shape, full normal/seam captures and performance remain open; see experiments/field-visual-qa/recovery-verification.json.",
+      "specRefs": [
+        {
+          "path": "docs/INTOPONET_LIVING_FREQUENCY_TOPOGRAPHY_SPEC (1).md",
+          "sections": "3, 6–10, 19"
+        }
+      ]
+    },
+    {
+      "id": "FIELD_SYNTHETIC_GATE",
+      "title": "Review all ten deterministic topography scenes",
+      "deps": [
+        "FIELD_TILES",
+        "FIELD_GEOMETRY"
+      ],
+      "status": "planned",
+      "owner": "planner",
+      "accept": "Planner reviews reproducible captures and data assertions for quiet, single local, intensity, reach, overlap, multi-region, decay, missing, pole/antimeridian and stale scenes. Distinguish uncertainty from measured low activity; no decorative invention. Geometry must respond visibly to controls before a large ingestion backend is built.",
+      "evidence": "Not implemented or verified against the living topography specification.",
+      "specRefs": [
+        {
+          "path": "docs/INTOPONET_LIVING_FREQUENCY_TOPOGRAPHY_SPEC (1).md",
+          "sections": "10–14, 20 A"
+        }
+      ]
+    },
+    {
+      "id": "PLACE_HIERARCHY",
+      "title": "Establish worldwide place IDs and geospatial indexing",
+      "deps": [
+        "PLACE_IMPORT_FOUNDATION"
+      ],
+      "status": "active",
+      "owner": "cheap-worker",
+      "accept": "Evaluate openly licensed gazetteers and H3/S2 or alternatives; document selection, licensing and versioned country/region/city hierarchy. Every country and city in the declared gazetteer scope is addressable independently of coverage; disclose omissions and update process. Preserve coarse evidence and avoid invented neighbourhood precision.",
+      "evidence": "2026-10-24: resumed after crash; planner reviewed Node-only SQLite runtime index, immutable publication, exact-name ambiguity, 205-sibling cursor traversal, snapshot reconciliation and pointer safety. Independently reran package tests (11 pass). Prior full import evidence remains experiments/place-catalog/global-evidence.json; temporary full dataset was not recovered, so full-size runtime latency/storage and desktop navigation remain unverified. See experiments/place-catalog/runtime-index.md.",
+      "specRefs": [
+        {
+          "path": "docs/INTOPONET_LIVING_FREQUENCY_TOPOGRAPHY_SPEC (1).md",
+          "sections": "15, 19–20 D"
+        }
+      ]
+    },
+    {
+      "id": "EVENT_GEOGRAPHY",
+      "title": "Cluster multilingual events and attribute subject locations",
+      "deps": [
+        "FEED_HISTORY",
+        "INTEREST_CONTRACT"
+      ],
+      "status": "verified",
+      "owner": "cheap-worker",
+      "accept": "Transparent tested topic/event merge/split rules retain evidence, normalize multilingual entities, and separate syndication from independent reporting. Distinguish incident, organization, publisher and reader geography; ambiguous/global items remain coarse or unlocated. Cross-language same-event and unrelated-event fixtures pass; a social link is not automatically independent corroboration.",
+      "evidence": "2026-10-24 UTC: planner reviewed public-only evidence spans, allowlisted title rules, publisher/subject distinction, ambiguity/coarse precision and explicit reviewed cross-language grouping. Required fixes for contract-anchor localization, bounded stable canonical IDs, status consistency, duplicate reviewed-event merging and indexed joins passed; 56 field-snapshot tests in full root suite. Deterministic reviewed enrichment foundation, not automatic multilingual NLP or independently verified authorship.",
+      "specRefs": [
+        {
+          "path": "docs/INTOPONET_LIVING_FREQUENCY_TOPOGRAPHY_SPEC (1).md",
+          "sections": "15–18"
+        }
+      ]
+    },
+    {
+      "id": "SOURCE_SHADER_PROOF",
+      "title": "Measure controlled RSS item through tile to visible geometry",
+      "deps": [
+        "FIELD_PIPELINE",
+        "FIELD_VISUAL_QA",
+        "SIGNAL_PRESENTATION"
+      ],
+      "status": "planned",
+      "owner": "cheap-worker",
+      "accept": "Controlled RSS item produces an event, timestamped provenance-backed tile and visible deformation at the correct city. Record published/discovered/processed/tilePublished/rendered times: normal receipt-to-index ≤60s and qualified-change-to-tile 30–60s targets, with observed latency reported. Inspect independent corroboration, duplicates, aging and outage without fake momentum; select original URL in actual Chromium and restore context.",
+      "evidence": "Not implemented or verified against the living topography specification.",
+      "specRefs": [
+        {
+          "path": "docs/INTOPONET_LIVING_FREQUENCY_TOPOGRAPHY_SPEC (1).md",
+          "sections": "18, 20 B–C"
+        }
+      ]
+    },
+    {
+      "id": "GLOBAL_FEED_EXPANSION",
+      "title": "Expand reviewed multilingual local source coverage",
+      "deps": [
+        "SOURCE_SHADER_PROOF",
+        "PLACE_HIERARCHY"
+      ],
+      "status": "planned",
+      "owner": "cheap-worker",
+      "accept": "Community-contributable reviewed registry covers country/city/language directories with source diversity, health and explicit gaps. Evaluate and add admitted GDELT discovery/enrichment without treating it as complete coverage or sole source; Wikidata is geographic context and Wikimedia is topic context, never inferred audience location. Verify provider terms before connector implementation and activation.",
+      "evidence": "Not implemented or verified against the living topography specification.",
+      "specRefs": [
+        {
+          "path": "docs/INTOPONET_LIVING_FREQUENCY_TOPOGRAPHY_SPEC (1).md",
+          "sections": "15–16, 19–20 D"
+        }
+      ]
+    },
+    {
+      "id": "GLOBAL_COVERAGE_QA",
+      "title": "Verify global navigation and small-city visibility",
+      "deps": [
+        "GLOBAL_FEED_EXPANSION",
+        "EARTH"
+      ],
+      "status": "planned",
+      "owner": "planner",
+      "accept": "All declared countries/cities are navigable and missing evidence shows insufficient coverage. Five independent small-city reports remain discoverable beneath larger global stories. Cohort-aware geographic/language baselines preserve counts and identity across LOD, never manufacture finer evidence, and expose source diversity/freshness/provenance. Record gazetteer completeness limitations.",
+      "evidence": "Not implemented or verified against the living topography specification.",
+      "specRefs": [
+        {
+          "path": "docs/INTOPONET_LIVING_FREQUENCY_TOPOGRAPHY_SPEC (1).md",
+          "sections": "15, 17, 19–20"
+        }
+      ]
+    },
+    {
+      "id": "PUBLIC_DISCUSSION",
+      "title": "Integrate permitted public discussion signals",
+      "deps": [
+        "SOURCE_SHADER_PROOF"
+      ],
+      "status": "planned",
+      "owner": "cheap-worker",
+      "accept": "Verify each public RSS/API connector availability, rights, retention, rate limits, privacy and platform bias before implementation/activation. Admit a permitted public-discussion pilot, cap publisher/platform influence, flag anomalous amplification, and prove repost/link deduplication and source-type provenance. No private/paywalled scraping or implicit personal signals; Beacons remain behind consent/abuse gates.",
+      "evidence": "Not implemented or verified against the living topography specification.",
+      "specRefs": [
+        {
+          "path": "docs/INTOPONET_LIVING_FREQUENCY_TOPOGRAPHY_SPEC (1).md",
+          "sections": "16–18, 20 E"
+        }
+      ]
+    },
+    {
+      "id": "FIELD_HARDENING",
+      "title": "Verify field performance, privacy and accessibility",
+      "deps": [
+        "SOURCE_SHADER_PROOF",
+        "GLOBAL_COVERAGE_QA",
+        "PUBLIC_DISCUSSION"
+      ],
+      "status": "planned",
+      "owner": "planner",
+      "accept": "Measure representative desktop CPU/GPU/memory/battery and 60fps target, 120fps where feasible; adapt resolution/detail/bloom. Verify keyboard/list/search, high contrast, reduced motion, native page context restoration, bounded HTTPS tile inputs/cache/compression and abuse controls. Audit adapter rights/retention and all public egress; no history, Laya, bookmarks, embeddings or implicit pageview upload.",
+      "evidence": "Not implemented or verified against the living topography specification.",
+      "specRefs": [
+        {
+          "path": "docs/INTOPONET_LIVING_FREQUENCY_TOPOGRAPHY_SPEC (1).md",
+          "sections": "5, 9, 11, 19–20"
+        }
+      ]
+    },
+    {
+      "id": "BAND_IDENTITY",
+      "title": "Keep measurement-specific band IDs distinct and stable",
+      "deps": [
+        "SIGNAL_SEMANTICS"
+      ],
+      "status": "verified",
+      "owner": "cheap-worker",
+      "accept": "Different measurement groups at the same topic/place produce unique IDs, including delimiter-bearing and legacy identities; reorder and same-metric regroup preserve IDs.",
+      "evidence": "2026-10-23: planner reviewed canonical JSON tuple grouping and encoded IDs in aggregate.ts; aggregate.test.ts regression checks and field-snapshot suite passed (22 tests including new contracts). Renderer measurement presentation remains separate."
+    },
+    {
+      "id": "SOURCE_CANDIDATE_RESEARCH",
+      "title": "Document concrete feed candidates and source-policy evidence",
+      "deps": [
+        "SOURCE_GOVERNANCE"
+      ],
+      "status": "verified",
+      "owner": "cheap-worker",
+      "accept": "Record concrete news/local/social candidates with primary documentation, observed endpoint results, publisher groups, language/geography, rights and polling uncertainty; distinguish candidates from enabled sources.",
+      "evidence": "2026-10-23: planner reviewed 8-candidate JSON and NEWS_SOCIAL_FEEDS.md; spot-checked official NOAA, Torbay, Guardian and Marlborough documentation. Registry IDs unique, enabledSourceIds empty; Blenheim HTTP202 limitation explicit. Research artifact is not source admission or complete pilot selection."
+    },
+    {
+      "id": "FIELD_GEOMETRY_KERNEL",
+      "title": "Verify bounded data-reactive kernel and geographic alignment",
+      "deps": [
+        "INTEREST_CONTRACT"
+      ],
+      "status": "verified",
+      "owner": "cheap-worker",
+      "accept": "CPU/GPU bounded-envelope math preserves phase baseline; intensity and reach controls respond deterministically; Earth texture and coordinate conversion agree; stable normals at poles.",
+      "evidence": "2026-10-23: planner reviewed evaluator/shader/UV conversion and 13 frequency-field tests. CUA lab review at Halifax: intensity0.1→0.9 reference displacement .00594→.03134R; reach620→1500km broadened same location. Full visual shape is NOT accepted: still reads as rounded patch. Lab is dev-only; native host/performance not inferred."
+    },
+    {
+      "id": "PLACE_IMPORT_FOUNDATION",
+      "title": "Validate bounded gazetteer parsing and atomic import",
+      "deps": [
+        "INTEREST_CONTRACT"
+      ],
+      "status": "verified",
+      "owner": "cheap-worker",
+      "accept": "Validate gazetteer scope/limits, ambiguity and hierarchy; streaming local-file importer preserves source hashes and atomically publishes versioned catalog. Test a real documented subset without claiming all cities.",
+      "evidence": "2026-10-23: planner reviewed place-catalog parser/importer,6 tests and typecheck; independently imported GeoNames cities15000 bootstrap:252 country/territory records,3865 admin1,47642 admin2,34179 populated places.85938 unique IDs,zero dangling parents,output SHA256 verified. experiments/place-catalog/bootstrap-evidence.json records hashes/scope; full global import remains PLACE_HIERARCHY."
+    },
+    {
+      "id": "PUBLIC_INGESTION_PILOT",
+      "title": "Connect admitted feed fetching to public history and provenance",
+      "deps": [
+        "FEED_FETCH",
+        "FEED_HISTORY",
+        "FEED_REGISTRY"
+      ],
+      "status": "verified",
+      "owner": "cheap-worker",
+      "accept": "An isolated pilot command ingests controlled fixtures and an explicitly admitted source into public history/provenance with correct clock/health/no-store handling; excludes private app paths and records reproducible evidence. Does not claim source-to-shader integration.",
+      "evidence": "2026-10-24 UTC: planner reviewed coordinator, isolated CLI and live evidence (experiments/public-feed-pilot/evidence/2026-10-24-hinckley-run.json): 50 public metadata items retained. Root required transport-only outcomes (304 is unchanged, not decline), per-source wall-clock retention and no-store purge checks; revised tests passed in full workspace suite (138 tests). No browser startup or source-to-shader claim."
+    }
+  ],
+  "specifications": [
+    {
+      "path": "docs/INTOPONET_LIVING_FREQUENCY_TOPOGRAPHY_SPEC (1).md",
+      "version": "1.1",
+      "reviewed": "2026-10-23",
+      "precedence": "Sections 15–20 refine sections 1–14: preserve/prove the visual core, deliver a bounded RSS vertical slice, then expand globally. No large ingestion backend before synthetic geometry and tiles are verified."
+    }
+  ]
+}

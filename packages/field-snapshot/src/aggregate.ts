@@ -42,6 +42,30 @@ export function assertAttributable(source: SourceRecord): void {
   if (!Number.isFinite(source.weight) || source.weight <= 0 || source.weight > 5) {
     throw new Error('A source weight must be between 0 and 5.')
   }
+  if (!source.measurement || !source.measurement.kind || !source.measurement.unit.trim()) {
+    throw new Error('A source needs a typed measurement and unit.')
+  }
+  if (source.measurement.value !== null && !Number.isFinite(source.measurement.value)) {
+    throw new Error('A measurement value must be finite or explicitly unknown.')
+  }
+  if (!source.measurement.sourceId.trim() || !source.measurement.transformation.trim()) {
+    throw new Error('A measurement needs provenance and a transformation description.')
+  }
+  let measurementUrl: URL
+  try {
+    measurementUrl = new URL(source.measurement.sourceUrl)
+  } catch {
+    throw new Error('A measurement needs a provenance URL.')
+  }
+  if (measurementUrl.protocol !== 'https:' && measurementUrl.protocol !== 'http:') {
+    throw new Error('A measurement provenance URL must be HTTP or HTTPS.')
+  }
+}
+
+function measurementIdentity(source: SourceRecord): [string, string, string | null, string] {
+  const { kind, unit, scale } = source.measurement
+  const legacyIdentity = kind === 'legacy-untyped' ? source.id : ''
+  return [kind, unit, scale ?? null, legacyIdentity]
 }
 
 export function dedupeSources(sources: SourceRecord[]): SourceRecord[] {
@@ -67,6 +91,8 @@ export function aggregateSnapshot(
     topic: string
     lat: number
     lon: number
+    id: string
+    measurement: SourceRecord['measurement']
     raw: number
     sources: SourceRecord[]
   }
@@ -76,8 +102,16 @@ export function aggregateSnapshot(
     const lat = Math.round(source.lat / 10) * 10
     const lon = Math.round(source.lon / 10) * 10
     const topic = source.topics[0] ?? 'open'
-    const key = `${topic}:${lat}:${lon}`
-    const cell = cells.get(key) ?? { topic, lat, lon, raw: 0, sources: [] }
+    const key = JSON.stringify([topic, lat, lon, measurementIdentity(source)])
+    const cell = cells.get(key) ?? {
+      topic,
+      lat,
+      lon,
+      id: `band-${encodeURIComponent(key)}`,
+      measurement: source.measurement,
+      raw: 0,
+      sources: [],
+    }
     cell.raw += source.raw
     cell.sources.push(source)
     cells.set(key, cell)
@@ -86,7 +120,7 @@ export function aggregateSnapshot(
   const bands = [...cells.values()].map((cell) => {
     const synthetic = cell.sources.every((source) => source.kind === 'synthetic-fixture')
     return {
-      id: `band-${cell.topic}-${cell.lat}-${cell.lon}`,
+      id: cell.id,
       topicIds: [cell.topic],
       lat: cell.lat,
       lon: cell.lon,
@@ -94,6 +128,11 @@ export function aggregateSnapshot(
       confidence: synthetic ? 0.3 : Math.min(0.9, 0.4 + cell.sources.length * 0.1),
       sourceIds: cell.sources.map((source) => source.id),
       sourceType: synthetic ? ('synthetic' as const) : ('public-aggregate' as const),
+      measurement: {
+        kind: cell.measurement.kind,
+        unit: cell.measurement.unit,
+        ...(cell.measurement.scale ? { scale: cell.measurement.scale } : {}),
+      },
     }
   })
 
@@ -101,7 +140,7 @@ export function aggregateSnapshot(
   return {
     schema: fieldSnapshotSchema,
     id: syntheticCount === unique.length ? 'snapshot-synthetic-v1' : `snapshot-${unique.length}`,
-    algorithm: 'log1p-v1',
+    algorithm: 'log1p-separated-v2',
     createdAt: new Date(now).toISOString(),
     coverageNote:
       syntheticCount > 0

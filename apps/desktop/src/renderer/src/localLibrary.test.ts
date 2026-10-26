@@ -1,5 +1,14 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { rememberRecent, renameCollection, type RecentPage } from './localLibrary'
+import {
+  parseStoredPrivateLibrary,
+  rememberRecent,
+  renameCollection,
+  readBookmarks,
+  bookmarkKey,
+  upsertBookmark,
+  type SavedBookmark,
+  type RecentPage,
+} from './localLibrary'
 
 const memory = new Map<string, string>()
 
@@ -46,5 +55,84 @@ describe('renameCollection', () => {
     ]
     expect(renameCollection(collections, 'a', '  Civic  ')[0]?.label).toBe('Civic')
     expect(renameCollection(collections, 'a', '   ')).toEqual(collections)
+  })
+})
+
+describe('bookmark field anchors', () => {
+  it('reads legacy bookmarks and preserves valid optional explicit field anchors', () => {
+    memory.set(bookmarkKey, JSON.stringify([
+      { url: 'https://legacy.example/', title: 'Legacy', topic: 'History', savedAt: '2026-01-01' },
+      {
+        url: 'https://anchored.example/', title: 'Anchored', topic: 'History', savedAt: '2026-01-02',
+        fieldAnchor: { lat: 64.1466, lon: -21.9426, label: ' Reykjavík ' },
+      },
+    ]))
+    expect(readBookmarks()).toEqual([
+      { url: 'https://legacy.example/', title: 'Legacy', topic: 'History', savedAt: '2026-01-01' },
+      {
+        url: 'https://anchored.example/', title: 'Anchored', topic: 'History', savedAt: '2026-01-02',
+        fieldAnchor: { lat: 64.1466, lon: -21.9426, label: 'Reykjavík' },
+      },
+    ])
+  })
+
+  it('rejects malformed optional anchors without discarding valid unanchored bookmarks', () => {
+    const invalid = [
+      { lat: Number.NaN, lon: 0, label: 'NaN' },
+      { lat: 91, lon: 0, label: 'Out of range' },
+      { lat: 0, lon: -181, label: 'Out of range' },
+      { lat: 0, lon: 0, label: 'x'.repeat(161) },
+      null,
+    ]
+    memory.set(bookmarkKey, JSON.stringify([
+      { url: 'https://valid.example/', title: 'Valid', topic: 'History', savedAt: '2026-01-01' },
+      ...invalid.map((fieldAnchor, index) => ({
+        url: `https://invalid${index}.example/`, title: 'Invalid', topic: 'History', savedAt: '2026-01-01', fieldAnchor,
+      })),
+    ]))
+    expect(readBookmarks()).toEqual([
+      { url: 'https://valid.example/', title: 'Valid', topic: 'History', savedAt: '2026-01-01' },
+    ])
+  })
+
+  it('preserves existing note and anchor when metadata is re-edited without either field', () => {
+    const existing: SavedBookmark = {
+      url: 'https://example.org/page', title: 'Old title', topic: 'Old topic', savedAt: '2026-01-01',
+      note: 'Keep this note', fieldAnchor: { lat: 48.85, lon: 2.35, label: 'Paris' },
+    }
+    expect(upsertBookmark([existing], {
+      url: existing.url, title: 'New title', topic: 'New topic', savedAt: '2026-02-01',
+    })).toEqual([{ ...existing, title: 'New title', topic: 'New topic', savedAt: '2026-02-01' }])
+    expect(upsertBookmark([existing], {
+      url: existing.url, title: 'New title', topic: 'New topic', savedAt: '2026-02-01',
+      fieldAnchor: { lat: 35.68, lon: 139.69, label: 'Tokyo' },
+    })[0]?.fieldAnchor).toEqual({ lat: 35.68, lon: 139.69, label: 'Tokyo' })
+  })
+})
+
+describe('parseStoredPrivateLibrary', () => {
+  it('distinguishes a missing library from a present but invalid payload', () => {
+    expect(parseStoredPrivateLibrary(null)).toEqual({ status: 'empty' })
+    expect(parseStoredPrivateLibrary('not-json')).toEqual({ status: 'invalid' })
+    expect(parseStoredPrivateLibrary('{"schema":"intoponet.private-library.v0"}')).toEqual({
+      status: 'invalid',
+    })
+  })
+
+  it('accepts a valid stored library payload', () => {
+    expect(
+      parseStoredPrivateLibrary(
+        '{"schema":"intoponet.private-library.v1","bookmarks":[],"collections":[],"recents":[],"absorbed":[]}',
+      ),
+    ).toEqual({
+      status: 'valid',
+      library: {
+        schema: 'intoponet.private-library.v1',
+        bookmarks: [],
+        collections: [],
+        recents: [],
+        absorbed: [],
+      },
+    })
   })
 })

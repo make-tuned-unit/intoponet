@@ -138,6 +138,20 @@ describe('parseBrowserHostCommand', () => {
       type: 'cycle-tabs',
       direction: 'previous',
     })
+    expect(parseBrowserHostCommand({ type: 'set-full-width', enabled: true })).toEqual({
+      type: 'set-full-width',
+      enabled: true,
+    })
+    expect(parseBrowserHostCommand({ type: 'set-tab-dock-open', open: false })).toEqual({
+      type: 'set-tab-dock-open',
+      open: false,
+    })
+    expect(() => parseBrowserHostCommand({ type: 'set-full-width', enabled: 'yes' })).toThrow(
+      'Invalid full-width state',
+    )
+    expect(() => parseBrowserHostCommand({ type: 'set-tab-dock-open', open: 1 })).toThrow(
+      'Invalid tab-dock state',
+    )
     expect(() => parseBrowserHostCommand({ type: 'close-tab', id: '' })).toThrow('Invalid tab')
   })
 })

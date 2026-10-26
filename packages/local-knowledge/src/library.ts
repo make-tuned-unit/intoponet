@@ -17,6 +17,13 @@ export type StoredBookmark = {
   topic: string
   savedAt: string
   note?: string
+  fieldAnchor?: StoredFieldAnchor
+}
+
+export type StoredFieldAnchor = {
+  lat: number
+  lon: number
+  label: string
 }
 
 export type StoredCollection = {
@@ -56,6 +63,17 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function httpUrl(value: unknown): value is string {
   return typeof value === 'string' && /^https?:\/\//.test(value) && value.length <= 8_192
+}
+
+function fieldAnchorFrom(value: unknown): StoredFieldAnchor | null {
+  if (!isRecord(value)) return null
+  const { lat, lon, label } = value
+  if (
+    typeof lat !== 'number' || !Number.isFinite(lat) || lat < -90 || lat > 90 ||
+    typeof lon !== 'number' || !Number.isFinite(lon) || lon < -180 || lon > 180 ||
+    typeof label !== 'string' || label.length > 160 || label.trim().length === 0
+  ) return null
+  return { lat, lon, label: label.trim() }
 }
 
 export function isSensitiveUrl(value: string): boolean {
@@ -114,6 +132,9 @@ function bookmarksFrom(value: unknown): StoredBookmark[] {
     if (typeof item['savedAt'] !== 'string') return []
     const note = item['note']
     if (note !== undefined && (typeof note !== 'string' || note.length > 500)) return []
+    const rawFieldAnchor = item['fieldAnchor']
+    const fieldAnchor = rawFieldAnchor === undefined ? undefined : fieldAnchorFrom(rawFieldAnchor)
+    if (rawFieldAnchor !== undefined && !fieldAnchor) return []
     return [
       {
         url: item['url'],
@@ -121,6 +142,7 @@ function bookmarksFrom(value: unknown): StoredBookmark[] {
         topic: item['topic'].slice(0, 80),
         savedAt: item['savedAt'],
         ...(typeof note === 'string' ? { note } : {}),
+        ...(fieldAnchor ? { fieldAnchor } : {}),
       },
     ]
   })

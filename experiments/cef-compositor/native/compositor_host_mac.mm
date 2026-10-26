@@ -23,8 +23,8 @@
 #include "include/cef_frame.h"
 #include "include/cef_version.h"
 #include "include/wrapper/cef_helpers.h"
+#include "examples/minimal/compositor_scenario_contract.h"
 
-constexpr double kTransitionDurationMs = 450.0;
 constexpr char kResultsDirectory[] = "@RESULTS_DIR@";
 
 struct TransitionMetrics {
@@ -95,7 +95,7 @@ std::vector<ProcessSample> SampleProcesses() {
 std::string JsonTransition(const TransitionMetrics& metrics) {
   std::ostringstream output;
   output << "{"
-         << "\"requestedDurationMs\":" << kTransitionDurationMs << ","
+         << "\"requestedDurationMs\":" << kScenarioTransitionDurationMs << ","
          << "\"actualDurationMs\":" << metrics.actual_duration_ms << ","
          << "\"updateCount\":" << metrics.update_count << ","
          << "\"averageUpdateIntervalMs\":"
@@ -186,7 +186,8 @@ std::string JsonTransition(const TransitionMetrics& metrics) {
 
 @implementation IntoponetBenchmarkController
 - (CefWindowHandle)createHost {
-  const NSRect frame = NSMakeRect(0, 0, 1280, 800);
+  const NSRect frame = NSMakeRect(0, 0, kScenarioViewportWidth,
+                                  kScenarioViewportHeight);
   window_ = [[NSWindow alloc]
       initWithContentRect:frame
                 styleMask:(NSWindowStyleMaskTitled | NSWindowStyleMaskClosable |
@@ -200,8 +201,11 @@ std::string JsonTransition(const TransitionMetrics& metrics) {
   [field setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
   [window_ setContentView:field];
 
-  browser_container_ =
-      [[NSView alloc] initWithFrame:NSMakeRect(400, 250, 480, 320)];
+  browser_container_ = [[NSView alloc]
+      initWithFrame:NSMakeRect(kScenarioInitialBounds.x,
+                               kScenarioInitialBounds.y,
+                               kScenarioInitialBounds.width,
+                               kScenarioInitialBounds.height)];
   [browser_container_ setWantsLayer:YES];
   browser_container_.layer.backgroundColor = NSColor.whiteColor.CGColor;
   browser_container_.layer.cornerRadius = 12;
@@ -220,9 +224,14 @@ std::string JsonTransition(const TransitionMetrics& metrics) {
     initial_cpu_[sample.pid] = sample.cpu_nanoseconds;
   }
   dispatch_after(
-      dispatch_time(DISPATCH_TIME_NOW, static_cast<int64_t>(NSEC_PER_SEC)),
+      dispatch_time(DISPATCH_TIME_NOW,
+                    static_cast<int64_t>(kScenarioInitialWaitMs * NSEC_PER_MSEC)),
       dispatch_get_main_queue(), ^{
-        [self beginTransitionTo:NSMakeRect(70, 86, 1140, 650) opening:YES];
+        [self beginTransitionTo:NSMakeRect(kScenarioSettledBounds.x,
+                                           kScenarioSettledBounds.y,
+                                           kScenarioSettledBounds.width,
+                                           kScenarioSettledBounds.height)
+                        opening:YES];
       });
 }
 
@@ -244,7 +253,8 @@ std::string JsonTransition(const TransitionMetrics& metrics) {
 - (void)advanceTransition:(NSTimer*)timer {
   const CFTimeInterval now = CFAbsoluteTimeGetCurrent();
   const double elapsed_ms = (now - transition_started_) * 1000.0;
-  const double progress = std::min(1.0, elapsed_ms / kTransitionDurationMs);
+  const double progress =
+      std::min(1.0, elapsed_ms / kScenarioTransitionDurationMs);
   const double eased = 1.0 - std::pow(1.0 - progress, 3.0);
   transition_intervals_.push_back((now - previous_tick_) * 1000.0);
   previous_tick_ = now;
@@ -288,7 +298,8 @@ std::string JsonTransition(const TransitionMetrics& metrics) {
     closing_ = metrics;
     dispatch_after(
         dispatch_time(DISPATCH_TIME_NOW,
-                      static_cast<int64_t>(0.5 * NSEC_PER_SEC)),
+                      static_cast<int64_t>(kScenarioCloseSettleWaitMs *
+                                           NSEC_PER_MSEC)),
         dispatch_get_main_queue(), ^{
           const NSInteger refresh_rate =
               NSScreen.mainScreen.maximumFramesPerSecond;
@@ -325,15 +336,20 @@ std::string JsonTransition(const TransitionMetrics& metrics) {
   browser_->GetHost()->SendMouseClickEvent(event, MBT_LEFT, true, 1);
   dispatch_after(
       dispatch_time(DISPATCH_TIME_NOW,
-                    static_cast<int64_t>(2.5 * NSEC_PER_SEC)),
+                    static_cast<int64_t>(kScenarioScrollDownWaitMs *
+                                         NSEC_PER_MSEC)),
       dispatch_get_main_queue(), ^{
         browser_->GetMainFrame()->ExecuteJavaScript(
             "window.scrollTo({top:0,behavior:'smooth'});", "", 0);
         dispatch_after(
             dispatch_time(DISPATCH_TIME_NOW,
-                          static_cast<int64_t>(2.5 * NSEC_PER_SEC)),
+                        static_cast<int64_t>(kScenarioScrollUpWaitMs *
+                                             NSEC_PER_MSEC)),
             dispatch_get_main_queue(), ^{
-              [self beginTransitionTo:NSMakeRect(400, 250, 480, 320)
+            [self beginTransitionTo:NSMakeRect(kScenarioInitialBounds.x,
+                                               kScenarioInitialBounds.y,
+                                               kScenarioInitialBounds.width,
+                                               kScenarioInitialBounds.height)
                               opening:NO];
             });
       });
@@ -409,8 +425,9 @@ std::string JsonTransition(const TransitionMetrics& metrics) {
          << "\"totalMemoryBytes\":" << process_info.physicalMemory << ","
          << "\"displayFrequencyHz\":" << refresh_rate << ","
          << "\"scaleFactor\":" << NSScreen.mainScreen.backingScaleFactor << "},"
-         << "\"viewport\":{\"width\":1280,\"height\":800},"
-         << "\"scenario\":{\"version\":\"compositor-v1\"},"
+         << "\"viewport\":{\"width\":" << kScenarioViewportWidth
+         << ",\"height\":" << kScenarioViewportHeight << "},"
+         << "\"scenario\":" << kScenarioJson << ","
          << "\"transition\":{\"opening\":" << JsonTransition(opening_)
          << ",\"closing\":" << JsonTransition(closing_) << "},"
          << "\"workload\":" << workload_json << ","
@@ -468,7 +485,8 @@ CefWindowHandle CreateCompositorHost() {
 }
 
 CefRect InitialBrowserBounds() {
-  return CefRect(0, 0, 480, 320);
+  return CefRect(0, 0, kScenarioInitialBounds.width,
+                 kScenarioInitialBounds.height);
 }
 
 void StartCompositorBenchmark(CefRefPtr<CefBrowser> browser) {

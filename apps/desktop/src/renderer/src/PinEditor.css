@@ -1,0 +1,172 @@
+.pin-editor-backdrop {
+  position: absolute;
+  z-index: 12;
+  inset: 68px 0 0;
+  display: grid;
+  place-items: start center;
+  padding: 24px;
+  overflow: auto;
+  background: rgba(4, 12, 19, 0.68);
+  backdrop-filter: blur(12px);
+}
+
+.pin-editor {
+  width: min(480px, 100%);
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid rgba(213, 244, 241, 0.24);
+  border-radius: 16px;
+  color: var(--warm-white);
+  background: linear-gradient(150deg, rgba(28, 52, 63, 0.98), rgba(7, 17, 27, 0.99));
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.48);
+}
+
+.pin-editor-heading,
+.pin-editor-heading > div > span,
+.pin-editor-actions {
+  display: flex;
+  align-items: center;
+}
+
+.pin-editor-heading,
+.pin-editor-actions {
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.pin-editor-heading > div > span {
+  gap: 6px;
+  color: var(--teal);
+  font-size: 11px;
+}
+
+.pin-editor-heading h2 {
+  margin: 4px 0 0;
+  font-size: 20px;
+  font-weight: 550;
+}
+
+.pin-editor-heading button,
+.pin-editor-actions button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 9px;
+  color: inherit;
+  background: rgba(195, 237, 232, 0.07);
+  cursor: pointer;
+}
+
+.pin-editor label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.pin-editor label > span > small {
+  margin-left: 4px;
+  font-weight: 400;
+}
+
+.pin-editor input,
+.pin-editor select,
+.pin-editor textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid rgba(195, 237, 232, 0.17);
+  border-radius: 8px;
+  color: var(--warm-white);
+  background: rgba(2, 10, 16, 0.62);
+}
+
+.pin-editor textarea {
+  resize: vertical;
+}
+
+.pin-editor-coordinates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+}
+
+.pin-editor-coordinates label:first-child,
+.pin-editor-coordinates > small {
+  grid-column: 1 / -1;
+}
+
+.pin-editor-coordinates > small,
+.pin-editor-footnote {
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.pin-editor-error {
+  margin: 0;
+  color: #ffb4a6;
+  font-size: 12px;
+}
+
+.pin-editor-actions {
+  justify-content: flex-end;
+  margin-top: 2px;
+}
+
+.pin-editor-actions button[type='submit'] {
+  color: #041311;
+  border-color: transparent;
+  background: var(--teal);
+  font-weight: 650;
+}
+
+.bookmark-pin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px 8px;
+}
+
+.bookmark-pin-actions > span {
+  flex: 1 1 100%;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bookmark-pin-actions button {
+  min-height: 28px;
+  padding: 0 9px;
+  border: 1px solid var(--hairline);
+  border-radius: 7px;
+  color: var(--warm-white);
+  background: rgba(195, 237, 232, 0.07);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.bookmark-pin-detail {
+  display: grid;
+  gap: 3px;
+  margin: 0 12px 8px;
+  padding: 9px;
+  border-left: 2px solid var(--teal);
+  border-radius: 0 8px 8px 0;
+  background: rgba(195, 237, 232, 0.06);
+  font-size: 10px;
+}
+
+.bookmark-pin-detail > span,
+.bookmark-pin-detail > small {
+  color: var(--muted);
+  line-height: 1.4;
+}

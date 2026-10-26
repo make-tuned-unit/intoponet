@@ -9,7 +9,7 @@ import {
   recordsFromQuakes,
   usgsFeed,
   viewsFromPayload,
-  wikipediaTitlePath,
+  wikipediaPageviewsUrl,
   type FieldSnapshot,
   type SourceRecord,
 } from '@intoponet/field-snapshot'
@@ -48,10 +48,6 @@ async function getJson(url: string): Promise<unknown> {
   throw new Error('Public source responded 429')
 }
 
-function dayStamp(date: Date): string {
-  return date.toISOString().slice(0, 10).replace(/-/g, '')
-}
-
 async function fetchWikipediaRecords(): Promise<SourceRecord[]> {
   const end = new Date()
   const start = new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000)
@@ -67,14 +63,13 @@ async function fetchWikipediaRecords(): Promise<SourceRecord[]> {
     const hits = hitsFromGeosearch(await getJson(geo.toString()))
     const views = new Map<string, number>()
     for (const hit of hits) {
-      const viewUrl = `https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia.org/all-access/user/${wikipediaTitlePath(hit.title)}/daily/${dayStamp(start)}/${dayStamp(end)}`
       try {
-        views.set(hit.title, viewsFromPayload(await getJson(viewUrl)))
+        views.set(hit.title, viewsFromPayload(await getJson(wikipediaPageviewsUrl(hit.title, { start, end }))))
       } catch {
         views.set(hit.title, 0)
       }
     }
-    records.push(...recordsFromHits(hits, anchor.topic, views, new Date().toISOString()))
+    records.push(...recordsFromHits(hits, anchor.topic, views, new Date().toISOString(), { start, end }))
     await new Promise((resolve) => setTimeout(resolve, 400))
   }
   return records

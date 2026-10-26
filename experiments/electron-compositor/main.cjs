@@ -1,12 +1,20 @@
-const { mkdirSync, writeFileSync } = require('node:fs')
+const { mkdirSync, readFileSync, writeFileSync } = require('node:fs')
 const { join } = require('node:path')
 const { arch, cpus, totalmem } = require('node:os')
+const { createHash } = require('node:crypto')
 const { app, BrowserWindow, screen, WebContentsView } = require('electron')
 
 const experimentRoot = __dirname
 const workloadPath = join(experimentRoot, '../compositor-benchmark/scenario.html')
 const resultsDirectory = join(experimentRoot, 'results')
-const viewport = { width: 1280, height: 800 }
+const contractPath = join(experimentRoot, '../compositor-benchmark/contract.json')
+const contract = JSON.parse(readFileSync(contractPath, 'utf8'))
+const benchmarkRoot = join(experimentRoot, '../compositor-benchmark')
+const digestFile = (path) =>
+  createHash('sha256').update(readFileSync(join(benchmarkRoot, path))).digest('hex')
+const artifacts = Object.fromEntries(contract.assets.map((asset) => [asset, digestFile(asset)]))
+const workloadSha256 = digestFile('scenario.html')
+const viewport = contract.viewport
 
 const wait = (duration) => new Promise((resolve) => setTimeout(resolve, duration))
 
@@ -91,14 +99,14 @@ async function run() {
   window.focus()
   app.focus({ steal: true })
 
-  const initialBounds = { x: 400, y: 230, width: 480, height: 320 }
-  const settledBounds = { x: 70, y: 64, width: 1140, height: 650 }
+  const initialBounds = contract.initialBounds
+  const settledBounds = contract.settledBounds
   view.setBounds(initialBounds)
   await view.webContents.loadFile(workloadPath)
-  await wait(1_000)
+  await wait(contract.initialWaitMs)
 
   const processMetricsBefore = compactProcessMetrics(app.getAppMetrics())
-  const openingTransition = await animateBounds(view, initialBounds, settledBounds, 450)
+  const openingTransition = await animateBounds(view, initialBounds, settledBounds, contract.transitionDurationMs)
 
   // This executes only in the repository-owned deterministic benchmark page.
   await view.webContents.executeJavaScript(`
@@ -127,14 +135,14 @@ async function run() {
     button: 'left',
     clickCount: 1,
   })
-  await wait(2_500)
+  await wait(contract.scrollDownWaitMs)
   await view.webContents.executeJavaScript(
     `window.scrollTo({ top: 0, behavior: 'smooth' })`,
   )
-  await wait(2_500)
+  await wait(contract.scrollUpWaitMs)
 
-  const closingTransition = await animateBounds(view, settledBounds, initialBounds, 450)
-  await wait(500)
+  const closingTransition = await animateBounds(view, settledBounds, initialBounds, contract.transitionDurationMs)
+  await wait(contract.closeSettleWaitMs)
   const workload = await view.webContents.executeJavaScript(
     `window.__INTOPONET_BENCHMARK__.snapshot(${display.displayFrequency})`,
   )
@@ -160,7 +168,8 @@ async function run() {
     },
     viewport,
     scenario: {
-      path: workloadPath,
+      contract,
+      artifacts: { workloadSha256, ...artifacts },
       version: workload.version,
     },
     transition: {

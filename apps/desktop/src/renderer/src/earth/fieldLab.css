@@ -1,0 +1,235 @@
+.field-lab {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 760px;
+  min-height: 560px;
+  overflow: hidden;
+  isolation: isolate;
+  color: #e9f4f3;
+  background: #07111b;
+}
+
+.field-lab__scene,
+.field-lab__scene .frequency-canvas {
+  position: absolute !important;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.field-lab__header {
+  position: absolute;
+  z-index: 2;
+  top: 28px;
+  left: 34px;
+  width: min(440px, calc(100vw - 520px));
+  pointer-events: none;
+  text-shadow: 0 2px 12px #07111b;
+}
+
+.field-lab__header h1 {
+  margin: 4px 0 8px;
+  font-size: clamp(24px, 3vw, 38px);
+  font-weight: 500;
+  letter-spacing: -0.04em;
+}
+
+.field-lab__header p {
+  margin: 0;
+  color: #aac0c2;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.field-lab__header .field-lab__eyebrow {
+  color: #71dccc;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.field-lab__panel {
+  position: absolute;
+  z-index: 2;
+  top: 22px;
+  right: 22px;
+  display: grid;
+  gap: 15px;
+  width: min(340px, calc(100vw - 44px));
+  max-height: calc(100vh - 92px);
+  padding: 18px;
+  overflow: auto;
+  border: 1px solid rgba(195, 237, 232, 0.18);
+  border-radius: 18px;
+  background: rgba(7, 17, 27, 0.84);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(18px);
+}
+
+.field-lab__control {
+  display: grid;
+  gap: 8px;
+  color: #cadbd9;
+  font-size: 12px;
+}
+
+.field-lab__control select {
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid rgba(195, 237, 232, 0.19);
+  border-radius: 9px;
+  color: #e9f4f3;
+  background: #10222e;
+}
+
+.field-lab__control input[type='range'] {
+  width: 100%;
+  accent-color: #50d9c7;
+}
+
+.field-lab__control input:disabled {
+  opacity: 0.42;
+}
+
+.field-lab__scales {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.field-lab__scales legend {
+  margin-bottom: 8px;
+  color: #aac0c2;
+  font-size: 11px;
+}
+
+.field-lab__scales button {
+  flex: 1;
+  padding: 7px 4px;
+  border: 1px solid rgba(195, 237, 232, 0.15);
+  border-radius: 8px;
+  color: #b7c9c8;
+  background: rgba(19, 41, 53, 0.78);
+  cursor: pointer;
+  font-size: 11px;
+  text-transform: capitalize;
+}
+
+.field-lab__scales button[aria-pressed='true'] {
+  border-color: rgba(80, 217, 199, 0.6);
+  color: #83eee0;
+  background: rgba(36, 97, 93, 0.3);
+}
+
+.field-lab__toggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #cadbd9;
+  font-size: 12px;
+}
+
+.field-lab__toggle input {
+  accent-color: #50d9c7;
+}
+
+.field-lab__status {
+  display: grid;
+  gap: 7px;
+  padding: 12px;
+  border-left: 2px solid #50d9c7;
+  border-radius: 0 9px 9px 0;
+  background: rgba(31, 74, 76, 0.28);
+}
+
+.field-lab__status strong {
+  color: #86e6da;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.field-lab__status span {
+  color: #c0d0cf;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.field-lab__measurements {
+  color: #c8d7d6;
+  font-size: 12px;
+}
+
+.field-lab__measurements summary {
+  cursor: pointer;
+  color: #a9c0c0;
+}
+
+.field-lab__measurements dl {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+}
+
+.field-lab__measurements dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.field-lab__measurements dt {
+  color: #8fa9aa;
+}
+
+.field-lab__measurements dd {
+  margin: 0;
+  text-align: right;
+}
+
+.field-lab__footer {
+  position: absolute;
+  z-index: 2;
+  bottom: 18px;
+  left: 24px;
+  max-width: calc(100vw - 400px);
+  margin: 0;
+  color: rgba(177, 200, 200, 0.74);
+  font-size: 10px;
+  pointer-events: none;
+}
+
+@media (max-width: 900px) {
+  .field-lab__header {
+    top: 16px;
+    left: 18px;
+    width: calc(100vw - 40px);
+  }
+
+  .field-lab__header > p:not(.field-lab__eyebrow) {
+    max-width: 55%;
+  }
+
+  .field-lab__panel {
+    top: auto;
+    right: 12px;
+    bottom: 42px;
+    max-height: 58vh;
+    width: min(320px, calc(100vw - 24px));
+    padding: 14px;
+  }
+}
+.field-lab__gpu-diagnostics {
+  max-height: 22rem;
+  overflow: auto;
+  margin: 0;
+  padding: 0.75rem;
+  border: 1px solid rgba(140, 196, 202, 0.24);
+  border-radius: 0.5rem;
+  color: #bdd8dc;
+  background: rgba(2, 10, 17, 0.76);
+  font: 0.68rem/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

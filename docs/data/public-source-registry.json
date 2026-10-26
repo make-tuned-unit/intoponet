@@ -1,0 +1,442 @@
+{
+  "schemaVersion": "0.1",
+  "reviewedAt": "2026-10-23",
+  "status": "research-candidates-only",
+  "enabledSourceIds": [],
+  "notes": [
+    "A successful GET verifies point-in-time availability only; it is not permission or a reuse license.",
+    "the 300-second polling target is a product target only where terms and observed response behavior permit; it is not a provider guarantee or a permission requirement.",
+    "validators and HTTP observations were recorded from direct GET requests on 2026-10-23 America/Halifax review date."
+  ],
+  "sources": [
+    {
+      "sourceId": "hrm-news-all",
+      "kind": "rss",
+      "url": "https://www.halifax.ca/news/rss-feed",
+      "publisherName": "Halifax Regional Municipality",
+      "languageTags": [
+        "en-CA"
+      ],
+      "declaredCoverage": {
+        "countryCodes": [
+          "CA"
+        ],
+        "regionIds": [
+          "CA-NS"
+        ],
+        "cityIds": [
+          "halifax-regional-municipality"
+        ]
+      },
+      "geographicScope": "local",
+      "independentPublisherGroupId": "hrm",
+      "candidateState": "candidate",
+      "licenseStatus": "review_required",
+      "termsUrl": "https://www.halifax.ca/home/stay-informed/rss-feeds",
+      "termsEvidence": "HRM describes category RSS feeds for municipal PSAs, statements, and news releases. No explicit content reuse license, retention permission, or feed polling limit was verified.",
+      "rightsReviewStatus": "unreviewed-for-product-use",
+      "fetchObservation": {
+        "checkedAt": "2026-10-23",
+        "httpStatus": 200,
+        "contentType": "application/rss+xml; charset=utf-8",
+        "etagObserved": true,
+        "lastModifiedObserved": true,
+        "health": "healthy",
+        "operationalState": "disabled"
+      },
+      "proposedPollingMinSeconds": 300,
+      "activePollingMinSeconds": null,
+      "retentionStatus": "unknown; do not persist feed content before review",
+      "coverageNotes": "Municipal publisher output only; not all Halifax reporting, events, or resident opinion. Each item needs separate event-geography evidence.",
+      "primaryEvidenceUrls": [
+        "https://www.halifax.ca/home/stay-informed/rss-feeds",
+        "https://www.halifax.ca/home/news"
+      ]
+    },
+    {
+      "sourceId": "noaa-general-news",
+      "kind": "rss",
+      "url": "https://www.noaa.gov/rss.xml",
+      "publisherName": "National Oceanic and Atmospheric Administration",
+      "languageTags": [
+        "en-US"
+      ],
+      "declaredCoverage": {
+        "countryCodes": [
+          "US"
+        ]
+      },
+      "geographicScope": "national",
+      "independentPublisherGroupId": "noaa",
+      "candidateState": "candidate",
+      "licenseStatus": "review_required",
+      "termsUrl": "https://www.noaa.gov/office-education/outreach-communication/faq",
+      "termsEvidence": "NOAA states nearly all NOAA content is public domain, but warns that not all content on its sites is NOAA-sourced; verify item credits, follow program-specific credit instructions, avoid implied endorsement, and do not misrepresent edits.",
+      "rightsReviewStatus": "item-and-asset-level-check-required",
+      "fetchObservation": {
+        "checkedAt": "2026-10-23",
+        "httpStatus": 200,
+        "contentType": "application/rss+xml; charset=utf-8",
+        "etagObserved": true,
+        "lastModifiedObserved": true,
+        "health": "healthy",
+        "operationalState": "disabled"
+      },
+      "proposedPollingMinSeconds": 300,
+      "activePollingMinSeconds": null,
+      "retentionStatus": "verify per source/item; do not retain full summaries or media by default",
+      "coverageNotes": "Agency topic feed, not comprehensive US news and not necessarily limited to events in the United States.",
+      "primaryEvidenceUrls": [
+        "https://www.noaa.gov/rss-feeds",
+        "https://www.noaa.gov/office-education/outreach-communication/faq"
+      ]
+    },
+    {
+      "sourceId": "bbc-uk-news",
+      "kind": "rss",
+      "url": "https://feeds.bbci.co.uk/news/uk/rss.xml",
+      "publisherName": "BBC News",
+      "languageTags": [
+        "en-GB"
+      ],
+      "declaredCoverage": {
+        "countryCodes": [
+          "GB"
+        ]
+      },
+      "geographicScope": "national",
+      "independentPublisherGroupId": "bbc",
+      "candidateState": "candidate",
+      "licenseStatus": "blocked",
+      "termsUrl": "https://downloads.bbc.co.uk/usingthebbc/bbc_terms_of_use.pdf",
+      "termsEvidence": "BBC's feed listing documents RSS 2.0, stable/live, updated ad hoc often by the minute. Section 15 says business use requires a metadata license and permission for feed use, potentially for a fee.",
+      "rightsReviewStatus": "permission-and-license-required-before-activation",
+      "fetchObservation": {
+        "checkedAt": "2026-10-23",
+        "httpStatus": 200,
+        "contentType": "text/xml; charset=utf-8",
+        "etagObserved": false,
+        "lastModifiedObserved": false,
+        "health": "healthy",
+        "operationalState": "disabled"
+      },
+      "proposedPollingMinSeconds": 300,
+      "activePollingMinSeconds": null,
+      "retentionStatus": "not cleared; do not persist or display feed metadata without permission",
+      "coverageNotes": "UK-edition/category does not establish the story's event location.",
+      "primaryEvidenceUrls": [
+        "https://support.bbc.co.uk/platform/feeds/UkNews.htm",
+        "https://downloads.bbc.co.uk/usingthebbc/bbc_terms_of_use.pdf"
+      ]
+    },
+    {
+      "sourceId": "torbay-council-media-releases",
+      "kind": "rss",
+      "url": "https://www.torbay.gov.uk/news-rss/",
+      "publisherName": "Torbay Council",
+      "languageTags": [
+        "en-GB"
+      ],
+      "declaredCoverage": {
+        "countryCodes": [
+          "GB"
+        ],
+        "regionIds": [
+          "england-south-west"
+        ],
+        "cityIds": [
+          "torbay"
+        ]
+      },
+      "geographicScope": "local",
+      "independentPublisherGroupId": "torbay-council",
+      "candidateState": "candidate",
+      "licenseStatus": "review_required",
+      "termsUrl": "https://www.torbay.gov.uk/council/get-in-touch/rss/",
+      "termsEvidence": "Council explicitly permits use of its RSS feeds on a website with Torbay Council attribution and prohibits reproducing logos/graphics. App use, caching/retention, transformed aggregates, and polling cadence are not specified on the RSS page; no request limit was published there.",
+      "rightsReviewStatus": "feed-use-described; app-display-and-retention-scope-review-required",
+      "fetchObservation": {
+        "checkedAt": "2026-10-23",
+        "httpStatus": 200,
+        "contentType": "text/xml",
+        "etagObserved": false,
+        "lastModifiedObserved": false,
+        "health": "healthy",
+        "operationalState": "disabled"
+      },
+      "proposedPollingMinSeconds": 300,
+      "activePollingMinSeconds": null,
+      "retentionStatus": "not specified on RSS page; review required",
+      "coverageNotes": "Council media releases only; not all reporting or discussion in the Torbay local authority area.",
+      "primaryEvidenceUrls": [
+        "https://www.torbay.gov.uk/council/get-in-touch/rss/",
+        "https://www.torbay.gov.uk/news-rss/"
+      ]
+    },
+    {
+      "sourceId": "hinckley-bosworth-news",
+      "kind": "rss",
+      "url": "https://www.hinckley-bosworth.gov.uk/rss/news",
+      "publisherName": "Hinckley & Bosworth Borough Council",
+      "languageTags": [
+        "en-GB"
+      ],
+      "declaredCoverage": {
+        "countryCodes": [
+          "GB"
+        ],
+        "regionIds": [
+          "england-east-midlands"
+        ],
+        "cityIds": [
+          "hinckley-and-bosworth-borough"
+        ]
+      },
+      "geographicScope": "local",
+      "independentPublisherGroupId": "hinckley-bosworth-borough-council",
+      "candidateState": "admitted-disabled",
+      "licenseStatus": "approved",
+      "termsUrl": "https://www.hinckley-bosworth.gov.uk/opendata",
+      "termsEvidence": "The Council open-data page says transparency data is reusable under the Open Government Licence without asking permission and requires source attribution. The data catalog lists News and press, and identifies RSS as a format for some Council data. OGL v3 explicitly permits use in an application and commercial/non-commercial reuse. Exclude material marked third-party, personal data, logos, and other exclusions.",
+      "rightsReviewStatus": "planner-reviewed-scoped-ogl-v3-metadata-pilot",
+      "fetchObservation": {
+        "checkedAt": "2026-10-23",
+        "httpStatus": 200,
+        "contentType": "text/xml;charset=UTF-8",
+        "etagObserved": false,
+        "lastModifiedObserved": false,
+        "health": "healthy",
+        "operationalState": "disabled",
+        "latestItemPubDateObserved": "2026-10-24T00:39:37Z"
+      },
+      "proposedPollingMinSeconds": 300,
+      "activePollingMinSeconds": null,
+      "retentionStatus": "Pilot: metadata only for rolling 30 days; retain attribution/provenance with derived snapshots for the same period; no media, descriptions or article bodies. Correct/remove excluded or withdrawn records on review.",
+      "coverageNotes": "Borough-wide council news/press, not all local journalism. Hinckley is a market town within the borough; place an item at Hinckley only with explicit story evidence.",
+      "recommendedDecision": {
+        "status": "approve-scoped-metadata-pilot",
+        "fields": [
+          "title",
+          "description",
+          "canonicalItemUrl",
+          "guid",
+          "publishedAt"
+        ],
+        "conditions": [
+          "verify the selected item fields are within the Council's OGL-covered data and not marked third-party/personal",
+          "provide source attribution and link to the Council and OGL v3",
+          "exclude logos and media assets",
+          "keep story geography unknown absent explicit item evidence"
+        ],
+        "requiresSeparateOperatorPermission": false,
+        "plannerReview": "2026-10-23: Codex project planning agent reviewed Council open-data statement, catalog News and press entry, and OGL v3. Scoped metadata use approved; runtime remains disabled until ingestion QA."
+      },
+      "primaryEvidenceUrls": [
+        "https://www.hinckley-bosworth.gov.uk/opendata",
+        "https://www.hinckley-bosworth.gov.uk/info/200346/list_of_our_data",
+        "https://www.hinckley-bosworth.gov.uk/rss/news",
+        "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/"
+      ],
+      "approvedFields": [
+        "title",
+        "canonicalItemUrl",
+        "guid",
+        "publishedAt"
+      ],
+      "attribution": "Hinckley & Bosworth Borough Council. Contains public sector information licensed under the Open Government Licence v3.0.",
+      "licenseUrl": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+      "admissionConditions": [
+        "Exclude marked third-party and personal-data items; no logos/media/description ingestion.",
+        "Keep geography unknown unless an explicit subject-location rule has evidence.",
+        "Poll no faster than 300 seconds initially, obey Cache-Control/Retry-After and exponential backoff; no published source-specific rate asserted.",
+        "Expose original link, attribution, OGL link, update time and coverage. No implied Council endorsement.",
+        "Future-dated or missing publication timestamps stay flagged and must not create artificial momentum."
+      ]
+    },
+    {
+      "sourceId": "new-plymouth-council-news-notices",
+      "kind": "rss",
+      "url": "https://www.npdc.govt.nz/council/news-and-notices-rss/",
+      "publisherName": "New Plymouth District Council",
+      "languageTags": [
+        "en-NZ"
+      ],
+      "declaredCoverage": {
+        "countryCodes": [
+          "NZ"
+        ],
+        "regionIds": [
+          "NZ-TKI"
+        ],
+        "cityIds": [
+          "new-plymouth-district"
+        ]
+      },
+      "geographicScope": "local",
+      "independentPublisherGroupId": "new-plymouth-district-council",
+      "candidateState": "candidate",
+      "licenseStatus": "blocked",
+      "termsUrl": "https://www.npdc.govt.nz/terms-and-conditions/",
+      "termsEvidence": "Council describes the endpoint as an RSS feed for news and public notices. Its terms state content is copyrighted, allow personal/informational/non-commercial use, require written permission for other use, and prohibit distributing site content to third parties. No RSS-specific retention or polling terms were found.",
+      "rightsReviewStatus": "permission-required-for-product-display-or-redistribution",
+      "fetchObservation": {
+        "checkedAt": "2026-10-23",
+        "httpStatus": 200,
+        "contentType": "text/html; charset=utf-8 (body is RSS 2.0 XML)",
+        "etagObserved": false,
+        "lastModifiedObserved": false,
+        "health": "healthy",
+        "operationalState": "disabled"
+      },
+      "proposedPollingMinSeconds": 300,
+      "activePollingMinSeconds": null,
+      "retentionStatus": "not cleared for this product; terms restrict redistribution",
+      "coverageNotes": "District-wide council feed, not all New Plymouth reporting. Stats NZ functional-urban-area data classifies New Plymouth as a large regional centre, urban-core population about 70,599.",
+      "primaryEvidenceUrls": [
+        "https://www.npdc.govt.nz/council/news-and-notices-rss/",
+        "https://www.npdc.govt.nz/terms-and-conditions/",
+        "https://datafinder.stats.govt.nz/layer/111270-functional-urban-area-2023-generalised/"
+      ]
+    },
+    {
+      "sourceId": "marlborough-district-council-news",
+      "kind": "rss",
+      "url": "https://www.marlborough.govt.nz/rss/combined-mdc-news-notices-and-media-releases",
+      "publisherName": "Marlborough District Council",
+      "languageTags": [
+        "en-NZ"
+      ],
+      "declaredCoverage": {
+        "countryCodes": [
+          "NZ"
+        ],
+        "regionIds": [
+          "NZ-MBH"
+        ],
+        "cityIds": []
+      },
+      "geographicScope": "regional",
+      "independentPublisherGroupId": "marlborough-district-council",
+      "candidateState": "candidate",
+      "licenseStatus": "blocked",
+      "termsUrl": "https://www.marlborough.govt.nz/terms-and-conditions-of-use",
+      "termsEvidence": "Official RSS directory lists a combined district news/notices/media-release feed. Council terms authorize reproduction for personal/non-commercial use or limited site tasks, require attribution and accurate/non-misleading reproduction when disseminated, and exclude third-party material. No polling or retention limit was published.",
+      "rightsReviewStatus": "permission-required-for-product-display-or-redistribution",
+      "fetchObservation": {
+        "checkedAt": "2026-10-23",
+        "httpStatus": 202,
+        "contentType": "text/html; charset=UTF-8",
+        "etagObserved": false,
+        "lastModifiedObserved": false,
+        "health": "error",
+        "operationalState": "disabled",
+        "note": "Direct GET returned 202 with empty HTML rather than a feed payload; endpoint health remains unknown. Search crawler exposed dated feed entries, which is secondary evidence only."
+      },
+      "proposedPollingMinSeconds": 300,
+      "activePollingMinSeconds": null,
+      "retentionStatus": "not cleared for this product; terms restrict redistribution",
+      "coverageNotes": "District-wide, not Blenheim-only. Stats NZ's 2018 functional-urban-area methodology lists Blenheim urban core at 26,832 usual residents; this is a small-city-scale population comparison, not proof every feed item concerns Blenheim.",
+      "primaryEvidenceUrls": [
+        "https://www.marlborough.govt.nz/rss-feeds",
+        "https://www.marlborough.govt.nz/terms-and-conditions-of-use",
+        "https://www.stats.govt.nz/assets/Methods/Functional-urban-areas-methodology-and-classification.pdf"
+      ]
+    },
+    {
+      "sourceId": "guardian-world",
+      "kind": "rss",
+      "url": "https://www.theguardian.com/world/rss",
+      "publisherName": "Guardian News & Media",
+      "languageTags": [
+        "en"
+      ],
+      "declaredCoverage": {
+        "countryCodes": []
+      },
+      "geographicScope": "international",
+      "independentPublisherGroupId": "guardian-news-media",
+      "candidateState": "candidate",
+      "licenseStatus": "blocked",
+      "termsUrl": "https://www.theguardian.com/help/terms-of-service",
+      "termsEvidence": "Guardian describes feeds as for personal, non-commercial use under its terms. No commercial/product metadata or retention license was found.",
+      "rightsReviewStatus": "permission-required-before-activation",
+      "fetchObservation": {
+        "checkedAt": "2026-10-23",
+        "httpStatus": 200,
+        "contentType": "text/xml; charset=UTF-8",
+        "etagObserved": true,
+        "lastModifiedObserved": false,
+        "health": "healthy",
+        "operationalState": "disabled"
+      },
+      "proposedPollingMinSeconds": 300,
+      "activePollingMinSeconds": null,
+      "retentionStatus": "not cleared; do not persist or display feed metadata without permission",
+      "coverageNotes": "World section is an editorial classification, not a precise location claim.",
+      "primaryEvidenceUrls": [
+        "https://www.theguardian.com/help/feeds",
+        "https://www.theguardian.com/help/terms-of-service"
+      ]
+    },
+    {
+      "sourceId": "bluesky-hrm-official-account",
+      "kind": "public_api",
+      "url": "https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=hfxgov.bsky.social&limit=20",
+      "publisherName": "Halifax Regional Municipality (official Bluesky account)",
+      "languageTags": [
+        "en-CA"
+      ],
+      "declaredCoverage": {
+        "countryCodes": [
+          "CA"
+        ],
+        "regionIds": [
+          "CA-NS"
+        ],
+        "cityIds": [
+          "halifax-regional-municipality"
+        ]
+      },
+      "geographicScope": "local",
+      "independentPublisherGroupId": "hrm",
+      "candidateState": "candidate",
+      "licenseStatus": "review_required",
+      "termsUrl": "https://bsky.social/about/support/tos",
+      "termsEvidence": "Public author-feed request returned 200. Bluesky's terms state authors retain ownership and grant Bluesky limited service-use rights; no general third-party reuse license is granted. Government users have separate terms. AT Protocol guidance calls for mirrors to process deletions/account status promptly (seconds/minutes) and discourages public redistribution of static bulk repo snapshots.",
+      "rightsReviewStatus": "account-owner-and-platform-terms-review-required",
+      "fetchObservation": {
+        "checkedAt": "2026-10-23",
+        "httpStatus": 200,
+        "contentType": "application/json; charset=utf-8",
+        "etagObserved": false,
+        "lastModifiedObserved": false,
+        "health": "healthy",
+        "operationalState": "disabled"
+      },
+      "proposedPollingMinSeconds": 300,
+      "activePollingMinSeconds": null,
+      "retentionStatus": "unknown for this downstream use; deletion/account status behavior must be designed before activation",
+      "coverageNotes": "A single institutional account records its own posts, not public discussion volume. Account identity and city affiliation do not prove each post's event location.",
+      "primaryEvidenceUrls": [
+        "https://www.halifax.ca/home/news",
+        "https://docs.bsky.app/docs/api/app-bsky-feed-get-author-feed",
+        "https://bsky.social/about/support/tos",
+        "https://atproto.com/specs/sync"
+      ]
+    }
+  ],
+  "excludedExamples": [
+    {
+      "sourceId": "abc-news-rss",
+      "publisherName": "Australian Broadcasting Corporation",
+      "url": "https://www.abc.net.au/news/rss-feeds/4808396",
+      "languageTags": [
+        "en-AU"
+      ],
+      "candidateState": "excluded-stale",
+      "evidenceUrl": "https://help.abc.net.au/hc/en-us/articles/6147104938383-Why-are-RSS-feeds-no-longer-being-updated",
+      "reason": "ABC's official help page says its RSS feeds are no longer updated. Legacy documentation/feed links do not establish a functioning live source."
+    }
+  ],
+  "reviewTimezone": "America/Halifax"
+}

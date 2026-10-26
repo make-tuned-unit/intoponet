@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "1.0",
+  "sourceId": "hinckley-bosworth-news",
+  "sourceUrl": "https://www.hinckley-bosworth.gov.uk/rss/news",
+  "observedAtUtc": "2026-10-24T00:59:54.891Z",
+  "fetchOutcome": "updated",
+  "httpOutcome": "Successful response accepted by Fetch Response.ok (2xx); this run did not capture the exact numeric status code.",
+  "receivedMetadataItems": 50,
+  "retainedMetadataItems": 50,
+  "retentionDays": 30,
+  "storedFields": [
+    "title",
+    "canonicalItemUrl",
+    "guid-derived stable ID",
+    "publishedAt when supplied",
+    "discoveredAt",
+    "content hash",
+    "source provenance"
+  ],
+  "excludedFields": [
+    "description",
+    "article body",
+    "media",
+    "logos",
+    "inferred geography"
+  ],
+  "cacheOutcome": "Persistence permitted; response did not have Cache-Control: no-store.",
+  "outputDataDirectory": "/tmp/intoponet-public-feed-pilot-20261024",
+  "manifestPath": "/tmp/intoponet-public-feed-pilot-20261024/ingestion-manifest.v1.json",
+  "caveat": "The parser/scheduler result classifies any successful non-304 HTTP response as updated. The exact numeric status was not recorded; do not treat the earlier 2026-10-23 registry observation of HTTP 200 as this run's status."
+}

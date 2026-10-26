@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<atom:feed xmlns:atom="http://www.w3.org/2005/Atom" xml:base="https://news.example/feeds/current/" xml:lang="en-GB">
+  <atom:title>Controlled Atom fixture</atom:title>
+  <atom:entry xml:lang="en-CA" xml:base="../stories/">
+    <atom:id>urn:example:story:alpha</atom:id>
+    <atom:title>Harbour plan &amp; public meeting</atom:title>
+    <atom:link rel="self" href="/api/entries/alpha" />
+    <atom:link rel="alternate" href="alpha?source=feed#top" />
+    <atom:category term="Local News" />
+    <atom:category term="Public Meeting" />
+    <atom:category term="日本語" />
+    <atom:published>2026-10-20T12:30:00-03:00</atom:published>
+    <atom:updated>2026-10-21T08:00:00Z</atom:updated>
+  </atom:entry>
+  <atom:entry>
+    <atom:id>urn:example:story:undated</atom:id>
+    <atom:title><![CDATA[<b>Undated</b> item]]></atom:title>
+    <atom:link href="https://news.example/stories/undated" />
+  </atom:entry>
+</atom:feed>

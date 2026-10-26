@@ -83,12 +83,18 @@ function hostOf(url: string): string {
   }
 }
 
+function measurementKey(source: SourceRecord): string {
+  const { kind, unit, scale } = source.measurement
+  const legacyIdentity = kind === 'legacy-untyped' ? source.id : ''
+  return [kind, unit, scale ?? '', legacyIdentity].join('|')
+}
+
 export function scoreSources(sources: SourceRecord[], now: number): ScoredSource[] {
   const seen = new Map<string, number>()
   return [...sources]
     .sort((a, b) => b.weight - a.weight)
     .map((source) => {
-      const host = hostOf(source.url)
+      const host = `${measurementKey(source)}:${hostOf(source.url)}`
       const index = seen.get(host) ?? 0
       seen.set(host, index + 1)
       const raw =
@@ -98,6 +104,9 @@ export function scoreSources(sources: SourceRecord[], now: number): ScoredSource
 }
 
 export function rawTotal(sources: SourceRecord[], now: number): number {
+  if (new Set(sources.map(measurementKey)).size > 1) {
+    throw new Error('Cannot total raw values across different measurement groups.')
+  }
   return scoreSources(sources, now).reduce((sum, source) => sum + source.raw, 0)
 }
 
@@ -114,7 +123,10 @@ function clusterSources(sources: ScoredSource[], radiusKm: number): ScoredSource
     const group = [seed]
     for (let index = remaining.length - 1; index >= 0; index -= 1) {
       const candidate = remaining[index]
-      if (!candidate || candidate.topics[0] !== seed.topics[0]) continue
+      if (
+        !candidate || candidate.topics[0] !== seed.topics[0] ||
+        measurementKey(candidate) !== measurementKey(seed)
+      ) continue
       if (haversineKm(seed, candidate) <= radiusKm) {
         group.push(candidate)
         remaining.splice(index, 1)
@@ -201,6 +213,7 @@ export function topographyFromSnapshot(
       phaseVelocity: 0.035 + (Math.abs(place.lat) % 5) * 0.004,
       confidence: synthetic ? 0.3 : Math.min(0.9, 0.4 + group.length * 0.1),
       topicIds: [topic],
+      category: `measurement:${measurementKey(group[0]!)}`,
       updatedAt: snapshot.createdAt,
       sourceType: synthetic ? 'synthetic' : 'public-aggregate',
     }
@@ -214,6 +227,7 @@ export function topographyFromSnapshot(
       const topic = band.topicIds[0] ?? ''
       for (const other of primary.slice(index + 1)) {
         const otherTopic = other.topicIds[0] ?? ''
+        if (band.category !== other.category) continue
         if (!relatedTopics[topic]?.includes(otherTopic)) continue
         const start = band.centerline[1] ?? band.centerline[0]
         const end = other.centerline[1] ?? other.centerline[0]

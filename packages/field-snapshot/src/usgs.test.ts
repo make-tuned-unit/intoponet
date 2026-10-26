@@ -12,6 +12,7 @@ describe('USGS public field', () => {
             geometry: { type: 'Point', coordinates: [-122.4, 37.8, 10] },
             properties: {
               mag: 5.4,
+              magType: 'ml',
               place: '10 km W of Berkeley, CA',
               url: 'https://earthquake.usgs.gov/earthquakes/eventpage/us1000',
               time: Date.parse('2026-10-22T12:00:00.000Z'),
@@ -39,6 +40,14 @@ describe('USGS public field', () => {
     expect(records[0]?.title).toBe('10 km W of Berkeley, CA')
     expect(records[0]?.topics).toEqual(['seismic-record'])
     expect(records[0]?.weight).toBeLessThan(2.2)
+    expect(records[0]?.measurement).toMatchObject({
+      kind: 'usgs-earthquake-magnitude',
+      value: 5.4,
+      unit: 'magnitude',
+      scale: 'ml',
+      sourceId: 'usgs-comcat-m45-week',
+    })
+    expect(records[0]?.measurement.sourceUrl).toContain('/4.5_week.geojson')
     expect(JSON.stringify(records)).not.toContain('Do not store')
     expect(weightFromMagnitude(12)).toBe(2.2)
   })

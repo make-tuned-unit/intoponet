@@ -17,10 +17,15 @@ Implemented:
 - real Chromium `WebContentsView` with no Node integration
 - origin display, find-in-page, print, stop, minimize/restore
 - local bookmarks with private notes, renameable collections, and recent pages
+- multiple Chromium tabs with a shared persistent browser profile
 - downloads saved to the user Downloads folder
 - local exploration-context persistence
+- a limited public field from English Wikipedia/Wikimedia and USGS records,
+  with source coverage and synthetic fallback disclosed in the UI
 - reduced-motion, reduced-transparency and keyboard focus states
 - dependency-gated delivery plan in [docs/DELIVERY_DAG.md](./docs/DELIVERY_DAG.md)
+- executable work queue and verification gates in [docs/EXECUTION_RUNBOOK.md](./docs/EXECUTION_RUNBOOK.md)
+- frequency appearance, signal meaning, and coverage plan in [docs/FIELD_PLAN.md](./docs/FIELD_PLAN.md)
 
 ## Run
 

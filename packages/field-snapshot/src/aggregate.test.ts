@@ -3,7 +3,7 @@ import { aggregateSnapshot, assertAttributable, bandsFromSnapshot, dedupeSources
 import { demoFieldSnapshot, syntheticRegistry } from './fixtures'
 import type { SourceRecord } from './types'
 import { rawTotal } from './topography'
-import { hitsFromGeosearch, parseFieldSnapshot, publicFieldSnapshot, recordsFromHits, viewsFromPayload, weightFromViews } from './wikipedia'
+import { hitsFromGeosearch, parseFieldSnapshot, publicFieldSnapshot, recordsFromHits, viewsFromPayload, weightFromViews, wikipediaPageviewsUrl } from './wikipedia'
 
 const publicSource: SourceRecord = {
   id: 'open-archive',
@@ -19,11 +19,30 @@ const publicSource: SourceRecord = {
   topics: ['civic-memory'],
   weight: 1,
   publishedAt: '2024-01-01T00:00:00.000Z',
+  measurement: {
+    kind: 'declared-index',
+    value: 1,
+    unit: 'index',
+    sourceId: 'example-index',
+    sourceUrl: 'https://example.org/metrics',
+    transformation: 'fixture test input',
+  },
 }
 
 describe('field snapshot', () => {
   it('rejects a source that has no attribution', () => {
     expect(() => assertAttributable({ ...publicSource, attribution: ' ' })).toThrow('attribution')
+  })
+
+  it('requires a typed measurement and provenance URL', () => {
+    expect(() => assertAttributable({
+      ...publicSource,
+      measurement: { ...publicSource.measurement, unit: ' ' },
+    })).toThrow('typed measurement')
+    expect(() => assertAttributable({
+      ...publicSource,
+      measurement: { ...publicSource.measurement, sourceUrl: 'javascript:alert(1)' },
+    })).toThrow('HTTP or HTTPS')
   })
 
   it('dedupes the same original URL and keeps amplitude bounded', () => {
@@ -38,8 +57,8 @@ describe('field snapshot', () => {
 
   it('publishes the demo field as a synthetic snapshot', () => {
     const snapshot = demoFieldSnapshot()
-    expect(snapshot.schema).toBe('intoponet.field-snapshot.v1')
-    expect(snapshot.algorithm).toBe('log1p-v1')
+    expect(snapshot.schema).toBe('intoponet.field-snapshot.v2')
+    expect(snapshot.algorithm).toBe('log1p-separated-v2')
     expect(snapshot.sources).toHaveLength(syntheticRegistry.length)
     expect(snapshot.bands.every((band) => band.sourceType === 'synthetic')).toBe(true)
     expect(snapshot.coverageNote).toContain('Synthetic')
@@ -67,6 +86,173 @@ describe('field snapshot', () => {
     }
     expect(rawTotal([primary, repeat], now)).toBeLessThan(rawTotal([primary, independent], now))
     expect(rawTotal([far], now)).toBeLessThan(rawTotal([primary], now))
+  })
+
+  it('keeps different measurement kinds in separate cells and field bands', () => {
+    const wiki = {
+      ...publicSource,
+      id: 'wiki-one',
+      url: 'https://shared.example/wiki',
+      topics: ['open-knowledge'],
+      lat: 40.7,
+      lon: -74,
+      measurement: {
+        kind: 'wikimedia-pageviews' as const,
+        value: 1000,
+        unit: 'pageviews',
+        sourceId: 'wikimedia-pageviews-en',
+        sourceUrl: 'https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article',
+        transformation: 'bounded-log10-pageviews-v1',
+      },
+    }
+    const quake = {
+      ...publicSource,
+      id: 'usgs-one',
+      url: 'https://shared.example/quake',
+      topics: ['open-knowledge'],
+      lat: 40.7,
+      lon: -74,
+      weight: 2,
+      measurement: {
+        kind: 'usgs-earthquake-magnitude' as const,
+        value: 6.1,
+        unit: 'magnitude',
+        sourceId: 'usgs-comcat-m45-week',
+        sourceUrl: 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_week.geojson',
+        transformation: 'bounded-linear-magnitude-v1',
+        scale: 'ml',
+      },
+    }
+    const wikiPeer = {
+      ...wiki,
+      id: 'wiki-two',
+      url: 'https://shared.example/wiki-peer',
+    }
+    const snapshot = aggregateSnapshot([wiki, quake], Date.parse('2026-10-23T00:00:00.000Z'))
+    expect(snapshot.bands).toHaveLength(2)
+    expect(new Set(snapshot.bands.map((band) => band.id)).size).toBe(2)
+    expect(snapshot.bands.map((band) => band.measurement.kind).sort()).toEqual([
+      'usgs-earthquake-magnitude',
+      'wikimedia-pageviews',
+    ])
+    const wikiSolo = aggregateSnapshot([wiki], Date.parse('2026-10-23T00:00:00.000Z'))
+    const quakeSolo = aggregateSnapshot([quake], Date.parse('2026-10-23T00:00:00.000Z'))
+    expect(snapshot.bands.find((band) => band.measurement.kind === 'wikimedia-pageviews')?.amplitude)
+      .toBe(wikiSolo.bands[0]?.amplitude)
+    expect(snapshot.bands.find((band) => band.measurement.kind === 'usgs-earthquake-magnitude')?.amplitude)
+      .toBe(quakeSolo.bands[0]?.amplitude)
+    expect(snapshot.bands.find((band) => band.measurement.kind === 'wikimedia-pageviews')?.id)
+      .toBe(wikiSolo.bands[0]?.id)
+    expect(snapshot.bands.find((band) => band.measurement.kind === 'usgs-earthquake-magnitude')?.id)
+      .toBe(quakeSolo.bands[0]?.id)
+    const grouped = aggregateSnapshot([wiki, quake, wikiPeer], Date.parse('2026-10-23T00:00:00.000Z'))
+    expect(grouped.bands.map((band) => band.id)).toEqual(
+      expect.arrayContaining(snapshot.bands.map((band) => band.id)),
+    )
+    expect(grouped.bands.find((band) => band.measurement.kind === 'wikimedia-pageviews')?.sourceIds.sort())
+      .toEqual(['wiki-one', 'wiki-two'])
+
+    const reordered = aggregateSnapshot([wikiPeer, wiki, quake], Date.parse('2026-10-23T00:00:00.000Z'))
+    const groupSummary = (bands: typeof snapshot.bands) =>
+      bands
+        .map((band) => ({
+          id: band.id,
+          kind: band.measurement.kind,
+          sourceIds: [...band.sourceIds].sort(),
+        }))
+        .sort((left, right) => left.id.localeCompare(right.id))
+    expect(groupSummary(reordered.bands)).toEqual(groupSummary(grouped.bands))
+
+    const fieldBands = bandsFromSnapshot(snapshot)
+    expect(fieldBands).toHaveLength(2)
+    expect(fieldBands.map((band) => band.category)).toContain(
+      'measurement:usgs-earthquake-magnitude|magnitude|ml|',
+    )
+    expect(fieldBands.map((band) => band.category)).toContain(
+      'measurement:wikimedia-pageviews|pageviews||',
+    )
+    expect(() => rawTotal([wiki, quake], Date.parse('2026-10-23T00:00:00.000Z')))
+      .toThrow('different measurement groups')
+  })
+
+  it('keeps delimiter-containing and legacy measurement identities distinct and stable', () => {
+    const legacy = (
+      id: string,
+      url: string,
+      unit: string,
+      scale: string,
+    ): SourceRecord => ({
+      ...publicSource,
+      id,
+      url,
+      measurement: {
+        ...publicSource.measurement,
+        kind: 'legacy-untyped',
+        value: null,
+        unit,
+        scale,
+      },
+    })
+    // These two tuples collided under a delimiter-joined key:
+    // legacy-untyped|u|x|s|legacy-shared.
+    const first = legacy('legacy-shared', 'https://legacy.example/one', 'u|x', 's')
+    const delimiterCollision = legacy('legacy-shared', 'https://legacy.example/two', 'u', 'x|s')
+    const distinctLegacyIdentity = legacy('legacy-other', 'https://legacy.example/three', 'u|x', 's')
+    const sources = [first, delimiterCollision, distinctLegacyIdentity]
+    const snapshot = aggregateSnapshot(sources)
+    const reordered = aggregateSnapshot([...sources].reverse())
+
+    expect(snapshot.bands).toHaveLength(3)
+    expect(new Set(snapshot.bands.map((band) => band.id)).size).toBe(3)
+    expect(snapshot.bands.map((band) => band.id).sort()).toEqual(
+      reordered.bands.map((band) => band.id).sort(),
+    )
+  })
+
+  it('migrates v1 wiki and USGS weights without restoring a generic mixed score', () => {
+    const legacy = {
+      schema: 'intoponet.field-snapshot.v1',
+      id: 'legacy-public',
+      algorithm: 'log1p-v1',
+      createdAt: '2026-10-23T00:00:00.000Z',
+      coverageNote: 'Wikipedia and USGS. Not the whole web, not a measure of importance.',
+      sources: [
+        {
+          id: 'wiki-1', kind: 'public-record', title: 'Wiki page',
+          url: 'https://en.wikipedia.org/wiki/Wiki_page', licence: 'cc-by-sa',
+          attribution: 'Wikipedia contributors', retrievedAt: '2026-10-23T00:00:00.000Z',
+          lat: 40.7, lon: -74, radiusKm: 10, topics: ['open-knowledge'],
+          weight: 1.5, publishedAt: '2026-10-23T00:00:00.000Z',
+        },
+        {
+          id: 'usgs-1', kind: 'public-record', title: 'Earthquake',
+          url: 'https://earthquake.usgs.gov/earthquakes/eventpage/us1', licence: 'public-domain',
+          attribution: 'USGS', retrievedAt: '2026-10-23T00:00:00.000Z',
+          lat: 40.7, lon: -74, radiusKm: 50, topics: ['open-knowledge'],
+          weight: 1.5, publishedAt: '2026-10-23T00:00:00.000Z',
+        },
+      ],
+    }
+    const migrated = parseFieldSnapshot(JSON.stringify(legacy))
+    expect(migrated?.schema).toBe('intoponet.field-snapshot.v2')
+    expect(migrated?.sources.map((source) => source.measurement.kind)).toEqual([
+      'legacy-pageviews-weight',
+      'legacy-earthquake-weight',
+    ])
+    expect(migrated?.sources.every((source) => source.measurement.value === null)).toBe(true)
+    expect(migrated?.sources.every((source) => source.measurement.unit === 'unknown')).toBe(true)
+    expect(migrated?.sources[0]?.measurement.transformation).toContain('raw pageview count')
+    expect(migrated?.sources[0]?.weight).toBe(1.5)
+    expect(migrated?.bands).toHaveLength(2)
+  })
+
+  it('rejects an untyped source in a v2 snapshot', () => {
+    const snapshot = aggregateSnapshot([publicSource])
+    const serialized = JSON.parse(JSON.stringify(snapshot)) as {
+      sources: Array<Record<string, unknown>>
+    }
+    delete serialized.sources[0]?.['measurement']
+    expect(parseFieldSnapshot(JSON.stringify(serialized))).toBeNull()
   })
 
   it('lays the corridor through the sources and keeps city waves finer', () => {
@@ -97,12 +283,14 @@ describe('field snapshot', () => {
     const snapshot = aggregateSnapshot([west, east, related])
     const earth = bandsFromSnapshot(snapshot, 'earth')
     const region = bandsFromSnapshot(snapshot, 'region')
-    const corridor = earth.find((band) => band.topicIds[0] === 'open-knowledge' && !band.category)
+    const corridor = earth.find((band) =>
+      band.topicIds[0] === 'open-knowledge' && band.category?.startsWith('measurement:'),
+    )
     const lons = corridor?.centerline.map((point) => point.lon) ?? []
     expect(Math.min(...lons)).toBeLessThan(-73.5)
     expect(Math.max(...lons)).toBeGreaterThan(-73.4)
-    const earthWave = earth.find((band) => !band.category)?.wavelengthKm ?? 0
-    const cityWave = bandsFromSnapshot(snapshot, 'city').find((band) => !band.category)?.wavelengthKm ?? 0
+    const earthWave = earth.find((band) => band.category?.startsWith('measurement:'))?.wavelengthKm ?? 0
+    const cityWave = bandsFromSnapshot(snapshot, 'city').find((band) => band.category?.startsWith('measurement:'))?.wavelengthKm ?? 0
     expect(cityWave).toBeLessThan(earthWave)
     const overlap = region.find((band) => band.category === 'overlap')
     expect(overlap?.amplitude ?? 1).toBeLessThan(0.3)
@@ -122,6 +310,13 @@ describe('wikipedia public field', () => {
     expect(records[0]?.url).toBe('https://en.wikipedia.org/wiki/Brooklyn_Bridge_Park')
     expect(records[0]?.licence).toBe('cc-by-sa')
     expect(records[0]?.weight).toBeGreaterThan(1)
+    expect(records[0]?.measurement).toMatchObject({
+      kind: 'wikimedia-pageviews',
+      value: 92,
+      unit: 'pageviews',
+      sourceId: 'wikimedia-pageviews-en',
+    })
+    expect(records[0]?.measurement.sourceUrl).toContain('/daily/')
     expect(JSON.stringify(records)).not.toContain('do not keep')
     const snapshot = publicFieldSnapshot(records, Date.parse('2026-10-23T00:00:00.000Z'))
     expect(snapshot.bands[0]?.sourceType).toBe('public-aggregate')
@@ -133,5 +328,26 @@ describe('wikipedia public field', () => {
     expect(viewsFromPayload({ items: [{ views: 32 }, { views: 60 }] })).toBe(92)
     expect(weightFromViews(0)).toBe(0.2)
     expect(weightFromViews(1_000_000)).toBe(5)
+  })
+
+  it('records the exact requested pageview window across a UTC date rollover', () => {
+    const requestedWindow = {
+      start: new Date('2026-10-16T23:59:30.000Z'),
+      end: new Date('2026-10-22T23:59:30.000Z'),
+    }
+    const retrievedAt = '2026-10-23T00:01:00.000Z'
+    const [record] = recordsFromHits(
+      [{ pageid: 2, title: 'Date Rollover', lat: 40.7, lon: -74 }],
+      'open-knowledge',
+      new Map([['Date Rollover', 25]]),
+      retrievedAt,
+      requestedWindow,
+    )
+    const exactUrl = wikipediaPageviewsUrl('Date Rollover', requestedWindow)
+    expect(exactUrl).toContain('/daily/20261016/20261022')
+    expect(record?.measurement.sourceUrl).toBe(exactUrl)
+    expect(record?.measurement.windowStart).toBe('20261016')
+    expect(record?.measurement.windowEnd).toBe('20261022')
+    expect(record?.retrievedAt).toBe(retrievedAt)
   })
 })

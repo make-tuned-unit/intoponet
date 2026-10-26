@@ -82,13 +82,22 @@ export type ProtectionSnapshot = {
   trackersEnabled: boolean
 }
 
+export type PrivateLibraryReadResult =
+  | { status: 'ok'; payload: string | null }
+  | {
+      status: 'error'
+      reason: 'encryption-unavailable' | 'decrypt-failed' | 'reencrypt-failed'
+    }
+
 export type BrowserHostEvent =
+  | { type: 'frequency-visit'; url: string; title: string; rating: string | null; navigationId: string }
   | { type: 'panel-state'; panel: BrowserPanelSnapshot }
   | { type: 'navigation-failed'; url: string; reason: string }
   | ({ type: 'find-result' } & FindInPageResult)
   | ({ type: 'download-finished' } & DownloadFinishedEvent)
   | { type: 'protection-state'; protection: ProtectionSnapshot }
   | { type: 'tabs'; tabs: PageTabSnapshot[] }
+  | { type: 'tab-dock-state'; open: boolean }
   | { type: 'field-snapshot'; payload: string }
 
 export interface BrowserHostApi {
@@ -105,6 +114,8 @@ export interface BrowserHostApi {
   print(): Promise<void>
   zoom(action: 'in' | 'out' | 'reset'): Promise<void>
   setBounds(bounds: BrowserPanelBounds): Promise<void>
+  setFullWidth(enabled: boolean): Promise<void>
+  setTabDockOpen(open: boolean): Promise<void>
   getState(): Promise<BrowserPanelSnapshot>
   getProtection(): Promise<ProtectionSnapshot>
   setSiteProtection(enabled: boolean): Promise<void>
@@ -113,7 +124,7 @@ export interface BrowserHostApi {
   activateTab(id: string): Promise<void>
   closeTab(id: string): Promise<void>
   cycleTabs(direction: 'next' | 'previous'): Promise<void>
-  readPrivateLibrary(): Promise<string | null>
+  readPrivateLibrary(): Promise<PrivateLibraryReadResult>
   writePrivateLibrary(payload: string): Promise<void>
   deletePrivateLibrary(): Promise<void>
   getFieldSnapshot(): Promise<string | null>
@@ -139,6 +150,8 @@ export type BrowserHostCommand =
   | { type: 'print' }
   | { type: 'zoom'; action: 'in' | 'out' | 'reset' }
   | { type: 'set-bounds'; bounds: BrowserPanelBounds }
+  | { type: 'set-full-width'; enabled: boolean }
+  | { type: 'set-tab-dock-open'; open: boolean }
   | { type: 'get-state' }
   | { type: 'get-protection' }
   | { type: 'set-site-protection'; enabled: boolean }
@@ -166,6 +179,8 @@ const commandTypes = new Set<BrowserHostCommand['type']>([
   'print',
   'zoom',
   'set-bounds',
+  'set-full-width',
+  'set-tab-dock-open',
   'get-state',
   'get-protection',
   'set-site-protection',
@@ -255,6 +270,12 @@ export function parseBrowserHostCommand(value: unknown): BrowserHostCommand {
       return { type, action: value['action'] }
     case 'set-bounds':
       return { type, bounds: parseBounds(value['bounds']) }
+    case 'set-full-width':
+      if (typeof value['enabled'] !== 'boolean') throw new Error('Invalid full-width state.')
+      return { type, enabled: value['enabled'] }
+    case 'set-tab-dock-open':
+      if (typeof value['open'] !== 'boolean') throw new Error('Invalid tab-dock state.')
+      return { type, open: value['open'] }
     case 'set-site-protection':
       if (typeof value['enabled'] !== 'boolean') {
         throw new Error('Invalid site protection flag.')

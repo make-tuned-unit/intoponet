@@ -1,0 +1,44 @@
+{
+  "probe": "protection-native-v1",
+  "command": "./node_modules/.bin/esbuild experiments/protection-native/probe.ts --bundle --platform=node --format=cjs --external:electron --outfile=/tmp/intoponet-protection-native-probe.cjs && ./node_modules/.bin/electron /tmp/intoponet-protection-native-probe.cjs",
+  "electron": "45.0.0",
+  "chromium": "156.0.8078.48",
+  "siteOrigins": [
+    "http://site-a.intoponet.test:63741",
+    "http://site-b.intoponet.test:63741"
+  ],
+  "siteAProtection": "paused",
+  "siteBProtection": "enabled",
+  "pageState": [
+    {
+      "adLoaded": true,
+      "trackerLoaded": true,
+      "pageDone": true
+    },
+    {
+      "adLoaded": false,
+      "trackerLoaded": false,
+      "pageDone": true
+    }
+  ],
+  "fixtureServerRequests": {
+    "ad": 1,
+    "tracker": 1
+  },
+  "blockedOrigins": ["http://site-b.intoponet.test:63741"],
+  "topLevelContexts": [
+    "http://site-a.intoponet.test:63741/page",
+    "http://site-b.intoponet.test:63741/page"
+  ],
+  "counters": [
+    { "blockedAds": 0, "blockedTrackers": 0 },
+    { "blockedAds": 1, "blockedTrackers": 1 }
+  ],
+  "passed": true,
+  "coverage": "Two live WebContentsViews in one hidden Electron window and one shared in-memory session. Uses the production routeProtectionRequest helper, LocalProtectionEngine, and ProtectionPageContextStore. Fixture scripts targeting ads.intoponet.test and track.intoponet.test were allowed for paused site A and canceled before reaching the local server for protected site B.",
+  "limitations": [
+    "This harness does not boot the full Intoponet main process or exercise the renderer shield controls and protection IPC persistence.",
+    "It does not test redirect chains, failed navigation rollback, service-worker requests without a WebContents ID, certificates, or external network requests.",
+    "The hidden-window probe verifies Chromium request interception and page execution, not visible compositing or accessibility behavior."
+  ]
+}

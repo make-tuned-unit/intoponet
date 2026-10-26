@@ -1,0 +1,55 @@
+{
+  "date": "2026-10-24",
+  "reviewer": "planning agent",
+  "scope": "Crash-recovery integration wave; not a release or visual acceptance gate",
+  "checks": {
+    "npm test": {
+      "passed": 159,
+      "desktop": 38,
+      "fieldSnapshot": 68,
+      "frequencyField": 29,
+      "localKnowledge": 3,
+      "placeCatalog": 11,
+      "protectionEngine": 10
+    },
+    "npm run typecheck": "passed",
+    "npm run build": "passed",
+    "git diff --check": "passed"
+  },
+  "browser": {
+    "host": "Chrome; local development-only synthetic FieldLab",
+    "selection": "Single local signal; Earth then City; freeze decorative phase enabled",
+    "observation": "Visible GPU inspector read via browser UI",
+    "phaseTime": 0,
+    "citySnapshotTransitionObserved": 0.7383998995653186,
+    "programLinked": true,
+    "programLog": "",
+    "sampleLatitude": 44.65,
+    "sampleLongitude": -63.6,
+    "earthFieldCpuAndGpu": [
+      158,
+      128,
+      204,
+      133
+    ],
+    "cityFieldCpuAndGpu": [
+      150,
+      128,
+      204,
+      125
+    ],
+    "cityDetailCpuAndGpu": [
+      154,
+      128,
+      204,
+      128
+    ],
+    "allEightTexturesAllocatedAtCityReadback": true
+  },
+  "remaining": [
+    "Field visibility/shape has not passed visual acceptance",
+    "Ten-scene seam/pole/normal captures still required",
+    "No native performance or full-size place-index benchmark claim",
+    "Dynamics needs trustworthy live coverage-window evidence and count-conserving hierarchy integration"
+  ]
+}

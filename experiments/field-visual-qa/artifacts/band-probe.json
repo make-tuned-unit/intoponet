@@ -1,0 +1,142 @@
+[
+  {
+    "label": "synthetic",
+    "snapshotSourceCount": 4,
+    "bandCount": 4,
+    "segmentCount": 8,
+    "bands": [
+      {
+        "id": "corridor-earth-open-knowledge-40.7--74.0",
+        "centerline": [
+          {
+            "lat": 40.7,
+            "lon": -75.1
+          },
+          {
+            "lat": 40.7,
+            "lon": -74
+          },
+          {
+            "lat": 40.7,
+            "lon": -72.9
+          }
+        ],
+        "amplitude": 0.3154648767857287,
+        "widthKm": 480
+      },
+      {
+        "id": "corridor-earth-civic-memory-35.7-139.8",
+        "centerline": [
+          {
+            "lat": 35.7,
+            "lon": 138.70000000000002
+          },
+          {
+            "lat": 35.7,
+            "lon": 139.8
+          },
+          {
+            "lat": 35.7,
+            "lon": 140.9
+          }
+        ],
+        "amplitude": 0.18453512321427126,
+        "widthKm": 480
+      },
+      {
+        "id": "corridor-earth-local-archives-4.7--74.1",
+        "centerline": [
+          {
+            "lat": 4.7,
+            "lon": -75.19999999999999
+          },
+          {
+            "lat": 4.7,
+            "lon": -74.1
+          },
+          {
+            "lat": 4.7,
+            "lon": -73
+          }
+        ],
+        "amplitude": 0.13092975357145742,
+        "widthKm": 480
+      },
+      {
+        "id": "corridor-earth-open-research--33.9-18.4",
+        "centerline": [
+          {
+            "lat": -33.9,
+            "lon": 17.299999999999997
+          },
+          {
+            "lat": -33.9,
+            "lon": 18.4
+          },
+          {
+            "lat": -33.9,
+            "lon": 19.5
+          }
+        ],
+        "amplitude": 0.10155700678750615,
+        "widthKm": 480
+      }
+    ],
+    "fieldAtCameraTarget": 0.0011941409936678513,
+    "unmodulatedCoverageAtCameraTarget": 0.6309297535714574,
+    "fieldAtTrough": 0.000052720564507311444,
+    "coverageAtTrough": 0.2557356553985738,
+    "fieldAtNorthAmericaCenter": 2.151063332936302e-21
+  },
+  {
+    "label": "public-fixture",
+    "snapshotSourceCount": 4,
+    "bandCount": 2,
+    "segmentCount": 4,
+    "bands": [
+      {
+        "id": "corridor-earth-open-knowledge-40.7--74.0",
+        "centerline": [
+          {
+            "lat": 40.7,
+            "lon": -69.8
+          },
+          {
+            "lat": 40.7,
+            "lon": -74
+          },
+          {
+            "lat": 40.7,
+            "lon": -78.2
+          }
+        ],
+        "amplitude": 1,
+        "widthKm": 480
+      },
+      {
+        "id": "corridor-earth-open-knowledge-40.8--73.9",
+        "centerline": [
+          {
+            "lat": 40.8,
+            "lon": -75
+          },
+          {
+            "lat": 40.8,
+            "lon": -73.9
+          },
+          {
+            "lat": 40.8,
+            "lon": -72.80000000000001
+          }
+        ],
+        "amplitude": 0.5701557325474396,
+        "widthKm": 480
+      }
+    ],
+    "fieldAtCameraTarget": 0.7967276932527875,
+    "unmodulatedCoverageAtCameraTarget": 3.139347316777771,
+    "fieldAtTrough": 0.002417358204724337,
+    "coverageAtTrough": 2.267751669316915,
+    "fieldAtNorthAmericaCenter": 1.1954255458337768e-13
+  }
+]

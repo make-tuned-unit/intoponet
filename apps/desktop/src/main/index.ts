@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { readFile, writeFile } from 'node:fs/promises'
-import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
 import {
   app,
   BrowserWindow,
@@ -10,7 +10,9 @@ import {
   safeStorage,
   session,
   WebContentsView,
+  clipboard,
 } from 'electron'
+import type { MenuItemConstructorOptions } from 'electron'
 
 if (!app.isReady()) {
   app.commandLine.appendSwitch(
@@ -19,6 +21,10 @@ if (!app.isReady()) {
   )
 }
 import { cachedPublicField, loadPublicField } from './public-field'
+import { readSealedPrivateLibrary } from './privateLibraryStorage'
+import { routeProtectionRequest } from './protectionRequest'
+import { pageViewBoundsForDock, shouldCloseTabDockFromNativeMouse } from './tabDockBounds'
+import { browserContextActions, type BrowserContextAction } from './browserContextMenu'
 import {
   browserHostChannels,
   type BrowserHostCommand,
@@ -26,26 +32,28 @@ import {
   type BrowserPanelBounds,
   type BrowserPanelSnapshot,
   type PageTabSnapshot,
+  type PrivateLibraryReadResult,
   type ProtectionSnapshot,
   parseBrowserHostCommand,
   resolveNavigationIntent,
 } from '@intoponet/browser-api'
 import {
   LocalProtectionEngine,
-  mapElectronResourceType,
+  ProtectionPageContextStore,
 } from '@intoponet/protection-engine'
 
 let window: BrowserWindow | null = null
 let pageView: WebContentsView | null = null
 let pageAttached = false
 let activeTabId: string | null = null
+let browserFullWidth = false
+let tabDockOpen = false
 const openTabs: OpenTab[] = []
 let lastBounds: BrowserPanelBounds = { x: 40, y: 104, width: 900, height: 600 }
 let lastKnownUrl = ''
 let persistenceTimer: ReturnType<typeof setTimeout> | null = null
 const protection = new LocalProtectionEngine()
-let blockedAds = 0
-let blockedTrackers = 0
+const protectionPages = new ProtectionPageContextStore()
 
 type OpenTab = {
   id: string
@@ -201,11 +209,11 @@ function currentOrigin(): string {
 function protectionSnapshot(): ProtectionSnapshot {
   const origin = currentOrigin()
   const categories = protection.categoryToggles()
+  const counts = protectionPages.counters(pageView?.webContents.id ?? null)
   return {
     origin,
     enabled: origin ? protection.isSiteEnabled(origin, 'default') : true,
-    blockedAds,
-    blockedTrackers,
+    ...counts,
     adsEnabled: categories.ads,
     trackersEnabled: categories.trackers,
   }
@@ -295,18 +303,14 @@ async function applyCosmeticFilters(contents: Electron.WebContents): Promise<voi
 function wireProtectionSession(): void {
   const guest = session.fromPartition('persist:intoponet-default')
   guest.webRequest.onBeforeRequest((details, callback) => {
-    const decision = protection.evaluate({
-      requestUrl: details.url,
-      topLevelUrl: lastKnownUrl || null,
-      initiatorOrigin: details.referrer || null,
-      resourceType: mapElectronResourceType(details.resourceType),
-      profileId: 'default',
-      isPrivate: false,
-    })
+    const routed = routeProtectionRequest(protection, protectionPages, details, openTabs)
+    if (!routed) {
+      callback({})
+      return
+    }
+    const { webContentsId, decision } = routed
     if (decision.action === 'block') {
-      if (decision.category === 'tracker') blockedTrackers += 1
-      else blockedAds += 1
-      emitProtectionState()
+      if (pageView?.webContents.id === webContentsId) emitProtectionState()
       callback({ cancel: true })
       return
     }
@@ -317,29 +321,30 @@ function wireProtectionSession(): void {
 function attachPageView(): void {
   if (!window || !pageView || pageAttached) return
   window.contentView.addChildView(pageView)
-  pageView.setBounds(lastBounds)
+  applyPageViewBounds()
   pageAttached = true
   schedulePersistentStateSave()
   emitPanelState()
+}
+
+function applyPageViewBounds(): void {
+  if (!pageView) return
+  const viewportHeight = window?.getContentSize()[1] ?? lastBounds.y + lastBounds.height
+  pageView.setBounds(pageViewBoundsForDock(lastBounds, viewportHeight, browserFullWidth, tabDockOpen))
 }
 
 function privateLibraryPath(): string {
   return join(app.getPath('userData'), 'private-library.v1.seal')
 }
 
-async function readSealedLibrary(): Promise<string | null> {
-  if (!(await safeStorage.isAsyncEncryptionAvailable()) || !existsSync(privateLibraryPath())) {
-    return null
-  }
-  try {
-    const decrypted = await safeStorage.decryptStringAsync(readFileSync(privateLibraryPath()))
-    if (decrypted.shouldReEncrypt) {
-      await writeSealedLibrary(decrypted.result)
-    }
-    return decrypted.result
-  } catch {
-    return null
-  }
+async function readSealedLibrary(): Promise<PrivateLibraryReadResult> {
+  const result = await readSealedPrivateLibrary({
+    encryptionAvailable: await safeStorage.isAsyncEncryptionAvailable(),
+    fileExists: existsSync(privateLibraryPath()),
+    decrypt: () => safeStorage.decryptStringAsync(readFileSync(privateLibraryPath())),
+    reEncrypt: writeSealedLibrary,
+  })
+  return result
 }
 
 async function writeSealedLibrary(payload: string): Promise<void> {
@@ -347,7 +352,15 @@ async function writeSealedLibrary(payload: string): Promise<void> {
     throw new Error('On-device encryption is unavailable.')
   }
   const sealed = await safeStorage.encryptStringAsync(payload)
-  writeFileSync(privateLibraryPath(), sealed, { mode: 0o600 })
+  const destination = privateLibraryPath()
+  const temporary = `${destination}.${randomUUID()}.tmp`
+  try {
+    writeFileSync(temporary, sealed, { mode: 0o600 })
+    renameSync(temporary, destination)
+  } catch (error) {
+    if (existsSync(temporary)) unlinkSync(temporary)
+    throw error
+  }
 }
 
 function deleteSealedLibrary(): void {
@@ -486,6 +499,7 @@ function showTab(id: string): WebContentsView | null {
   lastKnownUrl = tab.view.webContents.getURL() || tab.url
   attachPageView()
   emitTabs()
+  emitProtectionState()
   const current = tab.view.webContents.getURL()
   if ((!current || current === 'about:blank') && safeHttpUrl(tab.url)) {
     void tab.view.webContents.loadURL(tab.url)
@@ -503,9 +517,9 @@ function discardTab(id: string): void {
     pageView = null
     activeTabId = null
     lastKnownUrl = ''
-    blockedAds = 0
-    blockedTrackers = 0
+    tabDockOpen = false
   }
+  protectionPages.remove(tab.view.webContents.id)
   if (!tab.view.webContents.isDestroyed()) tab.view.webContents.close()
   emitTabs()
   emitPanelState()
@@ -520,7 +534,78 @@ function makeRoomForTab(): void {
   }
 }
 
+function createBrowserTab(urlValue: string, activate = true): WebContentsView | null {
+  const url = safeHttpUrl(urlValue)
+  if (!url) return null
+  makeRoomForTab()
+  const view = buildView()
+  const tab = { id: randomUUID(), url: url.toString(), title: '', favicon: '', view }
+  openTabs.push(tab)
+  if (activate) {
+    showTab(tab.id)
+    lastKnownUrl = url.toString()
+  } else {
+    emitTabs()
+  }
+  schedulePersistentStateSave()
+  return view
+}
+
+function contextMenuTemplate(view: WebContentsView, params: Electron.ContextMenuParams): MenuItemConstructorOptions[] {
+  const actions = browserContextActions({
+    linkURL: params.linkURL,
+    srcURL: params.srcURL,
+    mediaType: params.mediaType,
+    hasImageContents: params.hasImageContents,
+    isEditable: params.isEditable,
+    selectionText: params.selectionText,
+    canGoBack: view.webContents.navigationHistory.canGoBack(),
+    canGoForward: view.webContents.navigationHistory.canGoForward(),
+  })
+  const items: MenuItemConstructorOptions[] = []
+  const has = (action: BrowserContextAction): boolean => actions.includes(action)
+  const linkUrl = safeHttpUrl(params.linkURL)?.toString()
+  const imageUrl = safeHttpUrl(params.srcURL)?.toString()
+
+  if (has('open-link-in-new-tab') && linkUrl) {
+    items.push({ label: 'Open Link in New Tab', click: () => {
+      const newView = createBrowserTab(linkUrl)
+      if (newView) void newView.webContents.loadURL(linkUrl)
+    } })
+  }
+  if (has('copy-link-address') && linkUrl) {
+    items.push({ label: 'Copy Link Address', click: () => clipboard.writeText(linkUrl) })
+  }
+  if (has('open-link-in-new-tab') || has('copy-link-address')) items.push({ type: 'separator' })
+
+  if (has('copy-selection')) items.push({ label: 'Copy', role: 'copy' })
+  if (has('cut')) items.push({ label: 'Cut', role: 'cut' })
+  if (has('paste')) items.push({ label: 'Paste', role: 'paste' })
+  if (has('select-all')) items.push({ label: 'Select All', role: 'selectAll' })
+  if (has('copy-selection') || has('cut') || has('paste') || has('select-all')) items.push({ type: 'separator' })
+
+  if (has('copy-image')) {
+    items.push({ label: 'Copy Image', click: () => view.webContents.copyImageAt(params.x, params.y) })
+  }
+  if (has('copy-image-address') && imageUrl) {
+    items.push({ label: 'Copy Image Address', click: () => clipboard.writeText(imageUrl) })
+  }
+  if (has('save-image') && imageUrl) {
+    items.push({ label: 'Save Image to Downloads', click: () => view.webContents.downloadURL(imageUrl) })
+  }
+  if (has('copy-image') || has('copy-image-address') || has('save-image')) items.push({ type: 'separator' })
+
+  if (has('back')) items.push({ label: 'Back', click: () => view.webContents.navigationHistory.goBack() })
+  if (has('forward')) items.push({ label: 'Forward', click: () => view.webContents.navigationHistory.goForward() })
+  if (has('reload')) items.push({ label: 'Reload', click: () => view.webContents.reload() })
+  return items.filter((item, index) => item.type !== 'separator' || (
+    index > 0 && index < items.length - 1 && items[index - 1]?.type !== 'separator'
+  ))
+}
+
 function buildView(): WebContentsView {
+  let frequencyNavigation = 0
+  let frequencyLoadSucceeded = false
   const view = new WebContentsView({
     webPreferences: {
       contextIsolation: true,
@@ -531,6 +616,59 @@ function buildView(): WebContentsView {
   })
 
   view.setBackgroundColor('#ffffff')
+  view.webContents.on('before-mouse-event', (_event, input) => {
+    if (shouldCloseTabDockFromNativeMouse({
+      isActivePage: pageView === view,
+      fullWidth: browserFullWidth,
+      dockOpen: tabDockOpen,
+      eventType: input.type,
+    })) {
+      setBrowserTabDockOpen(false)
+      emit({ type: 'tab-dock-state', open: false })
+    }
+  })
+  view.webContents.on('context-menu', (event, params) => {
+    if (view.webContents.isDestroyed() || !window || window.isDestroyed()) return
+    const template = contextMenuTemplate(view, params)
+    if (template.length === 0) return
+    event.preventDefault()
+    Menu.buildFromTemplate(template).popup({ window })
+  })
+  view.webContents.on('did-start-navigation', (_event, _url, inPlace, mainFrame) => {
+    if (!mainFrame || inPlace) return
+    frequencyNavigation += 1
+    frequencyLoadSucceeded = false
+  })
+  view.webContents.on('did-navigate', (_event, _url, responseCode) => {
+    frequencyLoadSucceeded = responseCode >= 200 && responseCode < 400
+  })
+  view.webContents.on('did-fail-load', (_event, _code, _description, _url, mainFrame) => {
+    if (mainFrame) frequencyLoadSucceeded = false
+  })
+  view.webContents.on('did-finish-load', () => {
+    if (pageView !== view || !frequencyLoadSucceeded) return
+    const url = view.webContents.getURL()
+    const generation = frequencyNavigation
+    if (!safeHttpUrl(url)) return
+    // Read only rating declarations locally. These untrusted hints can exclude
+    // content; their absence is never a certification that a page is suitable.
+    void view.webContents.executeJavaScript(`(() => {
+      const values = [];
+      for (const node of Array.from(document.querySelectorAll('meta[name="rating"], meta[itemprop="contentRating"], meta[property="og:restrictions:age"], [itemprop="contentRating"]')).slice(0, 20)) {
+        values.push((node.getAttribute('content') || node.textContent || '').slice(0, 120));
+      }
+      for (const node of Array.from(document.querySelectorAll('script[type="application/ld+json"]')).slice(0, 10)) {
+        const source = (node.textContent || '').slice(0, 32000);
+        for (const match of source.matchAll(/"contentRating"\\s*:\\s*"([^"\\n]{1,120})"/g)) values.push(match[1]);
+      }
+      return values.join(' | ').slice(0, 1000);
+    })()`).then((rating: unknown) => {
+      if (view.webContents.isDestroyed() || pageView !== view || !frequencyLoadSucceeded || generation !== frequencyNavigation || url !== view.webContents.getURL()) return
+      emit({ type: 'frequency-visit', url, title: view.webContents.getTitle().slice(0, 1000),
+        rating: typeof rating === 'string' && rating ? rating.slice(0, 1000) : null,
+        navigationId: `${view.webContents.id}:${generation}` })
+    }).catch(() => { /* No activity is recorded when rating extraction fails. */ })
+  })
   preferReadablePageTheme(view.webContents)
   view.webContents.setWindowOpenHandler(({ url }) => {
     emit({
@@ -560,10 +698,9 @@ function buildView(): WebContentsView {
   })
   view.webContents.on('did-navigate', (_event, url) => {
     rememberTab(view)
+    protectionPages.commitNavigation(view.webContents.id, url)
     if (pageView !== view) return
     lastKnownUrl = url
-    blockedAds = 0
-    blockedTrackers = 0
     schedulePersistentStateSave()
     emitPanelState()
     emitProtectionState()
@@ -598,7 +735,14 @@ function buildView(): WebContentsView {
   view.webContents.on(
     'did-fail-load',
     (_event, code, description, validatedUrl, isMainFrame) => {
-      if (!isMainFrame || code === -3 || pageView !== view) return
+      if (!isMainFrame) return
+      const tab = openTabs.find((item) => item.view === view)
+      protectionPages.failNavigation(
+        view.webContents.id,
+        validatedUrl,
+        view.webContents.getURL() || tab?.url || '',
+      )
+      if (code === -3 || pageView !== view) return
       emit({
         type: 'navigation-failed',
         url: validatedUrl,
@@ -611,6 +755,7 @@ function buildView(): WebContentsView {
     const crashedUrl = tab?.url || lastKnownUrl
     if (pageView === view) detachActive()
     if (pageView === view) pageView = null
+    protectionPages.remove(view.webContents.id)
     emit({
       type: 'navigation-failed',
       url: crashedUrl,
@@ -659,13 +804,31 @@ function setPanelBounds(bounds: BrowserPanelBounds): void {
     height: Math.min(maxHeight, Math.max(180, Math.floor(bounds.height))),
   }
   lastBounds = safeBounds
-  pageView?.setBounds(safeBounds)
+  applyPageViewBounds()
   schedulePersistentStateSave()
+}
+
+function setBrowserFullWidth(enabled: boolean): void {
+  browserFullWidth = enabled
+  if (!enabled) tabDockOpen = false
+  applyPageViewBounds()
+}
+
+function setBrowserTabDockOpen(open: boolean): void {
+  tabDockOpen = browserFullWidth && pageAttached && open && openTabs.length > 0
+  applyPageViewBounds()
 }
 
 async function handleBrowserCommand(
   command: BrowserHostCommand,
-): Promise<BrowserPanelSnapshot | ProtectionSnapshot | PageTabSnapshot[] | string | null> {
+): Promise<
+  | BrowserPanelSnapshot
+  | ProtectionSnapshot
+  | PageTabSnapshot[]
+  | PrivateLibraryReadResult
+  | string
+  | null
+> {
   switch (command.type) {
     case 'open': {
       const url = resolveNavigationIntent(command.intent)
@@ -674,14 +837,8 @@ async function handleBrowserCommand(
         showTab(existing.id)
         break
       }
-      makeRoomForTab()
-      const view = buildView()
-      const tab = { id: randomUUID(), url, title: '', favicon: '', view }
-      openTabs.push(tab)
-      showTab(tab.id)
-      lastKnownUrl = url
-      schedulePersistentStateSave()
-      await view.webContents.loadURL(url)
+      const view = createBrowserTab(url)
+      if (view) await view.webContents.loadURL(url)
       break
     }
     case 'close':
@@ -766,6 +923,12 @@ async function handleBrowserCommand(
     case 'set-bounds':
       setPanelBounds(command.bounds)
       break
+    case 'set-full-width':
+      setBrowserFullWidth(command.enabled)
+      return null
+    case 'set-tab-dock-open':
+      setBrowserTabDockOpen(command.open)
+      return null
     case 'get-state':
       break
     case 'get-protection':
@@ -844,6 +1007,12 @@ function createWindow(): void {
       sandbox: true,
     },
   })
+
+  if (process.env['ELECTRON_RENDERER_URL']) {
+    window.webContents.on('console-message', (details) => {
+      if (details.level === 'error') console.error('[app renderer]', details.message)
+    })
+  }
 
   window.on('closed', () => {
     if (persistenceTimer) clearTimeout(persistenceTimer)

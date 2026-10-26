@@ -13,6 +13,7 @@
     "preview": "node scripts/launch-desktop.cjs preview",
     "build": "npm run build --workspace @intoponet/desktop",
     "benchmark:electron": "electron experiments/electron-compositor/main.cjs",
+    "dag": "node scripts/dag.cjs",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present"
   },

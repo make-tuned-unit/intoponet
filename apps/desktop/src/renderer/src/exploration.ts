@@ -24,17 +24,20 @@ export const explorationStateKey = 'intoponet.exploration-state.v1'
 const scales: ExplorationScale[] = ['earth', 'region', 'city', 'topic']
 
 export const scaleDistance: Record<ExplorationScale, number> = {
-  earth: 3.52,
+  // At 38° vertical FOV, this frames Earth at roughly 70% of viewport height.
+  earth: 4.35,
   region: 2.48,
   city: 1.96,
   topic: 1.62,
 }
 
 export const scaleDisplacement: Record<ExplorationScale, number> = {
-  earth: 0.042,
-  region: 0.032,
-  city: 0.018,
-  topic: 0.012,
+  // Keep one physical relief range through LOD changes; texture evidence and
+  // scale-specific geometry determine how much of this range is occupied.
+  earth: 0.18,
+  region: 0.18,
+  city: 0.18,
+  topic: 0.18,
 }
 
 export const topicAnchors: Record<string, GeoAnchor> = {

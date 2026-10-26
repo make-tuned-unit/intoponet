@@ -1,5 +1,11 @@
 # Intoponet delivery DAG
 
+For the current assignable queue and verification rules, use
+[EXECUTION_DAG.json](./EXECUTION_DAG.json) and
+[EXECUTION_RUNBOOK.md](./EXECUTION_RUNBOOK.md). This document preserves the
+original phase map and implementation notes; its provisional rows are not
+release-gate approvals.
+
 This plan translates the PRD and the two follow-up specs into dependency-gated
 work. A node may start only when every incoming dependency is complete. Gates
 are evidence-producing milestones, not calendar dates.
@@ -143,11 +149,12 @@ attribution review. Do not fetch or bundle those lists before that review.
 - Contract tests, TypeScript validation and the production build remain the
   current verification bar. Native interaction and accessibility evidence remain
   required before `G1`.
-- Earth follows `INTOPONET_EARTH_FREQUENCY_SPEC.md` Phases A–B: a recognizable
+- **Legacy Earth Phase A–B prototype description:** a recognizable
   sphere with an independent, translucent frequency membrane displaced by
-  synthetic geodesic bands. The membrane is labeled synthetic. ADR-003 remains
+  synthetic geodesic bands. The membrane was labeled synthetic. ADR-003 remains
   open for later globe/field transitions. Guest pages prefer a light color
-  scheme.
+  scheme. See [Frequency design review](FREQUENCY_DESIGN_REVIEW.md); this is not
+  the current geometry acceptance target.
 - Native request blocking is a host `ProtectionAdapter` with local fixture
   hosts, Electron `webRequest` cancellation, validated `get-protection` /
   `set-site-protection` / `set-protection-categories` IPC, fixture cosmetic
@@ -167,8 +174,12 @@ attribution review. Do not fetch or bundle those lists before that review.
   stops redrawing while a page is full width. An untrusted site certificate
   is refused and reported as a failed navigation. Changing advertising or
   tracking protection reloads the open page.
-- The field membrane is driven by a versioned `intoponet.field-snapshot.v1`
-  document. The rendered topography follows the sources: each place is scored by
+> **Legacy frequency-renderer implementation record:** the geodesic-band and
+> corridor geometry in the following bullet is superseded by the latest
+> continuous-membrane direction. See [Frequency design review](FREQUENCY_DESIGN_REVIEW.md).
+> This record is not proof of current implementation or visual acceptance.
+- The field membrane is driven by a versioned `intoponet.field-snapshot.v2`
+  document (cached v1 data migrates on read). The rendered topography follows the sources: each place is scored by
   weight, recency, distance from its topic anchor, and a smaller share for a
   repeated publisher. Nearby places of one topic become a wave corridor.
   Planet scale keeps that corridor broad. City and topic scale use a shorter

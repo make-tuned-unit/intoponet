@@ -10,3 +10,4 @@ coverage/
 *.pem
 *.p12
 experiments/*/results/*.json
+.playwright-mcp/

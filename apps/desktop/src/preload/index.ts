@@ -6,12 +6,20 @@ import {
   type BrowserHostEvent,
   type BrowserPanelSnapshot,
   type PageTabSnapshot,
+  type PrivateLibraryReadResult,
   type ProtectionSnapshot,
 } from '@intoponet/browser-api'
 
 const invoke = (
   command: BrowserHostCommand,
-): Promise<BrowserPanelSnapshot | ProtectionSnapshot | PageTabSnapshot[] | string | null> =>
+): Promise<
+  | BrowserPanelSnapshot
+  | ProtectionSnapshot
+  | PageTabSnapshot[]
+  | PrivateLibraryReadResult
+  | string
+  | null
+> =>
   ipcRenderer.invoke(browserHostChannels.command, command)
 
 const browserHost: BrowserHostApi = {
@@ -59,6 +67,12 @@ const browserHost: BrowserHostApi = {
   setBounds: async (bounds) => {
     await invoke({ type: 'set-bounds', bounds })
   },
+  setFullWidth: async (enabled) => {
+    await invoke({ type: 'set-full-width', enabled })
+  },
+  setTabDockOpen: async (open) => {
+    await invoke({ type: 'set-tab-dock-open', open })
+  },
   getState: () => invoke({ type: 'get-state' }) as Promise<BrowserPanelSnapshot>,
   getProtection: () => invoke({ type: 'get-protection' }) as Promise<ProtectionSnapshot>,
   setSiteProtection: async (enabled) => {
@@ -77,7 +91,8 @@ const browserHost: BrowserHostApi = {
   cycleTabs: async (direction) => {
     await invoke({ type: 'cycle-tabs', direction })
   },
-  readPrivateLibrary: () => invoke({ type: 'read-private-library' }) as Promise<string | null>,
+  readPrivateLibrary: () =>
+    invoke({ type: 'read-private-library' }) as Promise<PrivateLibraryReadResult>,
   writePrivateLibrary: async (payload) => {
     await invoke({ type: 'write-private-library', payload })
   },

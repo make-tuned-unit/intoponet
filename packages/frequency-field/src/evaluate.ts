@@ -1,9 +1,12 @@
 import { distToArc, latLonToUnit } from './geo'
 import {
   DISPLACEMENT_GAIN,
+  DEFAULT_PHASE_MODULATION,
   EARTH_RADIUS_KM,
+  MAX_PHASE_MODULATION,
   MAX_BAND_SEGMENTS,
   MEMBRANE_HEIGHT,
+  MIN_PHASE_MODULATION,
   type FrequencyBand,
   type GpuBandSegment,
   type Vec3,
@@ -17,6 +20,10 @@ export function bandSigma(widthKm: number): number {
 
 export function bandLambda(wavelengthKm: number): number {
   return Math.max(0.02, wavelengthKm / EARTH_RADIUS_KM)
+}
+
+export function phaseModulationDepth(depth = DEFAULT_PHASE_MODULATION): number {
+  return Math.min(MAX_PHASE_MODULATION, Math.max(MIN_PHASE_MODULATION, depth))
 }
 
 export function segmentsFromBands(
@@ -46,6 +53,7 @@ export function segmentsFromBands(
         amplitude: Math.min(1, Math.max(0, band.amplitude)),
         phase: band.phase,
         omega: band.phaseVelocity,
+        beta: phaseModulationDepth(band.phaseModulation),
         colorMix: band.category === 'overlap' ? 1 : 0.15,
       })
     }
@@ -62,8 +70,9 @@ export function fieldAt(point: Vec3, segments: GpuBandSegment[], time: number): 
       { x: segment.bx, y: segment.by, z: segment.bz },
     )
     const envelope = Math.exp(-0.5 * (nearest.distance / segment.sigma) ** 2)
-    const wave = 0.5 + 0.5 * Math.cos((2 * Math.PI * nearest.along) / segment.lambda + segment.phase + segment.omega * time)
-    const contribution = segment.amplitude * envelope * smoothstep(wave)
+    const angle = (2 * Math.PI * nearest.along) / segment.lambda + segment.phase + segment.omega * time
+    const modulation = 1 + segment.beta * Math.cos(angle)
+    const contribution = segment.amplitude * envelope * modulation
     sum += contribution
   }
   return sum
@@ -81,9 +90,4 @@ export function displacementAt(
 
 export function membraneRadius(displacement: number, radius = 1, height = MEMBRANE_HEIGHT): number {
   return radius + height + Math.max(0, displacement)
-}
-
-function smoothstep(value: number): number {
-  const clamped = Math.min(1, Math.max(0, value))
-  return clamped * clamped * (3 - 2 * clamped)
 }

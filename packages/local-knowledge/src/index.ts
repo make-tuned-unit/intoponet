@@ -2,6 +2,7 @@ export type {
   AbsorbRecord,
   PrivateLibraryDocument,
   StoredBookmark,
+  StoredFieldAnchor,
   StoredCollection,
   StoredRecent,
 } from './library'

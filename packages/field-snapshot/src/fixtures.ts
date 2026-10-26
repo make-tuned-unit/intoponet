@@ -18,6 +18,14 @@ export const syntheticRegistry: SourceRecord[] = [
     topics: ['open-knowledge'],
     weight: 1,
     publishedAt: stamp,
+    measurement: {
+      kind: 'synthetic-fixture',
+      value: 1,
+      unit: 'fixture-score',
+      sourceId: 'intoponet-demo-fixture',
+      sourceUrl: 'https://fixtures.intoponet.test/open-knowledge',
+      transformation: 'fixed synthetic fixture input; not a public measurement',
+    },
   },
   {
     id: 'fixture-civic-memory',
@@ -33,6 +41,14 @@ export const syntheticRegistry: SourceRecord[] = [
     topics: ['civic-memory'],
     weight: 1,
     publishedAt: stamp,
+    measurement: {
+      kind: 'synthetic-fixture',
+      value: 1,
+      unit: 'fixture-score',
+      sourceId: 'intoponet-demo-fixture',
+      sourceUrl: 'https://fixtures.intoponet.test/civic-memory',
+      transformation: 'fixed synthetic fixture input; not a public measurement',
+    },
   },
   {
     id: 'fixture-local-archives',
@@ -48,6 +64,14 @@ export const syntheticRegistry: SourceRecord[] = [
     topics: ['local-archives'],
     weight: 1,
     publishedAt: stamp,
+    measurement: {
+      kind: 'synthetic-fixture',
+      value: 1,
+      unit: 'fixture-score',
+      sourceId: 'intoponet-demo-fixture',
+      sourceUrl: 'https://fixtures.intoponet.test/local-archives',
+      transformation: 'fixed synthetic fixture input; not a public measurement',
+    },
   },
   {
     id: 'fixture-open-research',
@@ -63,6 +87,14 @@ export const syntheticRegistry: SourceRecord[] = [
     topics: ['open-research'],
     weight: 1,
     publishedAt: stamp,
+    measurement: {
+      kind: 'synthetic-fixture',
+      value: 1,
+      unit: 'fixture-score',
+      sourceId: 'intoponet-demo-fixture',
+      sourceUrl: 'https://fixtures.intoponet.test/open-research',
+      transformation: 'fixed synthetic fixture input; not a public measurement',
+    },
   },
 ]
 

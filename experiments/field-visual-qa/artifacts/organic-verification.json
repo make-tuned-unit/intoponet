@@ -1,0 +1,142 @@
+{
+  "schema": "intoponet.field-visual-qa.organic-verification.v1",
+  "verifiedAt": "2026-10-25",
+  "softwareChecks": {
+    "workspaceTestBaseline": {
+      "command": "npm test",
+      "result": "passed",
+      "testCount": 194,
+      "workspaceCount": 6
+    },
+    "workspaceTypecheckBaseline": {
+      "command": "npm run typecheck",
+      "result": "passed",
+      "workspaceCount": 7
+    },
+    "finalDesktopTypecheck": {
+      "command": "npm run typecheck --workspace @intoponet/desktop",
+      "result": "passed"
+    },
+    "finalProductionBuild": {
+      "command": "npm run build",
+      "result": "passed",
+      "bundles": [
+        "electron-main",
+        "preload",
+        "renderer"
+      ]
+    }
+  },
+  "performance": {
+    "measuredFrameRateFps": 30,
+    "typicalPlanetGpuTimeMs": [
+      7.8,
+      11.9
+    ],
+    "highDetailTriangleCount": 171008,
+    "drawCalls": 2,
+    "opaqueGpuTimeMs": [
+      6,
+      9
+    ],
+    "closeGpuTimeMs": [
+      11,
+      19
+    ],
+    "transientCaptureAndTranscodingSpikesIncluded": false,
+    "target60FpsAchieved": false,
+    "mainAppObservedFpsRange": [
+      19,
+      30
+    ],
+    "mainAppGpuSampleMs": 35.64,
+    "note": "Lab typically presented at 30 FPS; main app also showed sustained 19 FPS samples. GPU query values are whole-frame estimates, not end-to-end latency. Timing spikes occurred during capture and concurrent work."
+  },
+  "captures": [
+    {
+      "file": "intoponet-organic-planetary.png",
+      "status": "present"
+    },
+    {
+      "file": "intoponet-organic-regional.png",
+      "status": "present"
+    },
+    {
+      "file": "intoponet-organic-opaque-check.png",
+      "status": "present"
+    },
+    {
+      "file": "intoponet-organic-lab-material.png",
+      "status": "present"
+    },
+    {
+      "file": "organic-motion.mp4",
+      "status": "verified",
+      "durationSeconds": 7.966667,
+      "frames": 239,
+      "resolution": [
+        1440,
+        940
+      ],
+      "source": "intoponet-organic-motion-final.webm"
+    }
+  ],
+  "acceptance": {
+    "complete": false,
+    "cityResolution": "unresolved",
+    "finalBeautyReview": "pending-user-review",
+    "nativeVisualAcceptance": "Continuous silhouette and opaque geometry verified; full aesthetic acceptance remains incomplete.",
+    "performanceTarget": "60fps-not-claimed"
+  },
+  "nativeChecks": [
+    "Main app synthetic preview and observed sources are distinct",
+    "Existing Wikipedia tab opens and returns to field",
+    "Opaque clay displays displacement without bloom/emission/transparency",
+    "Setting selected synthetic intensity to zero changes local swell",
+    "Planet and regional capture plus close camera inspected; close view is not city-resolved",
+    "Three material presets compared under shared lighting",
+    "Final recording decoded and contact frames inspected for motion"
+  ],
+  "personalFieldQa": {
+    "visitCounts": [
+      { "page": "Wikipedia Solar System", "before": 0, "after": 1 },
+      { "page": "Wikipedia Moon", "before": 1, "after": 2 }
+    ],
+    "reopenAndReload": { "page": "Wikipedia Moon", "countBefore": 2, "countAfter": 2 },
+    "failedLoad": { "host": "example.org", "count": 0 },
+    "visual": {
+      "wholeGlobe": "Quiet contour coverage inspected",
+      "selectedGeography": "Localized Brooklyn context swell at intensity 2",
+      "layout": "Full-width place picker fixed",
+      "capture": "intoponet-contours-planetary.png"
+    },
+    "cleanup": {
+      "qaSessionVisitsCleared": true,
+      "agentCreatedTabsClosed": 3,
+      "originalWikipediaTabPreserved": true
+    },
+    "limitations": [
+      "Session-only native demonstration; no global visitor backend is implied",
+      "Does not establish comprehensive content classification",
+      "Visual/material acceptance remains open"
+    ],
+    "topicOriginPreview": {
+      "synthetic": true,
+      "destination": "Roman Colosseum",
+      "currentWindow": "24 hours",
+      "baselineWindow": "preceding 24 hours",
+      "rows": [
+        { "origin": "Bolivia", "visits": 3, "sharePercent": 50, "rateRatio": 3 },
+        { "origin": "Italy", "visits": 2, "sharePercent": 33, "rateRatio": 2 },
+        { "origin": "Unknown", "visits": 1, "sharePercent": 17, "rateRatio": 1 }
+      ],
+      "nativePresentation": "Compact all-country table; teal/violet contours visible with glow disabled",
+      "designPreviewLabeled": true,
+      "limitations": [
+        "Example is synthetic and does not represent observed traffic",
+        "Real local visits have no origin-country provider",
+        "Topic assignment is manual; automatic resolution is not implemented"
+      ]
+    }
+  }
+}

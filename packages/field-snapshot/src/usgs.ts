@@ -26,7 +26,7 @@ export function recordsFromQuakes(payload: unknown, retrievedAt: string): Source
     if (!isRecord(feature['properties'])) return []
     const props = feature['properties']
     if (props['type'] !== 'earthquake') return []
-    if (typeof props['mag'] !== 'number' || props['mag'] < 4.5) return []
+    if (typeof props['mag'] !== 'number' || !Number.isFinite(props['mag']) || props['mag'] < 4.5) return []
     if (typeof props['place'] !== 'string' || typeof props['url'] !== 'string') return []
     const place = props['place'].trim()
     if (!place || place.length > 180 || !props['url'].startsWith('https://')) return []
@@ -46,6 +46,15 @@ export function recordsFromQuakes(payload: unknown, retrievedAt: string): Source
         topics: ['seismic-record'],
         weight: weightFromMagnitude(props['mag']),
         publishedAt: time,
+        measurement: {
+          kind: 'usgs-earthquake-magnitude',
+          value: props['mag'],
+          unit: 'magnitude',
+          sourceId: 'usgs-comcat-m45-week',
+          sourceUrl: usgsFeed,
+          transformation: 'bounded-linear-magnitude-v1 (0.4 + (magnitude - 4.5) * 0.35, clamped to 0.3..2.2)',
+          scale: typeof props['magType'] === 'string' ? props['magType'] : 'unspecified',
+        },
       },
     ]
   })

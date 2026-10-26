@@ -1,0 +1,12 @@
+{
+  "version": "compositor-v1",
+  "viewport": { "width": 1280, "height": 800 },
+  "initialBounds": { "x": 400, "y": 230, "width": 480, "height": 320 },
+  "settledBounds": { "x": 70, "y": 64, "width": 1140, "height": 650 },
+  "transitionDurationMs": 450,
+  "initialWaitMs": 1000,
+  "scrollDownWaitMs": 2500,
+  "scrollUpWaitMs": 2500,
+  "closeSettleWaitMs": 500,
+  "assets": ["video.webm"]
+}

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xml:base="https://publisher.example/"
+     xmlns:atom="http://www.w3.org/2005/Atom"
+     xmlns:georss="http://www.georss.org/georss">
+  <channel>
+    <title>Controlled RSS fixture</title>
+    <language>en-NZ</language>
+    <item xml:lang="en-CA">
+      <evil:link xmlns:evil="urn:evil">https://evil.example/shadow</evil:link>
+      <guid isPermaLink="false">news:harbour-1</guid>
+      <title>Harbour announcement &amp; response</title>
+      <link>news/harbour-1?campaign=one#headline</link>
+      <category>Local Council</category>
+      <pubDate>Tue, 20 Oct 2026 12:30:00 GMT</pubDate>
+      <atom:updated>2026-10-21T08:00:00Z</atom:updated>
+      <georss:point>44.65 -63.58</georss:point>
+    </item>
+    <item xml:lang="en-CA">
+      <guid isPermaLink="false">news:harbour-1</guid>
+      <title>Harbour announcement &amp; response updated</title>
+      <link>https://publisher.example/news/harbour-1?campaign=one</link>
+      <category>Local Council</category>
+      <pubDate>Tue, 20 Oct 2026 12:30:00 GMT</pubDate>
+      <atom:updated>2026-10-22T08:00:00Z</atom:updated>
+      <description>Not retained as a PublicItem.</description>
+    </item>
+    <item>
+      <guid isPermaLink="false">news:undated</guid>
+      <title>Undated notice</title>
+      <link>/news/undated</link>
+      <pubDate>2026-02-30T12:00:00Z</pubDate>
+    </item>
+    <item>
+      <guid isPermaLink="false">news:foreign-only-link</guid>
+      <title>No safe link field</title>
+      <evil:link xmlns:evil="urn:evil">https://publisher.example/forbidden</evil:link>
+    </item>
+    <item>
+      <guid>javascript:alert(1)</guid>
+      <title>Unsafe destination</title>
+      <link>javascript:alert(1)</link>
+    </item>
+  </channel>
+</rss>
