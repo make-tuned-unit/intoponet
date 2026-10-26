@@ -98,7 +98,11 @@ export type BrowserHostEvent =
   | { type: 'protection-state'; protection: ProtectionSnapshot }
   | { type: 'tabs'; tabs: PageTabSnapshot[] }
   | { type: 'tab-dock-state'; open: boolean }
+  /** Shell shortcuts pressed while the native page view had keyboard focus. */
+  | { type: 'shortcut'; action: ShellShortcut }
   | { type: 'field-snapshot'; payload: string }
+
+export type ShellShortcut = 'focus-launcher' | 'toggle-bookmarks'
 
 export interface BrowserHostApi {
   open(intent: NavigationIntent): Promise<void>
@@ -115,7 +119,8 @@ export interface BrowserHostApi {
   zoom(action: 'in' | 'out' | 'reset'): Promise<void>
   setBounds(bounds: BrowserPanelBounds): Promise<void>
   setFullWidth(enabled: boolean): Promise<void>
-  setTabDockOpen(open: boolean): Promise<void>
+  /** `hold` keeps the dock open while the pointer crosses the page (e.g. typing in its search). */
+  setTabDockOpen(open: boolean, hold?: boolean): Promise<void>
   getState(): Promise<BrowserPanelSnapshot>
   getProtection(): Promise<ProtectionSnapshot>
   setSiteProtection(enabled: boolean): Promise<void>
@@ -151,7 +156,7 @@ export type BrowserHostCommand =
   | { type: 'zoom'; action: 'in' | 'out' | 'reset' }
   | { type: 'set-bounds'; bounds: BrowserPanelBounds }
   | { type: 'set-full-width'; enabled: boolean }
-  | { type: 'set-tab-dock-open'; open: boolean }
+  | { type: 'set-tab-dock-open'; open: boolean; hold?: boolean }
   | { type: 'get-state' }
   | { type: 'get-protection' }
   | { type: 'set-site-protection'; enabled: boolean }
@@ -275,7 +280,8 @@ export function parseBrowserHostCommand(value: unknown): BrowserHostCommand {
       return { type, enabled: value['enabled'] }
     case 'set-tab-dock-open':
       if (typeof value['open'] !== 'boolean') throw new Error('Invalid tab-dock state.')
-      return { type, open: value['open'] }
+      if (value['hold'] !== undefined && typeof value['hold'] !== 'boolean') throw new Error('Invalid tab-dock hold.')
+      return { type, open: value['open'], ...(value['hold'] === true ? { hold: true } : {}) }
     case 'set-site-protection':
       if (typeof value['enabled'] !== 'boolean') {
         throw new Error('Invalid site protection flag.')

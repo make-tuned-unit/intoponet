@@ -11,6 +11,7 @@ import {
   session,
   WebContentsView,
   clipboard,
+  systemPreferences,
 } from 'electron'
 import type { MenuItemConstructorOptions } from 'electron'
 
@@ -23,7 +24,14 @@ if (!app.isReady()) {
 import { cachedPublicField, loadPublicField } from './public-field'
 import { readSealedPrivateLibrary } from './privateLibraryStorage'
 import { routeProtectionRequest } from './protectionRequest'
-import { pageViewBoundsForDock, shouldCloseTabDockFromNativeMouse } from './tabDockBounds'
+import {
+  dockReserveAt,
+  dockReserveTarget,
+  pageViewBoundsForDock,
+  shouldCloseTabDockFromNativeMouse,
+  TAB_DOCK_TWEEN_MS,
+} from './tabDockBounds'
+import { shellShortcutForInput } from './shellShortcuts'
 import { browserContextActions, type BrowserContextAction } from './browserContextMenu'
 import {
   browserHostChannels,
@@ -48,6 +56,10 @@ let pageAttached = false
 let activeTabId: string | null = null
 let browserFullWidth = false
 let tabDockOpen = false
+let tabDockHeld = false
+/** Animated dock reservation; null when resting at its target. */
+let dockReserveNow: number | null = null
+let dockTweenTimer: ReturnType<typeof setTimeout> | null = null
 const openTabs: OpenTab[] = []
 let lastBounds: BrowserPanelBounds = { x: 40, y: 104, width: 900, height: 600 }
 let lastKnownUrl = ''
@@ -330,7 +342,45 @@ function attachPageView(): void {
 function applyPageViewBounds(): void {
   if (!pageView) return
   const viewportHeight = window?.getContentSize()[1] ?? lastBounds.y + lastBounds.height
-  pageView.setBounds(pageViewBoundsForDock(lastBounds, viewportHeight, browserFullWidth, tabDockOpen))
+  pageView.setBounds(pageViewBoundsForDock(lastBounds, viewportHeight, browserFullWidth, tabDockOpen, dockReserveNow ?? undefined))
+}
+
+function prefersReducedMotion(): boolean {
+  try {
+    return systemPreferences.getAnimationSettings().prefersReducedMotion
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Glide the page edge to the dock's new reservation (ease-out cubic, matched
+ * by the renderer's dock animation) instead of snapping 116px in one frame.
+ */
+function tweenDockReserve(previousTarget: number): void {
+  const target = dockReserveTarget(browserFullWidth, tabDockOpen)
+  const from = dockReserveNow ?? previousTarget
+  if (dockTweenTimer) clearTimeout(dockTweenTimer)
+  dockTweenTimer = null
+  if (from === target || !browserFullWidth || prefersReducedMotion()) {
+    dockReserveNow = null
+    applyPageViewBounds()
+    return
+  }
+  const start = Date.now()
+  const step = (): void => {
+    const elapsed = Date.now() - start
+    dockReserveNow = dockReserveAt(from, target, elapsed)
+    applyPageViewBounds()
+    if (elapsed >= TAB_DOCK_TWEEN_MS) {
+      dockReserveNow = null
+      dockTweenTimer = null
+      applyPageViewBounds()
+      return
+    }
+    dockTweenTimer = setTimeout(step, 1000 / 120)
+  }
+  step()
 }
 
 function privateLibraryPath(): string {
@@ -622,10 +672,19 @@ function buildView(): WebContentsView {
       fullWidth: browserFullWidth,
       dockOpen: tabDockOpen,
       eventType: input.type,
+      held: tabDockHeld,
     })) {
       setBrowserTabDockOpen(false)
       emit({ type: 'tab-dock-state', open: false })
     }
+  })
+  // Shell shortcuts would otherwise be swallowed by the focused page.
+  view.webContents.on('before-input-event', (event, input) => {
+    const action = shellShortcutForInput(input)
+    if (!action || pageView !== view) return
+    event.preventDefault()
+    window?.webContents.focus()
+    emit({ type: 'shortcut', action })
   })
   view.webContents.on('context-menu', (event, params) => {
     if (view.webContents.isDestroyed() || !window || window.isDestroyed()) return
@@ -810,13 +869,21 @@ function setPanelBounds(bounds: BrowserPanelBounds): void {
 
 function setBrowserFullWidth(enabled: boolean): void {
   browserFullWidth = enabled
-  if (!enabled) tabDockOpen = false
+  if (!enabled) {
+    tabDockOpen = false
+    tabDockHeld = false
+  }
+  if (dockTweenTimer) clearTimeout(dockTweenTimer)
+  dockTweenTimer = null
+  dockReserveNow = null
   applyPageViewBounds()
 }
 
-function setBrowserTabDockOpen(open: boolean): void {
+function setBrowserTabDockOpen(open: boolean, hold = false): void {
+  const previousTarget = dockReserveTarget(browserFullWidth, tabDockOpen)
   tabDockOpen = browserFullWidth && pageAttached && open && openTabs.length > 0
-  applyPageViewBounds()
+  tabDockHeld = tabDockOpen && hold
+  if (dockReserveTarget(browserFullWidth, tabDockOpen) !== previousTarget) tweenDockReserve(previousTarget)
 }
 
 async function handleBrowserCommand(
@@ -927,7 +994,7 @@ async function handleBrowserCommand(
       setBrowserFullWidth(command.enabled)
       return null
     case 'set-tab-dock-open':
-      setBrowserTabDockOpen(command.open)
+      setBrowserTabDockOpen(command.open, command.hold === true)
       return null
     case 'get-state':
       break

@@ -70,6 +70,21 @@ and the production build. Evidence is recorded in the
 [design review](./FREQUENCY_DESIGN_REVIEW.md#living-contour-revision-checkpoint--2026-10-26).
 Visual acceptance and the 60 FPS target remain open.
 
+Also on 2026-10-26, the browser shell gained two features:
+
+- **A search bar in the full-screen dock.** It stays open while you type and
+  opens with ⌘L.
+- **A right-side Bookmarks pane** with accordion groups backed by
+  Collections (MEM-004). Groups can be created, renamed, deleted and
+  reordered by drag. A current-page save card is included, and ⇧⌘B and ⌘D
+  are forwarded even from a focused page.
+
+The page view glides aside as the pane opens: its bounds are streamed from
+a CSS transition. The dock's page edge uses a 240 ms ease-out tween that
+the dock animation matches. Reduced motion and reduced transparency are
+honoured. Real-window evidence is in `experiments/shell-ui-qa/evidence`.
+Hands-on VoiceOver review and keyboard drag alternatives remain open.
+
 Next: review field visibility and the ten synthetic scenes; verify the full-size
 place index and connect bounded lookup to navigation; connect trusted window
 coverage to dynamics and prove count-preserving geography rollups before tiles.

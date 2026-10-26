@@ -94,7 +94,11 @@ import {
 import { aggregateTopicTraffic, topicTrafficDemoResult } from './topicTraffic'
 import { inferUnifiedLauncherIntent } from './launcherIntent'
 import { TabDock } from './TabDock'
+import { BookmarkPane } from './BookmarkPane'
+import { moveBookmarkToGroup, UNSORTED_GROUP_ID } from './bookmarkGroups'
 import { PinEditor, type PinEditorValue } from './PinEditor'
+
+const bookmarkPaneOpenKey = 'intoponet.bookmark-pane.open.v1'
 
 type LibraryTab = 'locations' | 'collections' | 'recent' | 'absorbed'
 type TopicLocationOption = PersonalTopicLocation & { topicId?: string }
@@ -203,6 +207,10 @@ export function App() {
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false)
   const [organicMetrics, setOrganicMetrics] = useState<OrganicMembraneMetrics | null>(null)
   const [libraryOpen, setLibraryOpen] = useState(false)
+  const [bookmarksOpen, setBookmarksOpenState] = useState(() => {
+    try { return localStorage.getItem(bookmarkPaneOpenKey) === '1' } catch { return false }
+  })
+  const [dockFocusRequest, setDockFocusRequest] = useState(0)
   const [libraryTab, setLibraryTab] = useState<LibraryTab>('locations')
   const [pinEditor, setPinEditor] = useState<{ initial: PinEditorValue; originalUrl: string; restoreBrowser: boolean; restoreFullWidth: boolean } | null>(null)
   const [selectedPinUrl, setSelectedPinUrl] = useState('')
@@ -221,6 +229,7 @@ export function App() {
   const [error, setError] = useState('')
   const [libraryReadError, setLibraryReadError] = useState('')
   const panelBody = useRef<HTMLDivElement>(null)
+  const shortcutHandlers = useRef({ focusAddress: () => {}, toggleBookmarksPane: () => {} })
   const tabStrip = useRef<HTMLDivElement>(null)
   const [tabEdges, setTabEdges] = useState({ overflow: false, atStart: true, atEnd: true })
   const input = useRef<HTMLInputElement>(null)
@@ -370,6 +379,11 @@ export function App() {
 
   useEffect(() => {
     const unsubscribe = window.intoponet.browserHost.subscribe((event) => {
+      if (event.type === 'shortcut') {
+        if (event.action === 'focus-launcher') shortcutHandlers.current.focusAddress()
+        else shortcutHandlers.current.toggleBookmarksPane()
+        return
+      }
       if (event.type === 'panel-state') {
         setPanel(event.panel)
         setError('')
@@ -600,11 +614,15 @@ export function App() {
       const meta = event.metaKey || event.ctrlKey
       if (meta && key === 'l') {
         event.preventDefault()
-        if (panel.url) {
-          setQuery(panel.url)
-        }
-        input.current?.focus()
-        input.current?.select()
+        focusAddress()
+      }
+      if (meta && event.shiftKey && key === 'b') {
+        event.preventDefault()
+        toggleBookmarksPane()
+      }
+      if (meta && !event.shiftKey && key === 'd' && panel.isVisible && panel.url) {
+        event.preventDefault()
+        toggleBookmark()
       }
       if (meta && key === 'f' && panel.isVisible) {
         event.preventDefault()
@@ -700,6 +718,8 @@ export function App() {
         closeFind()
       } else if (event.key === 'Escape' && libraryOpen) {
         setLibraryOpen(false)
+      } else if (event.key === 'Escape' && bookmarksOpen) {
+        setBookmarksOpen(false)
       } else if (event.key === 'Escape' && panel.isVisible) {
         void window.intoponet.browserHost.close()
       } else if (event.key === 'Escape' && scale !== 'earth') {
@@ -708,7 +728,7 @@ export function App() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [activeTopic, findOpen, fullWidth, libraryOpen, panel.canGoBack, panel.canGoForward, panel.isVisible, panel.url, pinEditor, pose, scale, selectedTopicId, selectedTopicLabel, shieldOpen, tabs.length])
+  }, [activeTopic, bookmarks, bookmarksOpen, findOpen, fullWidth, libraryOpen, panel.canGoBack, panel.canGoForward, panel.isVisible, panel.url, pinEditor, pose, scale, selectedTopicId, selectedTopicLabel, shieldOpen, tabs.length])
 
   const rememberScale = (
     next: ExplorationScale,
@@ -746,29 +766,83 @@ export function App() {
     rememberScale('topic', scaleDistance.topic, topic)
   }
 
-  const submit = (event: FormEvent): void => {
-    event.preventDefault()
-    const submittedDraft = query
-    const value = submittedDraft.trim()
-    if (!value) return
+  /** Shared by the field launcher and the full-screen dock search. */
+  const navigateFromLauncher = (raw: string): Promise<void> => {
+    const value = raw.trim()
+    if (!value) return Promise.resolve()
     setError('')
     let intent: ReturnType<typeof inferUnifiedLauncherIntent>
     try {
       intent = inferUnifiedLauncherIntent(value, launcherTopics)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Could not understand that search or address.')
-      return
+      return Promise.reject(reason)
     }
     if (intent.kind === 'topic') {
       rememberTopic(intent.value)
-      setQuery('')
+      setBrowserFullWidth(false)
       void window.intoponet.browserHost.close()
-      return
+      return Promise.resolve()
     }
     if (intent.kind === 'search') setResearchTopic(intent.value)
-    void window.intoponet.browserHost.open(intent).then(() => {
+    return window.intoponet.browserHost.open(intent).catch((reason: unknown) => {
+      setError(reason instanceof Error ? reason.message : 'Navigation failed.')
+      throw reason
+    })
+  }
+
+  const submit = (event: FormEvent): void => {
+    event.preventDefault()
+    const submittedDraft = query
+    void navigateFromLauncher(submittedDraft).then(() => {
       if (input.current?.value === submittedDraft) setQuery('')
-    }).catch((reason: unknown) => {
+    }).catch(() => undefined)
+  }
+
+  const setBookmarksOpen = (open: boolean): void => {
+    setBookmarksOpenState(open)
+    if (open) setLibraryOpen(false)
+    try { localStorage.setItem(bookmarkPaneOpenKey, open ? '1' : '0') } catch { /* convenience only */ }
+  }
+
+  const toggleBookmarksPane = (): void => setBookmarksOpen(!bookmarksOpen)
+
+  /** ⌘L: the dock search in full screen, otherwise the field launcher. */
+  const focusAddress = (): void => {
+    if (fullWidth && panel.isVisible && tabs.length > 0) {
+      setDockFocusRequest((count) => count + 1)
+      return
+    }
+    if (panel.url) setQuery(panel.url)
+    input.current?.focus()
+    input.current?.select()
+  }
+
+  shortcutHandlers.current = { focusAddress, toggleBookmarksPane }
+
+  const saveCurrentToGroup = (groupId: string): void => {
+    if (!panel.url) return
+    persistBookmarks(upsertBookmark(bookmarks, {
+      url: panel.url,
+      title: panel.title || originLabel(panel.url),
+      topic: researchTopic ?? activeTopic,
+      savedAt: new Date().toISOString(),
+    }))
+    if (groupId !== UNSORTED_GROUP_ID) {
+      persistCollections(moveBookmarkToGroup(collections, panel.url, UNSORTED_GROUP_ID, groupId))
+    }
+  }
+
+  const createBookmarkGroup = (label: string): string | null => {
+    if (!label.trim()) return null
+    const collection = createCollection(label)
+    persistCollections([...collections, collection])
+    return collection.id
+  }
+
+  const openBookmarkFromPane = (bookmark: SavedBookmark): void => {
+    rememberTopic(bookmark.topic)
+    void window.intoponet.browserHost.open({ kind: 'url', value: bookmark.url }).catch((reason: unknown) => {
       setError(reason instanceof Error ? reason.message : 'Navigation failed.')
     })
   }
@@ -968,6 +1042,7 @@ export function App() {
 
   const showLibrary = (): void => {
     if (panel.isVisible) void window.intoponet.browserHost.close()
+    setBookmarksOpen(false)
     setLibraryOpen(true)
   }
 
@@ -1105,7 +1180,7 @@ export function App() {
   }
 
   return (
-    <main className={`app-shell${panel.isVisible ? ' page-open' : ''}${fullWidth && panel.isVisible ? ' browser-full' : ''}${tabs.length > 0 ? ' tabs-open' : ''}`}>
+    <main className={`app-shell${panel.isVisible ? ' page-open' : ''}${fullWidth && panel.isVisible ? ' browser-full' : ''}${tabs.length > 0 ? ' tabs-open' : ''}${bookmarksOpen ? ' bookmarks-open' : ''}`}>
       {!fieldLabOpen && <FrequencyField
         paused={reduceMotion || (fullWidth && panel.isVisible)}
         panelOpen={panel.isVisible}
@@ -1137,7 +1212,31 @@ export function App() {
           })
         }}
       />}
-      <TabDock tabs={tabs} fullWidth={fullWidth} visible={panel.isVisible} />
+      <TabDock
+        tabs={tabs}
+        fullWidth={fullWidth}
+        visible={panel.isVisible}
+        currentUrl={panel.url}
+        bookmarksOpen={bookmarksOpen}
+        focusRequest={dockFocusRequest}
+        onNavigate={navigateFromLauncher}
+        onToggleBookmarks={toggleBookmarksPane}
+      />
+      <BookmarkPane
+        open={bookmarksOpen && !fieldLabOpen}
+        placement={fullWidth && panel.isVisible ? 'attached' : 'floating'}
+        bookmarks={bookmarks}
+        collections={collections}
+        currentPage={panel.isVisible && panel.url ? { url: panel.url, title: panel.title || originLabel(panel.url) } : null}
+        onOpen={openBookmarkFromPane}
+        onSaveCurrent={saveCurrentToGroup}
+        onRemove={removeBookmark}
+        onCreateGroup={createBookmarkGroup}
+        onRenameGroup={(id, label) => persistCollections(renameCollection(collections, id, label))}
+        onDeleteGroup={removeCollection}
+        onMove={(url, from, to) => persistCollections(moveBookmarkToGroup(collections, url, from, to))}
+        onClose={() => setBookmarksOpen(false)}
+      />
       {!fieldLabOpen && <div className="field-wash" aria-hidden="true" />}
       {fieldLabOpen && <FieldLab onClose={() => setFieldLabOpen(false)} reducedMotion={reduceMotion} />}
 
@@ -1170,6 +1269,16 @@ export function App() {
               {fieldLabOpen ? 'Close field lab' : 'Field lab'}
             </button>
           )}
+          <button
+            type="button"
+            className="bookmark-library-button"
+            aria-pressed={bookmarksOpen}
+            title="Bookmarks (⇧⌘B)"
+            onClick={toggleBookmarksPane}
+          >
+            <Bookmark size={14} />
+            Bookmarks
+          </button>
           <button type="button" className="bookmark-library-button" onClick={showLibrary}>
             <MapPin size={14} />
             My map
@@ -1835,10 +1944,11 @@ export function App() {
               </button>
               <button
                 type="button"
-                className={isBookmarked ? 'selected' : ''}
-                aria-label={isBookmarked ? 'Remove bookmark' : 'Bookmark page'}
-                aria-pressed={isBookmarked}
-                onClick={toggleBookmark}
+                className={bookmarksOpen ? 'selected' : ''}
+                aria-label={`${bookmarksOpen ? 'Hide' : 'Show'} bookmarks${isBookmarked ? '. This page is saved' : ''}`}
+                aria-pressed={bookmarksOpen}
+                title="Bookmarks (⇧⌘B). Save this page with ⌘D."
+                onClick={toggleBookmarksPane}
               >
                 <Bookmark size={15} fill={isBookmarked ? 'currentColor' : 'none'} />
               </button>

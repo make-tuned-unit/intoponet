@@ -70,8 +70,8 @@ const browserHost: BrowserHostApi = {
   setFullWidth: async (enabled) => {
     await invoke({ type: 'set-full-width', enabled })
   },
-  setTabDockOpen: async (open) => {
-    await invoke({ type: 'set-tab-dock-open', open })
+  setTabDockOpen: async (open, hold) => {
+    await invoke({ type: 'set-tab-dock-open', open, ...(hold ? { hold: true } : {}) })
   },
   getState: () => invoke({ type: 'get-state' }) as Promise<BrowserPanelSnapshot>,
   getProtection: () => invoke({ type: 'get-protection' }) as Promise<ProtectionSnapshot>,

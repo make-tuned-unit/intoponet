@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
+  dockReserveAt,
+  dockReserveTarget,
+  easeOutCubic,
   pageViewBoundsForDock,
   shouldCloseTabDockFromNativeMouse,
   TAB_DOCK_HEIGHT_PX,
   TAB_DOCK_REVEAL_PX,
+  TAB_DOCK_TWEEN_MS,
 } from './tabDockBounds'
 
 const panel = { x: 0, y: 50, width: 1200, height: 850 }
@@ -16,7 +20,7 @@ describe('native page bounds for the hover tab dock', () => {
     expect(bounds.width).toBe(panel.width)
   })
 
-  it('exposes the 80px renderer dock on hover or focus', () => {
+  it('exposes the full search-and-tabs dock on hover or focus', () => {
     const bounds = pageViewBoundsForDock(panel, viewportHeight, true, true)
     expect(bounds.y + bounds.height).toBe(viewportHeight - TAB_DOCK_HEIGHT_PX)
     expect(bounds.width).toBe(panel.width)
@@ -60,5 +64,47 @@ describe('native page bounds for the hover tab dock', () => {
     expect(shouldCloseTabDockFromNativeMouse({
       isActivePage: true, fullWidth: true, dockOpen: true, eventType: 'mouseWheel',
     })).toBe(false)
+  })
+
+  it('keeps a held dock (search focused) open while the pointer crosses the page', () => {
+    const held = { isActivePage: true, fullWidth: true, dockOpen: true, held: true }
+    expect(shouldCloseTabDockFromNativeMouse({ ...held, eventType: 'mouseMove' })).toBe(false)
+    // A click on the page still dismisses it, as clicking elsewhere would.
+    expect(shouldCloseTabDockFromNativeMouse({ ...held, eventType: 'mouseDown' })).toBe(true)
+  })
+})
+
+describe('dock reservation tween', () => {
+  it('eases out from the reveal rail to the open dock and lands exactly', () => {
+    const from = TAB_DOCK_REVEAL_PX
+    const to = TAB_DOCK_HEIGHT_PX
+    expect(dockReserveAt(from, to, 0)).toBe(from)
+    expect(dockReserveAt(from, to, TAB_DOCK_TWEEN_MS)).toBe(to)
+    expect(dockReserveAt(from, to, TAB_DOCK_TWEEN_MS * 4)).toBe(to)
+    // Ease-out: more than half the travel in the first third.
+    expect(dockReserveAt(from, to, TAB_DOCK_TWEEN_MS / 3)).toBeGreaterThan(from + (to - from) / 2)
+    let previous = from
+    for (let t = 0; t <= TAB_DOCK_TWEEN_MS; t += 8) {
+      const value = dockReserveAt(from, to, t)
+      expect(value).toBeGreaterThanOrEqual(previous)
+      previous = value
+    }
+  })
+
+  it('reverses symmetrically and never overshoots', () => {
+    for (let t = 0; t <= TAB_DOCK_TWEEN_MS; t += 8) {
+      const value = dockReserveAt(TAB_DOCK_HEIGHT_PX, TAB_DOCK_REVEAL_PX, t)
+      expect(value).toBeLessThanOrEqual(TAB_DOCK_HEIGHT_PX)
+      expect(value).toBeGreaterThanOrEqual(TAB_DOCK_REVEAL_PX)
+    }
+    expect(easeOutCubic(-1)).toBe(0)
+    expect(easeOutCubic(2)).toBe(1)
+  })
+
+  it('uses the tween value in place of the resting reservation', () => {
+    expect(dockReserveTarget(false, true)).toBe(0)
+    const bounds = pageViewBoundsForDock(panel, viewportHeight, true, true, 60)
+    expect(bounds.y + bounds.height).toBe(viewportHeight - 60)
+    expect(pageViewBoundsForDock(panel, viewportHeight, false, true, 60)).toEqual(panel)
   })
 })

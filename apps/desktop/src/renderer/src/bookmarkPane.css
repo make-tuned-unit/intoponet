@@ -1,0 +1,523 @@
+/* Animatable layout variable: the browser panel, its native page view (via
+ * ResizeObserver bounds) and the tab dock glide aside as the pane opens. */
+@property --pane-space {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
+.app-shell {
+  --pane-space: 0px;
+  transition: --pane-space 460ms var(--lg-spring);
+}
+
+.app-shell.bookmarks-open.page-open {
+  /* Pane width (328) + 16px of breathing room. */
+  --pane-space: 344px;
+}
+
+.app-shell .browser-panel:not(.full-width) {
+  left: calc(50% - var(--pane-space) / 2);
+  width: calc(100% - 56px - var(--pane-space));
+}
+
+.app-shell .browser-panel.full-width {
+  right: auto;
+  width: calc(100% - var(--pane-space));
+}
+
+.app-shell .tab-dock {
+  right: var(--pane-space);
+}
+
+/* ---------- Pane ---------- */
+
+.bookmark-pane {
+  position: absolute;
+  z-index: 12;
+  width: 328px;
+  display: flex;
+  transform-origin: 100% 50%;
+}
+
+.bookmark-pane--floating {
+  top: 82px;
+  right: 28px;
+  bottom: 84px;
+}
+
+.bookmark-pane--attached {
+  top: 10px;
+  right: 10px;
+  bottom: 22px;
+}
+
+.bm-surface {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 10px 10px;
+  border-radius: 22px;
+  overflow: hidden;
+}
+
+.bm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px 0 8px;
+}
+
+.bm-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--warm-white);
+}
+
+.bm-title svg {
+  color: var(--teal);
+}
+
+.bm-title h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.bm-count {
+  min-width: 20px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  color: var(--muted);
+  background: rgba(205, 245, 240, 0.08);
+  font-size: 11px;
+  text-align: center;
+}
+
+.bm-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  margin: 0 2px;
+  padding: 0 8px 0 11px;
+  border-radius: 12px;
+  color: var(--muted);
+  transition: border-color 240ms var(--lg-spring), box-shadow 240ms var(--lg-spring);
+}
+
+.bm-search:focus-within {
+  border-color: rgba(80, 217, 199, 0.45);
+  box-shadow: 0 0 0 3px rgba(80, 217, 199, 0.12), inset 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.bm-search input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  color: var(--warm-white);
+  background: transparent;
+  font-size: 13px;
+}
+
+.bm-search input::placeholder {
+  color: rgba(155, 183, 185, 0.62);
+}
+
+.bm-search-clear {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: var(--void);
+  background: rgba(205, 245, 240, 0.5);
+  cursor: pointer;
+}
+
+/* Current page card */
+.bm-current {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) 34px;
+  align-items: center;
+  gap: 10px;
+  margin: 0 2px;
+  padding: 9px 9px 9px 10px;
+  border-radius: 14px;
+}
+
+.bm-current-text {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.bm-current-text strong {
+  overflow: hidden;
+  color: var(--warm-white);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bm-saved,
+.bm-save-target {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.bm-saved {
+  color: var(--teal);
+}
+
+.bm-save-target select {
+  min-width: 0;
+  max-width: 150px;
+  padding: 1px 18px 1px 7px;
+  border: 1px solid rgba(214, 246, 241, 0.14);
+  border-radius: 7px;
+  color: var(--warm-white);
+  background: rgba(205, 245, 240, 0.06);
+  font: inherit;
+  font-size: 11px;
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 9px) 55%, calc(100% - 5px) 55%;
+  background-size: 4px 4px;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+
+.bm-save-button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 11px;
+  color: var(--void);
+  background: linear-gradient(160deg, #7cf0e0, var(--teal));
+  box-shadow: 0 6px 18px -6px rgba(80, 217, 199, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: filter 220ms var(--lg-spring), background 300ms var(--lg-spring);
+}
+
+.bm-save-button:hover {
+  filter: brightness(1.08);
+}
+
+.bm-save-button.is-saved {
+  color: var(--teal);
+  background: rgba(80, 217, 199, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(80, 217, 199, 0.4);
+}
+
+/* Monogram tiles: private, no favicon requests. */
+.bm-monogram {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  color: hsl(var(--bm-hue) 80% 90%);
+  background:
+    linear-gradient(160deg, hsl(var(--bm-hue) 60% 52% / 0.55), hsl(var(--bm-hue) 55% 28% / 0.55));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), inset 0 -1px 0 rgba(0, 0, 0, 0.25);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* Groups */
+.bm-groups {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0 -4px;
+  padding: 2px 4px 6px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(155, 183, 185, 0.22) transparent;
+  mask-image: linear-gradient(180deg, transparent 0, #000 8px, #000 calc(100% - 14px), transparent 100%);
+}
+
+.bm-group {
+  margin-bottom: 4px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  transition: background 260ms var(--lg-spring), border-color 260ms var(--lg-spring);
+}
+
+.bm-group.is-open {
+  background: rgba(205, 245, 240, 0.025);
+}
+
+.bm-group.is-drop-target {
+  border-color: rgba(80, 217, 199, 0.5);
+  background: rgba(80, 217, 199, 0.08);
+}
+
+.bm-group-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 36px;
+  padding: 0 4px 0 2px;
+}
+
+.bm-group-toggle {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 10px;
+  color: var(--warm-white);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-align: left;
+  cursor: pointer;
+  transition: background 200ms var(--lg-spring);
+}
+
+.bm-group-toggle:hover {
+  background: var(--lg-hover);
+}
+
+.bm-chevron {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+
+.bm-group-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bm-group-count {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.bm-group-actions {
+  display: flex;
+  opacity: 0;
+  transform: translateX(4px);
+  transition: opacity 200ms var(--lg-spring), transform 260ms var(--lg-spring);
+}
+
+.bm-group-header:hover .bm-group-actions,
+.bm-group-header:focus-within .bm-group-actions {
+  opacity: 1;
+  transform: none;
+}
+
+.bm-group-actions .lg-icon-button {
+  width: 26px;
+  height: 26px;
+}
+
+.lg-icon-button.is-danger {
+  color: #ffb4b4;
+  background: rgba(255, 110, 110, 0.16);
+}
+
+.bm-group-body {
+  overflow: hidden;
+}
+
+.bm-group-body ul {
+  margin: 0;
+  padding: 0 4px 6px 4px;
+  list-style: none;
+}
+
+.bm-empty {
+  margin: 0;
+  padding: 4px 14px 12px 32px;
+  color: rgba(155, 183, 185, 0.7);
+  font-size: 11.5px;
+}
+
+.bm-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.bm-hover-pill {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: 11px;
+  background: linear-gradient(90deg, rgba(205, 245, 240, 0.09), rgba(205, 245, 240, 0.05));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+.bm-item-open {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 6px 0 8px;
+  border: 0;
+  border-radius: 11px;
+  color: var(--warm-white);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.bm-item-open:active {
+  transform: scale(0.985);
+}
+
+.bm-item-open[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.bm-item-text {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.bm-item-text strong,
+.bm-item-text small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bm-item-text strong {
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.bm-item-text small {
+  color: var(--muted);
+  font-size: 10.5px;
+}
+
+.bm-item-remove {
+  position: relative;
+  z-index: 1;
+  width: 26px;
+  height: 26px;
+  margin-right: 4px;
+  opacity: 0;
+  transition: opacity 180ms var(--lg-spring);
+}
+
+.bm-item:hover .bm-item-remove,
+.bm-item:focus-within .bm-item-remove {
+  opacity: 1;
+}
+
+.bm-inline-input {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 10px;
+  outline: 0;
+  color: var(--warm-white);
+  font: inherit;
+  font-size: 12.5px;
+}
+
+.bm-inline-input:focus {
+  border-color: rgba(80, 217, 199, 0.45);
+}
+
+/* Footer */
+.bm-footer {
+  padding: 2px 2px 0;
+}
+
+.bm-new-group {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  height: 36px;
+  border: 1px dashed rgba(214, 246, 241, 0.18);
+  border-radius: 12px;
+  color: var(--muted);
+  background: transparent;
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 200ms var(--lg-spring), background 200ms var(--lg-spring), border-color 200ms var(--lg-spring);
+}
+
+.bm-new-group:hover {
+  border-color: rgba(80, 217, 199, 0.45);
+  color: var(--warm-white);
+  background: rgba(80, 217, 199, 0.06);
+}
+
+.bm-create {
+  display: flex;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell {
+    transition: none;
+  }
+
+  .bm-item-open:active {
+    transform: none;
+  }
+}
+
+/* The pane takes the right-hand column: field readouts there step aside. */
+.app-shell .coverage-note,
+.app-shell .accessible-signals,
+.app-shell .field-sources {
+  transition: opacity 320ms var(--lg-spring), transform 420ms var(--lg-spring), filter 320ms var(--lg-spring);
+}
+
+.app-shell.bookmarks-open .coverage-note,
+.app-shell.bookmarks-open .accessible-signals,
+.app-shell.bookmarks-open .field-sources {
+  opacity: 0;
+  transform: translateX(-18px);
+  filter: blur(6px);
+  pointer-events: none;
+}
+
+/* Full screen: the page owns the top edge; the field top bar would show
+ * through beside the pane. */
+.app-shell.browser-full .topbar {
+  visibility: hidden;
+}

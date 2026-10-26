@@ -1,4 +1,7 @@
+/* Keep in sync with main/tabDockBounds.ts: reveal 12px, open 128px, 240ms ease-out cubic. */
 .tab-dock {
+  --dock-open-height: 128px;
+  --dock-ease: cubic-bezier(0.33, 1, 0.68, 1);
   position: fixed;
   z-index: 30;
   right: 0;
@@ -7,84 +10,198 @@
   height: 12px;
   overflow: visible;
   pointer-events: auto;
+  transition: height 240ms var(--dock-ease), right 460ms var(--lg-spring);
 }
 
 .tab-dock.is-open {
-  height: 80px;
-  border-top: 1px solid rgba(195, 237, 232, 0.24);
-  background: linear-gradient(180deg, rgba(8, 21, 30, 0.96), rgba(7, 17, 27, 0.98));
-  box-shadow: 0 -16px 38px rgba(0, 0, 0, 0.22);
-  backdrop-filter: blur(18px) saturate(1.08);
+  height: var(--dock-open-height);
 }
 
-.tab-dock-trigger {
+/* Closed: a slim luminous grabber on the reveal rail. */
+.tab-dock-grabber {
   position: absolute;
-  top: 0;
+  bottom: 0;
   left: 50%;
-  min-width: 112px;
+  width: 180px;
   height: 12px;
-  padding: 0 12px;
-  transform: translateX(-50%);
-  overflow: hidden;
+  padding: 0;
   border: 0;
-  border-radius: 0 0 8px 8px;
-  color: var(--muted);
-  background: linear-gradient(90deg, rgba(49, 92, 100, 0.28), rgba(51, 65, 92, 0.28));
-  font-size: 10px;
-  line-height: 12px;
+  background: transparent;
+  transform: translateX(-50%);
   cursor: pointer;
 }
 
-.tab-dock.is-open .tab-dock-trigger {
-  top: 3px;
-  height: 18px;
-  border: 1px solid rgba(195, 237, 232, 0.15);
-  border-radius: 8px;
-  color: var(--warm-white);
-  background: rgba(195, 237, 232, 0.08);
-  line-height: 16px;
+.tab-dock-grabber span {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  width: 54px;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(80, 217, 199, 0.35), rgba(166, 155, 232, 0.45));
+  box-shadow: 0 0 12px rgba(80, 217, 199, 0.35);
+  transform: translateX(-50%);
+  transition: width 320ms var(--lg-spring), opacity 240ms var(--lg-spring);
 }
 
-.tab-dock-trigger:focus-visible {
-  outline-offset: -2px;
+.tab-dock-grabber:hover span {
+  width: 84px;
 }
 
-.tab-dock-content {
-  height: 80px;
+.tab-dock.is-open .tab-dock-grabber span {
+  opacity: 0;
+}
+
+/* Open: a floating glass slab. */
+.tab-dock-slab {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  left: 10px;
   display: flex;
-  align-items: flex-end;
-  padding: 0 14px 10px;
+  flex-direction: column;
+  gap: 9px;
+  padding: 10px 12px 11px;
+  border-radius: 22px;
+  transform-origin: 50% 100%;
 }
 
-.tab-dock-tabs {
+.dock-row {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  width: 100%;
   min-width: 0;
-  overflow-x: auto;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(155, 183, 185, 0.28) transparent;
 }
 
-.tab-dock-item {
+.dock-search {
+  flex: 0 1 620px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 42px;
+  padding: 0 6px 0 14px;
+  border-radius: 14px;
+  color: var(--muted);
+  transition: border-color 240ms var(--lg-spring), box-shadow 240ms var(--lg-spring), flex-basis 420ms var(--lg-spring);
+}
+
+.dock-search:focus-within {
+  flex-basis: 720px;
+  border-color: rgba(80, 217, 199, 0.5);
+  box-shadow: 0 0 0 4px rgba(80, 217, 199, 0.12), 0 0 28px -6px rgba(80, 217, 199, 0.4), inset 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.dock-search-field {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+}
+
+.dock-search input {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  color: var(--warm-white);
+  background: transparent;
+  font-size: 14px;
+}
+
+.dock-search input::placeholder {
+  color: rgba(155, 183, 185, 0.64);
+}
+
+.dock-go {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  color: var(--void);
+  background: linear-gradient(160deg, #7cf0e0, var(--teal));
+  box-shadow: 0 6px 16px -6px rgba(80, 217, 199, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+}
+
+.dock-hint {
+  margin-right: 6px;
+  padding: 2px 6px;
+  border: 1px solid rgba(214, 246, 241, 0.14);
+  border-radius: 6px;
+  color: rgba(155, 183, 185, 0.75);
+  font: inherit;
+  font-size: 10.5px;
+}
+
+.dock-bookmarks {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid rgba(214, 246, 241, 0.12);
+  border-radius: 14px;
+  color: var(--muted);
+  background: rgba(205, 245, 240, 0.05);
+  cursor: pointer;
+  transition: color 200ms var(--lg-spring), background 240ms var(--lg-spring), border-color 240ms var(--lg-spring);
+}
+
+.dock-bookmarks:hover {
+  color: var(--warm-white);
+  background: var(--lg-hover);
+}
+
+.dock-bookmarks.is-active {
+  border-color: rgba(80, 217, 199, 0.45);
+  color: var(--teal);
+  background: var(--lg-active);
+}
+
+.dock-tabs {
+  justify-content: safe center;
+  overflow-x: auto;
+  padding: 1px 2px 2px;
+  scrollbar-width: none;
+}
+
+.dock-tab {
+  position: relative;
   display: flex;
   flex: 0 0 auto;
   align-items: center;
-  min-width: 150px;
-  max-width: 240px;
-  height: 38px;
-  border: 1px solid rgba(195, 237, 232, 0.14);
-  border-radius: 11px;
-  background: rgba(15, 33, 43, 0.84);
+  min-width: 140px;
+  max-width: 220px;
+  height: 36px;
+  border: 1px solid rgba(214, 246, 241, 0.09);
+  border-radius: 12px;
+  background: rgba(205, 245, 240, 0.035);
+  transition: background 220ms var(--lg-spring), border-color 220ms var(--lg-spring);
 }
 
-.tab-dock-item.active {
-  border-color: rgba(80, 217, 199, 0.55);
-  background: rgba(24, 54, 59, 0.96);
+.dock-tab:hover {
+  border-color: rgba(214, 246, 241, 0.16);
+  background: rgba(205, 245, 240, 0.07);
 }
 
-.tab-dock-item button {
+.dock-tab-indicator {
+  position: absolute;
+  inset: -1px;
+  z-index: 0;
+  border: 1px solid rgba(80, 217, 199, 0.5);
+  border-radius: 12px;
+  background: linear-gradient(160deg, rgba(80, 217, 199, 0.18), rgba(80, 217, 199, 0.06));
+  box-shadow: 0 0 22px -8px rgba(80, 217, 199, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.dock-tab button {
+  position: relative;
+  z-index: 1;
   height: 100%;
   border: 0;
   color: var(--warm-white);
@@ -92,38 +209,46 @@
   cursor: pointer;
 }
 
-.tab-dock-activate {
+.dock-tab-activate {
   display: flex;
   flex: 1 1 auto;
   align-items: center;
   gap: 8px;
   min-width: 0;
-  padding: 0 7px 0 10px;
+  padding: 0 6px 0 11px;
   text-align: left;
-  font-size: 11px;
+  font-size: 11.5px;
 }
 
-.tab-dock-activate img,
-.tab-dock-activate svg {
+.dock-tab-activate img,
+.dock-tab-activate svg {
   flex: 0 0 auto;
   width: 14px;
   height: 14px;
 }
 
-.tab-dock-activate span {
+.dock-tab-activate span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.tab-dock-close {
+.dock-tab-close {
   display: grid;
-  flex: 0 0 30px;
+  flex: 0 0 28px;
   place-items: center;
   color: var(--muted) !important;
+  opacity: 0.55;
+  transition: opacity 180ms var(--lg-spring);
 }
 
-.tab-dock-close:hover {
+.dock-tab:hover .dock-tab-close,
+.dock-tab.is-active .dock-tab-close,
+.dock-tab-close:focus-visible {
+  opacity: 1;
+}
+
+.dock-tab-close:hover {
   color: var(--warm-white) !important;
 }
 
@@ -145,7 +270,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .tab-dock,
-  .tab-dock.is-open {
+  .tab-dock-grabber span,
+  .dock-search {
     transition: none;
   }
 }
