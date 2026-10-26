@@ -1,0 +1,130 @@
+/**
+ * The Olds: source-backed historical threads (PRD §4.7). Every edge is a
+ * Wikidata statement with its references; nothing is inferred. A
+ * chronology-only edge says one thing came before another — never that it
+ * caused it. Lookups go to Wikidata/Wikipedia from the main process.
+ */
+
+export const oldsChannels = {
+  command: 'intoponet:olds',
+} as const
+
+export const OLDS_LIMITS = {
+  nodes: 60,
+  labelLength: 200,
+  descriptionLength: 300,
+  titleLength: 300,
+  citationsPerEdge: 3,
+} as const
+
+export type OldsEdgeType =
+  | 'preceded_by'
+  | 'followed_by'
+  | 'contributed_to'
+  | 'influenced'
+  | 'responded_to'
+  | 'analogous_to'
+  | 'disputed_link'
+  | 'located_at'
+  | 'part_of'
+  | 'significant_event'
+
+export type OldsEpistemic = 'source-stated' | 'chronology-only' | 'disputed'
+
+export type OldsDate = {
+  /** e.g. '1989-11-09' or '-0044-03-15'. */
+  iso: string
+  precision: 'millennium' | 'century' | 'decade' | 'year' | 'month' | 'day'
+  /** Human label, e.g. '9 Nov 1989', '44 BC', '1960s'. */
+  label: string
+}
+
+export type OldsNode = {
+  /** Wikidata QID. */
+  id: string
+  label: string
+  description: string | null
+  start: OldsDate | null
+  end: OldsDate | null
+  wikipediaUrl: string | null
+  wikidataUrl: string
+  imageUrl?: string | null
+}
+
+export type OldsCitation = { url: string; title: string | null }
+
+export type OldsEdge = {
+  from: string
+  to: string
+  type: OldsEdgeType
+  epistemic: OldsEpistemic
+  /** Wikidata property, e.g. 'P828'. */
+  property: string
+  /** e.g. 'has cause'. */
+  propertyLabel: string
+  statementUrl: string
+  /** Up to 3, from the statement's references. */
+  citations: OldsCitation[]
+  referenceCount: number
+}
+
+export type OldsThread = {
+  rootId: string
+  nodes: OldsNode[]
+  edges: OldsEdge[]
+  fetchedAt: string
+  attribution: string
+  note: string
+}
+
+export type OldsQuery =
+  | { kind: 'wikipedia'; title: string; lang?: string }
+  | { kind: 'qid'; qid: string }
+  | { kind: 'country'; countryCode: string }
+
+export type OldsCommand = { type: 'thread'; query: OldsQuery }
+
+export interface OldsApi {
+  thread(query: OldsQuery): Promise<OldsThread>
+}
+
+export const OLDS_NOTE = "Links are Wikidata statements with their references. 'Chronology only' means one came before another — not that it caused it."
+export const OLDS_ATTRIBUTION = 'Wikidata (CC0) · Wikipedia (CC BY-SA 4.0)'
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+export function isQid(value: unknown): value is string {
+  return typeof value === 'string' && /^Q[1-9]\d{0,11}$/.test(value)
+}
+
+export function parseOldsQuery(value: unknown): OldsQuery {
+  if (!isRecord(value)) throw new Error('Invalid Olds query.')
+  switch (value['kind']) {
+    case 'wikipedia': {
+      const title = value['title']
+      if (typeof title !== 'string' || !title.trim() || title.length > OLDS_LIMITS.titleLength || /[<>[\]{}|#]/.test(title)) {
+        throw new Error('Invalid Wikipedia title.')
+      }
+      const lang = value['lang']
+      if (lang !== undefined && (typeof lang !== 'string' || !/^[a-z]{2,3}(?:-[a-z]{2,8})?$/.test(lang))) throw new Error('Invalid language.')
+      return { kind: 'wikipedia', title: title.trim(), ...(lang ? { lang } : {}) }
+    }
+    case 'qid':
+      if (!isQid(value['qid'])) throw new Error('Invalid Wikidata id.')
+      return { kind: 'qid', qid: value['qid'] }
+    case 'country': {
+      const code = value['countryCode']
+      if (typeof code !== 'string' || !/^[A-Z]{2}$/.test(code)) throw new Error('Invalid country code.')
+      return { kind: 'country', countryCode: code }
+    }
+    default:
+      throw new Error('Invalid Olds query.')
+  }
+}
+
+export function parseOldsCommand(value: unknown): OldsCommand {
+  if (!isRecord(value) || value['type'] !== 'thread') throw new Error('Invalid Olds command.')
+  return { type: 'thread', query: parseOldsQuery(value['query']) }
+}

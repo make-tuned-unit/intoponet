@@ -70,5 +70,5 @@ try {
   socket.close()
   app.kill()
   await delay(400)
-  rmSync(profile, { recursive: true, force: true })
+  rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 })
 }

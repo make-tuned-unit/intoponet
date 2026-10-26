@@ -67,6 +67,7 @@ export function EarthScene({
   projection,
   onMarkerHover,
   onMarkerSelect,
+  markerEmphasis = null,
   membraneSettings,
   onDistanceChange,
   onPoseChange,
@@ -89,6 +90,7 @@ export function EarthScene({
   projection?: GlobeProjection | undefined
   onMarkerHover?: ((id: string | null) => void) | undefined
   onMarkerSelect?: ((id: string | null) => void) | undefined
+  markerEmphasis?: ReadonlySet<string> | null
   membraneSettings?: OrganicMembraneSettings | undefined
   onDistanceChange?: ((radius: number) => void) | undefined
   onPoseChange?: ((pose: OrbitPose) => void) | undefined
@@ -131,6 +133,7 @@ export function EarthScene({
           interactive={!panelOpen}
           onHover={(id) => onMarkerHover?.(id)}
           onSelect={(id) => onMarkerSelect?.(id)}
+          emphasis={markerEmphasis}
         />
       )}
       {signals === undefined ? (

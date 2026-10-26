@@ -51,6 +51,12 @@ export type SourceRecord = {
   thumbnail?: string
   /** When the source reports the event as closed. */
   endedAt?: string
+  /**
+   * Same measurement for the previous comparable window (e.g. the previous
+   * UTC day's pageviews). null means absent from that window's list; undefined
+   * means no comparison was available.
+   */
+  previousValue?: number | null
 }
 
 export type SnapshotBand = {

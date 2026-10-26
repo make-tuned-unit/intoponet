@@ -365,3 +365,5 @@ export function parseBrowserHostCommand(value: unknown): BrowserHostCommand {
 }
 
 export * from './captures'
+export * from './olds'
+export * from './knowledge'

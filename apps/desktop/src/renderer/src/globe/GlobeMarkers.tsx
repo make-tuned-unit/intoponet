@@ -51,7 +51,7 @@ const vertexShader = /* glsl */ `
     vColor = aColor;
     vState = aState;
     float zoom = clamp(3.2 / -mv.z, 0.75, 2.4);
-    float lift = aState > 1.5 ? 1.9 : aState > 0.5 ? 1.45 : 1.0;
+    float lift = aState > 1.5 ? 1.9 : aState > 0.5 ? 1.45 : aState < -0.5 ? 0.6 : 1.0;
     gl_PointSize = aSize * uPixelRatio * sqrt(zoom) * lift;
     gl_Position = projectionMatrix * mv;
   }
@@ -75,7 +75,7 @@ const fragmentShader = /* glsl */ `
       ring += smoothstep(0.06, 0.0, abs(d - 0.5)) * 0.8;
     }
     vec3 color = mix(vColor, vec3(1.0), core * 0.55);
-    float alpha = (core + halo + ring) * limb;
+    float alpha = (core + halo + ring) * limb * (vState < -0.5 ? 0.22 : 1.0);
     gl_FragColor = vec4(color * alpha, alpha);
   }
 `
@@ -88,6 +88,7 @@ export function GlobeMarkers({
   interactive,
   onHover,
   onSelect,
+  emphasis = null,
 }: {
   markers: GlobeMarker[]
   selectedId: string | null
@@ -96,6 +97,8 @@ export function GlobeMarkers({
   interactive: boolean
   onHover: (id: string | null) => void
   onSelect: (id: string | null) => void
+  /** When set, markers outside it are dimmed (e.g. countries using a rising term). */
+  emphasis?: ReadonlySet<string> | null
 }) {
   const { camera, gl, size } = useThree()
   const callbacks = useRef({ onHover, onSelect, interactive })
@@ -143,10 +146,10 @@ export function GlobeMarkers({
   useEffect(() => {
     const state = geometry.getAttribute('aState') as BufferAttribute
     markers.forEach((marker, i) => {
-      state.setX(i, marker.id === selectedId ? 2 : marker.id === hoveredId ? 1 : 0)
+      state.setX(i, marker.id === selectedId ? 2 : marker.id === hoveredId ? 1 : emphasis && !emphasis.has(marker.id) ? -1 : 0)
     })
     state.needsUpdate = true
-  }, [geometry, markers, selectedId, hoveredId])
+  }, [geometry, markers, selectedId, hoveredId, emphasis])
 
   // Keep the projection store sized to the marker list.
   useEffect(() => {

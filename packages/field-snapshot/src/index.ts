@@ -116,6 +116,7 @@ export {
   topArticlesFromPayload,
   topPageviewsSourceId,
   utcDayPath,
+  viewsByTitle,
   wikipediaPageInfoUrl,
   wikipediaTopUrl,
 } from './wikipedia-top'

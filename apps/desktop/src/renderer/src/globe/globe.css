@@ -881,3 +881,232 @@
   color: var(--muted);
   font-size: 10.5px;
 }
+
+/* Top / Rising / Fading */
+.globe-list-top {
+  display: grid;
+  gap: 8px;
+  padding: 0 0 6px;
+}
+
+.globe-list-top .globe-list-heading {
+  padding-bottom: 0;
+}
+
+.globe-tabs {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 0 14px;
+  padding: 3px;
+  border-radius: 11px;
+  background: var(--lg-inset-fill);
+}
+
+.globe-tabs button {
+  position: relative;
+  height: 26px;
+  color: var(--muted);
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.globe-tabs button span {
+  position: relative;
+  z-index: 1;
+}
+
+.globe-tabs button.is-active {
+  color: var(--warm-white);
+}
+
+.globe-tab-thumb {
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  background: linear-gradient(160deg, rgba(120, 180, 190, 0.26), rgba(40, 80, 96, 0.34));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+.globe-row {
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+}
+
+.globe-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  height: 20px;
+  padding: 0 7px 0 5px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.globe-trend.is-rising {
+  color: #ffd29a;
+  background: rgba(255, 186, 102, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(255, 186, 102, 0.28);
+}
+
+.globe-trend.is-fading {
+  color: #9ec3ff;
+  background: rgba(120, 160, 255, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(120, 160, 255, 0.24);
+}
+
+.globe-trend.is-new {
+  padding: 0 8px;
+  color: var(--teal);
+  background: rgba(80, 217, 199, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(80, 217, 199, 0.3);
+}
+
+.globe-trend-word.is-rising { color: #ffd29a; }
+.globe-trend-word.is-fading { color: #9ec3ff; }
+.globe-trend-word.is-new { color: var(--teal); }
+.globe-trend-word.is-unknown { color: var(--muted); }
+
+.globe-facts .globe-fact-note {
+  justify-content: flex-end;
+}
+
+.globe-facts .globe-fact-note dd {
+  color: var(--muted);
+  font-size: 10.5px;
+}
+
+.globe-headlines-actions {
+  display: inline-flex;
+  gap: 4px;
+}
+
+/* Rising worldwide */
+.globe-rising {
+  padding: 2px 14px 10px;
+}
+
+.globe-rising h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px;
+  color: #ffd29a;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.globe-rising-terms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.globe-rising-terms button {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 5px 10px;
+  color: var(--warm-white);
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 186, 102, 0.09);
+  box-shadow: inset 0 0 0 1px rgba(255, 186, 102, 0.22);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 160ms var(--lg-spring), transform 160ms var(--lg-spring);
+}
+
+.globe-rising-terms button:hover {
+  background: rgba(255, 186, 102, 0.18);
+}
+
+.globe-rising-terms button:active {
+  transform: scale(0.96);
+}
+
+.globe-rising-terms small {
+  color: #ffd29a;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.globe-term {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0 14px 12px;
+  overflow-y: auto;
+}
+
+.globe-term-top {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: start;
+  margin-bottom: 10px;
+}
+
+.globe-term-top h3 {
+  margin: 2px 0 4px;
+  font-size: 18px;
+  font-weight: 450;
+}
+
+.globe-term-top p,
+.globe-term-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.globe-term-note {
+  margin-top: 8px;
+  font-size: 10px;
+}
+
+.globe-headlines-plain {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.globe-headlines-plain button {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  padding: 8px 10px;
+  color: var(--warm-white);
+  border: 0;
+  border-left: 2px solid rgba(255, 186, 102, 0.4);
+  border-radius: 0 10px 10px 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.globe-headlines-plain button:hover {
+  background: var(--lg-hover);
+}
+
+.globe-headlines-plain strong {
+  font-size: 12.5px;
+  font-weight: 450;
+  line-height: 1.35;
+}
+
+.globe-headlines-plain small {
+  color: var(--muted);
+  font-size: 10.5px;
+}

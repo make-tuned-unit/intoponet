@@ -39,6 +39,11 @@ node experiments/shell-ui-qa/drive.mjs experiments/shell-ui-qa/scenario-bookmark
   on screen never appear in evidence. Prefer `shotApp` whenever no native web
   page is on screen.
 
+- `scenario-olds-absorb.mjs` walks the Rising tab and a rising term, a
+  country trend, The Olds for Germany (detail, follow, list), Absorb on
+  Wikipedia's Aurora article, a refused sign-in page, a cited Knowledge
+  search, and absorbed places on the Mine globe.
+
 The driver sets `INTOPONET_CAPTURE_ROOT` to the throwaway profile, so test
 runs never write to your real `~/Pictures/Intoponet`.
 

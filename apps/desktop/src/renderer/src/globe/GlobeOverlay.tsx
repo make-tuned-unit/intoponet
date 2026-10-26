@@ -41,7 +41,7 @@ export function GlobeOverlay({
       const now = performance.now()
       if (now - blockersAt > 400) {
         blockersAt = now
-        blockers = [...document.querySelectorAll<HTMLElement>('.globe-panel, .globe-layers, .globe-about, .command-dock, .globe-header h1, .bookmark-pane')]
+        blockers = [...document.querySelectorAll<HTMLElement>('.globe-panel, .globe-layers, .globe-about, .command-dock, .globe-header h1, .globe-header p, .globe-trail, .bookmark-pane, .olds-sheet, .notice-message')]
           .map((el) => el.getBoundingClientRect())
           .filter((rect) => rect.width > 0)
           .map((rect) => [rect.left, rect.top, rect.right, rect.bottom] as [number, number, number, number])

@@ -13,6 +13,7 @@ import {
   usgsFeed,
   wikipediaPageInfoUrl,
   wikipediaTopUrl,
+  viewsByTitle,
   type FieldSnapshot,
   type PageInfo,
   type SourceRecord,
@@ -111,9 +112,27 @@ export async function fetchReadingNow(now = Date.now()): Promise<SourceRecord[]>
       for (const [title, info] of pageInfoFromPayload(await getJson(wikipediaPageInfoUrl(batch)))) pages.set(title, info)
       await delay(350)
     }
-    return recordsFromTopArticles(top, pages, day, retrievedAt)
+    return recordsFromTopArticles(top, pages, day, retrievedAt, READING_NOW_LIMITS.located, await previousDayViews(day))
   }
   return []
+}
+
+/** Previous UTC day's top list, cached by day; null when unavailable (no comparison shown). */
+const previousDayCache = new Map<string, Map<string, number>>()
+async function previousDayViews(day: Date): Promise<Map<string, number> | null> {
+  const previous = new Date(day.getTime() - DAY_MS)
+  const key = previous.toISOString().slice(0, 10)
+  const cached = previousDayCache.get(key)
+  if (cached) return cached
+  try {
+    const views = viewsByTitle(topArticlesFromPayload(await getJson(wikipediaTopUrl(previous))))
+    if (!views.size) return null
+    previousDayCache.clear()
+    previousDayCache.set(key, views)
+    return views
+  } catch {
+    return null
+  }
 }
 
 export async function fetchQuakes(now = Date.now()): Promise<SourceRecord[]> {

@@ -200,6 +200,64 @@ each country's own outlets are publishing:
   - Momentum between windows.
   - Syndication de-duplication across countries.
 
+**Rising and fading, The Olds and Absorb (2026-10-26).**
+
+- **Rising and fading (FRQ-003):**
+  - Each country's distinct stories in the last 24 h are compared with the
+    24 h before, counting only *comparable* feeds: those whose observed
+    coverage spans both windows (tracked as intervals in
+    `news-coverage.json`).
+  - Formula: (recent − previous) ÷ (recent + previous + 4). The result is
+    null when coverage is missing or there are fewer than 4 stories, so a gap
+    never reads as fading.
+  - Wikipedia most-read is compared with the previous day; an article absent
+    from the previous day's list shows as "new". Quakes and natural events
+    show "new" within 24 h.
+  - Momentum feeds the membrane's existing warm/cool tint.
+  - The panel has Top / Rising / Fading tabs, trend chips, and a trend line
+    with its counts in the inspector.
+  - *Rising worldwide* lists terms used by outlets in at least 3 more
+    countries today than yesterday, judged on comparable feeds only.
+    Proper-noun evidence comes from capitalisation in sentence-case
+    headlines. Selecting a term dims every country that didn't use it.
+- **The Olds (OLD-001..006):**
+  - Threads come from Wikidata statements only: follows / followed by,
+    replaces / replaced by (sequence only), has cause, has immediate cause,
+    has effect, influenced by, significant event, participant in, conflict,
+    part of, location, and history of topic.
+  - For countries, it also uses the parts of their "History of …" item, plus
+    a time-boxed query for well-documented dated events.
+  - Deprecated statements are skipped. A "statement disputed by" qualifier
+    marks the edge disputed. Citations come from statement references.
+  - The UI is a timeline sheet with a list view. Each card shows its relation
+    and epistemic status, with "Sequence only: this does not say one caused
+    the other". The detail panel shows the statement, its references and
+    "Follow this thread", with a back trail.
+  - Entry points: the history button on Wikipedia and country news signals.
+- **Absorb and Knowledge (ABS-001..006, LAY-001/003 without a model):**
+  - Extraction runs in an isolated world on the active page. Navigation and
+    back matter (references, notes, external links) are skipped, and form
+    values are never read.
+  - Sensitive pages are refused before or after extraction: sign-in,
+    account, payment, bank, health, messages, password or card fields, and
+    tokens in the URL.
+  - The preview shows the stored text, extracted names, places and dates
+    (each removable), the scope (article or selection) and a note.
+  - Storage is AES-256-GCM under an OS-keychain key in `userData/knowledge`.
+  - Search is offline BM25 returning the best paragraph per page, with a
+    ¶ citation; the reader opens at the cited paragraph.
+  - Absorbed places appear only on the private *Mine* globe.
+  - "Delete everything" also clears knowledge.
+- Evidence: `experiments/shell-ui-qa/evidence/{trends,olds,absorb,knowledge}-*.png`
+  (`scenario-olds-absorb.mjs`).
+- Open:
+  - Wikidata coverage is uneven: many items have no relations and most
+    statements have no references (the UI says so).
+  - Large-country event queries can take about 10 s cold (cached for 7 days).
+  - Knowledge has no embeddings or Laya model yet.
+  - Absorb selection mode is tested only through the UI path.
+  - Momentum needs about 48 h of observed coverage after a fresh install.
+
 Open on this slice: momentum and change between windows (needs comparable
 window evidence); news/RSS layers (registry approval); city-scale geometry; a
 VoiceOver review; and the Olds, Absorb extraction and Laya, which are still stubs.

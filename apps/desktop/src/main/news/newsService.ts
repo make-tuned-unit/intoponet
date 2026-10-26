@@ -2,7 +2,8 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { PublicItem } from '@intoponet/field-snapshot'
 import { createAtomicFeedStorage, FeedFetchService, type FeedRegistry, type FeedRegistrySource } from '../feed-service'
-import { buildNewsDigest, type NewsFeedHealth, type NewsItemInput, type NewsSourceMeta } from '../../shared/news/newsDigest'
+import { addCoverage, buildNewsDigest, type CoverageIntervals, type NewsFeedHealth, type NewsItemInput, type NewsSourceMeta } from '../../shared/news/newsDigest'
+import type { FeedFetchResult } from '../feed-service'
 import newsFeeds from './newsFeeds.json'
 
 /** One verified local news feed (see docs/data/news-feeds.md for provenance). */
@@ -25,7 +26,9 @@ export type NewsFeedEntry = {
 /** Only headline, link, id and publish time are kept; bodies and media never are. */
 const APPROVED_FIELDS = ['title', 'canonicalItemUrl', 'guid', 'publishedAt']
 const POLL_SECONDS = 20 * 60
-const RETENTION_DAYS = 3
+/** Four days, so the 24 h and previous-24 h windows stay comparable across restarts. */
+const RETENTION_DAYS = 4
+const COVERAGE_KEEP_MS = 4 * 24 * 60 * 60 * 1000
 const DIGEST_DEBOUNCE_MS = 4_000
 
 export function newsFeedEntries(): NewsFeedEntry[] {
@@ -86,6 +89,24 @@ export function startNewsService(options: { userData: string; emit: (payload: st
 
   let digestTimer: ReturnType<typeof setTimeout> | null = null
   const transient = new Map<string, PublicItem[]>()
+  const coveragePath = join(options.userData, 'news-coverage.json')
+  const coverage: CoverageIntervals = readCoverage(coveragePath, new Set(feeds.map((feed) => feed.sourceId)))
+  const lastFetch = new Map<string, number>()
+  const observe = (result: FeedFetchResult): void => {
+    const now = Date.now()
+    let start: number | null = null
+    if (result.status === 'updated') {
+      // The feed's own output spans from its oldest item to now.
+      const times = result.receivedItems.map((item) => Date.parse(item.publishedAt ?? item.discoveredAt)).filter(Number.isFinite)
+      if (times.length) start = Math.min(...times)
+    } else if (result.status === 'not-modified') {
+      // Unchanged since our previous successful fetch.
+      start = lastFetch.get(result.sourceId) ?? coverage[result.sourceId]?.at(-1)?.[1] ?? null
+    }
+    if (result.status === 'updated' || result.status === 'not-modified') lastFetch.set(result.sourceId, now)
+    if (start === null || start > now) return
+    coverage[result.sourceId] = addCoverage(coverage[result.sourceId] ?? [], [start, now], now - COVERAGE_KEEP_MS)
+  }
   const service = new FeedFetchService({
     registry: newsRegistry(feeds),
     storage: createAtomicFeedStorage(join(options.userData, 'news-feed-cache.json'), 64 * 1024 * 1024),
@@ -98,6 +119,7 @@ export function startNewsService(options: { userData: string; emit: (payload: st
       // no-store feeds: keep their latest headlines in memory only, never on disk.
       if (!result.persistenceAllowed && result.status === 'updated') transient.set(result.sourceId, result.receivedItems)
       else if (result.persistenceAllowed && result.status === 'updated') transient.delete(result.sourceId)
+      observe(result)
       scheduleDigest()
     },
   })
@@ -115,11 +137,12 @@ export function startNewsService(options: { userData: string; emit: (payload: st
     }
     const memoryOnly = [...transient.entries()].flatMap(([sourceId, items]) => items.map((item) => toInput(sourceId, item)))
     const now = Date.now()
-    latest = JSON.stringify(buildNewsDigest({ sources: meta, items: [...stored, ...memoryOnly], health, now }))
+    latest = JSON.stringify(buildNewsDigest({ sources: meta, items: [...stored, ...memoryOnly], health, now, coverage }))
     options.emit(latest)
     try {
       // The on-disk copy (shown at the next launch) excludes no-store feeds.
-      writeFileSync(digestPath, JSON.stringify(buildNewsDigest({ sources: meta, items: stored, health, now })), { encoding: 'utf8', mode: 0o644 })
+      writeFileSync(digestPath, JSON.stringify(buildNewsDigest({ sources: meta, items: stored, health, now, coverage })), { encoding: 'utf8', mode: 0o644 })
+      writeFileSync(coveragePath, JSON.stringify(coverage), { encoding: 'utf8', mode: 0o644 })
     } catch {
       // The digest is rebuilt from the feed cache on the next update.
     }
@@ -148,4 +171,25 @@ export function startNewsService(options: { userData: string; emit: (payload: st
     },
     latest: () => latest,
   }
+}
+
+/** Persisted observation spans per feed; malformed or unknown entries are dropped. */
+export function readCoverage(path: string, known: ReadonlySet<string>, now = Date.now()): CoverageIntervals {
+  const result: CoverageIntervals = {}
+  try {
+    if (!existsSync(path)) return result
+    const raw = JSON.parse(readFileSync(path, 'utf8')) as unknown
+    if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return result
+    for (const [sourceId, spans] of Object.entries(raw as Record<string, unknown>)) {
+      if (!known.has(sourceId) || !Array.isArray(spans)) continue
+      const valid = spans.filter((span): span is [number, number] =>
+        Array.isArray(span) && span.length === 2 && Number.isFinite(span[0]) && Number.isFinite(span[1]) && span[0] <= span[1] && span[1] <= now + 60_000)
+      let merged: Array<[number, number]> = []
+      for (const span of valid) merged = addCoverage(merged, span, now - COVERAGE_KEEP_MS)
+      if (merged.length) result[sourceId] = merged
+    }
+  } catch {
+    return {}
+  }
+  return result
 }

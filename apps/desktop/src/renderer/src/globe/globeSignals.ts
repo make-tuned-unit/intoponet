@@ -100,9 +100,41 @@ export type GlobeSignal = {
   sourceUrl: string
   /** Local news only: the latest headlines behind this signal. */
   headlines?: NewsHeadline[]
+  /**
+   * Change between comparable windows, -1..1 (null when there is not enough
+   * comparable history). Never derived from coverage loss.
+   */
+  momentum: number | null
+  /** Plain-language basis for the trend, e.g. "34 stories in the last 24 h vs 21 the day before". */
+  trendNote: string | null
+  /** First seen in the last 24 hours (events) or new to the most-read list. */
+  isNew: boolean
+}
+
+export const TREND_THRESHOLD = 0.12
+export type Trend = 'rising' | 'fading' | 'steady' | 'new' | 'unknown'
+
+export function trendOf(signal: Pick<GlobeSignal, 'momentum' | 'isNew'>): Trend {
+  if (signal.isNew) return 'new'
+  if (signal.momentum === null) return 'unknown'
+  if (signal.momentum >= TREND_THRESHOLD) return 'rising'
+  if (signal.momentum <= -TREND_THRESHOLD) return 'fading'
+  return 'steady'
+}
+
+/** Rising first (new counts as rising), strongest change first. */
+export function risingSignals(signals: GlobeSignal[]): GlobeSignal[] {
+  return signals
+    .filter((signal) => trendOf(signal) === 'rising' || (trendOf(signal) === 'new' && signal.layer !== 'quakes' && signal.layer !== 'natural'))
+    .sort((a, b) => (b.momentum ?? 1) - (a.momentum ?? 1) || b.intensity - a.intensity)
+}
+
+export function fadingSignals(signals: GlobeSignal[]): GlobeSignal[] {
+  return signals.filter((signal) => trendOf(signal) === 'fading').sort((a, b) => (a.momentum ?? 0) - (b.momentum ?? 0))
 }
 
 type ExtendedRecord = SourceRecord & {
+  previousValue?: number | null
   summary?: string
   placeLabel?: string
   thumbnail?: string
@@ -167,12 +199,23 @@ export function globeSignalsFromSnapshot(snapshot: FieldSnapshot | null): GlobeS
     let measurement = 'Public record'
     let rank = 0
     let observedAt = isoOr(source.publishedAt, snapshot.createdAt)
+    let momentum: number | null = null
+    let trendNote: string | null = null
+    let isNew = false
     if (layer === 'reading') {
       const views = typeof value === 'number' ? value : 0
       const day = dayLabel(source.measurement.windowEnd)
       measurement = `${Math.round(views).toLocaleString()} reads${day ? ` on ${day}` : ''}`
       rank = Math.log10(Math.max(1, views))
       observedAt = dayEnd(source.measurement.windowEnd) ?? observedAt
+      if (source.previousValue === null) {
+        isNew = true
+        trendNote = 'New to the most-read list today'
+      } else if (typeof source.previousValue === 'number' && source.previousValue >= 0) {
+        const before = source.previousValue
+        momentum = clamp((views - before) / (views + before + 1), -1, 1)
+        trendNote = `${Math.round(views).toLocaleString()} reads vs ${Math.round(before).toLocaleString()} the day before`
+      }
     } else if (layer === 'quakes') {
       const magnitude = typeof value === 'number' ? value : null
       kind = magnitude === null ? 'Earthquake' : `M${magnitude.toFixed(1)} earthquake`
@@ -200,6 +243,9 @@ export function globeSignalsFromSnapshot(snapshot: FieldSnapshot | null): GlobeS
       radiusKm: Math.max(GLOBE_LAYERS[layer].radiusKm, source.radiusKm),
       observedAt,
       endedAt: source.endedAt && Number.isFinite(Date.parse(source.endedAt)) ? new Date(source.endedAt).toISOString() : null,
+      momentum,
+      trendNote,
+      isNew: isNew || ((layer === 'quakes' || layer === 'natural') && Date.parse(snapshot.createdAt) - Date.parse(observedAt) < 24 * 3_600_000),
       attribution: source.attribution,
       licence: source.licence,
       sourceUrl: source.measurement.sourceUrl,
@@ -259,7 +305,7 @@ export function membraneSignals(signals: GlobeSignal[], timestamp: string): Inte
     lon: signal.lon,
     intensity: clamp(signal.intensity * GLOBE_LAYERS[signal.layer].gain, 0, 1),
     radiusKm: clamp(signal.radiusKm, 1, 20_000),
-    momentum: null,
+    momentum: signal.momentum === null ? null : clamp(signal.momentum, -1, 1),
     confidence: 0.7,
     timestamp,
     topicId: signal.layer,
@@ -360,6 +406,11 @@ export function newsGlobeSignals(digest: NewsDigest | null): GlobeSignal[] {
       licence: 'link-only',
       sourceUrl: first.url,
       headlines: country.headlines,
+      momentum: country.momentum ?? null,
+      trendNote: country.momentum === null || country.momentum === undefined
+        ? 'Not enough comparable history yet to show a trend'
+        : `${country.recentCount} ${country.recentCount === 1 ? 'story' : 'stories'} in the last 24 h vs ${country.previousCount} the day before`,
+      isNew: false,
     }]
   })
   const places = digest.places.flatMap((place, i): GlobeSignal[] => {
@@ -386,6 +437,11 @@ export function newsGlobeSignals(digest: NewsDigest | null): GlobeSignal[] {
       licence: 'link-only',
       sourceUrl: first.url,
       headlines: place.headlines,
+      momentum: place.momentum ?? null,
+      trendNote: place.momentum === null || place.momentum === undefined
+        ? 'Not enough comparable history yet to show a trend'
+        : `${place.recentCount} ${place.recentCount === 1 ? 'story' : 'stories'} in the last 24 h vs ${place.previousCount} the day before`,
+      isNew: false,
     }]
   })
   return [...countries, ...places].sort((a, b) => b.intensity - a.intensity || a.id.localeCompare(b.id))

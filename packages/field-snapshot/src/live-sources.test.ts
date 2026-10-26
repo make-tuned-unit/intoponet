@@ -7,6 +7,7 @@ import {
   READING_NOW_TOPIC,
   recordsFromTopArticles,
   topArticlesFromPayload,
+  viewsByTitle,
   wikipediaPageInfoUrl,
   wikipediaTopUrl,
 } from './wikipedia-top'
@@ -52,6 +53,31 @@ const infoPayload = {
     ],
   },
 }
+
+describe('reading now day-over-day', () => {
+  it('records the previous day views, or null when new to the list', () => {
+    const top = topArticlesFromPayload(topPayload)
+    const pages = pageInfoFromPayload(infoPayload)
+    const previous = viewsByTitle([{ title: 'Kehlsteinhaus', views: 1200, rank: 40 }])
+    const records = recordsFromTopArticles(top, pages, day, retrievedAt, undefined, previous)
+    expect(records.find((record) => record.title === 'Kehlsteinhaus')?.previousValue).toBe(1200)
+    expect(records.find((record) => record.title === 'United States')?.previousValue).toBeNull()
+    // Without a previous list there is no comparison at all.
+    expect(recordsFromTopArticles(top, pages, day, retrievedAt)[0]!.previousValue).toBeUndefined()
+  })
+
+  it('validates previousValue through the snapshot parser', () => {
+    const top = topArticlesFromPayload(topPayload)
+    const records = recordsFromTopArticles(top, pageInfoFromPayload(infoPayload), day, retrievedAt, undefined, viewsByTitle([{ title: 'Kehlsteinhaus', views: 1200, rank: 1 }]))
+    const snapshot = publicFieldSnapshot(records, Date.parse(retrievedAt), true)
+    const parsed = parseFieldSnapshot(JSON.stringify(snapshot))!
+    expect(parsed.sources.find((source) => source.title === 'Kehlsteinhaus')?.previousValue).toBe(1200)
+    expect(parsed.sources.find((source) => source.title === 'United States')?.previousValue).toBeNull()
+    const tampered = JSON.parse(JSON.stringify(snapshot)) as { sources: Array<Record<string, unknown>> }
+    tampered.sources[0]!['previousValue'] = -5
+    expect(parseFieldSnapshot(JSON.stringify(tampered))!.sources[0]!.previousValue).toBeUndefined()
+  })
+})
 
 describe('reading now (Wikipedia top pageviews)', () => {
   it('drops the main page and non-article namespaces', () => {

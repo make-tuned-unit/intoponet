@@ -253,8 +253,11 @@ function plainText(value: unknown, limit: number): string | undefined {
 }
 
 /** Optional display details; invalid values are dropped, never fatal. */
-function optionalDetails(item: Record<string, unknown>): Pick<SourceRecord, 'summary' | 'placeLabel' | 'thumbnail' | 'endedAt'> {
-  const details: Pick<SourceRecord, 'summary' | 'placeLabel' | 'thumbnail' | 'endedAt'> = {}
+function optionalDetails(item: Record<string, unknown>): Pick<SourceRecord, 'summary' | 'placeLabel' | 'thumbnail' | 'endedAt' | 'previousValue'> {
+  const details: Pick<SourceRecord, 'summary' | 'placeLabel' | 'thumbnail' | 'endedAt' | 'previousValue'> = {}
+  const previous = item['previousValue']
+  if (previous === null) details.previousValue = null
+  else if (typeof previous === 'number' && Number.isFinite(previous) && previous >= 0) details.previousValue = previous
   const summary = plainText(item['summary'], optionalLimits.summary)
   if (summary) details.summary = summary
   const placeLabel = plainText(item['placeLabel'], optionalLimits.placeLabel)

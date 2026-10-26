@@ -116,6 +116,8 @@ export function recordsFromTopArticles(
   day: Date,
   retrievedAt: string,
   limit: number = READING_NOW_LIMITS.located,
+  /** Views by title on the previous UTC day's top list; omit when unavailable. */
+  previousDay?: ReadonlyMap<string, number> | null,
 ): SourceRecord[] {
   const stamp = dayStamp(day)
   const seen = new Set<string>()
@@ -154,8 +156,15 @@ export function recordsFromTopArticles(
       },
       ...(page.description ? { summary: page.description } : {}),
       ...(page.thumbnail ? { thumbnail: page.thumbnail } : {}),
+      // null = not in the previous day's top list ("new to the list").
+      ...(previousDay ? { previousValue: previousDay.get(article.title) ?? previousDay.get(page.title) ?? null } : {}),
     })
     if (records.length >= limit) break
   }
   return records
+}
+
+/** Views by title from a top-list payload, for day-over-day comparison. */
+export function viewsByTitle(articles: TopArticle[]): Map<string, number> {
+  return new Map(articles.map((article) => [article.title, article.views]))
 }

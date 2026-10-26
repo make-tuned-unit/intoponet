@@ -1,3 +1,4 @@
+import { knowledgeChannels, oldsChannels, type AbsorbPreview, type AbsorbRefusal, type KnowledgeApi, type KnowledgeCommand, type KnowledgeDocument, type KnowledgeHit, type KnowledgeRecord, type OldsApi, type OldsQuery, type OldsThread } from '@intoponet/browser-api'
 import { contextBridge, ipcRenderer } from 'electron'
 import {
   CAPTURE_SCHEME,
@@ -150,4 +151,22 @@ const captures: CaptureApi = {
   },
 }
 
-contextBridge.exposeInMainWorld('intoponet', Object.freeze({ browserHost, captures }))
+const olds: OldsApi = {
+  thread: (query: OldsQuery) => ipcRenderer.invoke(oldsChannels.command, { type: 'thread', query }) as Promise<OldsThread>,
+}
+
+const knowledgeInvoke = (command: KnowledgeCommand): Promise<unknown> => ipcRenderer.invoke(knowledgeChannels.command, command)
+const knowledge: KnowledgeApi = {
+  preview: (scope) => knowledgeInvoke({ type: 'preview', scope }) as Promise<AbsorbPreview | AbsorbRefusal>,
+  commit: (previewId, options = {}) => knowledgeInvoke({ type: 'commit', previewId, ...options }) as Promise<KnowledgeRecord>,
+  cancel: async (previewId) => { await knowledgeInvoke({ type: 'cancel', previewId }) },
+  list: () => knowledgeInvoke({ type: 'list' }) as Promise<KnowledgeRecord[]>,
+  get: (id) => knowledgeInvoke({ type: 'get', id }) as Promise<KnowledgeDocument>,
+  search: (query, limit) => knowledgeInvoke(limit === undefined ? { type: 'search', query } : { type: 'search', query, limit }) as Promise<KnowledgeHit[]>,
+  remove: async (id) => { await knowledgeInvoke({ type: 'remove', id }) },
+  update: (id, patch) => knowledgeInvoke({ type: 'update', id, ...patch }) as Promise<KnowledgeRecord>,
+  reindex: (id) => knowledgeInvoke({ type: 'reindex', id }) as Promise<KnowledgeRecord>,
+  removeAll: async () => { await knowledgeInvoke({ type: 'remove-all' }) },
+}
+
+contextBridge.exposeInMainWorld('intoponet', Object.freeze({ browserHost, captures, olds, knowledge }))

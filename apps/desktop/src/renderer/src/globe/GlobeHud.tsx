@@ -1,5 +1,6 @@
 import { AnimatePresence, motion, useReducedMotion, type Transition } from 'motion/react'
-import { Activity, ArrowLeft, BookmarkPlus, BookOpen, ChevronRight, ExternalLink, Flame, Info, MapPin, Navigation, Newspaper, X } from 'lucide-react'
+import { Activity, ArrowDownRight, ArrowLeft, ArrowUpRight, BookmarkPlus, BookOpen, ChevronRight, ExternalLink, Flame, History, Info, MapPin, Navigation, Newspaper, Sparkles, X } from 'lucide-react'
+import type { NewsHeadline, RisingTerm } from '../../../shared/news/newsDigest'
 import { useState, type ReactNode } from 'react'
 import { useGlassSheen } from '../glass/useGlassSheen'
 import '../glass/glass.css'
@@ -9,6 +10,7 @@ import {
   GLOBE_LAYERS,
   PIN_COLOR,
   relativeTime,
+  trendOf,
   type GlobeLayerId,
   type GlobeSignal,
   type GlobeWindow,
@@ -23,6 +25,7 @@ const layerIcon: Record<GlobeLayerId, ReactNode> = {
 }
 
 export type FieldView = 'public' | 'personal'
+export type ListView = 'top' | 'rising' | 'fading'
 
 export function GlobeHeader({
   title,
@@ -201,6 +204,7 @@ export function LayerCard({
               {GLOBE_LAYER_ORDER.map((layer) => (
                 <p key={layer}><strong style={{ color: GLOBE_LAYERS[layer].color }}>{GLOBE_LAYERS[layer].label}.</strong> {GLOBE_LAYERS[layer].describe}</p>
               ))}
+              <p><strong>Rising and fading.</strong> Each country’s stories in the last 24 hours are compared with the 24 hours before, counting only feeds observed across both days: (recent − previous) ÷ (recent + previous + 4). Missing coverage or fewer than 4 stories shows no trend, so a gap never reads as fading. Wikipedia articles compare with the previous day. “Rising worldwide” lists words used by outlets in more countries today than yesterday — a hint, not proof of one story.</p>
               <p>Each layer is ranked only against itself. Brightness shows rank within a layer, never importance or truth. Places with no marker are unobserved, not uninterested.</p>
               <p className="globe-about-fine">{coverageNote} {placesAttribution}. Your pins and visits never leave this device.</p>
             </div>
@@ -209,6 +213,19 @@ export function LayerCard({
       </AnimatePresence>
     </aside>
   )
+}
+
+export function TrendChip({ signal }: { signal: Pick<GlobeSignal, 'momentum' | 'isNew'> }) {
+  const trend = trendOf(signal)
+  if (trend === 'new') return <span className="globe-trend is-new">New</span>
+  if (trend === 'rising') return <span className="globe-trend is-rising"><ArrowUpRight size={11} aria-hidden="true" />{Math.round((signal.momentum ?? 0) * 100)}</span>
+  if (trend === 'fading') return <span className="globe-trend is-fading"><ArrowDownRight size={11} aria-hidden="true" />{Math.round(Math.abs(signal.momentum ?? 0) * 100)}</span>
+  return null
+}
+
+function trendWords(signal: GlobeSignal): string {
+  const trend = trendOf(signal)
+  return trend === 'rising' ? 'Rising' : trend === 'fading' ? 'Fading' : trend === 'new' ? 'New' : trend === 'steady' ? 'Steady' : 'No trend yet'
 }
 
 function SignalRow({ signal, now, onSelect }: { signal: GlobeSignal; now: number; onSelect: (signal: GlobeSignal) => void }) {
@@ -225,6 +242,7 @@ function SignalRow({ signal, now, onSelect }: { signal: GlobeSignal; now: number
           <strong>{signal.title}</strong>
           <small>{signal.layer === 'reading' ? signal.measurement : signal.layer === 'news' ? `${signal.measurement} · ${relativeTime(signal.observedAt, now)}` : `${signal.kind} · ${relativeTime(signal.observedAt, now)}`}</small>
         </span>
+        <TrendChip signal={signal} />
       </button>
     </li>
   )
@@ -242,7 +260,13 @@ export function SignalPanel({
   onOpen,
   onSave,
   onFly,
+  onHistory,
   emptyText,
+  listView,
+  onListViewChange,
+  risingTerms,
+  activeTerm,
+  onTerm,
 }: {
   heading: string
   signals: GlobeSignal[]
@@ -255,7 +279,14 @@ export function SignalPanel({
   onOpen: (url: string) => void
   onSave: (signal: GlobeSignal) => void
   onFly: (signal: GlobeSignal) => void
+  /** Open The Olds for this signal, when it has a history to follow. */
+  onHistory: ((signal: GlobeSignal) => void) | null
   emptyText: string
+  listView: ListView
+  onListViewChange: (view: ListView) => void
+  risingTerms: RisingTerm[]
+  activeTerm: RisingTerm | null
+  onTerm: (term: RisingTerm | null) => void
 }) {
   const sheen = useGlassSheen<HTMLDivElement>()
   const reduceMotion = useReducedMotion()
@@ -291,15 +322,24 @@ export function SignalPanel({
             <dl className="globe-facts">
               <div><dt>{selected.layer === 'reading' ? 'Readers' : selected.layer === 'quakes' ? 'Measured' : selected.layer === 'news' ? 'Published' : 'Reported'}</dt><dd>{selected.measurement}</dd></div>
               <div><dt>{selected.layer === 'reading' ? 'Day' : selected.layer === 'news' ? 'Latest' : 'Observed'}</dt><dd>{relativeTime(selected.observedAt, now)}</dd></div>
+              <div><dt>Trend</dt><dd><span className={`globe-trend-word is-${trendOf(selected)}`}>{trendWords(selected)}</span></dd></div>
+              {selected.trendNote && <div className="globe-fact-note"><dd>{selected.trendNote}</dd></div>}
               <div><dt>Rank in layer</dt><dd><span className="globe-meter" aria-label={`${Math.round(selected.intensity * 100)} of 100`}><span style={{ width: `${selected.intensity * 100}%` }} /></span></dd></div>
             </dl>
             {selected.headlines?.length ? (
               <section className="globe-headlines" aria-label="Latest headlines">
                 <div className="globe-headlines-top">
                   <h3>Latest from local outlets</h3>
-                  <button type="button" className="lg-icon-button" aria-label="Fly here" title="Fly here" onClick={() => onFly(selected)}>
-                    <Navigation size={14} />
-                  </button>
+                  <span className="globe-headlines-actions">
+                    {onHistory && (
+                      <button type="button" className="lg-icon-button" aria-label="The Olds: history" title="The Olds: history" onClick={() => onHistory(selected)}>
+                        <History size={14} />
+                      </button>
+                    )}
+                    <button type="button" className="lg-icon-button" aria-label="Fly here" title="Fly here" onClick={() => onFly(selected)}>
+                      <Navigation size={14} />
+                    </button>
+                  </span>
                 </div>
                 <ul>
                   {selected.headlines.map((headline) => (
@@ -318,9 +358,15 @@ export function SignalPanel({
                 <ExternalLink size={14} aria-hidden="true" />
                 Open source
               </button>
-              <button type="button" className="lg-icon-button" aria-label="Fly here" title="Fly here" onClick={() => onFly(selected)}>
-                <Navigation size={15} />
-              </button>
+              {onHistory ? (
+                <button type="button" className="lg-icon-button" aria-label="The Olds: history" title="The Olds: history" onClick={() => onHistory(selected)}>
+                  <History size={15} />
+                </button>
+              ) : (
+                <button type="button" className="lg-icon-button" aria-label="Fly here" title="Fly here" onClick={() => onFly(selected)}>
+                  <Navigation size={15} />
+                </button>
+              )}
               <button type="button" className="lg-icon-button" aria-label={saved ? 'Saved to bookmarks' : 'Save to bookmarks'} title={saved ? 'Saved' : 'Save to bookmarks'} aria-pressed={saved} onClick={() => onSave(selected)}>
                 <BookmarkPlus size={15} />
               </button>
@@ -348,13 +394,53 @@ export function SignalPanel({
             exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: -10, filter: 'blur(4px)' }}
             transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
           >
-            <h2 className="globe-list-heading">{heading}<span>{signals.length}</span></h2>
-            {signals.length ? (
-              <ul className="globe-list">
-                {signals.map((signal) => <SignalRow key={signal.id} signal={signal} now={now} onSelect={onSelect} />)}
-              </ul>
+            <div className="globe-list-top">
+              <h2 className="globe-list-heading">{heading}<span>{signals.length}</span></h2>
+              <div className="globe-tabs" role="tablist" aria-label="Order">
+                {(['top', 'rising', 'fading'] as const).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    role="tab"
+                    aria-selected={listView === option}
+                    className={listView === option ? 'is-active' : ''}
+                    onClick={() => { onTerm(null); onListViewChange(option) }}
+                  >
+                    {listView === option && <motion.span layoutId="globe-tab-thumb" className="globe-tab-thumb" transition={spring} aria-hidden="true" />}
+                    <span>{option === 'top' ? 'Top' : option === 'rising' ? 'Rising' : 'Fading'}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            {activeTerm ? (
+              <TermDetail term={activeTerm} now={now} onBack={() => onTerm(null)} onOpen={onOpen} />
             ) : (
-              <p className="globe-empty">{emptyText}</p>
+              <>
+                {listView === 'rising' && risingTerms.length > 0 && (
+                  <section className="globe-rising" aria-label="Rising worldwide">
+                    <h3><Sparkles size={12} aria-hidden="true" /> Rising worldwide</h3>
+                    <div className="globe-rising-terms">
+                      {risingTerms.map((term) => (
+                        <button key={term.term} type="button" onClick={() => onTerm(term)} title={`${term.recentComparableCount} countries today vs ${term.previousCountryCount} the day before (same feeds)`}>
+                          <span>{term.term}</span>
+                          <small>{term.recentCountries.length}</small>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                )}
+                {signals.length ? (
+                  <ul className="globe-list">
+                    {signals.map((signal) => <SignalRow key={signal.id} signal={signal} now={now} onSelect={onSelect} />)}
+                  </ul>
+                ) : (
+                  <p className="globe-empty">{listView === 'top'
+                    ? emptyText
+                    : listView === 'rising'
+                      ? 'Nothing is clearly rising yet. Trends need a day of comparable history.'
+                      : 'Nothing is clearly fading yet. Trends need a day of comparable history.'}</p>
+                )}
+              </>
             )}
           </motion.div>
         )}
@@ -370,5 +456,32 @@ export function HoverCardContent({ title, kind, detail, color }: { title: string
       <strong>{title}</strong>
       <small>{detail}</small>
     </div>
+  )
+}
+
+function TermDetail({ term, now, onBack, onOpen }: { term: RisingTerm; now: number; onBack: () => void; onOpen: (url: string) => void }) {
+  return (
+    <section className="globe-term" aria-label={`Rising: ${term.term}`}>
+      <div className="globe-term-top">
+        <button type="button" className="lg-icon-button globe-back" aria-label="Back to rising" onClick={onBack}>
+          <ArrowLeft size={15} />
+        </button>
+        <div>
+          <h3>{term.term}</h3>
+          <p>In headlines from {term.recentCountries.length} countries in the last 24 h. Among feeds with two days of history: {term.recentComparableCount} countries today vs {term.previousCountryCount} the day before.</p>
+        </div>
+      </div>
+      <ul className="globe-headlines-plain">
+        {term.headlines.map((headline: NewsHeadline) => (
+          <li key={headline.url}>
+            <button type="button" onClick={() => onOpen(headline.url)}>
+              <strong>{headline.title}</strong>
+              <small>{headline.publisher} · {relativeTime(headline.publishedAt, now)}</small>
+            </button>
+          </li>
+        ))}
+      </ul>
+      <p className="globe-term-note">Highlighted on the globe: countries whose own outlets used this word. A shared word is a hint, not proof of one story.</p>
+    </section>
   )
 }

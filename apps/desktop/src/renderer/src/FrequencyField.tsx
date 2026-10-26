@@ -21,6 +21,7 @@ export function FrequencyField({
   projection,
   onMarkerHover,
   onMarkerSelect,
+  markerEmphasis,
   membraneSettings,
   onDistanceChange,
   onPoseChange,
@@ -41,6 +42,7 @@ export function FrequencyField({
   projection?: GlobeProjection | undefined
   onMarkerHover?: ((id: string | null) => void) | undefined
   onMarkerSelect?: ((id: string | null) => void) | undefined
+  markerEmphasis?: ReadonlySet<string> | null
   membraneSettings?: OrganicMembraneSettings | undefined
   onDistanceChange?: ((radius: number) => void) | undefined
   onPoseChange?: ((pose: OrbitPose) => void) | undefined
@@ -71,6 +73,7 @@ export function FrequencyField({
       projection={projection}
       onMarkerHover={onMarkerHover}
       onMarkerSelect={onMarkerSelect}
+      markerEmphasis={markerEmphasis ?? null}
       membraneSettings={membraneSettings}
       onDistanceChange={onDistanceChange}
       onPoseChange={onPoseChange}

@@ -20,6 +20,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Bookmark,
+  BookOpenText,
   ChevronLeft,
   ChevronRight,
   Copy,
@@ -111,7 +112,11 @@ import { useRecorder } from './captures/useRecorder'
 import { PinEditor, type PinEditorValue } from './PinEditor'
 import { createGlobeProjection, type GlobeMarker } from './globe/GlobeMarkers'
 import { GlobeOverlay, type GlobeLabel } from './globe/GlobeOverlay'
-import { GlobeHeader, HoverCardContent, LayerCard, SignalPanel, type FieldView } from './globe/GlobeHud'
+import { GlobeHeader, HoverCardContent, LayerCard, SignalPanel, type FieldView, type ListView } from './globe/GlobeHud'
+import { OldsPanel, type OldsState } from './olds/OldsPanel'
+import type { AbsorbScope, KnowledgeRecord, OldsNode, OldsQuery } from '@intoponet/browser-api'
+import { AbsorbSheet, type AbsorbState } from './knowledge/AbsorbSheet'
+import { KnowledgeSheet } from './knowledge/KnowledgeSheet'
 import { PlaceSuggestions, placeMatches } from './globe/PlaceSuggestions'
 import { poseToward, radiusForSpan } from './globe/flyTo'
 import {
@@ -130,12 +135,15 @@ import {
   type GlobeSignal,
   type GlobeWindow,
   interleaveLayers,
+  risingSignals,
+  fadingSignals,
 } from './globe/globeSignals'
 import { PLACE_ATTRIBUTION, placeLabel, type Place } from '../../shared/places/places'
-import { parseNewsDigest, type NewsDigest } from '../../shared/news/newsDigest'
+import { parseNewsDigest, type NewsDigest, type RisingTerm } from '../../shared/news/newsDigest'
 
 const bookmarkPaneOpenKey = 'intoponet.bookmark-pane.open.v1'
 const globePrefsKey = 'intoponet.globe.v2'
+const KNOWLEDGE_COLOR = '#d6c9ff'
 
 type GlobePrefs = { view: FieldView; layers: GlobeLayerId[]; window: GlobeWindow; pins: boolean }
 
@@ -263,6 +271,13 @@ export function App() {
   const setFieldView = (view: FieldView): void => updateGlobePrefs({ view })
   const [selectedSignalId, setSelectedSignalId] = useState<string | null>(null)
   const [newsDigest, setNewsDigest] = useState<NewsDigest | null>(null)
+  const [listView, setListView] = useState<ListView>('top')
+  const [activeTerm, setActiveTerm] = useState<RisingTerm | null>(null)
+  const [olds, setOlds] = useState<{ stack: Array<{ query: OldsQuery; label: string }>; state: OldsState } | null>(null)
+  const oldsRequest = useRef(0)
+  const [absorb, setAbsorb] = useState<AbsorbState | null>(null)
+  const [knowledgeView, setKnowledgeView] = useState<{ focus: string | null } | null>(null)
+  const [knowledgeRecords, setKnowledgeRecords] = useState<KnowledgeRecord[]>([])
   const [hoveredMarkerId, setHoveredMarkerId] = useState<string | null>(null)
   const [focusedPlace, setFocusedPlace] = useState<Place | null>(null)
   const [placeActive, setPlaceActive] = useState(-1)
@@ -867,6 +882,12 @@ export function App() {
         setBookmarksOpen(false)
       } else if (event.key === 'Escape' && panel.isVisible) {
         void window.intoponet.browserHost.close()
+      } else if (event.key === 'Escape' && absorb) {
+        cancelAbsorb()
+      } else if (event.key === 'Escape' && knowledgeView) {
+        closeKnowledge()
+      } else if (event.key === 'Escape' && olds && !isTypingTarget(event.target)) {
+        closeOlds()
       } else if (event.key === 'Escape' && selectedSignalId && !isTypingTarget(event.target)) {
         setSelectedSignalId(null)
       } else if (event.key === 'Escape' && scale !== 'earth') {
@@ -875,7 +896,7 @@ export function App() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [activeTopic, bookmarks, bookmarksOpen, captureSession, viewerId, findOpen, fullWidth, libraryOpen, panel.canGoBack, panel.canGoForward, panel.isVisible, panel.url, pinEditor, pose, scale, selectedSignalId, selectedTopicId, selectedTopicLabel, shieldOpen, tabs.length])
+  }, [activeTopic, bookmarks, bookmarksOpen, captureSession, viewerId, findOpen, fullWidth, libraryOpen, panel.canGoBack, panel.canGoForward, panel.isVisible, panel.url, pinEditor, pose, scale, selectedSignalId, olds, absorb, knowledgeView, selectedTopicId, selectedTopicLabel, shieldOpen, tabs.length])
 
   const rememberScale = (
     next: ExplorationScale,
@@ -1125,6 +1146,8 @@ export function App() {
     try {
       await window.intoponet.browserHost.deletePrivateLibrary()
       await window.intoponet.captures.removeAll()
+      await window.intoponet.knowledge.removeAll()
+      setKnowledgeRecords([])
     } catch {
       setError('The private library could not be deleted. Existing data was left untouched.')
       return
@@ -1420,6 +1443,17 @@ export function App() {
       ? [{ id: `pin:${bookmark.url}`, lat: bookmark.fieldAnchor.lat, lon: bookmark.fieldAnchor.lon, color: PIN_COLOR, size: 1, kind: 'pin' as const }]
       : [])
     : [], [bookmarks, globePrefs.pins])
+  // Places mentioned in absorbed pages: a private overlay, shown only in Mine.
+  const knowledgeMarkers = useMemo<GlobeMarker[]>(() => fieldView === 'personal'
+    ? knowledgeRecords.flatMap((record) => record.places.slice(0, 8).map((place, index) => ({
+      id: `know:${record.id}:${index}`,
+      lat: place.lat,
+      lon: place.lon,
+      color: KNOWLEDGE_COLOR,
+      size: Math.min(1, 0.4 + place.count * 0.12),
+      kind: 'signal' as const,
+    })))
+    : [], [fieldView, knowledgeRecords])
   const globeMarkers = useMemo<GlobeMarker[]>(() => [
     ...(publicGlobe ? visibleGlobeSignals.map((signal) => ({
       id: signal.id,
@@ -1430,7 +1464,8 @@ export function App() {
       kind: 'signal' as const,
     })) : []),
     ...pinMarkers,
-  ], [publicGlobe, visibleGlobeSignals, pinMarkers])
+    ...knowledgeMarkers,
+  ], [publicGlobe, visibleGlobeSignals, pinMarkers, knowledgeMarkers])
   const globeLabels = useMemo<GlobeLabel[]>(() => {
     const short = (text: string): string => (text.length > 34 ? `${text.slice(0, 32)}…` : text)
     const signals = publicGlobe ? visibleGlobeSignals : []
@@ -1441,10 +1476,20 @@ export function App() {
       ...ordered.slice(0, 16).map((signal) => ({ id: signal.id, text: short(signal.title), color: GLOBE_LAYERS[signal.layer].color })),
       ...bookmarks.filter((bookmark) => globePrefs.pins && bookmark.fieldAnchor).slice(0, 12)
         .map((bookmark) => ({ id: `pin:${bookmark.url}`, text: short(bookmark.title || bookmark.url), color: PIN_COLOR })),
+      ...(fieldView === 'personal'
+        ? knowledgeRecords.flatMap((record) => record.places.slice(0, 8).map((place, index) => ({ id: `know:${record.id}:${index}`, text: place.name, color: KNOWLEDGE_COLOR, count: place.count })))
+          .sort((a, b) => b.count - a.count).slice(0, 14).map(({ count: _count, ...label }) => label)
+        : []),
     ]
-  }, [publicGlobe, visibleGlobeSignals, selectedSignal, bookmarks, globePrefs.pins])
+  }, [publicGlobe, visibleGlobeSignals, selectedSignal, bookmarks, globePrefs.pins, fieldView, knowledgeRecords])
   const hoverCard = useMemo(() => {
     if (!hoveredMarkerId) return null
+    if (hoveredMarkerId.startsWith('know:')) {
+      const [, recordId, index] = hoveredMarkerId.split(':')
+      const record = knowledgeRecords.find((item) => item.id === recordId)
+      const place = record?.places[Number(index)]
+      return record && place ? <HoverCardContent title={record.title} kind={`From your knowledge · ${place.name}`} detail={`${record.siteName ?? new URL(record.url).hostname} · mentioned ${place.count}×`} color={KNOWLEDGE_COLOR} /> : null
+    }
     if (hoveredMarkerId.startsWith('pin:')) {
       const bookmark = bookmarks.find((item) => `pin:${item.url}` === hoveredMarkerId)
       return bookmark ? <HoverCardContent title={bookmark.title || bookmark.url} kind="My pin" detail={bookmark.fieldAnchor?.label ?? bookmark.topic} color={PIN_COLOR} /> : null
@@ -1458,10 +1503,54 @@ export function App() {
         color={GLOBE_LAYERS[signal.layer].color}
       />
     ) : null
-  }, [hoveredMarkerId, bookmarks, allGlobeSignals, clock])
-  const panelSignals = useMemo(() => focusedPlace
-    ? nearbySignals(visibleGlobeSignals, focusedPlace, Math.max(1_200, focusedPlace.radiusKm * 3), 40)
-    : interleaveLayers(visibleGlobeSignals).slice(0, 40), [focusedPlace, visibleGlobeSignals])
+  }, [hoveredMarkerId, bookmarks, allGlobeSignals, clock, knowledgeRecords])
+  const panelSignals = useMemo(() => {
+    const base = focusedPlace
+      ? nearbySignals(visibleGlobeSignals, focusedPlace, Math.max(1_200, focusedPlace.radiusKm * 3), 400)
+      : visibleGlobeSignals
+    if (listView === 'rising') return risingSignals(base).slice(0, 40)
+    if (listView === 'fading') return fadingSignals(base).slice(0, 40)
+    return focusedPlace ? base.slice(0, 40) : interleaveLayers(base).slice(0, 40)
+  }, [focusedPlace, visibleGlobeSignals, listView])
+  const risingTerms = newsDigest?.rising ?? []
+  const termEmphasis = useMemo(
+    () => (activeTerm ? new Set(activeTerm.recentCountries.map((code) => `news:country:${code}`)) : null),
+    [activeTerm],
+  )
+
+  /** Which history thread a signal leads to, if any. */
+  const oldsQueryFor = (signal: GlobeSignal): { query: OldsQuery; label: string } | null => {
+    if (signal.layer === 'reading') return { query: { kind: 'wikipedia', title: signal.title }, label: signal.title }
+    const country = signal.id.match(/^news:country:([A-Z]{2})$/)?.[1]
+    if (country) return { query: { kind: 'country', countryCode: country }, label: signal.title }
+    return null
+  }
+
+  const loadOlds = (stack: Array<{ query: OldsQuery; label: string }>): void => {
+    const top = stack[stack.length - 1]
+    if (!top) return
+    const request = ++oldsRequest.current
+    setOlds({ stack, state: { status: 'loading', label: top.label } })
+    window.intoponet.olds.thread(top.query).then((thread) => {
+      if (request !== oldsRequest.current) return
+      setOlds({ stack, state: { status: 'ready', thread } })
+    }, (reason: unknown) => {
+      if (request !== oldsRequest.current) return
+      setOlds({ stack, state: { status: 'error', label: top.label, message: reason instanceof Error && /network|fetch|timed out|ENOTFOUND/i.test(reason.message) ? 'Could not reach Wikidata. Check your connection and try again.' : 'No sourced history could be found for this.' } })
+    })
+  }
+  const openOldsFor = (signal: GlobeSignal): void => {
+    const target = oldsQueryFor(signal)
+    if (target) loadOlds([target])
+  }
+  const followOlds = (node: OldsNode): void => {
+    if (!olds) return
+    loadOlds([...olds.stack, { query: { kind: 'qid' as const, qid: node.id }, label: node.label }].slice(-12))
+  }
+  const closeOlds = (): void => {
+    oldsRequest.current += 1
+    setOlds(null)
+  }
   const selectedNearby = useMemo(() => selectedSignal
     ? nearbySignals(visibleGlobeSignals.filter((signal) => signal.id !== selectedSignal.id), selectedSignal, 900, 6)
     : [], [selectedSignal, visibleGlobeSignals])
@@ -1502,6 +1591,10 @@ export function App() {
       selectMapPin(id.slice(4))
       return
     }
+    if (id.startsWith('know:')) {
+      openKnowledge(id.split(':')[1] ?? null)
+      return
+    }
     const signal = allGlobeSignals.find((item) => item.id === id)
     if (signal) selectGlobeSignal(signal)
   }
@@ -1532,6 +1625,46 @@ export function App() {
     setNotice('Saved to bookmarks and pinned on your map')
   }
 
+  // ---- Absorb and local knowledge ----------------------------------------
+  const refreshKnowledge = (): void => {
+    void window.intoponet.knowledge.list().then(setKnowledgeRecords, () => undefined)
+  }
+  useEffect(refreshKnowledge, [])
+
+  const startAbsorb = (scope: AbsorbScope = 'article'): void => {
+    setAbsorb({ status: 'loading', scope })
+    void window.intoponet.captures.setPageHidden(true)
+    window.intoponet.knowledge.preview(scope).then((result) => {
+      setAbsorb('refused' in result ? { status: 'refused', refusal: result } : { status: 'preview', preview: result })
+    }, () => setAbsorb({ status: 'error', message: 'This page could not be read. Try again once it has finished loading.' }))
+  }
+  const finishAbsorb = (): void => {
+    setAbsorb(null)
+    void window.intoponet.captures.setPageHidden(false)
+  }
+  const cancelAbsorb = (): void => {
+    if (absorb && (absorb.status === 'preview' || absorb.status === 'saving')) void window.intoponet.knowledge.cancel(absorb.preview.previewId).catch(() => undefined)
+    finishAbsorb()
+  }
+  const commitAbsorb = (options: { removeEntities: string[]; note: string }): void => {
+    if (!absorb || absorb.status !== 'preview') return
+    const preview = absorb.preview
+    setAbsorb({ status: 'saving', preview })
+    window.intoponet.knowledge.commit(preview.previewId, { removeEntities: options.removeEntities, ...(options.note.trim() ? { note: options.note.trim() } : {}) }).then((record) => {
+      finishAbsorb()
+      refreshKnowledge()
+      setNotice(`Absorbed “${record.title.slice(0, 60)}” · ${record.places.length ? `${record.places.length} places on your map · ` : ''}search it under Knowledge`)
+    }, () => setAbsorb({ status: 'error', message: 'It could not be saved. Nothing was stored.' }))
+  }
+  const openKnowledge = (focus: string | null = null): void => {
+    setKnowledgeView({ focus })
+    if (panel.isVisible) void window.intoponet.captures.setPageHidden(true)
+  }
+  const closeKnowledge = (): void => {
+    setKnowledgeView(null)
+    void window.intoponet.captures.setPageHidden(false)
+  }
+
   const toggleGlobeLayer = (layer: GlobeLayerId): void => {
     const next = globeLayerSet.has(layer) ? globePrefs.layers.filter((item) => item !== layer) : [...globePrefs.layers, layer]
     updateGlobePrefs({ layers: GLOBE_LAYER_ORDER.filter((item) => next.includes(item)) })
@@ -1560,6 +1693,7 @@ export function App() {
         projection={globeProjection}
         onMarkerHover={setHoveredMarkerId}
         onMarkerSelect={selectGlobeMarker}
+        markerEmphasis={termEmphasis}
         membraneSettings={activityMembraneSettings}
         onOrganicMetrics={diagnosticsOpen ? setOrganicMetrics : undefined}
         onDistanceChange={(radius) => {
@@ -1701,6 +1835,11 @@ export function App() {
             <Bookmark size={14} />
             Bookmarks
           </button>
+          <button type="button" className="bookmark-library-button" onClick={() => openKnowledge(null)} title="Your knowledge: everything you’ve absorbed">
+            <BookOpenText size={14} />
+            Knowledge
+            {knowledgeRecords.length > 0 && <span>{knowledgeRecords.length}</span>}
+          </button>
           <button type="button" className="bookmark-library-button" onClick={showLibrary}>
             <MapPin size={14} />
             My map
@@ -1730,7 +1869,7 @@ export function App() {
             ? focusedPlace
               ? `${panelSignals.length} public ${panelSignals.length === 1 ? 'signal' : 'signals'} within ${Math.max(1_200, Math.round(focusedPlace.radiusKm * 3)).toLocaleString()} km of ${placeLabel(focusedPlace)}.`
               : `${visibleGlobeSignals.length} public signals from ${globeLayerSet.size === 1 ? '1 source' : `${globeLayerSet.size} sources`}. Hover to preview, click to explore, or search a place below.`
-            : `${bookmarks.filter((bookmark) => bookmark.fieldAnchor).length} pinned places · ${personalActivity.visits.length} visits this session. Nothing here is shared.`}
+            : `${bookmarks.filter((bookmark) => bookmark.fieldAnchor).length} pinned places · ${knowledgeRecords.length} absorbed ${knowledgeRecords.length === 1 ? 'page' : 'pages'} · ${personalActivity.visits.length} visits this session. Nothing here is shared.`}
           trail={focusedPlace ? (focusedPlace.kind === 'country' ? [focusedPlace.name] : [focusedPlace.country, focusedPlace.name].filter((step, index, all) => step && all.indexOf(step) === index)) : []}
           onEarth={showEarth}
         />
@@ -1803,11 +1942,56 @@ export function App() {
           onOpen={(url) => void window.intoponet.browserHost.open({ kind: 'url', value: url })}
           onSave={saveGlobeSignal}
           onFly={(signal) => flyToPoint(signal.lat, signal.lon, 1.9)}
+          onHistory={selectedSignal && oldsQueryFor(selectedSignal) ? openOldsFor : null}
+          listView={listView}
+          onListViewChange={setListView}
+          risingTerms={risingTerms}
+          activeTerm={activeTerm}
+          onTerm={setActiveTerm}
           emptyText={eligiblePublicSnapshot
             ? focusedPlace ? 'No public signals observed near here in this window. That means no coverage, not no interest.' : 'Turn on a layer to see public signals.'
             : 'Loading public data…'}
         />
       )}
+      <AnimatePresence>
+        {absorb && (
+          <AbsorbSheet
+            key="absorb"
+            state={absorb}
+            onScope={(scope) => {
+              if (absorb.status === 'preview') void window.intoponet.knowledge.cancel(absorb.preview.previewId).catch(() => undefined)
+              startAbsorb(scope)
+            }}
+            onCommit={commitAbsorb}
+            onCancel={cancelAbsorb}
+          />
+        )}
+        {knowledgeView && (
+          <KnowledgeSheet
+            key="knowledge"
+            focus={knowledgeView.focus}
+            onClose={closeKnowledge}
+            onOpen={(url) => {
+              closeKnowledge()
+              void window.intoponet.browserHost.open({ kind: 'url', value: url })
+            }}
+            onChanged={refreshKnowledge}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {olds && !fieldLabOpen && !panel.isVisible && (
+          <OldsPanel
+            key="olds"
+            state={olds.state}
+            trail={olds.stack.map((entry) => entry.label)}
+            onFollow={followOlds}
+            onBack={olds.stack.length > 1 ? () => loadOlds(olds.stack.slice(0, -1)) : null}
+            onClose={closeOlds}
+            onOpen={(url) => void window.intoponet.browserHost.open({ kind: 'url', value: url })}
+          />
+        )}
+      </AnimatePresence>
       {!fieldLabOpen && (
         <GlobeOverlay
           projection={globeProjection}
@@ -2401,11 +2585,9 @@ export function App() {
                   </button>
                   <button
                     type="button"
-                    aria-label="Absorb this page"
-                    onClick={() => {
-                      setLibraryOpen(true)
-                      setLibraryTab('absorbed')
-                    }}
+                    aria-label="Absorb this page into your knowledge"
+                    title="Absorb this page"
+                    onClick={() => startAbsorb('article')}
                   >
                     <Library size={15} />
                   </button>

@@ -42,7 +42,10 @@ let newsService: ReturnType<typeof startNewsService> | null = null
 let encryptedDnsActive = false
 import { CaptureLibrary, migrateEncryptedCaptures } from './captureStore'
 import { CaptureService } from './captureService'
-import { CAPTURE_SCHEME, captureChannels, parseCaptureCommand } from '@intoponet/browser-api'
+import { CAPTURE_SCHEME, captureChannels, knowledgeChannels, oldsChannels, parseCaptureCommand, parseKnowledgeCommand, parseOldsCommand } from '@intoponet/browser-api'
+import { KnowledgeService } from './knowledge/service'
+import { loadKnowledgeCrypto } from './knowledge/crypto'
+import { OldsService } from './olds/oldsService'
 
 // Private capture media scheme (served to the app window's default session
 // only; web pages run in a separate partition and cannot reach it).
@@ -1203,6 +1206,21 @@ app.whenReady().then(async () => {
     .catch(() => 0)
   protocol.handle(CAPTURE_SCHEME, (request) => captures!.respond(request))
   ipcMain.handle(captureChannels.command, (_event, value: unknown) => captures!.handle(parseCaptureCommand(value)))
+  // The Olds: sourced history threads from Wikidata/Wikipedia (public lookups only).
+  const olds = new OldsService({ cacheDir: join(app.getPath('userData'), 'olds-cache') })
+  ipcMain.handle(oldsChannels.command, (_event, value: unknown) => olds.thread(parseOldsCommand(value).query))
+  // Absorb + local knowledge: extracted on this device, encrypted with an OS-keychain key, never sent anywhere.
+  const knowledgeDir = join(app.getPath('userData'), 'knowledge')
+  const knowledge = new KnowledgeService({
+    dir: knowledgeDir,
+    crypto: loadKnowledgeCrypto(knowledgeDir, {
+      available: () => safeStorage.isAsyncEncryptionAvailable(),
+      encrypt: (value) => safeStorage.encryptStringAsync(value),
+      decrypt: async (sealed) => (await safeStorage.decryptStringAsync(sealed)).result,
+    }),
+    getActivePage: () => (pageAttached && pageView ? pageView.webContents : null),
+  })
+  ipcMain.handle(knowledgeChannels.command, (_event, value: unknown) => knowledge.handle(parseKnowledgeCommand(value)))
   ipcMain.handle(
     browserHostChannels.command,
     (_event, value: unknown) => handleBrowserCommand(parseBrowserHostCommand(value)),
