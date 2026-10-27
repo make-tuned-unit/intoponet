@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { chronologyFromWikitext, isDebris, sentenceDate } from './chronology'
+import { chronologyFromWikitext, impliedYearOf, isDebris, sentenceDate } from './chronology'
 
 describe('chronology from an article', () => {
   it('reads plain dates only', () => {
@@ -46,5 +46,21 @@ describe('timeline debris', () => {
     expect(isDebris('Since then, the archipelago has suffered from recurrent power outages since June 2021.')).toBe(true)
     expect(isDebris('In 2024, the ANC lost its parliamentary majority for the first time since the transition to democracy.')).toBe(false)
     expect(isDebris('Italy joined the war in June 1940.')).toBe(false)
+  })
+})
+
+describe('dates without a year', () => {
+  it('takes the year from a one-year article', () => {
+    expect(impliedYearOf('2026 North Indian Ocean cyclone season', '', 2026)).toBe(2026)
+    expect(impliedYearOf('Brazil (1900–2000)', '', 2026)).toBeUndefined()
+    expect(sentenceDate('On 7 January, a low-pressure area intensified into a depression over the Bay of Bengal.', 2026, 2026)?.iso).toBe('2026-01-07')
+    expect(sentenceDate('On 7 January, a low-pressure area intensified.', 2026)).toBeNull()
+    expect(sentenceDate('After nearly half a year of inactivity, on 5 July, the IMD classified a depression.', 2026, 2026)?.iso).toBe('2026-07-05')
+  })
+  it('infers it from an event article whose dates agree', () => {
+    const text = 'It formed on 20 October 2026. It peaked on 22 October 2026. It hit land on 24 October 2026. Earlier, a storm hit on 1 May 2019.'
+    expect(impliedYearOf('Cyclone Arnab', text, 2026)).toBe(2026)
+    const entries = chronologyFromWikitext('2026 North Indian Ocean cyclone season', '== Systems ==\n=== Cyclone Arnab ===\nOn 20 October, a low-pressure area formed over the Andaman Sea near Myanmar.\nOn 24 October, Arnab made landfall over Odisha as a very severe cyclonic storm.', 2026)
+    expect(entries.map((e) => e.at.iso)).toEqual(['2026-10-20', '2026-10-24'])
   })
 })

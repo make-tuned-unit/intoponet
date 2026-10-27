@@ -15,7 +15,7 @@ const MONTH = '(January|February|March|April|May|June|July|August|September|Octo
 const SHORT_MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 /** The date a sentence is about, when it states one plainly. */
-export function sentenceDate(sentence: string, currentYear: number): OldsDate | null {
+export function sentenceDate(sentence: string, currentYear: number, impliedYear?: number): OldsDate | null {
   const ok = (year: number): boolean => year >= 1000 && year <= currentYear
   const pad = (n: number): string => String(n).padStart(2, '0')
   let m = sentence.match(new RegExp(`\\b(\\d{1,2}) ${MONTH},? (\\d{4})\\b`))
@@ -37,6 +37,19 @@ export function sentenceDate(sentence: string, currentYear: number): OldsDate | 
   // "In 2016, …" / "By 1998 the …" at the start of a sentence: the sentence is about that year.
   m = sentence.match(/^(?:In|By|Since|During|From|After|Before|Until|On|Throughout|Between|Early in|Late in|In early|In late|In mid-)\s*(\d{4})\b/)
   if (m && ok(Number(m[1]))) return { iso: m[1]!, precision: 'year', label: m[1]! }
+  // Articles about one year ("2026 … cyclone season") write "On 7 January, …" without it.
+  if (impliedYear && ok(impliedYear)) {
+    m = sentence.match(new RegExp(`^(?:On|By|Early on|Late on|Later on|Around|From)?\\s*(\\d{1,2}) ${MONTH}\\b(?!,? \\d{4})`)) ?? sentence.match(new RegExp(`(?:^|, )on (\\d{1,2}) ${MONTH}\\b(?!,? \\d{4})`))
+    if (m) {
+      const month = MONTHS.indexOf(m[2]!.toLowerCase()) + 1
+      return { iso: `${impliedYear}-${pad(month)}-${pad(Number(m[1]))}`, precision: 'day', label: `${Number(m[1])} ${SHORT_MONTH[month - 1]} ${impliedYear}` }
+    }
+    m = sentence.match(new RegExp(`^(?:On|By|Early on|Later on)?\\s*${MONTH} (\\d{1,2})\\b(?!,? \\d{4})`))
+    if (m) {
+      const month = MONTHS.indexOf(m[1]!.toLowerCase()) + 1
+      return { iso: `${impliedYear}-${pad(month)}-${pad(Number(m[2]))}`, precision: 'day', label: `${Number(m[2])} ${SHORT_MONTH[month - 1]} ${impliedYear}` }
+    }
+  }
   return null
 }
 
@@ -50,6 +63,24 @@ export function isDebris(text: string): boolean {
   if (/\b\d+ pages\b|\bISBN\b|\bRetrieved\b|\bUniversity Press\b|\bpp?\. \d/.test(text)) return true
   if (/\s[,.;:]|\(\s*\)|\b(The|A|An|the|a|an) [,.;]/.test(text)) return true
   return /^(Since then|Then|This|These|That|Those|It|Its|He|She|They|His|Her|Their|Both|The act also|The two|Subsequently)\b/.test(text)
+}
+
+/**
+ * The year an article is about, for dates written without one: the year in its
+ * title ("2026 … season"), else the year most of its full dates use (a storm or
+ * event article), when that is clear.
+ */
+export function impliedYearOf(title: string, wikitext: string, currentYear: number): number | undefined {
+  // Exactly one year in the title ("2026 … season"); a range ("1900–2000") says nothing about a single date.
+  const titleYears = [...new Set([...title.matchAll(/\b(1\d{3}|20\d{2})\b/g)].map((match) => Number(match[1])))]
+  if (titleYears.length === 1 && titleYears[0]! <= currentYear) return titleYears[0]
+  const prose = wikitext.replace(/<ref[^>]*\/>/gi, '').replace(/<ref[^>]*>[\s\S]*?<\/ref>/gi, '').replace(/\{\{[^{}]*\}\}/g, '')
+  const years = [...prose.matchAll(new RegExp(`\\b\\d{1,2} ${MONTH},? (\\d{4})\\b|\\b${MONTH} \\d{1,2},? (\\d{4})\\b`, 'g'))].map((match) => Number(match[2] ?? match[4]))
+  if (years.length < 3) return undefined
+  const counts = new Map<number, number>()
+  for (const year of years) counts.set(year, (counts.get(year) ?? 0) + 1)
+  const [best, count] = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]!
+  return count / years.length >= 0.6 && best <= currentYear ? best : undefined
 }
 
 /** Wikitext with references, templates and files removed, but [[links]] kept. */
@@ -78,12 +109,13 @@ function firstLink(sentence: string, exclude: string): string | null {
  * region), only events that mention the story's subject are kept, so the
  * chronology is about the news rather than the whole history of the place.
  */
-export function chronologyFromWikitext(title: string, wikitext: string, currentYear: number, lang = 'en', limit = 18, focus: string[] = []): OldsChronicleEntry[] {
+export function chronologyFromWikitext(title: string, wikitext: string, currentYear: number, lang = 'en', limit = 18, focus: string[] = [], yearHint?: number): OldsChronicleEntry[] {
   const lead = wikitext.split(/\n==[^=]/)[0] ?? ''
   const sections = [{ level: 1, title: 'Introduction', body: lead }, ...splitSections(wikitext)]
   const entries: Array<OldsChronicleEntry & { order: number }> = []
   const seen = new Set<string>()
   let order = 0
+  const impliedYear = impliedYearOf(title, wikitext, currentYear) ?? yearHint
   for (const section of sections) {
     if (SKIP.test(section.title.trim())) continue
     const prose = proseWithLinks(section.body)
@@ -94,7 +126,7 @@ export function chronologyFromWikitext(title: string, wikitext: string, currentY
       // Whole sentences only: a fragment ("in Brazil among …") means the split went wrong.
       if (text.length < 40 || text.length > 360 || !/^[\p{Lu}\d“"(]/u.test(text)) continue
       if (isDebris(text)) continue
-      const at = sentenceDate(text, currentYear)
+      const at = sentenceDate(text, currentYear, impliedYear)
       if (!at) continue
       const key = text.toLowerCase().slice(0, 80)
       if (seen.has(key)) continue
@@ -117,10 +149,11 @@ export function chronologyFromWikitext(title: string, wikitext: string, currentY
       })
     : entries
   const sorted = relevant.sort((a, b) => a.at.iso.localeCompare(b.at.iso) || a.order - b.order)
-  // Spread across the whole span rather than crowding one busy year: at most 3 entries per year.
+  // Spread across the whole span rather than crowding one busy year: at most 3 entries per year
+  // (per month for an article about one year, like a storm season).
   const perYear = new Map<string, number>()
   const kept = sorted.filter((entry) => {
-    const year = entry.at.iso.slice(0, 4)
+    const year = entry.at.iso.slice(0, impliedYear && entry.at.iso.startsWith(String(impliedYear)) ? 7 : 4)
     const count = perYear.get(year) ?? 0
     perYear.set(year, count + 1)
     return count < 3

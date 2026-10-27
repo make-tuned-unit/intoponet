@@ -27,6 +27,7 @@ export const TOPIC_FAMILIES: Array<{ triggers: RegExp; topics: string[] }> = [
   { triggers: /\b(wildfire|flood|hurricane|cyclone|typhoon|tornado|landslide|tsunami|monsoon|storm|drought|heat wave|earthquake|climate|emission|carbon)/i, topics: ['Climate change in {C}', 'Natural disasters in {C}', 'Environment of {C}'] },
   { triggers: /\b(oil|gas|pipeline|energy|electric|power plant|nuclear|hydro|mining|mine)/i, topics: ['Energy in {C}', 'Energy policy of {C}', 'Mining in {C}'] },
   { triggers: /\b(army|military|soldier|defence|defense|navy|air force|veteran|nato|troops)/i, topics: ['Military of {C}', 'Armed Forces of {C}', 'Foreign relations of {C}'] },
+  { triggers: /\b(touris|tourist|visitor arrivals|cruise|hotel|airlift|winter seats|bookings)/i, topics: ['Tourism in {C}'] },
   { triggers: /\b(fish|fisher|lobster|farm|agricultur|crop|harvest)/i, topics: ['Fishing in {C}', 'Agriculture in {C}'] },
   { triggers: /\b(child|children|youth|foster|daycare|child care)/i, topics: ['Child welfare in {C}', 'Child care in {C}'] },
   { triggers: /\b(women|gender|domestic violence|intimate partner|femicide|sexual assault)/i, topics: ['Women in {C}', 'Domestic violence in {C}'] },

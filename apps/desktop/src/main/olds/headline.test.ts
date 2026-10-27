@@ -141,6 +141,7 @@ describe('works and things are not news topics', () => {
     expect(headlineCountries('US says five dead in strike on alleged drug-smuggling boat')).toEqual(['US'])
     expect(headlineCountries('Cease-Fire Brokered by Melania Trump Begins in Ukrainian City of Oleshky')).toEqual(['UA'])
     expect(headlineCountries('Indian Ocean storms intensify')).toEqual([])
+    expect(headlineCountries('Países de América Latina exigen que el próximo secretario general de la ONU sea de la región')).toEqual([])
     expect(headlineCountries('The Key Election Issues Dividing Israelis as They Vote')).toEqual(['IL'])
     expect(titleWordsIn('2026 North Indian Ocean cyclone season', 'India Evacuates as Cyclone Arnab Approaches')).toBe(2)
   })
@@ -159,5 +160,16 @@ describe('column labels', () => {
     expect(cleanHeadline('Reader Q&A: After Lula’s sensational victory in Brazil’s presidential election')).toBe('After Lula sensational victory in Brazil presidential election')
     expect(properPhrases('Analysts say: After Lula won, markets rose')).not.toContain('After Lula')
     expect(searchQueries('Reader Q&A: After Lula’s sensational victory in Brazil’s presidential election', 2026)).toContain('2026 Lula Brazil')
+  })
+})
+
+describe('one shared word stays one', () => {
+  it('does not let the year turn a single word into a match', () => {
+    expect(isRelevantCandidate('2026 Presidents Cup', 'President honours flydubai crew for courage during September 30 mid-air attack', undefined, 2026)).toBe(false)
+    expect(isRelevantCandidate('2026 Caribbean Premier League', "King acknowledges 'suffering of the past' as Caribbean tour begins", undefined, 2026)).toBe(false)
+    expect(isRelevantCandidate('2026 Brazilian general election', 'Lula’s win in Brazil deals blow to Trump’s Latin America push', 'Brazil', 2026)).toBe(true)
+    expect(isWorkOrThing('genus of tyrannosaurid dinosaur')).toBe(false)
+    expect(isRelevantCandidate('September 11 attacks', 'President honours flydubai crew for courage during September 30 mid-air attack')).toBe(false)
+    expect(isWorkOrThing('species of tree')).toBe(true)
   })
 })

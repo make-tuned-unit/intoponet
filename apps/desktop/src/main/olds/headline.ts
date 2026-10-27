@@ -55,6 +55,13 @@ export function properPhrases(text: string): string[] {
   return [...new Set(phrases.map((phrase) => phrase.replace(/\s+(of|the|de|del|la|and)$/i, '')).filter((phrase) => phrase.length > 2))]
 }
 
+/** Named events in a headline ("Cyclone Arnab", "Operation Southern Spear"); title-case headlines run on, so the one-word name comes first. */
+export function namedEvents(headline: string): string[] {
+  const clean = cleanHeadline(headline)
+  return [...new Set([...clean.matchAll(/\b(Cyclone|Hurricane|Typhoon|Tropical Storm|Storm|Operation|Battle of|Siege of|Blockade of|Treaty of) ((?:\p{Lu}[\p{L}'-]+ ?){1,3})/gu)]
+    .flatMap((match) => [`${match[1]} ${match[2]!.trim().split(' ')[0]}`, `${match[1]} ${match[2]!.trim()}`]))]
+}
+
 /** Search queries to try, most specific first. */
 export function searchQueries(headline: string, year?: number): string[] {
   const clean = cleanHeadline(headline)
@@ -66,9 +73,7 @@ export function searchQueries(headline: string, year?: number): string[] {
   // "2026 Ebola …": news is usually about this year's event, not the famous old one.
   const current = year && names.length ? [`${year} ${names.slice(0, 2).join(' ')}`] : []
   // Named events ("Cyclone Arnab", "Operation Southern Spear") are searched on their own first.
-  // Title-case headlines run on ("Cyclone Arnab Approaches"): try the first name word alone as well.
-  const named = [...clean.matchAll(/\b(Cyclone|Hurricane|Typhoon|Tropical Storm|Storm|Operation|Battle of|Siege of|Blockade of|Treaty of) ((?:\p{Lu}[\p{L}'-]+ ?){1,3})/gu)]
-    .flatMap((match) => [`${match[1]} ${match[2]!.trim().split(' ')[0]}`, `${match[1]} ${match[2]!.trim()}`])
+  const named = namedEvents(headline)
   // The last name is often the place the story happened ("… Begins in Ukrainian City of Oleshky").
   const queries = [...named, content, ...current, names.slice(0, 3).join(' '), ...names.slice(0, 2), ...(names.length > 2 ? names.slice(-1) : []), ...windows]
   return [...new Set(queries.map((query) => query.trim()).filter((query) => query.length >= 3))].slice(0, 7)
@@ -142,13 +147,16 @@ export function foreignNamesIn(title: string, headline: string): number {
   return title.replace(/\(.*?\)/g, '').split(/[\s–—\-/]+/)
     .map((word) => word.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, ''))
     .filter((word) => /^\p{Lu}/u.test(word) && word.length > 2 && !STOPWORDS.has(word.toLowerCase()))
-    .filter((word) => !said.includes(word.toLowerCase().slice(0, Math.max(4, word.length - 2))))
+    .filter((word) => !said.includes(word.toLowerCase().slice(0, Math.max(4, Math.min(word.length - 2, 6)))))
     .length
 }
 
 /** Title words the headline also uses, matching stems ("Brazilian" ~ "Brazil"). */
 /** Combining forms in compound names ("Russo-Ukrainian war", "Sino-Indian") → the country word they stand for. */
 const COMBINING_FORMS: Record<string, string> = { russo: 'russia', sino: 'china', franco: 'france', anglo: 'england', indo: 'india', greco: 'greece', austro: 'austria', turco: 'turkey', italo: 'italy', polono: 'poland', hispano: 'spain', luso: 'portugal', nippo: 'japan' }
+
+/** Month names date a story; they are not its subject ("September 30 attack" ≠ "September 11 attacks"). */
+const MONTH_WORDS = new Set(['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'])
 
 export function titleWordsIn(title: string, headline: string): number {
   const stem = (raw: string): string => {
@@ -158,7 +166,7 @@ export function titleWordsIn(title: string, headline: string): number {
   const words = [...new Set(cleanHeadline(headline).toLowerCase().split(/[^\p{L}\d]+/u).filter((word) => word.length > 2 && !STOPWORDS.has(word)).map(stem))]
   // Same stem, or one a 5+ letter prefix of the other ("India" ~ "Indian").
   const matches = (a: string): boolean => words.some((b) => a === b || (Math.min(a.length, b.length) >= 5 && (a.startsWith(b) || b.startsWith(a))))
-  return title.toLowerCase().replace(/\(.*?\)/g, '').split(/[^\p{L}\d]+/u).filter((word) => word.length > 2 && !STOPWORDS.has(word) && matches(stem(word))).length
+  return title.toLowerCase().replace(/\(.*?\)/g, '').split(/[^\p{L}\d]+/u).filter((word) => word.length > 2 && !STOPWORDS.has(word) && !MONTH_WORDS.has(word) && matches(stem(word))).length
 }
 
 /** Content words of a title (parenthetical qualifiers dropped). */
@@ -180,7 +188,7 @@ const GENERIC_TITLE_WORDS = new Set('trial trials case cases affair scandal cris
 function unexplainedNames(title: string, said: string): number {
   const lower = cleanHeadline(said).toLowerCase()
   const words = title.replace(/\(.*?\)/g, '').split(/[\s–—\-/]+/).map((word) => word.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, ''))
-  const matched = (word: string): boolean => lower.includes(word.toLowerCase().slice(0, Math.max(4, word.length - 2)))
+  const matched = (word: string): boolean => lower.includes(word.toLowerCase().slice(0, Math.max(4, Math.min(word.length - 2, 6))))
   let count = 0
   words.forEach((word, index) => {
     if (!/^\p{Lu}/u.test(word) || word.length <= 2 || STOPWORDS.has(word.toLowerCase()) || GENERIC_TITLE_WORDS.has(word.toLowerCase()) || matched(word)) return
@@ -196,10 +204,12 @@ export function isRelevantCandidate(title: string, headline: string, countryName
   const total = titleContentWords(title).length
   // News is about now: this year's event ("2026 Brazilian general election") shares the headline's time.
   const leading = Number(title.match(/^(\d{4})\b/)?.[1] ?? NaN)
-  const shared = titleWordsIn(title, said) + (currentYear && leading >= currentYear - 1 && leading <= currentYear + 1 && titleWordsIn(title, said) > 0 ? 1 : 0)
-  if (shared < 1 || shared < Math.ceil(total / 3)) return false
+  const words = titleWordsIn(title, said)
+  // The year only helps the share of words; it never turns one shared word into two ("2026 Presidents Cup").
+  const shared = words + (currentYear && leading >= currentYear - 1 && leading <= currentYear + 1 && words > 0 ? 1 : 0)
+  if (words < 1 || shared < Math.ceil(total / 3)) return false
   if (unexplainedNames(title, said) > shared) return false
-  if (shared > 1) return true
+  if (words > 1) return true
   // One shared word is only enough when it is a name (capitalised after the headline's first word, or the country)
   // and the title adds no other names ("Education in Honduras" is not a story about a drug seizure in Honduras).
   if (unexplainedNames(title, said) > 0) return false

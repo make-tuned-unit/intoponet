@@ -1057,10 +1057,24 @@ Licence, Beacons and remaining PRD items, 2026-10-27:
   artifact (a Spanish headline sent without its language).
 - `OLDS_HEADLINE` now guards the Ebola, South Africa and Guernsey cases.
 - `INTOPONET_OLDS_DEBUG=<file>` records candidate scores for quality checks.
+- Second round (33 stories):
+  - dates without a year ("On 7 January") take the year from a one-year
+    article or the year its dates agree on;
+  - a one-year article keeps 3 events per month, not per year;
+  - articles too new for Wikidata ("Cyclone Arnab", "Super Bowl LXI halftime
+    show") supply "How we got here" when they fit better, and the panel says
+    so;
+  - upcoming-event headlines follow Wikidata "followed by";
+  - a year in a title no longer turns one shared word into a match ("2026
+    Presidents Cup");
+  - month names don't count as shared words;
+  - "América Latina" is a region, not the United States;
+  - untranslated headlines need two shared words.
 - Limits:
-  - list-format articles (cyclone seasons) give no timeline;
-  - upcoming events not yet on Wikipedia fall back to the latest past one
-    (Super Bowl);
+  - a headline whose subject is its first word ("Nanotyrannus skeleton
+    sells…") isn't read as a name;
+  - an outlet's own country is overridden when the headline names another
+    (a Jamaican minister's campaign in Canada);
   - the leader list is dated late 2026.
 
 ## Gate ownership and evidence

@@ -1,12 +1,15 @@
 {
-  "started": "2026-10-27T20:01:52.287Z",
-  "finished": "2026-10-27T20:03:39.520Z",
+  "started": "2026-10-27T23:00:30.604Z",
+  "finished": "2026-10-27T23:03:48.470Z",
   "tier": "full",
   "only": [
     "OLDS_HEADLINE",
-    "OLDS_UI"
+    "OLDS_UI",
+    "OLDS_COUNTRY",
+    "OLDS_DEBATE",
+    "COUNTRY_PANEL"
   ],
-  "summary": "2 passed, 0 failed, 0 blocked, 0 skipped, 24 assumed",
+  "summary": "5 passed, 0 failed, 0 blocked, 0 skipped, 21 assumed",
   "results": {
     "BUILD": {
       "status": "assumed",
@@ -49,26 +52,29 @@
       "notes": ""
     },
     "COUNTRY_PANEL": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Facts ok, recent history 2025, 2021, 2020, 2011, 12 headlines.",
+      "seconds": 46
     },
     "OLDS_HEADLINE": {
       "status": "pass",
-      "notes": "Israel → 2026 Israeli legislative election: 13 dated events from 29 Dec 2022; Ebola, South Africa and Guernsey guards ok; related Judiciary of Israel, Israeli law, Politics of Israel, Elections in Israel. Brazil → 2026 Brazilian general election. Honduras → Honduras.",
-      "seconds": 61
+      "notes": "Israel → 2026 Israeli legislative election: 18 dated events from 29 Dec 2022; Ebola, South Africa and Guernsey guards ok; related Judiciary of Israel, Israeli law, Politics of Israel, Elections in Israel. Brazil → 2026 Brazilian general election. Honduras → Honduras.",
+      "seconds": 87
     },
     "OLDS_COUNTRY": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Capital Tórshavn; 7 chapters; latest event 2025.",
+      "seconds": 5
     },
     "OLDS_DEBATE": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Anthropologist Joseph Henrich, Rodney Stark, Historian Joel Mokyr, Williams, Voltaire, Bob Allen",
+      "seconds": 3
     },
     "OLDS_UI": {
       "status": "pass",
-      "notes": "Views Story/Timeline/List; sections: HOW WE GOT HERE.",
-      "seconds": 47
+      "notes": "Views Story/Timeline/List; sections: HOW WE GOT HERE, TOPICS BEHIND THIS STORY.",
+      "seconds": 57
     },
     "BROWSE": {
       "status": "assumed",
