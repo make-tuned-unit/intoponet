@@ -1070,6 +1070,21 @@ Licence, Beacons and remaining PRD items, 2026-10-27:
   - month names don't count as shared words;
   - "América Latina" is a region, not the United States;
   - untranslated headlines need two shared words.
+- Third round (25 new stories, two thirds ordinary local news from random
+  countries, most not in English):
+  - untranslated headlines are matched on their own-language Wikipedia
+    titles, with function words of common languages ignored; the thread is
+    still shown in English;
+  - a topic that shares only the outlet's country, or "US" written short, is
+    a weak match;
+  - section labels ("International News:") are stripped;
+  - "North and South Korea" names both countries;
+  - a film or game is a fair topic when the story is about one;
+  - items with no English name and division types ("U.S. state") are not
+    topics.
+  - Result: 9 of 25 good (up from 5); most of the rest are untranslated
+    local stories that fall back to the country — install the language to
+    translate first.
 - Limits:
   - a headline whose subject is its first word ("Nanotyrannus skeleton
     sells…") isn't read as a name;

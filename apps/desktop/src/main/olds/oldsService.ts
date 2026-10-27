@@ -21,7 +21,7 @@ import { placesNamedIn } from '../../shared/places/places'
 import { COUNTRY_ROWS } from '../../shared/places/placeData'
 import { figuresIn, withoutCitations } from '../knowledge/claims'
 import type { OldsChronicleEntry, OldsRelatedTopic } from '@intoponet/browser-api'
-import { cleanHeadline, foreignNamesIn, isRelevantCandidate, mentions, properPhrases, NOT_A_TOPIC, PATH_PROPERTIES, scoreCandidate, searchQueries, titleWordsIn, topicAge, eventKindMatches, namedEvents } from './headline'
+import { cleanHeadline, foreignNamesIn, isRelevantCandidate, mentions, properPhrases, NOT_A_TOPIC, PATH_PROPERTIES, scoreCandidate, searchQueries, titleContentWords, titleWordsIn, topicAge, eventKindMatches, namedEvents } from './headline'
 
 const USER_AGENT = 'Intoponet/0.1 (+https://github.com/make-tuned-unit/intoponet; The Olds)'
 const TIMEOUT_MS = 15_000
@@ -683,23 +683,30 @@ export class OldsService {
     const ids = (entity: WikidataEntity | undefined, property: string): string[] => ((entity?.claims?.[property] ?? []) as Array<{ mainsnak?: { datavalue?: { value?: { id?: string } } } }>)
       .map((claim) => claim.mainsnak?.datavalue?.value?.id).filter((id): id is string => typeof id === 'string')
     const subjectText = withoutCountryNames(text, countryLabel)
+    // A story about a film, game or book may be about the work itself ("New 'Call of Duty' game imagines…").
+    const aboutAWork = WORK_WORDS.test(text)
     const scored = ranked.flatMap((title, rank) => {
       const item = items.get(title)
       const entity = item ? entities.get(item.qid) : undefined
       if (!item || !entity || ids(entity, 'P31').some((id) => NOT_A_TOPIC.has(id))) return []
       const node = nodeFromEntity(entity, 'en')
-      if (!node) return []
+      // No English name yet (the label is just "Q140393129"): nothing a reader could follow.
+      if (!node || isQid(node.label)) return []
+      // Untranslated headlines are matched against the title in their own language's Wikipedia; the thread is still shown in English.
+      const native = lang !== 'en'
+      const matchTitle = native ? title : node.label
       // "Subsidized housing in the United States" is not about Guernsey: drop topics named for a country the story isn't about.
-      const titleCountries = headlineCountries(node.label)
+      const titleCountries = native ? [] : headlineCountries(node.label)
       const storyCountries = [...(query.countryCode ? [query.countryCode] : []), ...namedCountries]
       if (storyCountries.length && titleCountries.length && !titleCountries.some((code) => storyCountries.includes(code))) return []
       // Films, TV series, songs and foods share words with the news ("Melania (film)", "Soldier Soldier", "Brazil nut").
-      if (isWorkOrThing(node.description)) return []
+      if (isWorkOrThing(node.description) && !aboutAWork) return []
       // Sharing only the country's name ("German economic crisis" for a speech by Merz) is a weak match.
-      const countryOnly = titleWordsIn(node.label, text) > 0 && titleWordsIn(node.label, subjectText) === 0
-      const ageYears = topicAge(node.label, node.start?.iso, isEventLike(entity), currentYear, node.end?.iso)
+      // (The outlet's country counts too: "Cabinet of Egypt" for a renewables plan from an Egyptian paper.)
+      const countryOnly = !native && titleWordsIn(node.label, `${text} ${countryLabel ?? ''}`) > 0 && titleWordsIn(node.label, subjectText) === 0
+      const ageYears = topicAge(matchTitle, node.start?.iso, isEventLike(entity), currentYear, node.end?.iso)
       // The headline names the kind of event ("victory in … presidential election" → the election, not the presidency).
-      const score = (countryOnly ? -5 : 0) + (eventKindMatches(node.label, text) ? 1.5 : 0) + scoreCandidate({
+      const score = (countryOnly ? -5 : 0) + (!native && eventKindMatches(node.label, text) ? 1.5 : 0) + scoreCandidate({
         ageYears,
         rank,
         eventLike: isEventLike(entity),
@@ -707,19 +714,21 @@ export class OldsService {
         isPerson: ids(entity, 'P31').includes('Q5'),
         isCountry: item.qid === countryQid || ids(entity, 'P31').some((id) => ['Q6256', 'Q3624078', 'Q7275', 'Q3024240', 'Q1763527', 'Q417175'].includes(id)),
         isDisambiguation: item.disambiguation,
-        titleWordsInHeadline: titleWordsIn(node.label, text),
-        foreignNames: foreignNamesIn(node.label, text),
+        titleWordsInHeadline: titleWordsIn(matchTitle, text),
+        foreignNames: foreignNamesIn(matchTitle, text),
         otherCountry: storyQids.length > 0 && ids(entity, 'P17').length > 0 && !storyQids.some((qid) => ids(entity, 'P17').includes(qid)),
       })
       if (!Number.isFinite(score)) return []
       // A country-only match is a topic only when it is a current event ("2026 Brazilian general election"), never "Partition of India".
-      const leadingYear = Number(node.label.match(/^(\d{4})\b/)?.[1] ?? NaN)
+      const leadingYear = Number(matchTitle.match(/^(\d{4})\b/)?.[1] ?? NaN)
       // …and the headline must point to that kind of event: "Lula's win" → the election, not a Mastercard deal → an offensive.
       const weakOnly = countryOnly && !(leadingYear >= currentYear - 1 && eventKindMatches(node.label, text))
       // A general concept with no country ("Soldier") is a poor starting point for one country's news.
       const general = !isEventLike(entity) && ids(entity, 'P17').length === 0 && !ids(entity, 'P31').includes('Q5')
-      // Without translation, one shared word is too weak ("ONU" → "EJ Onu").
-      const words = isRelevantCandidate(node.label, text, countryLabel ?? undefined, currentYear) && (lang === 'en' || titleWordsIn(node.label, text) >= 2)
+      // Without translation, one shared word is too weak ("ONU" → "EJ Onu"), unless the title is that one word.
+      const words = native
+        ? isRelevantCandidate(matchTitle, text, undefined, currentYear) && titleWordsIn(matchTitle, text) >= Math.min(2, titleContentWords(matchTitle).length)
+        : isRelevantCandidate(node.label, text, countryLabel ?? undefined, currentYear)
       return [{ id: item.qid, node, score, entity, weakOnly, general, words }]
     })
     // Laya, when on, compares the headline's meaning with each candidate's title and description on this Mac.
@@ -1006,7 +1015,8 @@ function focusStems(text: string, topicLabel: string): string[] {
 
 /** The headline without the countries it names (and their adjectives: "South African", "German"). */
 export function withoutCountryNames(text: string, extra?: string | null): string {
-  const plain = text.replace(/[’']s\b/g, '')
+  // Expand "US", "UK" first, as matching does, so they are removed too.
+  const plain = cleanHeadline(text).replace(/[’']s\b/g, '')
   const names = [...placesNamedIn(plain, 6).filter((place) => place.kind === 'country').map((place) => place.name), ...(extra ? [extra] : [])]
   const stems = [...new Set(names.flatMap((name) => name.split(/\s+/)).filter((word) => word.length >= 4).map((word) => word.slice(0, Math.min(5, word.length - 1))))]
   if (!stems.length) return plain
@@ -1036,6 +1046,9 @@ const UPCOMING = /\b(to (perform|headline|host|play|stage|hold|open|launch|face|
 /** Regions whose names contain a country's ("Latin America", "América Latina"), removed before looking for countries. */
 const REGIONS_NOT_COUNTRIES = /\b(Latin|South|North|Central) America\b|\bAm[eé]rica (Latina|del Sur|del Norte|Central|do Sul|do Norte)\b|\b(Latinoam[eé]rica|Sudam[eé]rica|Centroam[eé]rica|Norteam[eé]rica)\b/giu
 
+/** Words that say a headline is about a work: then a film, game or book is a fair topic. */
+const WORK_WORDS = /\b(film|films|movie|movies|documentary|series|sitcom|episode|season finale|trailer|premiere[sd]?|box office|album|song|single|novel|book|memoir|video game|game|sequel|remake|soundtrack|musical|opera|exhibition|painting)\b/i
+
 const FIRST_NAME_COUNTRIES = new Set(['Jordan', 'Chad', 'Georgia', 'India', 'Israel', 'Kenya', 'Niger', 'Chile', 'Cuba', 'Mali', 'Peru', 'Togo'])
 
 /** Countries a text names, in order ("Brazil’s" → BR; "Latin America" is a region, not the United States). */
@@ -1059,7 +1072,10 @@ export function countriesByAdjective(text: string): string[] {
 }
 
 function countriesByName(text: string): string[] {
-  const plain = text.replace(/[’']s\b/g, '').replace(REGIONS_NOT_COUNTRIES, '')
+  // "North and South Korea" → North Korea and South Korea.
+  const expanded = text.replace(/\b(\p{Lu}\p{Ll}+) (and|&|or) (\p{Lu}\p{Ll}+) (\p{Lu}\p{Ll}+)\b/gu, (all, a: string, joiner: string, b: string, name: string) =>
+    COUNTRY_ROWS.some((row) => row[1] === `${a} ${name}`) && COUNTRY_ROWS.some((row) => row[1] === `${b} ${name}`) ? `${a} ${name} ${joiner} ${b} ${name}` : all)
+  const plain = expanded.replace(/[’']s\b/g, '').replace(REGIONS_NOT_COUNTRIES, '')
   // Countries that are also first names: followed by another capitalised word in a sentence-case headline, it's a person ("Jordan Peterson").
   const words = plain.split(/\s+/).filter((word) => word.length > 3)
   const titleCase = words.filter((word) => /^\p{Lu}/u.test(word)).length > words.length * 0.75

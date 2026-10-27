@@ -128,7 +128,7 @@ export function chronologyFromWikitext(title: string, wikitext: string, currentY
       if (isDebris(text)) continue
       const at = sentenceDate(text, currentYear, impliedYear)
       if (!at) continue
-      const key = text.toLowerCase().slice(0, 80)
+      const key = text.toLowerCase().replace(/[^\p{L}\d]+/gu, ' ').trim().slice(0, 60)
       if (seen.has(key)) continue
       seen.add(key)
       const anchor = section.title === 'Introduction' ? '' : `#${encodeURIComponent(section.title.replace(/ /g, '_'))}`

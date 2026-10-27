@@ -25,6 +25,7 @@ export const TOPIC_FAMILIES: Array<{ triggers: RegExp; topics: string[] }> = [
   { triggers: /\b(bank|banking|card issu|payment|fintech|mastercard|mobile money|lender|lending|loan|credit|central bank|currency|stock exchange|investor)/i, topics: ['Banking in {C}', 'Economy of {C}', 'Financial services in {C}'] },
   { triggers: /\b(indigenous|first nation|aboriginal|métis|metis|inuit|native|reserve|treaty|residential school)/i, topics: ['Indigenous peoples in {C}', 'Indigenous rights', 'Canadian Indian residential school system'] },
   { triggers: /\b(wildfire|flood|hurricane|cyclone|typhoon|tornado|landslide|tsunami|monsoon|storm|drought|heat wave|earthquake|climate|emission|carbon)/i, topics: ['Climate change in {C}', 'Natural disasters in {C}', 'Environment of {C}'] },
+  { triggers: /\b(renewable|solar|wind power|wind farm|green hydrogen|clean energy)/i, topics: ['Renewable energy in {C}', 'Energy in {C}'] },
   { triggers: /\b(oil|gas|pipeline|energy|electric|power plant|nuclear|hydro|mining|mine)/i, topics: ['Energy in {C}', 'Energy policy of {C}', 'Mining in {C}'] },
   { triggers: /\b(army|military|soldier|defence|defense|navy|air force|veteran|nato|troops)/i, topics: ['Military of {C}', 'Armed Forces of {C}', 'Foreign relations of {C}'] },
   { triggers: /\b(touris|tourist|visitor arrivals|cruise|hotel|airlift|winter seats|bookings)/i, topics: ['Tourism in {C}'] },

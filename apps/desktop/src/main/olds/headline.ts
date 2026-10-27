@@ -8,6 +8,8 @@ const STOPWORDS = new Set([
   'been', 'it', 'its', 'this', 'that', 'these', 'those', 'after', 'before', 'over', 'into', 'about', 'says', 'said', 'say', 'new', 'will',
   'could', 'would', 'may', 'might', 'has', 'have', 'had', 'not', 'no', 'up', 'out', 'more', 'than', 'how', 'why', 'what', 'who', 'when',
   'where', 'amid', 'against', 'his', 'her', 'their', 'our', 'we', 'they', 'he', 'she', 'you', 'i', 'look', 'watch', 'live', 'update', 'updates',
+  // Function words of other languages, so untranslated headlines match on content words.
+  ...'de del la las los el en y o un una unos unas por para con sin sobre entre que se su sus al lo como más tras ante desde hasta da do das dos na nas nos em um uma pelo pela le les des du au aux et ou une pour par avec sans sur dans qui sa ses ce cette est sont il gli della delle dei degli nel nella tra fra che der den dem des das und oder ein eine einer mit von zu im für auf dan di ke dari yang untuk dengan pada ini itu het een van voor met op els amb'.split(' '),
 ])
 
 const ABBREVIATIONS: Array<[RegExp, string]> = [
@@ -25,7 +27,8 @@ export function cleanHeadline(text: string): string {
   return out
     .replace(/\s+[-–—|]\s+[^-–—|]{2,40}$/, '') // "… - Reuters"
     .replace(/^[A-ZÀ-Ý ]{2,20}:\s+/, '') // "UPDATE: …", "TASS: …"
-    .replace(/^(Reader Q&A|Q&A|Opinion|Analysis|Explainer|Editorial|Live|Watch|Video|Podcast|Interview|Review|Comment|Exclusive|Breaking|Factbox|Fact check|In pictures|Photos|Letters?|Long read)\s*[:|–—-]\s+/i, '') // column labels
+    // Column and section labels: "Reader Q&A:", "International News:", "Sport |", "iciHaïti -".
+    .replace(/^((Reader )?Q&A|Opinion|Analysis|Explainer|Editorial|Live|Watch|Video|Podcast|Interview|Review|Comment|Exclusive|Breaking( News)?|Factbox|Fact check|In pictures|Photos|Letters?|Long read|((International|World|Local|National|Regional|Business|Sports?|Political|Entertainment|Health|Tech|Science|Breaking|Latest|Top) )?News|Politics|Business|Sports?|World|Entertainment|Lifestyle|Health|Technology|Tech|Science|Culture|Economy|Crime|Weather|Update)\s*[:|–—]\s+/i, '') // column labels
     .replace(/(\p{L})['’]s\b/gu, '$1') // "Germany's Merz" → "Germany Merz"
     .replace(/["“”«»‘’„]/g, ' ')
     .replace(/\s+/g, ' ')
@@ -240,6 +243,7 @@ export const NOT_A_TOPIC = new Set([
   'Q270791', // state-owned enterprise
   'Q18340514', // events in a specific year ("2026 in Ukraine"): a list, not a topic
   'Q28640', // occupation ("Soldier")
+  'Q15617994', // type of administrative division ("U.S. state")
   'Q13406463', // Wikimedia list article ("List of states and territories …")
   'Q4167410', // disambiguation page
   'Q101352', // family name ("Putin (surname)")

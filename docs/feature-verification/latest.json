@@ -1,139 +1,120 @@
 {
-  "started": "2026-10-27T23:04:09.470Z",
-  "finished": "2026-10-27T23:12:39.343Z",
+  "started": "2026-10-27T23:34:36.809Z",
+  "finished": "2026-10-27T23:36:47.886Z",
   "tier": "full",
-  "only": null,
-  "summary": "26 passed, 0 failed, 0 blocked, 0 skipped",
+  "only": [
+    "OLDS_HEADLINE",
+    "OLDS_UI",
+    "OLDS_COUNTRY"
+  ],
+  "summary": "3 passed, 0 failed, 0 blocked, 0 skipped, 23 assumed",
   "results": {
     "BUILD": {
-      "status": "pass",
-      "notes": "Skipped with --skip-build (current build reused).",
-      "seconds": 0
+      "status": "assumed",
+      "notes": ""
     },
     "APP_BOOT": {
-      "status": "pass",
-      "notes": "Header: Private · Bookmarks · The Olds · Knowledge · My map · Settings",
-      "seconds": 2
+      "status": "assumed",
+      "notes": ""
     },
     "SETTINGS": {
-      "status": "pass",
-      "notes": "Settings and Privacy sections present.",
-      "seconds": 5
+      "status": "assumed",
+      "notes": ""
     },
     "ACCESSIBILITY": {
-      "status": "pass",
-      "notes": "No WCAG 2.1 AA violations; panels open with Enter, close with Escape, focus returns.",
-      "seconds": 14
+      "status": "assumed",
+      "notes": ""
     },
     "LIBRARY": {
-      "status": "pass",
-      "notes": "Migrated to encrypted library; pin hidden; beacon consent requires agreement.",
-      "seconds": 9
+      "status": "assumed",
+      "notes": ""
     },
     "COLLECTIONS_IMPORT": {
-      "status": "pass",
-      "notes": "Explained and split into 2. ",
-      "seconds": 9
+      "status": "assumed",
+      "notes": ""
     },
     "FLY_TO": {
-      "status": "pass",
-      "notes": "Charlottetown PEI and \"Fredericto\" flew on the globe, with the locator shown.",
-      "seconds": 10
+      "status": "assumed",
+      "notes": ""
     },
     "GLOBE_MOTION": {
-      "status": "pass",
-      "notes": "Locator 736,473 → 720,470 after zoom.",
-      "seconds": 9
+      "status": "assumed",
+      "notes": ""
     },
     "GLOBE_LIVE": {
-      "status": "pass",
-      "notes": "434 public signals from 4 sources. Hover to preview, click to explore, or search a place below.",
-      "seconds": 37
+      "status": "assumed",
+      "notes": ""
     },
     "WORLD_STORIES": {
-      "status": "pass",
-      "notes": "20 world stories; scrolls 400px.",
-      "seconds": 32
+      "status": "assumed",
+      "notes": ""
     },
     "COUNTRY_PANEL": {
-      "status": "pass",
-      "notes": "Facts ok, recent history 2025, 2021, 2020, 2011, 12 headlines.",
-      "seconds": 42
+      "status": "assumed",
+      "notes": ""
     },
     "OLDS_HEADLINE": {
       "status": "pass",
       "notes": "Israel → 2026 Israeli legislative election: 18 dated events from 29 Dec 2022; Ebola, South Africa and Guernsey guards ok; related Judiciary of Israel, Israeli law, Politics of Israel, Elections in Israel. Brazil → 2026 Brazilian general election. Honduras → Honduras.",
-      "seconds": 90
+      "seconds": 78
     },
     "OLDS_COUNTRY": {
       "status": "pass",
       "notes": "Capital Tórshavn; 7 chapters; latest event 2025.",
-      "seconds": 6
+      "seconds": 4
     },
     "OLDS_DEBATE": {
-      "status": "pass",
-      "notes": "Anthropologist Joseph Henrich, Rodney Stark, Historian Joel Mokyr, Williams, Voltaire, Bob Allen",
-      "seconds": 3
+      "status": "assumed",
+      "notes": ""
     },
     "OLDS_UI": {
       "status": "pass",
-      "notes": "Views Story/Timeline/List; sections: HOW WE GOT HERE, TOPICS BEHIND THIS STORY.",
-      "seconds": 62
+      "notes": "Views Story/Timeline/List; sections: path only.",
+      "seconds": 49
     },
     "BROWSE": {
-      "status": "pass",
-      "notes": "Toolbar: Protected, Translate, Capture, Pin, Absorb, Bookmarks; tab closed cleanly.",
-      "seconds": 9
+      "status": "assumed",
+      "notes": ""
     },
     "PROTECTION": {
-      "status": "pass",
-      "notes": "Protected · 3 ads · 0 trackers blocked · Block ads · Block trackers · Encrypted DNS · Local IP hidden · No VPN · Pause on this site",
-      "seconds": 13
+      "status": "assumed",
+      "notes": ""
     },
     "PERMISSIONS": {
-      "status": "pass",
-      "notes": "Location allowed via the bar; popup kept its opener; _blank opened a tab.",
-      "seconds": 11
+      "status": "assumed",
+      "notes": ""
     },
     "PRIVATE_BROWSING": {
-      "status": "pass",
-      "notes": "Private tab marked, no footprints, closed when private mode ended.",
-      "seconds": 8
+      "status": "assumed",
+      "notes": ""
     },
     "EXCLUDED_SITES": {
-      "status": "pass",
-      "notes": "Absorb refused; no recent page kept.",
-      "seconds": 10
+      "status": "assumed",
+      "notes": ""
     },
     "CAPTURE": {
-      "status": "pass",
-      "notes": "Screenshot saved; \"New folder…\" offered.",
-      "seconds": 7
+      "status": "assumed",
+      "notes": ""
     },
     "PAYWALL_ALTERNATIVES": {
-      "status": "pass",
-      "notes": "nytimes.com section page: paywalled=false (no signals).",
-      "seconds": 43
+      "status": "assumed",
+      "notes": ""
     },
     "ABSORB": {
-      "status": "pass",
-      "notes": "Absorbed 10633 words; 40 claims; selection absorb ok.",
-      "seconds": 11
+      "status": "assumed",
+      "notes": ""
     },
     "BEACONS_REGISTRY": {
-      "status": "pass",
-      "notes": "Live registry healthy, readable from the app, refuses unsigned publishes.",
-      "seconds": 2
+      "status": "assumed",
+      "notes": ""
     },
     "AUTO_TRANSLATE": {
-      "status": "pass",
-      "notes": "fontanka.ru detected as Russian and translated automatically.",
-      "seconds": 26
+      "status": "assumed",
+      "notes": ""
     },
     "ROUGH_TRANSLATE": {
-      "status": "pass",
-      "notes": "Faroese headlines translated roughly via Icelandic, labelled as such.",
-      "seconds": 41
+      "status": "assumed",
+      "notes": ""
     }
   }
 }

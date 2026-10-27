@@ -173,3 +173,20 @@ describe('one shared word stays one', () => {
     expect(isWorkOrThing('species of tree')).toBe(true)
   })
 })
+
+describe('generic cases from the 25-story review', () => {
+  it('strips section labels', () => {
+    expect(cleanHeadline('International News: US to issue visas to Flávio Bolsonaro and family')).toBe('United States to issue visas to Flávio Bolsonaro and family')
+    expect(cleanHeadline('Sport | Drua unveil star-studded squad')).toBe('Drua unveil star-studded squad')
+  })
+  it('reads "North and South Korea" as two countries', () => {
+    expect(headlineCountries('Tensions Between North and South Korea Stem From Decade-Old Border Dispute').sort()).toEqual(['KP', 'KR'])
+  })
+  it('removes abbreviated countries from the subject too', () => {
+    expect(titleWordsIn('2025–2026 Iran–United States negotiations', withoutCountryNames('US to issue visas to Flávio Bolsonaro after election defeat'))).toBe(0)
+  })
+  it('matches untranslated headlines on content words, not function words', () => {
+    expect(titleWordsIn('Conflicto del Sáhara Occidental', 'Sáhara Occidental | ¿Qué cambios se conocen ya en el proyecto de EEUU ante el Consejo de Seguridad?')).toBe(2)
+    expect(titleWordsIn('Partido de la Gente', 'Dos hombres resultan heridos en ataques con machetes en el barrio de Alcaide')).toBe(0)
+  })
+})
