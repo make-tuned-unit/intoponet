@@ -48,6 +48,15 @@ node experiments/shell-ui-qa/drive.mjs experiments/shell-ui-qa/scenario-bookmark
   91 MB download into the throwaway profile), waits for indexing, then
   covers Ask with citations, meaning search and related pages.
 
+- `scenario-translate.mjs` opens Spanish, Japanese and French pages and
+  records the detected language and the translate bar, then lists the
+  Languages panel. It downloads nothing unless `QA_TRANSLATE_INSTALL=1`, which
+  adds Spanish (79 MB) and translates the Spanish page.
+
+- `scenario-translate-headlines.mjs` opens Russia's local headlines and
+  presses "Translate to English". That one click downloads Russian (89 MB)
+  and translates the headlines. It then flips Русский ↔ English.
+
 The driver sets `INTOPONET_CAPTURE_ROOT` to the throwaway profile, so test
 runs never write to your real `~/Pictures/Intoponet`.
 

@@ -1,0 +1,654 @@
+{
+ "schemaVersion": 1,
+ "generatedAt": "2026-10-27",
+ "admission": "HTTP 200, RSS/Atom with at least 5 items, newest item within 3 days. Headline, link and time only.",
+ "passed": 31,
+ "candidates": [
+  {
+   "id": "bbc-world",
+   "name": "BBC News",
+   "country": "GB",
+   "lang": "en",
+   "url": "https://feeds.bbci.co.uk/news/world/rss.xml",
+   "type": "public-broadcaster",
+   "status": 200,
+   "items": 28,
+   "newest": "2026-10-26T21:31:53.000Z",
+   "sampleTitles": [
+    "BBC News",
+    "Lula wins fourth term in dramatic Brazil election comeback"
+   ],
+   "passed": true,
+   "reason": null
+  },
+  {
+   "id": "dw-en",
+   "name": "Deutsche Welle",
+   "country": "DE",
+   "lang": "en",
+   "url": "https://rss.dw.com/xml/rss-en-all",
+   "type": "public-broadcaster",
+   "status": 200,
+   "items": 129,
+   "newest": "2026-10-27T00:26:10.000Z",
+   "sampleTitles": [
+    "Deutsche Welle",
+    "England and Bayern Munich striker Harry Kane wins Ballon d&#039;Or"
+   ],
+   "passed": true,
+   "reason": null
+  },
+  {
+   "id": "dw-es",
+   "name": "DW Español",
+   "country": "DE",
+   "lang": "es",
+   "url": "https://rss.dw.com/xml/rss-es-all",
+   "type": "public-broadcaster",
+   "status": 200,
+   "items": 0,
+   "newest": null,
+   "sampleTitles": [],
+   "passed": false,
+   "reason": "0 items"
+  },
+  {
+   "id": "france24-en",
+   "name": "France 24",
+   "country": "FR",
+   "lang": "en",
+   "url": "https://www.france24.com/en/rss",
+   "type": "public-broadcaster",
+   "status": 200,
+   "items": 0,
+   "newest": null,
+   "sampleTitles": [],
+   "passed": false,
+   "reason": "0 items"
+  },
+  {
+   "id": "france24-fr",
+   "name": "France 24 (FR)",
+   "country": "FR",
+   "lang": "fr",
+   "url": "https://www.france24.com/fr/rss",
+   "type": "public-broadcaster",
+   "status": 200,
+   "items": 24,
+   "newest": "2026-10-26T23:26:11.000Z",
+   "sampleTitles": [
+    "Un an après le massacre d'El-Fasher, les réfugiés racontent",
+    "L'Anglais Harry Kane remporte le Ballon d'Or 2026, le premier de sa carrière"
+   ],
+   "passed": true,
+   "reason": null
+  },
+  {
+   "id": "france24-es",
+   "name": "France 24 (ES)",
+   "country": "FR",
+   "lang": "es",
+   "url": "https://www.france24.com/es/rss",
+   "type": "public-broadcaster",
+   "status": 200,
+   "items": 24,
+   "newest": "2026-10-26T23:57:22.000Z",
+   "sampleTitles": [
+    "Irán y el Pacto de La Meca buscan rebajar las tensiones en Medio Oriente",
+    "Elecciones en Israel: Eisenkot promete unir al país, mientras Netanyahu lo tacha de \"blando\" con Irán"
+   ],
+   "passed": true,
+   "reason": null
+  },
+  {
+   "id": "france24-ar",
+   "name": "France 24 (AR)",
+   "country": "FR",
+   "lang": "ar",
+   "url": "https://www.france24.com/ar/rss",
+   "type": "public-broadcaster",
+   "status": 200,
+   "items": 24,
+   "newest": "2026-10-27T00:10:28.000Z",
+   "sampleTitles": [
+    "الانتخابات البرازيلية بعيون أمريكية",
+    "بولسونارو يعلن أنه سيقود المعارضة ضد لولا"
+   ],
+   "passed": true,
+   "reason": null
+  },
+  {
+   "id": "rfi-en",
+   "name": "RFI",
+   "country": "FR",
+   "lang": "en",
+   "url": "https://www.rfi.fr/en/rss",
+   "type": "public-broadcaster",
+   "status": 200,
+   "items": 22,
+   "newest": "2026-10-26T15:31:27.000Z",
+   "sampleTitles": [
+    "Senegal PM vows to sort out economic problems as 2026 Youth Olympics Games loom",
+    "Le Pen widens poll lead as Mélenchon closes in on run-off spot"
+   ],
+   "passed": true,
+   "reason": null
+  },
+  {
+   "id": "npr-world",
+   "name": "NPR World",
+   "country": "US",
+   "lang": "en",
+   "url": "https://feeds.npr.org/1004/rss.xml",
+   "type": "public-broadcaster",
+   "status": 200,
+   "items": 10,
+   "newest": "2026-10-26T13:25:33.000Z",
+   "sampleTitles": [
+    "NPR Topics: World",
+    "Australian judge rejects prisoner&apos;s human rights challenge to Vegemite ban"
+   ],
+   "passed": true,
+   "reason": null
+  },
+  {
+   "id": "cbc-world",
+   "name": "CBC World",
+   "country": "CA",
+   "lang": "en",
+   "url": "https://www.cbc.ca/webfeed/rss/rss-world",
+   "type": "public-broadcaster",
+   "status": 0,
+   "items": 0,
+   "passed": false,
+   "reason": "The operation was aborted due to timeout"
+  },
+  {
+   "id": "abc-au-world",
+   "name": "ABC News (Australia)",
+   "country": "AU",
+   "lang": "en",
+   "url": "https://www.abc.net.au/news/feed/52278/rss.xml",
+   "type": "public-broadcaster",
+   "status": 404,
+   "items": 0,
+   "newest": null,
+   "sampleTitles": [],
+   "passed": false,
+   "reason": "HTTP 404"
+  },
+  {
+   "id": "rnz-world",
+   "name": "RNZ World",
+   "country": "NZ",
+   "lang": "en",
+   "url": "https://www.rnz.co.nz/rss/world.xml",
+   "type": "public-broadcaster",
+   "status": 200,
+   "items": 3,
+   "newest": "2026-10-26T23:19:52.000Z",
+   "sampleTitles": [
+    "Australian shop owner finds nearly 30-year-old Magnum Ego ice cream in freezer",
+    "Jacinda Ardern has a new job in Australia"
+   ],
+   "passed": false,
+   "reason": "3 items"
+  },
+  {
+   "id": "nhk-world",
+   "name": "NHK (国際)",
+   "country": "JP",
+   "lang": "ja",
+   "url": "https://www3.nhk.or.jp/rss/news/cat6.xml",
+   "type": "public-broadcaster",
+   "status": 200,
+   "items": 98,
+   "newest": "2026-08-08T11:55:50.000Z",
+   "sampleTitles": [
+    "イチローさん マリナーズOBのホームラン競争でファンわかせる",
+    "【動画】中国 北京で人気のレトロ写真館"
+   ],
+   "passed": false,
+   "reason": "not updated in 3 days"
+  },
+  {
+   "id": "sbs-world",
+   "name": "SBS News World",
+   "country": "AU",
+   "lang": "en",
+   "url": "https://www.sbs.com.au/news/topic/world/feed",
+   "type": "public-broadcaster",
+   "status": 200,
+   "items": 25,
+   "newest": "2026-10-26T20:09:08.000Z",
+   "sampleTitles": [
+    "Benjamin Netanyahu and Gadi Eisenkot clash over security on eve of Israeli vote",
+    "Hamas raided their homes and they want a fresh start — Netanyahu may not factor in"
+   ],
+   "passed": true,
+   "reason": null
+  },
+  {
+   "id": "cna-world",
+   "name": "CNA",
+   "country": "SG",
+   "lang": "en",
+   "url": "https://www.channelnewsasia.com/api/v1/rss-outbound-feed?_format=xml&category=6311",
+   "type": "broadcaster",
+   "status": 200,
+   "items": 20,
+   "newest": "2026-10-26T23:19:00.000Z",
+   "sampleTitles": [
+    "Latest News",
+    "England and Bayern forward Harry Kane wins men&#039;s Ballon d&#039;Or"
+   ],
+   "passed": true,
+   "reason": null
+  },
+  {
+   "id": "aljazeera-en",
+   "name": "Al Jazeera English",
+   "country": "QA",
+   "lang": "en",
+   "url": "https://www.aljazeera.com/xml/rss/all.xml",
+   "type": "broadcaster",
+   "status": 200,
+   "items": 25,
+   "newest": "2026-10-27T00:00:00.000Z",
+   "sampleTitles": [
+    "Al Jazeera &#8211; Breaking News, World News and Video from Al Jazeera",
+    "Iran war live: Iran says US ‘not serious’ about talks; ship ablaze off Iraq"
+   ],
+   "passed": true,
+   "reason": null
+  },
+  {
+   "id": "euronews-en",
+   "name": "Euronews",
+   "country": "FR",
+   "lang": "en",
+   "url": "https://www.euronews.com/rss?format=mrss&level=theme&name=news",
+   "type": "broadcaster",
+   "status": 200,
+   "items": 50,
+   "newest": "2026-10-26T22:20:20.000Z",
+   "sampleTitles": [
+    "News | Euronews RSS",
+    "France: crowds fill Marseille's Old Port in anti-racism protest"
+   ],
+   "passed": true,
+   "reason": null
+  },
+  {
+   "id": "africanews-en",
+   "name": "Africanews",
+   "country": "CG",
+   "lang": "en",
+   "url": "https://www.africanews.com/feed/rss",
+   "type": "broadcaster",
+   "status": 200,
+   "items": 50,
+   "newest": "2026-10-26T22:20:20.000Z",
+   "sampleTitles": [
+    "France: crowds fill Marseille's Old Port in anti-racism protest",
+    "Human rights activists condemn alleged abduction of Tanzanian govt critic"
+   ],
+   "passed": true,
+   "reason": null
+  },
+  {
+   "id": "sky-world",
+   "name": "Sky News World",
+   "country": "GB",
+   "lang": "en",
+   "url": "https://feeds.skynews.com/feeds/rss/world.xml",
+   "type": "broadcaster",
+   "status": 200,
+   "items": 10,
+   "newest": "2026-10-26T20:28:00.000Z",
+   "sampleTitles": [
+    "World News - Breaking international news and headlines | Sky News",
+    "Harry Kane ends England's 25-year wait to win men's Ballon d'Or"
+   ],
+   "passed": true,
+   "reason": null
+  },
+  {
+   "id": "un-news",
+   "name": "UN News",
+   "country": "US",
+   "lang": "en",
+   "url": "https://news.un.org/feed/subscribe/en/news/all/rss.xml",
+   "type": "international-organisation",
+   "status": 200,
+   "items": 30,
+   "newest": "2026-10-26T12:00:00.000Z",
+   "sampleTitles": [
+    "West Bank: Hebron crackdown displaces thousands, Türk warns of ethnic cleansing",
+    "Women and girls’ share of civilian war deaths doubles since 2021"
+   ],
+   "passed": true,
+   "reason": null
+  },
+  {
+   "id": "guardian-world",
+   "name": "The Guardian World",
+   "country": "GB",
+   "lang": "en",
+   "url": "https://www.theguardian.com/world/rss",
+   "type": "newspaper",
+   "status": 200,
+   "items": 45,
+   "newest": "2026-10-27T00:25:18.000Z",
+   "sampleTitles": [
+    "The Guardian",
+    "UK sanctions Sudanese military leaders implicated in El Fasher ‘campaign of rape’"
+   ],
+   "passed": true,
+   "reason": null
+  },
+  {
+   "id": "nyt-world",
+   "name": "The New York Times World",
+   "country": "US",
+   "lang": "en",
+   "url": "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
+   "type": "newspaper",
+   "status": 200,
+   "items": 54,
+   "newest": "2026-10-26T23:55:15.000Z",
+   "sampleTitles": [
+    "NYT &gt; World News",
+    "To Work With P.O.W.s, Ukrainians Suppress Feelings About the Enemy"
+   ],
+   "passed": true,
+   "reason": null
+  },
+  {
+   "id": "wapo-world",
+   "name": "The Washington Post World",
+   "country": "US",
+   "lang": "en",
+   "url": "https://feeds.washingtonpost.com/rss/world",
+   "type": "newspaper",
+   "status": 502,
+   "items": 0,
+   "newest": null,
+   "sampleTitles": [],
+   "passed": false,
+   "reason": "HTTP 502"
+  },
+  {
+   "id": "lemonde-intl",
+   "name": "Le Monde International",
+   "country": "FR",
+   "lang": "fr",
+   "url": "https://www.lemonde.fr/international/rss_full.xml",
+   "type": "newspaper",
+   "status": 200,
+   "items": 20,
+   "newest": "2026-10-27T00:25:14.000Z",
+   "sampleTitles": [
+    "Des élus démocrates réclament une enquête spéciale sur les liens entre Donald Trump et Jeffrey Epstein",
+    "James Comey, ancien directeur du FBI et critique de Donald Trump, est de nouveau poursuivi en justice, cette fois pour fuite d’informations confidentielles"
+   ],
+   "passed": true,
+   "reason": null
+  },
+  {
+   "id": "elpais-intl",
+   "name": "El País Internacional",
+   "country": "ES",
+   "lang": "es",
+   "url": "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/internacional/portada",
+   "type": "newspaper",
+   "status": 200,
+   "items": 23,
+   "newest": "2026-10-26T20:49:31.000Z",
+   "sampleTitles": [
+    "Una comisión de la ONU acusa a Israel de crímenes de guerra en Cisjordania",
+    "¿Orbán líder de la ONU? Las filtraciones sobre los candidatos de Trump revelan el bloqueo para elegir secretario general"
+   ],
+   "passed": true,
+   "reason": null
+  },
+  {
+   "id": "spiegel-ausland",
+   "name": "Der Spiegel Ausland",
+   "country": "DE",
+   "lang": "de",
+   "url": "https://www.spiegel.de/ausland/index.rss",
+   "type": "newspaper",
+   "status": 200,
+   "items": 20,
+   "newest": "2026-10-26T23:34:00.000Z",
+   "sampleTitles": [
+    "DER SPIEGEL",
+    "USA unter Donald Trump: Ex-FBI-Chef James Comey zum dritten Mal angeklagt"
+   ],
+   "passed": true,
+   "reason": null
+  },
+  {
+   "id": "folha-mundo",
+   "name": "Folha Mundo",
+   "country": "BR",
+   "lang": "pt",
+   "url": "https://feeds.folha.uol.com.br/mundo/rss091.xml",
+   "type": "newspaper",
+   "status": 200,
+   "items": 100,
+   "newest": "2026-10-26T22:53:00.000Z",
+   "sampleTitles": [
+    "Folha de S.Paulo - Mundo - Principal",
+    "Trump oferece recompensa de US$ 1 milh�o para quem apontar fraude em elei��es"
+   ],
+   "passed": true,
+   "reason": null
+  },
+  {
+   "id": "scmp-world",
+   "name": "South China Morning Post World",
+   "country": "HK",
+   "lang": "en",
+   "url": "https://www.scmp.com/rss/91/feed",
+   "type": "newspaper",
+   "status": 200,
+   "items": 50,
+   "newest": "2026-10-27T00:00:24.000Z",
+   "sampleTitles": [
+    "News - South China Morning Post",
+    "Southeast Asia’s housing paradox: too many homes, too few buyers"
+   ],
+   "passed": true,
+   "reason": null
+  },
+  {
+   "id": "hindu-intl",
+   "name": "The Hindu International",
+   "country": "IN",
+   "lang": "en",
+   "url": "https://www.thehindu.com/news/international/feeder/default.rss",
+   "type": "newspaper",
+   "status": 200,
+   "items": 60,
+   "newest": null,
+   "sampleTitles": [
+    "World News: Latest International News &amp; Updates | The Hindu",
+    "A final surge: On Luiz Inácio Lula da Silva’s triumph in Brazil"
+   ],
+   "passed": false,
+   "reason": "not updated in 3 days"
+  },
+  {
+   "id": "toi-world",
+   "name": "Times of India World",
+   "country": "IN",
+   "lang": "en",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/296589292.cms",
+   "type": "newspaper",
+   "status": 200,
+   "items": 20,
+   "newest": "2026-10-26T23:08:35.000Z",
+   "sampleTitles": [
+    "World News, Today World News, Latest International News, World Breaking News, Trending News of World - Times of India",
+    "Trump critic and former FBI chief Comey faces third federal case"
+   ],
+   "passed": true,
+   "reason": null
+  },
+  {
+   "id": "dawn-world",
+   "name": "Dawn World",
+   "country": "PK",
+   "lang": "en",
+   "url": "https://www.dawn.com/feeds/world",
+   "type": "newspaper",
+   "status": 200,
+   "items": 30,
+   "newest": "2026-10-27T00:25:33.000Z",
+   "sampleTitles": [
+    "UN raises 'ethnic cleansing' concerns over Israel's operation in West Bank's Hebron",
+    "Pezeshkian urges 'regional unity' in meeting with Makkah pact countries in Tehran"
+   ],
+   "passed": true,
+   "reason": null
+  },
+  {
+   "id": "japantimes",
+   "name": "The Japan Times",
+   "country": "JP",
+   "lang": "en",
+   "url": "https://www.japantimes.co.jp/feed/",
+   "type": "newspaper",
+   "status": 200,
+   "items": 30,
+   "newest": "2026-10-27T00:24:11.000Z",
+   "sampleTitles": [
+    "Turning untapped talent into a new force for business",
+    "Meiji Yasuda to buy Man Group stake in asset management push"
+   ],
+   "passed": true,
+   "reason": null
+  },
+  {
+   "id": "yonhap-en",
+   "name": "Yonhap News",
+   "country": "KR",
+   "lang": "en",
+   "url": "https://en.yna.co.kr/RSS/news.xml",
+   "type": "news-agency",
+   "status": 200,
+   "items": 91,
+   "newest": "2026-10-27T00:20:44.000Z",
+   "sampleTitles": [
+    "Contest for AI films, videos to take place in Seoul",
+    "With military service on horizon, pitcher hoping to leave Tigers on positive note"
+   ],
+   "passed": true,
+   "reason": null
+  },
+  {
+   "id": "ansa-en",
+   "name": "ANSA English",
+   "country": "IT",
+   "lang": "en",
+   "url": "https://www.ansa.it/english/news/english_nr_rss.xml",
+   "type": "news-agency",
+   "status": 200,
+   "items": 100,
+   "newest": "2026-10-26T19:17:58.000Z",
+   "sampleTitles": [
+    "The 26th Week of the Italian Language in the World kicks off tomorrow in Vilnius",
+    "Meloni says will talk to all mayors, not just centre-left, on cost of living, looting"
+   ],
+   "passed": true,
+   "reason": null
+  },
+  {
+   "id": "mee",
+   "name": "Middle East Eye",
+   "country": "GB",
+   "lang": "en",
+   "url": "https://www.middleeasteye.net/rss",
+   "type": "online",
+   "status": 200,
+   "items": 20,
+   "newest": "2026-10-27T00:24:54.000Z",
+   "sampleTitles": [
+    "Watch: Israeli forces detain and assault Palestinian in occupied West Bank town of Sinjil",
+    "Israeli settlers burn Palestinian's car near Nablus, local sources say"
+   ],
+   "passed": true,
+   "reason": null
+  },
+  {
+   "id": "premium-times",
+   "name": "Premium Times",
+   "country": "NG",
+   "lang": "en",
+   "url": "https://www.premiumtimesng.com/feed",
+   "type": "newspaper",
+   "status": 200,
+   "items": 15,
+   "newest": "2026-10-26T23:42:47.000Z",
+   "sampleTitles": [
+    "Premium Times Nigeria",
+    "Diri unveils AI robotic tutors in Bayelsa medical university"
+   ],
+   "passed": true,
+   "reason": null
+  },
+  {
+   "id": "mercopress",
+   "name": "MercoPress",
+   "country": "UY",
+   "lang": "en",
+   "url": "https://en.mercopress.com/rss/",
+   "type": "online",
+   "status": 200,
+   "items": 10,
+   "newest": "2026-10-26T13:39:00.000Z",
+   "sampleTitles": [
+    "MercoPress",
+    "A judge appointed by Jair Bolsonaro rejects his son’s case for annulling the election"
+   ],
+   "passed": true,
+   "reason": null
+  },
+  {
+   "id": "globo-mundo",
+   "name": "g1 Mundo",
+   "country": "BR",
+   "lang": "pt",
+   "url": "https://g1.globo.com/rss/g1/mundo/",
+   "type": "online",
+   "status": 200,
+   "items": 100,
+   "newest": "2026-10-26T21:30:32.000Z",
+   "sampleTitles": [
+    "g1 &gt; Mundo",
+    "Governo Trump processa ex-diretor do FBI que supostamente ameaçou Trump e mentiu ao Congresso"
+   ],
+   "passed": true,
+   "reason": null
+  },
+  {
+   "id": "infobae-america",
+   "name": "Infobae América",
+   "country": "AR",
+   "lang": "es",
+   "url": "https://www.infobae.com/arc/outboundfeeds/rss/category/america/",
+   "type": "online",
+   "status": 200,
+   "items": 100,
+   "newest": "2026-10-27T00:03:27.000Z",
+   "sampleTitles": [
+    "Tuneladora Panamá llega a Albrook tras excavar aproximadamente 65 metros por debajo del cauce del Canal de Panamá",
+    "Cancillería dominicana desmiente un mensaje falso atribuido a Bukele sobre la frontera con Haití"
+   ],
+   "passed": true,
+   "reason": null
+  }
+ ]
+}

@@ -118,3 +118,77 @@ export function placesInCountry(countryCode: string): Place[] {
     .map((entry) => entry.place)
     .sort((a, b) => b.population - a.population)
 }
+
+/** Great-circle distance in km. */
+export function distanceKm(aLat: number, aLon: number, bLat: number, bLon: number): number {
+  const rad = Math.PI / 180
+  const dLat = (bLat - aLat) * rad
+  const dLon = (bLon - aLon) * rad
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(aLat * rad) * Math.cos(bLat * rad) * Math.sin(dLon / 2) ** 2
+  return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(h)))
+}
+
+/**
+ * The country of the known place nearest a point (e.g. the centre of the
+ * view), with the distance to that place. Over open ocean it is the nearest
+ * coast's country, so callers should show the distance or name it.
+ */
+export function nearestCountry(lat: number, lon: number): { place: Place; km: number } | null {
+  index ??= buildIndex()
+  let best: { place: Place; km: number } | null = null
+  for (const entry of index) {
+    const km = distanceKm(lat, lon, entry.place.lat, entry.place.lon)
+    if (!best || km < best.km) best = { place: entry.place, km }
+  }
+  if (!best) return null
+  const country = countryPlace(best.place.countryCode)
+  return country ? { place: country, km: best.km } : null
+}
+
+/** Words that are place names but usually mean something else in a title. */
+const TITLE_STOP_PLACES = new Set([
+  'nice', 'mobile', 'reading', 'orange', 'victoria', 'independence', 'concord', 'split', 'hope', 'union', 'enterprise', 'paradise', 'sale',
+  'wells', 'bath', 'march', 'may', 'police', 'mission', 'surprise', 'central', 'capital', 'eastern', 'western', 'northern', 'southern',
+  'north', 'south', 'east', 'west', 'santa', 'san', 'leon', 'bar', 'mons', 'aba', 'ede', 'bo', 'goes', 'hof', 'sur', 'kids', 'home',
+  'wikipedia', 'news', 'history', 'live', 'media', 'university', 'world', 'national', 'republic', 'city', 'about', 'many', 'best',
+])
+
+/**
+ * Places named in a page's title or address, for suggesting where to pin it.
+ * Only capitalised names (or words from the URL path) count, matched whole
+ * against place names and aliases; first mention first, countries before
+ * regions before cities.
+ */
+export function placesNamedIn(text: string, limit = 4): Place[] {
+  index ??= buildIndex()
+  const byName = new Map<string, Entry[]>()
+  for (const entry of index) {
+    for (const name of [entry.name, ...entry.aliases]) {
+      const list = byName.get(name) ?? []
+      list.push(entry)
+      byName.set(name, list)
+    }
+  }
+  const words = text.split(/[\s_/,.;:()[\]|"“”–—-]+/).filter(Boolean)
+  const found: { place: Place; at: number }[] = []
+  const seen = new Set<string>()
+  for (let i = 0; i < words.length; i += 1) {
+    for (let n = 3; n >= 1; n -= 1) {
+      const slice = words.slice(i, i + n)
+      if (slice.length < n || !/^\p{Lu}/u.test(slice[0]!)) continue
+      const name = normalizePlaceText(slice.join(' '))
+      if (name.length < 3 || TITLE_STOP_PLACES.has(name)) continue
+      const entries = byName.get(name)
+      if (!entries?.length) continue
+      const kindRank = { country: 0, region: 1, city: 2 } as const
+      const best = [...entries].sort((a, b) => kindRank[a.place.kind] - kindRank[b.place.kind] || b.place.population - a.place.population)[0]!
+      if (!seen.has(best.place.id)) {
+        seen.add(best.place.id)
+        found.push({ place: best.place, at: i })
+      }
+      i += n - 1
+      break
+    }
+  }
+  return found.slice(0, limit).map((item) => item.place)
+}

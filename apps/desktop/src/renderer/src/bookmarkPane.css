@@ -545,3 +545,24 @@
 .bm-folder:focus-visible {
   opacity: 1;
 }
+
+/* Same glass as the other reading panels (My map, Knowledge). */
+.bm-surface.lg-surface { background: var(--lg-fill-strong); }
+
+/* Site icons, cached on this Mac (see main/faviconCache.ts); monograms when none is known. */
+.bm-favicon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.bm-favicon img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}

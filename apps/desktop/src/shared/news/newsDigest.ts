@@ -1,3 +1,4 @@
+import type { GlobalStory } from './globalStories'
 import { countryPlace, normalizePlaceText, placesInCountry, type Place } from '../places/places'
 import { COUNTRY_ROWS } from '../places/placeData'
 
@@ -17,9 +18,11 @@ export type NewsSourceMeta = {
   countryCode: string
   publisherName: string
   publisherGroupId: string
-  scope: 'national' | 'regional' | 'local'
+  scope: 'national' | 'regional' | 'local' | 'international'
   cityName?: string | null
   regionName?: string | null
+  /** Feed's declared language (BCP 47), e.g. 'es-AR'. */
+  language?: string | null
 }
 
 export type NewsItemInput = {
@@ -39,6 +42,8 @@ export type NewsHeadline = {
   publishedAt: string
   /** City or region named in the headline, if any. */
   place?: string
+  /** The feed's declared language (BCP 47), when known. */
+  lang?: string
 }
 
 export type NewsCountry = {
@@ -97,6 +102,19 @@ export type NewsDigest = {
   quietCountryCodes: string[]
   /** Terms used by more countries' outlets today than the day before. */
   rising: RisingTerm[]
+  /** Stories covered by outlets in many countries at once (see globalStories.ts). */
+  global?: GlobalStory[]
+  /** Wikipedia's editor-curated "In the news". */
+  inTheNews?: WikiNewsItem[]
+}
+
+export type WikiNewsItem = {
+  /** Wikipedia's own date note, e.g. 'Oct 25'. */
+  date: string | null
+  story: string
+  /** The story's main (bold) article. */
+  mainTitle: string | null
+  links: Array<{ title: string; url: string }>
 }
 
 export type RisingTerm = {
@@ -264,7 +282,8 @@ export function buildNewsDigest(input: {
   const stories = new Map<string, Story>()
   for (const item of input.items) {
     const source = sourceById.get(item.sourceId)
-    if (!source) continue
+    // International desks feed world stories only, never a country's local news.
+    if (!source || source.scope === 'international') continue
     const title = cleanTitle(item.title)
     if (title.length < 8 || !/^https?:\/\//.test(item.url)) continue
     const published = Date.parse(item.publishedAt ?? '')
@@ -286,6 +305,7 @@ export function buildNewsDigest(input: {
       publisher: source.publisherName,
       publishedAt: new Date(at).toISOString(),
       ...(placeRef ? { place: placeRef.name } : {}),
+      ...(source.language ? { lang: source.language } : {}),
       at,
       countryCode: source.countryCode,
       publisherGroupId: source.publisherGroupId,
@@ -301,7 +321,7 @@ export function buildNewsDigest(input: {
     list.push(story)
     byCountry.set(story.countryCode, list)
   }
-  const strip = ({ title, url, publisher, publishedAt, place }: Story): NewsHeadline => ({ title, url, publisher, publishedAt, ...(place ? { place } : {}) })
+  const strip = ({ title, url, publisher, publishedAt, place, lang }: Story): NewsHeadline => ({ title, url, publisher, publishedAt, ...(place ? { place } : {}), ...(lang ? { lang } : {}) })
   const newestFirst = (a: Story, b: Story): number => b.at - a.at
   const change = (list: Story[], comparableFeeds: number): Pick<NewsCountry, 'recentCount' | 'previousCount' | 'momentum' | 'comparableFeeds'> => {
     const counted = list.filter((story) => story.comparable)
@@ -310,7 +330,7 @@ export function buildNewsDigest(input: {
     return { recentCount, previousCount, momentum: momentumOf(recentCount, previousCount, comparableFeeds), comparableFeeds }
   }
 
-  const registryCountries = [...new Set(input.sources.map((source) => source.countryCode))].sort()
+  const registryCountries = [...new Set(input.sources.filter((source) => source.scope !== 'international').map((source) => source.countryCode))].sort()
   const countries: NewsCountry[] = []
   const places: NewsPlace[] = []
   const quietCountryCodes: string[] = []
@@ -384,7 +404,7 @@ export function buildNewsDigest(input: {
 }
 
 /** Common headline words across major feed languages; never reported as rising. */
-const STOPWORDS = new Set(`
+export const STOPWORDS = new Set(`
 about after again against also amid among another around back been before being best between both could during each first from have here into just last like more most much must news next only other over says said still such than that their them then there these they this those three through today under until very want week were what when where which while will with without would year years your
 government president minister police people world city state country national public million billion percent report reports update live video photos watch latest breaking official officials says
 wins plan plans food health ministry service services court case deal talks meeting visit calls urges warns held holds second third record high game match team season league home life help support death dead killed amid early late part make takes take gets well need needs show shows open opens plus free full
@@ -573,6 +593,7 @@ function parseHeadlines(value: unknown): NewsHeadline[] {
       publisher: row['publisher'],
       publishedAt: row['publishedAt'],
       ...(text(row['place'], 120) ? { place: row['place'] } : {}),
+      ...(typeof row['lang'] === 'string' && /^[A-Za-z]{2,3}(-[A-Za-z0-9]{1,8}){0,3}$/.test(row['lang']) ? { lang: row['lang'] } : {}),
     }]
   }).slice(0, 20)
 }
@@ -631,5 +652,42 @@ export function parseNewsDigest(raw: string | null): NewsDigest | null {
     places,
     quietCountryCodes: Array.isArray(value['quietCountryCodes']) ? value['quietCountryCodes'].filter((code): code is string => text(code, 3)) : [],
     rising: parseRising(value['rising']),
+    ...(Array.isArray(value['global']) ? { global: parseGlobal(value['global']) } : {}),
+    ...(Array.isArray(value['inTheNews']) ? { inTheNews: parseInTheNews(value['inTheNews']) } : {}),
   }
+}
+
+function parseGlobal(value: unknown): GlobalStory[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((row): GlobalStory[] => {
+    if (!isRecord(row) || !text(row['id'], 120) || !text(row['title'], 400) || !httpsOrHttp(row['url']) || !text(row['publisher'], 200) ||
+      !finite(row['outletCount']) || !finite(row['internationalDesks']) || !text(row['latestAt'], 40)) return []
+    const headlines = Array.isArray(row['headlines']) ? row['headlines'].flatMap((item): GlobalStory['headlines'] => {
+      if (!isRecord(item) || !text(item['title'], 400) || !httpsOrHttp(item['url']) || !text(item['publisher'], 200) || !text(item['publishedAt'], 40) || !text(item['countryCode'], 3)) return []
+      return [{ title: item['title'], url: item['url'], publisher: item['publisher'], publishedAt: item['publishedAt'], countryCode: item['countryCode'], international: item['international'] === true, ...(typeof item['lang'] === 'string' && /^[A-Za-z]{2,3}(-[A-Za-z0-9]{1,8}){0,3}$/.test(item['lang']) ? { lang: item['lang'] } : {}) }]
+    }).slice(0, 12) : []
+    return [{
+      id: row['id'],
+      title: row['title'],
+      url: row['url'],
+      publisher: row['publisher'],
+      terms: Array.isArray(row['terms']) ? row['terms'].filter((term): term is string => text(term, 60)).slice(0, 6) : [],
+      countries: Array.isArray(row['countries']) ? row['countries'].filter((code): code is string => text(code, 3)).slice(0, 250) : [],
+      outletCount: row['outletCount'],
+      internationalDesks: row['internationalDesks'],
+      latestAt: row['latestAt'],
+      headlines,
+    }]
+  }).slice(0, 30)
+}
+
+function parseInTheNews(value: unknown): WikiNewsItem[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((row): WikiNewsItem[] => {
+    if (!isRecord(row) || !text(row['story'], 500)) return []
+    const links = Array.isArray(row['links']) ? row['links'].flatMap((link): WikiNewsItem['links'] => (
+      isRecord(link) && text(link['title'], 200) && typeof link['url'] === 'string' && link['url'].startsWith('https://en.wikipedia.org/') ? [{ title: link['title'], url: link['url'] }] : []
+    )).slice(0, 5) : []
+    return [{ date: text(row['date'], 20) ? row['date'] : null, story: row['story'], mainTitle: text(row['mainTitle'], 200) ? row['mainTitle'] : null, links }]
+  }).slice(0, 10)
 }

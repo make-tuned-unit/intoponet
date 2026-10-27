@@ -42,10 +42,15 @@ let newsService: ReturnType<typeof startNewsService> | null = null
 let encryptedDnsActive = false
 import { CaptureLibrary, migrateEncryptedCaptures } from './captureStore'
 import { CaptureService } from './captureService'
-import { CAPTURE_SCHEME, captureChannels, knowledgeChannels, layaChannels, parseLayaCommand, oldsChannels, parseCaptureCommand, parseKnowledgeCommand, parseOldsCommand } from '@intoponet/browser-api'
+import { CAPTURE_SCHEME, captureChannels, knowledgeChannels, layaChannels, parseLayaCommand, translateChannels, parseTranslateCommand, normalizeLanguage, oldsChannels, parseCaptureCommand, parseKnowledgeCommand, parseOldsCommand } from '@intoponet/browser-api'
 import { KnowledgeService } from './knowledge/service'
 import { LayaService } from './laya/service'
 import { openLayaEmbedder } from './laya/openEmbedder'
+import { TranslateService } from './translate/service'
+import { FaviconCache, isIconHost } from './faviconCache'
+import { ACCESS_SCRIPT, ACCESS_WORLD_ID, parseAccess } from './access/pageAccess'
+import { TranslateStore } from './translate/store'
+import { openTranslationEngine } from './translate/openEngine'
 import { loadKnowledgeCrypto } from './knowledge/crypto'
 import { OldsService } from './olds/oldsService'
 
@@ -75,6 +80,8 @@ import {
 
 let window: BrowserWindow | null = null
 let pageView: WebContentsView | null = null
+let translateService: TranslateService | null = null
+let faviconCache: FaviconCache | null = null
 let pageAttached = false
 let activeTabId: string | null = null
 let browserFullWidth = false
@@ -601,6 +608,7 @@ function discardTab(id: string): void {
     tabDockOpen = false
   }
   protectionPages.remove(tab.view.webContents.id)
+  translateService?.forgetPage(tab.view.webContents.id)
   if (!tab.view.webContents.isDestroyed()) tab.view.webContents.close()
   emitTabs()
   emitPanelState()
@@ -741,6 +749,7 @@ function buildView(): WebContentsView {
   })
   view.webContents.on('did-start-navigation', (_event, _url, inPlace, mainFrame) => {
     if (!mainFrame || inPlace) return
+    translateService?.forgetPage(view.webContents.id)
     frequencyNavigation += 1
     frequencyLoadSucceeded = false
   })
@@ -822,6 +831,7 @@ function buildView(): WebContentsView {
     if (pageView === view) emitPanelState()
   })
   view.webContents.on('page-favicon-updated', (_event, favicons) => {
+    if (favicons[0]) faviconCache?.remember(view.webContents.getURL(), favicons[0])
     const tab = openTabs.find((item) => item.view === view)
     const next = safeFavicon(favicons[0] ?? '')
     if (!tab || tab.favicon === next) return
@@ -1209,7 +1219,16 @@ app.whenReady().then(async () => {
   protocol.handle(CAPTURE_SCHEME, (request) => captures!.respond(request))
   ipcMain.handle(captureChannels.command, (_event, value: unknown) => captures!.handle(parseCaptureCommand(value)))
   // The Olds: sourced history threads from Wikidata/Wikipedia (public lookups only).
-  const olds = new OldsService({ cacheDir: join(app.getPath('userData'), 'olds-cache') })
+  const olds = new OldsService({
+    cacheDir: join(app.getPath('userData'), 'olds-cache'),
+    // Headlines in other languages are translated on this Mac (when that language is installed) before matching.
+    translateToEnglish: async (text, lang) => {
+      const code = normalizeLanguage(lang)
+      if (!code || code === 'en' || !translateService || !(await translateService.isInstalled(code))) return null
+      const [english] = await translateService.translate(code, 'en', [text], false)
+      return english ?? null
+    },
+  })
   ipcMain.handle(oldsChannels.command, (_event, value: unknown) => olds.thread(parseOldsCommand(value).query))
   // Absorb + local knowledge: extracted on this device, encrypted with an OS-keychain key, never sent anywhere.
   const knowledgeDir = join(app.getPath('userData'), 'knowledge')
@@ -1238,6 +1257,34 @@ app.whenReady().then(async () => {
   ipcMain.handle(layaChannels.command, (_event, value: unknown) => laya!.handle(parseLayaCommand(value)))
   app.once('will-quit', () => { void laya?.close() })
   setTimeout(() => { void laya?.backfill().catch(() => undefined) }, 15_000).unref?.()
+  // Site icons for bookmarks: from visited pages or the site's own /favicon.ico, cached on this Mac.
+  faviconCache = new FaviconCache(join(app.getPath('userData'), 'favicons.json'))
+  ipcMain.handle('intoponet:favicons', (_event, value: unknown) => {
+    if (!Array.isArray(value) || value.length > 300) throw new Error('Invalid hosts.')
+    return faviconCache!.get(value.filter((host): host is string => typeof host === 'string' && isIconHost(host)))
+  })
+  // Translation: Mozilla's on-device models, downloaded per language on request and pinned by
+  // SHA-256. The engine runs in a worker with no network; text never leaves the device.
+  const translateStore = new TranslateStore(join(app.getPath('userData'), 'translate'), (input, init) => fetch(input, init))
+  translateService = new TranslateService({
+    store: translateStore,
+    engine: openTranslationEngine(translateStore),
+    emit: (event) => { if (window && !window.isDestroyed()) window.webContents.send(translateChannels.event, event) },
+    getActivePage: () => (pageAttached && pageView && !pageView.webContents.isDestroyed() ? pageView.webContents : null),
+  })
+  ipcMain.handle(translateChannels.command, (_event, value: unknown) => translateService!.handle(parseTranslateCommand(value)))
+  // Whether the open page declares its article restricted (read-only; used to offer free coverage elsewhere).
+  ipcMain.handle('intoponet:page-access', async () => {
+    if (!pageAttached || !pageView || pageView.webContents.isDestroyed()) return null
+    const url = pageView.webContents.getURL()
+    if (!/^https?:/i.test(url)) return null
+    try {
+      return parseAccess(await pageView.webContents.executeJavaScriptInIsolatedWorld(ACCESS_WORLD_ID, [{ code: ACCESS_SCRIPT }]))
+    } catch {
+      return null
+    }
+  })
+  app.once('will-quit', () => { void translateService?.close() })
   ipcMain.handle(
     browserHostChannels.command,
     (_event, value: unknown) => handleBrowserCommand(parseBrowserHostCommand(value)),

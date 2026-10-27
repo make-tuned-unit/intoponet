@@ -24,6 +24,8 @@ export type KnowledgeSource = {
   list(): Promise<KnowledgeRecord[]>
   get(id: string): Promise<KnowledgeDocument>
   search(query: string, limit?: number): Promise<KnowledgeHit[]>
+  /** Paragraph-level word matches (several per page); optional for older sources. */
+  searchParagraphs?(query: string, limit?: number): Promise<KnowledgeHit[]>
 }
 
 /** Below this cosine similarity a passage is not offered as an answer. */
@@ -452,24 +454,62 @@ export class LayaService {
   }
 
   /** Extractive answers: the best-matching real passages, cited. Never generated. */
+  /**
+   * Extractive answers: passages ranked by meaning and by the question's own
+   * words together (reciprocal rank fusion), so a paragraph that says it in
+   * exactly those words is never missed. Each passage is quoted and cited.
+   */
   async ask(question: string, limit = 5): Promise<LayaPassage[]> {
-    const scored = this.scoreChunks(await this.embedQuery(question), await this.allVectors())
+    const capped = Math.min(limit, LAYA_LIMITS.resultLimit)
+    const documents = await this.allVectors()
+    const semantic = this.scoreChunks(await this.embedQuery(question), documents).filter((item) => item.similarity >= MIN_ANSWER_SIMILARITY).slice(0, 40)
+    const allWords = this.knowledge.searchParagraphs ? await this.knowledge.searchParagraphs(question, 30) : await this.knowledge.search(question, 30)
+    // Only strong word matches count (a stray shared word like "oxygen" in an unrelated page does not).
+    const topWord = allWords[0]?.score ?? 0
+    const words = allWords.filter((hit) => hit.score >= topWord * 0.35)
+    // One key per chunk: a word hit joins the chunk that covers its paragraph.
+    const chunkKey = (recordId: string, paragraph: number): string | null => {
+      const document = documents.find((item) => item.recordId === recordId)
+      const chunk = document?.chunks.find((item) => paragraph >= item.paragraphStart && paragraph <= item.paragraphEnd)
+      return chunk ? `${recordId}|${chunk.paragraphStart}` : `${recordId}|p${paragraph}`
+    }
+    const semanticKeys = semantic.map((item) => `${item.recordId}|${item.chunk.paragraphStart}`)
+    const wordKeys = words.map((hit) => chunkKey(hit.recordId, hit.paragraphIndex)).filter((key): key is string => key !== null)
+    const fused = fuseRanks([...new Set(wordKeys)], [...new Set(semanticKeys)])
     const records = new Map((await this.knowledge.list()).map((record) => [record.id, record]))
+    const distinctRecords = new Set(fused.map((entry) => entry.key.split('|')[0])).size
+    // With only a page or two absorbed, show several passages from each.
+    const perRecordCap = distinctRecords <= 2 ? capped : 2
     const perRecord = new Map<string, number>()
     const passages: LayaPassage[] = []
-    for (const item of scored) {
-      if (passages.length >= Math.min(limit, LAYA_LIMITS.resultLimit) || item.similarity < MIN_ANSWER_SIMILARITY) break
-      const record = records.get(item.recordId)
-      if (!record || (perRecord.get(item.recordId) ?? 0) >= 2) continue
-      perRecord.set(item.recordId, (perRecord.get(item.recordId) ?? 0) + 1)
-      const text = trimPassage(item.chunk.text, question, LAYA_LIMITS.passageChars)
+    for (const entry of fused) {
+      if (passages.length >= capped) break
+      const recordId = entry.key.split('|')[0]!
+      const record = records.get(recordId)
+      if (!record || (perRecord.get(recordId) ?? 0) >= perRecordCap) continue
+      const wordHit = words.find((hit) => chunkKey(hit.recordId, hit.paragraphIndex) === entry.key)
+      const meaning = semantic.find((item) => `${item.recordId}|${item.chunk.paragraphStart}` === entry.key)
+      let text: string
+      let paragraphIndex: number
+      if (wordHit) {
+        const document = await this.knowledge.get(recordId).catch(() => null)
+        const paragraph = document?.paragraphs[wordHit.paragraphIndex] ?? wordHit.snippet
+        text = trimPassage(paragraph, question, LAYA_LIMITS.passageChars)
+        paragraphIndex = wordHit.paragraphIndex
+      } else if (meaning) {
+        text = trimPassage(meaning.chunk.text, question, LAYA_LIMITS.passageChars)
+        paragraphIndex = await this.citeParagraph(recordId, meaning.chunk, text)
+      } else continue
+      perRecord.set(recordId, (perRecord.get(recordId) ?? 0) + 1)
+      const similarity = meaning ? Math.max(0, Math.min(1, (meaning.similarity - 0.2) / 0.6)) : 0
       passages.push({
         recordId: record.id,
         url: record.url,
         title: record.title,
-        paragraphIndex: await this.citeParagraph(record.id, item.chunk, text),
+        paragraphIndex,
         text,
-        confidence: Math.max(0, Math.min(1, (item.similarity - 0.2) / 0.6)),
+        // A ranking signal, not a probability: meaning similarity, lifted when the words match too.
+        confidence: Math.min(1, entry.matchedBy === 'both' ? Math.max(similarity, 0.55) + 0.15 : entry.matchedBy === 'words' ? Math.max(similarity, 0.45) : similarity),
       })
     }
     return passages

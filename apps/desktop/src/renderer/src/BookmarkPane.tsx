@@ -1,3 +1,4 @@
+import { useFavicon } from './favicons'
 import { AnimatePresence, motion, useReducedMotion, type Transition } from 'motion/react'
 import type { CaptureRecord } from '@intoponet/browser-api'
 import { Bookmark, BookmarkPlus, Check, ChevronRight, FolderOpen, FolderPlus, Pencil, Play, Search, Trash2, X } from 'lucide-react'
@@ -64,6 +65,8 @@ export type BookmarkPaneProps = {
 function Monogram({ url }: { url: string }) {
   const site = siteLabel(url)
   const hue = hostHue(site)
+  const icon = useFavicon(url)
+  if (icon) return <span className="bm-favicon" aria-hidden="true"><img src={icon} alt="" /></span>
   return (
     <span className="bm-monogram" style={{ '--bm-hue': hue } as CSSProperties} aria-hidden="true">
       {(site.replace(/[^a-z0-9]/gi, '')[0] ?? '•').toUpperCase()}

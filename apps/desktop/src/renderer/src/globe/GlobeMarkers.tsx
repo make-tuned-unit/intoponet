@@ -26,6 +26,9 @@ export type GlobeProjection = {
   facing: Float32Array
   width: number
   height: number
+  /** The point on the globe at the centre of the view (degrees). */
+  centerLat?: number
+  centerLon?: number
 }
 
 export function createGlobeProjection(): GlobeProjection {
@@ -168,6 +171,10 @@ export function GlobeMarkers({
     projection.height = size.height
     const cam = camera.position
     const camLength = cam.length()
+    if (camLength > 0) {
+      projection.centerLat = Math.asin(Math.max(-1, Math.min(1, cam.y / camLength))) * 180 / Math.PI
+      projection.centerLon = Math.atan2(-cam.z, cam.x) * 180 / Math.PI
+    }
     for (let i = 0; i < positions.length && i < projection.x.length; i += 1) {
       const p = positions[i]!
       scratch.copy(p).project(camera)

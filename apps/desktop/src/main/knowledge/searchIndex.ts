@@ -83,6 +83,15 @@ export class KnowledgeIndex {
   }
 
   search(query: string, limit = 20): KnowledgeHit[] {
+    return this.rank(query, limit, true)
+  }
+
+  /** Every matching paragraph (not just the best per page), for answering questions. */
+  searchParagraphs(query: string, limit = 30): KnowledgeHit[] {
+    return this.rank(query, limit, false)
+  }
+
+  private rank(query: string, limit: number, bestPerRecord: boolean): KnowledgeHit[] {
     const queryTerms = [...new Set(tokenize(query))]
     if (!queryTerms.length || !this.paragraphCount) return []
     const avg = this.totalLength / this.paragraphCount
@@ -108,9 +117,10 @@ export class KnowledgeIndex {
       if (queryTerms.length > 1 && phrase.length > 3 && paragraph.text.toLowerCase().includes(phrase)) total *= 1.6
       const titleHits = queryTerms.filter((term) => entry.titleTerms.has(term)).length
       total *= 1 + 0.25 * titleHits
-      const previous = best.get(paragraph.recordId)
+      const key = bestPerRecord ? paragraph.recordId : `${paragraph.recordId}|${paragraph.index}`
+      const previous = best.get(key)
       if (!previous || total > previous.score || (total === previous.score && paragraph.index < previous.paragraph.index)) {
-        best.set(paragraph.recordId, { paragraph, score: total })
+        best.set(key, { paragraph, score: total })
       }
     }
     const terms = new Set(queryTerms)

@@ -356,6 +356,303 @@ coverage; workers can improve the harness in parallel.
 `G0_SECURITY_TESTS` remains blocked until CEF has a comparable browser policy
 host, packaged tests, and the decisions in ADR-007 have owners.
 
+On-device translation was added on 2026-10-26 (PRD §12, LAY-001/005).
+
+- **Models.** Mozilla's Firefox Translations models (MPL-2.0): 57 languages,
+  each in both directions with English. Pairs that do not include English
+  pivot through it. `scripts/build-translation-catalog.mjs` pins every file
+  (model, shortlist, vocabularies) and the bergamot-translator 3.0 WebAssembly
+  engine by size and SHA-256 into `apps/desktop/src/main/translate/catalog.json`.
+  Files download only when the user adds a language (typically 48–142 MB, with
+  the size shown first). Every file is re-verified each time it loads.
+- **Engine.** Firefox's unmodified Emscripten glue (v0.6.0, vendored with its
+  licence) runs in a worker thread with network stubs. Text never leaves the
+  device.
+- **Pages.** A translate button in the toolbar shows a dot when the page's
+  language differs from yours. Detection uses the page's declared language,
+  then its writing system, then common words. The bar translates the visible
+  text first and flips between the original and the translation.
+- **Page safety.** The page scripts run in an isolated world. Inline markup is
+  reduced to bare markers. Engine output is parsed inertly, and only its text
+  is used: the page's own elements are moved back into place, so links and
+  listeners survive. Restoring is exact.
+- **Headlines.** Globe headlines carry their feed's language and have an
+  Original / your-language toggle.
+- **Knowledge export.** "Export library" also writes absorbed pages as
+  schema.org JSON-LD (`intoponet-knowledge.jsonld`) with paragraph-indexed
+  text, places and notes (PRD §8.4).
+- **Verified so far.** Unit tests cover the catalog, routing, detection,
+  pinned download and tamper refusal, the engine protocol, batching, page
+  orchestration and cancellation. The page script was run against a real
+  page with a stand-in translator. It reordered tags without losing a link's
+  listener, dropped an injected `<img onerror>`, and restored byte-identical
+  HTML. The in-app UI evidence is `translate-bar-es.png` and
+  `translate-languages.png`.
+- **Engine verified.** On real models, Spanish → English gives "The
+  president announced new economic measures to combat inflation in the
+  country." Japanese → French pivots through English. Markers survive word
+  reordering. Throughput is about 570 words/s on one thread.
+- **In the app.** Adding Spanish (79 MB) and translating the whole es.wikipedia
+  "Aurora polar" article took 22 s, links and formatting intact. Flipping to
+  the original and back took 0.8 s, served from cache. Evidence:
+  `translate-page-en.png` and `translate-page-original.png`.
+- **Open.** Form placeholders and other attributes stay in the original. A
+  space can be lost next to skipped inline elements such as `<code>`. Dynamic
+  content added after translating is left untranslated.
+
+Day and night and an easier way into The Olds were added on 2026-10-26.
+
+- **Day & night.** The globe is lit by the real sun. The subsolar point comes
+  from the standard low-precision solar ephemeris
+  (`renderer/src/earth/sun.ts`, tested at solstices, the equinox, the
+  equation of time and day/night at four cities) and refreshes every 30 s.
+  The day side shows Blue Marble in its natural colour, lit by the sun, with
+  daylit sea in blue and a soft sheen toward the sun. The night side is deep
+  navy with NASA Black Marble 2016 city lights (public domain), and a faint
+  twilight band marks the terminator. Each place's details and hover card
+  say whether it is daytime there (with the sun's height), dawn, dusk or
+  night. The atmosphere's glow follows
+  the same sun. A Day & night toggle in the layer card restores the evenly lit
+  studio globe and is remembered.
+- **The Olds.** A header button opens The Olds for what you're looking at:
+  the selected signal, the focused place, or the country nearest the centre
+  of the view (read from the live camera). The place panel's clock icon is now
+  a labelled History button.
+- **Evidence.** `daynight-americas-night.png`, `daynight-twilight-mexico.png`,
+  `daynight-sunlit-pacific.png`, `daynight-sun-there-japan.png` and
+  `olds-from-header.png`.
+
+The Olds gained chapters and time navigation on 2026-10-26.
+
+- **Chapters.** Country threads now follow the place's Wikipedia "History of
+  …" article. Each section becomes a chapter with its dates (from the heading,
+  or marked c. from the years its text names), its first sentences and its
+  "Main article" link. Those main articles (for Greenland: Norse settlements,
+  Danish colonisation, Greenland in World War II, Greenlandic independence,
+  the Greenland crisis) join the timeline as cited events.
+- **Filtering.** Events are dropped when "country" is their only link to the
+  place and they are trivial there: eclipses, sports entries, or events
+  stated for three or more countries (such as the 2022 mpox outbreak).
+- **Navigation.** The timeline can be dragged and scrolled with a wheel or
+  trackpad, and responds to ←/→/Home/End. Earliest and Now buttons appear at
+  its edges. The chapter band highlights the era in view, and clicking a
+  chapter jumps to it and shows its summary, the article link, and a follow
+  button for its main article.
+- **Cache.** The Olds cache key is now versioned (v2), so older threads are
+  refetched.
+- **Evidence.** `olds-greenland-chapters.png` and `olds-greenland-crisis.png`.
+  The parser has unit tests. Live checks covered Greenland, Kenya and Japan.
+
+News-to-history paths, Olds source checks and place-aware pinning were added
+on 2026-10-26.
+
+- **The history behind a story.** Every headline has a History button.
+  The headline is matched to a Wikipedia topic: words and names are searched,
+  then events in the outlet's country are preferred, while far-away topics,
+  names the headline never uses, calendar units and whole states are
+  penalised. Headlines in other languages are first translated on this Mac
+  when the language is installed. From the topic, the path follows Wikidata
+  "has cause", "part of", "follows" and "replaces" links back through dated
+  events (up to four steps). It is set in the country's current history
+  chapter and shown oldest → today in a new Story view, with other plausible
+  topics to switch to.
+  - Live checks:
+    - Sudan: the civil war ← the 2019 transition ← the 2019 coup ← the
+      Sudanese revolution.
+    - Ukraine: the 2022 invasion ← the Russo-Ukrainian war ← the
+      Revolution of Dignity ← Euromaidan.
+    - Taiwan: the Fourth Taiwan Strait Crisis ← the Pelosi visit.
+    - Greenland: the Greenland crisis ← the proposed US acquisition.
+  - When nothing matches, the story is placed in the country's history with
+    a note explaining why.
+- **Source checks.** Every Olds link records its support:
+  - **referenced**: the Wikidata statement cites a source;
+  - **Wikipedia only**: its only reference is "imported from Wikimedia
+    project";
+  - **unreferenced**;
+  - **article**: it comes from a history chapter.
+
+  It also records whether the other side is named in the root's Wikipedia
+  article text. The Timeline shows a well-sourced / corroborated / unverified
+  summary and a "Hide unverified" filter. Every detail panel explains the
+  check. Most Wikidata history statements carry no reference, and the
+  corroboration check makes that visible instead of hiding it.
+- **Pin location.** The pin editor suggests places named in the page's
+  title, address and absorbed text (`placesNamedIn`) and pre-fills the best
+  one, marked "Suggested from this page". Saving confirms it, per MEM-007.
+  The location dropdown is replaced by a typeahead over GeoNames places and
+  places used before, with keyboard support. Coordinates remain a fallback.
+- **Evidence.** `olds-story-kenya.png`, `olds-source-checks.png`,
+  `pin-place-suggested.png` and `pin-place-search.png`. Unit tests cover
+  headline matching, scoring, corroboration and place detection.
+- **Open.**
+  - Matching without translation is weak for scripts without capital
+    letters.
+  - Wikidata often has no cause or part-of links for very recent topics, so
+    those paths stop at the topic.
+
+World stories, ranking tooltips and context cards were added on 2026-10-26.
+
+- **Tooltips.** The World, Top, Rising and Fading tabs, every list row and
+  every trend chip explain what is ranked and how. Each layer is ranked only
+  against itself, so Top is not a global ranking.
+- **International desks.** `scripts/build-international-feeds.mjs` checks
+  candidates live. Admission requires HTTP 200, at least 5 items, and the
+  newest item within 3 days. 31 of 39 passed: BBC, DW, France 24 (FR/ES/AR),
+  RFI, NPR, SBS, CNA, Al Jazeera, Euronews, Africanews, Sky, UN News, the
+  Guardian, the NYT, Le Monde, El País, Der Spiegel, Folha, SCMP, Times of
+  India, Dawn, Japan Times, Yonhap, ANSA, Middle East Eye, Premium Times,
+  MercoPress, g1 and Infobae. Failures are recorded with reasons in
+  `docs/data/international-feeds.json`. These desks are fetched first. They
+  feed world stories only and are never counted as a country's local news.
+- **World stories** (`shared/news/globalStories.ts`).
+  - **Method.** A story is a pair of names or keywords shared by headlines
+    from at least 3 countries or desks and at least 3 independent outlets in
+    24 hours. Overlapping pairs, and clusters led by the same name, merge.
+  - **Counting.** Countries are counted from local outlets, and desks are
+    counted separately.
+  - **Ranking.** By countries, then desks, then outlets.
+  - **Title.** An English headline that names the story, from a desk where
+    possible.
+  - **Live run.** From 227 healthy feeds: Brazil's election (26 countries,
+    22 desks), the Ballon d'Or, James Comey's charges, Machado's return to
+    Venezuela, Netanyahu and Iran, Ebola, Macron and the protests, Jordan's
+    strikes on Syria, and Vučić ousted in Serbia.
+  - **In the app.** Stories expand to one headline per outlet across
+    countries, highlight those countries on the globe, and open "The history
+    behind it" in The Olds.
+- **Wikipedia In the news.** Editor-curated major stories from the REST
+  featured feed, refreshed every 2 hours. Each links its main article, and
+  History opens The Olds on that article.
+- **Context card.** A country's news panel opens with "The bigger picture":
+  the chapter of its history it is in now, from the Wikipedia history
+  article, and recent connected events worth exploring, each opening The
+  Olds. Headlines in languages without a model now say so (e.g. Papiamento).
+- **Evidence.** `world-stories.png`, `world-in-the-news.png` and
+  `context-*.png`. Unit tests cover clustering, thresholds, tokenising and
+  In the news parsing.
+- **Open.** Names are recognised by capitalisation, so Arabic, Chinese and
+  other scripts without capitals rarely join world clusters unless the same
+  story is also covered in cased scripts.
+
+Peaks were made legible on 2026-10-26.
+
+- **Rename.** "Top" is now "Peaks": the tallest peaks on the globe, one type
+  of data at a time.
+- **Peak score.** Each item's peak is its rank inside its own layer, scaled
+  from the layer's lowest item (0) to its highest (100).
+- **In the app.** Every row in the list has a five-bar peak meter. The
+  details panel shows "Peak N of 100" and a "Why it peaks" line with the
+  measure and the item's place in its layer, for example "#1 of 145
+  countries" or "#7 of 37 mapped most-read articles". It also says what the
+  measure is not (newsroom activity ≠ world attention; magnitude ≠ coverage).
+- **Legend.** The layer card has a peaks legend: low, mid and high marker
+  samples (brightness and rings) on a scale, plus each colour and what it
+  measures.
+- **Natural hazards.** Earthquakes (USGS) and NASA EONET events are one
+  "Natural hazards" group with one toggle. Both colours appear in the legend,
+  and About explains why quakes are included and how they peak.
+- **Evidence.** `peaks-legend.png` and `peaks-why.png`.
+
+Layer card and hazard links were simplified on 2026-10-26.
+
+- **Compact layer card.** The card rests as three stacked icons (Local news,
+  Reading now, Natural hazards); clicking an icon toggles that layer. Hover
+  or keyboard focus expands it to the full card: Public/Mine, the peaks
+  legend, the time window and About.
+- **Pins and day/night.** "My pins" left the card: pins always show and are
+  managed from My map. Day & night is now a standard, always-on feature.
+- **Hazard links.** NASA EONET sometimes cites raw agency files, such as a
+  hurricane centre's `.tcw` advisory, which downloads instead of opening.
+  Natural hazards now open "Read about it" (Wikipedia) and "Satellite view"
+  (NASA Worldview at that place and date). The agency file stays available
+  as a labelled secondary link ("Agency data file (downloads)"). Any other
+  source that is a data file falls back to Wikipedia.
+- **Evidence.** `layers-compact.png`, `layers-expanded.png` and
+  `hazard-links.png`.
+
+Chapters, context, Ask, favicons and glass were reworked on 2026-10-27,
+validated across countries rather than single examples.
+
+- **Chapter key events.** Clicking a chapter in The Olds loads that chapter's
+  own key events: the dated events its section of the Wikipedia history
+  article (and its subsections) links to. Links inside references and
+  templates are ignored. Only things that happened (a point in time or a
+  start time) are kept, so publishers, universities, cities and
+  organisations are not. A chapter too new to have linked events says so and
+  offers the chapter before. "Show all" returns to the full history.
+- **Current chapter.** Chapters whose own heading says they ended long ago
+  ("President de Gaulle, 1958–1969", "Chattha State (1750–1797)") are never
+  treated as current. Long articles (Russia has 60+ sections) keep top-level
+  eras and dated subsections, so they reach the present.
+- **Summaries.** Abbreviations ("r. 927–969", "c. 800 BCE", "i.e.", "St.")
+  no longer end sentences. Galleries, map code and bare image lines are
+  removed. Non-narrative sections (timelines, image galleries, "history by
+  region") are skipped.
+- **Resilience.** Wikidata and Wikipedia requests retry rate limits up to
+  four times, respecting retry-after. A country thread whose history article
+  could not be fetched is shown but marked partial and not cached, so the
+  next open retries. Previously a transient 429 cached a chapterless thread
+  for a week. The Olds cache is at v5.
+- **Context card.** It now leads with key facts from Wikidata (population,
+  capital, leaders, GDP in USD, language). Then come names behind today's
+  headlines: recurring names in the country's headlines, translated first
+  when the language is installed. Each opens The Olds in that country's
+  context; for example, Ukraine for Russia opens Russia–Ukraine relations.
+  Last comes recent history, from Wikidata's recent events or, failing
+  that, the dated events of the latest chapters. The card no longer
+  overflows the panel.
+- **Ask.** Answers now fuse meaning with the question's own words
+  (paragraph-level BM25, reciprocal rank fusion). Weak, single-word matches
+  are ignored. With one or two pages absorbed, several passages per page are
+  shown, so a paragraph that states the answer verbatim is not missed.
+- **Favicons.** `main/faviconCache.ts` stores site icons as data URLs, taken
+  from pages you visit or from the site's own `/favicon.ico` (no cookies,
+  never a third-party icon service). Bookmarks and My map lists show them,
+  with monograms only as a fallback.
+- **Glass.** Every reading panel (the details panel, The Olds, Knowledge,
+  Absorb, Bookmarks, My map, About) uses the same strong glass. My map's tabs
+  fit one row and its Export / Delete buttons are styled.
+- **Audit.** A live audit of all 244 countries drove these fixes. Failures
+  were grouped by cause, not patched per country.
+- **Re-audit (87 countries).** It covered every previously failing country
+  plus a spread of others: 0 errors, 0 partial results and 0 stale current
+  chapters (bad summaries fell from 15 to 4). The remaining causes were then
+  fixed generally:
+  - articles titled "History of the …";
+  - empty headings that own the sibling sections after them (Jamaica's
+    "2020s");
+  - inline language and convert templates keep their visible text;
+  - newspapers, magazines and companies are never topics or events;
+  - history titles that redirect to a country's main article are skipped.
+
+  Chapters with no linked events yet are brand-new periods ("2025 coup",
+  "2026–present"); the UI falls back to the chapter before. The Olds cache is
+  at v6.
+
+Paywalls and panel behaviour were addressed on 2026-10-27.
+
+- **Paywalls: alternative sources, never circumvention.** After a page
+  loads, a read-only isolated-world script checks the publisher's own
+  restriction markers: schema.org `isAccessibleForFree: false`,
+  `article:content_tier`, and common paywall overlays. If the article is
+  restricted, or the outlet is a known paywalled one, a bar under the
+  toolbar lists the same story from other outlets. These are matched from
+  the headlines Intoponet already follows (shared distinctive words, a
+  different site, free outlets first). "Find other outlets" searches the
+  web for the story's title. Detected paywalls are remembered locally. News
+  lists mark paywalled outlets with a lock, and world stories put free
+  outlets first. Nothing hides, removes or works around a paywall. Live
+  check: an NYT article on Brazil's election was detected from the NYT's
+  own markup, and The Guardian, Guyana Chronicle and Demerara Waves were
+  offered as free coverage.
+- **One panel at a time.** Bookmarks, The Olds, Knowledge and My map are
+  mutually exclusive, whichever way they are opened: the last one opened
+  closes the others.
+- **My map position.** The drawer stays at the right edge again; the shared
+  glass class had reset its positioning.
+- **Evidence.** `paywall-free-coverage.png` and `bookmarks-favicons.png`.
+
 ## Gate ownership and evidence
 
 | Gate | Planner verification before promotion |

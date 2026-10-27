@@ -132,6 +132,21 @@ describe('search', () => {
     expect(stem('ferries')).toBe('ferry')
   })
 
+  it('finds every matching paragraph of a page for answers, exact phrase first', () => {
+    const index = new KnowledgeIndex()
+    index.add('kn-aaaaaaaaaaaaaaaa', 'https://a.example', 'History of Mauritania', [
+      'The original inhabitants were the Bafour.',
+      'The territory of Mauritania was on the fringe of geographical knowledge of Libya in classical antiquity.',
+      'The French Republic was interested in the territory for strategic reasons.',
+      'Mauritania became independent in 1960.',
+    ])
+    const page = index.search('What is the territory of Mauritania?')
+    expect(page).toHaveLength(1)
+    const paragraphs = index.searchParagraphs('What is the territory of Mauritania?')
+    expect(paragraphs.length).toBeGreaterThanOrEqual(3)
+    expect(paragraphs[0]!.paragraphIndex).toBe(1)
+  })
+
   it('windows long paragraphs around the first match', () => {
     const text = `${'lorem ipsum '.repeat(60)}needle here ${'dolor sit '.repeat(60)}`
     const { snippet, matches } = snippetFor(text, new Set(['needle']))
@@ -163,6 +178,14 @@ describe('KnowledgeService', () => {
     expect(renamed.places.map((place) => place.name)).not.toContain('Halifax')
     const reindexed = await knowledge.reindex(record.id)
     expect(reindexed.places.map((place) => place.name)).toContain('Halifax')
+    const exported = JSON.parse(await knowledge.exportAll())
+    expect(exported['@type']).toBe('Collection')
+    expect(exported.exportSchema).toBe('intoponet.knowledge-export.v1')
+    expect(exported.hasPart).toHaveLength(1)
+    expect(exported.hasPart[0]).toMatchObject({ url: record.url, name: 'Explosion, 1917', comment: { text: 'For the demo' } })
+    expect(exported.hasPart[0].paragraphs).toHaveLength(4)
+    expect(exported.hasPart[0].paragraphs[1]).toContain('Mont-Blanc')
+    expect(exported.hasPart[0].spatialCoverage.some((place: { name: string }) => place.name === 'Halifax')).toBe(true)
     await knowledge.remove(record.id)
     expect(await knowledge.list()).toEqual([])
     expect(await knowledge.search('Halifax')).toEqual([])

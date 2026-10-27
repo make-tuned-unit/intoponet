@@ -120,3 +120,17 @@
     transition: none;
   }
 }
+
+/*
+ * Reading panels — anything with paragraphs or lists to read — share one stronger glass, so text stays
+ * legible over the moving globe and every panel looks the same. Small floating controls keep the lighter fill.
+ */
+.globe-panel.lg-surface,
+.olds-sheet.lg-surface,
+.knowledge-sheet.lg-surface,
+.absorb-sheet.lg-surface,
+.bm-surface.lg-surface,
+.bookmark-drawer.lg-surface,
+.globe-about.lg-surface {
+  background: var(--lg-fill-strong);
+}

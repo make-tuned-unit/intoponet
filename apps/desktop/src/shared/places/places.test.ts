@@ -72,3 +72,23 @@ describe('bundled place data', () => {
     expect(normalizePlaceText("  Côte d'Ivoire ")).toBe('cote d ivoire')
   })
 })
+
+describe('nearestCountry', () => {
+  it('names the country under a point', async () => {
+    const { nearestCountry } = await import('./places')
+    expect(nearestCountry(48.86, 2.35)?.place.countryCode).toBe('FR')
+    expect(nearestCountry(-1.29, 36.82)?.place.countryCode).toBe('KE')
+    expect(nearestCountry(35.68, 139.7)?.place.countryCode).toBe('JP')
+  })
+})
+
+describe('placesNamedIn', () => {
+  it('finds places in page titles and addresses', async () => {
+    const { placesNamedIn } = await import('./places')
+    expect(placesNamedIn('History of Vanuatu - Wikipedia https://en.wikipedia.org/wiki/History_of_Vanuatu').map((place) => place.name)).toEqual(['Vanuatu'])
+    expect(placesNamedIn('Flooding hits Port Vila as cyclone nears New Caledonia')[0]?.name).toBe('Port-Vila')
+    expect(placesNamedIn('Best restaurants in Paris, France').map((place) => place.name)).toEqual(['Paris', 'France'])
+    expect(placesNamedIn('How to make sourdough at home')).toEqual([])
+    expect(placesNamedIn('Reading list: Nice ideas for March')).toEqual([])
+  })
+})

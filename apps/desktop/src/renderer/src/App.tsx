@@ -43,7 +43,16 @@ import {
   Square,
   Trash2,
   X,
+  Languages,
+  History,
 } from 'lucide-react'
+import { TranslateBar } from './translate/TranslateBar'
+import { SiteIcon } from './SiteIcon'
+import { FreeCoverageBar } from './access/FreeCoverageBar'
+import { learnedPaywalls, rememberPaywall } from './access/learnedPaywalls'
+import { hostIsPaywalled } from '../../shared/news/paywall'
+import { hostOf } from './favicons'
+import { useTranslate } from './translate/useTranslate'
 import { FormEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   defaultAnchor,
@@ -115,7 +124,7 @@ import { GlobeOverlay, type GlobeLabel } from './globe/GlobeOverlay'
 import { GlobeHeader, HoverCardContent, LayerCard, SignalPanel, type FieldView, type ListView } from './globe/GlobeHud'
 import { OldsPanel, type OldsState } from './olds/OldsPanel'
 import { MinePanel } from './globe/MinePanel'
-import type { AbsorbScope, KnowledgeRecord, OldsNode, OldsQuery } from '@intoponet/browser-api'
+import { normalizeLanguage, type AbsorbScope, type KnowledgeRecord, type OldsNode, type OldsQuery } from '@intoponet/browser-api'
 import { AbsorbSheet, type AbsorbState } from './knowledge/AbsorbSheet'
 import { KnowledgeSheet } from './knowledge/KnowledgeSheet'
 import { PlaceSuggestions, placeMatches } from './globe/PlaceSuggestions'
@@ -139,17 +148,19 @@ import {
   risingSignals,
   fadingSignals,
 } from './globe/globeSignals'
-import { PLACE_ATTRIBUTION, placeLabel, type Place } from '../../shared/places/places'
-import { parseNewsDigest, type NewsDigest, type RisingTerm } from '../../shared/news/newsDigest'
+import { dayPhaseText } from './earth/sun'
+import { countryPlace, nearestCountry, placesNamedIn, PLACE_ATTRIBUTION, placeLabel, type Place } from '../../shared/places/places'
+import { parseNewsDigest, type NewsDigest, type NewsHeadline, type RisingTerm } from '../../shared/news/newsDigest'
+import type { GlobalStory } from '../../shared/news/globalStories'
 
 const bookmarkPaneOpenKey = 'intoponet.bookmark-pane.open.v1'
 const globePrefsKey = 'intoponet.globe.v2'
 const KNOWLEDGE_COLOR = '#d6c9ff'
 
-type GlobePrefs = { view: FieldView; layers: GlobeLayerId[]; window: GlobeWindow; pins: boolean }
+type GlobePrefs = { view: FieldView; layers: GlobeLayerId[]; window: GlobeWindow; pins: boolean; dayNight: boolean }
 
 function readGlobePrefs(): GlobePrefs {
-  const fallback: GlobePrefs = { view: 'public', layers: [...GLOBE_LAYER_ORDER], window: '7d', pins: true }
+  const fallback: GlobePrefs = { view: 'public', layers: [...GLOBE_LAYER_ORDER], window: '7d', pins: true, dayNight: true }
   try {
     const raw = JSON.parse(localStorage.getItem(globePrefsKey) ?? 'null') as Partial<GlobePrefs> | null
     if (!raw || typeof raw !== 'object') return fallback
@@ -158,6 +169,7 @@ function readGlobePrefs(): GlobePrefs {
       layers: Array.isArray(raw.layers) ? raw.layers.filter((layer): layer is GlobeLayerId => GLOBE_LAYER_ORDER.includes(layer as GlobeLayerId)) : fallback.layers,
       window: raw.window === '24h' || raw.window === '30d' ? raw.window : '7d',
       pins: raw.pins !== false,
+      dayNight: raw.dayNight !== false,
     }
   } catch {
     return fallback
@@ -237,6 +249,26 @@ function tabCaption(tab: PageTabSnapshot): string {
 export function App() {
   const [query, setQuery] = useState('')
   const [panel, setPanel] = useState<BrowserPanelSnapshot>(emptyPanel)
+  const translation = useTranslate(panel.isVisible ? panel.url : '', panel.isLoading)
+  // Paywalled articles: offer the same story from other (free) outlets.
+  const [pageAccess, setPageAccess] = useState<{ url: string; title: string; signals: string[] } | null>(null)
+  const [accessHidden, setAccessHidden] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem('intoponet.paywall-bar-hidden.v1') ?? '[]') as string[] } catch { return [] }
+  })
+  useEffect(() => {
+    setPageAccess(null)
+    if (!panel.isVisible || panel.isLoading || !/^https?:/i.test(panel.url)) return
+    const url = panel.url
+    const timer = setTimeout(() => {
+      void window.intoponet.access.page().then((access) => {
+        if (!access || access.url !== url) return
+        const known = hostIsPaywalled(url, learnedPaywalls())
+        if (access.paywalled) rememberPaywall(url)
+        if (access.paywalled || known) setPageAccess({ url, title: access.title, signals: access.signals })
+      }).catch(() => undefined)
+    }, 1_200)
+    return () => clearTimeout(timer)
+  }, [panel.url, panel.isLoading, panel.isVisible])
   const [activeTopic, setActiveTopic] = useState(
     () => localStorage.getItem(topicKey) ?? 'Open knowledge',
   )
@@ -326,6 +358,7 @@ export function App() {
   const [renamingCollection, setRenamingCollection] = useState('')
   const [renameDraft, setRenameDraft] = useState('')
   const [findOpen, setFindOpen] = useState(false)
+  const [translateOpen, setTranslateOpen] = useState(false)
   const [findQuery, setFindQuery] = useState('')
   const [findResult, setFindResult] = useState<FindInPageResult | null>(null)
   const [protection, setProtection] = useState<ProtectionSnapshot>(emptyProtection)
@@ -712,7 +745,7 @@ export function App() {
       observer.disconnect()
       window.removeEventListener('resize', updateBounds)
     }
-  }, [findOpen, fullWidth, panel.isVisible, shieldOpen])
+  }, [findOpen, translateOpen, pageAccess, fullWidth, panel.isVisible, shieldOpen])
 
   useLayoutEffect(() => {
     const el = tabStrip.current
@@ -1137,6 +1170,17 @@ export function App() {
     link.download = 'intoponet-library.json'
     link.click()
     URL.revokeObjectURL(url)
+    // Absorbed pages (text, places, citations) go in a second, JSON-LD file.
+    if (knowledgeRecords.length) {
+      void window.intoponet.knowledge.exportAll().then((jsonld) => {
+        const knowledgeUrl = URL.createObjectURL(new Blob([jsonld], { type: 'application/ld+json' }))
+        const knowledgeLink = document.createElement('a')
+        knowledgeLink.href = knowledgeUrl
+        knowledgeLink.download = 'intoponet-knowledge.jsonld'
+        knowledgeLink.click()
+        setTimeout(() => URL.revokeObjectURL(knowledgeUrl), 1_000)
+      }).catch(() => setError('Absorbed pages could not be exported. The library file was saved.'))
+    }
   }
 
   const deleteLibrary = async (): Promise<void> => {
@@ -1179,6 +1223,27 @@ export function App() {
             savedAt: new Date().toISOString(),
           }),
     )
+  }
+
+  /** Where a page is about: places in its title and address, then places in its absorbed text. */
+  const pinSuggestionsFor = (title: string, url: string): Array<{ id: string; label: string; lat: number; lon: number }> => {
+    let path = ''
+    try {
+      const parsed = new URL(url)
+      path = decodeURIComponent(`${parsed.pathname} ${parsed.hash}`).replace(/[_/#-]+/g, ' ')
+    } catch {
+      // Not a URL: title only.
+    }
+    const fromText = placesNamedIn(`${title} ${path}`, 4).map((place) => ({ id: place.id, label: placeLabel(place), lat: place.lat, lon: place.lon }))
+    const absorbed = knowledgeRecords.find((record) => record.url.split('#')[0] === url.split('#')[0])
+    const fromKnowledge = (absorbed?.places ?? []).slice(0, 3).map((place) => ({ id: `know:${place.name}:${place.countryCode}`, label: place.name, lat: place.lat, lon: place.lon }))
+    const seen = new Set<string>()
+    return [...fromText, ...fromKnowledge].filter((item) => {
+      const key = item.label.toLowerCase()
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    }).slice(0, 5)
   }
 
   const openPinEditor = (bookmark?: SavedBookmark): void => {
@@ -1439,7 +1504,7 @@ export function App() {
     () => (selectedSignalId ? allGlobeSignals.find((signal) => signal.id === selectedSignalId) ?? null : null),
     [allGlobeSignals, selectedSignalId],
   )
-  const pinMarkers = useMemo<GlobeMarker[]>(() => globePrefs.pins
+  const pinMarkers = useMemo<GlobeMarker[]>(() => true /* pins always show; managed from My map */
     ? bookmarks.flatMap((bookmark) => bookmark.fieldAnchor
       ? [{ id: `pin:${bookmark.url}`, lat: bookmark.fieldAnchor.lat, lon: bookmark.fieldAnchor.lon, color: PIN_COLOR, size: 1, kind: 'pin' as const }]
       : [])
@@ -1475,7 +1540,7 @@ export function App() {
       : signals
     return [
       ...ordered.slice(0, 16).map((signal) => ({ id: signal.id, text: short(signal.title), color: GLOBE_LAYERS[signal.layer].color })),
-      ...bookmarks.filter((bookmark) => globePrefs.pins && bookmark.fieldAnchor).slice(0, 12)
+      ...bookmarks.filter((bookmark) => bookmark.fieldAnchor).slice(0, 12)
         .map((bookmark) => ({ id: `pin:${bookmark.url}`, text: short(bookmark.title || bookmark.url), color: PIN_COLOR })),
       ...(fieldView === 'personal'
         ? knowledgeRecords.flatMap((record) => record.places.slice(0, 8).map((place, index) => ({ id: `know:${record.id}:${index}`, text: place.name, color: KNOWLEDGE_COLOR, count: place.count })))
@@ -1502,6 +1567,7 @@ export function App() {
         kind={`${GLOBE_LAYERS[signal.layer].label} · ${signal.kind}`}
         detail={signal.layer === 'reading' ? signal.measurement : `${signal.measurement} · ${relativeTime(signal.observedAt, clock)}`}
         color={GLOBE_LAYERS[signal.layer].color}
+        sun={dayPhaseText(signal.lat, signal.lon, new Date(clock))}
       />
     ) : null
   }, [hoveredMarkerId, bookmarks, allGlobeSignals, clock, knowledgeRecords])
@@ -1514,9 +1580,12 @@ export function App() {
     return focusedPlace ? base.slice(0, 40) : interleaveLayers(base).slice(0, 40)
   }, [focusedPlace, visibleGlobeSignals, listView])
   const risingTerms = newsDigest?.rising ?? []
+  const [worldStory, setWorldStory] = useState<GlobalStory | null>(null)
   const termEmphasis = useMemo(
-    () => (activeTerm ? new Set(activeTerm.recentCountries.map((code) => `news:country:${code}`)) : null),
-    [activeTerm],
+    () => (activeTerm
+      ? new Set(activeTerm.recentCountries.map((code) => `news:country:${code}`))
+      : worldStory && listView === 'world' ? new Set(worldStory.countries.map((code) => `news:country:${code}`)) : null),
+    [activeTerm, worldStory, listView],
   )
 
   /** Which history thread a signal leads to, if any. */
@@ -1539,6 +1608,38 @@ export function App() {
       if (request !== oldsRequest.current) return
       setOlds({ stack, state: { status: 'error', label: top.label, message: reason instanceof Error && /network|fetch|timed out|ENOTFOUND/i.test(reason.message) ? 'Could not reach Wikidata. Check your connection and try again.' : 'No sourced history could be found for this.' } })
     })
+  }
+  /** The Olds for what you're looking at: the selected signal, the focused place, or the country in view. */
+  const oldsHere = (): { query: OldsQuery; label: string } | null => {
+    if (selectedSignal) {
+      const target = oldsQueryFor(selectedSignal)
+      if (target) return target
+    }
+    if (focusedPlace) {
+      return focusedPlace.kind === 'country'
+        ? { query: { kind: 'country', countryCode: focusedPlace.countryCode }, label: focusedPlace.name }
+        : { query: { kind: 'wikipedia', title: focusedPlace.name }, label: focusedPlace.name }
+    }
+    // The live camera's centre point (the saved pose can lag behind a drag).
+    const sinPhi = Math.sin(pose.phi)
+    const lat = globeProjection.centerLat ?? Math.asin(Math.max(-1, Math.min(1, Math.cos(pose.phi)))) * 180 / Math.PI
+    const lon = globeProjection.centerLon ?? Math.atan2(-sinPhi * Math.cos(pose.theta), sinPhi * Math.sin(pose.theta)) * 180 / Math.PI
+    const nearest = nearestCountry(lat, lon)
+    return nearest ? { query: { kind: 'country', countryCode: nearest.place.countryCode }, label: nearest.place.name } : null
+  }
+  const openOldsHere = (): void => {
+    if (olds) { closeOlds(); return }
+    const target = oldsHere()
+    if (target) loadOlds([target])
+  }
+  /** The history behind a news story: matched to a topic, then traced back through sourced links. */
+  const openOldsForHeadline = (headline: NewsHeadline, englishText: string | null, signal: GlobeSignal | null): void => {
+    const country = signal
+      ? signal.id.match(/^news:country:([A-Z]{2})$/)?.[1] ?? (signal.layer === 'news' ? nearestCountry(signal.lat, signal.lon)?.place.countryCode : undefined)
+      : undefined
+    const lang = englishText ? undefined : normalizeLanguage(headline.lang)?.split('-')[0]
+    const text = (englishText ?? headline.title).slice(0, 400)
+    loadOlds([{ query: { kind: 'headline' as const, text, ...(country ? { countryCode: country } : {}), ...(lang && lang !== 'en' ? { lang } : {}) }, label: text.length > 60 ? `${text.slice(0, 57)}…` : text }])
   }
   const openOldsFor = (signal: GlobeSignal): void => {
     const target = oldsQueryFor(signal)
@@ -1666,6 +1767,21 @@ export function App() {
     void window.intoponet.captures.setPageHidden(false)
   }
 
+  // Only one of Bookmarks, The Olds, Knowledge and My map is open at a time: whichever opened last wins,
+  // however it was opened (top bar, shortcut, or a link inside another panel).
+  const panelsOpen = useRef({ bookmarks: bookmarksOpen, olds: !!olds, knowledge: !!knowledgeView, library: libraryOpen })
+  useEffect(() => {
+    const now = { bookmarks: bookmarksOpen, olds: !!olds, knowledge: !!knowledgeView, library: libraryOpen }
+    const before = panelsOpen.current
+    const opened = (Object.keys(now) as Array<keyof typeof now>).find((key) => now[key] && !before[key])
+    panelsOpen.current = now
+    if (!opened) return
+    if (opened !== 'bookmarks' && now.bookmarks) setBookmarksOpen(false)
+    if (opened !== 'olds' && now.olds) closeOlds()
+    if (opened !== 'knowledge' && now.knowledge) closeKnowledge()
+    if (opened !== 'library' && now.library) setLibraryOpen(false)
+  }, [bookmarksOpen, olds, knowledgeView, libraryOpen]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const toggleGlobeLayer = (layer: GlobeLayerId): void => {
     const next = globeLayerSet.has(layer) ? globePrefs.layers.filter((item) => item !== layer) : [...globePrefs.layers, layer]
     updateGlobePrefs({ layers: GLOBE_LAYER_ORDER.filter((item) => next.includes(item)) })
@@ -1695,6 +1811,7 @@ export function App() {
         onMarkerHover={setHoveredMarkerId}
         onMarkerSelect={selectGlobeMarker}
         markerEmphasis={termEmphasis}
+        dayNight
         membraneSettings={activityMembraneSettings}
         onOrganicMetrics={diagnosticsOpen ? setOrganicMetrics : undefined}
         onDistanceChange={(radius) => {
@@ -1836,6 +1953,16 @@ export function App() {
             <Bookmark size={14} />
             Bookmarks
           </button>
+          <button
+            type="button"
+            className="bookmark-library-button"
+            aria-pressed={!!olds}
+            onClick={openOldsHere}
+            title="The Olds: sourced history of what you're looking at (the selected place, or the country in the middle of the globe)"
+          >
+            <History size={14} />
+            The Olds
+          </button>
           <button type="button" className="bookmark-library-button" onClick={() => openKnowledge(null)} title="Your knowledge: everything you’ve absorbed">
             <BookOpenText size={14} />
             Knowledge
@@ -1853,6 +1980,7 @@ export function App() {
         <PinEditor
           initial={pinEditor.initial}
           locations={pinLocationOptions}
+          suggestions={pinSuggestionsFor(pinEditor.initial.title, pinEditor.initial.url)}
           onCancel={() => finishPinEditor(pinEditor.restoreBrowser, pinEditor.restoreFullWidth)}
           onSave={savePin}
         />
@@ -1883,11 +2011,17 @@ export function App() {
           layers={globeLayerSet}
           counts={layerCounts(windowGlobeSignals)}
           onToggleLayer={toggleGlobeLayer}
+          onSetLayers={(group, on) => {
+            const next = on ? [...new Set([...globePrefs.layers, ...group])] : globePrefs.layers.filter((item) => !group.includes(item))
+            updateGlobePrefs({ layers: GLOBE_LAYER_ORDER.filter((item) => next.includes(item)) })
+          }}
           window={globePrefs.window}
           onWindowChange={(window) => updateGlobePrefs({ window })}
           pinsVisible={globePrefs.pins}
           pinCount={bookmarks.filter((bookmark) => bookmark.fieldAnchor).length}
           onTogglePins={() => updateGlobePrefs({ pins: !globePrefs.pins })}
+          dayNight={globePrefs.dayNight}
+          onToggleDayNight={() => updateGlobePrefs({ dayNight: !globePrefs.dayNight })}
           coverageNote={eligiblePublicSnapshot?.coverageNote ?? 'No public snapshot yet.'}
           placesAttribution={PLACE_ATTRIBUTION}
           personal={(
@@ -1949,6 +2083,24 @@ export function App() {
           risingTerms={risingTerms}
           activeTerm={activeTerm}
           onTerm={setActiveTerm}
+          translation={translation}
+          onHeadlineHistory={openOldsForHeadline}
+          peers={windowGlobeSignals}
+          contextFor={(signal) => {
+            if (signal.layer !== 'news') return null
+            const code = signal.id.match(/^news:country:([A-Z]{2})$/)?.[1] ?? nearestCountry(signal.lat, signal.lon)?.place.countryCode
+            if (!code) return null
+            return { countryCode: code, name: code === signal.id.match(/^news:country:([A-Z]{2})$/)?.[1] ? signal.title : countryPlace(code)?.name ?? code }
+          }}
+          world={{
+            stories: newsDigest?.global ?? [],
+            inTheNews: newsDigest?.inTheNews ?? [],
+            focusedId: worldStory?.id ?? null,
+            onFocus: setWorldStory,
+            onArticleHistory: (title) => loadOlds([{ query: { kind: 'wikipedia' as const, title }, label: title }]),
+          }}
+          onContextName={(name, countryCode, countryName) => loadOlds([{ query: { kind: 'headline' as const, text: `${name} ${countryName}`, countryCode }, label: `${name} · ${countryName}` }])}
+          onOldsTopic={(node) => loadOlds([{ query: { kind: 'qid' as const, qid: node.id }, label: node.label }])}
           emptyText={eligiblePublicSnapshot
             ? focusedPlace ? 'No public signals observed near here in this window. That means no coverage, not no interest.' : 'Turn on a layer to see public signals.'
             : 'Loading public data…'}
@@ -2004,6 +2156,11 @@ export function App() {
             onBack={olds.stack.length > 1 ? () => loadOlds(olds.stack.slice(0, -1)) : null}
             onClose={closeOlds}
             onOpen={(url) => void window.intoponet.browserHost.open({ kind: 'url', value: url })}
+            onPickTopic={(topic) => {
+              const top = olds.stack[olds.stack.length - 1]
+              if (top?.query.kind === 'headline') loadOlds([...olds.stack.slice(0, -1), { query: { ...top.query, topic }, label: top.label }])
+            }}
+            onFollowArticle={(title) => loadOlds([...olds.stack, { query: { kind: 'wikipedia' as const, title }, label: title }].slice(-12))}
           />
         )}
       </AnimatePresence>
@@ -2133,7 +2290,7 @@ export function App() {
         )}
       </aside>}
       {libraryOpen && (
-        <aside className="bookmark-drawer" aria-labelledby="bookmark-heading">
+        <aside className="bookmark-drawer lg-surface" aria-labelledby="bookmark-heading">
           <div className="drawer-heading">
             <div>
               <span>Private library</span>
@@ -2213,7 +2370,7 @@ export function App() {
                       onClick={() => openRecent(page)}
                     >
                       <strong>{page.title || originLabel(page.url)}</strong>
-                      <span>{originLabel(page.url)}</span>
+                      <span className="origin-line"><SiteIcon url={page.url} />{originLabel(page.url)}</span>
                     </button>
                   </li>
                 ))}
@@ -2238,7 +2395,7 @@ export function App() {
                         onClick={() => openBookmark(bookmark)}
                       >
                         <strong>{bookmark.title}</strong>
-                        <span>{originLabel(bookmark.url)}</span>
+                        <span className="origin-line"><SiteIcon url={bookmark.url} />{originLabel(bookmark.url)}</span>
                         <small>Topic · {bookmark.topic}</small>
                       </button>
                       <div className="bookmark-pin-actions">
@@ -2440,7 +2597,7 @@ export function App() {
                                   onClick={() => openBookmark(bookmark)}
                                 >
                                   <strong>{bookmark.title}</strong>
-                                  <span>{originLabel(bookmark.url)}</span>
+                                  <span className="origin-line"><SiteIcon url={bookmark.url} />{originLabel(bookmark.url)}</span>
                                 </button>
                               </li>
                             ))}
@@ -2544,6 +2701,23 @@ export function App() {
                     )}
                 </button>
               </div>
+              {(() => {
+                const detected = translation.page.status === 'idle' ? translation.page.detected : null
+                const offer = !!detected && detected !== translation.target && translation.supported(detected)
+                const active = translation.page.status === 'translated' || translation.page.status === 'translating'
+                return (
+                  <button
+                    type="button"
+                    className={`translate-toggle${translateOpen || active ? ' selected' : ''}${offer ? ' has-offer' : ''}`}
+                    aria-label={active ? 'Translation: showing translated page' : offer ? 'Translate this page' : 'Translate'}
+                    aria-expanded={translateOpen}
+                    title={offer ? 'This page can be translated on this Mac' : 'Translate (on this Mac)'}
+                    onClick={() => setTranslateOpen((open) => !open)}
+                  >
+                    <Languages size={15} />
+                  </button>
+                )
+              })()}
               <AnimatePresence mode="popLayout" initial={false}>
                 {recorder.state.status !== 'idle' ? (
                   <RecordingPill key="rec" state={recorder.state} onStop={() => void recorder.stop()} />
@@ -2650,6 +2824,27 @@ export function App() {
               </button>
             </div>
           </div>
+          {translateOpen && <TranslateBar model={translation} onClose={() => setTranslateOpen(false)} />}
+          {pageAccess && pageAccess.url === panel.url && !accessHidden.includes(hostOf(pageAccess.url)) && (
+            <FreeCoverageBar
+              title={pageAccess.title || panel.title}
+              url={pageAccess.url}
+              signals={pageAccess.signals}
+              candidates={[
+                ...(newsDigest?.global ?? []).flatMap((story) => story.headlines),
+                ...(newsDigest?.countries ?? []).flatMap((country) => country.headlines.map((headline) => ({ ...headline, countryCode: country.countryCode }))),
+                ...(newsDigest?.places ?? []).flatMap((place) => place.headlines.map((headline) => ({ ...headline, countryCode: place.countryCode }))),
+                ...(newsDigest?.rising ?? []).flatMap((term) => term.headlines),
+              ]}
+              onOpen={(url) => void window.intoponet.browserHost.open({ kind: 'url', value: url })}
+              onSearch={(query) => void window.intoponet.browserHost.open({ kind: 'search', value: query })}
+              onClose={() => {
+                const next = [...new Set([hostOf(pageAccess.url), ...accessHidden])].slice(0, 300)
+                setAccessHidden(next)
+                try { localStorage.setItem('intoponet.paywall-bar-hidden.v1', JSON.stringify(next)) } catch { /* convenience only */ }
+              }}
+            />
+          )}
           {findOpen && (
             <form
               className="find-bar"

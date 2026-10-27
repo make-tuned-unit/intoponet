@@ -169,9 +169,10 @@ export function nodeFromEntity(entity: WikidataEntity, lang = 'en'): OldsNode | 
 
 type DraftCitation = { url: string | null; statedIn: string | null }
 
-function referenceCitations(statement: Statement): { drafts: DraftCitation[]; count: number } {
+function referenceCitations(statement: Statement): { drafts: DraftCitation[]; count: number; imported: boolean } {
   const references = Array.isArray(statement.references) ? statement.references : []
   const drafts: DraftCitation[] = []
+  const imported = references.some((reference) => Array.isArray(reference.snaks?.['P143']) || Array.isArray(reference.snaks?.['P4656']))
   for (const reference of references) {
     const urlSnak = reference.snaks?.['P854']?.[0]
     const url = urlSnak?.snaktype === 'value' ? safeHttps(urlSnak.datavalue?.value) : null
@@ -179,10 +180,10 @@ function referenceCitations(statement: Statement): { drafts: DraftCitation[]; co
     // "imported from Wikimedia project" (P143) alone is not a citation.
     if (url || statedIn) drafts.push({ url, statedIn })
   }
-  return { drafts, count: drafts.length }
+  return { drafts, count: drafts.length, imported }
 }
 
-export type DraftEdge = Omit<OldsEdge, 'citations'> & { citationDrafts: DraftCitation[] }
+export type DraftEdge = Omit<OldsEdge, 'citations'> & { citationDrafts: DraftCitation[]; supportLevel?: 'referenced' | 'wiki-imported' | 'unreferenced' | 'article' }
 
 /** One-hop edges from the root entity's statements, per RELATIONS. */
 export function edgesFromEntity(root: WikidataEntity): DraftEdge[] {
@@ -202,7 +203,7 @@ export function edgesFromEntity(root: WikidataEntity): DraftEdge[] {
       const key = `${from}|${to}|${relation.type}|${relation.property}`
       if (seen.has(key)) continue
       seen.add(key)
-      const { drafts, count } = referenceCitations(statement)
+      const { drafts, count, imported } = referenceCitations(statement)
       edges.push({
         from,
         to,
@@ -213,6 +214,7 @@ export function edgesFromEntity(root: WikidataEntity): DraftEdge[] {
         statementUrl: `https://www.wikidata.org/wiki/${root.id}#${relation.property}`,
         citationDrafts: drafts,
         referenceCount: count,
+        supportLevel: count > 0 ? 'referenced' : imported ? 'wiki-imported' : 'unreferenced',
       })
     }
   }

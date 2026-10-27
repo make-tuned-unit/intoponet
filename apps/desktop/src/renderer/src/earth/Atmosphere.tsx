@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { AdditiveBlending, BackSide, Color, FrontSide, ShaderMaterial } from 'three'
+import { AdditiveBlending, BackSide, Color, FrontSide, ShaderMaterial, Vector3 } from 'three'
 
 /*
  * Restrained atmospheric limb (spec §1/§9). Two cheap Fresnel shells,
@@ -58,7 +58,7 @@ function shellMaterial(fragmentShader: string, side: typeof BackSide | typeof Fr
     fragmentShader,
     uniforms: {
       uColor: { value: new Color(color) },
-      uSunDirection: { value: sun.map((value) => value / length) },
+      uSunDirection: { value: new Vector3(...sun).divideScalar(length) },
       uIntensity: { value: intensity },
     },
     side,
@@ -68,11 +68,15 @@ function shellMaterial(fragmentShader: string, side: typeof BackSide | typeof Fr
   })
 }
 
-export function Atmosphere({ dimmed = false }: { dimmed?: boolean }) {
+/** sunDirection: unit vector toward the real sun; omitted keeps the studio key light. */
+export function Atmosphere({ dimmed = false, sunDirection }: { dimmed?: boolean; sunDirection?: readonly [number, number, number] | null }) {
   const halo = useMemo(() => shellMaterial(haloFragment, BackSide, '#2f8fb0', 0.55), [])
   const rim = useMemo(() => shellMaterial(rimFragment, FrontSide, '#3fb6c9', 0.42), [])
   halo.uniforms.uIntensity!.value = dimmed ? 0.3 : 0.55
   rim.uniforms.uIntensity!.value = dimmed ? 0.22 : 0.42
+  const direction = sunDirection ?? sun.map((value) => value / Math.hypot(...sun))
+  ;(halo.uniforms.uSunDirection!.value as Vector3).set(direction[0]!, direction[1]!, direction[2]!)
+  ;(rim.uniforms.uSunDirection!.value as Vector3).set(direction[0]!, direction[1]!, direction[2]!)
   return (
     <>
       <mesh renderOrder={-1}>

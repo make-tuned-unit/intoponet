@@ -27,6 +27,7 @@ export function FrequencyField({
   onPoseChange,
   onDiagnostics,
   onOrganicMetrics,
+  dayNight = false,
 }: {
   paused?: boolean
   panelOpen?: boolean
@@ -48,6 +49,7 @@ export function FrequencyField({
   onPoseChange?: ((pose: OrbitPose) => void) | undefined
   onDiagnostics?: ((diagnostics: MembraneDiagnostics) => void) | undefined
   onOrganicMetrics?: ((metrics: OrganicMembraneMetrics) => void) | undefined
+  dayNight?: boolean
 }) {
   const [pageHidden, setPageHidden] = useState(
     () => typeof document !== 'undefined' && document.hidden,
@@ -79,6 +81,7 @@ export function FrequencyField({
       onPoseChange={onPoseChange}
       onDiagnostics={onDiagnostics}
       onOrganicMetrics={onOrganicMetrics}
+      dayNight={dayNight}
     />
   )
 }

@@ -92,6 +92,7 @@ export type KnowledgeCommand =
   | { type: 'update'; id: string; note?: string | null; removeEntities?: string[]; title?: string }
   | { type: 'reindex'; id: string }
   | { type: 'remove-all' }
+  | { type: 'export' }
 
 export interface KnowledgeApi {
   preview(scope: AbsorbScope): Promise<AbsorbPreview | AbsorbRefusal>
@@ -104,6 +105,8 @@ export interface KnowledgeApi {
   update(id: string, patch: { note?: string | null; removeEntities?: string[]; title?: string }): Promise<KnowledgeRecord>
   reindex(id: string): Promise<KnowledgeRecord>
   removeAll(): Promise<void>
+  /** Every absorbed page with its text, places and citations, as JSON-LD (schema.org). */
+  exportAll(): Promise<string>
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -149,6 +152,7 @@ export function parseKnowledgeCommand(value: unknown): KnowledgeCommand {
     case 'cancel':
       return { type: 'cancel', previewId: parseId(value['previewId'], 'preview') }
     case 'list':
+    case 'export':
     case 'remove-all':
       return { type: value['type'] }
     case 'get':

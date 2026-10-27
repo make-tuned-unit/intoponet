@@ -527,7 +527,7 @@ textarea:focus-visible {
 
 .drawer-tabs {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: repeat(4, 1fr);
   gap: 4px;
   padding: 8px 10px 0;
 }
@@ -1503,3 +1503,33 @@ button.origin-badge,
 
 .field-preview-diagnostics { font-size: 11px; margin-top: 8px; }
 .field-preview-diagnostics pre { max-height: 180px; overflow: auto; font-size: 10px; white-space: pre-wrap; }
+
+/* Reading panels share one glass: the strong fill keeps text legible over the moving globe. */
+.bookmark-drawer.lg-surface {
+  border-radius: 22px;
+  background: var(--lg-fill-strong);
+}
+
+.library-tools {
+  padding: 8px 14px 0;
+}
+
+.library-tools button {
+  height: 28px;
+  padding: 0 12px;
+  color: var(--warm-white);
+  border: 1px solid rgba(214, 246, 241, 0.16);
+  border-radius: 9px;
+  background: rgba(205, 245, 240, 0.05);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.library-tools button:hover { background: var(--lg-hover); }
+.library-tools button:last-child { color: #ffb4a3; border-color: rgba(255, 180, 163, 0.3); }
+
+.origin-line { display: inline-flex; align-items: center; gap: 6px; }
+.site-icon { flex: none; border-radius: 3px; background: rgba(255, 255, 255, 0.9); padding: 1px; }
+/* The shared glass class sets position: relative; the drawer floats at the right edge. */
+.bookmark-drawer.lg-surface { position: absolute; }

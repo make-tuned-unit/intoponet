@@ -1,0 +1,68 @@
+/* Free coverage bar: under the page toolbar, like the translate bar. */
+.free-coverage {
+  flex: 0 0 auto;
+  display: grid;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--hairline);
+  background: rgba(7, 17, 27, 0.78);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.fc-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.fc-head > svg { flex: none; color: #e7c98f; }
+.fc-head > span:not(.fc-spacer) { min-width: 0; color: var(--warm-white); }
+.fc-spacer { flex: 1; }
+
+.fc-search,
+.fc-close {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 10px;
+  color: var(--warm-white);
+  border: 1px solid rgba(214, 246, 241, 0.16);
+  border-radius: 8px;
+  background: rgba(205, 245, 240, 0.05);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.fc-close { width: 26px; justify-content: center; padding: 0; border-color: transparent; background: transparent; }
+
+.fc-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 4px 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fc-list button {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 2px 8px;
+  width: 100%;
+  padding: 6px 9px;
+  color: var(--warm-white);
+  border: 1px solid rgba(126, 224, 207, 0.18);
+  border-radius: 10px;
+  background: rgba(126, 224, 207, 0.05);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fc-list button:hover { background: rgba(126, 224, 207, 0.12); }
+.fc-list strong { grid-column: 1; overflow: hidden; font-size: 12px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.fc-list small { grid-column: 1; display: inline-flex; align-items: center; gap: 3px; color: var(--muted); font-size: 10.5px; }
+.fc-list button > svg { grid-column: 2; grid-row: 1 / span 2; color: var(--muted); }
+
+/* Lock beside paywalled outlets in headline lists */
+.paywall-lock { display: inline-flex; align-items: center; gap: 2px; margin-left: 4px; color: #e7c98f; }

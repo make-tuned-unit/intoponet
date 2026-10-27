@@ -173,12 +173,14 @@ function fakeKnowledge(documents: KnowledgeDocument[]) {
       if (!found) throw new Error('missing')
       return found
     },
+    // Whole-word matches of four letters or more, scored by how many words match (like BM25, minus the weighting).
     search: async (query: string): Promise<KnowledgeHit[]> => {
-      const terms = query.toLowerCase().split(/\s+/)
+      const terms = (query.toLowerCase().match(/\p{L}{4,}/gu) ?? [])
       return documents.flatMap((doc) => {
-        const index = doc.paragraphs.findIndex((paragraph) => terms.some((term) => paragraph.toLowerCase().includes(term)))
-        return index < 0 ? [] : [{ recordId: doc.id, url: doc.url, title: doc.title, paragraphIndex: index, snippet: doc.paragraphs[index]!, matches: [], score: 1 }]
-      })
+        const scored = doc.paragraphs.map((paragraph, index) => ({ index, score: terms.filter((term) => new RegExp(`\\b${term}\\b`).test(paragraph.toLowerCase())).length }))
+        const best = scored.sort((a, b) => b.score - a.score)[0]
+        return !best || best.score === 0 ? [] : [{ recordId: doc.id, url: doc.url, title: doc.title, paragraphIndex: best.index, snippet: doc.paragraphs[best.index]!, matches: [], score: best.score }]
+      }).sort((a, b) => b.score - a.score)
     },
   }
 }

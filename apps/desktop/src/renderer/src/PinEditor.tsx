@@ -1,5 +1,6 @@
-import { useState, type FormEvent } from 'react'
-import { MapPin, X } from 'lucide-react'
+import { useMemo, useState, type FormEvent } from 'react'
+import { MapPin, Search, Sparkles, X } from 'lucide-react'
+import { placeLabel, searchPlaces } from '../../shared/places/places'
 import './PinEditor.css'
 
 export type MapFieldAnchor = { lat: number; lon: number; label: string }
@@ -15,11 +16,14 @@ export type PinEditorValue = {
 export function PinEditor({
   initial,
   locations,
+  suggestions = [],
   onCancel,
   onSave,
 }: {
   initial: PinEditorValue
   locations: PinLocationOption[]
+  /** Places named in the page (title, address, absorbed text): offered, never placed without saving. */
+  suggestions?: PinLocationOption[]
   onCancel: () => void
   onSave: (value: PinEditorValue) => void
 }) {
@@ -27,15 +31,36 @@ export function PinEditor({
   const [title, setTitle] = useState(initial.title)
   const [topic, setTopic] = useState(initial.topic)
   const [note, setNote] = useState(initial.note)
-  const matchingLocation = initial.fieldAnchor
-    ? locations.find((location) => location.lat === initial.fieldAnchor?.lat && location.lon === initial.fieldAnchor?.lon)
-    : undefined
-  const [locationChoice, setLocationChoice] = useState(
-    initial.fieldAnchor ? matchingLocation ? `known:${matchingLocation.id}` : 'custom' : '',
-  )
+  // The pin's place: the saved one, else the page's first suggestion (shown as suggested; saving confirms it).
+  const [anchor, setAnchor] = useState<MapFieldAnchor | null>(initial.fieldAnchor ?? (suggestions[0] ? { lat: suggestions[0].lat, lon: suggestions[0].lon, label: suggestions[0].label } : null))
+  const [suggested, setSuggested] = useState(!initial.fieldAnchor && !!suggestions[0])
+  const [query, setQuery] = useState('')
+  const [searching, setSearching] = useState(false)
+  const [active, setActive] = useState(0)
+  const [custom, setCustom] = useState(false)
   const [customLabel, setCustomLabel] = useState(initial.fieldAnchor?.label ?? '')
   const [customLat, setCustomLat] = useState(initial.fieldAnchor ? String(initial.fieldAnchor.lat) : '')
   const [customLon, setCustomLon] = useState(initial.fieldAnchor ? String(initial.fieldAnchor.lon) : '')
+  const results = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (q.length < 2) return [] as Array<PinLocationOption & { hint: string }>
+    const used = locations.filter((location) => location.label.toLowerCase().includes(q)).slice(0, 3).map((location) => ({ ...location, hint: 'Used before' }))
+    const places = searchPlaces(query, 7).map((place) => ({ id: place.id, label: placeLabel(place), lat: place.lat, lon: place.lon, hint: place.kind === 'country' ? 'Country' : place.kind === 'region' ? `Region · ${place.country}` : place.country }))
+    const seen = new Set<string>()
+    return [...used, ...places].filter((item) => {
+      const key = `${item.label}|${item.lat.toFixed(2)}|${item.lon.toFixed(2)}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    }).slice(0, 8)
+  }, [query, locations])
+  const choose = (option: PinLocationOption, fromSuggestion = false): void => {
+    setAnchor({ lat: option.lat, lon: option.lon, label: option.label.slice(0, 160) })
+    setSuggested(fromSuggestion)
+    setQuery('')
+    setSearching(false)
+    setCustom(false)
+  }
   const [error, setError] = useState('')
 
   const submit = (event: FormEvent): void => {
@@ -58,14 +83,9 @@ export function PinEditor({
     }
 
     let fieldAnchor: MapFieldAnchor | undefined
-    if (locationChoice.startsWith('known:')) {
-      const selected = locations.find((location) => `known:${location.id}` === locationChoice)
-      if (!selected) {
-        setError('Choose a listed location or clear the location field.')
-        return
-      }
-      fieldAnchor = { lat: selected.lat, lon: selected.lon, label: selected.label.trim().slice(0, 160) }
-    } else if (locationChoice === 'custom') {
+    if (!custom && anchor) {
+      fieldAnchor = { lat: anchor.lat, lon: anchor.lon, label: anchor.label.trim().slice(0, 160) }
+    } else if (custom) {
       if (!customLat.trim() || !customLon.trim()) {
         setError('Enter both latitude and longitude, or choose no geographic location.')
         return
@@ -122,15 +142,67 @@ export function PinEditor({
           <span>Topic or tag</span>
           <input value={topic} onChange={(event) => setTopic(event.target.value)} maxLength={80} />
         </label>
-        <label>
-          <span>Map location <small>optional</small></span>
-          <select value={locationChoice} onChange={(event) => setLocationChoice(event.target.value)}>
-            <option value="">No geographic location</option>
-            {locations.map((location) => <option key={location.id} value={`known:${location.id}`}>{location.label}</option>)}
-            <option value="custom">Enter coordinates</option>
-          </select>
-        </label>
-        {locationChoice === 'custom' && (
+        <div className="pin-editor-place">
+          <span className="pin-editor-place-label">Map location <small>optional</small></span>
+          {anchor && !searching && !custom ? (
+            <div className="pin-editor-chosen">
+              <MapPin size={14} aria-hidden="true" />
+              <span>
+                <strong>{anchor.label}</strong>
+                <small>{suggested ? 'Suggested from this page · ' : ''}{anchor.lat.toFixed(2)}, {anchor.lon.toFixed(2)}</small>
+              </span>
+              <button type="button" onClick={() => { setSearching(true); setQuery('') }}>Change</button>
+              <button type="button" aria-label="No map location" title="No map location" onClick={() => { setAnchor(null); setSuggested(false) }}><X size={13} /></button>
+            </div>
+          ) : !custom ? (
+            <div className="pin-editor-search">
+              <Search size={14} aria-hidden="true" />
+              <input
+                value={query}
+                placeholder="Search a city, region or country…"
+                aria-label="Search for a place to pin this page"
+                role="combobox"
+                aria-expanded={results.length > 0}
+                aria-controls="pin-place-results"
+                aria-activedescendant={results[active] ? `pin-place-${active}` : undefined}
+                autoFocus={searching}
+                onChange={(event) => { setQuery(event.target.value); setActive(0) }}
+                onKeyDown={(event) => {
+                  if (event.key === 'ArrowDown') { event.preventDefault(); setActive((index) => Math.min(results.length - 1, index + 1)) }
+                  if (event.key === 'ArrowUp') { event.preventDefault(); setActive((index) => Math.max(0, index - 1)) }
+                  if (event.key === 'Enter' && results[active]) { event.preventDefault(); choose(results[active]!) }
+                  if (event.key === 'Escape' && searching && anchor) { event.preventDefault(); event.stopPropagation(); setSearching(false) }
+                }}
+              />
+              {results.length > 0 && (
+                <ul id="pin-place-results" role="listbox" className="pin-editor-results">
+                  {results.map((result, index) => (
+                    <li key={`${result.id}-${index}`} id={`pin-place-${index}`} role="option" aria-selected={index === active}>
+                      <button type="button" className={index === active ? 'is-active' : ''} onMouseEnter={() => setActive(index)} onClick={() => choose(result)}>
+                        <strong>{result.label}</strong>
+                        <small>{result.hint}</small>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ) : null}
+          {suggestions.length > 0 && !custom && (searching || !anchor || suggestions.length > 1) && (
+            <div className="pin-editor-suggestions">
+              <span><Sparkles size={11} aria-hidden="true" /> From this page:</span>
+              {suggestions.map((suggestion) => (
+                <button key={suggestion.id} type="button" className={anchor && anchor.label === suggestion.label ? 'is-chosen' : ''} onClick={() => choose(suggestion, true)}>
+                  {suggestion.label}
+                </button>
+              ))}
+            </div>
+          )}
+          <button type="button" className="pin-editor-link" onClick={() => setCustom((value) => !value)}>
+            {custom ? 'Search places instead' : 'Enter coordinates instead'}
+          </button>
+        </div>
+        {custom && (
           <div className="pin-editor-coordinates">
             <label><span>Location label</span><input value={customLabel} onChange={(event) => setCustomLabel(event.target.value)} maxLength={160} /></label>
             <label><span>Latitude</span><input type="number" min="-90" max="90" step="any" value={customLat} onChange={(event) => setCustomLat(event.target.value)} /></label>
@@ -143,7 +215,7 @@ export function PinEditor({
           <textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} rows={3} />
         </label>
         {error && <p className="pin-editor-error" role="alert">{error}</p>}
-        <p className="pin-editor-footnote">Saved only in your private library. No location is inferred from the page.</p>
+        <p className="pin-editor-footnote">Saved only in your private library. Suggestions come from the page's title, address and absorbed text; nothing is placed until you save.</p>
         <div className="pin-editor-actions">
           <button type="button" onClick={onCancel}>Cancel</button>
           <button type="submit">Save to My map</button>

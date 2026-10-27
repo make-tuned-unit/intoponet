@@ -1,3 +1,4 @@
+import { translateChannels, type TranslateApi, type TranslateCommand, type TranslateEvent, type TranslateStatus, type PageTranslationState } from '@intoponet/browser-api'
 import { layaChannels, type LayaApi, type LayaCommand, type LayaHit, type LayaPassage, type LayaProgress, type LayaRelated, type LayaStatus, type LayaTheme } from '@intoponet/browser-api'
 import { knowledgeChannels, oldsChannels, type AbsorbPreview, type AbsorbRefusal, type KnowledgeApi, type KnowledgeCommand, type KnowledgeDocument, type KnowledgeHit, type KnowledgeRecord, type OldsApi, type OldsQuery, type OldsThread } from '@intoponet/browser-api'
 import { contextBridge, ipcRenderer } from 'electron'
@@ -168,6 +169,7 @@ const knowledge: KnowledgeApi = {
   update: (id, patch) => knowledgeInvoke({ type: 'update', id, ...patch }) as Promise<KnowledgeRecord>,
   reindex: (id) => knowledgeInvoke({ type: 'reindex', id }) as Promise<KnowledgeRecord>,
   removeAll: async () => { await knowledgeInvoke({ type: 'remove-all' }) },
+  exportAll: () => knowledgeInvoke({ type: 'export' }) as Promise<string>,
 }
 
 const layaInvoke = (command: LayaCommand): Promise<unknown> => ipcRenderer.invoke(layaChannels.command, command)
@@ -187,4 +189,28 @@ const laya: LayaApi = {
   },
 }
 
-contextBridge.exposeInMainWorld('intoponet', Object.freeze({ browserHost, captures, olds, knowledge, laya }))
+const translateInvoke = (command: TranslateCommand): Promise<unknown> => ipcRenderer.invoke(translateChannels.command, command)
+const translate: TranslateApi = {
+  status: () => translateInvoke({ type: 'status' }) as Promise<TranslateStatus>,
+  install: (code) => translateInvoke({ type: 'install', code }) as Promise<TranslateStatus>,
+  remove: (code) => translateInvoke({ type: 'remove', code }) as Promise<TranslateStatus>,
+  translate: ({ from, to, texts, html }) => translateInvoke({ type: 'translate', from, to, texts, html: html ?? false }) as Promise<string[]>,
+  pageState: () => translateInvoke({ type: 'page-state' }) as Promise<PageTranslationState>,
+  translatePage: (from, to) => translateInvoke({ type: 'page-translate', from, to }) as Promise<PageTranslationState>,
+  restorePage: () => translateInvoke({ type: 'page-restore' }) as Promise<PageTranslationState>,
+  subscribe: (listener) => {
+    const handler = (_event: Electron.IpcRendererEvent, event: TranslateEvent): void => listener(event)
+    ipcRenderer.on(translateChannels.event, handler)
+    return () => { ipcRenderer.removeListener(translateChannels.event, handler) }
+  },
+}
+
+const access = {
+  page: () => ipcRenderer.invoke('intoponet:page-access') as Promise<{ url: string; title: string; paywalled: boolean; signals: string[]; doi: string | null } | null>,
+}
+
+const favicons = {
+  get: (hosts: string[]) => ipcRenderer.invoke('intoponet:favicons', hosts) as Promise<Record<string, string>>,
+}
+
+contextBridge.exposeInMainWorld('intoponet', Object.freeze({ browserHost, captures, olds, knowledge, laya, translate, favicons, access }))

@@ -1,0 +1,135 @@
+import { normalizeLanguage } from '@intoponet/browser-api'
+
+/**
+ * Small, dependency-free language guess for page text: the page's declared
+ * language when it is plausible, then writing system, then common-word
+ * counts for Latin-script languages. It is a suggestion the user can change,
+ * not a classifier.
+ */
+
+const SCRIPTS: Array<[RegExp, string]> = [
+  [/[぀-ヿ]/g, 'ja'],
+  [/[가-힯ᄀ-ᇿ]/g, 'ko'],
+  [/[฀-๿]/g, 'th'],
+  [/[֐-׿]/g, 'he'],
+  [/[Ͱ-Ͽ]/g, 'el'],
+  [/[ঀ-৿]/g, 'bn'],
+  [/[஀-௿]/g, 'ta'],
+  [/[ఀ-౿]/g, 'te'],
+  [/[ಀ-೿]/g, 'kn'],
+  [/[ഀ-ൿ]/g, 'ml'],
+  [/[઀-૿]/g, 'gu'],
+  [/[ऀ-ॿ]/g, 'hi'],
+  [/[؀-ۿݐ-ݿ]/g, 'ar'],
+  [/[Ѐ-ӿ]/g, 'ru'],
+  [/[一-鿿]/g, 'zh-Hans'],
+]
+
+/** Characters that only appear in Traditional Chinese. */
+const TRADITIONAL = /[們這個國會為與對學說時們經從開關體點應萬東車長門問發現後雖認識實讓還進過電話題無頭機]/g
+const SIMPLIFIED = /[们这个国会为与对学说时经从开关体点应万东车长门问发现后虽认识实让还进过电话题无头机]/g
+
+const STOPWORDS: Record<string, string[]> = {
+  en: ['the', 'and', 'of', 'to', 'in', 'is', 'that', 'for', 'with', 'was', 'on', 'are', 'this', 'by'],
+  es: ['el', 'la', 'de', 'que', 'y', 'en', 'los', 'del', 'las', 'por', 'una', 'para', 'con', 'se', 'es'],
+  pt: ['o', 'a', 'de', 'que', 'e', 'do', 'da', 'em', 'um', 'para', 'com', 'não', 'uma', 'os', 'no', 'na'],
+  fr: ['le', 'la', 'les', 'de', 'des', 'et', 'est', 'un', 'une', 'du', 'que', 'pour', 'dans', 'pas', 'qui', 'sur'],
+  it: ['il', 'di', 'che', 'e', 'la', 'per', 'un', 'non', 'del', 'della', 'è', 'una', 'gli', 'con', 'sono'],
+  de: ['der', 'die', 'und', 'das', 'ist', 'nicht', 'mit', 'den', 'ein', 'zu', 'von', 'sich', 'auf', 'für', 'eine'],
+  nl: ['de', 'het', 'een', 'en', 'van', 'is', 'dat', 'niet', 'op', 'te', 'zijn', 'voor', 'met', 'die', 'ook'],
+  sv: ['och', 'att', 'det', 'som', 'en', 'är', 'på', 'för', 'av', 'med', 'inte', 'till', 'har', 'den', 'ett'],
+  da: ['og', 'at', 'det', 'er', 'en', 'til', 'på', 'som', 'med', 'for', 'af', 'ikke', 'har', 'den', 'et'],
+  nb: ['og', 'det', 'er', 'som', 'på', 'til', 'en', 'av', 'for', 'med', 'ikke', 'har', 'jeg', 'at', 'ble'],
+  pl: ['i', 'w', 'nie', 'na', 'się', 'z', 'jest', 'że', 'do', 'to', 'jak', 'od', 'po', 'przez', 'dla'],
+  cs: ['a', 'se', 'na', 'je', 'že', 'v', 'to', 'do', 'jako', 'pro', 'ale', 'jsou', 'byl', 'od', 'který'],
+  sk: ['a', 'sa', 'na', 'je', 'že', 'v', 'to', 'do', 'ako', 'pre', 'ale', 'sú', 'bol', 'od', 'ktorý'],
+  ro: ['și', 'de', 'în', 'la', 'cu', 'pe', 'nu', 'din', 'este', 'o', 'un', 'că', 'pentru', 'care', 'mai'],
+  hu: ['a', 'az', 'és', 'hogy', 'nem', 'is', 'egy', 'meg', 'van', 'csak', 'már', 'de', 'ez', 'volt', 'mint'],
+  tr: ['ve', 'bir', 'bu', 'da', 'de', 'için', 'ile', 'çok', 'gibi', 'daha', 'olarak', 'ama', 'olan', 'en', 'ne'],
+  fi: ['ja', 'on', 'ei', 'että', 'se', 'oli', 'hän', 'ovat', 'kuin', 'mutta', 'myös', 'tai', 'joka', 'ole', 'sen'],
+  et: ['ja', 'on', 'ei', 'et', 'see', 'oli', 'ka', 'kui', 'aga', 'mis', 'oma', 'või', 'ning', 'seda', 'kes'],
+  id: ['dan', 'yang', 'di', 'ini', 'itu', 'dengan', 'untuk', 'tidak', 'dari', 'dalam', 'akan', 'pada', 'juga', 'ke', 'adalah'],
+  ms: ['dan', 'yang', 'di', 'ini', 'itu', 'dengan', 'untuk', 'tidak', 'dari', 'dalam', 'akan', 'pada', 'juga', 'ialah', 'kepada'],
+  vi: ['và', 'của', 'là', 'có', 'không', 'được', 'các', 'cho', 'một', 'những', 'người', 'trong', 'với', 'này', 'đã'],
+  ca: ['el', 'la', 'de', 'i', 'que', 'en', 'els', 'les', 'per', 'amb', 'una', 'del', 'és', 'no', 'als'],
+  hr: ['i', 'je', 'u', 'da', 'se', 'na', 'za', 'su', 'od', 'ne', 'koji', 'ali', 'što', 'kao', 'iz'],
+  sl: ['in', 'je', 'v', 'da', 'se', 'na', 'za', 'so', 'od', 'ne', 'ki', 'pa', 'tudi', 'kot', 'iz'],
+  lt: ['ir', 'kad', 'yra', 'su', 'į', 'iš', 'bet', 'kaip', 'tai', 'buvo', 'ne', 'jo', 'per', 'už', 'apie'],
+  lv: ['un', 'ir', 'ka', 'ar', 'no', 'uz', 'par', 'kas', 'bet', 'vai', 'tas', 'arī', 'nav', 'kā', 'bija'],
+  sq: ['dhe', 'të', 'në', 'një', 'për', 'me', 'që', 'nga', 'është', 'u', 'se', 'si', 'por', 'janë', 'do'],
+  tl: ['ang', 'ng', 'sa', 'na', 'at', 'mga', 'ay', 'si', 'para', 'hindi', 'ito', 'kay', 'niya', 'nang', 'din'],
+  af: ['die', 'en', 'van', 'is', 'het', 'in', 'om', 'te', 'nie', 'wat', 'vir', 'op', 'met', 'dat', 'sy'],
+  is: ['og', 'að', 'í', 'á', 'er', 'sem', 'til', 'um', 'með', 'ekki', 'var', 'það', 'en', 'af', 'við'],
+  eu: ['eta', 'da', 'ez', 'bat', 'du', 'dira', 'ere', 'baina', 'zen', 'izan', 'hau', 'dute', 'egin', 'beste', 'zuen'],
+  gl: ['o', 'a', 'de', 'que', 'e', 'do', 'da', 'en', 'un', 'para', 'con', 'non', 'unha', 'os', 'no'],
+  az: ['və', 'bir', 'bu', 'da', 'də', 'üçün', 'ilə', 'çox', 'kimi', 'daha', 'olaraq', 'amma', 'olan', 'ən', 'nə'],
+}
+
+const STOPWORD_SETS = Object.entries(STOPWORDS).map(([code, words]) => [code, new Set(words)] as const)
+
+function count(text: string, pattern: RegExp): number {
+  return text.match(pattern)?.length ?? 0
+}
+
+/** Guess from text alone. Returns null for too little evidence. */
+export function detectFromText(text: string): string | null {
+  const sample = text.slice(0, 6_000)
+  const letters = count(sample, /\p{L}/gu)
+  if (letters < 20) return null
+  let best: [string, number] = ['', 0]
+  for (const [pattern, code] of SCRIPTS) {
+    const n = count(sample, pattern)
+    if (n > best[1]) best = [code, n]
+  }
+  const kana = count(sample, /[぀-ヿ]/g)
+  if (kana >= 5) return 'ja'
+  if (best[1] / letters > 0.3) {
+    const [code] = best
+    if (code === 'zh-Hans') return count(sample, TRADITIONAL) > count(sample, SIMPLIFIED) ? 'zh-Hant' : 'zh-Hans'
+    if (code === 'ar') {
+      if (count(sample, /[ٹڈڑںے]/g) >= 3) return 'ur'
+      if (count(sample, /[پچژگکی]/g) >= 5) return 'fa'
+      return 'ar'
+    }
+    if (code === 'ru') {
+      if (count(sample, /[ђјљњћџ]/gi) >= 3) return 'sr'
+      if (count(sample, /[ў]/gi) >= 2) return 'be'
+      if (count(sample, /[іїєґ]/gi) >= 3) return 'uk'
+      if (count(sample, /ы/gi) === 0 && count(sample, /ъ/gi) >= 3) return 'bg'
+      return 'ru'
+    }
+    return code
+  }
+  const words = sample.toLowerCase().match(/\p{L}+/gu) ?? []
+  if (words.length < 8) return null
+  const scores = STOPWORD_SETS.map(([code, set]) => [code, words.reduce((sum, word) => sum + (set.has(word) ? 1 : 0), 0)] as const)
+    .sort((a, b) => b[1] - a[1])
+  const [top, second] = scores
+  if (!top || top[1] < 3 || top[1] / words.length < 0.05) return null
+  // Close calls between near-identical lists (es/gl, id/ms, da/nb, cs/sk) go to the larger language.
+  if (second && second[1] === top[1]) {
+    const preferred = ['en', 'es', 'pt', 'fr', 'de', 'id', 'da', 'cs', 'hr']
+    const rank = (code: string): number => (preferred.includes(code) ? preferred.indexOf(code) : 99)
+    return rank(top[0]) <= rank(second[0]) ? top[0] : second[0]
+  }
+  return top[0]
+}
+
+const LATIN = new Set(Object.keys(STOPWORDS))
+
+/**
+ * Prefer the page's declared language unless the text clearly contradicts it:
+ * a different writing system, or an 'en' template default over text whose
+ * common words are plainly another language.
+ */
+export function detectLanguage(declared: string | null | undefined, text: string): string | null {
+  const fromTag = normalizeLanguage(declared)
+  const fromText = detectFromText(text)
+  if (!fromTag) return fromText
+  if (!fromText || fromTag === fromText) return fromTag
+  const tagLatin = LATIN.has(fromTag)
+  const textLatin = LATIN.has(fromText)
+  if (tagLatin !== textLatin) return fromText
+  if (fromTag === 'en' && textLatin) return fromText
+  return fromTag
+}

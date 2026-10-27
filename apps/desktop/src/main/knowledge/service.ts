@@ -4,6 +4,7 @@ import type { KnowledgeCrypto } from './crypto'
 import { EXTRACT_SCRIPT, KNOWLEDGE_WORLD_ID, parseExtraction, selectionParagraphs } from './extract'
 import { pageRefusal, REFUSALS, urlRefusal } from './policy'
 import { KnowledgeIndex } from './searchIndex'
+import { knowledgeToJsonLd } from './exportLd'
 import { KnowledgeStore } from './store'
 import {
   KNOWLEDGE_LIMITS,
@@ -88,6 +89,7 @@ export class KnowledgeService {
       case 'update': return this.update(command.id, command)
       case 'reindex': return this.reindex(command.id)
       case 'remove-all': return this.removeAll()
+      case 'export': return this.exportAll()
     }
   }
 
@@ -200,6 +202,11 @@ export class KnowledgeService {
     return document
   }
 
+  async searchParagraphs(query: string, limit = 30): Promise<KnowledgeHit[]> {
+    await this.load()
+    return this.index.searchParagraphs(query, Math.min(limit, KNOWLEDGE_LIMITS.searchLimit))
+  }
+
   async search(query: string, limit = 20): Promise<KnowledgeHit[]> {
     await this.load()
     return this.index.search(query, Math.min(limit, KNOWLEDGE_LIMITS.searchLimit))
@@ -239,6 +246,17 @@ export class KnowledgeService {
     const saved = await store.updateRecord({ ...record, entities: analysis.entities, places: analysis.places, dates: analysis.dates, wordCount: analysis.wordCount })
     this.index.add(id, saved.url, saved.title, paragraphs)
     return saved
+  }
+
+  async exportAll(): Promise<string> {
+    const store = await this.load()
+    const records = await this.list()
+    const documents: KnowledgeDocument[] = []
+    for (const record of records) {
+      const document = await store.get(record.id).catch(() => null)
+      if (document) documents.push(document)
+    }
+    return knowledgeToJsonLd(documents, new Date(this.now()))
   }
 
   async removeAll(): Promise<void> {

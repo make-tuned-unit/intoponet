@@ -5,6 +5,10 @@ import { createAtomicFeedStorage, FeedFetchService, type FeedRegistry, type Feed
 import { addCoverage, buildNewsDigest, type CoverageIntervals, type NewsFeedHealth, type NewsItemInput, type NewsSourceMeta } from '../../shared/news/newsDigest'
 import type { FeedFetchResult } from '../feed-service'
 import newsFeeds from './newsFeeds.json'
+import internationalFeeds from './internationalFeeds.json'
+import { buildGlobalStories } from '../../shared/news/globalStories'
+import { fetchInTheNews } from './inTheNews'
+import type { WikiNewsItem } from '../../shared/news/newsDigest'
 
 /** One verified local news feed (see docs/data/news-feeds.md for provenance). */
 export type NewsFeedEntry = {
@@ -16,7 +20,7 @@ export type NewsFeedEntry = {
   publisherType: string
   section: string
   languageTags: string[]
-  geographicScope: 'national' | 'regional' | 'local'
+  geographicScope: 'national' | 'regional' | 'local' | 'international'
   regionName: string | null
   cityName: string | null
   independentPublisherGroupId: string
@@ -33,7 +37,8 @@ const DIGEST_DEBOUNCE_MS = 4_000
 
 export function newsFeedEntries(): NewsFeedEntry[] {
   const seen = new Set<string>()
-  return (newsFeeds.feeds as NewsFeedEntry[]).filter((feed) => {
+  // International desks first: they are few, and world stories depend on them.
+  return ([...internationalFeeds.feeds, ...newsFeeds.feeds] as NewsFeedEntry[]).filter((feed) => {
     if (seen.has(feed.sourceId)) return false
     seen.add(feed.sourceId)
     return true
@@ -66,6 +71,7 @@ export function newsSourceMeta(feeds: NewsFeedEntry[]): NewsSourceMeta[] {
     scope: feed.geographicScope,
     cityName: feed.cityName,
     regionName: feed.regionName,
+    language: feed.languageTags[0] ?? null,
   }))
 }
 
@@ -98,6 +104,18 @@ export function startNewsService(options: { userData: string; emit: (payload: st
   if (!feeds.length) return { stop: () => undefined, latest: () => latest }
 
   let digestTimer: ReturnType<typeof setTimeout> | null = null
+  // Wikipedia's "In the news", refreshed every two hours.
+  let inTheNews: WikiNewsItem[] = []
+  const refreshInTheNews = (): void => {
+    void fetchInTheNews(new Date()).then((items) => {
+      if (!items.length) return
+      inTheNews = items
+      scheduleDigest()
+    }).catch(() => undefined)
+  }
+  refreshInTheNews()
+  const inTheNewsTimer = setInterval(refreshInTheNews, 2 * 3_600_000)
+  inTheNewsTimer.unref?.()
   const transient = new Map<string, PublicItem[]>()
   const coveragePath = join(options.userData, 'news-coverage.json')
   const coverage: CoverageIntervals = readCoverage(coveragePath, new Set(feeds.map((feed) => feed.sourceId)))
@@ -147,11 +165,20 @@ export function startNewsService(options: { userData: string; emit: (payload: st
     }
     const memoryOnly = [...transient.entries()].flatMap(([sourceId, items]) => items.map((item) => toInput(sourceId, item)))
     const now = Date.now()
-    latest = JSON.stringify(buildNewsDigest({ sources: meta, items: [...stored, ...memoryOnly], health, now, coverage }))
+    const all = [...stored, ...memoryOnly]
+    latest = JSON.stringify({
+      ...buildNewsDigest({ sources: meta, items: all, health, now, coverage }),
+      global: buildGlobalStories({ sources: meta, items: all, now }),
+      inTheNews,
+    })
     options.emit(latest)
     try {
       // The on-disk copy (shown at the next launch) excludes no-store feeds.
-      writeFileSync(digestPath, JSON.stringify(buildNewsDigest({ sources: meta, items: stored, health, now, coverage })), { encoding: 'utf8', mode: 0o644 })
+      writeFileSync(digestPath, JSON.stringify({
+        ...buildNewsDigest({ sources: meta, items: stored, health, now, coverage }),
+        global: buildGlobalStories({ sources: meta, items: stored, now }),
+        inTheNews,
+      }), { encoding: 'utf8', mode: 0o644 })
       writeFileSync(coveragePath, JSON.stringify(coverage), { encoding: 'utf8', mode: 0o644 })
     } catch {
       // The digest is rebuilt from the feed cache on the next update.
@@ -176,6 +203,7 @@ export function startNewsService(options: { userData: string; emit: (payload: st
   return {
     stop: () => {
       if (digestTimer) clearTimeout(digestTimer)
+      clearInterval(inTheNewsTimer)
       service.stop()
       void service.flush()
     },

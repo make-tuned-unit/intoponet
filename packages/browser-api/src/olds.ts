@@ -53,6 +53,21 @@ export type OldsNode = {
 
 export type OldsCitation = { url: string; title: string | null }
 
+/**
+ * How well one link is sourced, checked when the thread is built.
+ * - referenced: the Wikidata statement cites an outside source (stated in / URL).
+ * - wiki-imported: its only reference is "imported from Wikipedia".
+ * - unreferenced: no reference at all.
+ * - article: it comes from a Wikipedia article's own structure (a history chapter).
+ * corroborated: the other side is also named in the Wikipedia article text that was checked.
+ */
+export type OldsSupport = {
+  level: 'referenced' | 'wiki-imported' | 'unreferenced' | 'article'
+  corroborated: boolean | null
+  /** Title of the Wikipedia article whose text was checked, if any. */
+  checkedIn: string | null
+}
+
 export type OldsEdge = {
   from: string
   to: string
@@ -66,18 +81,84 @@ export type OldsEdge = {
   /** Up to 3, from the statement's references. */
   citations: OldsCitation[]
   referenceCount: number
+  support?: OldsSupport
+}
+
+/**
+ * A chapter of a place's history, as its Wikipedia "History of …" article
+ * lays it out. Dates are the span of years the section's text names
+ * (approximate, marked 'c.') unless the heading gives them.
+ */
+export type OldsChapter = {
+  id: string
+  title: string
+  /** 1 = top-level section, 2 = subsection. */
+  level: 1 | 2
+  start: OldsDate | null
+  end: OldsDate | null
+  summary: string | null
+  /** Link to the section in the article. */
+  url: string
+  mainArticle: { title: string; url: string } | null
 }
 
 export type OldsThread = {
   rootId: string
   nodes: OldsNode[]
   edges: OldsEdge[]
+  /** Chapters from the history article, in the article's order. */
+  chapters?: OldsChapter[]
+  chaptersSource?: { title: string; url: string }
+  /** Key facts for a country thread (from Wikidata, latest values). */
+  facts?: OldsCountryFacts
+  /** True when part of the thread (its history article) could not be fetched; not cached, so the next open retries. */
+  partial?: boolean
+  /** Present when the thread was opened from a news headline. */
+  context?: OldsContext
   fetchedAt: string
   attribution: string
   note: string
 }
 
+export type OldsCountryFacts = {
+  population: { value: number; year: string | null } | null
+  gdpUsd: { value: number; year: string | null } | null
+  capital: string | null
+  headOfState: string | null
+  headOfGovernment: string | null
+  languages: string[]
+  currency: string | null
+  inception: OldsDate | null
+}
+
+/** One step on the path from a news story back through history (newest first). */
+export type OldsPathStep = {
+  node: OldsNode
+  /** How the previous (newer) step relates to this one, e.g. 'is part of', 'was caused by'. Empty for the first step. */
+  relation: string
+  edge: OldsEdge | null
+}
+
+export type OldsContext = {
+  headline: string
+  /** The topic the headline was matched to (the thread's root). */
+  topicId: string
+  /** Other plausible topics, to switch to if the match is wrong. */
+  candidates: Array<{ id: string; label: string; description: string | null }>
+  /** Topic first, then back through sourced links. */
+  path: OldsPathStep[]
+  /** The chapter of the country's history the topic falls in, if a country was known. */
+  chapter: OldsChapter | null
+  chapterSource: { title: string; url: string } | null
+  /** How the topic was found, in plain words. */
+  matchedBy: string
+}
+
+export const OLDS_HEADLINE_MAX = 400
+
 export type OldsQuery =
+  | { kind: 'chapter'; article: string; section: string }
+  | { kind: 'headline'; text: string; countryCode?: string; lang?: string; topic?: string }
   | { kind: 'wikipedia'; title: string; lang?: string }
   | { kind: 'qid'; qid: string }
   | { kind: 'country'; countryCode: string }
@@ -102,6 +183,24 @@ export function isQid(value: unknown): value is string {
 export function parseOldsQuery(value: unknown): OldsQuery {
   if (!isRecord(value)) throw new Error('Invalid Olds query.')
   switch (value['kind']) {
+    case 'chapter': {
+      const article = value['article']
+      const section = value['section']
+      if (typeof article !== 'string' || !article.trim() || article.length > OLDS_LIMITS.titleLength || /[<>[\]{}|#]/.test(article)) throw new Error('Invalid article.')
+      if (typeof section !== 'string' || !section.trim() || section.length > 200 || /[<>[\]{}|]/.test(section)) throw new Error('Invalid section.')
+      return { kind: 'chapter', article: article.trim(), section: section.trim() }
+    }
+    case 'headline': {
+      const text = value['text']
+      if (typeof text !== 'string' || !text.trim() || text.length > OLDS_HEADLINE_MAX) throw new Error('Invalid headline.')
+      const code = value['countryCode']
+      if (code !== undefined && (typeof code !== 'string' || !/^[A-Z]{2}$/.test(code))) throw new Error('Invalid country code.')
+      const lang = value['lang']
+      if (lang !== undefined && (typeof lang !== 'string' || !/^[a-z]{2,3}$/.test(lang))) throw new Error('Invalid language.')
+      const topic = value['topic']
+      if (topic !== undefined && !isQid(topic)) throw new Error('Invalid topic.')
+      return { kind: 'headline', text: text.trim().replace(/\s+/g, ' '), ...(code ? { countryCode: code } : {}), ...(lang ? { lang } : {}), ...(topic ? { topic } : {}) }
+    }
     case 'wikipedia': {
       const title = value['title']
       if (typeof title !== 'string' || !title.trim() || title.length > OLDS_LIMITS.titleLength || /[<>[\]{}|#]/.test(title)) {
