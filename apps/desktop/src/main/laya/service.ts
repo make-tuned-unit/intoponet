@@ -16,7 +16,7 @@ import type { KnowledgeCrypto } from '../knowledge/crypto'
 import type { KnowledgeChange } from '../knowledge/service'
 import { deleteModel, downloadModel, LAYA_MODEL, modelPresent, modelSizeBytes, verifyModel } from './model'
 import type { Embedder } from './pool'
-import { chunkParagraphs, distinctiveTerms, dot, fuseRanks, kmeans, meanVector, themeCount, trimPassage, type Chunk } from './retrieval'
+import { chunkParagraphs, distinctiveTerms, dot, fuseRanks, kmeans, meanVector, normalise, themeCount, trimPassage, type Chunk } from './retrieval'
 import { VectorStore, type DocumentVectors } from './vectors'
 
 /** The parts of the knowledge service Laya reads. */
@@ -328,6 +328,23 @@ export class LayaService {
   }
 
   // ---- Retrieval ------------------------------------------------------------
+
+  /**
+   * Meaning similarity of each text to a query, on this Mac; null when Laya is
+   * off or its model is not ready (never starts a download).
+   */
+  async similarities(query: string, texts: string[]): Promise<number[] | null> {
+    await this.loadSettings()
+    if (!this.enabled || texts.length === 0) return null
+    try {
+      const embedder = await this.ready()
+      const [q, ...rest] = await embedder.embed([query, ...texts].map((text) => text.slice(0, LAYA_LIMITS.textLength)))
+      if (!q || rest.length !== texts.length) return null
+      return rest.map((vector) => dot(normalise(q), normalise(vector)))
+    } catch {
+      return null
+    }
+  }
 
   private async embedQuery(text: string): Promise<Float32Array> {
     const embedder = await this.ready()

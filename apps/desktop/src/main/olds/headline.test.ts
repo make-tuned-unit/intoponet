@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { cleanHeadline, foreignNamesIn, mentions, properPhrases, scoreCandidate, searchQueries, titleWordsIn } from './headline'
+import { cleanHeadline, eventKindMatches, foreignNamesIn, mentions, properPhrases, scoreCandidate, searchQueries, titleWordsIn, isRelevantCandidate, topicAge } from './headline'
+import { headlineCountries, isWorkOrThing, keepCandidate, withoutCountryNames } from './oldsService'
 
 describe('headline matching', () => {
   it('cleans outlet suffixes and expands abbreviations', () => {
@@ -30,5 +31,133 @@ describe('headline matching', () => {
     expect(mentions(text, 'Greenland in World War II', 'Greenland')).toBe(true)
     expect(mentions(text, 'Norse settlements in Greenland', 'Greenland')).toBe(true)
     expect(mentions(text, 'Thule Air Base B-52 crash')).toBe(false)
+  })
+})
+
+describe('candidate relevance', () => {
+  const honduras = 'After 48 days of assemblies, patients crowd hospitals and cry out for decent care'
+  it('rejects topics that share nothing with the headline', () => {
+    expect(isRelevantCandidate('2012 Delhi gang rape and murder', honduras, 'Honduras')).toBe(false)
+    expect(isRelevantCandidate('List of Hazel episodes', honduras, 'Honduras')).toBe(false)
+    expect(isRelevantCandidate('Billy Sunday', honduras, 'Honduras')).toBe(false)
+  })
+  it('rejects a single shared word in a long title full of other names', () => {
+    expect(isRelevantCandidate('Great National Assembly (Romania)', 'National strike in Honduras', 'Honduras')).toBe(false)
+  })
+  it('keeps topics the headline is about', () => {
+    expect(isRelevantCandidate('2026 Brazilian general election', 'Lula leads as Brazil election nears', 'Brazil')).toBe(true)
+    expect(isRelevantCandidate('Greenland independence movement', 'Greenland independence vote looms', 'Denmark')).toBe(true)
+    expect(isRelevantCandidate('Healthcare in Honduras', 'Healthcare workers strike for a seventh week', 'Honduras')).toBe(true)
+  })
+})
+
+describe('meaning check (Laya)', () => {
+  it('uses words alone when Laya is off', () => {
+    expect(keepCandidate(true, null)).toBe(true)
+    expect(keepCandidate(false, null)).toBe(false)
+  })
+  it('accepts a close meaning without shared words, and rejects an unrelated one despite them', () => {
+    expect(keepCandidate(false, 0.6)).toBe(true)
+    expect(keepCandidate(true, 0.1)).toBe(false)
+    expect(keepCandidate(true, 0.3)).toBe(true)
+    expect(keepCandidate(false, 0.3)).toBe(false)
+  })
+})
+
+describe('single-word matches', () => {
+  it('ignores a match on just the headline’s first word', () => {
+    expect(isRelevantCandidate('Tras De Mí', 'Tras 48 días de asambleas, pacientes abarrotan hospitales y claman atención digna', 'Honduras')).toBe(false)
+    expect(isRelevantCandidate('Defender (video game)', 'Defender los pequeños negocios chinos es un deber del pueblo', 'Honduras')).toBe(false)
+    expect(isRelevantCandidate('Las Capitalinas', 'Capitalinos se organizan contra privatización del servicio del agua', 'Honduras')).toBe(false)
+  })
+  it('accepts a single shared name', () => {
+    expect(isRelevantCandidate('Greenland', 'US renews push to buy Greenland', 'Denmark')).toBe(true)
+    expect(isRelevantCandidate('Hurricane Mitch', 'Hurricane Mitch anniversary: Honduras remembers', 'Honduras')).toBe(true)
+  })
+  it('rejects a generic country overview matched only by the country name', () => {
+    expect(isRelevantCandidate('Education in Honduras', 'Detienen en Honduras a guatemalteco y decomisan medicamentos', 'Honduras')).toBe(false)
+  })
+})
+
+describe('event titles', () => {
+  it('matches "Trial of Benjamin Netanyahu" without Laya, but not unrelated events', () => {
+    expect(isRelevantCandidate('Trial of Benjamin Netanyahu', 'Israel to give verdict on Netanyahu in pivotal election', 'Israel')).toBe(true)
+    expect(isRelevantCandidate('2026 Bangladeshi general election', 'Israel to give verdict on Netanyahu in pivotal election', 'Israel')).toBe(false)
+    expect(isRelevantCandidate('Education in Honduras', 'Detienen en Honduras a guatemalteco y decomisan medicamentos', 'Honduras')).toBe(false)
+  })
+})
+
+describe('news is about now', () => {
+  const base = { rank: 0, eventLike: true, inCountry: false, isPerson: false, isCountry: false, isDisambiguation: false, titleWordsInHeadline: 1, foreignNames: 0, otherCountry: false }
+  it('prefers this year\'s outbreak over a famous old one', () => {
+    expect(topicAge('1976 Zaire Ebola virus outbreak', '1976', true, 2026)).toBe(50)
+    expect(topicAge('2026 Ebola epidemic', null, true, 2026)).toBe(0)
+    expect(topicAge('Ebola', null, false, 2026)).toBeNull()
+    expect(scoreCandidate({ ...base, ageYears: 0 })).toBeGreaterThan(scoreCandidate({ ...base, ageYears: 50 }) + 3)
+  })
+  it('searches for this year\'s event too', () => {
+    expect(searchQueries('DR Congo reports over 10,000 Ebola cases', 2026)).toContain('2026 DR Congo Ebola')
+  })
+})
+
+describe('countries a headline names', () => {
+  it('finds the story\'s country, not people named like countries', () => {
+    expect(headlineCountries('South Africa Deploys 500 Soldiers to Quell Anti-Immigration Violence')).toEqual(['ZA'])
+    expect(headlineCountries('DR Congo reports over 10,000 Ebola cases as the outbreak spreads abroad')).toEqual(['CD'])
+    expect(headlineCountries('Lula’s win in Brazil deals blow to Trump’s Latin America push')).toEqual(['BR'])
+    expect(headlineCountries('States seeks interest for possible housing sites')).toEqual([])
+    expect(headlineCountries('Jordan Peterson speaks at a rally in the capital')).toEqual([])
+    expect(headlineCountries('Subsidized housing in the United States')).toEqual(['US'])
+    expect(headlineCountries('2026 United States Senate elections')).toEqual(['US'])
+    expect(headlineCountries('Germany\'s Merz says erosion of global order means middle powers must act')).toEqual(['DE'])
+  })
+  it('matches compound names to the countries they stand for', () => {
+    expect(titleWordsIn('Peace negotiations in the Russo-Ukrainian war', 'Who brokered Russia-Ukraine ceasefire')).toBe(2)
+    expect(isRelevantCandidate('Blockade of Oleshky', 'Melania or the pope: Who brokered Russia-Ukraine ceasefire in Oleshky?')).toBe(true)
+  })
+})
+
+describe('country-only matches', () => {
+  it('removes the countries a headline names, with their adjectives', () => {
+    const subject = withoutCountryNames('Germany\'s Merz says erosion of global order means middle powers must act')
+    expect(titleWordsIn('German economic crisis (2022–present)', subject)).toBe(0)
+    expect(titleWordsIn('Merz cabinet', subject)).toBe(1)
+    expect(titleWordsIn('History of South Africa', withoutCountryNames('South Africa Deploys 500 Soldiers'))).toBe(0)
+    expect(titleWordsIn('Blockade of Oleshky', withoutCountryNames('Who brokered Russia-Ukraine ceasefire in Oleshky?'))).toBe(1)
+  })
+})
+
+describe('works and things are not news topics', () => {
+  it('spots films, series and foods by their description', () => {
+    expect(isWorkOrThing('2026 documentary film directed by Brett Ratner')).toBe(true)
+    expect(isWorkOrThing('British television drama series')).toBe(true)
+    expect(isWorkOrThing('species of tree')).toBe(true)
+    expect(isWorkOrThing('annual film festival held in Cannes')).toBe(false)
+    expect(isWorkOrThing('annual championship series of Major League Baseball')).toBe(false)
+    expect(isWorkOrThing('outbreak of Ebola virus disease')).toBe(false)
+  })
+  it('finds named events and US by its short name', () => {
+    expect(searchQueries('India Evacuates Tens of Thousands as Cyclone Arnab Approaches', 2026)[0]).toMatch(/^Cyclone Arnab/)
+    expect(headlineCountries('US says five dead in strike on alleged drug-smuggling boat')).toEqual(['US'])
+    expect(headlineCountries('Cease-Fire Brokered by Melania Trump Begins in Ukrainian City of Oleshky')).toEqual(['UA'])
+    expect(headlineCountries('Indian Ocean storms intensify')).toEqual([])
+    expect(headlineCountries('The Key Election Issues Dividing Israelis as They Vote')).toEqual(['IL'])
+    expect(titleWordsIn('2026 North Indian Ocean cyclone season', 'India Evacuates as Cyclone Arnab Approaches')).toBe(2)
+  })
+})
+
+describe('current events need a matching kind', () => {
+  it('links a win to an election, not a card deal to an offensive', () => {
+    expect(eventKindMatches('2026 Brazilian general election', 'Lula’s win in Brazil deals blow to Trump’s Latin America push')).toBe(true)
+    expect(eventKindMatches('2026 Ethiopian offensive', 'Kacha, Mastercard Ink Deal to Expand Card Issuance in Ethiopia')).toBe(false)
+    expect(eventKindMatches('2026 Brazilian general election', 'Flavio Bolsonaro flees Brazil for US amid investigation')).toBe(false)
+  })
+})
+
+describe('column labels', () => {
+  it('drops "Reader Q&A:" and the capital after a colon', () => {
+    expect(cleanHeadline('Reader Q&A: After Lula’s sensational victory in Brazil’s presidential election')).toBe('After Lula sensational victory in Brazil presidential election')
+    expect(properPhrases('Analysts say: After Lula won, markets rose')).not.toContain('After Lula')
+    expect(searchQueries('Reader Q&A: After Lula’s sensational victory in Brazil’s presidential election', 2026)).toContain('2026 Lula Brazil')
   })
 })

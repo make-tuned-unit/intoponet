@@ -1,6 +1,7 @@
 {
   "name": "@intoponet/desktop",
   "version": "0.1.0",
+  "license": "UNLICENSED",
   "private": true,
   "main": "./out/main/index.js",
   "scripts": {
@@ -13,6 +14,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@intoponet/beacon-core": "0.1.0",
     "@intoponet/browser-api": "0.1.0",
     "@intoponet/field-snapshot": "0.1.0",
     "@intoponet/frequency-field": "0.1.0",
@@ -31,6 +33,7 @@
     "@types/react-dom": "^19.0.2",
     "@types/three": "^0.172.0",
     "@vitejs/plugin-react": "^4.3.4",
+    "axe-core": "^4.10.2",
     "electron": "^45.0.0",
     "electron-vite": "^3.0.0",
     "typescript": "^5.7.3",

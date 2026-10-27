@@ -203,6 +203,13 @@ describe('KnowledgeService', () => {
     expect(await service(fakePage('https://example.com/news', {})).preview('selection')).toEqual({ refused: true, reason: REFUSALS.noSelection })
   })
 
+  it('refuses sites you left out, before running any script', async () => {
+    const page = fakePage('https://news.leftout.test/story', {})
+    const knowledge = new KnowledgeService({ dir, crypto: createAesGcmCrypto(randomBytes(32)), getActivePage: () => page, isExcluded: (url) => url.includes('leftout.test') })
+    expect(await knowledge.preview('article')).toEqual({ refused: true, reason: REFUSALS.excludedSite })
+    expect(page.calls).toEqual([])
+  })
+
   it('absorbs only the selection when asked, and expires previews', async () => {
     let now = 0
     const knowledge = new KnowledgeService({

@@ -136,3 +136,18 @@ describe('parseStoredPrivateLibrary', () => {
     })
   })
 })
+
+describe('no plain-text library copy', () => {
+  it('writers keep nothing in localStorage, and the old copy can be cleared after migration', async () => {
+    const { writeBookmarks, writeCollections, writeRecents, hasLegacyLibraryStorage, clearLegacyLibraryStorage } = await import('./localLibrary')
+    writeBookmarks([{ url: 'https://a.test/', title: 'A', topic: 't', savedAt: '2026-01-01T00:00:00Z' }])
+    writeCollections([])
+    writeRecents([{ url: 'https://a.test/', title: 'A', visitedAt: '2026-01-01T00:00:00Z' }])
+    rememberRecent([], { url: 'https://b.test/', title: 'B', visitedAt: '2026-01-01T00:00:00Z' })
+    expect(hasLegacyLibraryStorage()).toBe(false)
+    localStorage.setItem(bookmarkKey, '[]')
+    expect(hasLegacyLibraryStorage()).toBe(true)
+    clearLegacyLibraryStorage()
+    expect(hasLegacyLibraryStorage()).toBe(false)
+  })
+})

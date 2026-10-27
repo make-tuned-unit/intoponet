@@ -840,3 +840,48 @@
   cursor: pointer;
 }
 .olds-chapter-bar .olds-chapter-prev { margin-left: 8px; }
+
+/* Short windows: fixed rows keep their size, the track always fits a card above and below the axis,
+   and the timeline area scrolls vertically instead of clipping cards under the chapter band. */
+.olds-head, .olds-title, .olds-sources, .olds-eras, .olds-chapter-bar { flex: none; }
+.olds-main { min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+.olds-track-wrap { flex: 1 0 300px; }
+
+/* Competing interpretations (OLD-005): attributed readings side by side, unranked. */
+.olds-debate { display: grid; align-content: start; gap: 10px; flex: 1; min-width: 0; padding: 4px 22px 14px; overflow-y: auto; }
+.olds-debate-note { margin: 0; color: var(--muted); font-size: 11.5px; }
+.olds-debate-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.olds-debate-card { display: grid; align-content: start; gap: 6px; padding: 12px 14px; border: 1px solid rgba(231, 201, 143, 0.22); border-radius: 14px; background: linear-gradient(160deg, rgba(231, 201, 143, 0.07), rgba(10, 25, 36, 0.5)); }
+.olds-debate-card strong { color: #e7c98f; font-size: 12.5px; font-weight: 600; }
+.olds-debate-card p { margin: 0; color: var(--warm-white); font-size: 12.5px; line-height: 1.5; }
+.olds-debate-card button { justify-self: start; display: inline-flex; align-items: center; gap: 4px; padding: 0; color: var(--muted); font: inherit; font-size: 11px; border: 0; background: transparent; cursor: pointer; }
+.olds-debate-card button:hover { color: var(--warm-white); text-decoration: underline; }
+
+/* Topics behind this story: subject areas in the story's country, with key figures. */
+.olds-related { display: grid; gap: 8px; margin: 2px 0 10px; }
+.olds-related h3 { margin: 0; color: #e7c98f; font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.olds-related-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
+.olds-related-card { display: grid; align-content: start; gap: 5px; padding: 11px 13px; border: 1px solid rgba(214, 246, 241, 0.14); border-radius: 14px; background: linear-gradient(160deg, rgba(60, 96, 108, 0.24), rgba(10, 25, 36, 0.55)); }
+.olds-related-card strong { color: var(--warm-white); font-size: 13px; font-weight: 550; }
+.olds-related-card small { color: var(--muted); font-size: 11px; }
+.olds-related-card ul { display: grid; gap: 4px; margin: 2px 0 0; padding-left: 14px; color: #cfe3e0; font-size: 11.5px; line-height: 1.45; }
+.olds-related-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 2px; }
+.olds-related-actions button { display: inline-flex; align-items: center; gap: 4px; padding: 0; color: #e7c98f; font: inherit; font-size: 11.5px; border: 0; background: transparent; cursor: pointer; }
+.olds-related-actions button:last-child { color: var(--muted); }
+.olds-related-actions button:hover { text-decoration: underline; }
+.olds-story > * { flex-shrink: 0; }
+
+/* How we got here: dated events quoted from the topic's article, as a vertical timeline. */
+.olds-chronicle { display: grid; gap: 8px; margin: 4px 0 10px; }
+.olds-chronicle h3 { margin: 0; color: #e7c98f; font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.olds-chronicle ol { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; border-left: 1px solid rgba(231, 201, 143, 0.35); margin-left: 6px; }
+.olds-chronicle li { position: relative; display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; padding: 7px 0 7px 16px; }
+.olds-chronicle li::before { content: ''; position: absolute; left: -5px; top: 13px; width: 9px; height: 9px; border-radius: 50%; background: #e7c98f; box-shadow: 0 0 0 3px rgba(10, 25, 36, 0.9); }
+.olds-chronicle time { color: #e7c98f; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; padding-top: 2px; }
+.olds-chronicle p { margin: 0; color: var(--warm-white); font-size: 12.5px; line-height: 1.5; }
+.olds-chronicle-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 3px; }
+.olds-chronicle-actions button { display: inline-flex; align-items: center; gap: 3px; padding: 0; color: var(--muted); font: inherit; font-size: 11px; border: 0; background: transparent; cursor: pointer; }
+.olds-chronicle-actions button:hover { color: var(--warm-white); text-decoration: underline; }
+.olds-chronicle-actions button:last-child:not(:first-child) { color: #e7c98f; }
+.olds-sheet:focus { outline: none; }
+.olds-sheet:focus-visible { box-shadow: 0 0 0 2px rgba(231, 201, 143, 0.55); }

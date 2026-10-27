@@ -100,3 +100,35 @@ describe('private library', () => {
     expect(relationshipLabel(sourced!)).not.toMatch(/not a cause/i)
   })
 })
+
+describe('tags and import', () => {
+  const doc = (part: Partial<import('./library').PrivateLibraryDocument>) => ({ schema: 'intoponet.private-library.v1' as const, bookmarks: [], collections: [], recents: [], absorbed: [], ...part })
+  it('cleans tags and keeps them through a save', async () => {
+    const { cleanTags, parsePrivateLibrary, serializePrivateLibrary } = await import('./library')
+    expect(cleanTags(['  Pacific ', 'pacific', 'Water', '', 3, 'x'.repeat(60)], 'water')).toEqual(['Pacific', 'x'.repeat(40)])
+    const saved = parsePrivateLibrary(serializePrivateLibrary(doc({ bookmarks: [{ url: 'https://a.test/', title: 'A', topic: 'Water', savedAt: '2026-01-01', tags: ['Pacific', 'Water'] }] })))
+    expect(saved?.bookmarks[0]?.tags).toEqual(['Pacific'])
+  })
+  it('merges an import without losing what you have', async () => {
+    const { mergePrivateLibraries } = await import('./library')
+    const mine = doc({
+      bookmarks: [{ url: 'https://a.test/', title: 'Mine', topic: 'Water', savedAt: '2026-01-01', note: 'my note' }],
+      collections: [{ id: 'c1', label: 'Pacific', createdAt: '2026-01-01', memberUrls: ['https://a.test/'] }],
+      recents: [{ url: 'https://r1.test/', title: 'R1', visitedAt: '2026-02-01' }],
+    })
+    const theirs = doc({
+      bookmarks: [
+        { url: 'https://a.test/', title: 'Theirs', topic: 'Climate', savedAt: '2025-01-01', note: 'their note', fieldAnchor: { lat: 1, lon: 2, label: 'Fiji' } },
+        { url: 'https://b.test/', title: 'B', topic: 'Energy', savedAt: '2025-01-01' },
+      ],
+      collections: [{ id: 'other', label: 'pacific ', createdAt: '2025-01-01', memberUrls: ['https://b.test/'] }, { id: 'c9', label: 'New', createdAt: '2025-01-01', memberUrls: [] }],
+      recents: [{ url: 'https://r2.test/', title: 'R2', visitedAt: '2026-03-01' }, { url: 'https://r1.test/', title: 'R1', visitedAt: '2026-01-01' }],
+    })
+    const { library, added } = mergePrivateLibraries(mine, theirs)
+    expect(library.bookmarks[0]).toMatchObject({ title: 'Mine', note: 'my note', tags: ['Climate'], fieldAnchor: { label: 'Fiji' } })
+    expect(library.bookmarks).toHaveLength(2)
+    expect(library.collections.find((c) => c.id === 'c1')?.memberUrls).toEqual(['https://a.test/', 'https://b.test/'])
+    expect(library.recents.map((r) => r.url)).toEqual(['https://r2.test/', 'https://r1.test/'])
+    expect(added).toEqual({ bookmarks: 1, collections: 1, recents: 1, absorbed: 0 })
+  })
+})

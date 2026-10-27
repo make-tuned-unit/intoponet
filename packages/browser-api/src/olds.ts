@@ -115,9 +115,34 @@ export type OldsThread = {
   partial?: boolean
   /** Present when the thread was opened from a news headline. */
   context?: OldsContext
+  /** Attributed, competing readings of this topic from its Wikipedia article (OLD-005), unranked. */
+  interpretations?: OldsInterpretation[]
+  /** "How we got here": dated events quoted from the topic's own Wikipedia article, oldest first. */
+  chronicle?: OldsChronicleEntry[]
   fetchedAt: string
   attribution: string
   note: string
+}
+
+export type OldsChronicleEntry = {
+  at: OldsDate
+  /** The sentence as written in the article. */
+  text: string
+  section: string
+  /** The article section it comes from. */
+  url: string
+  /** The first article the sentence links to (open its history). */
+  link: string | null
+}
+
+export type OldsInterpretation = {
+  /** Who holds the view: a named scholar or a school ("Revisionist historians"). */
+  who: string
+  /** The sentence that states it, as written in the article. */
+  view: string
+  /** Article section it comes from, and a link to it. */
+  section: string
+  url: string
 }
 
 export type OldsCountryFacts = {
@@ -152,6 +177,16 @@ export type OldsContext = {
   chapterSource: { title: string; url: string } | null
   /** How the topic was found, in plain words. */
   matchedBy: string
+  /** Subject topics behind the story in its country ("Incarceration in Canada"), with key figures from each article. */
+  related?: OldsRelatedTopic[]
+}
+
+export type OldsRelatedTopic = {
+  title: string
+  description: string | null
+  url: string
+  /** Up to two recent sentences with figures, quoted from the article. */
+  figures: string[]
 }
 
 export const OLDS_HEADLINE_MAX = 400

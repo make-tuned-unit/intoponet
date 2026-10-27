@@ -6,6 +6,8 @@ import { pageRefusal, REFUSALS, urlRefusal } from './policy'
 import { KnowledgeIndex } from './searchIndex'
 import { knowledgeToJsonLd } from './exportLd'
 import { KnowledgeStore } from './store'
+import { labelClaims } from './claims'
+import type { KnowledgeClaim } from '@intoponet/browser-api'
 import {
   KNOWLEDGE_LIMITS,
   type AbsorbPreview,
@@ -54,6 +56,8 @@ export class KnowledgeService {
   private readonly now: () => number
 
   constructor(private readonly options: {
+    /** Sites the user chose to leave out (Privacy › Sites to leave out). */
+    isExcluded?: (url: string) => boolean
     dir: string
     crypto: KnowledgeCrypto | Promise<KnowledgeCrypto>
     getActivePage: () => KnowledgePage | null
@@ -88,6 +92,7 @@ export class KnowledgeService {
       case 'remove': return this.remove(command.id)
       case 'update': return this.update(command.id, command)
       case 'reindex': return this.reindex(command.id)
+      case 'claims': return this.claims(command.id)
       case 'remove-all': return this.removeAll()
       case 'export': return this.exportAll()
     }
@@ -102,7 +107,7 @@ export class KnowledgeService {
     this.sweep()
     const page = this.options.getActivePage()
     if (!page) return { refused: true, reason: REFUSALS.noPage }
-    const before = urlRefusal(page.getURL())
+    const before = urlRefusal(page.getURL()) ?? (this.options.isExcluded?.(page.getURL()) ? REFUSALS.excludedSite : null)
     if (before) return { refused: true, reason: before }
     let raw: unknown
     try {
@@ -246,6 +251,21 @@ export class KnowledgeService {
     const saved = await store.updateRecord({ ...record, entities: analysis.entities, places: analysis.places, dates: analysis.dates, wordCount: analysis.wordCount })
     this.index.add(id, saved.url, saved.title, paragraphs)
     return saved
+  }
+
+  /** Claims in one page, labelled against every other absorbed page (all on this Mac). */
+  async claims(id: string): Promise<KnowledgeClaim[]> {
+    const target = await this.get(id)
+    const others: KnowledgeDocument[] = []
+    for (const record of await this.list()) {
+      if (record.id === id) continue
+      try {
+        others.push(await this.get(record.id))
+      } catch {
+        // A damaged record is skipped, not fatal.
+      }
+    }
+    return labelClaims(target, others)
   }
 
   async exportAll(): Promise<string> {

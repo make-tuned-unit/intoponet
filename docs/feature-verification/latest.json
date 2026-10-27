@@ -1,0 +1,118 @@
+{
+  "started": "2026-10-27T20:01:52.287Z",
+  "finished": "2026-10-27T20:03:39.520Z",
+  "tier": "full",
+  "only": [
+    "OLDS_HEADLINE",
+    "OLDS_UI"
+  ],
+  "summary": "2 passed, 0 failed, 0 blocked, 0 skipped, 24 assumed",
+  "results": {
+    "BUILD": {
+      "status": "assumed",
+      "notes": ""
+    },
+    "APP_BOOT": {
+      "status": "assumed",
+      "notes": ""
+    },
+    "SETTINGS": {
+      "status": "assumed",
+      "notes": ""
+    },
+    "ACCESSIBILITY": {
+      "status": "assumed",
+      "notes": ""
+    },
+    "LIBRARY": {
+      "status": "assumed",
+      "notes": ""
+    },
+    "COLLECTIONS_IMPORT": {
+      "status": "assumed",
+      "notes": ""
+    },
+    "FLY_TO": {
+      "status": "assumed",
+      "notes": ""
+    },
+    "GLOBE_MOTION": {
+      "status": "assumed",
+      "notes": ""
+    },
+    "GLOBE_LIVE": {
+      "status": "assumed",
+      "notes": ""
+    },
+    "WORLD_STORIES": {
+      "status": "assumed",
+      "notes": ""
+    },
+    "COUNTRY_PANEL": {
+      "status": "assumed",
+      "notes": ""
+    },
+    "OLDS_HEADLINE": {
+      "status": "pass",
+      "notes": "Israel → 2026 Israeli legislative election: 13 dated events from 29 Dec 2022; Ebola, South Africa and Guernsey guards ok; related Judiciary of Israel, Israeli law, Politics of Israel, Elections in Israel. Brazil → 2026 Brazilian general election. Honduras → Honduras.",
+      "seconds": 61
+    },
+    "OLDS_COUNTRY": {
+      "status": "assumed",
+      "notes": ""
+    },
+    "OLDS_DEBATE": {
+      "status": "assumed",
+      "notes": ""
+    },
+    "OLDS_UI": {
+      "status": "pass",
+      "notes": "Views Story/Timeline/List; sections: HOW WE GOT HERE.",
+      "seconds": 47
+    },
+    "BROWSE": {
+      "status": "assumed",
+      "notes": ""
+    },
+    "PROTECTION": {
+      "status": "assumed",
+      "notes": ""
+    },
+    "PERMISSIONS": {
+      "status": "assumed",
+      "notes": ""
+    },
+    "PRIVATE_BROWSING": {
+      "status": "assumed",
+      "notes": ""
+    },
+    "EXCLUDED_SITES": {
+      "status": "assumed",
+      "notes": ""
+    },
+    "CAPTURE": {
+      "status": "assumed",
+      "notes": ""
+    },
+    "PAYWALL_ALTERNATIVES": {
+      "status": "assumed",
+      "notes": ""
+    },
+    "ABSORB": {
+      "status": "assumed",
+      "notes": ""
+    },
+    "BEACONS_REGISTRY": {
+      "status": "assumed",
+      "notes": ""
+    },
+    "AUTO_TRANSLATE": {
+      "status": "assumed",
+      "notes": ""
+    },
+    "ROUGH_TRANSLATE": {
+      "status": "assumed",
+      "notes": ""
+    }
+  }
+}

@@ -566,3 +566,25 @@
   height: 18px;
   object-fit: contain;
 }
+
+/* "Move to…" (keyboard alternative to dragging): appears on hover or keyboard focus. */
+.bm-move {
+  position: absolute;
+  right: 34px;
+  top: 50%;
+  transform: translateY(-50%);
+  max-width: 110px;
+  height: 24px;
+  padding: 0 4px;
+  color: var(--warm-white);
+  font: inherit;
+  font-size: 11px;
+  border: 1px solid rgba(214, 246, 241, 0.16);
+  border-radius: 7px;
+  background: rgba(7, 17, 27, 0.92);
+  opacity: 0;
+  pointer-events: none;
+}
+li:hover > .bm-move, .bm-move:focus-visible, li:focus-within > .bm-move { opacity: 1; pointer-events: auto; }
+.bm-captures li { position: relative; }
+.bm-captures .bm-move { right: 4px; top: auto; bottom: 4px; transform: none; max-width: 90px; }

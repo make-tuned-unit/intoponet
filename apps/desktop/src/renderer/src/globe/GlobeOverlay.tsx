@@ -16,6 +16,7 @@ export function GlobeOverlay({
   hoverId,
   hoverCard,
   hidden,
+  locator,
 }: {
   projection: GlobeProjection
   /** In priority order. */
@@ -23,11 +24,14 @@ export function GlobeOverlay({
   hoverId: string | null
   hoverCard: ReactNode
   hidden: boolean
+  /** The place you flew to: a pulsing locator at its marker (id in the projection). */
+  locator?: { id: string; label: string } | null
 }) {
+  const locatorEl = useRef<HTMLDivElement>(null)
   const labelEls = useRef(new Map<string, HTMLDivElement>())
   const cardEl = useRef<HTMLDivElement>(null)
-  const state = useRef({ labels, hoverId, hidden })
-  state.current = { labels, hoverId, hidden }
+  const state = useRef({ labels, hoverId, hidden, locator })
+  state.current = { labels, hoverId, hidden, locator }
 
   useEffect(() => {
     let frame = 0
@@ -37,7 +41,19 @@ export function GlobeOverlay({
     let blockersAt = 0
     const tick = (): void => {
       frame = requestAnimationFrame(tick)
-      const { labels: list, hoverId: hovered, hidden: off } = state.current
+      const { labels: list, hoverId: hovered, hidden: off, locator: spot } = state.current
+      // The locator sits exactly on the place and fades out as it turns away.
+      const pin = locatorEl.current
+      if (pin) {
+        const i = spot ? projection.index.get(spot.id) : undefined
+        const facing = i === undefined ? 0 : projection.facing[i]!
+        if (off || i === undefined || facing <= 0.02) {
+          pin.style.opacity = '0'
+        } else {
+          pin.style.transform = `translate3d(${projection.x[i]!}px, ${projection.y[i]!}px, 0)`
+          pin.style.opacity = String(Math.min(1, facing * 3))
+        }
+      }
       const now = performance.now()
       if (now - blockersAt > 400) {
         blockersAt = now
@@ -110,6 +126,16 @@ export function GlobeOverlay({
         </div>
       ))}
       <div ref={cardEl} className="globe-hover-card lg-surface">{hoverCard}</div>
+      {locator && (
+        // Keyed by place so the landing animation replays on every new fly-to.
+        <div key={locator.id} ref={locatorEl} className="globe-locator">
+          <span className="globe-locator-landing" />
+          <span className="globe-locator-ring" />
+          <span className="globe-locator-ring is-late" />
+          <span className="globe-locator-dot" />
+          <span className="globe-locator-label">{locator.label}</span>
+        </div>
+      )}
     </div>
   )
 }

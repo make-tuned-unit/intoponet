@@ -1,7 +1,8 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useMemo, useRef, useState, type FormEvent } from 'react'
 import { MapPin, Search, Sparkles, X } from 'lucide-react'
 import { placeLabel, searchPlaces } from '../../shared/places/places'
 import './PinEditor.css'
+import { splitTagInput } from './localLibrary'
 
 export type MapFieldAnchor = { lat: number; lon: number; label: string }
 export type PinLocationOption = MapFieldAnchor & { id: string }
@@ -9,6 +10,8 @@ export type PinEditorValue = {
   url: string
   title: string
   topic: string
+  /** Further tags beyond the main topic. */
+  tags?: string[]
   note: string
   fieldAnchor?: MapFieldAnchor
 }
@@ -19,6 +22,7 @@ export function PinEditor({
   suggestions = [],
   onCancel,
   onSave,
+  onSaveAndPublish,
 }: {
   initial: PinEditorValue
   locations: PinLocationOption[]
@@ -26,10 +30,14 @@ export function PinEditor({
   suggestions?: PinLocationOption[]
   onCancel: () => void
   onSave: (value: PinEditorValue) => void
+  /** Save, then open the beacon consent screen for this page. */
+  onSaveAndPublish?: (value: PinEditorValue) => void
 }) {
   const [url, setUrl] = useState(initial.url)
+  const formRef = useRef<HTMLFormElement>(null)
+  const publishAfter = useRef(false)
   const [title, setTitle] = useState(initial.title)
-  const [topic, setTopic] = useState(initial.topic)
+  const [topic, setTopic] = useState([initial.topic, ...(initial.tags ?? [])].join(', '))
   const [note, setNote] = useState(initial.note)
   // The pin's place: the saved one, else the page's first suggestion (shown as suggested; saving confirms it).
   const [anchor, setAnchor] = useState<MapFieldAnchor | null>(initial.fieldAnchor ?? (suggestions[0] ? { lat: suggestions[0].lat, lon: suggestions[0].lon, label: suggestions[0].label } : null))
@@ -76,9 +84,9 @@ export function PinEditor({
       return
     }
     const cleanTitle = title.trim()
-    const cleanTopic = topic.trim()
-    if (!cleanTitle || cleanTitle.length > 180 || !cleanTopic || cleanTopic.length > 80) {
-      setError('Add a page title and a topic or tag.')
+    const { topic: cleanTopic, tags } = splitTagInput(topic)
+    if (!cleanTitle || cleanTitle.length > 180 || !topic.trim()) {
+      setError('Add a page title and at least one tag.')
       return
     }
 
@@ -99,7 +107,10 @@ export function PinEditor({
       }
       fieldAnchor = { lat, lon, label }
     }
-    onSave({ url: safeUrl, title: cleanTitle, topic: cleanTopic, note: note.slice(0, 500), ...(fieldAnchor ? { fieldAnchor } : {}) })
+    const value: PinEditorValue = { url: safeUrl, title: cleanTitle, topic: cleanTopic, tags, note: note.slice(0, 500), ...(fieldAnchor ? { fieldAnchor } : {}) }
+    if (publishAfter.current && onSaveAndPublish) onSaveAndPublish(value)
+    else onSave(value)
+    publishAfter.current = false
   }
 
   return (
@@ -122,7 +133,7 @@ export function PinEditor({
         }
       }
     }}>
-      <form className="pin-editor" aria-labelledby="pin-editor-title" onSubmit={submit}>
+      <form ref={formRef} className="pin-editor" aria-labelledby="pin-editor-title" onSubmit={(event) => { submit(event); publishAfter.current = false }}>
         <div className="pin-editor-heading">
           <div>
             <span><MapPin size={13} aria-hidden="true" /> My map</span>
@@ -139,8 +150,8 @@ export function PinEditor({
           <input value={url} onChange={(event) => setUrl(event.target.value)} maxLength={2_048} spellCheck={false} />
         </label>
         <label>
-          <span>Topic or tag</span>
-          <input value={topic} onChange={(event) => setTopic(event.target.value)} maxLength={80} />
+          <span>Tags <small>first is the main topic · separate with commas</small></span>
+          <input value={topic} onChange={(event) => setTopic(event.target.value)} maxLength={400} placeholder="e.g. Water, Pacific, climate" />
         </label>
         <div className="pin-editor-place">
           <span className="pin-editor-place-label">Map location <small>optional</small></span>
@@ -218,6 +229,11 @@ export function PinEditor({
         <p className="pin-editor-footnote">Saved only in your private library. Suggestions come from the page's title, address and absorbed text; nothing is placed until you save.</p>
         <div className="pin-editor-actions">
           <button type="button" onClick={onCancel}>Cancel</button>
+          {onSaveAndPublish && (
+            <button type="button" title="Save the pin, then review exactly what would be published as a public beacon" onClick={() => { publishAfter.current = true; formRef.current?.requestSubmit() }}>
+              Save and publish as beacon…
+            </button>
+          )}
           <button type="submit">Save to My map</button>
         </div>
       </form>

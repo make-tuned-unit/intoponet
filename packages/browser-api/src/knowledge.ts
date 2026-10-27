@@ -69,6 +69,19 @@ export type KnowledgeRecord = {
 
 export type KnowledgeDocument = KnowledgeRecord & { paragraphs: string[] }
 
+/** A claim in an absorbed page and how your other sources bear on it (PRD ABS-004). */
+export type KnowledgeClaim = {
+  text: string
+  paragraphIndex: number
+  kind: 'figure' | 'quote' | 'statement'
+  /** Whom the page attributes it to ("the WMO"), when it says. */
+  attributedTo: string | null
+  status: 'stated' | 'corroborated' | 'disputed'
+  /** The page itself calls it disputed, denied or unverified. */
+  flaggedInText?: boolean
+  evidence: Array<{ recordId: string; title: string; site: string; paragraphIndex: number; relation: 'agrees' | 'conflicts' }>
+}
+
 export type KnowledgeHit = {
   recordId: string
   url: string
@@ -91,6 +104,7 @@ export type KnowledgeCommand =
   | { type: 'remove'; id: string }
   | { type: 'update'; id: string; note?: string | null; removeEntities?: string[]; title?: string }
   | { type: 'reindex'; id: string }
+  | { type: 'claims'; id: string }
   | { type: 'remove-all' }
   | { type: 'export' }
 
@@ -104,6 +118,8 @@ export interface KnowledgeApi {
   remove(id: string): Promise<void>
   update(id: string, patch: { note?: string | null; removeEntities?: string[]; title?: string }): Promise<KnowledgeRecord>
   reindex(id: string): Promise<KnowledgeRecord>
+  /** Claims in a page, labelled stated / corroborated / disputed against your other sources. */
+  claims(id: string): Promise<KnowledgeClaim[]>
   removeAll(): Promise<void>
   /** Every absorbed page with its text, places and citations, as JSON-LD (schema.org). */
   exportAll(): Promise<string>
@@ -158,6 +174,7 @@ export function parseKnowledgeCommand(value: unknown): KnowledgeCommand {
     case 'get':
     case 'remove':
     case 'reindex':
+    case 'claims':
       return { type: value['type'], id: parseId(value['id']) }
     case 'search': {
       const query = value['query']

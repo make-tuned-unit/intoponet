@@ -26,6 +26,22 @@ export function nativeName(code: string): string {
   }
 }
 
+/**
+ * Languages with no model of their own, translated roughly through their
+ * closest relative that has one (always labelled "rough, via …").
+ */
+export const RELATED_MODEL: Record<string, string> = {
+  fo: 'is', nn: 'nb', no: 'nb', lb: 'de', gsw: 'de', fy: 'nl', li: 'nl', mk: 'bg', cnr: 'sr', me: 'sr', ast: 'es', an: 'es', oc: 'ca',
+}
+
+/** The model to use for a language: its own, or a close relative's (rough). */
+export function modelFor(code: string | null, supported: (code: string | null) => boolean): { code: string; rough: boolean } | null {
+  if (!code) return null
+  if (supported(code)) return { code, rough: false }
+  const related = RELATED_MODEL[code]
+  return related && supported(related) ? { code: related, rough: true } : null
+}
+
 export function formatMegabytes(bytes: number): string {
   return `${Math.max(1, Math.round(bytes / 1_000_000))} MB`
 }
@@ -77,11 +93,24 @@ export function useTranslate(pageUrl: string, pageLoading: boolean): TranslateMo
     void api.pageState().then(setPage).catch(() => undefined)
   }, [api])
 
+  // Ask for the page's language after load, and again a few times while it is still unknown
+  // (slow pages, or text that arrives after the load event).
+  // Pages with endless ads or live widgets may never finish loading, so this also runs while loading.
   useEffect(() => {
-    if (!pageUrl || pageLoading) return
-    const timer = setTimeout(refreshPage, 400)
-    return () => clearTimeout(timer)
-  }, [pageUrl, pageLoading, refreshPage])
+    if (!pageUrl) return
+    let cancelled = false
+    const timers: number[] = []
+    const attempt = (index: number): void => {
+      void api.pageState().then((state) => {
+        if (cancelled) return
+        setPage(state)
+        const delay = [1_500, 3_000, 5_000, 8_000, 12_000, 20_000][index]
+        if (state.status === 'idle' && !state.detected && delay !== undefined) timers.push(window.setTimeout(() => attempt(index + 1), delay))
+      }).catch(() => undefined)
+    }
+    timers.push(window.setTimeout(() => attempt(0), pageLoading ? 1_500 : 400))
+    return () => { cancelled = true; timers.forEach((timer) => window.clearTimeout(timer)) }
+  }, [pageUrl, pageLoading, api])
 
   const ready = new Set(['en', ...(status?.languages.filter((language) => language.downloaded).map((language) => language.code) ?? [])])
   const supported = (code: string | null): boolean => !!code && (code === 'en' || !!status?.languages.some((language) => language.code === code))

@@ -1,0 +1,30 @@
+// Protection as a bar, New folder in the capture menu, compact Pin editor.
+export default async function ({ evaluate, shot, delay, send }) {
+  await delay(3000)
+  await evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: 'https://www.texastribune.org/' }); true`)
+  await delay(7000)
+  await evaluate(`document.querySelector('.shield-control > button').click(); true`)
+  await delay(1200)
+  console.log('bar height', await evaluate(`Math.round(document.querySelector('.shield-bar')?.getBoundingClientRect().height ?? -1)`), '| old modal', await evaluate(`!!document.querySelector('.shield-panel')`))
+  await shot('protection-bar')
+  await evaluate(`document.querySelector('.shield-bar-close').click(); true`)
+  await delay(600)
+
+  await evaluate(`[...document.querySelectorAll('.browser-actions button')].find((b) => b.innerText.includes('Capture'))?.click(); true`)
+  await delay(2500)
+  console.log('options', await evaluate(`[...document.querySelectorAll('.cap-group option')].map((o) => o.textContent).join(' | ')`))
+  await evaluate(`(() => { const s = document.querySelector('.cap-group select'); const set = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set; set.call(s, '__new__'); s.dispatchEvent(new Event('change', { bubbles: true })); return true })()`)
+  await delay(500)
+  await send('Input.insertText', { text: 'Border stories' })
+  await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 })
+  await delay(600)
+  console.log('chosen folder', await evaluate(`(() => { const s = document.querySelector('.cap-group select'); return s ? s.options[s.selectedIndex].textContent : 'no select' })()`))
+  await shot('capture-new-folder')
+  await evaluate(`document.querySelector('[aria-label="Cancel capture"]')?.click(); true`)
+  await delay(1500)
+
+  await evaluate(`[...document.querySelectorAll('.browser-actions button')].find((b) => b.innerText.includes('Pin'))?.click(); true`)
+  await delay(1500)
+  console.log('pin close', await evaluate(`(() => { const b = document.querySelector('.pin-editor-heading button').getBoundingClientRect(); const i = document.querySelector('.pin-editor-heading button svg').getBoundingClientRect(); return 'dx ' + Math.round((i.x + i.width / 2) - (b.x + b.width / 2)) + ' dy ' + Math.round((i.y + i.height / 2) - (b.y + b.height / 2)) })()`), '| input font', await evaluate(`getComputedStyle(document.querySelector('.pin-editor input')).fontSize`), '| button font', await evaluate(`getComputedStyle(document.querySelector('.pin-editor-actions button')).fontSize`))
+  await shot('pin-editor-compact')
+}

@@ -11,3 +11,4 @@ coverage/
 *.p12
 experiments/*/results/*.json
 .playwright-mcp/
+experiments/e2e/evidence/

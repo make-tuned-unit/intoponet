@@ -18,6 +18,26 @@ export type StoredBookmark = {
   savedAt: string
   note?: string
   fieldAnchor?: StoredFieldAnchor
+  /** Kept in the library but not drawn on the globe (MEM-003/008). */
+  hiddenOnMap?: boolean
+  /** Further tags beyond the main topic (MEM-007). */
+  tags?: string[]
+}
+
+/** Clean tags: trimmed, at most 8 of up to 40 characters, no duplicates of each other or of the topic. */
+export function cleanTags(value: unknown, topic = ''): string[] {
+  if (!Array.isArray(value)) return []
+  const seen = new Set([topic.trim().toLowerCase()])
+  const out: string[] = []
+  for (const item of value) {
+    if (typeof item !== 'string') continue
+    const tag = item.trim().slice(0, 40)
+    if (!tag || seen.has(tag.toLowerCase())) continue
+    seen.add(tag.toLowerCase())
+    out.push(tag)
+    if (out.length >= 8) break
+  }
+  return out
 }
 
 export type StoredFieldAnchor = {
@@ -143,6 +163,8 @@ function bookmarksFrom(value: unknown): StoredBookmark[] {
         savedAt: item['savedAt'],
         ...(typeof note === 'string' ? { note } : {}),
         ...(fieldAnchor ? { fieldAnchor } : {}),
+        ...(item['hiddenOnMap'] === true ? { hiddenOnMap: true } : {}),
+        ...(cleanTags(item['tags'], item['topic']).length ? { tags: cleanTags(item['tags'], item['topic']) } : {}),
       },
     ]
   })
@@ -231,4 +253,51 @@ export function parsePrivateLibrary(raw: string): PrivateLibraryDocument | null 
 
 export function serializePrivateLibrary(library: PrivateLibraryDocument): string {
   return JSON.stringify(parsePrivateLibrary(JSON.stringify(library)) ?? emptyPrivateLibrary())
+}
+
+/**
+ * Merge an imported library into the current one without losing anything
+ * (§8.4 import). Pages match by address: the current copy keeps its title,
+ * note, pin and visibility, and gains imported tags (and a pin or note it
+ * lacked). Collections match by id, then by name, and combine their pages.
+ * Recent pages and absorbed excerpts are combined, newest first.
+ */
+export function mergePrivateLibraries(current: PrivateLibraryDocument, incoming: PrivateLibraryDocument): { library: PrivateLibraryDocument; added: { bookmarks: number; collections: number; recents: number; absorbed: number } } {
+  const bookmarks = [...current.bookmarks]
+  let addedBookmarks = 0
+  for (const item of incoming.bookmarks) {
+    const index = bookmarks.findIndex((bookmark) => bookmark.url === item.url)
+    if (index === -1) {
+      bookmarks.push(item)
+      addedBookmarks += 1
+      continue
+    }
+    const mine = bookmarks[index]!
+    const tags = cleanTags([...(mine.tags ?? []), ...(item.topic !== mine.topic ? [item.topic] : []), ...(item.tags ?? [])], mine.topic)
+    bookmarks[index] = {
+      ...mine,
+      ...(mine.fieldAnchor || !item.fieldAnchor ? {} : { fieldAnchor: item.fieldAnchor }),
+      ...(mine.note || !item.note ? {} : { note: item.note }),
+      ...(tags.length ? { tags } : {}),
+    }
+  }
+  const collections = current.collections.map((collection) => ({ ...collection, memberUrls: [...collection.memberUrls] }))
+  let addedCollections = 0
+  for (const item of incoming.collections) {
+    const match = collections.find((collection) => collection.id === item.id) ?? collections.find((collection) => collection.label.trim().toLowerCase() === item.label.trim().toLowerCase())
+    if (match) match.memberUrls = [...new Set([...match.memberUrls, ...item.memberUrls])]
+    else {
+      collections.push({ ...item, memberUrls: [...item.memberUrls] })
+      addedCollections += 1
+    }
+  }
+  const recentUrls = new Set(current.recents.map((recent) => recent.url))
+  const newRecents = incoming.recents.filter((recent) => !recentUrls.has(recent.url))
+  const recents = [...current.recents, ...newRecents].sort((a, b) => b.visitedAt.localeCompare(a.visitedAt)).slice(0, 40)
+  const absorbedIds = new Set(current.absorbed.map((record) => record.id))
+  const newAbsorbed = incoming.absorbed.filter((record) => !absorbedIds.has(record.id))
+  return {
+    library: { schema: privateLibrarySchema, bookmarks, collections, recents, absorbed: [...current.absorbed, ...newAbsorbed] },
+    added: { bookmarks: addedBookmarks, collections: addedCollections, recents: recents.filter((recent) => !recentUrls.has(recent.url)).length, absorbed: newAbsorbed.length },
+  }
 }

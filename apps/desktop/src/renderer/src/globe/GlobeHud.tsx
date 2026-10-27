@@ -3,6 +3,7 @@ import { Activity, ArrowDownRight, ArrowLeft, ArrowUpRight, BookmarkPlus, BookOp
 import type { NewsHeadline, RisingTerm, WikiNewsItem } from '../../../shared/news/newsDigest'
 import { dayPhase, dayPhaseText } from '../earth/sun'
 import { BiggerPicture } from './BiggerPicture'
+import { CommunityBeacons } from '../beacons/CommunityBeacons'
 import { WorldStories } from './WorldStories'
 import type { GlobalStory } from '../../../shared/news/globalStories'
 import type { OldsNode } from '@intoponet/browser-api'
@@ -57,7 +58,7 @@ export function peakScore(signal: Pick<GlobeSignal, 'intensity'>): number {
 export function PeakMeter({ score, color }: { score: number; color: string }) {
   const filled = Math.max(1, Math.ceil(score / 20))
   return (
-    <span className="peak-meter" style={{ ['--layer-color' as string]: color }} aria-label={`Peak ${score} of 100`} title={`Peak ${score} of 100 within its layer`}>
+    <span className="peak-meter" role="img" style={{ ['--layer-color' as string]: color }} aria-label={`Peak ${score} of 100`} title={`Peak ${score} of 100 within its layer`}>
       {[0, 1, 2, 3, 4].map((index) => <i key={index} className={index < filled ? 'is-on' : ''} style={{ height: `${4 + index * 2.5}px` }} />)}
     </span>
   )
@@ -501,6 +502,7 @@ export function SignalPanel({
                 onOpenName={(name) => onContextName?.(name, context.countryCode, context.name)}
               />
             )}
+            <CommunityBeacons lat={selected.lat} lon={selected.lon} onOpen={onOpen} />
             <dl className="globe-facts">
               <div><dt>{selected.layer === 'reading' ? 'Readers' : selected.layer === 'quakes' ? 'Measured' : selected.layer === 'news' ? 'Published' : 'Reported'}</dt><dd>{selected.measurement}</dd></div>
               <div><dt>{selected.layer === 'reading' ? 'Day' : selected.layer === 'news' ? 'Latest' : 'Observed'}</dt><dd>{relativeTime(selected.observedAt, now)}</dd></div>

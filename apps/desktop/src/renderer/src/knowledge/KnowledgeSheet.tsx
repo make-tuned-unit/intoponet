@@ -1,7 +1,7 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { ArrowLeft, BookOpenText, Brain, ExternalLink, Hash, History, Loader2, MapPin, MessageCircleQuestion, RefreshCw, Search, Sparkles, Trash2, User, X } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import type { KnowledgeDocument, KnowledgeHit, KnowledgeRecord, LayaHit, LayaPassage, LayaProgress, LayaRelated, LayaStatus, LayaTheme } from '@intoponet/browser-api'
+import type { KnowledgeClaim, KnowledgeDocument, KnowledgeHit, KnowledgeRecord, LayaHit, LayaPassage, LayaProgress, LayaRelated, LayaStatus, LayaTheme } from '@intoponet/browser-api'
 import { useGlassSheen } from '../glass/useGlassSheen'
 import '../glass/glass.css'
 import './knowledge.css'
@@ -62,6 +62,14 @@ export function KnowledgeSheet({
   const [query, setQuery] = useState('')
   const [hits, setHits] = useState<KnowledgeHit[] | null>(null)
   const [doc, setDoc] = useState<{ document: KnowledgeDocument; paragraph: number | null } | null>(null)
+  const [claims, setClaims] = useState<KnowledgeClaim[]>([])
+  useEffect(() => {
+    setClaims([])
+    if (!doc) return
+    let cancelled = false
+    void window.intoponet.knowledge.claims(doc.document.id).then((list) => { if (!cancelled) setClaims([...list].sort((a, b) => ['disputed', 'corroborated', 'stated'].indexOf(a.status) - ['disputed', 'corroborated', 'stated'].indexOf(b.status))) }, () => undefined)
+    return () => { cancelled = true }
+  }, [doc?.document.id]) // eslint-disable-line react-hooks/exhaustive-deps
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -307,8 +315,9 @@ export function KnowledgeSheet({
                     )}
                   </div>
                 </div>
+                {doc.document.entities.length > 0 && <p className="knowledge-inferred">Names, places and terms below were <strong>inferred</strong> by Intoponet from the text; remove any that are wrong.</p>}
                 {doc.document.entities.length > 0 && (
-                  <div className="absorb-chips knowledge-entities" aria-label="Names, places and terms">
+                  <div className="absorb-chips knowledge-entities" aria-label="Names, places and terms (inferred)">
                     {doc.document.entities.slice(0, 30).map((entity) => (
                       <span key={entity.text} className={`absorb-chip kind-${entity.kind}`}>
                         {entity.kind === 'place' ? <MapPin size={11} aria-hidden="true" /> : entity.kind === 'name' ? <User size={11} aria-hidden="true" /> : <Hash size={11} aria-hidden="true" />}
@@ -317,6 +326,30 @@ export function KnowledgeSheet({
                       </span>
                     ))}
                   </div>
+                )}
+                {claims.length > 0 && (
+                  <section className="knowledge-claims" aria-label="Claims in this page">
+                    <h3 title="Figures, quotations and contested statements in this page. Stated: the page says it. Corroborated: another site you absorbed gives the same figure or quote. Disputed: the page flags it, or another of your sources gives a clearly different figure. This compares your own sources; it is not a verdict on truth.">Claims · {claims.filter((claim) => claim.status === 'corroborated').length} corroborated · {claims.filter((claim) => claim.status === 'disputed').length} disputed</h3>
+                    <ul>
+                      {claims.slice(0, 12).map((claim, index) => (
+                        <li key={index} className={`is-${claim.status}`}>
+                          <button type="button" onClick={() => setDoc({ document: doc.document, paragraph: claim.paragraphIndex })} title={`Go to ¶ ${claim.paragraphIndex + 1}`}>
+                            <span className={`knowledge-claim-status is-${claim.status}`}>{claim.status === 'stated' ? (claim.attributedTo ? `Stated · ${claim.attributedTo}` : 'Stated') : claim.status === 'corroborated' ? 'Corroborated' : claim.flaggedInText ? 'Disputed in the text' : 'Disputed'}</span>
+                            <span className="knowledge-claim-text">{claim.text}</span>
+                          </button>
+                          {claim.evidence.length > 0 && (
+                            <span className="knowledge-claim-evidence">
+                              {claim.evidence.map((item) => (
+                                <button key={`${item.recordId}-${item.relation}`} type="button" onClick={() => void openDocument(item.recordId, item.paragraphIndex)}>
+                                  {item.relation === 'agrees' ? 'Same in' : 'Different in'} {item.site} ¶ {item.paragraphIndex + 1}
+                                </button>
+                              ))}
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
                 )}
                 <div className="knowledge-text" ref={reader}>
                   {doc.document.paragraphs.map((paragraph, index) => (

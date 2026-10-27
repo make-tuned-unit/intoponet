@@ -7,7 +7,8 @@ import './glass/glass.css'
 import './tabRail.css'
 
 const spring: Transition = { type: 'spring', stiffness: 460, damping: 38 }
-const HOVER_INTENT_MS = 160
+/** Hover this long before the rail expands, so a known favicon can be clicked like an app icon. */
+const HOVER_INTENT_MS = 1000
 
 export type TabRailProps = {
   tabs: PageTabSnapshot[]
@@ -79,7 +80,15 @@ export function TabRail({ tabs, visible, expanded, pinned, onExpandedChange, onP
             intent.current = null
             if (!pinned && !event.currentTarget.contains(document.activeElement)) onExpandedChange(false)
           }}
-          onFocusCapture={() => { if (!pinned) onExpandedChange(true) }}
+          onPointerDownCapture={() => {
+            // A click means the favicon was enough: don't expand after it.
+            if (intent.current) window.clearTimeout(intent.current)
+            intent.current = null
+          }}
+          onFocusCapture={(event) => {
+            // Keyboard focus expands at once; focus from a click does not.
+            if (!pinned && (event.target as HTMLElement).matches(':focus-visible')) onExpandedChange(true)
+          }}
           onBlurCapture={(event) => {
             if (!pinned && !event.currentTarget.contains(event.relatedTarget as Node | null)) onExpandedChange(false)
           }}

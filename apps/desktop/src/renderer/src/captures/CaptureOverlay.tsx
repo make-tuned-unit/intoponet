@@ -44,9 +44,13 @@ export type CaptureOverlayProps = {
   initialMode: CaptureMode
   onCancel: () => void
   onConfirm: (mode: CaptureMode, crop: CaptureCrop, groupId: string) => void
+  /** Make a new folder (collection) and return its id. */
+  onCreateGroup?: (label: string) => string | null
 }
 
-export function CaptureOverlay({ pending, groups, initialGroupId, initialMode, onCancel, onConfirm }: CaptureOverlayProps) {
+const NEW_GROUP = '__new__'
+
+export function CaptureOverlay({ pending, groups, initialGroupId, initialMode, onCancel, onConfirm, onCreateGroup }: CaptureOverlayProps) {
   const reduceMotion = useReducedMotion()
   const frame = useRef<HTMLDivElement>(null)
   const primary = useRef<HTMLButtonElement>(null)
@@ -57,6 +61,13 @@ export function CaptureOverlay({ pending, groups, initialGroupId, initialMode, o
   const [mode, setMode] = useState<CaptureMode>(initialMode)
   const [groupId, setGroupId] = useState(initialGroupId)
   const [busy, setBusy] = useState(false)
+  const [naming, setNaming] = useState<string | null>(null)
+  const createGroup = (): void => {
+    const label = (naming ?? '').trim()
+    const id = label && onCreateGroup ? onCreateGroup(label) : null
+    if (id) setGroupId(id)
+    setNaming(null)
+  }
 
   const crop = selection ?? FULL
   const pixelWidth = Math.round(crop.width * pending.width)
@@ -72,7 +83,8 @@ export function CaptureOverlay({ pending, groups, initialGroupId, initialMode, o
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
-      const typing = event.target instanceof HTMLSelectElement
+      const typing = event.target instanceof HTMLSelectElement || event.target instanceof HTMLInputElement
+      if (event.target instanceof HTMLInputElement) return // the folder name field handles its own keys
       if (event.key === 'Escape') {
         event.preventDefault()
         event.stopImmediatePropagation()
@@ -212,9 +224,31 @@ export function CaptureOverlay({ pending, groups, initialGroupId, initialMode, o
         <span className="cap-divider" aria-hidden="true" />
         <label className="cap-group">
           <span>Save to</span>
-          <select value={groupId} onChange={(event) => setGroupId(event.target.value)} aria-label="Group">
-            {groups.map((group) => <option key={group.id} value={group.id}>{group.label}</option>)}
-          </select>
+          {naming !== null ? (
+            <input
+              className="cap-new-group"
+              value={naming}
+              autoFocus
+              maxLength={80}
+              placeholder="Folder name"
+              aria-label="New folder name"
+              onChange={(event) => setNaming(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') { event.preventDefault(); createGroup() }
+                if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setNaming(null) }
+              }}
+              onBlur={createGroup}
+            />
+          ) : (
+            <select
+              value={groupId}
+              onChange={(event) => (event.target.value === NEW_GROUP ? setNaming('') : setGroupId(event.target.value))}
+              aria-label="Folder"
+            >
+              {groups.map((group) => <option key={group.id} value={group.id}>{group.label}</option>)}
+              {onCreateGroup && <option value={NEW_GROUP}>New folder…</option>}
+            </select>
+          )}
         </label>
         {selection && (
           <button type="button" className="lg-icon-button" title="Use the whole view" aria-label="Use the whole view" onClick={() => setSelection(null)}>

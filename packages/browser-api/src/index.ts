@@ -12,6 +12,8 @@ export type BrowserPanelSnapshot = {
   canGoForward: boolean
   isLoading: boolean
   isVisible: boolean
+  /** The page is in a private tab: nothing about it is recorded. */
+  isPrivate?: boolean
 }
 
 export type NavigationIntent =
@@ -71,6 +73,7 @@ export type PageTabSnapshot = {
   title: string
   favicon: string
   active: boolean
+  isPrivate?: boolean
 }
 
 export type NetworkPrivacySnapshot = {
@@ -119,7 +122,7 @@ export type BrowserHostEvent =
   /** Validated per-country local news digest (JSON). */
   | { type: 'news-digest'; payload: string }
 
-export type ShellShortcut = 'focus-launcher' | 'toggle-bookmarks' | 'capture'
+export type ShellShortcut = 'focus-launcher' | 'toggle-bookmarks' | 'capture' | 'toggle-private' | 'absorb-selection'
 
 export interface BrowserHostApi {
   open(intent: NavigationIntent): Promise<void>
@@ -369,3 +372,6 @@ export * from './olds'
 export * from './knowledge'
 export * from './laya'
 export * from './translate'
+export * from './privacy'
+export * from './sitePermissions'
+export * from './beacons'

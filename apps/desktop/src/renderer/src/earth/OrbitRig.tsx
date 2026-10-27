@@ -26,17 +26,31 @@ export function OrbitRig({
   const wheeledAt = useRef(0)
   const last = useRef({ x: 0, y: 0 })
   const look = useRef(new Vector3(0, 0, 0))
+  /** Spin velocity (radians per frame) after a drag is released: the globe keeps the direction you threw it. */
+  const velocity = useRef({ theta: 0, phi: 0 })
+  const lastMoveAt = useRef(0)
+  const props = useRef({ theta, phi, distance })
   const report = useRef({ onDistanceChange, onPoseChange })
   report.current = { onDistanceChange, onPoseChange }
 
+  // Apply only the props that actually changed. Re-applying a stale theta on an unrelated
+  // change (e.g. zoom) is what made the globe swing back after a drag.
   useEffect(() => {
-    desired.current.radius = distance
-    desired.current.theta = theta
-    desired.current.phi = phi
+    const before = props.current
+    props.current = { theta, phi, distance }
+    if (distance !== before.distance) desired.current.radius = distance
+    if (theta !== before.theta || phi !== before.phi) {
+      velocity.current = { theta: 0, phi: 0 }
+      // Shortest way round: aim for the equivalent angle nearest where the globe is now.
+      const turn = Math.PI * 2
+      const delta = ((((theta - spherical.current.theta) % turn) + turn * 1.5) % turn) - Math.PI
+      desired.current.theta = spherical.current.theta + delta
+      desired.current.phi = phi
+    }
     if (reducedMotion) {
-      spherical.current.radius = distance
-      spherical.current.theta = theta
-      spherical.current.phi = phi
+      spherical.current.radius = desired.current.radius
+      spherical.current.theta = desired.current.theta
+      spherical.current.phi = desired.current.phi
     }
   }, [distance, phi, reducedMotion, theta])
 
@@ -45,7 +59,9 @@ export function OrbitRig({
     const onDown = (event: PointerEvent): void => {
       if (!enabled) return
       dragging.current = true
+      velocity.current = { theta: 0, phi: 0 }
       last.current = { x: event.clientX, y: event.clientY }
+      lastMoveAt.current = performance.now()
       element.setPointerCapture(event.pointerId)
     }
     const onMove = (event: PointerEvent): void => {
@@ -53,6 +69,14 @@ export function OrbitRig({
       const dx = event.clientX - last.current.x
       const dy = event.clientY - last.current.y
       last.current = { x: event.clientX, y: event.clientY }
+      const now = performance.now()
+      const frames = Math.max(1, (now - lastMoveAt.current) / 16.7)
+      lastMoveAt.current = now
+      // Smoothed per-frame velocity for the throw.
+      velocity.current = {
+        theta: velocity.current.theta * 0.5 + (-dx * 0.005 / frames) * 0.5,
+        phi: velocity.current.phi * 0.5 + (-dy * 0.005 / frames) * 0.5,
+      }
       spherical.current.theta -= dx * 0.005
       spherical.current.phi = Math.min(
         Math.PI - 0.18,
@@ -66,7 +90,9 @@ export function OrbitRig({
       if (element.hasPointerCapture(event.pointerId)) {
         element.releasePointerCapture(event.pointerId)
       }
-      report.current.onPoseChange?.({ ...spherical.current })
+      // A pause before letting go means no throw.
+      if (performance.now() - lastMoveAt.current > 90 || reducedMotion) velocity.current = { theta: 0, phi: 0 }
+      if (Math.abs(velocity.current.theta) + Math.abs(velocity.current.phi) < 0.0004) report.current.onPoseChange?.({ ...spherical.current })
     }
     const onWheel = (event: WheelEvent): void => {
       if (!enabled) return
@@ -92,11 +118,25 @@ export function OrbitRig({
       element.removeEventListener('pointercancel', onUp)
       element.removeEventListener('wheel', onWheel)
     }
-  }, [enabled, gl])
+  }, [enabled, gl, reducedMotion])
 
   useEffect(() => {
     let frame = 0
     const tick = (): void => {
+      // Momentum after a throw, easing out; the pose is reported once the globe settles.
+      const spin = velocity.current
+      if (!dragging.current && Math.abs(spin.theta) + Math.abs(spin.phi) >= 0.0004) {
+        spherical.current.theta += spin.theta
+        spherical.current.phi = Math.min(Math.PI - 0.18, Math.max(0.18, spherical.current.phi + spin.phi))
+        desired.current.theta = spherical.current.theta
+        desired.current.phi = spherical.current.phi
+        spin.theta *= 0.94
+        spin.phi *= 0.9
+        if (Math.abs(spin.theta) + Math.abs(spin.phi) < 0.0004) {
+          velocity.current = { theta: 0, phi: 0 }
+          report.current.onPoseChange?.({ ...spherical.current })
+        }
+      }
       const steer = reducedMotion ? 1 : dragging.current ? 0 : 0.055
       if (performance.now() - wheeledAt.current > 240) {
         spherical.current.radius += (desired.current.radius - spherical.current.radius) * steer

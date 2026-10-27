@@ -1,0 +1,23 @@
+{
+  "name": "@intoponet/beacon-registry",
+  "version": "0.1.0",
+  "license": "UNLICENSED",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "migrate": "node --experimental-strip-types src/migrate.ts",
+    "start": "node --experimental-strip-types src/server.ts"
+  },
+  "dependencies": {
+    "@intoponet/beacon-core": "0.1.0",
+    "@neon/config": "^1.9.5",
+    "@neon/functions": "^0.11.0",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.11.10",
+    "typescript": "^5.7.3"
+  }
+}

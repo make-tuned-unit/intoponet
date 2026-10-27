@@ -653,6 +653,416 @@ Paywalls and panel behaviour were addressed on 2026-10-27.
   glass class had reset its positioning.
 - **Evidence.** `paywall-free-coverage.png` and `bookmarks-favicons.png`.
 
+The personal-data batch was implemented on 2026-10-27 (MEM-001, MEM-003/008,
+MEM-004/005, §8.4).
+
+- **Private browsing (MEM-001).** A header "Private" button, ⇧⌘N, or the
+  Privacy tab opens new tabs in an in-memory session
+  (`intoponet-private`). Protections and download rules apply to it as
+  well. Private tabs are marked in the tab strip. They record no recent
+  pages or interest signals, are never written to restore state, and are
+  rebuilt as private after a crash. Turning private browsing off closes
+  them and clears that session's storage and cache. Opening a URL reuses
+  only a tab of the same mode.
+- **Footprints and retention (§8.4).** In My map › Privacy:
+  - a "Keep recent pages and interest signals" switch (off stops both);
+  - retention of 7, 30 or 90 days, or until deleted (the default, so
+    nothing is removed silently), applied at start, on library restore and
+    hourly;
+  - "Delete footprints now", with a confirm step.
+
+  Saved pages, pins and collections are never pruned.
+- **Backups.** A switch that excludes the private library, knowledge, the
+  Laya index and personal data from Time Machine (`tmutil
+  addexclusion`/`isexcluded`, macOS only). It shows its live status, and
+  "unavailable" elsewhere.
+- **Marker hide/show (MEM-003/008).** A global "Show my pins on the globe"
+  switch, and a per-pin Hide/Show in Locations (`hiddenOnMap`, kept by
+  both library parsers). Hiding never deletes the page.
+- **Collections (MEM-004/005).** An expanded collection explains what it is
+  made of: pages per site, research topics and pinned places. It can be
+  merged into another collection (no duplicates; the source is removed).
+  "Split by site" turns each site with two or more pages into its own
+  collection, and single pages stay.
+- **Validation.**
+  - 266 desktop tests pass, including new privacy, retention and
+    collections tests and the shortcut test; typecheck and production
+    build pass.
+  - `scenario-privacy.mjs`: the private tab reported `isPrivate: true` with
+    no recents written, and 0 tabs remained after turning private browsing
+    off. Hide pin saved `hiddenOnMap`, and the split produced
+    "Pacific reading · en.wikipedia.org".
+- **Evidence.** `privacy-tab.png`, `privacy-private-tab.png`,
+  `privacy-hide-pin.png` and `privacy-collection-why.png`.
+
+Follow-ups the same day (2026-10-27):
+
+- **History relevance.** A Wikipedia result now has to plausibly be what the
+  headline is about before it can become the story's topic:
+  - it must share at least a third of its title words with the headline;
+  - a single shared word must be a name in the headline, with no other names
+    in the title;
+  - when Laya is on, its on-device model (all-MiniLM-L6-v2) checks meaning:
+    0.45 or higher passes on meaning alone, and below 0.2 is rejected even if
+    words match.
+
+  Calibration: related topics scored 0.45–0.65; the reported mismatch (a
+  Honduran hospital story → "2012 Delhi gang rape and murder") scored 0.17.
+  When nothing passes, the story falls back to the country's current chapter
+  and says so. In the Honduras check, four untranslated headlines that had
+  matched junk ("Tras De Mí", "Defender (video game)", "Education in
+  Honduras") now fall back honestly. The Olds cache is at v7.
+- **Layout.** The Bigger Picture card no longer collapses inside the scrolling
+  country panel. In short windows, the Olds timeline keeps its fixed rows and
+  a 300 px track, and scrolls vertically instead of clipping cards under the
+  chapter band (`hn-timeline.png`: 8 cards, 0 clipped). Untranslated Spanish,
+  French, Portuguese, German, Italian and Dutch articles ("El") are no longer
+  offered as names behind the headlines.
+- **Browser toolbar.** The address is a compact display (max 340 px). The
+  toolbar names its features: Protected, Translate, Capture, Pin, Absorb and
+  Bookmarks. Pin and Absorb moved out of "…", which keeps copy, find and
+  print. Names hide below 1040 px of toolbar width.
+- **Tab rail as an app bar.** The rail expands only after 1 s of hover, a
+  click cancels the pending expansion, and only keyboard focus expands it at
+  once. Verified: closed at 0.5 s, open at 1.4 s, still closed 1.5 s after a
+  click.
+- **Absorb Selection.** Right-clicking selected text (3+ words, not in a form
+  field) offers "Absorb Selection", which opens the usual Absorb preview for
+  just that passage. Verified on Wikipedia's Climate change article: a
+  137-word selected paragraph previewed with scope `selection`.
+- **Validation.** 274 desktop tests, typecheck and build pass. New scenarios:
+  `scenario-honduras.mjs`, `scenario-toolbar.mjs` and
+  `scenario-absorb-selection.mjs`.
+- **Protection bar.** Site protection is a single 40 px bar under the
+  toolbar, like the translate bar, replacing the tall right-hand panel. It
+  shows the status and blocked counts, the ads and trackers switches, network
+  privacy (encrypted DNS, local IP hidden, no VPN), "Pause on this site" and
+  close (`protection-bar.png`).
+- **Capture folders.** The capture "Save to" menu ends with "New folder…".
+  Naming it creates the collection (and its Finder folder) and selects it
+  (`capture-new-folder.png`).
+- **Pin editor.** Fields are 13 px and buttons 12.5 px, and the close button
+  is a centred 34 px square (icon offset 0, 0). Pin suggestions resolve city
+  homonyms with regions the page names, in its text or its site name. A Texas
+  Tribune story about the Santa Ana refuge no longer suggests Santa Ana,
+  California, and Texas is offered instead (`pin-editor-compact.png`).
+  Scenario: `scenario-bars.mjs`.
+- **Settings and automatic translation.** A Settings button (gear) in the
+  header opens a drawer (one panel at a time, and it hides the page view
+  while open). It holds:
+  - your reading language (download size shown for languages not yet on
+    this Mac);
+  - "Translate pages automatically";
+  - "Download a language the first time a page needs it";
+  - "Show news headlines in your language" (applies to every headline list
+    at once);
+  - downloaded languages, with remove;
+  - a link to Privacy.
+
+  With auto-translate on, a page in another language is translated as it
+  loads. Each page and language is tried once, so "Original" sticks. Without
+  auto-download, the translate bar opens and offers the download instead.
+  Language detection now also runs while a page is still loading, with
+  retries up to about 50 s. fontanka.ru (endless loading) previously showed
+  "Choose language"; Russian is now detected in about 10 s.
+
+  Live check (`scenario-auto-translate.mjs`, fresh profile): fontanka.ru was
+  detected as Russian, the model downloaded, and 418 blocks were translated
+  by 30 s (`auto-translate-fontanka.png`, `settings-panel.png`). Model sizes
+  from the catalog: 57 languages, 43–137 MB each, median 72 MB.
+
+PRD gap work, 2026-10-27 (after the audit of 60 IDs: about 30 done, 23
+partial, 7 missing):
+
+- **No plain-text library (P3-01, §11).** Bookmarks, collections and recents
+  are no longer copied to renderer `localStorage`. They live only in the
+  encrypted `private-library.v1.seal`. An old plain-text copy is merged into
+  the encrypted library on first launch, and deleted only after an encrypted
+  write succeeds. A live test caught and fixed a loss case: an empty
+  encrypted file used to win over the old copy. Now the two are merged.
+- **Site permissions (WEB-001, WEB-006).**
+  - Camera, microphone, location, notifications and clipboard reading are
+    asked in a bar under the toolbar, with Allow, Block and Not now.
+  - Answers are kept per site in `site-permissions.json` (mode 600). Private
+    tabs keep them in memory, cleared when private browsing ends.
+  - The Protection bar lists a site's remembered answers; clicking one
+    forgets it, so the site asks again.
+  - Fullscreen and clipboard writing are granted; everything else (MIDI,
+    USB, serial, …) is refused.
+  - macOS camera and microphone access is requested on the first Allow.
+  - Electron limitation: before you answer, `navigator.permissions.query`
+    reports "denied" rather than "prompt".
+- **Popups (WEB-001, WEB-009).**
+  - Sized popups (`window.open` with features, as sign-in flows use) open
+    as a small sandboxed window in the same session, keeping
+    `window.opener`.
+  - `target=_blank` and new-tab links open as tabs with the opener's
+    privacy.
+  - Non-http(s) popups are refused, and more than 3 popups in 10 s from one
+    page are blocked.
+  - Popup windows close with their page.
+  - Live: a geolocation request was granted through the bar (the page then
+    reported "granted"); a sign-in-style popup opened with `opener` kept; a
+    `_blank` link opened a tab.
+- **Import and tags (§8.4, MEM-005, MEM-007).**
+  - My map › Import merges an exported library: pages match by address, and
+    yours keep their title, note, pin and visibility while gaining imported
+    tags (and a pin or note they lacked); collections match by id or name
+    and combine pages; recents and excerpts combine.
+  - Pins take several tags ("Water, Pacific, climate"): the first is the
+    main topic. Tags show in Locations and in collection explanations.
+- **Sites to leave out (ABS-005).** A user list in Privacy. Absorb refuses
+  those sites before running any script (enforced in the main process), and
+  they leave no recent pages or interest signals. Adding a site also drops
+  its existing recent pages.
+- **Validation.** 291 desktop tests, typecheck in all workspaces, and the
+  build pass. Scenarios: `scenario-permissions.mjs`, `scenario-import.mjs`
+  and `scenario-excluded.mjs`.
+- **Still open, needing decisions.**
+  - Beacons (BCN-001 to 006): publishing governance and anti-Sybil
+    approach (ADR-006).
+  - Project licence (LICENSE/NOTICE).
+  - A real neighbourhood level (needs polygon data).
+  - Analogous and responded-to links in The Olds (Wikidata has no direct
+    properties).
+  - Claim labels (ABS-004).
+  - The VoiceOver pass.
+
+Licence, Beacons and remaining PRD items, 2026-10-27:
+
+- **Licence (§14, owner decision).** Proprietary, all rights reserved
+  (`LICENSE`), and every package is `"license": "UNLICENSED"`. The owner asked
+  for maximum protection, and the repo is private. This departs from the
+  PRD's open-source candidates (Apache-2.0 / MPL-2.0): an open licence can be
+  adopted later, but not withdrawn once published.
+  `THIRD_PARTY_NOTICES.md` lists every third-party licence. Obligations
+  before a public release:
+  - the vendored MPL-2.0 Bergamot glue stays MPL;
+  - ship Electron/Chromium licences and the npm licence texts;
+  - attribute Wikipedia (CC BY-SA 4.0) and GeoNames (CC BY 4.0), now in
+    Settings › Credits;
+  - clear news-feed terms for commercial use;
+  - confirm the source of `earth-day.jpg`.
+- **Beacons (BCN-001 to 006), Neon.**
+  - `packages/beacon-core` holds the payload rules: canonical URL with
+    tracking removed, no sign-in, account, payment or local addresses,
+    unknown fields refused, place rounded to 0.1°. It also holds Ed25519
+    signing and prominence: the sum over 2° cells of min(4, log2(1 + keys)),
+    with bucketed public counts.
+  - `services/beacon-registry` is a Node API over Postgres (Neon via
+    `DATABASE_URL`). It supports publish, signed withdraw, report and
+    contest (contests shown publicly), auto-hide after 3 independent reports
+    pending moderator review, daily limits per key and per salted-hash
+    network, replay protection, aggregate-only reads (keys never returned),
+    and `/v1/export` for mirrors.
+  - Desktop: "Publish beacon…" on a pin opens a consent screen showing the
+    exact JSON and what is never included. Publish stays disabled until the
+    publicness box is ticked. The main-process `BeaconPublisher` is the only
+    transmitter, and its key is sealed by safeStorage. "Beacons near here"
+    appears in country panels, with report and dispute. Settings › Beacons
+    holds the registry address and withdraw buttons.
+  - Decision record: ADR-006 (anti-Sybil remains open before public launch).
+  - Tests: core 5, registry 5 against a real Postgres 17, publisher 4.
+    End-to-end against a local registry: publish → appears near Fiji →
+    withdraw removes it (`beacon-consent.png`).
+- **Claims (ABS-004).**
+  - The Knowledge reader lists the figures, quotations and contested
+    statements in each page, with attribution ("Stated · the
+    Intergovernmental Panel on Climate Change"). Each is labelled stated,
+    corroborated (same figure or quote on another site you absorbed) or
+    disputed (flagged in the text, or a clearly different value for the same
+    measured unit and subject). Each jumps to its paragraph and evidence.
+  - Detected names, places and terms are labelled "inferred".
+  - The first live run was too eager: citation markers and loose overlaps
+    produced 14 false disputes on Climate change. After the fix: NASA
+    Evidence has 3 corroborated (for example "ocean absorbed 20–30% of
+    emissions" matches Wikipedia) and 0 disputed.
+- **Competing interpretations (OLD-005).** The Olds has a "Debate" view: attributed
+  views from the article's historiography, debate, causes and legacy
+  sections, shown side by side and unranked, each linking to its section. It
+  appears only when 2 or more named holders exist. Industrial Revolution
+  shows Henrich, Stark, Mokyr, Williams, Voltaire and Allen
+  (`olds-debate.png`). English only. Olds cache v8.
+- **Accessibility (EXP-008, MEM-010, §12).**
+  - axe-core (WCAG 2.1 AA) reports 0 violations across home, Bookmarks, My
+    map, Privacy, Settings, Knowledge, The Olds and a country panel. One
+    issue (an aria-label on a role-less span) was fixed.
+  - Keyboard: all five header panels open with Enter and close with Escape,
+    and focus returns to their button. Settings gained an Escape handler.
+    Focus rings are visible.
+  - Dragging between bookmark folders now has a "Move to…" menu on each
+    bookmark and capture.
+  - A full VoiceOver walkthrough is still a manual check.
+- **Validation.** Typecheck in all workspaces; desktop 302, beacon-core 5,
+  local-knowledge 7 and registry 5 tests pass; build passes.
+- **Beacons live on Neon (2026-10-27).**
+  - Project `intoponet-beacons` (`curly-river-72204483`) in the Atlas Atlantic
+    org, aws-us-east-1. Schema applied; registry tests passed on a temporary
+    Neon branch, which was then deleted.
+  - Function `beacons` is deployed from `services/beacon-registry/neon.ts`
+    with `neon deploy --env .env.local`. Its secrets live only in the ignored
+    `.env.local`.
+  - The app defaults to it (`main/beacons/defaults.ts`). Settings or
+    `INTOPONET_BEACON_REGISTRY` override.
+  - Per Neon's guidance, `X-Forwarded-For` is untrusted on Functions, so the
+    Function has no per-network limit. Add one at an edge proxy before public
+    launch (ADR-006).
+  - Live end-to-end from the built app: publish → read near Fiji → withdraw.
+    Test rows removed afterwards; production starts empty.
+- **Topics behind a story (2026-10-27).**
+  - The Olds Story view lists the subject areas a headline is about, in its
+    province or state first, then its country (for example "Incarceration in
+    Canada", "Crime in Canada", "Correctional Service Canada", "Provincial
+    correctional services in Canada"). Each topic has up to two recent
+    figures quoted from its Wikipedia article, plus "Its history" (opens a
+    full thread) and "Read on Wikipedia".
+  - Sources: subject families (justice, health, housing, politics, economy,
+    immigration, Indigenous, climate, energy, military and more) triggered
+    by headline words, plus subject-word searches filtered to the country
+    and to shared subject words.
+  - Titles are checked to exist, with no disambiguation pages, and ranked by
+    Laya meaning when it is on.
+  - Live: the NB correctional-centre headline gets the four topics above;
+    the hospital and rent headlines lost their off-topic results after the
+    subject filter. Olds cache v9.
+- **Pin → beacon.** Besides "Publish beacon…" in My map › Locations, the Pin
+  editor has "Save and publish as beacon…" (saves the pin, then opens the
+  consent screen). The page view is hidden while the consent screen is open.
+- **Fly-to, crash and globe spin (2026-10-27).**
+  - **Crash:** closing a tab threw in main (`view.webContents.id` read inside
+    its own 'destroyed' handler, from the popup work). The id is now captured
+    up front; popup cleanup holds the opener's webContents the same way.
+  - **Place data:** cities of 50,000+ people plus every national and
+    first-level capital (GeoNames PPLC/PPLA), up from 250,000+: 13,101
+    cities, about 790 KB, so Charlottetown, Fredericton, Juneau and others
+    are found. Searches accept a province, state or country after the place
+    ("Charlottetown PEI", "Halifax, NS", "Springfield IL", "Perth WA"). Two-letter
+    codes only work as a qualifier; PEI, NSW and QLD also work on their own.
+  - **Enter flies:** Enter flies to the place when the text is its name, its
+    name plus a region, or a 4+ letter start of its name. Places are offered
+    even while a page is open; flying closes the page and spins the globe
+    there with nearby signals listed. Live: "Charlottetown PEI" and
+    "Fredericto" flew there from an open CBC page; "Paris attacks timeline"
+    still searched the web.
+  - **Spin-back:** OrbitRig re-applied a stale theta whenever any prop changed
+    (for example zoom), and angles grew unbounded so the reset spun the long
+    way round. Now only changed props apply, by the shortest path, and a drag
+    keeps its momentum on release (eased; none if you pause before letting
+    go; none with reduced motion). Live: throw then zoom kept the view.
+- **Place locator (2026-10-27).** Flying to a place shows a locator on the
+  exact spot: a glowing dot, two pulsing rings, a landing ring as you arrive,
+  and the place name. It is an HTML overlay positioned on a projected,
+  undrawn marker (`locator:<id>`). It fades when the spot turns away and is
+  static with reduced motion. Live: Dar es Salaam (`locator-2-settled.png`).
+- **The Olds: history from article structure, not AI (2026-10-27).**
+  - **Chronology:** "How we got here" lists dated sentences quoted from the
+    topic's own Wikipedia article, in time order. A sentence is kept only if
+    it states a date ("On 19 December 2018…", "In January 2017…", "In 2016,…").
+    References and see-also sections are skipped, and fragments and link
+    debris dropped. Each entry has its section link and the first article it
+    mentions ("…: its history"). At most 3 per year, keeping early background
+    and recent events. Topics without a Wikidata date take the first dated
+    event (never for broad places).
+  - **Broad places:** a broad topic (country, region) only keeps events that
+    mention the headline's subject words and names. If the related topics
+    include a current event that fits the headline, the story switches to it
+    and says so ("Latin America" → "2026 Brazilian general election").
+  - **Topics behind the story:** country from the outlet, else the topic's
+    Wikidata country, else the country the headline names (possessives and
+    "Latin America" handled). Creative works (films, albums, books) are never
+    offered. Free-text search results need a country and must not be dated
+    past events ("1904 … election").
+  - **Matching:** generic event words (Trial, Election, Case, Crisis…) and a
+    first name beside a matched surname no longer count as unexplained
+    names, so "Trial of Benjamin Netanyahu" matches without Laya. The news
+    card shows the headline as published.
+  - **Live:** the Netanyahu verdict story has 18 dated events (Dec 2016
+    investigation → Mar 2026 pardon review) and topics Judiciary of Israel,
+    Israeli law, Politics of Israel and Elections in Israel. Olds cache v11.
+- **World list scroll.** The World and Rising lists scroll inside the
+  highlights panel (they were clipped). Live: 20 stories, scrolls 600 px.
+- **Recent history and rough translation (2026-10-27).**
+  - **Recent history:** Bigger Picture shows the newest dated events quoted
+    from the country's own Wikipedia article (last 25 years). It prefers
+    sentences about something that happened (signed, elected, opened,
+    protests…) over statistics, with at most one cultural item. Each opens
+    the history of what it mentions. Without such events, the old list is
+    labelled "Earlier history" (not "Recent") when nothing is within 30
+    years. Live: Faroe Islands (Sandoyartunnilin 2023, radar agreement 2022,
+    dolphin hunt 2021), Paraguay (Peña elected and sworn in 2023), Tanzania
+    (2025 election protests).
+  - **Rough translation:** languages with no Mozilla model use their closest
+    relative's: Faroese → Icelandic, Nynorsk → Bokmål, Luxembourgish and
+    Swiss German → German, Frisian and Limburgish → Dutch, Macedonian →
+    Bulgarian, Montenegrin → Serbian, Asturian and Aragonese → Spanish,
+    Occitan → Catalan. Always labelled "from Faroese (rough, via
+    Icelandic)". Bigger Picture's names use the same path. Live: KVF
+    headlines translated after the 77 MB Icelandic download.
+- **Feature verification DAG (2026-10-27).**
+  - **The graph:** `docs/FEATURE_DAG.json` lists 26 user-facing features, each
+    with its promise, dependencies and tier. Core runs offline, network needs
+    the internet, and full also downloads language models.
+  - **Checks and runner:** `experiments/e2e/checks.mjs` has one end-to-end
+    check per feature, run against the built app with a fresh profile through
+    `experiments/e2e/lib.mjs`. `npm run verify:features` validates the graph
+    (acyclic, every node has a check and every check a node), runs in
+    dependency order, marks dependants of a failure as blocked, and writes
+    `docs/FEATURE_VERIFICATION.md` plus `docs/feature-verification/latest.json`.
+    Options: `--tier full`, `--only`, `--skip-build`, `--list`.
+  - **Execution DAG:** node FEATURE_E2E links it to the execution DAG.
+  - **Result:** `--tier full` passed 26 of 26.
+  - **Fixes found by the DAG:**
+    - a test file that never ran (missing imports);
+    - Escape didn't close The Olds after a fly-to (focus stayed in the
+      search box): the sheet now takes focus, and Escape in an empty search
+      box closes panels;
+    - excluding a site didn't forget earlier recents unless done from the
+      Privacy tab: now pruned on any change;
+    - place search was about 15 ms per keystroke with 13k cities: prefix
+      buckets bring it to about 0.17 ms.
+  - **Harness:** checks wait for the interface; page checks fall back
+    across several well-known sites, because example.org and gnu.org were
+    unreachable from this network at times.
+  - **Known thin spots:**
+    - the paywall check proves detection runs, not detection on a paywalled
+      article;
+    - the protection check passed on blocked ads (CNN showed 0 trackers
+      that run);
+    - beacon publishing is checked for consent only; the live registry is
+      read-only in the DAG to keep it clean.
+
+### 2026-10-27 — The Olds on live trending stories
+
+- Sampled 23 live trending and rising headlines from the news digest and ran
+  each through The Olds in a fresh profile
+  (`node experiments/e2e/olds-sample.mjs out.json`). The first pass gave good
+  context for 3 of 10.
+- Fixes in `main/olds`:
+  - the country the headline names beats the outlet's country, including
+    adjectives ("Ukrainian"), "US" and "DR Congo";
+  - this year's events are preferred, with ongoing events counted as current;
+  - topics named for another country are dropped;
+  - films, series, foods, coins, phrases, lists, name pages and occupations
+    are not topics;
+  - a match on the country's name alone needs a current event whose kind the
+    headline points to ("win" → election); otherwise a subject topic is used
+    ("Xenophobia in South Africa", "Banking in Ethiopia");
+  - two-country stories add "A–B relations", including countries brought in
+    by a leader's name;
+  - fallback histories keep only events about the story;
+  - timeline sentences that can't stand alone are dropped;
+  - column labels ("Reader Q&A:") are stripped;
+  - one retry on a dropped connection.
+- Result: 16 of 23 good, 3 passable, 3 honest country fallbacks, and 1 test
+  artifact (a Spanish headline sent without its language).
+- `OLDS_HEADLINE` now guards the Ebola, South Africa and Guernsey cases.
+- `INTOPONET_OLDS_DEBUG=<file>` records candidate scores for quality checks.
+- Limits:
+  - list-format articles (cyclone seasons) give no timeline;
+  - upcoming events not yet on Wikipedia fall back to the latest past one
+    (Super Bowl);
+  - the leader list is dated late 2026.
+
 ## Gate ownership and evidence
 
 | Gate | Planner verification before promotion |

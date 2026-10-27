@@ -4,6 +4,7 @@
     "module": "ESNext",
     "jsx": "react-jsx",
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "types": ["node", "vite/client"]
   },
   "include": ["electron.vite.config.ts", "src"]

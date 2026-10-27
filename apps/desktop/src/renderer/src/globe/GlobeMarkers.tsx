@@ -124,7 +124,8 @@ export function GlobeMarkers({
       pos.set([p.x, p.y, p.z], i * 3)
       color.set(marker.color)
       colors.set([color.r, color.g, color.b], i * 3)
-      sizes[i] = marker.kind === 'pin' ? 15 : 9 + marker.size * 13
+      // Locator markers are projected for the HTML locator but not drawn.
+      sizes[i] = marker.id.startsWith('locator:') ? 0 : marker.kind === 'pin' ? 15 : 9 + marker.size * 13
     })
     geo.setAttribute('position', new BufferAttribute(pos, 3))
     geo.setAttribute('aColor', new BufferAttribute(colors, 3))

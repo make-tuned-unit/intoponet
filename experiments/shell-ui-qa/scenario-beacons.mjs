@@ -1,0 +1,40 @@
+// Beacon: consent → publish → visible near its place → withdraw (registry at INTOPONET_BEACON_REGISTRY).
+export default async function ({ evaluate, shotApp, delay }) {
+  const wait = async (expr, ms = 30_000) => { const end = Date.now() + ms; while (Date.now() < end) { if (await evaluate(expr)) return true; await delay(500) } return false }
+  await delay(2500)
+  const now = new Date().toISOString()
+  const bookmarks = [{ url: 'https://reliefweb.int/country/fji', title: 'Fiji | ReliefWeb', topic: 'Pacific', savedAt: now, note: 'my private note', fieldAnchor: { lat: -17.71, lon: 178.07, label: 'Fiji' } }]
+  await evaluate(`window.intoponet.browserHost.writePrivateLibrary(${JSON.stringify(JSON.stringify({ schema: 'intoponet.private-library.v1', bookmarks, collections: [], recents: [], absorbed: [] }))}).then(() => { location.reload(); return true })`).catch(() => undefined)
+  await delay(4000)
+  await evaluate(`[...document.querySelectorAll('.bookmark-library-button')].find((b) => b.innerText.includes('My map')).click(); true`)
+  await delay(1000)
+  await evaluate(`[...document.querySelectorAll('.bookmark-pin-actions button')].find((b) => b.innerText.includes('Publish beacon')).click(); true`)
+  await wait(`!!document.querySelector('.beacon-payload pre')`)
+  console.log('payload', await evaluate(`document.querySelector('.beacon-payload pre').innerText.replace(/\\s+/g, ' ')`))
+  console.log('private note leaked?', await evaluate(`document.querySelector('.beacon-payload pre').innerText.includes('my private note')`))
+  console.log('publish enabled before consent', await evaluate(`!document.querySelector('.beacon-actions .is-primary').disabled`))
+  await shotApp('beacon-consent')
+  await evaluate(`[...document.querySelectorAll('.beacon-check input')].at(-1).click(); true`)
+  await delay(300)
+  await evaluate(`document.querySelector('.beacon-actions .is-primary').click(); true`)
+  await wait(`!document.querySelector('.beacon-sheet')`, 15_000)
+  console.log('error', await evaluate(`document.querySelector('.beacon-error')?.innerText ?? 'none'`))
+  const registry = await (await fetch('http://127.0.0.1:8799/v1/beacons?bbox=-24,170,-12,186')).json()
+  console.log('registry sees', JSON.stringify(registry.resources.map((r) => [r.title, r.publishers, r.prominence, r.places.map((p) => p.label)])))
+  // Open the country detail for Fiji to see it near the place.
+  await evaluate(`document.querySelector('[aria-label="Close saved library"]')?.click(); true`)
+  await delay(500)
+  await evaluate(`document.querySelector('.command-input input').focus(); true`)
+  const state = await evaluate(`window.intoponet.beacons.state().then((s) => JSON.stringify({ registry: s.registry, published: s.published.length }))`)
+  console.log('state', state)
+  const near = await evaluate(`window.intoponet.beacons.read({ bbox: [-24, 170, -12, 186] }).then((r) => r.map((x) => x.title).join(','))`)
+  console.log('read near Fiji', near)
+  // Withdraw from Settings.
+  await evaluate(`document.querySelector('[aria-label="Settings"]').click(); true`)
+  await wait(`[...document.querySelectorAll('.settings-pane button')].some((b) => b.innerText === 'Withdraw')`)
+  await shotApp('beacon-settings')
+  await evaluate(`[...document.querySelectorAll('.settings-pane button')].find((b) => b.innerText === 'Withdraw').click(); true`)
+  await delay(1500)
+  const after = await (await fetch('http://127.0.0.1:8799/v1/beacons?bbox=-24,170,-12,186')).json()
+  console.log('after withdraw', after.resources.map((r) => r.title).join(',') || 'none')
+}

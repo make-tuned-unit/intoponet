@@ -22,8 +22,14 @@ export function placeMatches(raw: string): PlaceMatch {
   if (text.length < 2 || /[/:.]/.test(text) && !explicit) return { places: [], preferred: -1 }
   const places = searchPlaces(text, 4)
   if (!places.length) return { places, preferred: -1 }
-  const exact = normalizePlaceText(places[0]!.name) === normalizePlaceText(text)
-  return { places, preferred: explicit || exact ? 0 : -1 }
+  const name = normalizePlaceText(places[0]!.name)
+  const typed = normalizePlaceText(text)
+  // Enter flies to the place when the text is clearly that place: its name, its name plus a
+  // province/state/country ("Charlottetown PEI"), or the start of its name ("Charlotteto").
+  const exact = name === typed
+  const qualified = typed.startsWith(`${name} `)
+  const partial = typed.length >= 4 && name.startsWith(typed)
+  return { places, preferred: explicit || exact || qualified || partial ? 0 : -1 }
 }
 
 export function PlaceSuggestions({

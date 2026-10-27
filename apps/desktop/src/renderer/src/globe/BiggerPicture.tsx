@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { ChevronRight, History, Loader2, Newspaper } from 'lucide-react'
-import { normalizeLanguage, type OldsChapter, type OldsCountryFacts, type OldsNode, type OldsThread } from '@intoponet/browser-api'
+import { normalizeLanguage, type OldsChapter, type OldsChronicleEntry, type OldsCountryFacts, type OldsNode, type OldsThread } from '@intoponet/browser-api'
 import type { NewsHeadline } from '../../../shared/news/newsDigest'
+import { RELATED_MODEL } from '../translate/useTranslate'
 
 const year = (iso: string | undefined): number | null => {
   const match = iso?.match(/^(-?\d{1,6})/)
@@ -39,6 +40,10 @@ const COMMON = new Set([
   'president', 'minister', 'prime', 'government', 'police', 'court', 'state', 'city', 'national', 'monday', 'tuesday', 'wednesday',
   'thursday', 'friday', 'saturday', 'sunday', 'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september',
   'october', 'november', 'december', 'this', 'that', 'there', 'they', 'his', 'her', 'its', 'their', 'our', 'we', 'it', 'he', 'she',
+  // Articles and small words in other Latin-script languages (untranslated headlines).
+  'el', 'la', 'los', 'las', 'un', 'una', 'del', 'de', 'en', 'y', 'con', 'por', 'para', 'tras', 'según', 'le', 'les', 'du', 'des', 'et',
+  'au', 'aux', 'une', 'der', 'die', 'das', 'und', 'ein', 'eine', 'im', 'o', 'os', 'as', 'do', 'da', 'dos', 'das', 'em', 'il', 'lo',
+  'gli', 'di', 'della', 'nel', 'het', 'een', 'van',
 ])
 
 /**
@@ -77,6 +82,23 @@ export function headlineNames(titles: string[], exclude: string[], limit = 5): A
 
 function compact(value: number): string {
   return new Intl.NumberFormat(navigator.language, { notation: 'compact', maximumFractionDigits: 1 }).format(value)
+}
+
+/** Things that happened, not statistics: a sentence about an act or event scores higher. */
+const EVENT = /\b(signed|began|begun|started|elected|won|opened|ratified|declared|announced|confirmed|launched|passed|adopted|became|joined|left|withdrew|invaded|attacked|struck|erupted|killed|died|resigned|appointed|sworn|protests?|referendum|election|agreement|treaty|crisis|war|independence|coup|outbreak|reform|law|ban|strike|disaster|earthquake|flood|hurricane|cyclone)\b/i
+const STATISTIC = /(%|\bper cent\b|\bpercent\b|\bper capita\b|\branked\b|\bestimated\b|\bratio\b|\baverage\b|\bspending\b|\bGDP\b|\bstatistics\b)/i
+const CULTURE = /\b(Eurovision|song contest|album|film|festival|championship|olympic|world cup|football|singer|artist)\b/i
+
+/** The most newsworthy dated events of the last 25 years, newest first (at most one cultural item). */
+export function pickRecentEvents(chronicle: OldsChronicleEntry[], thisYear: number, limit = 4): OldsChronicleEntry[] {
+  const score = (entry: OldsChronicleEntry): number => (EVENT.test(entry.text) ? 2 : 0) - (STATISTIC.test(entry.text) ? 3 : 0) - (CULTURE.test(entry.text) ? 1 : 0)
+  let culture = 0
+  return chronicle
+    .filter((entry) => (year(entry.at.iso) ?? 0) >= thisYear - 25 && score(entry) >= 0)
+    .sort((a, b) => score(b) - score(a) || b.at.iso.localeCompare(a.at.iso))
+    .filter((entry) => !CULTURE.test(entry.text) || culture++ < 1)
+    .slice(0, limit)
+    .sort((a, b) => b.at.iso.localeCompare(a.at.iso))
 }
 
 const memory = new Map<string, OldsThread>()
@@ -134,7 +156,9 @@ export function BiggerPicture({
         const ready = new Set(['en', ...status.languages.filter((language) => language.downloaded).map((language) => language.code)])
         const byLang = new Map<string, number[]>()
         headlines.forEach((headline, index) => {
-          const code = normalizeLanguage(headline.lang)
+          const own = normalizeLanguage(headline.lang)
+          // Languages without a model (Faroese) go through their closest relative (Icelandic), roughly.
+          const code = own && !ready.has(own) && RELATED_MODEL[own] ? RELATED_MODEL[own] : own
           if (code && code !== 'en' && ready.has(code)) byLang.set(code, [...(byLang.get(code) ?? []), index])
         })
         for (const [code, indices] of byLang) {
@@ -178,6 +202,10 @@ export function BiggerPicture({
   const facts: OldsCountryFacts | undefined = thread?.facts
   const recent = thread ? recentConnections(thread) : []
   const connections = recent.length >= 2 ? recent : [...recent, ...chapterRecent.filter((node) => !recent.some((item) => item.id === node.id))].slice(0, 4)
+  // Recent events quoted from the country's own article (newest first), when there are any.
+  const thisYear = new Date().getFullYear()
+  const recentChronicle = pickRecentEvents(thread?.chronicle ?? [], thisYear)
+  const newestConnection = connections.reduce((max, node) => Math.max(max, year(node.start?.iso) ?? 0), 0)
   const leaders = facts ? [facts.headOfState, facts.headOfGovernment].filter((name, index, all): name is string => !!name && all.indexOf(name) === index) : []
 
   return (
@@ -212,9 +240,23 @@ export function BiggerPicture({
           </div>
         </div>
       )}
-      {connections.length > 0 && (
-        <div className="globe-context-links" aria-label="Recent history worth exploring">
-          <small>Recent history</small>
+      {recentChronicle.length >= 2 ? (
+        <div className="globe-context-recent" aria-label="Recent history">
+          <small title={`Dated events quoted from Wikipedia’s “${countryName}” article.`}>Recent history</small>
+          <ol>
+            {recentChronicle.map((entry, index) => (
+              <li key={`${entry.at.iso}-${index}`}>
+                <button type="button" onClick={() => (entry.link ? onOpenName(entry.link) : onOpenCountry())} title={entry.text}>
+                  <time dateTime={entry.at.iso}>{entry.at.label}</time>
+                  <span>{entry.text.length > 140 ? `${entry.text.slice(0, 138)}…` : entry.text}</span>
+                </button>
+              </li>
+            ))}
+          </ol>
+        </div>
+      ) : connections.length > 0 && (
+        <div className="globe-context-links" aria-label="History worth exploring">
+          <small>{newestConnection >= thisYear - 30 ? 'Recent history' : 'Earlier history'}</small>
           <div>
             {connections.map((node) => (
               <button key={node.id} type="button" onClick={() => onOpenTopic(node)} title={node.description ?? node.label}>

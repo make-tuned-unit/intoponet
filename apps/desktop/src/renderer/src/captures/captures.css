@@ -592,3 +592,16 @@
     transition: none;
   }
 }
+
+.cap-group input.cap-new-group {
+  width: 150px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid rgba(80, 217, 199, 0.55);
+  border-radius: 10px;
+  color: var(--warm-white);
+  background: rgba(205, 245, 240, 0.08);
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+}

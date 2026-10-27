@@ -14,7 +14,14 @@ import {
 import { edgesFromEntity, isEventLike, nodeFromEntity, resolveCitations, statedInIds, type DraftEdge, type WikidataEntity } from './wikidata'
 import { articleLinks, chapterForYear, chaptersFromWikitext, sectionUrl, sectionWithSubsections } from './historyArticle'
 import type { OldsChapter, OldsContext, OldsCountryFacts, OldsPathStep, OldsSupport } from '@intoponet/browser-api'
-import { cleanHeadline, foreignNamesIn, mentions, NOT_A_TOPIC, PATH_PROPERTIES, scoreCandidate, searchQueries, titleWordsIn } from './headline'
+import { interpretationsFrom } from './interpretations'
+import { chronologyFromWikitext } from './chronology'
+import { otherCountries, relatedQueries, subjectTerms } from './relatedTopics'
+import { placesNamedIn } from '../../shared/places/places'
+import { COUNTRY_ROWS } from '../../shared/places/placeData'
+import { figuresIn, withoutCitations } from '../knowledge/claims'
+import type { OldsChronicleEntry, OldsRelatedTopic } from '@intoponet/browser-api'
+import { cleanHeadline, foreignNamesIn, isRelevantCandidate, mentions, properPhrases, NOT_A_TOPIC, PATH_PROPERTIES, scoreCandidate, searchQueries, titleWordsIn, topicAge, eventKindMatches } from './headline'
 
 const USER_AGENT = 'Intoponet/0.1 (+https://github.com/make-tuned-unit/intoponet; The Olds)'
 const TIMEOUT_MS = 15_000
@@ -47,6 +54,25 @@ export type OldsServiceOptions = {
   now?: () => number
   /** On-device translation into English, when a model is installed (headlines in other languages). */
   translateToEnglish?: (text: string, lang: string) => Promise<string | null>
+  /**
+   * On-device meaning similarity (Laya), when it is turned on: cosine scores of
+   * each text against the query, or null when unavailable. English only.
+   */
+  meaning?: (query: string, texts: string[]) => Promise<number[] | null>
+  /** Receives every scored candidate for a headline (quality checks only). */
+  debug?: (headline: string, candidates: Array<{ label: string; description: string | null; score: number; kept: boolean }>, searched?: { queries: string[]; titles: string[] }) => void
+}
+
+/** Laya similarity (cosine, all-MiniLM-L6-v2; calibrated 2026-10-27: related topics 0.45–0.65, the Delhi/Honduras mismatch 0.17): above this a topic matches by meaning alone; below the floor it is unrelated. */
+export const MEANING_MATCH = 0.45
+export const MEANING_FLOOR = 0.2
+const MEANING_WEIGHT = 6
+
+/** Keep a search result when its words match, unless its meaning is clearly unrelated; or when its meaning alone is close. */
+export function keepCandidate(wordsMatch: boolean, meaning: number | null): boolean {
+  if (meaning === null) return wordsMatch
+  if (meaning >= MEANING_MATCH) return true
+  return wordsMatch && meaning >= MEANING_FLOOR
 }
 
 export class OldsService {
@@ -92,10 +118,20 @@ export class OldsService {
 
   private async getJson(url: string, timeoutMs = TIMEOUT_MS): Promise<unknown> {
     for (let attempt = 0; attempt < 5; attempt += 1) {
-      const response = await this.fetchImpl(url, {
-        headers: { 'user-agent': USER_AGENT, accept: 'application/sparql-results+json, application/json' },
-        signal: AbortSignal.timeout(timeoutMs),
-      })
+      let response: Response
+      try {
+        response = await this.fetchImpl(url, {
+          headers: { 'user-agent': USER_AGENT, accept: 'application/sparql-results+json, application/json' },
+          signal: AbortSignal.timeout(timeoutMs),
+        })
+      } catch (error) {
+        // A dropped connection ("fetch failed") is retried once; a timeout is not (it already waited).
+        if (attempt === 0 && error instanceof TypeError) {
+          await new Promise((resolve) => setTimeout(resolve, 500 + Math.random() * 500))
+          continue
+        }
+        throw error
+      }
       if ((response.status === 429 || response.status === 503) && attempt < 4) {
         // Respect the server's retry-after (up to 20 s); otherwise back off 1, 2, 4, 8 s with jitter.
         const retryAfter = Number(response.headers.get('retry-after'))
@@ -445,10 +481,25 @@ export class OldsService {
           : { level, corroborated: rootText ? mentions(rootText, other.label, rootNode.label) : null, checkedIn: rootText ? rootTitle : null }
         return { ...edge, citations: resolveCitations(citationDrafts, statedIn), support }
       })
+    // Competing, attributed readings from the article's historiography/debate sections (English only for now).
+    const interpretations = rootTitle && lang === 'en' && rootNode.wikipediaUrl
+      ? interpretationsFrom(await this.articleSections(rootTitle, lang).catch(() => ''), { title: rootTitle, url: rootNode.wikipediaUrl })
+      : []
+    // "How we got here": dated sentences from the topic's own article, in time order.
+    const chronicle = rootTitle ? await this.chronicle(rootTitle, lang).catch(() => []) : []
+    // Wikidata has no date for some topics (e.g. a trial); use the article's first dated event.
+    // A broad place (region, country) gets no date from one event in its long history.
+    const rootIsBroad = /\b(region|country|continent|province|subcontinent|territory|sovereign state|city)\b/i.test(rootNode.description ?? '')
+    if (!rootNode.start && chronicle[0] && !rootIsBroad) {
+      rootNode.start = chronicle[0].at
+      nodes.set(rootNode.id, rootNode)
+    }
     return {
       rootId: rootNode.id,
       nodes: [...nodes.values()],
       edges,
+      ...(interpretations.length ? { interpretations } : {}),
+      ...(chronicle.length ? { chronicle } : {}),
       fetchedAt: new Date(this.now()).toISOString(),
       attribution: OLDS_ATTRIBUTION,
       note: OLDS_NOTE,
@@ -469,6 +520,98 @@ export class OldsService {
     this.texts.set(key, text)
     while (this.texts.size > 60) this.texts.delete(this.texts.keys().next().value!)
     return text
+  }
+
+  /**
+   * Subject topics behind a headline in its country, checked to exist on
+   * Wikipedia, ranked by meaning (Laya) when available, each with up to two
+   * recent sentences that carry figures.
+   */
+  private async relatedTopics(text: string, country: string | null, exclude: string[], meaningOk: boolean, countryCode?: string): Promise<OldsRelatedTopic[]> {
+    // Provinces and states the headline names (B.C., New Brunswick), for topics at the story's own level.
+    const regions = countryCode ? placesNamedIn(`${text} ${exclude.join(' ')}`, 6).filter((place) => place.kind === 'region' && place.countryCode === countryCode).map((place) => place.name) : []
+    const others = otherCountries(text, country, namedCountryNames(text))
+    const { titles, searches, stems } = relatedQueries(text, country, exclude, regions, others)
+    const searched: string[] = []
+    // Two subject words in common ("half-time show" ≠ "Half dollar (United States coin)").
+    const sharesSubject = (title: string): boolean => new Set(title.toLowerCase().split(/[^\p{L}]+/u).filter((word) => word.length >= 4).flatMap((word) => stems.filter((stem) => word.startsWith(stem) || stem.startsWith(word.slice(0, 5))))).size >= Math.min(2, stems.length)
+    for (const query of searches) {
+      for (const title of await this.search('en', query, 5).catch(() => [])) {
+        // Keep subject articles about this country (or general concepts), not people, places or lists of episodes.
+        if (country && !title.includes(country) && !title.includes(country.replace(/a$/, 'ian')) && !regions.some((region) => title.includes(region))) continue
+        if (/^List of .*(episodes|people|songs|albums)/i.test(title)) continue
+        // A specific past event from search ("1904 … election") is noise; recent ones may be the story itself.
+        const leadingYear = Number(title.match(/^(\d{4})\b/)?.[1] ?? NaN)
+        if (Number.isFinite(leadingYear) && leadingYear < new Date(this.now()).getUTCFullYear() - 2) continue
+        // A search hit must share a subject word with the headline (hospital ↔ "Health care" comes from the families instead).
+        if (!sharesSubject(title)) continue
+        // …and bring no names the story never mentions ("Pope Pius XII and Russia" for a story about today's pope).
+        if (foreignNamesIn(title, `${text} ${country ?? ''} ${regions.join(' ')}`) > 0) continue
+        searched.push(title)
+      }
+    }
+    const wanted = [...new Set([...titles, ...searched])].filter((title) => !exclude.some((item) => item.toLowerCase() === title.toLowerCase())).slice(0, 20)
+    // Without a country, free-text searches are too loose to trust; use the subject families only.
+    if (!country) wanted.splice(0, wanted.length, ...wanted.filter((title) => titles.includes(title)))
+    if (!wanted.length) return []
+    const url = new URL('https://en.wikipedia.org/w/api.php')
+    url.search = new URLSearchParams({ action: 'query', prop: 'description|pageprops', ppprop: 'disambiguation', titles: wanted.join('|'), redirects: '1', format: 'json', formatversion: '2' }).toString()
+    const payload = await this.getJson(url.toString(), 10_000).catch(() => null) as { query?: { pages?: Array<{ title?: string; missing?: boolean; description?: string; pageprops?: { disambiguation?: string } }>; redirects?: Array<{ from: string; to: string }> } } | null
+    // Films, albums, books and other works share titles with real topics ("The Verdict"); never offer them.
+    const CREATIVE = /\b(film|movie|album|song|single|novel|book|television|tv series|sitcom|episode|video game|band|musical|play by|opera|painting|comic)\b/i
+    // Redirects can land on the topic itself ("Belize ICJ" → "Belize"): drop those after resolving them.
+    const pages = (payload?.query?.pages ?? []).filter((page) => page.title && !page.missing && !page.pageprops?.disambiguation && !CREATIVE.test(page.description ?? '')
+      && !exclude.some((item) => item.toLowerCase() === page.title!.toLowerCase()))
+    const redirects = new Map((payload?.query?.redirects ?? []).map((item) => [item.from, item.to]))
+    const order = (title: string): number => {
+      const index = wanted.findIndex((item) => (redirects.get(item) ?? item) === title)
+      return index === -1 ? 99 : index
+    }
+    let ranked = [...new Map(pages.map((page) => [page.title!, page])).values()].sort((a, b) => order(a.title!) - order(b.title!))
+    if (meaningOk && this.options.meaning && ranked.length > 1) {
+      const scores = await this.options.meaning(cleanHeadline(text), ranked.map((page) => `${page.title}. ${page.description ?? ''}`)).catch(() => null)
+      if (scores && scores.length === ranked.length) {
+        ranked = ranked.map((page, index) => ({ page, score: scores[index]! - order(page.title!) * 0.01 }))
+          .filter((item) => item.score >= 0.18)
+          .sort((a, b) => b.score - a.score)
+          .map((item) => item.page)
+      }
+    }
+    const year = new Date(this.now()).getUTCFullYear()
+    const out: OldsRelatedTopic[] = []
+    for (const page of ranked.slice(0, 4)) {
+      const body = await this.articleText(page.title!, 'en').catch(() => '')
+      const sentences = withoutCitations(body.replace(/\n+/g, ' ')).split(/(?<=[.!?])\s+(?=[A-Z])/)
+        .filter((sentence) => sentence.length >= 50 && sentence.length <= 280 && figuresIn(sentence).some((figure) => figure.unit !== 'count' || figure.value >= 1000))
+        .map((sentence) => ({ sentence, recent: Math.max(0, ...[...sentence.matchAll(/\b(19[5-9]\d|20\d\d)\b/g)].map((match) => Number(match[1]))) }))
+        .sort((a, b) => (b.recent >= year - 20 ? b.recent : 0) - (a.recent >= year - 20 ? a.recent : 0))
+      out.push({
+        title: page.title!,
+        description: page.description ?? null,
+        url: `https://en.wikipedia.org/wiki/${encodeURIComponent(page.title!.replace(/ /g, '_'))}`,
+        figures: [...new Set(sentences.map((item) => item.sentence.trim()))].slice(0, 2),
+      })
+    }
+    return out
+  }
+
+  /** Dated events from an article's wikitext (cached with the thread). */
+  private async chronicle(title: string, lang: string, focus: string[] = []): Promise<OldsChronicleEntry[]> {
+    const url = new URL(`https://${lang}.wikipedia.org/w/api.php`)
+    url.search = new URLSearchParams({ action: 'parse', page: title, prop: 'wikitext', redirects: '1', format: 'json', formatversion: '2' }).toString()
+    const payload = await this.getJson(url.toString(), 12_000) as { parse?: { title?: string; wikitext?: string } }
+    const wikitext = payload.parse?.wikitext
+    if (typeof wikitext !== 'string') return []
+    return chronologyFromWikitext(payload.parse?.title ?? title, wikitext, new Date(this.now()).getUTCFullYear(), lang, 18, focus)
+  }
+
+  /** Article text with "== Section ==" markers (for interpretations). */
+  private async articleSections(title: string, lang: string): Promise<string> {
+    const url = new URL(`https://${lang}.wikipedia.org/w/api.php`)
+    url.search = new URLSearchParams({ action: 'query', prop: 'extracts', explaintext: '1', exsectionformat: 'wiki', titles: title, redirects: '1', format: 'json', formatversion: '2' }).toString()
+    const payload = await this.getJson(url.toString(), 10_000) as { query?: { pages?: Array<{ extract?: unknown }> } }
+    const extract = payload.query?.pages?.[0]?.extract
+    return typeof extract === 'string' ? extract.slice(0, 400_000) : ''
   }
 
   private async search(lang: string, query: string, limit: number): Promise<string[]> {
@@ -510,61 +653,129 @@ export class OldsService {
         translated = true
       }
     }
+    const currentYear = new Date(this.now()).getUTCFullYear()
+    // The country the story is about: the one the headline names, when the outlet's own country isn't named
+    // (a Ghanaian outlet reporting on South Africa).
+    const namedCountries = headlineCountries(text)
+    if (namedCountries.length && (!query.countryCode || !namedCountries.includes(query.countryCode))) {
+      query = { ...query, countryCode: namedCountries[0]! }
+    }
     const ranked: string[] = []
-    const queries = searchQueries(text)
+    const queries = searchQueries(text, currentYear)
     for (const q of queries) {
-      if (ranked.length >= 10) break
-      const titles = await this.search(lang, q, 8).catch(() => [])
+      if (ranked.length >= 40) break
+      const titles = await this.search(lang, q, 6).catch(() => [])
       for (const title of titles) if (!ranked.includes(title)) ranked.push(title)
     }
     const items = await this.titleItems(lang, ranked).catch(() => new Map<string, { qid: string; disambiguation: boolean }>())
     const countryQid = query.countryCode ? await this.countryQid(query.countryCode).catch(() => null) : null
+    // A story about two countries (Russia and Ukraine) is in both of them.
+    const otherQids = (await Promise.all(namedCountries.filter((code) => code !== query.countryCode).slice(0, 2).map((code) => this.countryQid(code).catch(() => null)))).filter((qid): qid is string => !!qid)
+    const storyQids = [...(countryQid ? [countryQid] : []), ...otherQids]
     const qids = [...new Set([...items.values()].map((item) => item.qid))]
-    const entities = await this.entities([...qids, ...(query.topic ? [query.topic] : [])], 'en')
+    const entities = await this.entities([...qids, ...(query.topic ? [query.topic] : []), ...(countryQid ? [countryQid] : [])], 'en')
+    const countryLabel = countryQid ? entities.get(countryQid)?.labels?.['en']?.value ?? null : null
     const ids = (entity: WikidataEntity | undefined, property: string): string[] => ((entity?.claims?.[property] ?? []) as Array<{ mainsnak?: { datavalue?: { value?: { id?: string } } } }>)
       .map((claim) => claim.mainsnak?.datavalue?.value?.id).filter((id): id is string => typeof id === 'string')
+    const subjectText = withoutCountryNames(text, countryLabel)
     const scored = ranked.flatMap((title, rank) => {
       const item = items.get(title)
       const entity = item ? entities.get(item.qid) : undefined
       if (!item || !entity || ids(entity, 'P31').some((id) => NOT_A_TOPIC.has(id))) return []
       const node = nodeFromEntity(entity, 'en')
       if (!node) return []
-      const score = scoreCandidate({
+      // "Subsidized housing in the United States" is not about Guernsey: drop topics named for a country the story isn't about.
+      const titleCountries = headlineCountries(node.label)
+      const storyCountries = [...(query.countryCode ? [query.countryCode] : []), ...namedCountries]
+      if (storyCountries.length && titleCountries.length && !titleCountries.some((code) => storyCountries.includes(code))) return []
+      // Films, TV series, songs and foods share words with the news ("Melania (film)", "Soldier Soldier", "Brazil nut").
+      if (isWorkOrThing(node.description)) return []
+      // Sharing only the country's name ("German economic crisis" for a speech by Merz) is a weak match.
+      const countryOnly = titleWordsIn(node.label, text) > 0 && titleWordsIn(node.label, subjectText) === 0
+      const ageYears = topicAge(node.label, node.start?.iso, isEventLike(entity), currentYear, node.end?.iso)
+      // The headline names the kind of event ("victory in … presidential election" → the election, not the presidency).
+      const score = (countryOnly ? -5 : 0) + (eventKindMatches(node.label, text) ? 1.5 : 0) + scoreCandidate({
+        ageYears,
         rank,
         eventLike: isEventLike(entity),
-        inCountry: !!countryQid && (ids(entity, 'P17').includes(countryQid) || ids(entity, 'P276').includes(countryQid)),
+        inCountry: storyQids.some((qid) => ids(entity, 'P17').includes(qid) || ids(entity, 'P276').includes(qid)),
         isPerson: ids(entity, 'P31').includes('Q5'),
         isCountry: item.qid === countryQid || ids(entity, 'P31').some((id) => ['Q6256', 'Q3624078', 'Q7275', 'Q3024240', 'Q1763527', 'Q417175'].includes(id)),
         isDisambiguation: item.disambiguation,
         titleWordsInHeadline: titleWordsIn(node.label, text),
         foreignNames: foreignNamesIn(node.label, text),
-        otherCountry: !!countryQid && ids(entity, 'P17').length > 0 && !ids(entity, 'P17').includes(countryQid),
+        otherCountry: storyQids.length > 0 && ids(entity, 'P17').length > 0 && !storyQids.some((qid) => ids(entity, 'P17').includes(qid)),
       })
-      return Number.isFinite(score) ? [{ id: item.qid, node, score, entity }] : []
-    }).sort((a, b) => b.score - a.score)
-    const unique = scored.filter((candidate, index) => scored.findIndex((other) => other.id === candidate.id) === index)
-    const chosen = query.topic ? { id: query.topic, entity: entities.get(query.topic), node: entities.get(query.topic) ? nodeFromEntity(entities.get(query.topic)!, 'en') : null } : unique[0]
+      if (!Number.isFinite(score)) return []
+      // A country-only match is a topic only when it is a current event ("2026 Brazilian general election"), never "Partition of India".
+      const leadingYear = Number(node.label.match(/^(\d{4})\b/)?.[1] ?? NaN)
+      // …and the headline must point to that kind of event: "Lula's win" → the election, not a Mastercard deal → an offensive.
+      const weakOnly = countryOnly && !(leadingYear >= currentYear - 1 && eventKindMatches(node.label, text))
+      // A general concept with no country ("Soldier") is a poor starting point for one country's news.
+      const general = !isEventLike(entity) && ids(entity, 'P17').length === 0 && !ids(entity, 'P31').includes('Q5')
+      return [{ id: item.qid, node, score, entity, weakOnly, general, words: isRelevantCandidate(node.label, text, countryLabel ?? undefined, currentYear) }]
+    })
+    // Laya, when on, compares the headline's meaning with each candidate's title and description on this Mac.
+    const similarity = lang === 'en' && this.options.meaning && scored.length
+      ? await this.options.meaning(cleanHeadline(text), scored.map((candidate) => `${candidate.node.label}. ${candidate.node.description ?? ''}`.trim())).catch(() => null)
+      : null
+    const byMeaning = similarity !== null && similarity.length === scored.length
+    const relevant = scored
+      .map((candidate, index) => ({ ...candidate, meaning: byMeaning ? similarity[index]! : null }))
+      .filter((candidate) => keepCandidate(candidate.words, candidate.meaning))
+      .map((candidate) => ({ ...candidate, score: candidate.score + (candidate.meaning ?? 0) * MEANING_WEIGHT }))
+      .sort((a, b) => b.score - a.score)
+    this.options.debug?.(text, scored.map((candidate, index) => ({ label: candidate.node.label, description: candidate.node.description, score: candidate.score + (byMeaning ? similarity[index]! * MEANING_WEIGHT : 0), kept: relevant.some((item) => item.id === candidate.id) && !candidate.weakOnly })), { queries, titles: ranked })
+    const scoredRelevant = relevant
+    const unique = scoredRelevant.filter((candidate, index) => scoredRelevant.findIndex((other) => other.id === candidate.id) === index)
+    const chosen = query.topic ? { id: query.topic, entity: entities.get(query.topic), node: entities.get(query.topic) ? nodeFromEntity(entities.get(query.topic)!, 'en') : null } : unique.find((candidate) => !candidate.weakOnly)
     if (!chosen?.entity || !chosen.node) {
       // No topic: still place the story in its country's history, and say why.
       if (!query.countryCode) throw new Error('No Wikipedia topic matched this headline.')
-      const country = await this.thread({ kind: 'country', countryCode: query.countryCode })
+      const country = { ...await this.thread({ kind: 'country', countryCode: query.countryCode }).catch(() => { throw new Error('No Wikipedia topic matched this headline, and its country’s history could not be loaded. Try again in a moment.') }) }
       const year = new Date(this.now()).getUTCFullYear()
       const root = country.nodes.find((node) => node.id === country.rootId)!
+      // The whole history of a country is not the story's history: keep only the events about its subject.
+      const focus = focusStems(text, root.label)
+      const historyTitle = country.chaptersSource?.title ?? titleFromWikipediaUrl(root.wikipediaUrl)
+      const focused = focus.length && historyTitle && lang === 'en' ? await this.chronicle(historyTitle, 'en', focus).catch(() => []) : []
+      if (focused.length) country.chronicle = focused
+      else delete country.chronicle
+      const related = lang === 'en' ? await this.relatedTopics(text, countryLabel, [root.label], byMeaning, query.countryCode).catch(() => []) : []
+      // A subject topic the headline's words point to ("Xenophobia in South Africa") beats the whole country's history.
+      const subject = await this.subjectTopic(text, countryLabel ?? root.label, related, true)
+      if (subject && !query.topic) {
+        const better = await this.headlineThread({ ...query, topic: subject.qid })
+        if (better.context) {
+          better.context.matchedBy = `No Wikipedia topic matched this headline's words directly; it is about ${subject.title}, a subject in ${root.label}, so that is shown.`
+          better.context.candidates = unique.slice(0, 4).map((candidate) => ({ id: candidate.id, label: candidate.node.label, description: candidate.node.description }))
+        }
+        return better
+      }
       return {
         ...country,
         context: {
-          headline: cleanHeadline(query.text),
+          headline: query.text.replace(/\s+/g, ' ').trim().slice(0, 300),
           topicId: country.rootId,
-          candidates: [],
+          candidates: unique.slice(0, 4).map((candidate) => ({ id: candidate.id, label: candidate.node.label, description: candidate.node.description })),
           path: [{ node: root, relation: '', edge: null }],
           chapter: country.chapters ? chapterForYear(country.chapters, year, year) : null,
           chapterSource: country.chaptersSource ?? null,
-          matchedBy: `No Wikipedia topic matched this headline${lang !== 'en' ? ` in ${lang} Wikipedia; add this language under Languages so headlines can be translated on this Mac first` : ''}. Showing the history of ${root.label} instead.`,
+          ...(related.length ? { related } : {}),
+          matchedBy: `No Wikipedia topic clearly matched this headline${lang !== 'en' ? ` in ${lang} Wikipedia; add this language under Languages so headlines can be translated on this Mac first` : ''}. Showing the history of ${root.label} instead.`,
         },
       }
     }
 
     const thread = await this.itemThread(chosen.id, 'en')
+    // A broad topic (a country, region or continent): keep only events about this story's subject.
+    const broad = ids(chosen.entity, 'P31').some((id) => BROAD_CLASSES.has(id)) || /\b(region|country|continent|province|state of|subcontinent|territory)\b/i.test(chosen.node.description ?? '') || /^History of /.test(chosen.node.label)
+    if (broad && lang === 'en') {
+      const focus = focusStems(text, chosen.node.label)
+      const title = titleFromWikipediaUrl(chosen.node.wikipediaUrl)
+      thread.chronicle = focus.length && title ? await this.chronicle(title, 'en', focus).catch(() => []) : []
+      if (!thread.chronicle.length) delete thread.chronicle
+    }
     const path = await this.pathBack(chosen.entity, chosen.node, countryQid)
     let chapter: OldsChapter | null = null
     let chapterSource: OldsContext['chapterSource'] = null
@@ -586,7 +797,7 @@ export class OldsService {
       chapterSource = country?.chaptersSource ?? null
     }
     const context: OldsContext = {
-      headline: cleanHeadline(query.text),
+      headline: query.text.replace(/\s+/g, ' ').trim().slice(0, 300),
       topicId: chosen.id,
       candidates: unique.filter((candidate) => candidate.id !== chosen.id).slice(0, 4).map((candidate) => ({ id: candidate.id, label: candidate.node.label, description: candidate.node.description })),
       path,
@@ -595,10 +806,74 @@ export class OldsService {
       matchedBy: query.topic
         ? 'You chose this topic.'
         : lang === 'en'
-          ? `Best match among English Wikipedia search results for the headline's words${translated ? ' (translated on this Mac)' : ''}${countryQid ? ', preferring topics in this country' : ''}.`
+          ? `Best match among English Wikipedia search results for the headline's words${translated ? ' (translated on this Mac)' : ''}${countryQid ? ', preferring topics in this country' : ''}${byMeaning ? ', checked by meaning with Laya on this Mac' : ''}.`
           : `Matched in ${lang} Wikipedia without translation, so this may be off. Add this language under Languages and headlines are translated on this Mac before matching.`,
     }
+    // No country from the outlet (international desks): use the topic's own country on Wikidata.
+    let topicCountry = countryLabel
+    let topicCountryCode = query.countryCode
+    if (!topicCountry && topicCountries[0]) {
+      topicCountry = (await this.entities([topicCountries[0]], 'en').catch(() => new Map<string, WikidataEntity>())).get(topicCountries[0])?.labels?.['en']?.value ?? null
+      topicCountryCode = (await this.isoCode(topicCountries[0]).catch(() => null)) ?? undefined
+    }
+    // Still none: the country the headline itself names ("Israel to give verdict…").
+    if (!topicCountry) {
+      // "Brazil’s" → Brazil; "Latin America" is a region, not the United States.
+      const plain = text.replace(/[’']s\b/g, '').replace(/\b(Latin|South|North|Central) America\b/g, '')
+      const named = placesNamedIn(plain, 4).find((place) => place.kind === 'country') ?? placesNamedIn(plain, 4)[0]
+      if (named) {
+        topicCountry = named.country
+        topicCountryCode = named.countryCode
+      }
+    }
+    const related = lang === 'en' ? await this.relatedTopics(text, topicCountry, [chosen.node.label, topicCountry ?? ''].filter(Boolean), byMeaning, topicCountryCode).catch(() => []) : []
+    if (related.length) context.related = related
+    // Matched a broad place, but a current event that fits the headline turned up ("2026 Brazilian general election"):
+    // that event is what the story is about.
+    if (broad && !query.topic) {
+      const year = new Date(this.now()).getUTCFullYear()
+      const event = related.find((topic) => {
+        const leading = Number(topic.title.match(/^(\d{4})\b/)?.[1] ?? NaN)
+        return leading >= year - 1 && isRelevantCandidate(topic.title, text, topicCountry ?? undefined, year)
+      })
+      const eventQid = event ? (await this.titleItems('en', [event.title]).catch(() => new Map<string, { qid: string; disambiguation: boolean }>())).get(event.title)?.qid : undefined
+      if (eventQid && eventQid !== chosen.id) {
+        const better = await this.headlineThread({ ...query, topic: eventQid })
+        if (better.context) better.context.matchedBy = `The headline matched ${chosen.node.label}, a broad place; it is about ${event!.title}, so that is shown instead. Wikipedia and Wikidata, ${translated ? 'translated on this Mac, ' : ''}checked against the headline’s words.`
+        return better
+      }
+    }
+    // Matched only by the country's name ("South African Air Force" for anti-immigrant violence in South Africa):
+    // a subject topic the headline's own words point to ("Xenophobia in South Africa") says more.
+    if (!query.topic && topicCountry && related.length) {
+      const countryWords = topicCountry.toLowerCase().split(/\s+/).join(' ')
+      const subjectOnly = cleanHeadline(text).replace(new RegExp(`\\b(${countryWords.split(' ').map((word) => word.slice(0, 5)).join('|')})\\p{L}*`, 'giu'), ' ')
+      const weak = ('weakOnly' in chosen && chosen.weakOnly === true) || ('general' in chosen && chosen.general === true)
+      void subjectOnly
+      const subject = weak ? await this.subjectTopic(text, topicCountry, related, false) : null
+      const subjectQid = subject?.qid
+      if (subjectQid && subjectQid !== chosen.id) {
+        const better = await this.headlineThread({ ...query, topic: subjectQid })
+        if (better.context) {
+          better.context.matchedBy = `The headline's words matched ${chosen.node.label} only by the country's name; it is about ${subject!.title}, so that is shown instead.`
+          better.context.candidates = [{ id: chosen.id, label: chosen.node.label, description: chosen.node.description }, ...better.context.candidates.filter((candidate) => candidate.id !== chosen.id)].slice(0, 4)
+        }
+        return better
+      }
+    }
     return { ...thread, context }
+  }
+
+  /** The first specific subject topic among the related ones ("Xenophobia in South Africa", not "Politics of …"). */
+  private async subjectTopic(text: string, country: string, related: OldsRelatedTopic[], allowRelations: boolean): Promise<{ qid: string; title: string } | null> {
+    const family = new Set(relatedQueries(text, country, [], [], allowRelations ? otherCountries(text, country, namedCountryNames(text)) : []).titles)
+    const GENERIC = /^(Politics|Economy|Government|Law|Judiciary|Military|Armed Forces|Foreign relations|Elections|Taxation|Environment|Health|Healthcare|Health care|Education|Climate change|Natural disasters) (of|in) /
+    // Families first ("Xenophobia in …"); two countries' relations only when nothing else fits.
+    const subject = related.find((topic) => family.has(topic.title) && !GENERIC.test(topic.title) && !/ relations$/.test(topic.title))
+      ?? related.find((topic) => family.has(topic.title) && / relations$/.test(topic.title))
+    if (!subject) return null
+    const qid = (await this.titleItems('en', [subject.title]).catch(() => new Map<string, { qid: string; disambiguation: boolean }>())).get(subject.title)?.qid
+    return qid ? { qid, title: subject.title } : null
   }
 
   /** A country item's ISO 3166-1 alpha-2 code (P297). */
@@ -679,7 +954,74 @@ export class OldsService {
 }
 
 /** Bump when thread contents change shape or selection (v2: history chapters, trivial-event filter; v3: source checks, summaries). */
-const CACHE_VERSION = 'v6'
+/** Wikidata classes for broad places, whose whole history is too wide for one story. */
+/** Subject word stems from a headline, leaving out the topic's own words ("South Africa" in "History of South Africa"). */
+function focusStems(text: string, topicLabel: string): string[] {
+  const topicWords = new Set(topicLabel.toLowerCase().split(/\s+/))
+  return [...new Set([...properPhrases(cleanHeadline(text)).flatMap((phrase) => phrase.split(/\s+/)), ...subjectTerms(text).flatMap((term) => term.split(' '))]
+    .map((word) => word.toLowerCase().replace(/[’']s$/, ''))
+    .filter((word) => word.length >= 4 && !topicWords.has(word))
+    .map((word) => word.slice(0, 5)))].slice(0, 8)
+}
+
+/** The headline without the countries it names (and their adjectives: "South African", "German"). */
+export function withoutCountryNames(text: string, extra?: string | null): string {
+  const plain = text.replace(/[’']s\b/g, '')
+  const names = [...placesNamedIn(plain, 6).filter((place) => place.kind === 'country').map((place) => place.name), ...(extra ? [extra] : [])]
+  const stems = [...new Set(names.flatMap((name) => name.split(/\s+/)).filter((word) => word.length >= 4).map((word) => word.slice(0, Math.min(5, word.length - 1))))]
+  if (!stems.length) return plain
+  // "Russia-Ukraine ceasefire" → "ceasefire", not " - ceasefire" (which would read as an outlet suffix).
+  return plain.replace(new RegExp(`\\b(${stems.map((stem) => stem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\p{L}*`, 'giu'), ' ').replace(/\s*[-–—]\s*(?=\s|$)/g, ' ').replace(/(^|\s)[-–—]\s*/g, ' ')
+}
+
+/** A description whose head noun is a work or a thing, not a topic: "1991 British television series", "species of tree", "2026 documentary film". */
+export function isWorkOrThing(description: string | null | undefined): boolean {
+  if (!description) return false
+  const head = description.toLowerCase().replace(/\s+(by|directed|written|starring|from|produced|created|released|launched|issued|named|associated|owned|based|bearing|with|that|which|used|about|featuring|for|in|of|on)\b.*$/, '').replace(/,.*$/, '').trim()
+  return /\b(film|movie|documentary|album|song|single|novel|book|(television|tv|drama|comedy|web|animated|anime|reality)( drama| comedy)? series|miniseries|sitcom|episode|video game|band|musical|opera|painting|comic|manga|anime|species|genus|cultivar|dish|food|snack|nut|drink|beverage|brand|character|surname|given name|family name|name|coin|meme coin|memecoin|cryptocurrency|token|phrase|slogan|idiom|catchphrase|expression|proverb)$/.test(head)
+}
+
+/** Names of the countries a text names (see headlineCountries). */
+function namedCountryNames(text: string): string[] {
+  const codes = new Set(headlineCountries(text))
+  const plain = cleanHeadline(text).replace(/\b(Latin|South|North|Central) America\b/g, '')
+  return [...new Set(placesNamedIn(plain, 6).filter((place) => place.kind === 'country' && codes.has(place.countryCode)).map((place) => place.name))]
+}
+
+const FIRST_NAME_COUNTRIES = new Set(['Jordan', 'Chad', 'Georgia', 'India', 'Israel', 'Kenya', 'Niger', 'Chile', 'Cuba', 'Mali', 'Peru', 'Togo'])
+
+/** Countries a text names, in order ("Brazil’s" → BR; "Latin America" is a region, not the United States). */
+export function headlineCountries(raw: string): string[] {
+  const text = cleanHeadline(raw)
+  const found = countriesByName(text)
+  return found.length ? found : countriesByAdjective(text)
+}
+
+/** "Ukrainian City of Oleshky" → UA; "Brazilian", "Israeli", "Chinese". Short stems ("Indian": Ocean or India?) are skipped. */
+export function countriesByAdjective(text: string): string[] {
+  const out: string[] = []
+  for (const word of text.split(/[^\p{L}]+/u)) {
+    if (!/^\p{Lu}/u.test(word)) continue
+    const stem = word.replace(/(?<=i)s$/, '').replace(/(ian|ean|an|ese|ish|i)$/, '') // "Israelis" → "Israel"
+    if (stem.length < 4 || stem === word) continue
+    const row = COUNTRY_ROWS.find((country) => country[1] !== word && country[1].startsWith(stem) && country[1].split(' ').length === 1)
+    if (row && !out.includes(row[0])) out.push(row[0])
+  }
+  return out
+}
+
+function countriesByName(text: string): string[] {
+  const plain = text.replace(/[’']s\b/g, '').replace(/\b(Latin|South|North|Central) America\b/g, '')
+  // Countries that are also first names: followed by another capitalised word in a sentence-case headline, it's a person ("Jordan Peterson").
+  const words = plain.split(/\s+/).filter((word) => word.length > 3)
+  const titleCase = words.filter((word) => /^\p{Lu}/u.test(word)).length > words.length * 0.75
+  const isPersonName = (name: string): boolean => FIRST_NAME_COUNTRIES.has(name) && !titleCase && new RegExp(`\\b${name}\\s+\\p{Lu}\\p{Ll}`, 'u').test(text)
+  return [...new Set(placesNamedIn(plain, 6).filter((place) => place.kind === 'country' && !isPersonName(place.name)).map((place) => place.countryCode))]
+}
+
+const BROAD_CLASSES = new Set(['Q6256', 'Q3624078', 'Q5107', 'Q82794', 'Q35657', 'Q10864048', 'Q1620908', 'Q15642541', 'Q7275', 'Q3336843', 'Q11828004', 'Q107390', 'Q34876', 'Q515'])
+
+const CACHE_VERSION = 'v12'
 
 function cacheKey(query: OldsQuery): string {
   return `${CACHE_VERSION}|${rawCacheKey(query)}`

@@ -8,6 +8,8 @@ export type {
 } from './library'
 export {
   absorbPage,
+  cleanTags,
+  mergePrivateLibraries,
   emptyPrivateLibrary,
   isSensitiveUrl,
   parsePrivateLibrary,

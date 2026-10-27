@@ -1,4 +1,4 @@
-import { parsePrivateLibrary, type PrivateLibraryDocument, type StoredFieldAnchor } from '@intoponet/local-knowledge'
+import { cleanTags, parsePrivateLibrary, type PrivateLibraryDocument, type StoredFieldAnchor } from '@intoponet/local-knowledge'
 
 export type SavedBookmark = {
   url: string
@@ -7,7 +7,21 @@ export type SavedBookmark = {
   savedAt: string
   note?: string
   fieldAnchor?: StoredFieldAnchor
+  /** Kept in the library but not drawn on the globe. */
+  hiddenOnMap?: boolean
+  /** Further tags beyond the main topic. */
+  tags?: string[]
 }
+
+/** "Water, Pacific, climate" → main topic "Water" and tags ["Pacific", "climate"]. */
+export function splitTagInput(input: string): { topic: string; tags: string[] } {
+  const parts = input.split(',').map((part) => part.trim()).filter(Boolean)
+  const topic = (parts[0] ?? '').slice(0, 80) || 'General browsing'
+  return { topic, tags: cleanTags(parts.slice(1), topic) }
+}
+
+/** All tags of a page, main topic first. */
+export const tagsOf = (bookmark: Pick<SavedBookmark, 'topic' | 'tags'>): string[] => [bookmark.topic, ...(bookmark.tags ?? [])]
 
 export type SavedCollection = {
   id: string
@@ -95,14 +109,20 @@ export function readBookmarks(): SavedBookmark[] {
               },
             }
           : {}),
+        ...(item['hiddenOnMap'] === true ? { hiddenOnMap: true } : {}),
+        ...(cleanTags(item['tags'], item['topic']).length ? { tags: cleanTags(item['tags'], item['topic']) } : {}),
       },
     ]
   })
 }
 
-export function writeBookmarks(bookmarks: SavedBookmark[]): void {
-  localStorage.setItem(bookmarkKey, JSON.stringify(bookmarks))
-}
+/**
+ * The library is kept only in the encrypted private-library file (written by
+ * App's autosave). Earlier versions also kept a plain-text copy in
+ * localStorage; these writers are now no-ops, and the read* functions remain
+ * only to migrate that old copy once (see clearLegacyLibraryStorage).
+ */
+export function writeBookmarks(_bookmarks: SavedBookmark[]): void {}
 
 export function readCollections(): SavedCollection[] {
   const value = readJson(collectionKey)
@@ -123,9 +143,7 @@ export function readCollections(): SavedCollection[] {
   })
 }
 
-export function writeCollections(collections: SavedCollection[]): void {
-  localStorage.setItem(collectionKey, JSON.stringify(collections))
-}
+export function writeCollections(_collections: SavedCollection[]): void {}
 
 export function readRecents(): RecentPage[] {
   const value = readJson(recentKey)
@@ -146,7 +164,6 @@ export function rememberRecent(recents: RecentPage[], page: RecentPage): RecentP
     page,
     ...recents.filter((item) => item.url !== page.url),
   ].slice(0, recentLimit)
-  localStorage.setItem(recentKey, JSON.stringify(next))
   return next
 }
 
@@ -187,5 +204,108 @@ export function createCollection(label: string): SavedCollection {
     label: label.trim(),
     createdAt: new Date().toISOString(),
     memberUrls: [],
+  }
+}
+
+export function writeRecents(_recents: RecentPage[]): void {}
+
+/** Whether an old plain-text copy of the library is still in localStorage. */
+export function hasLegacyLibraryStorage(): boolean {
+  try {
+    return [bookmarkKey, collectionKey, recentKey].some((key) => localStorage.getItem(key) !== null)
+  } catch {
+    return false
+  }
+}
+
+/** Remove the old plain-text copy; call only after the encrypted library has been written. */
+export function clearLegacyLibraryStorage(): void {
+  try {
+    for (const key of [bookmarkKey, collectionKey, recentKey]) localStorage.removeItem(key)
+  } catch {
+    // Nothing to clear.
+  }
+}
+
+/** Recent pages younger than the retention window (0 keeps everything). */
+export function pruneRecents(recents: RecentPage[], retentionDays: number, now = Date.now()): RecentPage[] {
+  if (!retentionDays) return recents
+  const cutoff = now - retentionDays * 86_400_000
+  return recents.filter((page) => {
+    const at = Date.parse(page.visitedAt)
+    return Number.isFinite(at) && at >= cutoff
+  })
+}
+
+/** Move every page of `fromId` into `intoId` (no duplicates) and drop `fromId`. */
+export function mergeCollections(collections: SavedCollection[], fromId: string, intoId: string): SavedCollection[] {
+  const from = collections.find((collection) => collection.id === fromId)
+  const into = collections.find((collection) => collection.id === intoId)
+  if (!from || !into || fromId === intoId) return collections
+  const merged = [...new Set([...into.memberUrls, ...from.memberUrls])]
+  return collections
+    .filter((collection) => collection.id !== fromId)
+    .map((collection) => (collection.id === intoId ? { ...collection, memberUrls: merged } : collection))
+}
+
+export const siteOf = (url: string): string => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '')
+  } catch {
+    return url
+  }
+}
+
+/**
+ * Split a collection by site: each site with two or more pages becomes its own
+ * collection ("Label · site"); single pages stay in the original. Returns the
+ * collections unchanged when there is nothing to split.
+ */
+export function splitCollectionBySite(collections: SavedCollection[], id: string, now = new Date()): SavedCollection[] {
+  const source = collections.find((collection) => collection.id === id)
+  if (!source) return collections
+  const bySite = new Map<string, string[]>()
+  for (const url of source.memberUrls) bySite.set(siteOf(url), [...(bySite.get(siteOf(url)) ?? []), url])
+  const groups = [...bySite.entries()].filter(([, urls]) => urls.length >= 2)
+  if (bySite.size < 2 || groups.length === 0) return collections
+  const moved = new Set(groups.flatMap(([, urls]) => urls))
+  const created = groups.map(([site, urls]): SavedCollection => ({
+    id: crypto.randomUUID(),
+    label: `${source.label} · ${site}`.slice(0, 80),
+    createdAt: now.toISOString(),
+    memberUrls: urls,
+  }))
+  const rest = source.memberUrls.filter((url) => !moved.has(url))
+  const kept = collections.flatMap((collection) =>
+    collection.id !== id ? [collection] : rest.length ? [{ ...collection, memberUrls: rest }] : [],
+  )
+  return [...kept, ...created]
+}
+
+export type CollectionExplanation = {
+  pages: number
+  sites: Array<{ name: string; count: number }>
+  topics: Array<{ name: string; count: number }>
+  places: Array<{ name: string; count: number }>
+  /** Whether a split by site would change anything. */
+  splittable: boolean
+}
+
+const tally = (values: string[]): Array<{ name: string; count: number }> => {
+  const counts = new Map<string, number>()
+  for (const value of values) if (value) counts.set(value, (counts.get(value) ?? 0) + 1)
+  return [...counts.entries()].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+}
+
+/** What a collection is made of: its sites, research topics and pinned places, most first. */
+export function explainCollection(collection: SavedCollection, bookmarks: SavedBookmark[]): CollectionExplanation {
+  const members = bookmarks.filter((bookmark) => collection.memberUrls.includes(bookmark.url))
+  const sites = tally(collection.memberUrls.map(siteOf))
+  return {
+    pages: collection.memberUrls.length,
+    sites,
+    topics: tally(members.flatMap((bookmark) => tagsOf(bookmark))),
+    places: tally(members.flatMap((bookmark) => (bookmark.fieldAnchor ? [bookmark.fieldAnchor.label] : []))),
+    splittable: sites.length >= 2 && sites.some((site) => site.count >= 2),
   }
 }

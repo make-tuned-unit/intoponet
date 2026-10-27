@@ -141,6 +141,8 @@ function PaneBody({
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [saveGroup, setSaveGroup] = useState<string>(UNSORTED_GROUP_ID)
 
+  // Keyboard alternative to dragging between folders (PRD MEM-010).
+  const moveTargets = useMemo(() => [...collections.map((collection) => ({ id: collection.id, label: collection.label })), { id: UNSORTED_GROUP_ID, label: 'Unsorted' }], [collections])
   const groups = useMemo(() => attachCaptures(groupBookmarks(bookmarks, collections, query), captures, query), [bookmarks, captures, collections, query])
   const showPages = filter !== 'captures'
   const showCaptures = filter !== 'pages'
@@ -442,6 +444,12 @@ function PaneBody({
                                       <small>{bookmarkHost(bookmark.url)}</small>
                                     </span>
                                   </button>
+                                  <MoveTo
+                                    label={`Move ${bookmark.title || bookmarkHost(bookmark.url)} to another folder`}
+                                    current={group.id}
+                                    targets={moveTargets}
+                                    onMove={(to) => onMove(bookmark.url, group.id, to)}
+                                  />
                                   <button type="button" className="lg-icon-button bm-item-remove" aria-label={`Remove ${bookmark.title || bookmarkHost(bookmark.url)}`} onClick={() => onRemove(bookmark.url)}>
                                     <X size={13} />
                                   </button>
@@ -482,6 +490,12 @@ function PaneBody({
                                   </span>
                                 )}
                               </button>
+                              <MoveTo
+                                label={`Move this ${capture.kind === 'image' ? 'screenshot' : 'recording'} to another folder`}
+                                current={group.id}
+                                targets={moveTargets}
+                                onMove={(to) => onMoveCapture(capture.id, to === UNSORTED_GROUP_ID ? null : to)}
+                              />
                             </motion.li>
                           ))}
                         </ul>
@@ -529,5 +543,22 @@ function PaneBody({
         </AnimatePresence>
       </footer>
     </div>
+  )
+}
+
+/** A small "Move to…" menu: shown on hover or keyboard focus, so folders can be changed without dragging. */
+function MoveTo({ label, current, targets, onMove }: { label: string; current: string; targets: Array<{ id: string; label: string }>; onMove: (to: string) => void }) {
+  return (
+    <select
+      className="bm-move"
+      aria-label={label}
+      title="Move to another folder"
+      value=""
+      onClick={(event) => event.stopPropagation()}
+      onChange={(event) => { if (event.target.value) onMove(event.target.value) }}
+    >
+      <option value="">Move to…</option>
+      {targets.filter((target) => target.id !== current).map((target) => <option key={target.id} value={target.id}>{target.label}</option>)}
+    </select>
   )
 }

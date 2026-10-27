@@ -92,3 +92,32 @@ describe('placesNamedIn', () => {
     expect(placesNamedIn('Reading list: Nice ideas for March')).toEqual([])
   })
 })
+
+describe('placesNamedIn homonyms', () => {
+  it('does not put a Texas story in California', async () => {
+    const { placesNamedIn } = await import('./places')
+    const names = placesNamedIn('CBP weighs border wall through Santa Ana wildlife refuge', 4, 'texastribune').map((place) => `${place.name}|${place.region ?? place.kind}`)
+    expect(names.some((name) => name.includes('California'))).toBe(false)
+    expect(names.some((name) => name.startsWith('Texas'))).toBe(true)
+  })
+  it('keeps the largest homonym when nothing says otherwise', async () => {
+    const { placesNamedIn } = await import('./places')
+    expect(placesNamedIn('Protests in Santa Ana tonight')[0]?.region).toBe('California')
+  })
+})
+
+describe('fly-to with a province or state', () => {
+  it('finds provincial capitals and accepts qualifiers people type', async () => {
+    const { searchPlaces, placeLabel, placesNamedIn } = await import('./places')
+    const first = (q: string) => { const p = searchPlaces(q, 1)[0]; return p ? placeLabel(p) : null }
+    expect(first('Charlottetown')).toBe('Charlottetown, Prince Edward Island, Canada')
+    expect(first('Charlottetown PEI')).toBe('Charlottetown, Prince Edward Island, Canada')
+    expect(first('Charlottetown, PE')).toBe('Charlottetown, Prince Edward Island, Canada')
+    expect(first('Fredericton NB')).toBe('Fredericton, New Brunswick, Canada')
+    expect(first('Springfield IL')).toBe('Springfield, Illinois, United States')
+    expect(first('London ON')).toBe('London, Ontario, Canada')
+    expect(first('P.E.I.')).toBe('Prince Edward Island, Canada')
+    // Two-letter codes never stand alone in running text.
+    expect(placesNamedIn('In Mobile, OK, a man said').map((p) => p.name)).not.toContain('Oklahoma')
+  })
+})

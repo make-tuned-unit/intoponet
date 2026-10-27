@@ -45,7 +45,9 @@ function buildIndex(): Entry[] {
     add({ id, name, kind: 'country', countryCode: code, country: name, lat, lon, population, radiusKm }, COUNTRY_ALIASES[id] ?? [], 1_000_000_000)
   }
   for (const [key, name, code, lat, lon, radiusKm, population] of REGION_ROWS) {
-    add({ id: `region:${key}`, name, kind: 'region', countryCode: code, country: countryNames.get(code) ?? code, lat, lon, population, radiusKm }, [], 0)
+    // Longer abbreviations (PEI, NSW, QLD) also work on their own; two-letter codes only after a place name.
+    const shortNames = Object.entries(REGION_CODES[code] ?? {}).filter(([abbr, region]) => region === name && abbr.replace(/ /g, '').length >= 3).map(([abbr]) => abbr)
+    add({ id: `region:${key}`, name, kind: 'region', countryCode: code, country: countryNames.get(code) ?? code, lat, lon, population, radiusKm }, shortNames, 0)
   }
   const aliased = new Set<string>()
   for (const [geonameId, name, code, region, lat, lon, population] of CITY_ROWS) {
@@ -78,12 +80,83 @@ function tier(entry: Entry, query: string): number | null {
   return null
 }
 
+/**
+ * Province/state abbreviations people type after a place ("Charlottetown PEI",
+ * "Halifax NS", "Austin TX"). Used only as a qualifier after a place name, never
+ * on their own, so words like "In" or "OK" in headlines don't become states.
+ */
+const REGION_CODES: Record<string, Record<string, string>> = {
+  CA: { ab: 'Alberta', bc: 'British Columbia', mb: 'Manitoba', nb: 'New Brunswick', nl: 'Newfoundland and Labrador', nf: 'Newfoundland and Labrador', ns: 'Nova Scotia', nt: 'Northwest Territories', nu: 'Nunavut', on: 'Ontario', ont: 'Ontario', pe: 'Prince Edward Island', pei: 'Prince Edward Island', 'p e i': 'Prince Edward Island', qc: 'Quebec', que: 'Quebec', sk: 'Saskatchewan', sask: 'Saskatchewan', yt: 'Yukon', 'b c': 'British Columbia', 'n s': 'Nova Scotia', 'n b': 'New Brunswick' },
+  US: { al: 'Alabama', ak: 'Alaska', az: 'Arizona', ar: 'Arkansas', ca: 'California', co: 'Colorado', ct: 'Connecticut', de: 'Delaware', dc: 'District of Columbia', fl: 'Florida', ga: 'Georgia', hi: 'Hawaii', id: 'Idaho', il: 'Illinois', in: 'Indiana', ia: 'Iowa', ks: 'Kansas', ky: 'Kentucky', la: 'Louisiana', me: 'Maine', md: 'Maryland', ma: 'Massachusetts', mi: 'Michigan', mn: 'Minnesota', ms: 'Mississippi', mo: 'Missouri', mt: 'Montana', ne: 'Nebraska', nv: 'Nevada', nh: 'New Hampshire', nj: 'New Jersey', nm: 'New Mexico', ny: 'New York', nc: 'North Carolina', nd: 'North Dakota', oh: 'Ohio', ok: 'Oklahoma', or: 'Oregon', pa: 'Pennsylvania', ri: 'Rhode Island', sc: 'South Carolina', sd: 'South Dakota', tn: 'Tennessee', tx: 'Texas', ut: 'Utah', vt: 'Vermont', va: 'Virginia', wa: 'Washington', wv: 'West Virginia', wi: 'Wisconsin', wy: 'Wyoming' },
+  AU: { nsw: 'New South Wales', vic: 'Victoria', qld: 'Queensland', wa: 'Western Australia', sa: 'South Australia', tas: 'Tasmania', act: 'Australian Capital Territory', nt: 'Northern Territory' },
+}
+
+/** What a trailing qualifier names: a region (with its country) or a country. */
+function qualifierScope(qualifier: string): Array<{ countryCode: string; region?: string }> {
+  index ??= buildIndex()
+  const scopes: Array<{ countryCode: string; region?: string }> = []
+  for (const [countryCode, codes] of Object.entries(REGION_CODES)) {
+    const region = codes[qualifier]
+    if (region) scopes.push({ countryCode, region })
+  }
+  for (const entry of index) {
+    if (entry.place.kind === 'city') continue
+    if (entry.name !== qualifier && !entry.aliases.includes(qualifier)) continue
+    scopes.push(entry.place.kind === 'region' ? { countryCode: entry.place.countryCode, region: entry.place.name } : { countryCode: entry.place.countryCode })
+  }
+  if (/^[a-z]{2}$/.test(qualifier)) scopes.push({ countryCode: qualifier.toUpperCase() })
+  return scopes
+}
+
 export function searchPlaces(query: string, limit = 6): Place[] {
+  const direct = searchPlacesExact(query, limit)
+  if (direct.length) return direct
+  // "Charlottetown PEI", "Halifax, NS", "Springfield Illinois": a place, then its region or country.
+  const normalized = normalizePlaceText(query)
+  const commaParts = query.split(',').map((part) => part.trim()).filter(Boolean)
+  const splits: Array<[string, string]> = []
+  if (commaParts.length >= 2) splits.push([commaParts[0]!, normalizePlaceText(commaParts.slice(1).join(' '))])
+  const words = normalized.split(' ')
+  for (let tail = Math.min(4, words.length - 1); tail >= 1; tail -= 1) splits.push([words.slice(0, -tail).join(' '), words.slice(-tail).join(' ')])
+  for (const [placePart, qualifier] of splits) {
+    const scopes = qualifierScope(qualifier)
+    if (!scopes.length) continue
+    const found = searchPlacesExact(placePart, 50).filter((place) => place.kind !== 'country' && scopes.some((scope) =>
+      scope.countryCode === place.countryCode && (!scope.region || place.region === scope.region || place.name === scope.region)))
+    if (found.length) return found.slice(0, limit)
+  }
+  return []
+}
+
+/** Entries by the first two letters of every word in their names and aliases (all matching is word-prefix based). */
+let byPrefix: Map<string, Entry[]> | null = null
+function prefixBuckets(): Map<string, Entry[]> {
+  if (byPrefix) return byPrefix
+  index ??= buildIndex()
+  const buckets = new Map<string, Entry[]>()
+  for (const entry of index) {
+    const keys = new Set<string>()
+    // Two-letter keys; single-letter words ("p e i" for P.E.I.) are keyed by their letter.
+    for (const text of [entry.name, ...entry.aliases]) for (const word of text.split(' ')) if (word) keys.add(word.slice(0, 2))
+    for (const key of keys) {
+      const list = buckets.get(key)
+      if (list) list.push(entry)
+      else buckets.set(key, [entry])
+    }
+  }
+  byPrefix = buckets
+  return buckets
+}
+
+function searchPlacesExact(query: string, limit = 6): Place[] {
   const normalized = normalizePlaceText(query)
   if (normalized.length < 2 || limit <= 0) return []
   index ??= buildIndex()
   const matches: { entry: Entry; tier: number; rank: number }[] = []
-  for (const entry of index) {
+  // Only places with a word starting like the query can match (exact, prefix and word-prefix tiers).
+  const firstWord = normalized.split(' ')[0]!
+  const candidates = prefixBuckets().get(firstWord.slice(0, 2)) ?? []
+  for (const entry of candidates) {
     const matchTier = tier(entry, normalized)
     if (matchTier === null) continue
     // Countries only get their boost for exact name/alias matches.
@@ -159,7 +232,7 @@ const TITLE_STOP_PLACES = new Set([
  * against place names and aliases; first mention first, countries before
  * regions before cities.
  */
-export function placesNamedIn(text: string, limit = 4): Place[] {
+export function placesNamedIn(text: string, limit = 4, hint = ''): Place[] {
   index ??= buildIndex()
   const byName = new Map<string, Entry[]>()
   for (const entry of index) {
@@ -170,7 +243,7 @@ export function placesNamedIn(text: string, limit = 4): Place[] {
     }
   }
   const words = text.split(/[\s_/,.;:()[\]|"“”–—-]+/).filter(Boolean)
-  const found: { place: Place; at: number }[] = []
+  const found: { place: Place; at: number; homonyms?: Place[] }[] = []
   const seen = new Set<string>()
   for (let i = 0; i < words.length; i += 1) {
     for (let n = 3; n >= 1; n -= 1) {
@@ -184,11 +257,29 @@ export function placesNamedIn(text: string, limit = 4): Place[] {
       const best = [...entries].sort((a, b) => kindRank[a.place.kind] - kindRank[b.place.kind] || b.place.population - a.place.population)[0]!
       if (!seen.has(best.place.id)) {
         seen.add(best.place.id)
-        found.push({ place: best.place, at: i })
+        found.push({ place: best.place, at: i, ...(entries.length > 1 ? { homonyms: entries.map((entry) => entry.place) } : {}) })
       }
       i += n - 1
       break
     }
   }
-  return found.slice(0, limit).map((item) => item.place)
+  // Regions the page names (in its text, or in its site name: "texastribune" names Texas).
+  const host = normalizePlaceText(hint).replace(/\s+/g, '')
+  const named = found.filter((item) => item.place.kind === 'region').map((item) => item.place)
+  if (host.length >= 4) {
+    for (const entry of index) {
+      if (entry.place.kind === 'region' && entry.name.length >= 5 && host.includes(entry.name.replace(/\s+/g, '')) && !named.some((place) => place.id === entry.place.id)) named.push(entry.place)
+    }
+  }
+  // A city name shared by many places: prefer the one in a named region; drop a guess that contradicts it.
+  const resolved = found.flatMap((item) => {
+    if (item.place.kind !== 'city' || !named.length) return [item]
+    const regions = named.filter((region) => region.countryCode === item.place.countryCode)
+    if (!regions.length || regions.some((region) => region.name === item.place.region)) return [item]
+    const better = (item.homonyms ?? []).filter((place) => place.kind === 'city' && regions.some((region) => region.name === place.region))
+      .sort((a, b) => b.population - a.population)[0]
+    return better ? [{ ...item, place: better }] : []
+  })
+  for (const region of named) if (!resolved.some((item) => item.place.id === region.id)) resolved.push({ place: region, at: Number.MAX_SAFE_INTEGER })
+  return resolved.slice(0, limit).map((item) => item.place)
 }

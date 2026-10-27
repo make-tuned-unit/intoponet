@@ -11,6 +11,7 @@ describe('shell shortcuts forwarded from the page view', () => {
     expect(shellShortcutForInput(key('L'))).toBe('focus-launcher')
     expect(shellShortcutForInput(key('B', { shift: true }))).toBe('toggle-bookmarks')
     expect(shellShortcutForInput(key('s', { shift: true }))).toBe('capture')
+    expect(shellShortcutForInput(key('N', { shift: true }))).toBe('toggle-private')
     expect(shellShortcutForInput(key('s'))).toBeNull()
   })
 

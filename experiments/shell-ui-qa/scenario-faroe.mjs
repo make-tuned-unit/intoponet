@@ -1,0 +1,25 @@
+// Faroe Islands: recent history from the article, and Faroese headlines translated roughly via Icelandic.
+export default async function ({ evaluate, shotApp, delay, send }) {
+  const wait = async (expr, ms = 90_000) => { const end = Date.now() + ms; while (Date.now() < end) { if (await evaluate(expr).catch(() => false)) return true; await delay(800) } return false }
+  await wait(`window.intoponet.browserHost.getNewsDigest().then((raw) => !!raw && JSON.parse(raw).countries.length > 150)`, 300_000)
+  await delay(1500)
+  await evaluate(`document.querySelector('.command-input input').focus(); true`)
+  await send('Input.insertText', { text: 'Faroe Islands' })
+  await delay(800)
+  await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, text: '\r' })
+  await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 })
+  await delay(3000)
+  console.log('title:', await evaluate(`document.querySelector('h1')?.innerText`), '| rows:', await evaluate(`[...document.querySelectorAll('.globe-list .globe-row')].slice(0, 5).map((el) => el.innerText.split('\\n')[0]).join(' | ')`))
+  await evaluate(`(() => { const rows = [...document.querySelectorAll('.globe-list .globe-row')]; const row = rows.find((el) => /Faroe/.test(el.innerText.split('\\n')[0])) ?? rows.find((el) => /stories/.test(el.innerText)); row?.click(); return !!row })()`)
+  await delay(1500)
+  console.log('detail:', await evaluate(`document.querySelector('.globe-detail h2')?.innerText ?? 'none'`))
+  await wait(`!!document.querySelector('.globe-context-recent, .globe-context-links')`, 90_000)
+  await delay(1500)
+  console.log('recent:', await evaluate(`document.querySelector('.globe-context-recent')?.innerText.replace(/\\n+/g, ' | ').slice(0, 400) ?? 'none'`))
+  console.log('bar:', await evaluate(`(document.querySelector('.tr-headline-bar')?.innerText ?? document.querySelector('.tr-headline-note')?.innerText ?? 'none').replace(/\\n+/g, ' ')`))
+  await evaluate(`document.querySelector('.tr-headline-bar .tr-inline-primary, .tr-headline-bar button')?.click(); true`)
+  await wait(`[...document.querySelectorAll('.globe-headlines small')].some((s) => /via Icelandic/.test(s.innerText))`, 200_000)
+  const first = await evaluate(`[...document.querySelectorAll('.globe-headlines li')].slice(0, 3).map((li) => li.innerText.replace(/\\n+/g, ' / ')).join(' || ')`)
+  console.log('headlines:', first.slice(0, 500))
+  await shotApp('faroe-panel')
+}

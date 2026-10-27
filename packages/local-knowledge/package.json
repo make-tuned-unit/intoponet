@@ -1,6 +1,7 @@
 {
   "name": "@intoponet/local-knowledge",
   "version": "0.1.0",
+  "license": "UNLICENSED",
   "private": true,
   "type": "module",
   "exports": {

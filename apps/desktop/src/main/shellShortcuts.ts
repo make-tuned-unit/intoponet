@@ -11,5 +11,6 @@ export function shellShortcutForInput(input: KeyInput): ShellShortcut | null {
   if (key === 'l' && !input.shift) return 'focus-launcher'
   if (key === 'b' && input.shift) return 'toggle-bookmarks'
   if (key === 's' && input.shift) return 'capture'
+  if (key === 'n' && input.shift) return 'toggle-private'
   return null
 }

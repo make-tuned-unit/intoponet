@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { ArrowLeft, BookOpen, ChevronsLeft, ChevronsRight, ExternalLink, GitBranch, History, List, Loader2, Newspaper, Rows3, X } from 'lucide-react'
+import { ArrowLeft, BookOpen, ChevronsLeft, ChevronsRight, ExternalLink, GitBranch, History, List, Loader2, Newspaper, Rows3, Scale, X } from 'lucide-react'
 import { OldsStory, SupportBadge, supportWords, type StorySelection } from './OldsStory'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { OLDS_NOTE, type OldsChapter, type OldsDate, type OldsEdge, type OldsNode, type OldsThread } from '@intoponet/browser-api'
@@ -115,7 +115,13 @@ export function OldsPanel({
 }) {
   const sheen = useGlassSheen<HTMLDivElement>()
   const reduceMotion = useReducedMotion()
-  const [view, setView] = useState<'story' | 'timeline' | 'list'>('timeline')
+  // Focus moves into the panel when it opens (unless you're typing): Escape closes it, screen readers announce it.
+  useEffect(() => {
+    const active = document.activeElement
+    const typing = active instanceof HTMLInputElement && active.value !== '' || active instanceof HTMLTextAreaElement
+    if (!typing) document.querySelector<HTMLElement>('.olds-sheet')?.focus({ preventScroll: true })
+  }, [])
+  const [view, setView] = useState<'story' | 'timeline' | 'list' | 'debate'>('timeline')
   const [story, setStory] = useState<{ key: string; selection: StorySelection } | null>(null)
   const [wellSourced, setWellSourced] = useState(false)
   const [selectedId, setSelectedIdState] = useState<string | null>(null)
@@ -170,7 +176,7 @@ export function OldsPanel({
     setSelectedIdState(null)
     setChapterId(null)
     setStory(null)
-    setView(thread?.context ? 'story' : (current) => (current === 'story' ? 'timeline' : current))
+    setView(thread?.context ? 'story' : (current) => (current === 'story' || current === 'debate' ? 'timeline' : current))
   }, [thread?.rootId, thread?.context]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Which way the timeline can still scroll, and which chapter its middle is in.
@@ -249,6 +255,7 @@ export function OldsPanel({
     <motion.section
       ref={sheen}
       className="olds-sheet lg-surface lg-sheen"
+      tabIndex={-1}
       aria-label={`The Olds: ${label}`}
       initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 40, scale: 0.98, filter: 'blur(8px)' }}
       animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
@@ -279,6 +286,11 @@ export function OldsPanel({
             <button type="button" role="radio" aria-checked={view === 'timeline'} className={view === 'timeline' ? 'is-active' : ''} onClick={() => setView('timeline')}>
               <Rows3 size={13} aria-hidden="true" /> Timeline
             </button>
+            {thread?.interpretations?.length ? (
+              <button type="button" role="radio" aria-checked={view === 'debate'} className={view === 'debate' ? 'is-active' : ''} onClick={() => setView('debate')} title="How historians and scholars read this, side by side">
+                <Scale size={13} aria-hidden="true" /> Debate
+              </button>
+            ) : null}
             <button type="button" role="radio" aria-checked={view === 'list'} className={view === 'list' ? 'is-active' : ''} onClick={() => setView('list')}>
               <List size={13} aria-hidden="true" /> List
             </button>
@@ -326,13 +338,28 @@ export function OldsPanel({
 
       {thread && (entries.length > 0 || thread.context) && (
         <div className="olds-body">
-          {view === 'story' && thread.context ? (
+          {view === 'debate' && thread.interpretations?.length ? (
+            <div className="olds-debate" aria-label="Competing interpretations">
+              <p className="olds-debate-note">Readings attributed in Wikipedia’s article, side by side and in the article’s order. Intoponet doesn’t rank them; open each section to see its sources.</p>
+              <div className="olds-debate-cards">
+                {thread.interpretations.map((item) => (
+                  <article key={item.who} className="olds-debate-card">
+                    <strong>{item.who}</strong>
+                    <p>{item.view}</p>
+                    <button type="button" onClick={() => onOpen(item.url)}>From “{item.section}” <ExternalLink size={11} aria-hidden="true" /></button>
+                  </article>
+                ))}
+              </div>
+            </div>
+          ) : view === 'story' && thread.context ? (
             <OldsStory
               context={thread.context}
               selectedKey={story?.key ?? null}
               onSelect={(key, selection) => setStory((current) => (current?.key === key ? null : { key, selection }))}
               onPickTopic={onPickTopic}
               onOpen={onOpen}
+              onFollowArticle={onFollowArticle}
+              chronicle={thread.chronicle}
             />
           ) : view === 'timeline' ? (
             <div className="olds-main">

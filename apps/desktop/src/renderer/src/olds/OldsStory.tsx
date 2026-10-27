@@ -1,5 +1,5 @@
 import { ArrowRight, BookOpen, CircleCheck, CircleDashed, CircleHelp, Newspaper } from 'lucide-react'
-import type { OldsChapter, OldsContext, OldsEdge, OldsNode, OldsSupport } from '@intoponet/browser-api'
+import type { OldsChapter, OldsChronicleEntry, OldsContext, OldsEdge, OldsNode, OldsSupport } from '@intoponet/browser-api'
 
 /** The path read forwards in time (old → new): how the older step relates to the newer one. */
 const FORWARD: Record<string, string> = {
@@ -48,12 +48,18 @@ export function OldsStory({
   onSelect,
   onPickTopic,
   onOpen,
+  onFollowArticle,
+  chronicle = [],
 }: {
   context: OldsContext
   selectedKey: string | null
   onSelect: (key: string, selection: Selection) => void
   onPickTopic?: ((topic: string) => void) | undefined
   onOpen: (url: string) => void
+  /** Open a Wikipedia topic as its own history thread. */
+  onFollowArticle?: ((title: string) => void) | undefined
+  /** Dated events from the topic's own article, oldest first. */
+  chronicle?: OldsChronicleEntry[] | undefined
 }) {
   // Oldest first: the chapter, then the path reversed, then today.
   const steps = [...context.path].reverse()
@@ -104,6 +110,47 @@ export function OldsStory({
           <strong>{context.headline}</strong>
         </div>
       </div>
+      {chronicle.length > 0 && (
+        <section className="olds-chronicle" aria-label="How we got here">
+          <h3 title="Dated events quoted from the topic’s own Wikipedia article, in time order. Open a section to see its sources.">How we got here</h3>
+          <ol>
+            {chronicle.map((entry, index) => (
+              <li key={`${entry.at.iso}-${index}`}>
+                <time dateTime={entry.at.iso}>{entry.at.label}</time>
+                <div>
+                  <p>{entry.text}</p>
+                  <span className="olds-chronicle-actions">
+                    <button type="button" onClick={() => onOpen(entry.url)}>From “{entry.section}”</button>
+                    {entry.link && onFollowArticle && <button type="button" onClick={() => onFollowArticle(entry.link!)}>{entry.link}: its history <ArrowRight size={10} aria-hidden="true" /></button>}
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+      {context.related && context.related.length > 0 && (
+        <section className="olds-related" aria-label="Topics behind this story">
+          <h3 title="The subjects this story is about, in its country, from Wikipedia. Figures are quoted from each article; open it to check their sources and dates.">Topics behind this story</h3>
+          <div className="olds-related-cards">
+            {context.related.map((topic) => (
+              <article key={topic.title} className="olds-related-card">
+                <strong>{topic.title}</strong>
+                {topic.description && <small>{topic.description}</small>}
+                {topic.figures.length > 0 && (
+                  <ul aria-label="Key figures">
+                    {topic.figures.map((figure) => <li key={figure}>{figure}</li>)}
+                  </ul>
+                )}
+                <span className="olds-related-actions">
+                  {onFollowArticle && <button type="button" onClick={() => onFollowArticle(topic.title)}>Its history <ArrowRight size={11} aria-hidden="true" /></button>}
+                  <button type="button" onClick={() => onOpen(topic.url)}>Read on Wikipedia</button>
+                </span>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
       <p className="olds-story-note">
         {context.matchedBy} {context.path.length > 1 ? 'Each step follows a cause, “part of” or sequence link on Wikidata, checked against Wikipedia text.' : 'Wikidata has no cause or “part of” links for this topic yet, so the path stops here; its own timeline and links are under Timeline.'}
       </p>

@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-import type { BrowserHostApi, CaptureApi, KnowledgeApi, LayaApi, OldsApi, TranslateApi } from '@intoponet/browser-api'
+import type { BeaconApi, BrowserHostApi, CaptureApi, KnowledgeApi, LayaApi, OldsApi, PrivacyApi, SitePermissionApi, TranslateApi } from '@intoponet/browser-api'
 
 declare global {
   interface Window {
@@ -11,6 +11,9 @@ declare global {
       knowledge: KnowledgeApi
       laya: LayaApi
       translate: TranslateApi
+      privacy: PrivacyApi
+      sitePermissions: SitePermissionApi
+      beacons: BeaconApi
       favicons: { get(hosts: string[]): Promise<Record<string, string>> }
       access: { page(): Promise<{ url: string; title: string; paywalled: boolean; signals: string[]; doi: string | null } | null> }
     }

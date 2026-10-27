@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { readFile, writeFile } from 'node:fs/promises'
-import { existsSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
+import { appendFileSync, existsSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
 import {
   app,
   BrowserWindow,
@@ -37,18 +37,23 @@ import {
   TAB_DOCK_TWEEN_MS,
 } from './tabDockBounds'
 import { shellShortcutForInput } from './shellShortcuts'
+import { kindsFor, originOf, SitePermissionBroker, SitePermissionStore } from './sitePermissions'
+import { popupPlan, PopupLimiter } from './popups'
+import { BeaconPublisher } from './beacons/publisher'
+import { DEFAULT_BEACON_REGISTRY } from './beacons/defaults'
 import { ENCRYPTED_DNS, networkPrivacySnapshot, WEBRTC_POLICY } from './networkPrivacy'
 let newsService: ReturnType<typeof startNewsService> | null = null
 let encryptedDnsActive = false
 import { CaptureLibrary, migrateEncryptedCaptures } from './captureStore'
 import { CaptureService } from './captureService'
-import { CAPTURE_SCHEME, captureChannels, knowledgeChannels, layaChannels, parseLayaCommand, translateChannels, parseTranslateCommand, normalizeLanguage, oldsChannels, parseCaptureCommand, parseKnowledgeCommand, parseOldsCommand } from '@intoponet/browser-api'
+import { CAPTURE_SCHEME, captureChannels, knowledgeChannels, layaChannels, parseLayaCommand, translateChannels, parseTranslateCommand, normalizeLanguage, privacyChannels, parsePrivacyCommand, isExcludedSite, type PrivacyState, sitePermissionChannels, parseSitePermissionCommand, beaconChannels, parseBeaconCommand, oldsChannels, parseCaptureCommand, parseKnowledgeCommand, parseOldsCommand } from '@intoponet/browser-api'
 import { KnowledgeService } from './knowledge/service'
 import { LayaService } from './laya/service'
 import { openLayaEmbedder } from './laya/openEmbedder'
 import { TranslateService } from './translate/service'
 import { FaviconCache, isIconHost } from './faviconCache'
 import { ACCESS_SCRIPT, ACCESS_WORLD_ID, parseAccess } from './access/pageAccess'
+import { backupExclusionStatus, setBackupExclusion } from './backupExclusion'
 import { TranslateStore } from './translate/store'
 import { openTranslationEngine } from './translate/openEngine'
 import { loadKnowledgeCrypto } from './knowledge/crypto'
@@ -81,6 +86,15 @@ import {
 let window: BrowserWindow | null = null
 let pageView: WebContentsView | null = null
 let translateService: TranslateService | null = null
+/** Private browsing: new tabs use an in-memory session and record nothing. */
+const PRIVATE_PARTITION = 'intoponet-private'
+// Site permissions: asked in a bar, remembered per site (private tabs: in memory until private browsing ends).
+let sitePermissions: SitePermissionBroker | null = null
+const privatePermissions = new SitePermissionStore(null)
+/** Sites the user never wants absorbed or remembered (Privacy › Sites to leave out). */
+let excludedSites: string[] = []
+let privateMode = false
+const privateViews = new WeakSet<WebContentsView>()
 let faviconCache: FaviconCache | null = null
 let pageAttached = false
 let activeTabId: string | null = null
@@ -140,7 +154,8 @@ function persistentState(): PersistentBrowserState {
     url: pageView?.webContents.getURL() || lastKnownUrl,
     bounds: lastBounds,
     wasVisible: pageAttached,
-    tabs: tabSnapshots().map((tab) => ({
+    // Private tabs are never saved or restored.
+    tabs: tabSnapshots().filter((tab) => !tab.isPrivate).map((tab) => ({
       id: tab.id,
       url: tab.url,
       title: tab.title,
@@ -225,6 +240,7 @@ function panelState(): BrowserPanelSnapshot {
     canGoForward: contents.navigationHistory.canGoForward(),
     isLoading: contents.isLoading(),
     isVisible: pageAttached,
+    isPrivate: privateViews.has(pageView),
   }
 }
 
@@ -346,8 +362,8 @@ async function applyCosmeticFilters(contents: Electron.WebContents): Promise<voi
   }
 }
 
-function wireProtectionSession(): void {
-  const guest = session.fromPartition('persist:intoponet-default')
+function wireProtectionSession(partition = 'persist:intoponet-default'): void {
+  const guest = session.fromPartition(partition)
   guest.webRequest.onBeforeRequest((details, callback) => {
     const routed = routeProtectionRequest(protection, protectionPages, details, openTabs)
     if (!routed) {
@@ -474,9 +490,21 @@ function navigationFailureReason(code: number, description: string): string {
   return description
 }
 
-function wireDownloadSession(): void {
-  const browsing = session.fromPartition('persist:intoponet-default')
-  browsing.setPermissionRequestHandler((_webContents, _permission, callback) => callback(false))
+function wireDownloadSession(partition = 'persist:intoponet-default'): void {
+  const browsing = session.fromPartition(partition)
+  const isPrivate = partition === PRIVATE_PARTITION
+  // Camera, microphone, location, notifications and clipboard reading are asked in a bar under the toolbar;
+  // harmless ones (fullscreen, writing to the clipboard) are granted; everything else is refused.
+  browsing.setPermissionRequestHandler((contents, permission, callback, details) => {
+    if (!sitePermissions) return callback(false)
+    const mediaTypes = (details as { mediaTypes?: string[] }).mediaTypes ?? []
+    sitePermissions.request({ origin: originOf(details.requestingUrl || contents.getURL()), kinds: kindsFor(permission, mediaTypes), isPrivate, owner: contents.id }, callback)
+  })
+  browsing.setPermissionCheckHandler((_contents, permission, requestingOrigin, details) => {
+    const mediaType = (details as { mediaType?: string }).mediaType
+    const kinds = kindsFor(permission, mediaType === 'video' ? ['video'] : mediaType === 'audio' ? ['audio'] : [])
+    return sitePermissions?.check(originOf(requestingOrigin), kinds, isPrivate) === true
+  })
   app.on('certificate-error', (event, webContents, _url, _error, _certificate, callback) => {
     if (webContents.session !== browsing) return
     event.preventDefault()
@@ -537,6 +565,7 @@ function tabSnapshots(): PageTabSnapshot[] {
     title: tab.view.webContents.getTitle() || tab.title || tab.url,
     favicon: tab.favicon,
     active: tab.id === activeTabId,
+    isPrivate: privateViews.has(tab.view),
   }))
 }
 
@@ -623,11 +652,27 @@ function makeRoomForTab(): void {
   }
 }
 
-function createBrowserTab(urlValue: string, activate = true): WebContentsView | null {
+const popupLimiter = new PopupLimiter()
+
+/** A popup window opened by a page: http(s) only, nested popups become tabs, closes with its page. */
+function wirePopupWindow(child: BrowserWindow, opener: WebContentsView): void {
+  child.webContents.on('will-navigate', (event, url) => { if (!safeHttpUrl(url)) event.preventDefault() })
+  child.webContents.setWindowOpenHandler(({ url }) => {
+    const tab = createBrowserTab(url, true, privateViews.has(opener))
+    if (tab) void tab.webContents.loadURL(url).catch(() => undefined)
+    return { action: 'deny' }
+  })
+  const closeWithOpener = (): void => { if (!child.isDestroyed()) child.close() }
+  const openerContents = opener.webContents
+  openerContents.once('destroyed', closeWithOpener)
+  child.once('closed', () => { if (!openerContents.isDestroyed()) openerContents.removeListener('destroyed', closeWithOpener) })
+}
+
+function createBrowserTab(urlValue: string, activate = true, isPrivate = privateMode): WebContentsView | null {
   const url = safeHttpUrl(urlValue)
   if (!url) return null
   makeRoomForTab()
-  const view = buildView()
+  const view = buildView(isPrivate)
   const tab = { id: randomUUID(), url: url.toString(), title: '', favicon: '', view }
   openTabs.push(tab)
   if (activate) {
@@ -658,7 +703,7 @@ function contextMenuTemplate(view: WebContentsView, params: Electron.ContextMenu
 
   if (has('open-link-in-new-tab') && linkUrl) {
     items.push({ label: 'Open Link in New Tab', click: () => {
-      const newView = createBrowserTab(linkUrl)
+      const newView = createBrowserTab(linkUrl, true, privateViews.has(view))
       if (newView) void newView.webContents.loadURL(linkUrl)
     } })
   }
@@ -667,6 +712,10 @@ function contextMenuTemplate(view: WebContentsView, params: Electron.ContextMenu
   }
   if (has('open-link-in-new-tab') || has('copy-link-address')) items.push({ type: 'separator' })
 
+  // Keep a highlighted passage (a statistic, a quote, a description) in your private knowledge.
+  if (has('copy-selection') && !params.isEditable && params.selectionText.trim().split(/\s+/).length >= 3) {
+    items.push({ label: 'Absorb Selection', click: () => emit({ type: 'shortcut', action: 'absorb-selection' }) })
+  }
   if (has('copy-selection')) items.push({ label: 'Copy', role: 'copy' })
   if (has('cut')) items.push({ label: 'Cut', role: 'cut' })
   if (has('paste')) items.push({ label: 'Paste', role: 'paste' })
@@ -692,7 +741,7 @@ function contextMenuTemplate(view: WebContentsView, params: Electron.ContextMenu
   ))
 }
 
-function buildView(): WebContentsView {
+function buildView(isPrivate = privateMode): WebContentsView {
   let frequencyNavigation = 0
   let frequencyLoadSucceeded = false
   const view = new WebContentsView({
@@ -700,9 +749,10 @@ function buildView(): WebContentsView {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
-      session: session.fromPartition('persist:intoponet-default'),
+      session: session.fromPartition(isPrivate ? PRIVATE_PARTITION : 'persist:intoponet-default'),
     },
   })
+  if (isPrivate) privateViews.add(view)
 
   view.setBackgroundColor('#ffffff')
   view.webContents.setWebRTCIPHandlingPolicy(WEBRTC_POLICY)
@@ -778,22 +828,44 @@ function buildView(): WebContentsView {
       return values.join(' | ').slice(0, 1000);
     })()`).then((rating: unknown) => {
       if (view.webContents.isDestroyed() || pageView !== view || !frequencyLoadSucceeded || generation !== frequencyNavigation || url !== view.webContents.getURL()) return
+      // Private tabs and excluded sites leave no footprints and no interest signals.
+      if (privateViews.has(view) || isExcludedSite(url, excludedSites)) return
       emit({ type: 'frequency-visit', url, title: view.webContents.getTitle().slice(0, 1000),
         rating: typeof rating === 'string' && rating ? rating.slice(0, 1000) : null,
         navigationId: `${view.webContents.id}:${generation}` })
     }).catch(() => { /* No activity is recorded when rating extraction fails. */ })
   })
   preferReadablePageTheme(view.webContents)
-  view.webContents.setWindowOpenHandler(({ url }) => {
-    emit({
-      type: 'navigation-failed',
-      url,
-      reason: safeHttpUrl(url)
-        ? 'Popup blocked. Open the destination explicitly if you trust it.'
-        : 'Blocked an unsupported popup destination.',
-    })
-    return { action: 'deny' }
+  view.webContents.setWindowOpenHandler(({ url, disposition, features }) => {
+    const plan = popupPlan({ url, disposition, features })
+    if (plan.action === 'deny' || !popupLimiter.allow(view.webContents.id)) {
+      emit({ type: 'navigation-failed', url, reason: plan.action === 'deny' ? plan.reason : 'This page opened several windows at once; the rest were blocked.' })
+      return { action: 'deny' }
+    }
+    if (plan.action === 'tab') {
+      // Same privacy as the page that opened it.
+      const tab = createBrowserTab(url, !plan.background, privateViews.has(view))
+      if (tab) void tab.webContents.loadURL(url).catch(() => undefined)
+      return { action: 'deny' }
+    }
+    // Sign-in style popup: a small real window that keeps window.opener (same session as its page).
+    return {
+      action: 'allow',
+      overrideBrowserWindowOptions: {
+        width: plan.width,
+        height: plan.height,
+        ...(window && !window.isDestroyed() ? { parent: window } : {}),
+        autoHideMenuBar: true,
+        backgroundColor: '#ffffff',
+        title: 'Sign-in window',
+        webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false },
+      },
+    }
   })
+  view.webContents.on('did-create-window', (child) => wirePopupWindow(child, view))
+  // Capture the id now: by the time 'destroyed' fires, view.webContents is gone.
+  const contentsId = view.webContents.id
+  view.webContents.once('destroyed', () => popupLimiter.forget(contentsId))
   view.webContents.on('will-navigate', (event, url) => {
     if (!safeHttpUrl(url)) event.preventDefault()
   })
@@ -811,6 +883,8 @@ function buildView(): WebContentsView {
     void applyCosmeticFilters(view.webContents)
   })
   view.webContents.on('did-navigate', (_event, url) => {
+    // Prompts from the previous page no longer apply.
+    sitePermissions?.dropOwner(view.webContents.id)
     rememberTab(view)
     protectionPages.commitNavigation(view.webContents.id, url)
     if (pageView !== view) return
@@ -877,7 +951,7 @@ function buildView(): WebContentsView {
       reason: `The page renderer stopped (${details.reason}). Reloading.`,
     })
     if (!tab || !safeHttpUrl(crashedUrl)) return
-    const replacement = buildView()
+    const replacement = buildView(privateViews.has(view))
     tab.view = replacement
     tab.url = crashedUrl
     if (activeTabId === tab.id) {
@@ -969,7 +1043,8 @@ async function handleBrowserCommand(
   switch (command.type) {
     case 'open': {
       const url = resolveNavigationIntent(command.intent)
-      const existing = openTabs.find((tab) => samePage(tab.view.webContents.getURL() || tab.url, url))
+      // Reuse an open tab only when it matches the current mode (private tabs and normal tabs never mix).
+      const existing = openTabs.find((tab) => privateViews.has(tab.view) === privateMode && samePage(tab.view.webContents.getURL() || tab.url, url))
       if (existing) {
         showTab(existing.id)
         break
@@ -1190,7 +1265,7 @@ app.whenReady().then(async () => {
     lastKnownUrl = restoredState.url
     lastBounds = restoredState.bounds
     for (const saved of restoredState.tabs) {
-      const view = buildView()
+      const view = buildView(false)
       openTabs.push({ id: saved.id, url: saved.url, title: saved.title, favicon: '', view })
     }
     const active =
@@ -1203,8 +1278,28 @@ app.whenReady().then(async () => {
   }
 
   installApplicationMenu()
+  const normalPermissions = new SitePermissionStore(join(app.getPath('userData'), 'site-permissions.json'))
+  sitePermissions = new SitePermissionBroker({
+    store: (isPrivate) => (isPrivate ? privatePermissions : normalPermissions),
+    emit: (event) => { if (window && !window.isDestroyed()) window.webContents.send(sitePermissionChannels.event, event) },
+    systemAccess: (kind) => (process.platform === 'darwin' ? systemPreferences.askForMediaAccess(kind) : Promise.resolve(true)),
+  })
+  ipcMain.handle(sitePermissionChannels.command, async (_event, value: unknown) => {
+    const command = parseSitePermissionCommand(value)
+    const store = pageView && privateViews.has(pageView) ? privatePermissions : normalPermissions
+    if (command.type === 'decide') return sitePermissions!.decide(command.id, command.decision)
+    if (command.type === 'pending') return sitePermissions!.list()
+    if (command.type === 'reset') {
+      store.reset(command.origin, command.kind)
+      if (window && !window.isDestroyed()) window.webContents.send(sitePermissionChannels.event, { type: 'changed', origin: command.origin })
+    }
+    return store.get(command.origin)
+  })
   wireDownloadSession()
   wireProtectionSession()
+  // Private tabs get the same protections, permissions and download handling.
+  wireDownloadSession(PRIVATE_PARTITION)
+  wireProtectionSession(PRIVATE_PARTITION)
 
   const captureLibrary = new CaptureLibrary(
     join(app.getPath('userData'), 'capture-library'),
@@ -1228,6 +1323,10 @@ app.whenReady().then(async () => {
       const [english] = await translateService.translate(code, 'en', [text], false)
       return english ?? null
     },
+    // Laya (when on) checks that a history topic means the same thing as the headline.
+    meaning: (query, texts) => laya ? laya.similarities(query, texts) : Promise.resolve(null),
+    // Quality checks only: INTOPONET_OLDS_DEBUG=<file> records how each headline's candidates scored.
+    ...(process.env.INTOPONET_OLDS_DEBUG ? { debug: (headline: string, candidates: unknown, searched: unknown) => appendFileSync(process.env.INTOPONET_OLDS_DEBUG!, `${JSON.stringify({ headline, candidates, searched })}\n`) } : {}),
   })
   ipcMain.handle(oldsChannels.command, (_event, value: unknown) => olds.thread(parseOldsCommand(value).query))
   // Absorb + local knowledge: extracted on this device, encrypted with an OS-keychain key, never sent anywhere.
@@ -1242,6 +1341,7 @@ app.whenReady().then(async () => {
     dir: knowledgeDir,
     crypto: knowledgeCrypto,
     getActivePage: () => (pageAttached && pageView ? pageView.webContents : null),
+    isExcluded: (url) => isExcludedSite(url, excludedSites),
     onChange: (change) => laya?.onKnowledgeChange(change),
   })
   ipcMain.handle(knowledgeChannels.command, (_event, value: unknown) => knowledge.handle(parseKnowledgeCommand(value)))
@@ -1257,6 +1357,74 @@ app.whenReady().then(async () => {
   ipcMain.handle(layaChannels.command, (_event, value: unknown) => laya!.handle(parseLayaCommand(value)))
   app.once('will-quit', () => { void laya?.close() })
   setTimeout(() => { void laya?.backfill().catch(() => undefined) }, 15_000).unref?.()
+  // Private browsing and backup exclusion for the private stores (PRD MEM-001, §8.4).
+  const backupPaths = [privateLibraryPath(), join(app.getPath('userData'), 'knowledge'), join(app.getPath('userData'), 'laya'), join(app.getPath('userData'), 'personal')]
+  const excludedSitesFile = join(app.getPath('userData'), 'excluded-sites.json')
+  try {
+    const raw = JSON.parse(readFileSync(excludedSitesFile, 'utf8')) as unknown
+    if (Array.isArray(raw)) excludedSites = raw.filter((site): site is string => typeof site === 'string').slice(0, 500)
+  } catch {
+    // None yet.
+  }
+  const privacyState = async (): Promise<PrivacyState> => ({
+    excludedSites,
+    privateMode,
+    privateTabs: openTabs.filter((tab) => privateViews.has(tab.view)).length,
+    backupExcluded: await backupExclusionStatus(backupPaths),
+    backupPaths,
+  })
+  const emitPrivacy = async (): Promise<void> => {
+    if (window && !window.isDestroyed()) window.webContents.send(privacyChannels.event, await privacyState())
+  }
+  ipcMain.handle(privacyChannels.command, async (_event, value: unknown) => {
+    const command = parsePrivacyCommand(value)
+    if (command.type === 'set-private-mode') {
+      privateMode = command.on
+      if (!command.on) {
+        // Leaving private browsing closes private tabs and wipes their session.
+        for (const tab of openTabs.filter((item) => privateViews.has(item.view))) discardTab(tab.id)
+        const privateSession = session.fromPartition(PRIVATE_PARTITION)
+        await privateSession.clearStorageData().catch(() => undefined)
+        await privateSession.clearCache().catch(() => undefined)
+        privatePermissions.clear()
+        emitPanelState()
+      }
+      await emitPrivacy()
+    }
+    if (command.type === 'set-excluded-sites') {
+      excludedSites = command.sites
+      try { writeFileSync(excludedSitesFile, JSON.stringify(excludedSites), { mode: 0o600 }) } catch { /* applies this session */ }
+      await emitPrivacy()
+    }
+    if (command.type === 'set-backup-exclusion') {
+      await setBackupExclusion(backupPaths, command.on)
+      await emitPrivacy()
+    }
+    return privacyState()
+  })
+  // Beacons: the only path by which a user-approved contribution leaves this Mac (PRD §4.6, §7).
+  const beaconDir = join(app.getPath('userData'), 'beacons')
+  const beacons = new BeaconPublisher({
+    files: { key: join(beaconDir, 'device-key.sealed'), settings: join(beaconDir, 'settings.json'), published: join(beaconDir, 'published.json') },
+    box: {
+      available: () => safeStorage.isEncryptionAvailable(),
+      seal: (text) => safeStorage.encryptString(text),
+      open: (sealed) => safeStorage.decryptString(sealed),
+    },
+    defaultRegistry: process.env['INTOPONET_BEACON_REGISTRY'] || DEFAULT_BEACON_REGISTRY,
+  })
+  ipcMain.handle(beaconChannels.command, async (_event, value: unknown) => {
+    const command = parseBeaconCommand(value)
+    switch (command.type) {
+      case 'state': return beacons.state()
+      case 'set-registry': return beacons.setRegistry(command.url)
+      case 'preview': return beacons.preview(command.draft)
+      case 'publish': return beacons.publish(command.draft)
+      case 'withdraw': return beacons.withdraw(command.id)
+      case 'report': return beacons.report(command.url, command.kind, command.text)
+      case 'read': return beacons.read({ ...(command.topic ? { topic: command.topic } : {}), ...(command.bbox ? { bbox: command.bbox } : {}) })
+    }
+  })
   // Site icons for bookmarks: from visited pages or the site's own /favicon.ico, cached on this Mac.
   faviconCache = new FaviconCache(join(app.getPath('userData'), 'favicons.json'))
   ipcMain.handle('intoponet:favicons', (_event, value: unknown) => {

@@ -9,6 +9,8 @@ import type { FieldSnapshot } from '@intoponet/field-snapshot'
 import { latLonToOrbit, syntheticTopicGraph } from '@intoponet/frequency-field'
 import {
   absorbPage,
+  mergePrivateLibraries,
+  parsePrivateLibrary,
   historicalFixtures,
   privateLibrarySchema,
   relationshipLabel,
@@ -28,6 +30,7 @@ import {
   FolderPlus,
   Globe2,
   LockKeyhole,
+  EyeOff,
   Library,
   Aperture,
   Ellipsis,
@@ -38,6 +41,7 @@ import {
   Search,
   Shrink,
   Shield,
+  Settings as SettingsIcon,
   ShieldAlert,
   ShieldOff,
   Square,
@@ -94,6 +98,14 @@ import {
   readCollections,
   readRecents,
   rememberRecent,
+  writeRecents,
+  tagsOf,
+  pruneRecents,
+  hasLegacyLibraryStorage,
+  clearLegacyLibraryStorage,
+  mergeCollections,
+  splitCollectionBySite,
+  explainCollection,
   renameCollection,
   topicKey,
   upsertBookmark,
@@ -152,6 +164,15 @@ import { dayPhaseText } from './earth/sun'
 import { countryPlace, nearestCountry, placesNamedIn, PLACE_ATTRIBUTION, placeLabel, type Place } from '../../shared/places/places'
 import { parseNewsDigest, type NewsDigest, type NewsHeadline, type RisingTerm } from '../../shared/news/newsDigest'
 import type { GlobalStory } from '../../shared/news/globalStories'
+import { isExcludedSite, type PrivacyState } from '@intoponet/browser-api'
+import { PrivacyPane } from './privacy/PrivacyPane'
+import { SettingsPanel } from './settings/SettingsPanel'
+import { PermissionBar, SitePermissionChips } from './permissions/PermissionBar'
+import { BeaconConsent } from './beacons/BeaconConsent'
+import type { BeaconDraft } from '@intoponet/browser-api'
+import type { SitePermissionMap, SitePermissionRequest } from '@intoponet/browser-api'
+import { autoTranslatePlan, headlinePrefKey, readAppSettings, writeAppSettings, type AppSettings } from './settings/appSettings'
+import { readPrivacySettings, writePrivacySettings, type PrivacySettings } from './privacy/privacySettings'
 
 const bookmarkPaneOpenKey = 'intoponet.bookmark-pane.open.v1'
 const globePrefsKey = 'intoponet.globe.v2'
@@ -177,7 +198,7 @@ function readGlobePrefs(): GlobePrefs {
 }
 const captureGroupKey = 'intoponet.capture-group.v1'
 
-type LibraryTab = 'locations' | 'collections' | 'recent' | 'absorbed'
+type LibraryTab = 'locations' | 'collections' | 'recent' | 'absorbed' | 'privacy'
 type TopicLocationOption = PersonalTopicLocation & { topicId?: string }
 
 const emptyPanel: BrowserPanelSnapshot = {
@@ -237,6 +258,8 @@ function originLabel(url: string): string {
 
 function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
+  // An empty search box isn't "typing": Escape there closes the open panel.
+  if (target instanceof HTMLInputElement && target.closest('.command-input') && !target.value) return false
   const tag = target.tagName
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable
 }
@@ -284,7 +307,11 @@ export function App() {
   )
   const [bookmarks, setBookmarks] = useState(readBookmarks)
   const [collections, setCollections] = useState(readCollections)
-  const [recents, setRecents] = useState(readRecents)
+  const [privacySettings, setPrivacySettingsState] = useState(readPrivacySettings)
+  const privacySettingsRef = useRef(privacySettings)
+  privacySettingsRef.current = privacySettings
+  const [privacyState, setPrivacyState] = useState<PrivacyState | null>(null)
+  const [recents, setRecents] = useState(() => pruneRecents(readRecents(), readPrivacySettings().retentionDays))
   const [absorbed, setAbsorbed] = useState<AbsorbRecord[]>([])
   const [absorbExcerpt, setAbsorbExcerpt] = useState('')
   const [absorbQuery, setAbsorbQuery] = useState('')
@@ -328,6 +355,12 @@ export function App() {
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false)
   const [organicMetrics, setOrganicMetrics] = useState<OrganicMembraneMetrics | null>(null)
   const [libraryOpen, setLibraryOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [beaconDraft, setBeaconDraft] = useState<BeaconDraft | null>(null)
+  const [appSettings, setAppSettingsState] = useState(readAppSettings)
+  const [headlinesTranslated, setHeadlinesTranslatedState] = useState(() => {
+    try { return localStorage.getItem(headlinePrefKey) === '1' } catch { return false }
+  })
   const [bookmarksOpen, setBookmarksOpenState] = useState(() => {
     try { return localStorage.getItem(bookmarkPaneOpenKey) === '1' } catch { return false }
   })
@@ -363,13 +396,15 @@ export function App() {
   const [findResult, setFindResult] = useState<FindInPageResult | null>(null)
   const [protection, setProtection] = useState<ProtectionSnapshot>(emptyProtection)
   const [shieldOpen, setShieldOpen] = useState(false)
+  const [permissionRequests, setPermissionRequests] = useState<SitePermissionRequest[]>([])
+  const [sitePermissionMap, setSitePermissionMap] = useState<SitePermissionMap>({})
   const [tabs, setTabs] = useState<PageTabSnapshot[]>([])
   const [fullWidth, setFullWidth] = useState(false)
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
   const [libraryReadError, setLibraryReadError] = useState('')
   const panelBody = useRef<HTMLDivElement>(null)
-  const shortcutHandlers = useRef({ focusAddress: () => {}, toggleBookmarksPane: () => {}, capture: () => {} })
+  const shortcutHandlers = useRef({ focusAddress: () => {}, toggleBookmarksPane: () => {}, capture: () => {}, togglePrivate: () => {}, absorbSelection: () => {} })
   const tabStrip = useRef<HTMLDivElement>(null)
   const [tabEdges, setTabEdges] = useState({ overflow: false, atStart: true, atEnd: true })
   const input = useRef<HTMLInputElement>(null)
@@ -540,6 +575,8 @@ export function App() {
       if (event.type === 'shortcut') {
         if (event.action === 'focus-launcher') shortcutHandlers.current.focusAddress()
         else if (event.action === 'capture') shortcutHandlers.current.capture()
+        else if (event.action === 'toggle-private') shortcutHandlers.current.togglePrivate()
+        else if (event.action === 'absorb-selection') shortcutHandlers.current.absorbSelection()
         else shortcutHandlers.current.toggleBookmarksPane()
         return
       }
@@ -549,6 +586,8 @@ export function App() {
         return
       }
       if (event.type === 'frequency-visit') {
+        // No interest signals when footprints are off (private tabs never send them).
+        if (!privacySettingsRef.current.footprints) return
         if (seenFrequencyNavigationIds.current.has(event.navigationId)) return
         seenFrequencyNavigationIds.current.add(event.navigationId)
         if (seenFrequencyNavigationIds.current.size > 1_024) {
@@ -624,6 +663,7 @@ export function App() {
 
   useEffect(() => {
     if (!panel.url || !/^https?:\/\//.test(panel.url)) return
+    if (panel.isPrivate || !privacySettings.footprints || isExcludedSite(panel.url, privacyState?.excludedSites ?? [])) return
     setRecents((current) =>
       rememberRecent(current, {
         url: panel.url,
@@ -631,7 +671,54 @@ export function App() {
         visitedAt: new Date().toISOString(),
       }),
     )
-  }, [panel.title, panel.url])
+  }, [panel.title, panel.url, panel.isPrivate, privacySettings.footprints, privacyState?.excludedSites])
+
+  // Sites asking for camera, microphone, location, notifications or the clipboard.
+  useEffect(() => {
+    void window.intoponet.sitePermissions.pending().then(setPermissionRequests, () => undefined)
+    return window.intoponet.sitePermissions.subscribe((event) => {
+      if (event.type === 'request') setPermissionRequests((current) => [...current, event.request])
+      else if (event.type === 'resolved') setPermissionRequests((current) => current.filter((item) => item.id !== event.id))
+    })
+  }, [])
+  const pageOrigin = (() => { try { return panel.url ? new URL(panel.url).origin : '' } catch { return '' } })()
+  useEffect(() => {
+    if (!shieldOpen || !/^https?:/.test(pageOrigin)) return
+    void window.intoponet.sitePermissions.list(pageOrigin).then(setSitePermissionMap, () => setSitePermissionMap({}))
+    return window.intoponet.sitePermissions.subscribe((event) => {
+      if (event.type === 'changed' && event.origin === pageOrigin) void window.intoponet.sitePermissions.list(pageOrigin).then(setSitePermissionMap, () => undefined)
+    })
+  }, [shieldOpen, pageOrigin])
+
+  // Leaving a site out also forgets what was already kept from it, however the list was changed.
+  const excludedKey = (privacyState?.excludedSites ?? []).join('|')
+  useEffect(() => {
+    const sites = privacyState?.excludedSites ?? []
+    if (!sites.length) return
+    setRecents((current) => {
+      const next = current.filter((page) => !isExcludedSite(page.url, sites))
+      return next.length === current.length ? current : next
+    })
+  }, [excludedKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Private browsing state from the main process.
+  useEffect(() => {
+    void window.intoponet.privacy.state().then(setPrivacyState, () => undefined)
+    return window.intoponet.privacy.subscribe(setPrivacyState)
+  }, [])
+
+  // Retention: drop recent pages older than the chosen window (checked hourly).
+  useEffect(() => {
+    const prune = (): void => setRecents((current) => {
+      const next = pruneRecents(current, privacySettings.retentionDays)
+      if (next.length === current.length) return current
+      writeRecents(next)
+      return next
+    })
+    prune()
+    const timer = window.setInterval(prune, 3_600_000)
+    return () => window.clearInterval(timer)
+  }, [privacySettings.retentionDays])
 
   useEffect(() => {
     let cancelled = false
@@ -656,10 +743,14 @@ export function App() {
           return
         }
         if (parsed.status === 'valid') {
-          setBookmarks(parsed.library.bookmarks)
-          setCollections(parsed.library.collections)
-          setRecents(parsed.library.recents)
-          setAbsorbed(parsed.library.absorbed)
+          // An old plain-text copy (earlier versions) is merged in before it is deleted, so nothing is lost.
+          const library = hasLegacyLibraryStorage()
+            ? mergePrivateLibraries(parsed.library, { schema: privateLibrarySchema, bookmarks: readBookmarks(), collections: readCollections(), recents: readRecents(), absorbed: [] }).library
+            : parsed.library
+          setBookmarks(library.bookmarks)
+          setCollections(library.collections)
+          setRecents(pruneRecents(library.recents, privacySettingsRef.current.retentionDays))
+          setAbsorbed(library.absorbed)
           writeBookmarks(parsed.library.bookmarks)
           writeCollections(parsed.library.collections)
         }
@@ -710,7 +801,10 @@ export function App() {
       recents,
       absorbed,
     })
-    void window.intoponet.browserHost.writePrivateLibrary(payload).catch(() => {
+    void window.intoponet.browserHost.writePrivateLibrary(payload).then(() => {
+      // The encrypted library now holds everything: drop the old plain-text copy (one-time migration).
+      if (hasLegacyLibraryStorage()) clearLegacyLibraryStorage()
+    }, () => {
       if (sealWarned.current) return
       sealWarned.current = true
       setNotice('Private library stayed in this window. On-device encryption is unavailable.')
@@ -804,6 +898,11 @@ export function App() {
       if (meta && event.shiftKey && key === 's') {
         event.preventDefault()
         void startCapture('image')
+        return
+      }
+      if (meta && event.shiftKey && key === 'n') {
+        event.preventDefault()
+        shortcutHandlers.current.togglePrivate()
         return
       }
       if (meta && key === 'l') {
@@ -1098,7 +1197,56 @@ export function App() {
     void window.intoponet.captures.update(id, { groupId }).catch(() => setError('The capture could not be moved.'))
   }
 
-  shortcutHandlers.current = { focusAddress, toggleBookmarksPane, capture: () => void startCapture('image') }
+  const setPrivateMode = (on: boolean): void => {
+    void window.intoponet.privacy.setPrivateMode(on).then((state) => {
+      setPrivacyState(state)
+      setNotice(on ? 'Private browsing on: new tabs leave no footprints.' : 'Private browsing off: private tabs closed and their session wiped.')
+    }, () => setError('Private browsing could not be changed.'))
+  }
+  const setBackupExclusion = (on: boolean): void => {
+    void window.intoponet.privacy.setBackupExclusion(on).then(setPrivacyState, () => setError('The Time Machine setting could not be changed.'))
+  }
+  const updatePrivacySettings = (next: PrivacySettings): void => {
+    setPrivacySettingsState(next)
+    writePrivacySettings(next)
+  }
+  const deleteFootprints = (): void => {
+    setRecents([])
+    writeRecents([])
+    setPersonalActivity(emptyPersonalActivity)
+    setNotice('Footprints deleted: recent pages and interest signals.')
+  }
+  const toggleHiddenPin = (url: string): void => {
+    setBookmarks((current) => {
+      const next = current.map((bookmark) => {
+        if (bookmark.url !== url) return bookmark
+        if (bookmark.hiddenOnMap) {
+          const { hiddenOnMap: _hidden, ...rest } = bookmark
+          return rest
+        }
+        return { ...bookmark, hiddenOnMap: true }
+      })
+      writeBookmarks(next)
+      return next
+    })
+  }
+  const mergeCollectionInto = (fromId: string, intoId: string): void => {
+    setCollections((current) => {
+      const next = mergeCollections(current, fromId, intoId)
+      writeCollections(next)
+      return next
+    })
+    setExpandedCollection(intoId)
+  }
+  const splitCollection = (id: string): void => {
+    setCollections((current) => {
+      const next = splitCollectionBySite(current, id)
+      writeCollections(next)
+      return next
+    })
+  }
+
+  shortcutHandlers.current = { focusAddress, toggleBookmarksPane, capture: () => void startCapture('image'), togglePrivate: () => setPrivateMode(!(privacyState?.privateMode ?? false)), absorbSelection: () => startAbsorb('selection') }
 
   const saveCurrentToGroup = (groupId: string): void => {
     if (!panel.url) return
@@ -1155,6 +1303,34 @@ export function App() {
     setNotice('Absorbed on this device')
   }
 
+  const importLibrary = async (file: File): Promise<void> => {
+    if (!libraryReady) {
+      setError('The private library is not open, so nothing was imported.')
+      return
+    }
+    if (file.size > 20_000_000) {
+      setError('That file is too large to be an Intoponet library.')
+      return
+    }
+    const incoming = parsePrivateLibrary(await file.text())
+    if (!incoming) {
+      setError('That file is not an Intoponet library export (intoponet-library.json). Nothing was imported.')
+      return
+    }
+    const { library, added } = mergePrivateLibraries({ schema: privateLibrarySchema, bookmarks, collections, recents, absorbed }, incoming)
+    setBookmarks(library.bookmarks)
+    setCollections(library.collections)
+    setRecents(library.recents)
+    setAbsorbed(library.absorbed)
+    const parts = [
+      added.bookmarks && `${added.bookmarks} saved page${added.bookmarks === 1 ? '' : 's'}`,
+      added.collections && `${added.collections} collection${added.collections === 1 ? '' : 's'}`,
+      added.recents && `${added.recents} recent page${added.recents === 1 ? '' : 's'}`,
+      added.absorbed && `${added.absorbed} excerpt${added.absorbed === 1 ? '' : 's'}`,
+    ].filter(Boolean)
+    setNotice(parts.length ? `Imported ${parts.join(', ')}. Pages you already had were kept, with any new tags added.` : 'Everything in that file was already in your library.')
+  }
+
   const exportLibrary = (): void => {
     const json = serializePrivateLibrary({
       schema: privateLibrarySchema,
@@ -1203,7 +1379,7 @@ export function App() {
     setAbsorbed([])
     writeBookmarks([])
     writeCollections([])
-    localStorage.removeItem('intoponet.recents.v1')
+    clearLegacyLibraryStorage()
     setConfirmDelete(false)
     setLibraryReady(true)
     setLibraryReadError('')
@@ -1228,13 +1404,15 @@ export function App() {
   /** Where a page is about: places in its title and address, then places in its absorbed text. */
   const pinSuggestionsFor = (title: string, url: string): Array<{ id: string; label: string; lat: number; lon: number }> => {
     let path = ''
+    let host = ''
     try {
       const parsed = new URL(url)
+      host = parsed.hostname.replace(/^www\./, '').split('.').slice(0, -1).join(' ')
       path = decodeURIComponent(`${parsed.pathname} ${parsed.hash}`).replace(/[_/#-]+/g, ' ')
     } catch {
       // Not a URL: title only.
     }
-    const fromText = placesNamedIn(`${title} ${path}`, 4).map((place) => ({ id: place.id, label: placeLabel(place), lat: place.lat, lon: place.lon }))
+    const fromText = placesNamedIn(`${title} ${path}`, 4, host).map((place) => ({ id: place.id, label: placeLabel(place), lat: place.lat, lon: place.lon }))
     const absorbed = knowledgeRecords.find((record) => record.url.split('#')[0] === url.split('#')[0])
     const fromKnowledge = (absorbed?.places ?? []).slice(0, 3).map((place) => ({ id: `know:${place.name}:${place.countryCode}`, label: place.name, lat: place.lat, lon: place.lon }))
     const seen = new Set<string>()
@@ -1263,6 +1441,7 @@ export function App() {
         url,
         title: (currentBookmark?.title || panel.title || originLabel(url)).slice(0, 180),
         topic,
+        ...(currentBookmark?.tags?.length ? { tags: currentBookmark.tags } : {}),
         note: currentBookmark?.note ?? '',
         ...(anchor ? { fieldAnchor: anchor } : {}),
       },
@@ -1296,6 +1475,7 @@ export function App() {
       url: value.url,
       title: value.title,
       topic: value.topic,
+      tags: value.tags ?? [],
       savedAt: existing?.savedAt ?? new Date().toISOString(),
       note: value.note,
       ...(value.fieldAnchor ? { fieldAnchor: value.fieldAnchor } : {}),
@@ -1355,6 +1535,85 @@ export function App() {
       ),
     )
   }
+
+  const updateAppSettings = (next: AppSettings): void => {
+    setAppSettingsState(next)
+    writeAppSettings(next)
+    if (next.autoTranslate && !appSettings.autoTranslate) setHeadlinesPref(true)
+  }
+  const setHeadlinesPref = (on: boolean): void => {
+    setHeadlinesTranslatedState(on)
+    try { localStorage.setItem(headlinePrefKey, on ? '1' : '0') } catch { /* this session only */ }
+    window.dispatchEvent(new CustomEvent('intoponet:headline-pref', { detail: on }))
+  }
+
+  // Automatic translation: a page in another language is translated into yours as it loads.
+  // "Original" sticks for that page (each page and language is tried once).
+  const autoTried = useRef(new Set<string>())
+  useEffect(() => {
+    if (!translation.status || !panel.isVisible || !panel.url) return
+    const page = translation.page
+    if (page.status !== 'idle') return
+    const key = `${panel.url.split('#')[0]}|${translation.target}`
+    const plan = autoTranslatePlan({
+      enabled: appSettings.autoTranslate,
+      detected: page.detected,
+      target: translation.target,
+      supported: translation.supported,
+      ready: translation.ready,
+      alreadyTried: autoTried.current.has(key),
+    })
+    if (!plan) return
+    autoTried.current.add(key)
+    if (plan.missing.length && !appSettings.autoDownload) {
+      setTranslateOpen(true) // the bar offers the download, with its size
+      return
+    }
+    void (async () => {
+      for (const code of plan.missing) await translation.install(code)
+      await translation.translatePage(plan.from, plan.to)
+    })()
+  }, [translation.page, translation.status, translation.target, panel.url, panel.isVisible, appSettings]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Settings closes with Escape, like the other panels.
+  useEffect(() => {
+    if (!settingsOpen) return
+    const onKey = (event: KeyboardEvent): void => { if (event.key === 'Escape') setSettingsOpen(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [settingsOpen])
+  // When a header panel closes and focus was left nowhere, return it to that panel's button (keyboard and VoiceOver users keep their place).
+  const panelFocus = useRef({ bookmarks: false, olds: false, knowledge: false, library: false, settings: false })
+  useEffect(() => {
+    const now = { bookmarks: bookmarksOpen, olds: !!olds, knowledge: !!knowledgeView, library: libraryOpen, settings: settingsOpen }
+    const before = panelFocus.current
+    const closed = (Object.keys(now) as Array<keyof typeof now>).find((key) => before[key] && !now[key])
+    const opened = (Object.keys(now) as Array<keyof typeof now>).some((key) => now[key] && !before[key])
+    panelFocus.current = now
+    // Switching straight to another panel is not a close.
+    if (!closed || opened) return
+    // After exit animations, which may move focus themselves.
+    window.setTimeout(() => {
+      const now = document.activeElement
+      // Leave focus alone only when it is in a field outside the panel that is closing.
+      const leaving = now?.closest('.olds-sheet, .knowledge-sheet, .knowledge-backdrop, .bookmark-drawer, .settings-drawer, .bm-surface')
+      if (now && now !== document.body && !leaving && now.closest('input, textarea, select, [contenteditable]')) return
+      document.querySelector<HTMLElement>(`[data-panel="${closed}"]`)?.focus()
+    }, 350)
+  }, [bookmarksOpen, olds, knowledgeView, libraryOpen, settingsOpen])
+
+  // The beacon consent screen floats over the page too.
+  useEffect(() => {
+    if (!beaconDraft) return
+    void window.intoponet.captures.setPageHidden(true)
+    return () => { void window.intoponet.captures.setPageHidden(false) }
+  }, [beaconDraft])
+
+  // Settings floats over the page: hide the native page view while it is open.
+  useEffect(() => {
+    if (!settingsOpen) return
+    void window.intoponet.captures.setPageHidden(true)
+    return () => { void window.intoponet.captures.setPageHidden(false) }
+  }, [settingsOpen])
 
   const showLibrary = (): void => {
     if (panel.isVisible) void window.intoponet.browserHost.close()
@@ -1504,8 +1763,8 @@ export function App() {
     () => (selectedSignalId ? allGlobeSignals.find((signal) => signal.id === selectedSignalId) ?? null : null),
     [allGlobeSignals, selectedSignalId],
   )
-  const pinMarkers = useMemo<GlobeMarker[]>(() => true /* pins always show; managed from My map */
-    ? bookmarks.flatMap((bookmark) => bookmark.fieldAnchor
+  const pinMarkers = useMemo<GlobeMarker[]>(() => globePrefs.pins /* managed from My map › Privacy and per pin in Locations */
+    ? bookmarks.flatMap((bookmark) => bookmark.fieldAnchor && !bookmark.hiddenOnMap
       ? [{ id: `pin:${bookmark.url}`, lat: bookmark.fieldAnchor.lat, lon: bookmark.fieldAnchor.lon, color: PIN_COLOR, size: 1, kind: 'pin' as const }]
       : [])
     : [], [bookmarks, globePrefs.pins])
@@ -1531,7 +1790,9 @@ export function App() {
     })) : []),
     ...pinMarkers,
     ...knowledgeMarkers,
-  ], [publicGlobe, visibleGlobeSignals, pinMarkers, knowledgeMarkers])
+    // The place you flew to: projected like any marker so the locator can sit exactly on it.
+    ...(focusedPlace ? [{ id: `locator:${focusedPlace.id}`, lat: focusedPlace.lat, lon: focusedPlace.lon, color: '#ffffff', size: 0, kind: 'pin' as const }] : []),
+  ], [publicGlobe, visibleGlobeSignals, pinMarkers, knowledgeMarkers, focusedPlace])
   const globeLabels = useMemo<GlobeLabel[]>(() => {
     const short = (text: string): string => (text.length > 34 ? `${text.slice(0, 32)}…` : text)
     const signals = publicGlobe ? visibleGlobeSignals : []
@@ -1658,8 +1919,9 @@ export function App() {
     : [], [selectedSignal, visibleGlobeSignals])
   const fieldFreshness = freshness(eligiblePublicSnapshot, clock)
   const placeMatch = useMemo(
-    () => (placesDismissed || panel.isVisible ? { places: [], preferred: -1 } : placeMatches(query)),
-    [query, placesDismissed, panel.isVisible],
+    // Places are offered even while a page is open: Enter on a place spins the globe there.
+    () => (placesDismissed ? { places: [], preferred: -1 } : placeMatches(query)),
+    [query, placesDismissed],
   )
   useEffect(() => {
     setPlaceActive(placeMatch.preferred)
@@ -1769,9 +2031,9 @@ export function App() {
 
   // Only one of Bookmarks, The Olds, Knowledge and My map is open at a time: whichever opened last wins,
   // however it was opened (top bar, shortcut, or a link inside another panel).
-  const panelsOpen = useRef({ bookmarks: bookmarksOpen, olds: !!olds, knowledge: !!knowledgeView, library: libraryOpen })
+  const panelsOpen = useRef({ bookmarks: bookmarksOpen, olds: !!olds, knowledge: !!knowledgeView, library: libraryOpen, settings: settingsOpen })
   useEffect(() => {
-    const now = { bookmarks: bookmarksOpen, olds: !!olds, knowledge: !!knowledgeView, library: libraryOpen }
+    const now = { bookmarks: bookmarksOpen, olds: !!olds, knowledge: !!knowledgeView, library: libraryOpen, settings: settingsOpen }
     const before = panelsOpen.current
     const opened = (Object.keys(now) as Array<keyof typeof now>).find((key) => now[key] && !before[key])
     panelsOpen.current = now
@@ -1780,7 +2042,8 @@ export function App() {
     if (opened !== 'olds' && now.olds) closeOlds()
     if (opened !== 'knowledge' && now.knowledge) closeKnowledge()
     if (opened !== 'library' && now.library) setLibraryOpen(false)
-  }, [bookmarksOpen, olds, knowledgeView, libraryOpen]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (opened !== 'settings' && now.settings) setSettingsOpen(false)
+  }, [bookmarksOpen, olds, knowledgeView, libraryOpen, settingsOpen]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleGlobeLayer = (layer: GlobeLayerId): void => {
     const next = globeLayerSet.has(layer) ? globePrefs.layers.filter((item) => item !== layer) : [...globePrefs.layers, layer]
@@ -1881,6 +2144,7 @@ export function App() {
             initialMode={captureSession.mode}
             onCancel={cancelCaptureSession}
             onConfirm={finishCaptureSession}
+            onCreateGroup={createBookmarkGroup}
           />
         )}
       </AnimatePresence>
@@ -1933,6 +2197,16 @@ export function App() {
             <LockKeyhole size={13} />
             Personal field stays on this device
           </div>
+          <button
+            type="button"
+            className={`bookmark-library-button private-toggle${privacyState?.privateMode ? ' is-on' : ''}`}
+            aria-pressed={privacyState?.privateMode ?? false}
+            onClick={() => setPrivateMode(!(privacyState?.privateMode ?? false))}
+            title={privacyState?.privateMode ? 'Private browsing is on: new tabs leave no footprints. Click to turn off (closes private tabs). ⇧⌘N' : 'Private browsing: new tabs leave no recent pages, signals, cookies or cache. ⇧⌘N'}
+          >
+            <EyeOff size={14} />
+            {privacyState?.privateMode ? 'Private on' : 'Private'}
+          </button>
           {import.meta.env.DEV && (
             <button
               type="button"
@@ -1948,6 +2222,7 @@ export function App() {
             className="bookmark-library-button"
             aria-pressed={bookmarksOpen}
             title="Bookmarks (⇧⌘B)"
+            data-panel="bookmarks"
             onClick={toggleBookmarksPane}
           >
             <Bookmark size={14} />
@@ -1957,24 +2232,61 @@ export function App() {
             type="button"
             className="bookmark-library-button"
             aria-pressed={!!olds}
+            data-panel="olds"
             onClick={openOldsHere}
             title="The Olds: sourced history of what you're looking at (the selected place, or the country in the middle of the globe)"
           >
             <History size={14} />
             The Olds
           </button>
-          <button type="button" className="bookmark-library-button" onClick={() => openKnowledge(null)} title="Your knowledge: everything you’ve absorbed">
+          <button type="button" className="bookmark-library-button" data-panel="knowledge" onClick={() => openKnowledge(null)} title="Your knowledge: everything you’ve absorbed">
             <BookOpenText size={14} />
             Knowledge
             {knowledgeRecords.length > 0 && <span>{knowledgeRecords.length}</span>}
           </button>
-          <button type="button" className="bookmark-library-button" onClick={showLibrary}>
+          <button type="button" className="bookmark-library-button" data-panel="library" onClick={showLibrary}>
             <MapPin size={14} />
             My map
             {bookmarks.length > 0 && <span>{bookmarks.length}</span>}
           </button>
+          <button
+            type="button"
+            className="bookmark-library-button settings-button"
+            aria-pressed={settingsOpen}
+            aria-label="Settings"
+            data-panel="settings"
+            title="Settings: your language, automatic translation, privacy"
+            onClick={() => setSettingsOpen((open) => !open)}
+          >
+            <SettingsIcon size={14} />
+          </button>
         </div>
       </header>
+      {beaconDraft && (
+        <BeaconConsent
+          initial={beaconDraft}
+          onClose={() => setBeaconDraft(null)}
+          onPublished={(title) => {
+            setBeaconDraft(null)
+            setNotice(`Published “${title.slice(0, 60)}” as a public beacon. You can withdraw it in Settings › Beacons.`)
+          }}
+        />
+      )}
+      {settingsOpen && (
+        <SettingsPanel
+          translation={translation}
+          settings={appSettings}
+          onSettings={updateAppSettings}
+          headlinesTranslated={headlinesTranslated}
+          onHeadlinesTranslated={setHeadlinesPref}
+          onOpenPrivacy={() => {
+            setSettingsOpen(false)
+            setLibraryTab('privacy')
+            showLibrary()
+          }}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
 
       {pinEditor && (
         <PinEditor
@@ -1983,6 +2295,10 @@ export function App() {
           suggestions={pinSuggestionsFor(pinEditor.initial.title, pinEditor.initial.url)}
           onCancel={() => finishPinEditor(pinEditor.restoreBrowser, pinEditor.restoreFullWidth)}
           onSave={savePin}
+          onSaveAndPublish={(value) => {
+            savePin(value)
+            setBeaconDraft({ url: value.url, title: value.title, topic: value.topic, ...(value.fieldAnchor ? { place: value.fieldAnchor } : {}) })
+          }}
         />
       )}
 
@@ -2171,6 +2487,7 @@ export function App() {
           hoverId={hoveredMarkerId}
           hoverCard={hoverCard}
           hidden={panel.isVisible}
+          locator={focusedPlace ? { id: `locator:${focusedPlace.id}`, label: focusedPlace.name } : null}
         />
       )}
       {!fieldLabOpen && import.meta.env.DEV && designPreview && <aside className="coverage-note">
@@ -2301,7 +2618,9 @@ export function App() {
                     ? 'Collections'
                     : libraryTab === 'absorbed'
                       ? 'Absorbed pages'
-                      : 'Recent pages'}
+                      : libraryTab === 'privacy'
+                        ? 'Privacy'
+                        : 'Recent pages'}
               </h2>
             </div>
             <button type="button" onClick={() => setLibraryOpen(false)} aria-label="Close saved library">
@@ -2345,20 +2664,55 @@ export function App() {
             >
               Absorbed
             </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={libraryTab === 'privacy'}
+              className={libraryTab === 'privacy' ? 'active' : ''}
+              onClick={() => setLibraryTab('privacy')}
+            >
+              Privacy
+            </button>
           </div>
           <div className="library-tools">
             <button type="button" onClick={exportLibrary}>
               Export
             </button>
+            <label className="library-import" title="Merge an exported Intoponet library into this one. Nothing you have is removed.">
+              Import
+              <input type="file" accept="application/json,.json" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) void importLibrary(file) }} />
+            </label>
             <button type="button" onClick={deleteLibrary}>
               {confirmDelete ? 'Confirm delete' : 'Delete library'}
             </button>
           </div>
-          {libraryTab === 'recent' ? (
+          {libraryTab === 'privacy' ? (
+            <PrivacyPane
+              settings={privacySettings}
+              onSettings={updatePrivacySettings}
+              state={privacyState}
+              onPrivateMode={setPrivateMode}
+              onBackupExclusion={setBackupExclusion}
+              showPins={globePrefs.pins}
+              onShowPins={(on) => updateGlobePrefs({ pins: on })}
+              pinCount={bookmarks.filter((bookmark) => bookmark.fieldAnchor).length}
+              hiddenPins={bookmarks.filter((bookmark) => bookmark.fieldAnchor && bookmark.hiddenOnMap).length}
+              recentCount={recents.length}
+              onDeleteFootprints={deleteFootprints}
+              currentUrl={panel.url}
+              onExcludedSites={(sites) => {
+                void window.intoponet.privacy.setExcludedSites(sites).then((state) => {
+                  setPrivacyState(state)
+                  // Forget what was already kept for newly excluded sites.
+                  setRecents((current) => current.filter((page) => !isExcludedSite(page.url, state.excludedSites)))
+                }, () => setError('The list of sites could not be saved.'))
+              }}
+            />
+          ) : libraryTab === 'recent' ? (
             recents.length === 0 ? (
               <div className="bookmark-empty">
                 <Globe2 size={22} />
-                <p>Visited pages will appear here on this device only.</p>
+                <p>{privacySettings.footprints ? 'Visited pages will appear here on this device only.' : 'Footprints are off: visited pages are not kept. Turn them on in Privacy.'}</p>
               </div>
             ) : (
               <ul className="bookmark-list">
@@ -2396,14 +2750,31 @@ export function App() {
                       >
                         <strong>{bookmark.title}</strong>
                         <span className="origin-line"><SiteIcon url={bookmark.url} />{originLabel(bookmark.url)}</span>
-                        <small>Topic · {bookmark.topic}</small>
+                        <small>{bookmark.tags?.length ? 'Tags' : 'Topic'} · {tagsOf(bookmark).join(', ')}</small>
                       </button>
                       <div className="bookmark-pin-actions">
                         <span>{bookmark.fieldAnchor ? `Map pin · ${bookmark.fieldAnchor.label}` : 'Conceptual pin · no geographic location'}</span>
-                        {bookmark.fieldAnchor && (
+                        {bookmark.fieldAnchor && !bookmark.hiddenOnMap && globePrefs.pins && (
                           <button type="button" onClick={() => showPinOnGlobe(bookmark)}>Show on globe</button>
                         )}
+                        {bookmark.fieldAnchor && (
+                          <button
+                            type="button"
+                            aria-pressed={!bookmark.hiddenOnMap}
+                            title={bookmark.hiddenOnMap ? 'Hidden from the globe. The page stays saved.' : 'Hide this pin from the globe. The page stays saved.'}
+                            onClick={() => toggleHiddenPin(bookmark.url)}
+                          >
+                            {bookmark.hiddenOnMap ? 'Show pin' : 'Hide pin'}
+                          </button>
+                        )}
                         <button type="button" onClick={() => openPinEditor(bookmark)}>Edit pin</button>
+                        <button
+                          type="button"
+                          title="Recommend this page publicly as a beacon. You'll see exactly what is sent first."
+                          onClick={() => setBeaconDraft({ url: bookmark.url, title: bookmark.title, topic: bookmark.topic, ...(bookmark.fieldAnchor ? { place: bookmark.fieldAnchor } : {}) })}
+                        >
+                          Publish beacon…
+                        </button>
                       </div>
                       {selectedPinUrl === bookmark.url && (
                         <div className="bookmark-pin-detail" role="status">
@@ -2587,6 +2958,47 @@ export function App() {
                             <Trash2 size={15} />
                           </button>
                         </div>
+                        {isExpanded && (() => {
+                          const why = explainCollection(collection, bookmarks)
+                          const others = collections.filter((item) => item.id !== collection.id)
+                          return (
+                            <div className="collection-why">
+                              {why.pages > 0 ? (
+                                <p>
+                                  <strong>What's in it:</strong> {why.pages} page{why.pages === 1 ? '' : 's'} from {why.sites.slice(0, 3).map((site) => `${site.name} (${site.count})`).join(', ')}{why.sites.length > 3 ? ` and ${why.sites.length - 3} more site${why.sites.length - 3 === 1 ? '' : 's'}` : ''}.
+                                  {why.topics.length > 0 && <> Topics: {why.topics.slice(0, 3).map((topic) => topic.name).join(', ')}.</>}
+                                  {why.places.length > 0 && <> Places: {why.places.slice(0, 3).map((place) => place.name).join(', ')}.</>}
+                                </p>
+                              ) : (
+                                <p>Empty. Open a page and use the bookmark button on this row to add it.</p>
+                              )}
+                              <div className="collection-tools">
+                                {others.length > 0 && why.pages > 0 && (
+                                  <label>
+                                    <span>Merge into</span>
+                                    <select
+                                      value=""
+                                      onChange={(event) => { if (event.target.value) mergeCollectionInto(collection.id, event.target.value) }}
+                                      title={`Move all of ${collection.label}'s pages into another collection, then remove ${collection.label}.`}
+                                    >
+                                      <option value="">Choose…</option>
+                                      {others.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+                                    </select>
+                                  </label>
+                                )}
+                                {why.splittable && (
+                                  <button
+                                    type="button"
+                                    onClick={() => splitCollection(collection.id)}
+                                    title="Each site with two or more pages becomes its own collection. Single pages stay here."
+                                  >
+                                    Split by site
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })()}
                         {isExpanded && members.length > 0 && (
                           <ul className="collection-members">
                             {members.map((bookmark) => (
@@ -2695,6 +3107,7 @@ export function App() {
                   onClick={() => setShieldOpen((open) => !open)}
                 >
                   {protection.enabled ? <Shield size={15} /> : <ShieldOff size={15} />}
+                  <span className="chrome-label">{protection.enabled ? 'Protected' : 'Paused'}</span>
                   {protection.enabled &&
                     protection.blockedAds + protection.blockedTrackers > 0 && (
                       <em>{protection.blockedAds + protection.blockedTrackers}</em>
@@ -2715,6 +3128,7 @@ export function App() {
                     onClick={() => setTranslateOpen((open) => !open)}
                   >
                     <Languages size={15} />
+                    <span className="chrome-label">{active ? 'Translated' : 'Translate'}</span>
                   </button>
                 )
               })()}
@@ -2731,9 +3145,30 @@ export function App() {
                     onClick={() => void startCapture('image')}
                   >
                     <Aperture size={15} />
+                    <span className="chrome-label">Capture</span>
                   </button>
                 )}
               </AnimatePresence>
+              <button
+                type="button"
+                className={isBookmarked ? 'selected' : ''}
+                aria-label={isBookmarked ? 'Edit current page pin' : 'Pin current page to My map'}
+                aria-pressed={isBookmarked}
+                title="Pin this page to a place on My map"
+                onClick={() => openPinEditor()}
+              >
+                <MapPin size={15} />
+                <span className="chrome-label">Pin</span>
+              </button>
+              <button
+                type="button"
+                aria-label="Absorb this page into your knowledge"
+                title="Absorb: keep this page's text in your private knowledge, searchable and askable"
+                onClick={() => startAbsorb('article')}
+              >
+                <Library size={15} />
+                <span className="chrome-label">Absorb</span>
+              </button>
               <div className={`chrome-more${moreToolsOpen ? ' is-open' : ''}`} onPointerEnter={() => setMoreToolsOpen(true)} onPointerLeave={(event) => {
                 if (!event.currentTarget.contains(document.activeElement)) setMoreToolsOpen(false)
               }} onFocusCapture={() => setMoreToolsOpen(true)} onBlurCapture={(event) => {
@@ -2763,28 +3198,11 @@ export function App() {
                   >
                     <Printer size={15} />
                   </button>
-                  <button
-                    type="button"
-                    className={isBookmarked ? 'selected' : ''}
-                    aria-label={isBookmarked ? 'Edit current page pin' : 'Pin current page to My map'}
-                    aria-pressed={isBookmarked}
-                    onClick={() => openPinEditor()}
-                  >
-                    <MapPin size={15} />
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Absorb this page into your knowledge"
-                    title="Absorb this page"
-                    onClick={() => startAbsorb('article')}
-                  >
-                    <Library size={15} />
-                  </button>
                 </div>
                 <button
                   type="button"
                   className="chrome-more-toggle"
-                  aria-label={moreToolsOpen ? 'Hide more tools' : 'More tools: copy address, find, print, pin, absorb'}
+                  aria-label={moreToolsOpen ? 'Hide more tools' : 'More tools: copy address, find, print'}
                   aria-expanded={moreToolsOpen}
                   title="More tools"
                   onClick={() => setMoreToolsOpen((open) => !open)}
@@ -2801,6 +3219,7 @@ export function App() {
                 onClick={toggleBookmarksPane}
               >
                 <Bookmark size={15} fill={isBookmarked ? 'currentColor' : 'none'} />
+                <span className="chrome-label">Bookmarks</span>
               </button>
               <button
                 type="button"
@@ -2888,70 +3307,60 @@ export function App() {
               </button>
             </form>
           )}
+          {permissionRequests[0] && (
+            <PermissionBar
+              request={permissionRequests[0]}
+              more={permissionRequests.length - 1}
+              onDecide={(decision) => void window.intoponet.sitePermissions.decide(permissionRequests[0]!.id, decision)}
+            />
+          )}
           {shieldOpen && (
-            <div className="shield-panel" id="protection-panel" role="dialog" aria-label="Site protection">
-              <p>
-                <strong>Protection on this site</strong>
-                <span>{protection.enabled ? 'On' : 'Paused'}</span>
-              </p>
-              <dl>
-                <div>
-                  <dt>Advertising</dt>
-                  <dd>{protection.blockedAds}</dd>
-                </div>
-                <div>
-                  <dt>Tracking</dt>
-                  <dd>{protection.blockedTrackers}</dd>
-                </div>
-              </dl>
-              <fieldset className="shield-categories">
-                <legend>Protection settings</legend>
+            <div className={`shield-bar${protection.enabled ? '' : ' is-paused'}`} id="protection-panel" role="region" aria-label="Site protection">
+              <span className="shield-bar-status">
+                {protection.enabled ? <Shield size={14} aria-hidden="true" /> : <ShieldOff size={14} aria-hidden="true" />}
+                <strong>{protection.enabled ? 'Protected' : 'Paused'}</strong>
+                <span>{protection.blockedAds} ad{protection.blockedAds === 1 ? '' : 's'} · {protection.blockedTrackers} tracker{protection.blockedTrackers === 1 ? '' : 's'} blocked</span>
+              </span>
+              <span className="shield-bar-group" role="group" aria-label="Protection settings">
                 <label>
                   <input
                     type="checkbox"
                     checked={protection.adsEnabled}
-                    onChange={(event) =>
-                      void window.intoponet.browserHost.setProtectionCategories({
-                        ads: event.target.checked,
-                        trackers: protection.trackersEnabled,
-                      })
-                    }
+                    onChange={(event) => void window.intoponet.browserHost.setProtectionCategories({ ads: event.target.checked, trackers: protection.trackersEnabled })}
                   />
-                  Block advertising
+                  Block ads
                 </label>
                 <label>
                   <input
                     type="checkbox"
                     checked={protection.trackersEnabled}
-                    onChange={(event) =>
-                      void window.intoponet.browserHost.setProtectionCategories({
-                        ads: protection.adsEnabled,
-                        trackers: event.target.checked,
-                      })
-                    }
+                    onChange={(event) => void window.intoponet.browserHost.setProtectionCategories({ ads: protection.adsEnabled, trackers: event.target.checked })}
                   />
-                  Block tracking
+                  Block trackers
                 </label>
-              </fieldset>
+              </span>
               {protection.network && (
-                <div className="network-privacy">
-                  <strong>Network privacy</strong>
-                  <ul>
-                    <li className={protection.network.encryptedDns ? 'is-on' : 'is-off'}>
-                      Encrypted DNS{protection.network.encryptedDns ? ` · ${protection.network.dnsProviders}` : ' unavailable'}
-                    </li>
-                    <li className={protection.network.webrtcLocalIpHidden ? 'is-on' : 'is-off'}>Local IP hidden from WebRTC</li>
-                    <li className="is-pending">VPN not set up · sites can still see your public IP</li>
-                  </ul>
-                </div>
+                <span className="shield-bar-group shield-bar-network" aria-label="Network privacy">
+                  <span className={protection.network.encryptedDns ? 'is-on' : 'is-off'} title={protection.network.encryptedDns ? `Encrypted DNS via ${protection.network.dnsProviders}` : 'Encrypted DNS unavailable'}>Encrypted DNS</span>
+                  <span className={protection.network.webrtcLocalIpHidden ? 'is-on' : 'is-off'} title="Your local IP address is hidden from WebRTC">Local IP hidden</span>
+                  <span className="is-pending" title="VPN not set up: sites can still see your public IP">No VPN</span>
+                </span>
               )}
-              <button
-                type="button"
-                className="shield-toggle"
-                onClick={() => setSiteProtection(!protection.enabled)}
-              >
-                {protection.enabled ? 'Pause protection, then retry' : 'Resume protection'}
-              </button>
+              {/^https?:/.test(pageOrigin) && (
+                <SitePermissionChips
+                  origin={pageOrigin}
+                  map={sitePermissionMap}
+                  onReset={(kind) => void window.intoponet.sitePermissions.reset(pageOrigin, kind).then(setSitePermissionMap, () => undefined)}
+                />
+              )}
+              <span className="shield-bar-actions">
+                <button type="button" className="shield-bar-toggle" title={protection.enabled ? "Turn protection off for this site and reload it (use if the page looks broken)" : "Turn protection back on and reload"} onClick={() => setSiteProtection(!protection.enabled)}>
+                  {protection.enabled ? 'Pause on this site' : 'Resume protection'}
+                </button>
+                <button type="button" className="shield-bar-close" aria-label="Close protection bar" onClick={() => setShieldOpen(false)}>
+                  <X size={14} />
+                </button>
+              </span>
             </div>
           )}
           <div ref={panelBody} className="browser-body" />
@@ -2976,12 +3385,12 @@ export function App() {
               {tabs.map((tab) => {
                 const caption = tabCaption(tab)
                 return (
-                  <div key={tab.id} className={`page-tab${tab.active ? ' selected' : ''}`}>
+                  <div key={tab.id} className={`page-tab${tab.active ? ' selected' : ''}${tab.isPrivate ? ' is-private' : ''}`}>
                     <button
                       type="button"
                       role="tab"
                       aria-selected={tab.active}
-                      title={tab.title || originLabel(tab.url)}
+                      title={`${tab.isPrivate ? 'Private tab · ' : ''}${tab.title || originLabel(tab.url)}`}
                       onClick={() => void window.intoponet.browserHost.activateTab(tab.id)}
                     >
                       {tab.favicon ? (
@@ -2989,6 +3398,7 @@ export function App() {
                       ) : (
                         <Globe2 size={12} />
                       )}
+                      {tab.isPrivate && <EyeOff size={11} className="tab-private-mark" aria-label="Private" />}
                       <span>{caption}</span>
                     </button>
                     <button

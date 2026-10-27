@@ -6,7 +6,7 @@ import '../access/access.css'
 import { normalizeLanguage } from '@intoponet/browser-api'
 import type { NewsHeadline } from '../../../shared/news/newsDigest'
 import { relativeTime } from '../globe/globeSignals'
-import { formatMegabytes, languageName, nativeName, type TranslateModel } from './useTranslate'
+import { formatMegabytes, languageName, modelFor, nativeName, RELATED_MODEL, type TranslateModel } from './useTranslate'
 import './translate.css'
 
 const PREF = 'intoponet.translate.headlines.v1'
@@ -43,14 +43,23 @@ export function HeadlineList({
   onHistory?: ((headline: NewsHeadline, englishText: string | null) => void) | undefined
 }) {
   const [on, setOn] = useState(readPref)
+  // Settings can switch headline translation on or off for every list.
+  useEffect(() => {
+    const onPref = (event: Event): void => setOn((event as CustomEvent<boolean>).detail === true)
+    window.addEventListener('intoponet:headline-pref', onPref)
+    return () => window.removeEventListener('intoponet:headline-pref', onPref)
+  }, [])
   const paywalled = useMemo(() => learnedPaywalls(), [headlines])
   const [translated, setTranslated] = useState<Map<string, string>>(new Map())
   const target = translation?.target ?? 'en'
   const foreign = useMemo(() => {
     const byLang = new Map<string, NewsHeadline[]>()
     for (const headline of headlines) {
-      const code = normalizeLanguage(headline.lang)
-      if (!code || code === target || !translation?.supported(code)) continue
+      const own = normalizeLanguage(headline.lang)
+      if (!own || own === target || !translation) continue
+      // Faroese and a few others have no model: translate roughly with their closest relative's.
+      const code = modelFor(own, translation.supported)?.code
+      if (!code || code === target) continue
       byLang.set(code, [...(byLang.get(code) ?? []), headline])
     }
     return byLang
@@ -60,7 +69,7 @@ export function HeadlineList({
     const codes = new Set<string>()
     for (const headline of headlines) {
       const code = normalizeLanguage(headline.lang)
-      if (code && code !== target && translation && !translation.supported(code)) codes.add(code)
+      if (code && code !== target && translation && !modelFor(code, translation.supported)) codes.add(code)
     }
     return [...codes]
   }, [headlines, target, translation])
@@ -189,7 +198,7 @@ export function HeadlineList({
               <button type="button" onClick={() => onOpen(headline.url)} title={shown ? headline.title : undefined}>
                 <strong lang={shown ? target : code ?? undefined}>{shown ?? headline.title}</strong>
                 <small>
-                  {detail ? detail(headline) : `${headline.publisher} · ${relativeTime(headline.publishedAt, now)}`}{shown && code ? ` · from ${languageName(code)}` : ''}
+                  {detail ? detail(headline) : `${headline.publisher} · ${relativeTime(headline.publishedAt, now)}`}{shown && code ? ` · from ${languageName(code)}${translation && modelFor(code, translation.supported)?.rough ? ` (rough, via ${languageName(RELATED_MODEL[code]!)})` : ''}` : ''}
                   {hostIsPaywalled(headline.url, paywalled) && <span className="paywall-lock" title="This outlet usually restricts articles to subscribers. Opening it offers free coverage of the same story."><Lock size={10} aria-hidden="true" /> paywall</span>}
                 </small>
               </button>

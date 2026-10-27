@@ -823,6 +823,17 @@
       "owner": "cheap-worker",
       "accept": "An isolated pilot command ingests controlled fixtures and an explicitly admitted source into public history/provenance with correct clock/health/no-store handling; excludes private app paths and records reproducible evidence. Does not claim source-to-shader integration.",
       "evidence": "2026-10-24 UTC: planner reviewed coordinator, isolated CLI and live evidence (experiments/public-feed-pilot/evidence/2026-10-24-hinckley-run.json): 50 public metadata items retained. Root required transport-only outcomes (304 is unchanged, not decline), per-source wall-clock retention and no-store purge checks; revised tests passed in full workspace suite (138 tests). No browser startup or source-to-shader claim."
+    },
+    {
+      "id": "FEATURE_E2E",
+      "title": "Every feature verified end to end",
+      "deps": [
+        "BASE"
+      ],
+      "status": "verified",
+      "owner": "planner",
+      "accept": "npm run verify:features passes at the network tier (and --tier full before a release); docs/FEATURE_VERIFICATION.md records each feature promise and its result",
+      "evidence": "2026-10-27: npm run verify:features -- --tier full: 26 passed, 0 failed (docs/FEATURE_VERIFICATION.md). The DAG found and fixed: a test file that never ran, Escape not closing The Olds after a fly-to, excluded sites keeping earlier recents, and a 15 ms per-keystroke place search (now 0.17 ms)."
     }
   ],
   "specifications": [

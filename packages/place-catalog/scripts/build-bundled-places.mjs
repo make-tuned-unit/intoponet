@@ -9,7 +9,8 @@
 //     --out apps/desktop/src/shared/places/placeData.ts
 import { readFileSync, writeFileSync } from 'node:fs'
 
-const CITY_MIN_POPULATION = 250_000
+/** Cities of 50,000+ people, plus every national and first-level (provincial/state) capital. */
+const CITY_MIN_POPULATION = 50_000
 const CAPITAL_MIN_POPULATION = 0
 // Countries large enough that a first-level region is a useful destination.
 const REGION_COUNTRIES = new Set(['US', 'CA', 'AU', 'BR', 'IN', 'CN', 'MX', 'RU', 'DE'])
@@ -25,6 +26,8 @@ const ALIASES = {
   'country:CZ': ['Czech Republic'],
   'country:CI': ["Cote d'Ivoire"],
   'country:MM': ['Burma'],
+  'country:CD': ['DR Congo', 'DRC', 'Congo-Kinshasa'],
+  'country:CG': ['Congo-Brazzaville'],
 }
 const CITY_ALIASES = {
   'New York City': ['NYC', 'New York'],
@@ -104,7 +107,7 @@ for (const country of countries.values()) {
 
 const cityRows = allCities
   .filter((city) => city.population >= CITY_MIN_POPULATION ||
-    (city.featureCode === 'PPLC' && city.population >= CAPITAL_MIN_POPULATION))
+    ((city.featureCode === 'PPLC' || city.featureCode === 'PPLA') && city.population >= CAPITAL_MIN_POPULATION))
   .sort((a, b) => b.population - a.population)
   .map((city) => [city.id, city.name, city.cc, admin1.get(`${city.cc}.${city.admin1Code}`) ?? '', round(city.lat), round(city.lon), city.population])
 

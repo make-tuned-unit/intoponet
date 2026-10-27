@@ -1,6 +1,9 @@
 import { translateChannels, type TranslateApi, type TranslateCommand, type TranslateEvent, type TranslateStatus, type PageTranslationState } from '@intoponet/browser-api'
+import { privacyChannels, type PrivacyApi, type PrivacyCommand, type PrivacyState } from '@intoponet/browser-api'
+import { beaconChannels, type BeaconApi, type BeaconCommand, type BeaconPreview, type BeaconResource, type BeaconState, type PublishedBeacon } from '@intoponet/browser-api'
+import { sitePermissionChannels, type SitePermissionApi, type SitePermissionCommand, type SitePermissionEvent, type SitePermissionMap, type SitePermissionRequest } from '@intoponet/browser-api'
 import { layaChannels, type LayaApi, type LayaCommand, type LayaHit, type LayaPassage, type LayaProgress, type LayaRelated, type LayaStatus, type LayaTheme } from '@intoponet/browser-api'
-import { knowledgeChannels, oldsChannels, type AbsorbPreview, type AbsorbRefusal, type KnowledgeApi, type KnowledgeCommand, type KnowledgeDocument, type KnowledgeHit, type KnowledgeRecord, type OldsApi, type OldsQuery, type OldsThread } from '@intoponet/browser-api'
+import { knowledgeChannels, oldsChannels, type AbsorbPreview, type AbsorbRefusal, type KnowledgeApi, type KnowledgeCommand, type KnowledgeDocument, type KnowledgeClaim, type KnowledgeHit, type KnowledgeRecord, type OldsApi, type OldsQuery, type OldsThread } from '@intoponet/browser-api'
 import { contextBridge, ipcRenderer } from 'electron'
 import {
   CAPTURE_SCHEME,
@@ -168,6 +171,7 @@ const knowledge: KnowledgeApi = {
   remove: async (id) => { await knowledgeInvoke({ type: 'remove', id }) },
   update: (id, patch) => knowledgeInvoke({ type: 'update', id, ...patch }) as Promise<KnowledgeRecord>,
   reindex: (id) => knowledgeInvoke({ type: 'reindex', id }) as Promise<KnowledgeRecord>,
+  claims: (id) => knowledgeInvoke({ type: 'claims', id }) as Promise<KnowledgeClaim[]>,
   removeAll: async () => { await knowledgeInvoke({ type: 'remove-all' }) },
   exportAll: () => knowledgeInvoke({ type: 'export' }) as Promise<string>,
 }
@@ -205,6 +209,43 @@ const translate: TranslateApi = {
   },
 }
 
+const privacyInvoke = (command: PrivacyCommand): Promise<PrivacyState> => ipcRenderer.invoke(privacyChannels.command, command) as Promise<PrivacyState>
+const privacy: PrivacyApi = {
+  state: () => privacyInvoke({ type: 'state' }),
+  setPrivateMode: (on) => privacyInvoke({ type: 'set-private-mode', on }),
+  setBackupExclusion: (on) => privacyInvoke({ type: 'set-backup-exclusion', on }),
+  setExcludedSites: (sites) => privacyInvoke({ type: 'set-excluded-sites', sites }),
+  subscribe: (listener) => {
+    const handler = (_event: Electron.IpcRendererEvent, state: PrivacyState): void => listener(state)
+    ipcRenderer.on(privacyChannels.event, handler)
+    return () => { ipcRenderer.removeListener(privacyChannels.event, handler) }
+  },
+}
+
+const sitePermissionInvoke = (command: SitePermissionCommand): Promise<unknown> => ipcRenderer.invoke(sitePermissionChannels.command, command)
+const sitePermissions: SitePermissionApi = {
+  decide: async (id, decision) => { await sitePermissionInvoke({ type: 'decide', id, decision }) },
+  list: (origin) => sitePermissionInvoke({ type: 'list', origin }) as Promise<SitePermissionMap>,
+  reset: (origin, kind) => sitePermissionInvoke(kind ? { type: 'reset', origin, kind } : { type: 'reset', origin }) as Promise<SitePermissionMap>,
+  pending: () => sitePermissionInvoke({ type: 'pending' }) as Promise<SitePermissionRequest[]>,
+  subscribe: (listener) => {
+    const handler = (_event: Electron.IpcRendererEvent, event: SitePermissionEvent): void => listener(event)
+    ipcRenderer.on(sitePermissionChannels.event, handler)
+    return () => { ipcRenderer.removeListener(sitePermissionChannels.event, handler) }
+  },
+}
+
+const beaconInvoke = (command: BeaconCommand): Promise<unknown> => ipcRenderer.invoke(beaconChannels.command, command)
+const beacons: BeaconApi = {
+  state: () => beaconInvoke({ type: 'state' }) as Promise<BeaconState>,
+  setRegistry: (url) => beaconInvoke({ type: 'set-registry', url }) as Promise<BeaconState>,
+  preview: (draft) => beaconInvoke({ type: 'preview', draft }) as Promise<BeaconPreview>,
+  publish: (draft) => beaconInvoke({ type: 'publish', draft }) as Promise<PublishedBeacon>,
+  withdraw: (id) => beaconInvoke({ type: 'withdraw', id }) as Promise<BeaconState>,
+  report: async (url, kind, text) => { await beaconInvoke({ type: 'report', url, kind, ...(text ? { text } : {}) }) },
+  read: (filter = {}) => beaconInvoke({ type: 'read', ...filter }) as Promise<BeaconResource[]>,
+}
+
 const access = {
   page: () => ipcRenderer.invoke('intoponet:page-access') as Promise<{ url: string; title: string; paywalled: boolean; signals: string[]; doi: string | null } | null>,
 }
@@ -213,4 +254,4 @@ const favicons = {
   get: (hosts: string[]) => ipcRenderer.invoke('intoponet:favicons', hosts) as Promise<Record<string, string>>,
 }
 
-contextBridge.exposeInMainWorld('intoponet', Object.freeze({ browserHost, captures, olds, knowledge, laya, translate, favicons, access }))
+contextBridge.exposeInMainWorld('intoponet', Object.freeze({ browserHost, captures, olds, knowledge, laya, translate, privacy, sitePermissions, beacons, favicons, access }))
