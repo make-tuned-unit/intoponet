@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { detectHeadline, headlineLanguage } from './detect'
+import { detectFromText, detectHeadline, headlineLanguage } from './detect'
 
 describe('headline language', () => {
   it('tells languages apart in a single headline', () => {
@@ -16,5 +16,14 @@ describe('headline language', () => {
     expect(headlineLanguage('en', 'Ukraina chce rozmów z Rosją i USA')).toBe('pl')
     expect(headlineLanguage('es', 'Bolsonaro')).toBe('es')
     expect(headlineLanguage('pt', 'Lula vence eleição')).toBe('pt')
+  })
+})
+
+describe('Faroese is not Icelandic', () => {
+  it('tells them apart on a page and in a headline', () => {
+    const faroese = 'Nú gott og væl 80 prosent av atkvøðunum eru tald upp eftir tjóðartingsvalið í Ísrael í gjár, eru Benjamin Netanyahu, forsætisráðharri í Ísrael, og hansara politisku stuðlar framvegis á odda. Sambært ísraelskum miðlum stendur samgongan hjá Netanyahu til at fáa 54 av teimum 120 sessunum.'
+    expect(detectFromText(faroese)).toBe('fo')
+    expect(detectHeadline('Samgongan hjá Netanyahu stendur til at fáa 54 sessir í tjóðartinginum')).toBe('fo')
+    expect(detectFromText('Það er ekki gott að segja hvað gerist næst í kosningunum á Íslandi, en flokkarnir eru að ræða saman um stjórn.')).toBe('is')
   })
 })

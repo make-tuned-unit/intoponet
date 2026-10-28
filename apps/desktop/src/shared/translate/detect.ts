@@ -60,6 +60,8 @@ const STOPWORDS: Record<string, string[]> = {
   tl: ['ang', 'ng', 'sa', 'na', 'at', 'mga', 'ay', 'si', 'para', 'hindi', 'ito', 'kay', 'niya', 'nang', 'din'],
   af: ['die', 'en', 'van', 'is', 'het', 'in', 'om', 'te', 'nie', 'wat', 'vir', 'op', 'met', 'dat', 'sy'],
   is: ['og', 'að', 'í', 'á', 'er', 'sem', 'til', 'um', 'með', 'ekki', 'var', 'það', 'en', 'af', 'við'],
+  // Faroese: close to Icelandic, but "tað", "ikki", "at", "teir", "hjá", and ø rather than ö.
+  fo: ['og', 'at', 'tað', 'er', 'í', 'á', 'sum', 'til', 'um', 'við', 'ikki', 'eru', 'hevur', 'teir', 'hjá', 'fyri', 'eisini', 'hetta', 'verður', 'ein'],
   eu: ['eta', 'da', 'ez', 'bat', 'du', 'dira', 'ere', 'baina', 'zen', 'izan', 'hau', 'dute', 'egin', 'beste', 'zuen'],
   gl: ['o', 'a', 'de', 'que', 'e', 'do', 'da', 'en', 'un', 'para', 'con', 'non', 'unha', 'os', 'no'],
   az: ['və', 'bir', 'bu', 'da', 'də', 'üçün', 'ilə', 'çox', 'kimi', 'daha', 'olaraq', 'amma', 'olan', 'ən', 'nə'],
@@ -100,6 +102,8 @@ export function detectFromText(text: string): string | null {
     }
     return code
   }
+  // Faroese writes ø beside ð (Icelandic has ð and ö, Danish and Norwegian ø but no ð).
+  if (count(sample, /ð/gi) >= 2 && count(sample, /ø/gi) >= 2) return 'fo'
   const words = sample.toLowerCase().match(/\p{L}+/gu) ?? []
   if (words.length < 8) return null
   const scores = STOPWORD_SETS.map(([code, set]) => [code, words.reduce((sum, word) => sum + (set.has(word) ? 1 : 0), 0)] as const)
@@ -127,6 +131,8 @@ export function detectLanguage(declared: string | null | undefined, text: string
   const fromText = detectFromText(text)
   if (!fromTag) return fromText
   if (!fromText || fromTag === fromText) return fromTag
+  // Faroese pages are often tagged Icelandic or Danish; its ø-with-ð spelling is clearer evidence than the tag.
+  if (fromText === 'fo') return 'fo'
   const tagLatin = LATIN.has(fromTag)
   const textLatin = LATIN.has(fromText)
   if (tagLatin !== textLatin) return fromText
@@ -161,6 +167,7 @@ const LETTERS: Array<[RegExp, string]> = [
   [/[ñ¿¡]/i, 'es'],
   [/[åæø]/i, 'da'],
   [/ß|[äöü].*\b(der|die|das|und)\b/i, 'de'],
+  [/ø.*ð|ð.*ø/i, 'fo'],
   [/[ðþ]/i, 'is'],
   [/[ơưạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹđ]/i, 'vi'],
 ]
@@ -182,7 +189,9 @@ export function detectHeadline(text: string): string | null {
     .sort((a, b) => b[1] - a[1])
   const lettered = LETTERS.find(([pattern]) => pattern.test(sample))?.[1]
   const [top, second] = scores
-  if (lettered && (!top || top[0] === lettered || top[1] < 2 || (scores.find(([code]) => code === lettered)?.[1] ?? 0) >= 1)) return lettered
+  // A language's own letter decides, unless another language's common words clearly outnumber its own (Faroese "hjá … at" with Icelandic ð).
+  const letteredScore = scores.find(([code]) => code === lettered)?.[1] ?? 0
+  if (lettered && (!top || top[0] === lettered || top[1] < 2 || top[1] <= letteredScore + 1)) return lettered
   if (!top || top[1] < 2 || (second && second[1] === top[1])) return null
   return top[0]
 }

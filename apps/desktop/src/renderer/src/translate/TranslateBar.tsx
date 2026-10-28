@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactElement } from 'react'
 import { ArrowRight, Check, Download, Languages, LoaderCircle, Trash2, X } from 'lucide-react'
-import { formatMegabytes, languageName, nativeName, type TranslateModel } from './useTranslate'
+import { formatMegabytes, languageName, modelFor, nativeName, type TranslateModel } from './useTranslate'
 import './translate.css'
 
 /**
@@ -25,7 +25,11 @@ export function TranslateBar({ model, onClose }: { model: TranslateModel; onClos
   }
 
   const detected = page.status === 'idle' ? page.detected : page.from
-  const source = sourceOverride ?? (model.supported(detected) ? detected : null)
+  // A language with no model of its own (Faroese) can be translated roughly through its closest relative's (Icelandic).
+  const relative = detected && !model.supported(detected) ? modelFor(detected, model.supported) : null
+  const source = sourceOverride ?? (model.supported(detected) ? detected : relative?.code ?? null)
+  const rough = !sourceOverride && relative && source === relative.code ? { language: detected!, via: relative.code } : null
+  const [roughDone, setRoughDone] = useState<{ language: string; via: string } | null>(null)
   const downloading = status?.downloading ?? null
   const missing = [source, target].filter((code): code is string => !!code && !model.ready.has(code))
   const missingBytes = missing.reduce((sum, code) => sum + sizeOf(code), 0)
@@ -33,6 +37,7 @@ export function TranslateBar({ model, onClose }: { model: TranslateModel; onClos
   const go = async (from: string, to: string): Promise<void> => {
     for (const code of [from, to]) if (!model.ready.has(code)) await model.install(code)
     setLast({ from, to })
+    setRoughDone(rough && from === rough.via ? rough : null)
     await model.translatePage(from, to)
   }
 
@@ -66,7 +71,12 @@ export function TranslateBar({ model, onClose }: { model: TranslateModel; onClos
   } else if (page.status === 'translated') {
     body = (
       <>
-        <span className="tr-status" role="status"><Check size={14} aria-hidden="true" /> Translated from {languageName(page.from)} to {languageName(page.to)} on this Mac</span>
+        <span className="tr-status" role="status" title={roughDone && roughDone.via === page.from ? `There is no ${languageName(roughDone.language)} translation model yet, so this used ${languageName(roughDone.via)}, its closest relative. Expect mistakes.` : undefined}>
+          <Check size={14} aria-hidden="true" />
+          {roughDone && roughDone.via === page.from
+            ? <>Roughly translated from {languageName(roughDone.language)} via {languageName(roughDone.via)} on this Mac · expect mistakes</>
+            : <>Translated from {languageName(page.from)} to {languageName(page.to)} on this Mac</>}
+        </span>
         <div className="tr-flip" role="group" aria-label="Show page in">
           <button type="button" onClick={() => void model.restorePage()}>{nativeName(page.from)}</button>
           <button type="button" className="is-active" aria-pressed="true">{nativeName(page.to)}</button>
@@ -85,11 +95,13 @@ export function TranslateBar({ model, onClose }: { model: TranslateModel; onClos
       <>
         <label className="tr-select">
           <span className="tr-label">{sourceOverride || !detected ? 'From' : 'Detected'}</span>
-          <select value={source ?? ''} onChange={(event) => setSourceOverride(event.target.value || null)} aria-label="Page language">
+          <select value={rough ? '' : source ?? ''} onChange={(event) => setSourceOverride(event.target.value || null)} aria-label="Page language">
+            {rough && <option value="">{languageName(rough.language)} · rough, via {languageName(rough.via)}</option>}
             {!source && <option value="">{detected ? `${languageName(detected)} (no model)` : 'Choose language'}</option>}
             {codes.map(option)}
           </select>
         </label>
+        {rough && <span className="tr-note" title={`Firefox Translations has no ${languageName(rough.language)} model yet. ${languageName(rough.via)} is its closest relative, so a translation will be rough.`}>No {languageName(rough.language)} model yet</span>}
         <ArrowRight size={14} aria-hidden="true" className="tr-arrow" />
         <label className="tr-select">
           <span className="sr-only">Translate into</span>
