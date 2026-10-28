@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
-import { Languages, LockKeyhole, Settings, Trash2, X } from 'lucide-react'
+import { Compass, Languages, LockKeyhole, Play, Settings, Trash2, X } from 'lucide-react'
 import { formatMegabytes, languageName, nativeName, type TranslateModel } from '../translate/useTranslate'
 import type { AppSettings } from './appSettings'
 import { BeaconSettings } from '../beacons/BeaconSettings'
+import { LayaSettings } from './LayaSettings'
 
 /** Settings: your reading language, automatic translation, downloaded languages, and a way to Privacy. */
 export function SettingsPanel({
@@ -13,6 +14,7 @@ export function SettingsPanel({
   onHeadlinesTranslated,
   onOpenPrivacy,
   onClose,
+  onTour,
 }: {
   translation: TranslateModel
   settings: AppSettings
@@ -21,6 +23,8 @@ export function SettingsPanel({
   onHeadlinesTranslated: (on: boolean) => void
   onOpenPrivacy: () => void
   onClose: () => void
+  /** Start the guided tour. */
+  onTour?: () => void
 }) {
   const { status, target } = translation
   const [busy, setBusy] = useState('')
@@ -54,6 +58,14 @@ export function SettingsPanel({
         <button type="button" onClick={onClose} aria-label="Close settings"><X size={17} /></button>
       </div>
       <div className="privacy-pane settings-pane">
+        {onTour && (
+          <section className="settings-tour">
+            <h3><Compass size={13} aria-hidden="true" /> Tour</h3>
+            <p>A guided tour of the globe, stories, The Olds, your library, captures, Knowledge and beacons, using the app itself. About two minutes; replay it any time.</p>
+            <button type="button" className="settings-primary" onClick={onTour}><Play size={13} aria-hidden="true" /> Take the tour</button>
+          </section>
+        )}
+
         <section>
           <h3><Languages size={13} aria-hidden="true" /> Your language</h3>
           <label className="privacy-select">
@@ -100,6 +112,8 @@ export function SettingsPanel({
           )}
           {translation.error && <p className="settings-error" role="alert">{translation.error}</p>}
         </section>
+
+        <LayaSettings />
 
         <BeaconSettings />
 

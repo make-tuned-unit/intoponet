@@ -47,7 +47,7 @@ export async function runAppCheck(check, { port = 9400 + Math.floor(Math.random(
   const profile = keep ?? mkdtempSync(join(process.env.E2E_TMP ?? tmpdir(), 'intoponet-e2e-'))
   const env = { ...process.env, INTOPONET_CAPTURE_ROOT: join(profile, 'Pictures', 'Intoponet'), ...extraEnv }
   delete env.ELECTRON_RUN_AS_NODE
-  const app = spawn(join(repo, 'node_modules/.bin/electron'), [`--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, join(repo, 'apps/desktop/out/main/index.js')], { env, stdio: 'ignore' })
+  const app = spawn(join(repo, 'node_modules/.bin/electron'), [`--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, (process.env.E2E_APP_MAIN ?? join(repo, 'apps/desktop/out/main/index.js'))], { env, stdio: 'ignore' })
   const sockets = []
   try {
     let target

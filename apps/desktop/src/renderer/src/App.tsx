@@ -164,7 +164,9 @@ import {
   fadingSignals,
 } from './globe/globeSignals'
 import { dayPhaseText } from './earth/sun'
-import { countryPlace, nearestCountry, placesNamedIn, PLACE_ATTRIBUTION, placeLabel, type Place } from '../../shared/places/places'
+import { countryPlace, nearestCountry, placesNamedIn, PLACE_ATTRIBUTION, placeLabel, searchPlaces, type Place } from '../../shared/places/places'
+import { Tour } from './tour/Tour'
+import type { TourControls } from './tour/steps'
 import { parseNewsDigest, type NewsDigest, type NewsHeadline, type RisingTerm } from '../../shared/news/newsDigest'
 import type { GlobalStory } from '../../shared/news/globalStories'
 import { isExcludedSite, type PrivacyState } from '@intoponet/browser-api'
@@ -361,6 +363,9 @@ export function App() {
   const [organicMetrics, setOrganicMetrics] = useState<OrganicMembraneMetrics | null>(null)
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  // The guided tour (from Settings): it drives the app, then puts everything back.
+  const [tourOpen, setTourOpen] = useState(false)
+  const tourOpenedPage = useRef(false)
   const [beaconDraft, setBeaconDraft] = useState<BeaconDraft | null>(null)
   const [appSettings, setAppSettingsState] = useState(readAppSettings)
   const [headlinesTranslated, setHeadlinesTranslatedState] = useState(() => {
@@ -2071,6 +2076,88 @@ export function App() {
     updateGlobePrefs({ layers: GLOBE_LAYER_ORDER.filter((item) => next.includes(item)) })
   }
 
+  // What the tour can do with the app. Nothing here saves, shares or absorbs anything.
+  const tourControls: TourControls = {
+    reset: () => {
+      if (olds) closeOlds()
+      setBookmarksOpen(false)
+      setKnowledgeView(null)
+      setLibraryOpen(false)
+      setSettingsOpen(false)
+      setWorldStory(null)
+      showEarth()
+    },
+    spin: (degrees, ms) => new Promise<void>((resolve) => {
+      const started = performance.now()
+      let turned = 0
+      const step = (): void => {
+        const progress = Math.min(1, (performance.now() - started) / ms)
+        const eased = progress < 0.5 ? 2 * progress * progress : 1 - (-2 * progress + 2) ** 2 / 2
+        const target = (degrees * Math.PI / 180) * eased
+        const delta = target - turned
+        turned = target
+        setPose((current) => ({ ...current, theta: current.theta + delta }))
+        if (progress < 1) requestAnimationFrame(step)
+        else resolve()
+      }
+      requestAnimationFrame(step)
+    }),
+    flyTo: async (name) => {
+      const place = searchPlaces(name, 1)[0]
+      if (!place) return false
+      // Typed into the search, a letter at a time, then flown to.
+      input.current?.focus()
+      for (let i = 1; i <= name.length; i += 1) {
+        setQuery(name.slice(0, i))
+        await new Promise((resolve) => setTimeout(resolve, 110))
+      }
+      await new Promise((resolve) => setTimeout(resolve, 500))
+      flyToPlace(place)
+      input.current?.blur()
+      return true
+    },
+    showList: (view) => setListView(view),
+    openWorldStory: async () => {
+      const story = newsDigest?.global?.[0]
+      if (!story) return null
+      setListView('world')
+      setWorldStory(story)
+      return story.headlines.find((headline) => /^en/i.test(headline.lang ?? 'en'))?.title ?? story.title
+    },
+    prepareOlds: (headline) => { void window.intoponet.olds.thread({ kind: 'headline', text: headline }).catch(() => undefined) },
+    openOlds: async (headline) => {
+      loadOlds([{ query: { kind: 'headline', text: headline }, label: headline.length > 60 ? `${headline.slice(0, 57)}…` : headline }])
+      for (let i = 0; i < 300 && !document.querySelector('.olds-story, .olds-timeline > li, .olds-list li'); i += 1) await new Promise((resolve) => setTimeout(resolve, 100))
+    },
+    closeOlds: () => { if (olds) closeOlds() },
+    showBookmarks: (open) => setBookmarksOpen(open),
+    showMyMap: (open) => (open ? showLibrary() : setLibraryOpen(false)),
+    openPage: async (url) => {
+      tourOpenedPage.current = true
+      await window.intoponet.browserHost.open({ kind: 'url', value: url }).catch(() => undefined)
+      for (let i = 0; i < 40 && !document.querySelector('.browser-actions'); i += 1) await new Promise((resolve) => setTimeout(resolve, 100))
+    },
+    hidePage: (hidden) => { void window.intoponet.captures.setPageHidden(hidden) },
+    showKnowledge: (open) => {
+      if (open) openKnowledge(null)
+      else {
+        setKnowledgeView(null)
+        // Closing Knowledge shows the page again; the tour keeps it out of the way.
+        if (panel.isVisible) void window.intoponet.captures.setPageHidden(true)
+      }
+    },
+    finish: () => {
+      void window.intoponet.captures.setPageHidden(false)
+      if (tourOpenedPage.current) void window.intoponet.browserHost.close()
+      tourOpenedPage.current = false
+      if (olds) closeOlds()
+      setBookmarksOpen(false)
+      setKnowledgeView(null)
+      setLibraryOpen(false)
+      setWorldStory(null)
+    },
+  }
+
   const railVisible = panel.isVisible && !fullWidth && tabs.length > 0 && !fieldLabOpen
 
   const setBrowserFullWidth = (enabled: boolean): void => {
@@ -2306,6 +2393,7 @@ export function App() {
       )}
       {settingsOpen && (
         <SettingsPanel
+          onTour={() => { setSettingsOpen(false); setTourOpen(true) }}
           translation={translation}
           settings={appSettings}
           onSettings={updateAppSettings}
@@ -2518,6 +2606,7 @@ export function App() {
         )}
       </AnimatePresence>
       {!fieldLabOpen && <CountryNames view={countryView} hidden={panel.isVisible} />}
+      {tourOpen && <Tour controls={tourControls} onClose={() => setTourOpen(false)} />}
       {!fieldLabOpen && (
         <GlobeOverlay
           projection={globeProjection}
