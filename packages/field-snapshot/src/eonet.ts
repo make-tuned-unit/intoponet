@@ -42,6 +42,28 @@ function point(geometry: Record<string, unknown>): [number, number] | null {
   return null
 }
 
+/** Source files that download rather than open (bulletins, data). */
+export const DATA_FILE_URL = /\.(tcw|txt|json|xml|kml|kmz|zip|dat|csv|shp|gz|nc|grib2?)(\?|$)|\/api\//i
+
+/**
+ * Wikipedia titles to try for an event, most specific first: "Hurricane Vance (2026)",
+ * "Cyclone Arnab" for "Tropical Cyclone Arnab", "Mount Etna" for "Etna Volcano, Italy".
+ */
+export function articleCandidates(title: string, year: number): string[] {
+  const base = title.replace(/\s*\(.*?\)/g, '').replace(/\s+/g, ' ').trim()
+  const named = base.split(',')[0]!.trim()
+  const out: string[] = []
+  const storm = named.match(/^(Super Typhoon|Typhoon|Hurricane|Tropical Storm|Tropical Cyclone|Severe Tropical Cyclone|Cyclone|Cyclonic Storm|Severe Cyclonic Storm|Very Severe Cyclonic Storm|Extremely Severe Cyclonic Storm|Subtropical Storm|Tropical Depression) (.+)$/i)
+  if (storm) {
+    const name = storm[2]!.trim()
+    for (const kind of [storm[1]!.replace(/^Super /i, ''), 'Hurricane', 'Typhoon', 'Cyclone', 'Tropical Storm']) out.push(`${kind} ${name} (${year})`, `${kind} ${name}`)
+  }
+  const volcano = named.match(/^(.+?) Volcano$/i)
+  if (volcano) out.push(`Mount ${volcano[1]}`, volcano[1]!, `${volcano[1]} (volcano)`)
+  if (!storm && !volcano) out.push(`${named} (${year})`, named, `${year} ${named}`)
+  return [...new Set(out.map((candidate) => candidate.replace(/\s+/g, ' ').trim()).filter((candidate) => candidate.length >= 4))]
+}
+
 function httpsUrl(value: unknown): string | null {
   if (typeof value !== 'string') return null
   try {
@@ -74,7 +96,9 @@ export function recordsFromEonet(payload: unknown, retrievedAt: string, limit: n
     const [lat, lon] = located
     if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) return []
     const sources = Array.isArray(event['sources']) ? event['sources'].filter(isRecord) : []
-    const cited = sources.map((source) => httpsUrl(source['url'])).find((value): value is string => value !== null)
+    // Prefer a readable page (NHC's storm archive) over a raw bulletin file (JTWC's .tcw).
+    const urls = sources.map((source) => httpsUrl(source['url'])).filter((value): value is string => value !== null)
+    const cited = urls.find((value) => !DATA_FILE_URL.test(value)) ?? urls[0]
     const url = cited && !usedUrls.has(cited.replace(/\/$/, '').toLowerCase()) ? cited : httpsUrl(event['link'])
     if (!url) return []
     usedUrls.add(url.replace(/\/$/, '').toLowerCase())

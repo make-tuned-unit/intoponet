@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
+  articleCandidates,
   eonetFeed,
   pageInfoFromPayload,
   parseFieldSnapshot,
@@ -140,7 +141,43 @@ export async function fetchQuakes(now = Date.now()): Promise<SourceRecord[]> {
 }
 
 export async function fetchNaturalEvents(now = Date.now()): Promise<SourceRecord[]> {
-  return recordsFromEonet(await getJson(eonetFeed), new Date(now).toISOString())
+  const records = recordsFromEonet(await getJson(eonetFeed), new Date(now).toISOString())
+  return attachArticles(records, new Date(now).getUTCFullYear()).catch(() => records)
+}
+
+/**
+ * Give each natural event a Wikipedia article when one exists (named storms,
+ * volcanoes, large fires), checked with one batched query. A bare storm name is
+ * reused across years ("Hurricane Vance"), so it counts only when its title or
+ * description names this event's year. Events without an article keep none:
+ * "Read about it" then opens the agency's own page, never a search.
+ */
+async function attachArticles(records: SourceRecord[], year: number): Promise<SourceRecord[]> {
+  const candidates = new Map(records.map((record) => [record.id, articleCandidates(record.title, year)]))
+  const titles = [...new Set([...candidates.values()].flat())]
+  const found = new Map<string, { title: string; description: string }>()
+  for (let i = 0; i < titles.length; i += 50) {
+    const url = new URL('https://en.wikipedia.org/w/api.php')
+    url.search = new URLSearchParams({ action: 'query', prop: 'description|pageprops', ppprop: 'disambiguation', titles: titles.slice(i, i + 50).join('|'), redirects: '1', format: 'json', formatversion: '2' }).toString()
+    const payload = await getJson(url.toString()) as { query?: { pages?: Array<{ title?: string; missing?: boolean; description?: string; pageprops?: { disambiguation?: string } }>; redirects?: Array<{ from: string; to: string }>; normalized?: Array<{ from: string; to: string }> } }
+    const pages = new Map((payload.query?.pages ?? []).filter((page) => page.title && !page.missing && page.pageprops?.disambiguation === undefined).map((page) => [page.title!, page.description ?? '']))
+    const resolve = new Map<string, string>()
+    for (const step of [...(payload.query?.normalized ?? []), ...(payload.query?.redirects ?? [])]) resolve.set(step.from, resolve.get(step.to) ?? step.to)
+    for (const asked of titles.slice(i, i + 50)) {
+      const target = resolve.get(asked) ?? asked
+      if (pages.has(target)) found.set(asked, { title: target, description: pages.get(target)! })
+    }
+  }
+  return records.map((record) => {
+    for (const asked of candidates.get(record.id) ?? []) {
+      const page = found.get(asked)
+      if (!page) continue
+      const recurring = /^(Hurricane|Typhoon|Cyclone|Tropical Storm|Tropical Depression)\b/i.test(page.title)
+      if (recurring && !page.title.includes(String(year)) && !page.description.includes(String(year))) continue
+      return { ...record, articleUrl: `https://en.wikipedia.org/wiki/${encodeURIComponent(page.title.replace(/ /g, '_'))}` }
+    }
+    return record
+  })
 }
 
 async function attempt(group: SourceGroup, run: () => Promise<SourceRecord[]>): Promise<SourceRecord[] | null> {

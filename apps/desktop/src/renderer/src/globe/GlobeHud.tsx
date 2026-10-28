@@ -26,18 +26,22 @@ import {
 
 const spring: Transition = { type: 'spring', stiffness: 420, damping: 36 }
 /** Links that open a readable page. Some sources are raw data files (e.g. a hurricane centre's .tcw advisory), which would only download. */
-const DATA_FILE = /\.(tcw|txt|json|xml|kml|kmz|zip|dat|csv|shp|gz|nc|grib2?)(\?|$)/i
+const DATA_FILE = /\.(tcw|txt|json|xml|kml|kmz|zip|dat|csv|shp|gz|nc|grib2?)(\?|$)|\/api\//i
 export function readableLinks(signal: GlobeSignal): Array<{ label: string; url: string; title: string }> {
   if (signal.layer === 'natural') {
     const day = signal.observedAt.slice(0, 10)
     const box = [signal.lon - 8, signal.lat - 6, signal.lon + 8, signal.lat + 6].map((value) => value.toFixed(2)).join(',')
+    // A verified article, else the agency's own page (never a Wikipedia search, which finds nothing for most fires).
+    const read = signal.articleUrl
+      ? { label: 'Read about it', url: signal.articleUrl, title: `Wikipedia: ${decodeURIComponent(signal.articleUrl.split('/wiki/')[1]!).replace(/_/g, ' ')}` }
+      : !DATA_FILE.test(signal.url) ? { label: 'Agency report', url: signal.url, title: `The reporting agency’s page: ${signal.url}` } : null
     return [
-      { label: 'Read about it', url: `https://en.wikipedia.org/w/index.php?search=${encodeURIComponent(signal.title)}`, title: `Wikipedia on ${signal.title} (opens the article if one exists, otherwise search results)` },
+      ...(read ? [read] : []),
       { label: 'Satellite view', url: `https://worldview.earthdata.nasa.gov/?v=${box}&t=${day}`, title: `NASA Worldview satellite imagery of this area on ${day}` },
     ]
   }
   if (DATA_FILE.test(signal.url)) {
-    return [{ label: 'Read about it', url: `https://en.wikipedia.org/w/index.php?search=${encodeURIComponent(signal.title)}`, title: 'The source is a data file, so this opens Wikipedia instead' }]
+    return signal.articleUrl ? [{ label: 'Read about it', url: signal.articleUrl, title: 'The source is a data file; this is the Wikipedia article about it' }] : []
   }
   return [{ label: 'Open source', url: signal.url, title: signal.url }]
 }

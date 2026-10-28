@@ -57,6 +57,8 @@ export type SourceRecord = {
    * means no comparison was available.
    */
   previousValue?: number | null
+  /** A Wikipedia article about this event, checked to exist (never a search). */
+  articleUrl?: string
 }
 
 export type SnapshotBand = {

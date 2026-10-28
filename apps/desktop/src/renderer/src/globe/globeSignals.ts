@@ -109,6 +109,8 @@ export type GlobeSignal = {
   trendNote: string | null
   /** First seen in the last 24 hours (events) or new to the most-read list. */
   isNew: boolean
+  /** A Wikipedia article about this event, checked to exist (natural events). */
+  articleUrl?: string | null
 }
 
 export const TREND_THRESHOLD = 0.12
@@ -249,6 +251,7 @@ export function globeSignalsFromSnapshot(snapshot: FieldSnapshot | null): GlobeS
       attribution: source.attribution,
       licence: source.licence,
       sourceUrl: source.measurement.sourceUrl,
+      articleUrl: typeof source.articleUrl === 'string' && source.articleUrl.startsWith('https://en.wikipedia.org/wiki/') ? source.articleUrl : null,
       rank,
     })
   }

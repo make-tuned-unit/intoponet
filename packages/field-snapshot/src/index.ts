@@ -123,6 +123,8 @@ export {
 export type { PageInfo, TopArticle } from './wikipedia-top'
 export {
   EONET_LIMITS,
+  articleCandidates,
+  DATA_FILE_URL,
   eonetAttribution,
   eonetFeed,
   eonetRadiusKm,
