@@ -1187,6 +1187,8 @@ async function handleBrowserCommand(
       return cachedPublicField()
     case 'get-news-digest':
       return newsService?.latest() ?? null
+    case 'get-place-trends':
+      return newsService ? JSON.stringify(await newsService.trends({ countryCode: command.countryCode, ...(command.name ? { name: command.name } : {}), ...(command.aliases ? { aliases: command.aliases } : {}), ...(command.geonameId ? { geonameId: command.geonameId } : {}) })) : null
   }
   emitPanelState()
   return panelState()
@@ -1325,6 +1327,7 @@ app.whenReady().then(async () => {
     },
     // Laya (when on) checks that a history topic means the same thing as the headline.
     meaning: (query, texts) => laya ? laya.similarities(query, texts) : Promise.resolve(null),
+    embed: (texts) => laya ? laya.embedTexts(texts) : Promise.resolve(null),
     // Quality checks only: INTOPONET_OLDS_DEBUG=<file> records how each headline's candidates scored.
     ...(process.env.INTOPONET_OLDS_DEBUG ? { debug: (headline: string, candidates: unknown, searched: unknown) => appendFileSync(process.env.INTOPONET_OLDS_DEBUG!, `${JSON.stringify({ headline, candidates, searched })}\n`) } : {}),
   })

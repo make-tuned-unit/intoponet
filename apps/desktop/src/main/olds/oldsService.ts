@@ -17,7 +17,7 @@ import type { OldsChapter, OldsContext, OldsCountryFacts, OldsPathStep, OldsSupp
 import { interpretationsFrom } from './interpretations'
 import { chronologyFromWikitext } from './chronology'
 import { otherCountries, relatedQueries, subjectTerms } from './relatedTopics'
-import { dayPages, isTitleCase, matchHeadline, parseDayPage, threadItems, type CurrentEventItem } from './currentEvents'
+import { dayPages, isTitleCase, matchHeadline, parseDayPage, shortlist, threadItems, type CurrentEventItem } from './currentEvents'
 import { countryPlace, placesNamedIn } from '../../shared/places/places'
 import { COUNTRY_ROWS } from '../../shared/places/placeData'
 import { figuresIn, withoutCitations } from '../knowledge/claims'
@@ -60,20 +60,33 @@ export type OldsServiceOptions = {
    * each text against the query, or null when unavailable. English only.
    */
   meaning?: (query: string, texts: string[]) => Promise<number[] | null>
+  /**
+   * On-device unit vectors (Laya) for many texts at once, cached by text; null
+   * when Laya is off. Used to match headlines to news items and to pick the
+   * dated events that belong to a story. English only.
+   */
+  embed?: (texts: string[]) => Promise<Float32Array[] | null>
   /** Receives every scored candidate for a headline (quality checks only). */
-  debug?: (headline: string, candidates: Array<{ label: string; description: string | null; score: number; kept: boolean }>, searched?: { queries: string[]; titles: string[] }) => void
+  debug?: (headline: string, candidates: Array<{ label: string; description: string | null; score: number; kept: boolean; [detail: string]: unknown }>, searched?: { queries: string[]; titles: string[] }) => void
 }
 
 /** Laya similarity (cosine, all-MiniLM-L6-v2; calibrated 2026-10-27: related topics 0.45–0.65, the Delhi/Honduras mismatch 0.17): above this a topic matches by meaning alone; below the floor it is unrelated. */
-export const MEANING_MATCH = 0.45
+export const MEANING_MATCH = 0.6
 export const MEANING_FLOOR = 0.2
-const MEANING_WEIGHT = 6
+const MEANING_WEIGHT = 1.5
 
-/** Keep a search result when its words match, unless its meaning is clearly unrelated; or when its meaning alone is close. */
-export function keepCandidate(wordsMatch: boolean, meaning: number | null): boolean {
+/**
+ * Keep a search result when its words match, unless its meaning is clearly
+ * unrelated (Laya vetoes). Meaning can rescue a near miss on words only when
+ * the topic passed every other check (same country, right kind, not a
+ * generic concept) and shares a word with the headline: Laya never overrides
+ * the rules, it ranks and vetoes within them.
+ */
+export function keepCandidate(wordsMatch: boolean, meaning: number | null, rescuable = false, named = false): boolean {
   if (meaning === null) return wordsMatch
-  if (meaning >= MEANING_MATCH) return true
-  return wordsMatch && meaning >= MEANING_FLOOR
+  // A place the headline names in full ("Dubai") is not vetoed: a place's description rarely reads like the story.
+  if (wordsMatch) return named || meaning >= MEANING_FLOOR
+  return rescuable && meaning >= MEANING_MATCH
 }
 
 export class OldsService {
@@ -533,7 +546,7 @@ export class OldsService {
   private async relatedTopics(text: string, country: string | null, exclude: string[], meaningOk: boolean, countryCode?: string): Promise<OldsRelatedTopic[]> {
     // Provinces and states the headline names (B.C., New Brunswick), for topics at the story's own level.
     const regions = countryCode ? placesNamedIn(`${text} ${exclude.join(' ')}`, 6).filter((place) => place.kind === 'region' && place.countryCode === countryCode).map((place) => place.name) : []
-    const others = otherCountries(text, country, namedCountryNames(text))
+    const others = otherCountries(text, country, namedCountryNames(text), this.peopleCountries.get(text) ?? [])
     const { titles, searches, stems } = relatedQueries(text, country, exclude, regions, others)
     const searched: string[] = []
     // Two subject words in common ("half-time show" ≠ "Half dollar (United States coin)").
@@ -571,8 +584,8 @@ export class OldsService {
       return index === -1 ? 99 : index
     }
     let ranked = [...new Map(pages.map((page) => [page.title!, page])).values()].sort((a, b) => order(a.title!) - order(b.title!))
-    if (meaningOk && this.options.meaning && ranked.length > 1) {
-      const scores = await this.options.meaning(cleanHeadline(text), ranked.map((page) => `${page.title}. ${page.description ?? ''}`)).catch(() => null)
+    if (meaningOk && ranked.length > 1) {
+      const scores = await this.meaningOf(cleanHeadline(text), ranked.map((page) => `${page.title}. ${page.description ?? ''}`))
       if (scores && scores.length === ranked.length) {
         ranked = ranked.map((page, index) => ({ page, score: scores[index]! - order(page.title!) * 0.01 }))
           .filter((item) => item.score >= 0.18)
@@ -599,13 +612,52 @@ export class OldsService {
   }
 
   /** Dated events from an article's wikitext (cached with the thread). */
-  private async chronicle(title: string, lang: string, focus: string[] = [], yearHint?: number): Promise<OldsChronicleEntry[]> {
+  /** Cosine similarity of each text to the query, on this Mac (Laya), or null when Laya is off. */
+  private async meaningOf(query: string, texts: string[]): Promise<number[] | null> {
+    if (!texts.length) return null
+    if (this.options.embed) {
+      const vectors = await this.options.embed([query, ...texts]).catch(() => null)
+      if (vectors && vectors.length === texts.length + 1) {
+        const [q, ...rest] = vectors as [Float32Array, ...Float32Array[]]
+        return rest.map((vector) => { let sum = 0; for (let i = 0; i < vector.length; i += 1) sum += vector[i]! * q[i]!; return sum })
+      }
+    }
+    return this.options.meaning ? this.options.meaning(query, texts).catch(() => null) : null
+  }
+
+  /**
+   * The dated events in an article that belong to this story: with Laya, the
+   * ones closest in meaning to the headline (any wording, any topic); without
+   * it, the ones that use the headline's subject words.
+   */
+  private async chronicleAbout(title: string, headline: string, focus: string[], options: { yearHint?: number; keep?: number; floor?: number } = {}): Promise<OldsChronicleEntry[]> {
+    if (this.options.embed || this.options.meaning) {
+      const every = await this.chronicle(title, 'en', [], options.yearHint, 160).catch(() => [])
+      // A shortlist for Laya (~0.1 s per sentence): sentences with the headline's words, then the most recent.
+      const stems = [...new Set([...focus, ...subjectTerms(headline).flatMap((term) => term.split(' ')).map((word) => word.slice(0, 5))])]
+      const withWords = every.filter((entry) => stems.some((stem) => entry.text.toLowerCase().includes(stem)))
+      const all = [...new Set([...withWords, ...every.slice(-12)])].slice(-30)
+      const scores = all.length ? await this.meaningOf(cleanHeadline(headline), all.map((entry) => entry.text)) : null
+      if (scores) {
+        return all
+          .map((entry, index) => ({ entry, score: scores[index]! }))
+          .filter((item) => item.score >= (options.floor ?? CHRONICLE_MEANING_FLOOR))
+          .sort((a, b) => b.score - a.score)
+          .slice(0, options.keep ?? 12)
+          .map((item) => item.entry)
+          .sort((a, b) => a.at.iso.localeCompare(b.at.iso))
+      }
+    }
+    return focus.length ? this.chronicle(title, 'en', focus, options.yearHint).catch(() => []) : []
+  }
+
+  private async chronicle(title: string, lang: string, focus: string[] = [], yearHint?: number, limit = 18): Promise<OldsChronicleEntry[]> {
     const url = new URL(`https://${lang}.wikipedia.org/w/api.php`)
     url.search = new URLSearchParams({ action: 'parse', page: title, prop: 'wikitext', redirects: '1', format: 'json', formatversion: '2' }).toString()
     const payload = await this.getJson(url.toString(), 12_000) as { parse?: { title?: string; wikitext?: string } }
     const wikitext = payload.parse?.wikitext
     if (typeof wikitext !== 'string') return []
-    return chronologyFromWikitext(payload.parse?.title ?? title, wikitext, new Date(this.now()).getUTCFullYear(), lang, 18, focus, yearHint)
+    return chronologyFromWikitext(payload.parse?.title ?? title, wikitext, new Date(this.now()).getUTCFullYear(), lang, limit, focus, yearHint)
   }
 
   /** Article text with "== Section ==" markers (for interpretations). */
@@ -683,7 +735,11 @@ export class OldsService {
     const events = !query.topic ? await this.currentEventItems().catch(() => [] as CurrentEventItem[]) : []
     // Untranslated, only names carry across languages: two must match.
     const storyCountryName = query.countryCode ? countryPlace(query.countryCode)?.name ?? null : null
-    const filed = !query.topic ? matchHeadline(events, text, today, lang === 'en' ? 0 : 2, storyCountryName)[0] : undefined
+    // With Laya, every item is also compared by meaning (cached, so each day's items are embedded once).
+    const short = !query.topic && lang === 'en' && (this.options.embed || this.options.meaning) ? shortlist(events, text) : []
+    const shortScores = short.length ? await this.meaningOf(cleanHeadline(text), short.map((index) => events[index]!.text)) : null
+    const eventMeaning = shortScores ? events.map((_, index) => { const at = short.indexOf(index); return at === -1 ? null : shortScores[at]! }) as number[] : null
+    const filed = !query.topic ? matchHeadline(events, text, today, lang === 'en' ? 0 : 2, storyCountryName, eventMeaning)[0] : undefined
     const filedThreads = filed ? [...filed.item.threads].reverse() : [] // nearest first
     for (const title of [...filedThreads, ...(filed?.item.links.slice(0, 8) ?? [])]) if (!ranked.includes(title)) ranked.push(title)
     const outletCountry = query.countryCode ? countryPlace(query.countryCode)?.name ?? null : null
@@ -732,6 +788,10 @@ export class OldsService {
       const open = foldAccents(opening).toLowerCase()
       return base === open || (base.startsWith(`${open} `) && base.split(/\s+/).length <= 3)
     }
+    // The countries of the people the headline names ("call with Putin" → Russia), from their Wikidata citizenship.
+    const headlineWords = new Set(foldAccents(cleanHeadline(text)).toLowerCase().split(/[^\p{L}]+/u).filter((word) => word.length >= 3))
+    const peopleQids = [...new Set([...entities.values()].filter((entity) => ids(entity, 'P31').includes('Q5') && headlineWords.has(foldAccents(nodeFromEntity(entity, 'en')?.label ?? '').replace(/\s*\(.*?\)\s*$/, '').toLowerCase().split(/\s+/).at(-1) ?? '-')).flatMap((entity) => ids(entity, 'P27').slice(0, 1)))].slice(0, 4)
+    if (peopleQids.length) this.peopleCountries.set(text, await this.labelsOf(peopleQids).catch(() => []))
     const surnameOnly = !!opening && opening.split(/\s+/).length === 1
     // How widely known people are (Wikipedia editions about them): only for foreign people matched by surname.
     const famous = surnameOnly ? await this.famousAmong([...items.values()].map((item) => entities.get(item.qid)).filter((entity): entity is WikidataEntity => !!entity
@@ -772,6 +832,8 @@ export class OldsService {
       // Education, Culture, Sports…" of Japan for a merger of bureaus in Macau).
       const foreign = !filedThread && !isEventLike(entity) && storyQids.length > 0 && countries.length > 0 && countries.length <= 2
         && !storyQids.some((qid) => countries.includes(qid)) && titleWordsIn(matchTitle, headlineNames) === 0
+        // The person the headline opens with is named, though first words are left out of its names ("Mbappe apologises…").
+        && !(person && subjectPerson(node.label))
       if (foreign) return []
       // A foreign topic that brings in a name the story never mentions ("Mickey's Halloween Party" for a party in Bermuda).
       const elsewhere = !filedThread && storyQids.length > 0 && countries.length > 0 && countries.length <= 2 && !storyQids.some((qid) => countries.includes(qid))
@@ -808,19 +870,23 @@ export class OldsService {
       const conceptOk = (!general || filedThread || titleWordsIn(matchTitle, text) >= 2)
         // A different kind of event or body from the one the headline names (a football team for a school awards story).
         && (filedThread || native || !eventKindConflicts(node.label, text))
-      return [{ id: item.qid, node, score, entity, weakOnly: weakOnly && !filedThread, general: general && !filedThread, words: words && conceptOk }]
+      return [{ id: item.qid, node, score, entity, weakOnly: weakOnly && !filedThread, general: general && !filedThread, words: words && conceptOk, rescuable: conceptOk && !general && titleWordsIn(matchTitle, text) >= 1 && !weakOnly,
+        // A place named in full ("Dubai"): a city's description never reads like the story, so Laya does not veto it.
+        // Not a person ("Mao Zedong" in an apology story) or a country (the story is usually its relations, not the country).
+        named: (entity.claims?.['P625']?.length ?? 0) > 0 && !ids(entity, 'P31').includes('Q5') && !ids(entity, 'P31').some((id) => ['Q6256', 'Q3624078', 'Q7275', 'Q3024240'].includes(id))
+          && titleContentWords(matchTitle).length > 0 && titleWordsIn(matchTitle, text) >= titleContentWords(matchTitle).length }]
     })
     // Laya, when on, compares the headline's meaning with each candidate's title and description on this Mac.
-    const similarity = lang === 'en' && this.options.meaning && scored.length
-      ? await this.options.meaning(cleanHeadline(text), scored.map((candidate) => `${candidate.node.label}. ${candidate.node.description ?? ''}`.trim())).catch(() => null)
+    const similarity = lang === 'en' && scored.length
+      ? await this.meaningOf(cleanHeadline(text), scored.map((candidate) => `${candidate.node.label}. ${candidate.node.description ?? ''}`.trim()))
       : null
     const byMeaning = similarity !== null && similarity.length === scored.length
     const relevant = scored
       .map((candidate, index) => ({ ...candidate, meaning: byMeaning ? similarity[index]! : null }))
-      .filter((candidate) => keepCandidate(candidate.words, candidate.meaning))
+      .filter((candidate) => keepCandidate(candidate.words, candidate.meaning, candidate.rescuable, candidate.named))
       .map((candidate) => ({ ...candidate, score: candidate.score + (candidate.meaning ?? 0) * MEANING_WEIGHT }))
       .sort((a, b) => b.score - a.score)
-    this.options.debug?.(text, scored.map((candidate, index) => ({ label: candidate.node.label, description: candidate.node.description, score: candidate.score + (byMeaning ? similarity[index]! * MEANING_WEIGHT : 0), kept: relevant.some((item) => item.id === candidate.id) && !candidate.weakOnly })), { queries, titles: ranked })
+    this.options.debug?.(text, scored.map((candidate, index) => ({ label: candidate.node.label, description: candidate.node.description, score: candidate.score + (byMeaning ? similarity[index]! * MEANING_WEIGHT : 0), meaning: byMeaning ? similarity[index]! : null, words: candidate.words, named: candidate.named, weakOnly: candidate.weakOnly, kept: relevant.some((item) => item.id === candidate.id) && !candidate.weakOnly })), { queries, titles: ranked })
     const scoredRelevant = relevant
     const unique = scoredRelevant.filter((candidate, index) => scoredRelevant.findIndex((other) => other.id === candidate.id) === index)
     const chosen = query.topic ? { id: query.topic, entity: entities.get(query.topic), node: entities.get(query.topic) ? nodeFromEntity(entities.get(query.topic)!, 'en') : null } : unique.find((candidate) => !candidate.weakOnly)
@@ -834,7 +900,7 @@ export class OldsService {
       // The whole history of a country is not the story's history: keep only the events about its subject.
       const focus = focusStems(text, root.label)
       const historyTitle = country.chaptersSource?.title ?? titleFromWikipediaUrl(root.wikipediaUrl)
-      const focused = focus.length && historyTitle && lang === 'en' ? await this.chronicle(historyTitle, 'en', focus).catch(() => []) : []
+      const focused = historyTitle && lang === 'en' ? await this.chronicleAbout(historyTitle, text, focus) : []
       if (focused.length) country.chronicle = focused
       else delete country.chronicle
       // This year in the country ("2026 in Barbados"): its events about the story, or else its latest events, as the recent backdrop.
@@ -843,7 +909,7 @@ export class OldsService {
         const place = countryPlace(query.countryCode)?.name ?? root.label
         for (const name of [...new Set([place, root.label])]) {
           const title = `${year} in ${name}`
-          const about = lang === 'en' && focus.length ? await this.chronicle(title, 'en', focus, year).catch(() => []) : []
+          const about = lang === 'en' ? await this.chronicleAbout(title, text, focus, { yearHint: year, floor: CHRONICLE_MEANING_FLOOR + 0.05 }) : []
           const latest = about.length ? about : (await this.chronicle(title, 'en', [], year).catch(() => [])).slice(-6)
           if (latest.length) {
             country.chronicle = latest
@@ -909,12 +975,18 @@ export class OldsService {
       }
     }
     const thread = await this.itemThread(chosen.id, 'en')
+    // A long article: with Laya, its dated events closest to this story rather than its earliest and latest.
+    if ((this.options.embed || this.options.meaning) && lang === 'en' && (thread.chronicle?.length ?? 0) >= 12) {
+      const title = titleFromWikipediaUrl(chosen.node.wikipediaUrl)
+      const relevant = title ? await this.chronicleAbout(title, text, [], { keep: 14, floor: 0.15 }) : []
+      if (relevant.length >= 6) thread.chronicle = relevant
+    }
     // A broad topic (a country, region or continent): keep only events about this story's subject.
     const broad = ids(chosen.entity, 'P31').some((id) => BROAD_CLASSES.has(id)) || /\b(region|country|continent|province|state of|subcontinent|territory)\b/i.test(chosen.node.description ?? '') || /^History of /.test(chosen.node.label)
     if (broad && lang === 'en') {
       const focus = focusStems(text, chosen.node.label)
       const title = titleFromWikipediaUrl(chosen.node.wikipediaUrl)
-      thread.chronicle = focus.length && title ? await this.chronicle(title, 'en', focus).catch(() => []) : []
+      thread.chronicle = title ? await this.chronicleAbout(title, text, focus) : []
       if (!thread.chronicle.length) delete thread.chronicle
     }
     const path = await this.pathBack(chosen.entity, chosen.node, countryQid)
@@ -1012,7 +1084,8 @@ export class OldsService {
     // The story as Wikipedia's Current events filed it: its threads, and every dated item under the chosen thread.
     if (filed && !query.topic) {
       context.filedUnder = { threads: filed.item.threads, item: filed.item.text, date: filed.item.date, url: filed.item.url }
-      if (filed.item.threads.length) context.matchedBy = `Wikipedia’s Current events filed this story under ${filed.item.threads.join(' → ')} (${filed.item.date}). ${context.matchedBy}`
+      const viaMeaning = !!eventMeaning && eventMeaning[events.indexOf(filed.item)] != null ? ', matched by meaning with Laya on this Mac' : ''
+      if (filed.item.threads.length) context.matchedBy = `Wikipedia’s Current events filed this story under ${filed.item.threads.join(' → ')} (${filed.item.date}${viaMeaning}). ${context.matchedBy}`
       const chosenTitle = titleFromWikipediaUrl(chosen.node.wikipediaUrl) ?? chosen.node.label
       const filedAs = [...filedThreads, ...filed.item.links].find((title) => title.toLowerCase() === chosenTitle.toLowerCase()) ?? filedThreads[0] ?? null
       const steps = filedAs ? threadItems(events, filedAs) : []
@@ -1080,7 +1153,7 @@ export class OldsService {
 
   /** The first specific subject topic among the related ones ("Xenophobia in South Africa", not "Politics of …"). */
   private async subjectTopic(text: string, country: string, related: OldsRelatedTopic[], allowRelations: boolean): Promise<{ qid: string; title: string } | null> {
-    const family = new Set(relatedQueries(text, country, [], [], allowRelations ? otherCountries(text, country, namedCountryNames(text)) : []).titles)
+    const family = new Set(relatedQueries(text, country, [], [], allowRelations ? otherCountries(text, country, namedCountryNames(text), this.peopleCountries.get(text) ?? []) : []).titles)
     const GENERIC = /^(Politics|Economy|Government|Law|Judiciary|Military|Armed Forces|Foreign relations|Elections|Taxation|Environment|Health|Healthcare|Health care|Education|Climate change|Natural disasters) (of|in) /
     // Families first ("Xenophobia in …"); two countries' relations only when nothing else fits.
     const subject = related.find((topic) => family.has(topic.title) && !GENERIC.test(topic.title) && !/ relations$/.test(topic.title))
@@ -1120,14 +1193,60 @@ export class OldsService {
     return items
   }
 
+  /** Countries of the people a headline names, by headline (see otherCountries). */
+  private readonly peopleCountries = new Map<string, string[]>()
+
+  /** English labels of Wikidata items (labels only: cheap even for countries). */
+  private async labelsOf(qids: string[]): Promise<string[]> {
+    const url = new URL('https://www.wikidata.org/w/api.php')
+    url.search = new URLSearchParams({ action: 'wbgetentities', ids: qids.join('|'), props: 'labels', languages: 'en', format: 'json' }).toString()
+    const payload = await this.getJson(url.toString(), 10_000) as { entities?: Record<string, { labels?: { en?: { value?: string } } }> }
+    return qids.map((qid) => payload.entities?.[qid]?.labels?.en?.value).filter((label): label is string => !!label)
+  }
+
   /** People with articles in 60 or more Wikipedia languages: known worldwide. */
   private async famousAmong(people: WikidataEntity[]): Promise<Set<string>> {
     const ids = [...new Set(people.map((person) => person.id).filter((id): id is string => !!id && isQid(id)))].slice(0, 10)
     if (!ids.length) return new Set()
-    const url = new URL('https://www.wikidata.org/w/api.php')
-    url.search = new URLSearchParams({ action: 'wbgetentities', ids: ids.join('|'), props: 'sitelinks', format: 'json' }).toString()
-    const payload = await this.getJson(url.toString(), 10_000) as { entities?: Record<string, { sitelinks?: Record<string, unknown> }> }
-    return new Set(Object.entries(payload.entities ?? {}).filter(([, entity]) => Object.keys(entity.sitelinks ?? {}).filter((site) => site.endsWith('wiki')).length >= 60).map(([id]) => id))
+    // How many Wikipedias cover a person changes slowly: remembered on this Mac, so a busy or rate-limited Wikidata
+    // never turns a known person (Mbappé) into an unknown one.
+    const known = await this.fameCounts()
+    const missing = ids.filter((id) => known[id] === undefined)
+    if (missing.length) {
+      const url = new URL('https://www.wikidata.org/w/api.php')
+      url.search = new URLSearchParams({ action: 'wbgetentities', ids: missing.join('|'), props: 'sitelinks', format: 'json' }).toString()
+      const payload = await this.getJson(url.toString(), 10_000).catch(() => null) as { entities?: Record<string, { sitelinks?: Record<string, unknown> }> } | null
+      if (payload?.entities) {
+        for (const [id, entity] of Object.entries(payload.entities)) {
+          if (isQid(id)) known[id] = Object.keys(entity.sitelinks ?? {}).filter((site) => site.endsWith('wiki')).length
+        }
+        await this.saveFameCounts(known)
+      }
+    }
+    return new Set(ids.filter((id) => (known[id] ?? 0) >= 60))
+  }
+
+  private fame: Record<string, number> | null = null
+
+  private async fameCounts(): Promise<Record<string, number>> {
+    if (this.fame) return this.fame
+    try {
+      const raw = JSON.parse(await readFile(join(this.options.cacheDir, 'fame.json'), 'utf8')) as unknown
+      this.fame = raw && typeof raw === 'object' && !Array.isArray(raw)
+        ? Object.fromEntries(Object.entries(raw as Record<string, unknown>).filter(([id, count]) => isQid(id) && typeof count === 'number' && Number.isFinite(count)) as Array<[string, number]>)
+        : {}
+    } catch {
+      this.fame = {}
+    }
+    return this.fame
+  }
+
+  private async saveFameCounts(counts: Record<string, number>): Promise<void> {
+    // The latest 2,000 people are plenty; older entries are dropped first.
+    const entries = Object.entries(counts).slice(-2_000)
+    this.fame = Object.fromEntries(entries)
+    await mkdir(this.options.cacheDir, { recursive: true }).catch(() => undefined)
+    await writeFile(join(this.options.cacheDir, 'fame.json'), JSON.stringify(this.fame), { encoding: 'utf8', mode: 0o600 }).catch(() => undefined)
   }
 
   /** A country item's ISO 3166-1 alpha-2 code (P297). */
@@ -1209,6 +1328,8 @@ export class OldsService {
 
 /** Bump when thread contents change shape or selection (v2: history chapters, trivial-event filter; v3: source checks, summaries). */
 /** Wikidata classes for broad places, whose whole history is too wide for one story. */
+/** Below this Laya cosine, a dated sentence is not about the story (calibrated on the Olds sample sets). */
+const CHRONICLE_MEANING_FLOOR = 0.3
 const CURRENT_EVENTS_DAYS = 45
 const CURRENT_EVENTS_TTL_MS = 3 * 60 * 60 * 1_000
 const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']

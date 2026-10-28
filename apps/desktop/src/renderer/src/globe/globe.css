@@ -1874,3 +1874,26 @@
 
 .event-picture.is-loading button { aspect-ratio: 1; display: grid; place-items: center; cursor: default; }
 .event-picture-wait { color: var(--muted); font-size: 11.5px; }
+
+/* What is rising or fading in one place's own news. */
+.place-trends { margin: 4px 0 12px; padding: 2px 14px 0; }
+.place-trends h3 { display: flex; align-items: center; gap: 6px; margin: 0 0 4px; color: var(--warm-white); font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.place-trends.is-rising h3 svg { color: var(--teal); }
+.place-trends.is-fading h3 svg { color: #f0a58a; }
+.place-trends-note { margin: 0 0 8px; color: var(--muted); font-size: 11.5px; line-height: 1.45; }
+.place-trends ol { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.place-trend {
+  display: grid; grid-template-columns: 1fr auto auto; grid-template-areas: 'term change chevron' 'meta meta meta'; align-items: center; gap: 2px 8px;
+  width: 100%; padding: 8px 10px; border: 1px solid var(--hairline); border-radius: 10px; background: rgba(255, 255, 255, 0.03);
+  color: var(--warm-white); font: inherit; text-align: left; cursor: pointer;
+}
+.place-trend:hover { background: rgba(255, 255, 255, 0.06); }
+.place-trend-term { grid-area: term; font-size: 13px; font-weight: 550; text-transform: capitalize; }
+.place-trend-change { grid-area: change; min-width: 30px; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 600; text-align: center; }
+.is-rising .place-trend-change { background: rgba(80, 217, 199, 0.16); color: var(--teal); }
+.is-fading .place-trend-change { background: rgba(240, 165, 138, 0.14); color: #f0a58a; }
+.place-trend small { grid-area: meta; color: var(--muted); font-size: 10.5px; }
+.place-trend-chevron { grid-area: chevron; color: var(--muted); transition: transform 0.2s ease; }
+li.is-open .place-trend-chevron { transform: rotate(180deg); }
+.place-trend-headlines { margin: 6px 0 4px; }
+.globe-nearby-heading { margin: 10px 0 4px; padding: 0 14px; color: var(--muted); font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; }

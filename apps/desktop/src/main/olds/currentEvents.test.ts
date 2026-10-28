@@ -35,6 +35,11 @@ describe('matching a headline', () => {
     expect(best('Round 8 of the 2026 Guam Monster Energy Motocross Championship')).toBeUndefined()
     expect(best('Up-to-date national statistics still months away')).toBeUndefined()
   })
+  it('never matches by meaning a different meeting with the same leader', () => {
+    const witkoff = parseDayPage("*[[Russo-Ukrainian war]]\n**[[United States special envoy]] [[Steve Witkoff]] arrives in [[Saint Petersburg]] to talk with [[Vladimir Putin]] about the [[Russo-Ukrainian war|war]].", '2026-10-21', 'Portal:Current events/2026 October 21')
+    // Laya rates the two "talks with Putin" stories as close (cosine 0.6); Norway and Finland are names the item lacks.
+    expect(matchHeadline(witkoff, 'Norway, Finland’s leaders hold rare talks with Putin', '2026-10-28', 0, null, witkoff.map(() => 0.6))).toEqual([])
+  })
   it('collects a thread’s steps', () => {
     expect(threadItems(items, 'Sudanese civil war (2023–present)').length).toBe(1)
   })

@@ -53,18 +53,14 @@ export function subjectTerms(headline: string, exclude: string[] = []): string[]
   return [...new Set(out)].slice(0, 6)
 }
 
-/** Leaders named in headlines → their country (as of late 2026), for "Norway–Russia relations" from "call with Putin". */
-const LEADERS: Record<string, string> = {
-  Putin: 'Russia', Xi: 'China', Trump: 'United States', Modi: 'India', Zelensky: 'Ukraine', Zelenskyy: 'Ukraine', Netanyahu: 'Israel',
-  Erdogan: 'Turkey', Erdoğan: 'Turkey', Macron: 'France', Starmer: 'United Kingdom', Carney: 'Canada', Lula: 'Brazil', Merz: 'Germany',
-  Meloni: 'Italy', Sheinbaum: 'Mexico', Milei: 'Argentina', Khamenei: 'Iran', Pezeshkian: 'Iran', Takaichi: 'Japan', Albanese: 'Australia',
-  Ramaphosa: 'South Africa', Orbán: 'Hungary', Orban: 'Hungary', Lukashenko: 'Belarus', Maduro: 'Venezuela', Sisi: 'Egypt', Tinubu: 'Nigeria',
-}
-
-/** Other countries a headline brings in, by name or by their leader. */
-export function otherCountries(headline: string, country: string | null, named: string[]): string[] {
-  const leaders = Object.entries(LEADERS).filter(([name]) => new RegExp(`\\b${name}\\b`).test(headline)).map(([, place]) => place)
-  return [...new Set([...named, ...leaders])].filter((name) => name !== country).slice(0, 3)
+/**
+ * Other countries a headline brings in: the ones it names, and the countries
+ * of the people it names (from Wikidata citizenship, found at runtime, so a
+ * new leader is covered the day they appear in the news).
+ */
+export function otherCountries(headline: string, country: string | null, named: string[], people: string[] = []): string[] {
+  void headline
+  return [...new Set([...named, ...people])].filter((name) => name !== country).slice(0, 3)
 }
 
 /** Title candidates to look up, most specific first. */

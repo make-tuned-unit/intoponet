@@ -4,6 +4,7 @@ import type { NewsHeadline, RisingTerm, WikiNewsItem } from '../../../shared/new
 import { dayPhase, dayPhaseText } from '../earth/sun'
 import { BiggerPicture } from './BiggerPicture'
 import { EventView } from './EventView'
+import { PlaceTrendList, type PlaceTrendState } from './PlaceTrendList'
 import { CommunityBeacons } from '../beacons/CommunityBeacons'
 import { WorldStories } from './WorldStories'
 import type { GlobalStory } from '../../../shared/news/globalStories'
@@ -426,6 +427,7 @@ export function SignalPanel({
   translation,
   onHeadlineHistory,
   coverageFor,
+  placeTrends,
   contextFor,
   onOldsTopic,
   world,
@@ -444,6 +446,8 @@ export function SignalPanel({
   onSave: (signal: GlobeSignal) => void
   onFly: (signal: GlobeSignal) => void
   /** Open The Olds for this signal, when it has a history to follow. */
+  /** At a place: what is rising and fading in its own news. */
+  placeTrends?: PlaceTrendState | null | undefined
   /** News that names a natural event (from the local news digest). */
   coverageFor?: ((signal: GlobeSignal) => Array<{ title: string; url: string; publisher: string; publishedAt: string }>) | undefined
   onHistory: ((signal: GlobeSignal) => void) | null
@@ -634,7 +638,18 @@ export function SignalPanel({
                     translation={translation}
                   />
                 )}
-                {listView === 'rising' && risingTerms.length > 0 && (
+                {placeTrends && (listView === 'rising' || listView === 'fading') && (
+                  <PlaceTrendList
+                    state={placeTrends}
+                    direction={listView}
+                    now={now}
+                    onOpen={onOpen}
+                    translation={translation}
+                    onHistory={onHeadlineHistory ? (headline, english) => onHeadlineHistory(headline, english, null) : undefined}
+                  />
+                )}
+                {placeTrends && (listView === 'rising' || listView === 'fading') && signals.length > 0 && <h3 className="globe-nearby-heading">Signals nearby</h3>}
+                {!placeTrends && listView === 'rising' && risingTerms.length > 0 && (
                   <section className="globe-rising" aria-label="Rising worldwide">
                     <h3><Sparkles size={12} aria-hidden="true" /> Rising worldwide</h3>
                     <div className="globe-rising-terms">

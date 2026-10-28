@@ -33,6 +33,9 @@ const MIN_ANSWER_SIMILARITY = 0.3
 const MIN_RELATED_SIMILARITY = 0.25
 const CHUNK_TOKENS = 220
 const EMBED_BATCH = 12
+const TEXT_BATCH = 32
+const TEXT_CACHE = 8_000
+const LAYA_DIMENSIONS = LAYA_MODEL.dimensions
 
 type ScoredChunk = { recordId: string; chunk: Chunk; similarity: number }
 
@@ -341,6 +344,32 @@ export class LayaService {
       const [q, ...rest] = await embedder.embed([query, ...texts].map((text) => text.slice(0, LAYA_LIMITS.textLength)))
       if (!q || rest.length !== texts.length) return null
       return rest.map((vector) => dot(normalise(q), normalise(vector)))
+    } catch {
+      return null
+    }
+  }
+
+  /**
+   * Unit vectors for many short texts (headlines, news items, sentences), for
+   * meaning comparisons elsewhere on this Mac (The Olds). Cached by text, so a
+   * day's news items are embedded once; null when Laya is off.
+   */
+  private textVectors = new Map<string, Float32Array>()
+  async embedTexts(texts: string[]): Promise<Float32Array[] | null> {
+    await this.loadSettings()
+    if (!this.enabled || texts.length === 0) return null
+    try {
+      const embedder = await this.ready()
+      const keys = texts.map((text) => text.slice(0, LAYA_LIMITS.textLength))
+      const missing = [...new Set(keys.filter((key) => !this.textVectors.has(key)))]
+      for (let i = 0; i < missing.length; i += TEXT_BATCH) {
+        const batch = missing.slice(i, i + TEXT_BATCH)
+        const vectors = await embedder.embed(batch)
+        batch.forEach((key, index) => { if (vectors[index]) this.textVectors.set(key, normalise(vectors[index]!)) })
+      }
+      // Keep the cache bounded: drop the oldest entries.
+      while (this.textVectors.size > TEXT_CACHE) this.textVectors.delete(this.textVectors.keys().next().value!)
+      return keys.map((key) => this.textVectors.get(key) ?? new Float32Array(LAYA_DIMENSIONS))
     } catch {
       return null
     }

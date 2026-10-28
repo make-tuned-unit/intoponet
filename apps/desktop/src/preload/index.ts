@@ -120,6 +120,7 @@ const browserHost: BrowserHostApi = {
   },
   getFieldSnapshot: () => invoke({ type: 'get-field-snapshot' }) as Promise<string | null>,
   getNewsDigest: () => invoke({ type: 'get-news-digest' }) as Promise<string | null>,
+  getPlaceTrends: (place: { countryCode: string; name?: string; aliases?: string[]; geonameId?: string }) => invoke({ type: 'get-place-trends', ...place }) as Promise<string | null>,
   subscribe: (listener) => {
     const handler = (_event: Electron.IpcRendererEvent, payload: BrowserHostEvent): void => {
       listener(payload)

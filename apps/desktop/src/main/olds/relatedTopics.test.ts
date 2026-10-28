@@ -23,8 +23,9 @@ describe('province-level topics', () => {
 })
 
 describe('two countries in one story', () => {
-  it('looks up their relations, including countries brought in by a leader', () => {
-    const others = otherCountries('Norway and Finland leaders hold rare call with Putin', 'Norway', ['Norway', 'Finland'])
+  it('looks up their relations, including the countries of people it names', () => {
+    // Russia comes from Putin's citizenship on Wikidata (looked up at runtime).
+    const others = otherCountries('Norway and Finland leaders hold rare call with Putin', 'Norway', ['Norway', 'Finland'], ['Russia'])
     expect(others).toEqual(['Finland', 'Russia'])
     const { titles } = relatedQueries('Norway and Finland leaders hold rare call with Putin', 'Norway', [], [], others)
     expect(titles).toContain('Finland–Norway relations')

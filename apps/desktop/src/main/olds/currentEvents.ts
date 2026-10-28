@@ -98,6 +98,9 @@ const INSTITUTIONAL = new Set('president presid national natio assembly assem mi
 const STOP = new Set('but yet so the a an and or of in on at to for from by with as is are was were be been it its this that these those after before over into about says said say new will could would may might has have had not no up out more than how why what who when where amid against his her their our we they he she you i over under during while also just still into onto upon via per one two three four five six seven eight nine ten first last year years day days week weeks month months people killed dead report reports reported according least more most some many'.split(' '))
 
 /** Content words of a text, as stems ("evacuates" ~ "evacuate", "votes" ~ "vote"), with names marked 2. */
+/** One-word country names, which are names wherever they stand in a headline. */
+const COUNTRY_NAMES = new Set(COUNTRY_ROWS.map((row) => row[1]).filter((name) => !name.includes(' ')))
+
 export function terms(text: string): Map<string, number> {
   const out = new Map<string, number>()
   const words = text.replace(/[’']s\b/g, '').split(/[^\p{L}\d]+/u).filter(Boolean)
@@ -107,7 +110,9 @@ export function terms(text: string): Map<string, number> {
     const lower = word.toLowerCase()
     if (lower.length < 3 || STOP.has(lower) || /^\d+$/.test(lower)) return
     const stem = stemOf(lower)
-    const weight = !titleCase && /^\p{Lu}/u.test(word) && index > 0 && !INSTITUTIONAL.has(lower) && !INSTITUTIONAL.has(stem) ? 2 : 1
+    // The first word is capitalised anyway, so it says nothing, unless it is a country ("Norway, Finland's leaders…").
+    const capitalised = /^\p{Lu}/u.test(word) && (index > 0 || COUNTRY_NAMES.has(word))
+    const weight = !titleCase && capitalised && !INSTITUTIONAL.has(lower) && !INSTITUTIONAL.has(stem) ? 2 : 1
     out.set(stem, Math.max(out.get(stem) ?? 0, weight))
   })
   return out
@@ -128,9 +133,35 @@ export type CurrentEventMatch = { item: CurrentEventItem; score: number; matched
  */
 export { isTitleCase } from './headline'
 import { isTitleCase } from './headline'
+import { COUNTRY_ROWS } from '../../shared/places/placeData'
 
 /** `minNames`: names that must match (untranslated headlines are matched on names alone). */
-export function matchHeadline(items: CurrentEventItem[], headline: string, today: string, minNames = 0, country: string | null = null): CurrentEventMatch[] {
+/**
+ * Thresholds for matching by meaning (Laya, all-MiniLM-L6-v2 cosine). Calibrated
+ * on the Olds sample sets (docs/research/olds-linking.md): the same story told
+ * two ways scores ~0.55–0.8; different stories sharing a place or institution
+ * words ~0.15–0.4.
+ */
+export const CE_MEANING = { veto: 0.35, withWords: 0.5, alone: 0.62 } as const
+
+/**
+ * The items worth comparing by meaning: those sharing the most words with the
+ * headline (Laya is ~0.1 s per text, so it reads a shortlist, not 800 items).
+ */
+export function shortlist(items: CurrentEventItem[], headline: string, size = 24): number[] {
+  const wanted = terms(headline)
+  return items
+    .map((item, index) => {
+      const have = terms(`${item.text} ${item.links.join(' ')} ${item.threads.join(' ')}`)
+      return { index, weight: [...wanted.entries()].reduce((sum, [stem, weight]) => sum + (have.has(stem) ? weight : 0), 0) }
+    })
+    .filter((entry) => entry.weight > 0)
+    .sort((a, b) => b.weight - a.weight)
+    .slice(0, size)
+    .map((entry) => entry.index)
+}
+
+export function matchHeadline(items: CurrentEventItem[], headline: string, today: string, minNames = 0, country: string | null = null, meaning?: number[] | null): CurrentEventMatch[] {
   const wanted = terms(headline)
   // A word is a name if the headline writes it as one; in a title-case headline, if the item does.
   const titleCase = isTitleCase(headline)
@@ -138,22 +169,31 @@ export function matchHeadline(items: CurrentEventItem[], headline: string, today
   if (wanted.size < 2) return []
   const todayMs = Date.parse(today)
   const out: CurrentEventMatch[] = []
-  for (const item of items) {
+  items.forEach((item, index) => {
     const have = terms(`${item.text} ${item.links.join(' ')}`)
     for (const thread of item.threads) for (const [stem] of terms(thread)) if (!have.has(stem)) have.set(stem, 1)
     const matched = [...wanted.keys()].filter((stem) => have.has(stem))
     const weightOf = (stem: string): number => (titleCase ? Math.max(wanted.get(stem)!, have.get(stem) ?? 1) : wanted.get(stem)!)
     const weight = matched.reduce((sum, stem) => sum + weightOf(stem), 0)
     const names = matched.filter((stem) => weightOf(stem) === 2).length
-    if (matched.length < 2 || (names < 1 && matched.length < 3) || names < minNames) continue
     const coverage = Math.min(1, weight / (total + names))
-    if (coverage < 0.45) continue
     // An item that never mentions the story's country (a local paper's story) needs a much closer match.
     const mentionsCountry = !country || `${item.text} ${item.links.join(' ')} ${item.threads.join(' ')}`.toLowerCase().includes(country.toLowerCase().slice(0, Math.max(4, country.length - 2)))
-    if (!mentionsCountry && (coverage < 0.7 || names < 2)) continue
+    const byWords = matched.length >= 2 && (names >= 1 || matched.length >= 3) && names >= minNames && coverage >= 0.45 && (mentionsCountry || (coverage >= 0.7 && names >= 2))
     const ageDays = Math.max(0, (todayMs - Date.parse(item.date)) / 86_400_000)
-    out.push({ item, score: coverage - ageDays * 0.004, matched })
-  }
+    const cosine = meaning?.[index]
+    if (cosine === undefined || cosine === null) {
+      if (byWords) out.push({ item, score: coverage - ageDays * 0.004, matched })
+      return
+    }
+    // With Laya: the same story in other words is found by meaning; a word match whose meaning is clearly different is not.
+    // Medium meaning needs the headline's people and places too: "Norway, Finland talk with Putin" is not
+    // the item about a US envoy meeting Putin (same name, cosine 0.6).
+    const headlineNames = [...wanted.values()].filter((weight) => weight === 2).length
+    const namesAgree = headlineNames === 0 || names >= Math.ceil(headlineNames / 2)
+    const byMeaning = (cosine >= CE_MEANING.alone && matched.length >= 1 && namesAgree) || (cosine >= CE_MEANING.withWords && matched.length >= 2 && namesAgree && (mentionsCountry || names >= 1))
+    if ((byWords && cosine >= CE_MEANING.veto) || byMeaning) out.push({ item, score: cosine + coverage * 0.5 - ageDays * 0.004, matched })
+  })
   return out.sort((a, b) => b.score - a.score)
 }
 

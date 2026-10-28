@@ -158,6 +158,8 @@ export interface BrowserHostApi {
   deletePrivateLibrary(): Promise<void>
   getFieldSnapshot(): Promise<string | null>
   getNewsDigest(): Promise<string | null>
+  /** What is rising and fading in one place's news (JSON), or null before the first digest. */
+  getPlaceTrends(place: { countryCode: string; name?: string; aliases?: string[]; geonameId?: string }): Promise<string | null>
   subscribe(listener: (event: BrowserHostEvent) => void): () => void
 }
 
@@ -197,6 +199,8 @@ export type BrowserHostCommand =
   | { type: 'delete-private-library' }
   | { type: 'get-field-snapshot' }
   | { type: 'get-news-digest' }
+  /** What is rising and fading in one place's news (a country, or a city by name). */
+  | { type: 'get-place-trends'; countryCode: string; name?: string; aliases?: string[]; geonameId?: string }
 
 const commandTypes = new Set<BrowserHostCommand['type']>([
   'open',
@@ -229,6 +233,7 @@ const commandTypes = new Set<BrowserHostCommand['type']>([
   'delete-private-library',
   'get-field-snapshot',
   'get-news-digest',
+  'get-place-trends',
 ])
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -346,6 +351,17 @@ export function parseBrowserHostCommand(value: unknown): BrowserHostCommand {
         throw new Error('Invalid private library.')
       }
       return { type, payload: value['payload'] }
+    case 'get-place-trends': {
+      const code = value['countryCode']
+      const name = value['name']
+      const aliases = value['aliases']
+      const geonameId = value['geonameId']
+      if (geonameId !== undefined && (typeof geonameId !== 'string' || !/^\d{1,10}$/.test(geonameId))) throw new Error('Invalid place id.')
+      if (typeof code !== 'string' || !/^[A-Z]{2}$/.test(code)) throw new Error('Invalid place.')
+      if (name !== undefined && (typeof name !== 'string' || name.length > 120)) throw new Error('Invalid place name.')
+      if (aliases !== undefined && (!Array.isArray(aliases) || aliases.length > 8 || aliases.some((alias) => typeof alias !== 'string' || alias.length > 120))) throw new Error('Invalid place names.')
+      return { type, countryCode: code, ...(typeof name === 'string' && name ? { name } : {}), ...(Array.isArray(aliases) ? { aliases: aliases as string[] } : {}), ...(typeof geonameId === 'string' ? { geonameId } : {}) }
+    }
     case 'read-private-library':
     case 'delete-private-library':
     case 'get-field-snapshot':

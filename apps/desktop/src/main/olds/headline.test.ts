@@ -56,11 +56,18 @@ describe('meaning check (Laya)', () => {
     expect(keepCandidate(true, null)).toBe(true)
     expect(keepCandidate(false, null)).toBe(false)
   })
-  it('accepts a close meaning without shared words, and rejects an unrelated one despite them', () => {
-    expect(keepCandidate(false, 0.6)).toBe(true)
+  it('rescues a close meaning only for a topic that passed every other check, and vetoes an unrelated one', () => {
+    expect(keepCandidate(false, 0.6, true)).toBe(true)
+    // "BPA Worldwide" for a Barbados police association: close-ish meaning, but it failed the rules.
+    expect(keepCandidate(false, 0.6, false)).toBe(false)
     expect(keepCandidate(true, 0.1)).toBe(false)
     expect(keepCandidate(true, 0.3)).toBe(true)
     expect(keepCandidate(false, 0.3)).toBe(false)
+  })
+  it('never vetoes a topic the headline names in full', () => {
+    // "Dubai" for "What's new at Dubai Fitness Challenge": a city's description reads nothing like a fitness story.
+    expect(keepCandidate(true, 0.1, false, true)).toBe(true)
+    expect(keepCandidate(false, 0.1, false, true)).toBe(false)
   })
 })
 

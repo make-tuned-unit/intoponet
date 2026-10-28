@@ -1,0 +1,474 @@
+{
+ "labelled": "2026-10-28",
+ "note": "Hand-judged acceptable topics for live headlines. News moves on: refresh labels when Wikipedia changes.",
+ "stories": [
+  {
+   "title": "Dinala visits Toleza Farm, Kachenga Police Unit",
+   "countryCode": "MW",
+   "lang": "en-MW",
+   "accept": "Dinala|Malawi"
+  },
+  {
+   "title": "Up-to-date national statistics still months away",
+   "countryCode": "GG",
+   "lang": "en-GG",
+   "accept": "Guernsey"
+  },
+  {
+   "title": "Mbappe apologises for Mao Zedong comment after Chinese sponsors drop him",
+   "countryCode": "AR",
+   "lang": "en",
+   "accept": "Mbapp"
+  },
+  {
+   "title": "Legal bid to overturn Drumcree march ban fails",
+   "countryCode": "GB",
+   "lang": "en-GB",
+   "accept": "Drumcree"
+  },
+  {
+   "title": "Challenge to Drumcree Orange Order parade ban fails in Belfast High Court",
+   "countryCode": "IE",
+   "lang": "en-IE",
+   "accept": "Drumcree|Orange (Order|walk)|Parades in Northern Ireland"
+  },
+  {
+   "title": "Polémique Mbappé en Chine : le Real Madrid s'excuse à son tour pour les propos sur Mao Zedong",
+   "countryCode": "LT",
+   "lang": "fr",
+   "accept": "Mbapp|Real Madrid"
+  },
+  {
+   "title": "King Charles to discuss legacy of slavery with Commonwealth leaders at summit",
+   "countryCode": "GY",
+   "lang": "en",
+   "accept": "Commonwealth Heads of Government|Charles III"
+  },
+  {
+   "title": "PM urges Japan's Uniqlo to expand investment in Bangladesh",
+   "countryCode": "BD",
+   "lang": "en-BD",
+   "accept": "Bangladesh|Uniqlo"
+  },
+  {
+   "title": "Africa’s ‘unprecedented’ Ebola outbreak could reach UK, says top health official",
+   "countryCode": "MU",
+   "lang": "en",
+   "accept": "2026 Ebola"
+  },
+  {
+   "title": "In Photos: China Begins Its Weeklong National Day Holiday",
+   "countryCode": "CN",
+   "lang": "en-CN",
+   "accept": "National Day|Golden Week|^China$"
+  },
+  {
+   "title": "Culture and sports to merge into new bureau next month",
+   "countryCode": "MO",
+   "lang": "en-MO",
+   "accept": "Macau"
+  },
+  {
+   "title": "Wilson Neves lança livro para o sector bancário",
+   "countryCode": "AO",
+   "lang": "pt-AO",
+   "accept": "Angola|Banking"
+  },
+  {
+   "title": "Almenys 46 morts en un accident de tren a Urda, Toledo",
+   "countryCode": "AD",
+   "lang": "ca-AD",
+   "accept": "Toledo train|Urda|Spain|Andorra"
+  },
+  {
+   "title": "How Ethiopia Became Russia’s Longstanding and Reliable Partner in Africa",
+   "countryCode": "ET",
+   "lang": "en-ET",
+   "accept": "Ethiopia–Russia"
+  },
+  {
+   "title": "Fin des travaux de signalisation sur 605 kilomètres de la rivière Kasaï",
+   "countryCode": "CD",
+   "lang": "fr-CD",
+   "accept": "Kasa[iï]"
+  },
+  {
+   "title": "BPA head: Cops leaving for higher pay, better terms",
+   "countryCode": "BB",
+   "lang": "en-BB",
+   "accept": "Barbados"
+  },
+  {
+   "title": "Israel Votes, But Who Wins?",
+   "countryCode": "BH",
+   "lang": "en-BH",
+   "accept": "2026 Israeli legislative election"
+  },
+  {
+   "title": "Революционный суд Ирана приговорил к пяти годам претендующего на «Оскар» кинорежиссера Панахи",
+   "countryCode": "BY",
+   "lang": "ru-BY",
+   "accept": "Panahi|Revolutionary Court|Iran"
+  },
+  {
+   "title": "Round 8 of the 2026 Guam Monster Energy Motocross Championship",
+   "countryCode": "GU",
+   "lang": "en-GU",
+   "accept": "Guam|[Mm]otocross"
+  },
+  {
+   "title": "Bruno Rodríguez lidera un acto de repudio contra el embajador de EE UU en la Asamblea General de la ONU",
+   "countryCode": "CU",
+   "lang": "es-CU",
+   "accept": "General Assembly|Cuba|Bruno Rodr"
+  },
+  {
+   "title": "Myanmar regime imprisons two Islamic teachers and seizes mosque",
+   "countryCode": "MM",
+   "lang": "en-MM",
+   "accept": "Myanmar"
+  },
+  {
+   "title": "\"Eeuwige\" wereldreis van Amerikaans cruiseschip strandt in Cambodja, verschillende bewoners dakloos",
+   "countryCode": "BE",
+   "lang": "nl-BE",
+   "accept": "Cambodia|[Cc]ruise"
+  },
+  {
+   "title": "BUEI To Host Annual Halloween Party",
+   "countryCode": null,
+   "lang": "en-BM",
+   "accept": "Bermuda"
+  },
+  {
+   "title": "Trump shows off tanker with ‘1m barrels of oil’ and floats Venezuela as 51st state",
+   "countryCode": "AR",
+   "lang": null,
+   "accept": "Venezuela"
+  },
+  {
+   "title": "Machado’s Return to Venezuela Tests Limits of U.S. Sway",
+   "countryCode": "VE",
+   "lang": "en",
+   "accept": "Venezuela|Machado"
+  },
+  {
+   "title": "Real Madrid issues public apology to China over Mbappé's Mao Zedong comments",
+   "countryCode": "NZ",
+   "lang": "en-NZ",
+   "accept": "Mbapp|Real Madrid"
+  },
+  {
+   "title": "Allahabad HC lawyers stage protest over alleged misbehaviour by judge, vandalise courtroom furniture",
+   "countryCode": "IN",
+   "lang": "en-IN",
+   "accept": "Allahabad"
+  },
+  {
+   "title": "Norway, Finland’s leaders hold rare talks with Putin",
+   "countryCode": "BS",
+   "lang": "en",
+   "accept": "Putin|Russia relations|Norway|Finland"
+  },
+  {
+   "title": "Accidente tren Toledo deja múltiples muertos y heridos",
+   "countryCode": "AR",
+   "lang": "es-DO",
+   "accept": "Toledo train"
+  },
+  {
+   "title": "India news: Cyclone Arnab turns deadly after landfall",
+   "countryCode": "IN",
+   "lang": "en",
+   "accept": "[Cc]yclone|Arnab"
+  },
+  {
+   "title": "El Gobierno endurece el control financiero y fiscal de las entidades públicas",
+   "countryCode": "GQ",
+   "lang": "es-GQ",
+   "accept": "Equatorial Guinea"
+  },
+  {
+   "title": "Prado rams into electric pole after high-speed police chase in Kisumu",
+   "countryCode": "KE",
+   "lang": "en-KE",
+   "accept": "Kisumu|Kenya"
+  },
+  {
+   "title": "Golf simulators, football challenges: What’s new at Dubai Fitness Challenge 2026",
+   "countryCode": "AE",
+   "lang": "en-AE",
+   "accept": "Dubai"
+  },
+  {
+   "title": "FNB launches enhanced eWallet Plus service",
+   "countryCode": "SZ",
+   "lang": "en-SZ",
+   "accept": "Eswatini|FNB|First National Bank"
+  },
+  {
+   "title": "Report: ISF pursuing 3 men who escorted Hezbollah explosives truck",
+   "countryCode": "LB",
+   "lang": "en-LB",
+   "accept": "Hezbollah|Lebanon"
+  },
+  {
+   "title": "Xochimilco se une al paro indefinido en la UAM, suman 4 de 5 unidades",
+   "countryCode": "MX",
+   "lang": "es-MX",
+   "accept": "UAM|Autonomous Metropolitan"
+  },
+  {
+   "title": "Sin acuerdo por el salario mínimo de 2027, decisión queda en manos del presidente Bernardo Arévalo",
+   "countryCode": "GT",
+   "lang": "es-GT",
+   "accept": "Guatemala|[Mm]inimum wage|Arévalo"
+  },
+  {
+   "title": "CM Vijay inaugurates electrical labs at 30 govt industrial training institutes in Tamil Nadu",
+   "countryCode": "IN",
+   "lang": "en-IN",
+   "accept": "Tamil Nadu|Vijay"
+  },
+  {
+   "title": "Lluvias en Perú HOY EN VIVO: Pronóstico del Senamhi y regiones en alerta al norte",
+   "countryCode": "PE",
+   "lang": "es-PE",
+   "accept": "Peru|[Rr]ain|Senamhi|El Niño"
+  },
+  {
+   "title": "NOCZ unveils Team Zambia kit for Dakar 2026, as 6 athletes set for Games",
+   "countryCode": "ZM",
+   "lang": "en-ZM",
+   "accept": "Youth Olympics|Zambia"
+  },
+  {
+   "title": "Sommet Russie-Afrique : Cheikh Niang conduit la délégation sénégalaise à Moscou",
+   "countryCode": "SN",
+   "lang": "fr-SN",
+   "accept": "Russia–Africa Summit"
+  },
+  {
+   "title": "Minister and Law Society agree on ‘focused’ engagement aimed at resolving legal aid row",
+   "countryCode": "IE",
+   "lang": "en-IE",
+   "accept": "Ireland|Law Society of Ireland|[Ll]egal aid"
+  },
+  {
+   "title": "Holness points to sabotage",
+   "countryCode": "JM",
+   "lang": "en-JM",
+   "accept": "Andrew Holness|Jamaica"
+  },
+  {
+   "title": "Iran’s Pezeshkian tells Putin Middle East can solve problems without US",
+   "countryCode": null,
+   "lang": "en-AF",
+   "accept": "Pezeshkian|Iran"
+  },
+  {
+   "title": "APNU+AFC’s undisclosed ExxonMobil signing bonus before PAC",
+   "countryCode": "GY",
+   "lang": "en-GY",
+   "accept": "Guyana|APNU|ExxonMobil"
+  },
+  {
+   "title": "Cayman athletes depart for Dakar Youth Olympic Games",
+   "countryCode": "KY",
+   "lang": "en-KY",
+   "accept": "Youth Olympics"
+  },
+  {
+   "title": "Le président de l’Assemblée nationale reçoit la secrétaire d’Etat parlementaire au ministère allemand de la Justice",
+   "countryCode": "MR",
+   "lang": "fr-MR",
+   "accept": "Mauritania|National Assembly"
+  },
+  {
+   "title": "Forty-two students honoured at Dominica’s inaugural National Schools’ Awards ceremony for academic excellence",
+   "countryCode": "DM",
+   "lang": "en-DM",
+   "accept": "Dominica$|Dominica (?!national football)"
+  },
+  {
+   "title": "Agricultura pesa 23% no PIB, mas continua sem protecção dos seguros",
+   "countryCode": "AO",
+   "lang": "pt-AO",
+   "accept": "Agriculture in Angola|Angola"
+  },
+  {
+   "title": "CIVIS : la distribution d'eau perturbée aux Avirons",
+   "countryCode": "RE",
+   "lang": "fr-RE",
+   "accept": "Avirons|Réunion"
+  },
+  {
+   "title": "Økokrim vil løslate alle siktede for bedrageri mot Nato",
+   "countryCode": "NO",
+   "lang": "nb-NO",
+   "accept": "NATO|Økokrim|Norway"
+  },
+  {
+   "title": "Vanessa Emde: Berliner Linke vertagt Entscheidung über umstrittene Abgeordnete weiter",
+   "countryCode": "DE",
+   "lang": "de-DE",
+   "accept": "Berlin|Linke|The Left"
+  },
+  {
+   "title": "ANNOUNCEMENT: Division of Agriculture",
+   "countryCode": "FM",
+   "lang": "en-FM",
+   "accept": "Micronesia|Agriculture"
+  },
+  {
+   "title": "Tône/artisanat : Des restaurateurs se forment à la gestion moderne et à l’hygiène",
+   "countryCode": "TG",
+   "lang": "fr-TG",
+   "accept": "Togo"
+  },
+  {
+   "title": "Flávio Bolsonaro huye a EE. UU. tras su derrota electoral ante Lula",
+   "countryCode": "NI",
+   "lang": "es-NI",
+   "accept": "Flávio Bolsonaro|Brazilian general election"
+  },
+  {
+   "title": "Bernardo on saying Jinggoy got P573 million in kickbacks: It's hard to implicate a friend",
+   "countryCode": "PH",
+   "lang": "en-PH",
+   "accept": "Philippines|Jinggoy|Estrada|[Ff]lood control|Bernardo Bernardo"
+  },
+  {
+   "title": "En Serbie, un assaillant abattu près de l’ambassade israélienne à Belgrade ; Israël confirme une tentative d’« attentat terroriste »",
+   "countryCode": "FR",
+   "lang": "fr-FR",
+   "accept": "Belgrade|Israeli embassy"
+  },
+  {
+   "title": "Harry Kane: Ballon d’Or for Bayern Munich striker",
+   "countryCode": "EE",
+   "lang": "en",
+   "accept": "Ballon d'Or|Harry Kane"
+  },
+  {
+   "title": "Where does Arsenal’s Fleetwood humiliation place in English cup shocks?",
+   "countryCode": "AL",
+   "lang": "en",
+   "accept": "Fleetwood|Arsenal|FA Cup|EFL Cup"
+  },
+  {
+   "title": "Nedbank buys its way into East Africa’s banking battle",
+   "countryCode": "UG",
+   "lang": "en-UG",
+   "accept": "Nedbank|Banking"
+  },
+  {
+   "title": "Carnival Queens set for regional pageants",
+   "countryCode": "LC",
+   "lang": "en-LC",
+   "accept": "[Cc]arnival|Saint Lucia"
+  },
+  {
+   "title": "Тофан: Власти расследуют возможную причастность иностранных государств к недавней кибератаке на Молдову",
+   "countryCode": "MD",
+   "lang": "ru-MD",
+   "accept": "Moldova|[Cc]yber"
+  },
+  {
+   "title": "Jamaica Association to host fundraiser with premiere of thriller 'Stew Peas'",
+   "countryCode": "VI",
+   "lang": "en-VI",
+   "accept": "Jamaica$|Stew Peas \\(film\\)|Virgin Islands"
+  },
+  {
+   "title": "Israeli artillery shells Majdalzoun, al-Mansouri and Zawtar al-Sharqiyeh",
+   "countryCode": "LB",
+   "lang": "en-LB",
+   "accept": "Lebanon|Zawtar"
+  },
+  {
+   "title": "Pljevlja raspisala konkurs za studentske nagrade: Uslov prosjek...",
+   "countryCode": "ME",
+   "lang": "sr-ME",
+   "accept": "Pljevlja|Montenegro"
+  },
+  {
+   "title": "Il \"était mû par la haine et il a tué pour ça\" : Kévin T., suspect de l'attentat de Trappes, un profil \"nourri d'idéologie raciste\"",
+   "countryCode": "FR",
+   "lang": "fr-FR",
+   "accept": "Trappes"
+  },
+  {
+   "title": "Melania or the pope: Who brokered Russia-Ukraine ceasefire in Oleshky?",
+   "countryCode": null,
+   "lang": "en",
+   "accept": "Oleshky"
+  },
+  {
+   "title": "South Africa Deploys 500 Soldiers to Quell Anti-Immigration Violence",
+   "countryCode": "GH",
+   "lang": "en",
+   "accept": "[Xx]enophobia|Immigration to South Africa"
+  },
+  {
+   "title": "States seeks interest for possible housing sites",
+   "countryCode": "GG",
+   "lang": "en-GG",
+   "accept": "Guernsey"
+  },
+  {
+   "title": "Kacha, Mastercard Ink Deal to Expand Card Issuance in Ethiopia",
+   "countryCode": "ET",
+   "lang": "en-ET",
+   "accept": "Banking in Ethiopia|Ethiopia"
+  },
+  {
+   "title": "US says five dead in strike on alleged drug-smuggling boat",
+   "countryCode": "JM",
+   "lang": "en-JM",
+   "accept": "Operation Southern Spear|drug"
+  },
+  {
+   "title": "Jay-Z to perform at Super Bowl half-time show",
+   "countryCode": "GT",
+   "lang": "en",
+   "accept": "Super Bowl"
+  },
+  {
+   "title": "India Evacuates Tens of Thousands as Cyclone Arnab Approaches",
+   "countryCode": "LK",
+   "lang": "en",
+   "accept": "[Cc]yclone|Arnab"
+  },
+  {
+   "title": "Jordan strikes militant groups in Syria after church attack",
+   "countryCode": null,
+   "lang": "en",
+   "accept": "Jordan|Syria|church"
+  },
+  {
+   "title": "DR Congo reports over 10,000 Ebola cases as the outbreak spreads abroad, with no approved vaccine or specific treatment for the Bundibugyo virus",
+   "countryCode": "GH",
+   "lang": "en",
+   "accept": "2026 Ebola"
+  },
+  {
+   "title": "Lula’s win in Brazil deals blow to Trump’s Latin America push: former China envoy",
+   "countryCode": "BR",
+   "lang": "en",
+   "accept": "2026 Brazilian general election"
+  },
+  {
+   "title": "The Key Election Issues Dividing Israelis as They Vote",
+   "countryCode": null,
+   "lang": "en",
+   "accept": "2026 Israeli legislative election"
+  },
+  {
+   "title": "Germany's Merz says erosion of global order means middle powers in Europe and Asia must be more assertive",
+   "countryCode": "EG",
+   "lang": "en",
+   "accept": "Merz|German government|Germany"
+  }
+ ]
+}

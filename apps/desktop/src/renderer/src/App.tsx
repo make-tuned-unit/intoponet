@@ -134,6 +134,8 @@ import { PinEditor, type PinEditorValue } from './PinEditor'
 import { createGlobeProjection, type GlobeMarker } from './globe/GlobeMarkers'
 import { CountryNames, createCountryView } from './globe/CountryNames'
 import { headlinesAbout } from './globe/naturalEvent'
+import type { PlaceTrendState } from './globe/PlaceTrendList'
+import type { PlaceTrends } from '../../shared/news/placeTrends'
 import { countryAt, countryShape } from '../../shared/places/countryAt'
 import { GlobeOverlay, type GlobeLabel } from './globe/GlobeOverlay'
 import { GlobeHeader, HoverCardContent, LayerCard, SignalPanel, type FieldView, type ListView } from './globe/GlobeHud'
@@ -164,7 +166,7 @@ import {
   fadingSignals,
 } from './globe/globeSignals'
 import { dayPhaseText } from './earth/sun'
-import { countryPlace, nearestCountry, placesNamedIn, PLACE_ATTRIBUTION, placeLabel, searchPlaces, type Place } from '../../shared/places/places'
+import { cityAliases, countryPlace, nearestCountry, placesNamedIn, PLACE_ATTRIBUTION, placeLabel, searchPlaces, type Place } from '../../shared/places/places'
 import { Tour } from './tour/Tour'
 import type { TourControls } from './tour/steps'
 import { parseNewsDigest, type NewsDigest, type NewsHeadline, type RisingTerm } from '../../shared/news/newsDigest'
@@ -1848,8 +1850,27 @@ export function App() {
       : visibleGlobeSignals
     if (listView === 'rising') return risingSignals(base).slice(0, 40)
     if (listView === 'fading') return fadingSignals(base).slice(0, 40)
-    return focusedPlace ? base.slice(0, 40) : interleaveLayers(base).slice(0, 40)
+    if (!focusedPlace) return interleaveLayers(base).slice(0, 40)
+    // The place's own peaks first (what is in it, highest first), then what is around it, nearest first.
+    const own = nearbySignals(base, focusedPlace, Math.max(focusedPlace.kind === 'country' ? focusedPlace.radiusKm : 40, focusedPlace.radiusKm * 1.2), 400)
+    const ownIds = new Set(own.map((signal) => signal.id))
+    return [...own.sort((a, b) => b.intensity - a.intensity), ...base.filter((signal) => !ownIds.has(signal.id))].slice(0, 40)
   }, [focusedPlace, visibleGlobeSignals, listView])
+  // At a place: what is rising and fading in its own news (computed from the feeds, for any city or country).
+  const [placeTrends, setPlaceTrends] = useState<PlaceTrendState | null>(null)
+  const placesAliasesOf = (name: string): string[] => cityAliases(name)
+  useEffect(() => {
+    if (!focusedPlace) { setPlaceTrends(null); return }
+    let cancelled = false
+    const name = focusedPlace.kind === 'country' ? undefined : focusedPlace.name
+    const aliases = name ? [...new Set([name.replace(/\s+City$/i, ''), ...placesAliasesOf(name)])].filter((alias) => alias !== name) : undefined
+    setPlaceTrends({ label: focusedPlace.name, status: 'loading', data: null })
+    const geonameId = focusedPlace.id.match(/^city:(\d+)$/)?.[1]
+    void window.intoponet.browserHost.getPlaceTrends({ countryCode: focusedPlace.countryCode, ...(name ? { name } : {}), ...(aliases?.length ? { aliases } : {}), ...(geonameId ? { geonameId } : {}) }).then((raw) => {
+      if (!cancelled) setPlaceTrends({ label: focusedPlace.name, status: 'ready', data: raw ? JSON.parse(raw) as PlaceTrends : null })
+    }, () => { if (!cancelled) setPlaceTrends({ label: focusedPlace.name, status: 'ready', data: null }) })
+    return () => { cancelled = true }
+  }, [focusedPlace, newsDigest])
   const risingTerms = newsDigest?.rising ?? []
   const [worldStory, setWorldStory] = useState<GlobalStory | null>(null)
   const termEmphasis = useMemo(
@@ -2522,6 +2543,7 @@ export function App() {
           translation={translation}
           onHeadlineHistory={openOldsForHeadline}
           peers={windowGlobeSignals}
+          placeTrends={placeTrends}
           coverageFor={(signal) => {
             if (!newsDigest) return []
             const all = [...newsDigest.countries.flatMap((country) => country.headlines), ...newsDigest.places.flatMap((place) => place.headlines), ...(newsDigest.global ?? []).flatMap((story) => story.headlines)]

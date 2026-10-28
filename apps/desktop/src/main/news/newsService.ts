@@ -1,3 +1,4 @@
+import { placeTrends, type PlaceQuery, type PlaceTrends } from '../../shared/news/placeTrends'
 import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { PublicItem } from '@intoponet/field-snapshot'
@@ -8,6 +9,7 @@ import newsFeeds from './newsFeeds.json'
 import internationalFeeds from './internationalFeeds.json'
 import { buildGlobalStories } from '../../shared/news/globalStories'
 import { fetchInTheNews } from './inTheNews'
+import { localPlaceNames } from './placeNames'
 import type { WikiNewsItem } from '../../shared/news/newsDigest'
 
 /** One verified local news feed (see docs/data/news-feeds.md for provenance). */
@@ -80,7 +82,7 @@ export function newsSourceMeta(feeds: NewsFeedEntry[]): NewsSourceMeta[] {
  * country's outlets are reporting. Runs in the main process; nothing personal
  * is sent, and the renderer only ever receives the validated digest.
  */
-export function startNewsService(options: { userData: string; emit: (payload: string) => void }): { stop: () => void; latest: () => string | null } {
+export function startNewsService(options: { userData: string; emit: (payload: string) => void }): { stop: () => void; latest: () => string | null; trends: (place: PlaceQuery & { geonameId?: string }) => Promise<PlaceTrends> } {
   const feeds = newsFeedEntries()
   const meta = newsSourceMeta(feeds)
   const digestPath = join(options.userData, 'news-digest.json')
@@ -101,9 +103,11 @@ export function startNewsService(options: { userData: string; emit: (payload: st
     latest = null
   }
   if (latest) options.emit(latest)
-  if (!feeds.length) return { stop: () => undefined, latest: () => latest }
+  if (!feeds.length) return { stop: () => undefined, latest: () => latest, trends: async () => ({ rising: [], fading: [], recentStories: 0, previousStories: 0, outlets: 0, uncompared: 0, latest: [], earlier: [] }) }
 
   let digestTimer: ReturnType<typeof setTimeout> | null = null
+  // The latest items behind the digest, for place trends (in memory only).
+  let lastItems: NewsItemInput[] = []
   // Wikipedia's "In the news", refreshed every two hours.
   let inTheNews: WikiNewsItem[] = []
   const refreshInTheNews = (): void => {
@@ -166,6 +170,7 @@ export function startNewsService(options: { userData: string; emit: (payload: st
     const memoryOnly = [...transient.entries()].flatMap(([sourceId, items]) => items.map((item) => toInput(sourceId, item)))
     const now = Date.now()
     const all = [...stored, ...memoryOnly]
+    lastItems = all
     latest = JSON.stringify({
       ...buildNewsDigest({ sources: meta, items: all, health, now, coverage }),
       global: buildGlobalStories({ sources: meta, items: all, now }),
@@ -208,6 +213,14 @@ export function startNewsService(options: { userData: string; emit: (payload: st
       void service.flush()
     },
     latest: () => latest,
+    /** What is rising and fading in one place's news, from the latest feeds. */
+    trends: async ({ geonameId, ...place }: PlaceQuery & { geonameId?: string }): Promise<PlaceTrends> => {
+      // A city is also named in its outlets' own languages ("Roma", "Bruxelles"); found once, then cached.
+      const languages = [...new Set(meta.filter((source) => source.countryCode === place.countryCode && source.language).map((source) => source.language!))]
+      const local = place.name && geonameId ? await localPlaceNames(geonameId, languages).catch(() => []) : []
+      const aliases = [...new Set([...(place.aliases ?? []), ...local])].filter((alias) => alias !== place.name)
+      return placeTrends({ sources: meta, items: lastItems, coverage, now: Date.now(), place: { ...place, ...(aliases.length ? { aliases } : {}) } })
+    },
   }
 }
 

@@ -283,3 +283,8 @@ export function placesNamedIn(text: string, limit = 4, hint = ''): Place[] {
   for (const region of named) if (!resolved.some((item) => item.place.id === region.id)) resolved.push({ place: region, at: Number.MAX_SAFE_INTEGER })
   return resolved.slice(0, limit).map((item) => item.place)
 }
+
+/** Other names a city is known by ("NYC" for New York City), from the bundled alias list. */
+export function cityAliases(name: string): string[] {
+  return CITY_ALIASES[name] ?? []
+}
