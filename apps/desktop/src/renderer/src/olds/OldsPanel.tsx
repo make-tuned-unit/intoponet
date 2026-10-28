@@ -2,7 +2,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { ArrowLeft, BookOpen, ChevronsLeft, ChevronsRight, ExternalLink, GitBranch, History, List, Loader2, Newspaper, Rows3, Scale, X } from 'lucide-react'
 import { OldsStory, SupportBadge, supportWords, type StorySelection } from './OldsStory'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { OLDS_NOTE, type OldsChapter, type OldsDate, type OldsEdge, type OldsNode, type OldsThread } from '@intoponet/browser-api'
+import { OLDS_NOTE, type OldsChapter, type OldsChronicleEntry, type OldsDate, type OldsEdge, type OldsNode, type OldsThread } from '@intoponet/browser-api'
 import { useGlassSheen } from '../glass/useGlassSheen'
 import '../glass/glass.css'
 import './olds.css'
@@ -37,6 +37,14 @@ export function relationTo(edge: OldsEdge, rootId: string): Relation {
 }
 
 type Entry = { node: OldsNode; edge: OldsEdge; relation: Relation; year: number | null }
+type TimelineItem = { kind: 'root'; year: number } | { kind: 'entry'; entry: Entry; year: number } | { kind: 'event'; event: OldsChronicleEntry; index: number; year: number }
+
+/** Decimal year of an ISO date ("2026-10-27" → 2026.82) for ordering. */
+function isoYear(iso: string): number {
+  const match = iso.match(/^(-?\d{1,6})(?:-(\d{2}))?(?:-(\d{2}))?/)
+  if (!match) return 0
+  return Number(match[1]) + (match[2] ? (Number(match[2]) - 1) / 12 : 0) + (match[3] ? (Number(match[3]) - 1) / 365 : 0)
+}
 
 /** Decimal year for ordering; BCE dates are negative. */
 export function yearOf(node: OldsNode): number | null {
@@ -235,13 +243,18 @@ export function OldsPanel({
   }, [thread?.rootId, view, reduceMotion])
 
   // Timeline order with the root slotted in at its own date.
-  const timeline: Array<{ kind: 'root' } | { kind: 'entry'; entry: Entry }> = useMemo(() => {
-    const items: Array<{ kind: 'root' } | { kind: 'entry'; entry: Entry }> = dated.map((entry) => ({ kind: 'entry', entry }))
+  // The same dated events as the Story's "How we got here", on the timeline with the linked topics.
+  const chronicle = useMemo(() => (chapterMode ? [] : thread?.chronicle ?? []), [thread, chapterMode])
+  const timeline: TimelineItem[] = useMemo(() => {
+    const items: TimelineItem[] = [
+      ...dated.map((entry): TimelineItem => ({ kind: 'entry', entry, year: entry.year ?? 0 })),
+      ...chronicle.map((event, index): TimelineItem => ({ kind: 'event', event, index, year: isoYear(event.at.iso) })),
+    ].sort((a, b) => a.year - b.year)
     if (chapterMode) return items
-    const at = rootYear === null ? items.length : items.findIndex((item) => item.kind === 'entry' && (item.entry.year ?? 0) > rootYear)
-    items.splice(at < 0 ? items.length : at, 0, { kind: 'root' })
+    const at = rootYear === null ? items.length : items.findIndex((item) => item.year > rootYear)
+    items.splice(at < 0 ? items.length : at, 0, { kind: 'root', year: rootYear ?? new Date().getFullYear() })
     return items
-  }, [dated, rootYear, chapterMode])
+  }, [dated, chronicle, rootYear, chapterMode])
 
   const grouped = useMemo(() => {
     const groups = new Map<string, Entry[]>()
@@ -462,7 +475,16 @@ export function OldsPanel({
             >
               <div className="olds-axis" aria-hidden="true" />
               <ol className="olds-timeline" aria-label="Timeline">
-                {timeline.map((item, index) => item.kind === 'root' ? (
+                {timeline.map((item, index) => item.kind === 'event' ? (
+                  <li key={`event-${item.index}`} className={`olds-item is-event ${index % 2 ? 'is-low' : 'is-high'}`} data-year={item.year}>
+                    <button type="button" className="olds-card olds-event-card" onClick={() => onOpen(item.event.url)} title={`From “${item.event.section}” — open the passage`}>
+                      <span className="olds-card-date">{item.event.at.label}</span>
+                      <span className="olds-event-text">{item.event.text}</span>
+                      <span className="olds-rel">From “{item.event.section}”</span>
+                    </button>
+                    <span className="olds-tick" aria-hidden="true" />
+                  </li>
+                ) : item.kind === 'root' ? (
                   <li key="root" className="olds-root" data-root-marker data-year={rootYear ?? new Date().getFullYear()}>
                     <span className="olds-root-dot" aria-hidden="true" />
                     <span className="olds-root-label">{root?.start?.label ?? 'Now'}</span>
@@ -504,6 +526,55 @@ export function OldsPanel({
             </div>
           ) : (
             <div className="olds-list">
+              {thread.context?.filedUnder && thread.context.filedUnder.threads.length > 0 && (
+                <section>
+                  <h3>Part of</h3>
+                  <ul>
+                    {thread.context.filedUnder.threads.map((title) => (
+                      <li key={title}>
+                        <button type="button" onClick={() => onFollowArticle?.(title)}>
+                          <strong>{title}</strong>
+                          <small>Filed here by Wikipedia’s Current events, {thread.context!.filedUnder!.date}</small>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+              {chronicle.length > 0 && (
+                <section>
+                  <h3>How we got here</h3>
+                  <ul>
+                    {chronicle.map((event, index) => (
+                      <li key={`event-${index}`}>
+                        <button type="button" onClick={() => onOpen(event.url)}>
+                          <strong>{event.at.label}</strong>
+                          <span className="olds-list-text">{event.text}</span>
+                          <small>From “{event.section}”</small>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+              {thread.context?.related && thread.context.related.length > 0 && (
+                <section>
+                  <h3>Topics behind this story</h3>
+                  <ul>
+                    {thread.context.related.map((topic) => (
+                      <li key={topic.title}>
+                        <button type="button" onClick={() => onFollowArticle?.(topic.title)}>
+                          <strong>{topic.title}</strong>
+                          {topic.description && <small>{topic.description}</small>}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+              {!grouped.length && !chronicle.length && !thread.context?.related?.length && (
+                <p className="olds-list-empty">No dated events or linked topics for {root?.label ?? 'this'} yet.</p>
+              )}
               {grouped.map(([group, items]) => (
                 <section key={group}>
                   <h3>{group}</h3>

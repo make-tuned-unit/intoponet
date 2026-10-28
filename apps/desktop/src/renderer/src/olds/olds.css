@@ -905,3 +905,9 @@
   text-underline-offset: 2px;
   cursor: pointer;
 }
+
+/* Dated events from "How we got here" on the timeline and in the list. */
+.olds-event-card { max-width: 280px; text-align: left; }
+.olds-event-text { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; color: var(--warm-white, #eef4f2); font-size: 12px; line-height: 1.35; }
+.olds-list-text { display: block; margin: 2px 0; color: var(--warm-white, #eef4f2); font-size: 12.5px; line-height: 1.4; font-weight: 400; }
+.olds-list-empty { color: var(--muted, rgba(220, 232, 236, 0.7)); font-size: 12.5px; }
