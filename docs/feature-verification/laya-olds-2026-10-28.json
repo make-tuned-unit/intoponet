@@ -1,0 +1,1723 @@
+{
+  "evaluatedAt": "2026-10-28T19:00:09.260522+00:00",
+  "appCommit": "0d6aa72d796a05a6f3817717db3e956a33724c07",
+  "goldSha256": "46154ae6136290d1660f9c5f291510002663195be9814ad906f240a8a010e2cc",
+  "execution": "Sequential: Laya on, then off; same frozen build and profile; olds-cache cleared before each run. Live Wikipedia/Wikidata, not a recorded deterministic fixture.",
+  "checks": {
+    "typecheck": "passed",
+    "unitTests": {
+      "passed": 501,
+      "skipped": 5
+    },
+    "productionBuild": "passed"
+  },
+  "scores": {
+    "on": 71,
+    "off": 66,
+    "total": 78
+  },
+  "gate": {
+    "onAtLeastOff": true,
+    "offAtLeast71": false,
+    "passed": false
+  },
+  "baselineCaveat": "The prior 71/78 off score used older code and live data; this run cannot attribute all differences to code. The old setup attempted 12 languages, but zh is unavailable; the 11 supported languages were installed for both completed runs. A partial run without translations was discarded.",
+  "scorecardCaveat": "Unanchored broad regex acceptance allows unrelated topics to pass; scores are regex matches, not verified semantic accuracy.",
+  "manualReview": [
+    {
+      "headlineContains": "Guam Monster",
+      "issue": "European championship passes the motocross regex."
+    },
+    {
+      "headlineContains": "Lluvias en Perú",
+      "issue": "Peru–United Kingdom relations passes a weather headline label."
+    },
+    {
+      "headlineContains": "Bernardo on saying",
+      "issue": "On: Canada–Philippines relations; off: Bernardo Bernardo. Both pass overly broad labels."
+    },
+    {
+      "headlineContains": "APNU+AFC",
+      "issue": "On selection Guyana–United Kingdom relations passes despite not establishing relevance to signing bonus."
+    },
+    {
+      "headlineContains": "NOCZ",
+      "issue": "Zambia Commonwealth Games is accepted for Dakar Youth Olympics."
+    },
+    {
+      "headlineContains": "Melania or the pope",
+      "issue": "Both select peace negotiations, potentially useful background rejected by current label; requires review."
+    }
+  ],
+  "nextSteps": [
+    "Tighten acceptable-topic labels with human-reviewable rationale; retain original scores for comparison.",
+    "Trace shared Mbappe filtering: the elsewhere/foreignNamesIn check still rejects an unmentioned given name even after subjectPerson protection in the preceding foreign check. This is a hypothesis, not yet verified with candidate tracing.",
+    "Investigate five off-only regex failures and shared misses using sequential ONLY= runs with INTOPONET_OLDS_DEBUG.",
+    "After fixes, repeat complete sequential on/off evaluation; do not claim the historical gate passed."
+  ],
+  "runs": {
+    "on": {
+      "laya": true,
+      "languages": [
+        "ar",
+        "de",
+        "es",
+        "fr",
+        "id",
+        "it",
+        "nl",
+        "pl",
+        "pt",
+        "ru",
+        "tr"
+      ],
+      "status": "{\"enabled\":true,\"model\":{\"id\":\"sentence-transformers/all-MiniLM-L6-v2\",\"revision\":\"1110a243fdf4706b3f48f1d95db1a4f5529b4d41\",\"sizeBytes\":91099884,\"downloaded\":true,\"verified\":true},\"indexedDocuments\":0,\"totalDocuments\":0,\"busy\":true,\"lastError\":null}",
+      "complete": true,
+      "results": [
+        {
+          "title": "Dinala visits Toleza Farm, Kachenga Police Unit",
+          "accept": "Dinala|Malawi",
+          "root": "Roseby Dinala",
+          "events": 3,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": true,
+          "ms": 33707
+        },
+        {
+          "title": "Up-to-date national statistics still months away",
+          "accept": "Guernsey",
+          "root": "Bailiwick of Guernsey",
+          "events": 1,
+          "matchedBy": "No Wikipedia topic clearly matched this headline. Showing the history of Bailiwick of Guernsey instead. No dated events about it yet; the latest from Wikipedia’s 2026 in Guernsey show what else is happening there.",
+          "filed": [],
+          "ok": true,
+          "ms": 39284
+        },
+        {
+          "title": "Mbappe apologises for Mao Zedong comment after Chinese sponsors drop him",
+          "accept": "Mbapp",
+          "root": "Mao Zedong",
+          "events": 10,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": false,
+          "ms": 48114
+        },
+        {
+          "title": "Legal bid to overturn Drumcree march ban fails",
+          "accept": "Drumcree",
+          "root": "Drumcree conflict",
+          "events": 14,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": true,
+          "ms": 44449
+        },
+        {
+          "title": "Challenge to Drumcree Orange Order parade ban fails in Belfast High Court",
+          "accept": "Drumcree|Orange (Order|walk)|Parades in Northern Ireland",
+          "root": "Drumcree conflict",
+          "events": 14,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": true,
+          "ms": 11851
+        },
+        {
+          "title": "Polémique Mbappé en Chine : le Real Madrid s'excuse à son tour pour les propos sur Mao Zedong",
+          "accept": "Mbapp|Real Madrid",
+          "root": "2025–26 Real Madrid CF season",
+          "events": 6,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words (translated on this Mac), checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": true,
+          "ms": 11795
+        },
+        {
+          "title": "King Charles to discuss legacy of slavery with Commonwealth leaders at summit",
+          "accept": "Commonwealth Heads of Government|Charles III",
+          "root": "2026 Commonwealth Heads of Government Meeting",
+          "events": 4,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": true,
+          "ms": 15634
+        },
+        {
+          "title": "PM urges Japan's Uniqlo to expand investment in Bangladesh",
+          "accept": "Bangladesh|Uniqlo",
+          "root": "Bangladesh–Japan relations",
+          "events": 7,
+          "matchedBy": "No Wikipedia topic matched this headline's words directly; it is about Bangladesh–Japan relations, a subject in Bangladesh, so that is shown.",
+          "filed": [],
+          "ok": true,
+          "ms": 27595
+        },
+        {
+          "title": "Africa’s ‘unprecedented’ Ebola outbreak could reach UK, says top health official",
+          "accept": "2026 Ebola",
+          "root": "2026 Ebola epidemic",
+          "events": 20,
+          "matchedBy": "Wikipedia’s Current events filed this story under 2026 Ebola epidemic (2026-10-11, matched by meaning with Laya on this Mac). Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [
+            "2026 Ebola epidemic"
+          ],
+          "ok": true,
+          "ms": 24619
+        },
+        {
+          "title": "In Photos: China Begins Its Weeklong National Day Holiday",
+          "accept": "National Day|Golden Week|^China$",
+          "root": "National day",
+          "events": 0,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": false,
+          "ms": 6570
+        },
+        {
+          "title": "Culture and sports to merge into new bureau next month",
+          "accept": "Macau",
+          "root": "Macau",
+          "events": 1,
+          "matchedBy": "No Wikipedia topic clearly matched this headline. Showing the history of Macau instead. No dated events about it yet; the latest from Wikipedia’s 2026 in Macau show what else is happening there.",
+          "filed": [],
+          "ok": true,
+          "ms": 13778
+        },
+        {
+          "title": "Wilson Neves lança livro para o sector bancário",
+          "accept": "Angola|Banking",
+          "root": "Wilson das Neves",
+          "events": 6,
+          "matchedBy": "Matched in pt Wikipedia without translation, so this may be off. Add this language under Languages and headlines are translated on this Mac before matching.",
+          "filed": [],
+          "ok": false,
+          "ms": 8821
+        },
+        {
+          "title": "Almenys 46 morts en un accident de tren a Urda, Toledo",
+          "accept": "Toledo train|Urda|Spain|Andorra",
+          "root": "Urda, Toledo",
+          "events": 1,
+          "matchedBy": "Matched in ca Wikipedia without translation, so this may be off. Add this language under Languages and headlines are translated on this Mac before matching.",
+          "filed": [],
+          "ok": true,
+          "ms": 33480
+        },
+        {
+          "title": "How Ethiopia Became Russia’s Longstanding and Reliable Partner in Africa",
+          "accept": "Ethiopia–Russia",
+          "root": "Ethiopia–Russia relations",
+          "events": 12,
+          "matchedBy": "No Wikipedia topic matched this headline's words directly; it is about Ethiopia–Russia relations, a subject in Ethiopia, so that is shown.",
+          "filed": [],
+          "ok": true,
+          "ms": 19739
+        },
+        {
+          "title": "Fin des travaux de signalisation sur 605 kilomètres de la rivière Kasaï",
+          "accept": "Kasa[iï]",
+          "root": "Kasai River",
+          "events": 1,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words (translated on this Mac), preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": true,
+          "ms": 8289
+        },
+        {
+          "title": "BPA head: Cops leaving for higher pay, better terms",
+          "accept": "Barbados",
+          "root": "Barbados",
+          "events": 1,
+          "matchedBy": "No Wikipedia topic clearly matched this headline. Showing the history of Barbados instead. No dated events about it yet; the latest from Wikipedia’s 2026 in Barbados show what else is happening there.",
+          "filed": [],
+          "ok": true,
+          "ms": 13551
+        },
+        {
+          "title": "Israel Votes, But Who Wins?",
+          "accept": "2026 Israeli legislative election",
+          "root": "2026 Israeli legislative election",
+          "events": 11,
+          "matchedBy": "Wikipedia’s Current events filed this story under 2026 Israeli legislative election (2026-10-27, matched by meaning with Laya on this Mac). Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [
+            "2026 Israeli legislative election"
+          ],
+          "ok": true,
+          "ms": 29576
+        },
+        {
+          "title": "Революционный суд Ирана приговорил к пяти годам претендующего на «Оскар» кинорежиссера Панахи",
+          "accept": "Panahi|Revolutionary Court|Iran",
+          "root": "Islamic Revolutionary Court",
+          "events": 3,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words (translated on this Mac), preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": true,
+          "ms": 36961
+        },
+        {
+          "title": "Round 8 of the 2026 Guam Monster Energy Motocross Championship",
+          "accept": "Guam|[Mm]otocross",
+          "root": "2026 European Motocross Championship",
+          "events": 3,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": true,
+          "ms": 9862
+        },
+        {
+          "title": "Bruno Rodríguez lidera un acto de repudio contra el embajador de EE UU en la Asamblea General de la ONU",
+          "accept": "General Assembly|Cuba|Bruno Rodr",
+          "root": "General debate of the eightieth session of the United Nations General Assembly",
+          "events": 2,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words (translated on this Mac), preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": true,
+          "ms": 42158
+        },
+        {
+          "title": "Myanmar regime imprisons two Islamic teachers and seizes mosque",
+          "accept": "Myanmar",
+          "root": "Islam in Myanmar",
+          "events": 11,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": true,
+          "ms": 18272
+        },
+        {
+          "title": "\"Eeuwige\" wereldreis van Amerikaans cruiseschip strandt in Cambodja, verschillende bewoners dakloos",
+          "accept": "Cambodia|[Cc]ruise",
+          "root": "Tourism in Cambodia",
+          "events": 1,
+          "matchedBy": "No Wikipedia topic matched this headline's words directly; it is about Tourism in Cambodia, a subject in Cambodia, so that is shown.",
+          "filed": [],
+          "ok": true,
+          "ms": 21658
+        },
+        {
+          "title": "BUEI To Host Annual Halloween Party",
+          "accept": "Bermuda",
+          "root": "Mickey's Halloween Party",
+          "events": 2,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": false,
+          "ms": 8078
+        },
+        {
+          "title": "Trump shows off tanker with ‘1m barrels of oil’ and floats Venezuela as 51st state",
+          "accept": "Venezuela",
+          "root": "2026 United States intervention in Venezuela",
+          "events": 11,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": true,
+          "ms": 19670
+        },
+        {
+          "title": "Machado’s Return to Venezuela Tests Limits of U.S. Sway",
+          "accept": "Venezuela|Machado",
+          "root": "Crisis in Venezuela",
+          "events": 11,
+          "matchedBy": "Wikipedia’s Current events filed this story under Crisis in Venezuela (2026-10-25, matched by meaning with Laya on this Mac). Best match among English Wikipedia search results for the headline's words, checked by meaning with Laya on this Mac.",
+          "filed": [
+            "Crisis in Venezuela"
+          ],
+          "ok": true,
+          "ms": 16092
+        },
+        {
+          "title": "Real Madrid issues public apology to China over Mbappé's Mao Zedong comments",
+          "accept": "Mbapp|Real Madrid",
+          "root": "2026–27 Real Madrid CF season",
+          "events": 11,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": true,
+          "ms": 11186
+        },
+        {
+          "title": "Allahabad HC lawyers stage protest over alleged misbehaviour by judge, vandalise courtroom furniture",
+          "accept": "Allahabad",
+          "root": "Allahabad High Court",
+          "events": 3,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": true,
+          "ms": 39680
+        },
+        {
+          "title": "Norway, Finland’s leaders hold rare talks with Putin",
+          "accept": "Putin|Russia relations|Norway|Finland",
+          "root": "Norway",
+          "events": 2,
+          "matchedBy": "No Wikipedia topic clearly matched this headline. Showing the history of Norway instead.",
+          "filed": [],
+          "ok": true,
+          "ms": 36209
+        },
+        {
+          "title": "Accidente tren Toledo deja múltiples muertos y heridos",
+          "accept": "Toledo train",
+          "root": "2026 Toledo train collision",
+          "events": 1,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words (translated on this Mac), preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": true,
+          "ms": 8730
+        },
+        {
+          "title": "India news: Cyclone Arnab turns deadly after landfall",
+          "accept": "[Cc]yclone|Arnab",
+          "root": "2026 North Indian Ocean cyclone season",
+          "events": 13,
+          "matchedBy": "Wikipedia’s Current events filed this story under 2026 North Indian Ocean cyclone season (2026-10-28, matched by meaning with Laya on this Mac). Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [
+            "2026 North Indian Ocean cyclone season"
+          ],
+          "ok": true,
+          "ms": 10382
+        },
+        {
+          "title": "El Gobierno endurece el control financiero y fiscal de las entidades públicas",
+          "accept": "Equatorial Guinea",
+          "root": "Equatorial Guinea",
+          "events": 0,
+          "matchedBy": "No Wikipedia topic clearly matched this headline. Showing the history of Equatorial Guinea instead.",
+          "filed": [],
+          "ok": true,
+          "ms": 11748
+        },
+        {
+          "title": "Prado rams into electric pole after high-speed police chase in Kisumu",
+          "accept": "Kisumu|Kenya",
+          "root": "Kisumu",
+          "events": 0,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": true,
+          "ms": 11795
+        },
+        {
+          "title": "Golf simulators, football challenges: What’s new at Dubai Fitness Challenge 2026",
+          "accept": "Dubai",
+          "root": "Dubai",
+          "events": 11,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac. Recent steps from Wikipedia’s Timeline of Dubai.",
+          "filed": [],
+          "ok": true,
+          "ms": 13970
+        },
+        {
+          "title": "FNB launches enhanced eWallet Plus service",
+          "accept": "Eswatini|FNB|First National Bank",
+          "root": "Eswatini",
+          "events": 0,
+          "matchedBy": "No Wikipedia topic clearly matched this headline. Showing the history of Eswatini instead.",
+          "filed": [],
+          "ok": true,
+          "ms": 11667
+        },
+        {
+          "title": "Report: ISF pursuing 3 men who escorted Hezbollah explosives truck",
+          "accept": "Hezbollah|Lebanon",
+          "root": "Hezbollah",
+          "events": 14,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": true,
+          "ms": 13456
+        },
+        {
+          "title": "Xochimilco se une al paro indefinido en la UAM, suman 4 de 5 unidades",
+          "accept": "UAM|Autonomous Metropolitan",
+          "root": "UAM Xochimilco",
+          "events": 2,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words (translated on this Mac), preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": true,
+          "ms": 36085
+        },
+        {
+          "title": "Sin acuerdo por el salario mínimo de 2027, decisión queda en manos del presidente Bernardo Arévalo",
+          "accept": "Guatemala|[Mm]inimum wage|Arévalo",
+          "root": "Inauguration of Bernardo Arévalo",
+          "events": 9,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words (translated on this Mac), preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": true,
+          "ms": 14090
+        },
+        {
+          "title": "CM Vijay inaugurates electrical labs at 30 govt industrial training institutes in Tamil Nadu",
+          "accept": "Tamil Nadu|Vijay",
+          "root": "2026 Tamil Nadu Legislative Assembly election",
+          "events": 8,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": true,
+          "ms": 22448
+        },
+        {
+          "title": "Lluvias en Perú HOY EN VIVO: Pronóstico del Senamhi y regiones en alerta al norte",
+          "accept": "Peru|[Rr]ain|Senamhi|El Niño",
+          "root": "Peru–United Kingdom relations",
+          "events": 6,
+          "matchedBy": "No Wikipedia topic matched this headline's words directly; it is about Peru–United Kingdom relations, a subject in Peru, so that is shown.",
+          "filed": [],
+          "ok": true,
+          "ms": 18844
+        },
+        {
+          "title": "NOCZ unveils Team Zambia kit for Dakar 2026, as 6 athletes set for Games",
+          "accept": "Youth Olympics|Zambia",
+          "root": "Zambia at the 2026 Commonwealth Games",
+          "events": 1,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": true,
+          "ms": 10574
+        },
+        {
+          "title": "Sommet Russie-Afrique : Cheikh Niang conduit la délégation sénégalaise à Moscou",
+          "accept": "Russia–Africa Summit",
+          "root": "2023 Russia–Africa Summit",
+          "events": 4,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words (translated on this Mac), preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": true,
+          "ms": 35999
+        },
+        {
+          "title": "Minister and Law Society agree on ‘focused’ engagement aimed at resolving legal aid row",
+          "accept": "Ireland|Law Society of Ireland|[Ll]egal aid",
+          "root": "Republic of Ireland",
+          "events": 6,
+          "matchedBy": "No Wikipedia topic clearly matched this headline. Showing the history of Republic of Ireland instead. No dated events about it yet; the latest from Wikipedia’s 2026 in Ireland show what else is happening there.",
+          "filed": [],
+          "ok": true,
+          "ms": 22145
+        },
+        {
+          "title": "Holness points to sabotage",
+          "accept": "Andrew Holness|Jamaica",
+          "root": "Andrew Holness",
+          "events": 7,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": true,
+          "ms": 14646
+        },
+        {
+          "title": "Iran’s Pezeshkian tells Putin Middle East can solve problems without US",
+          "accept": "Pezeshkian|Iran",
+          "root": "2026 Iran war",
+          "events": 20,
+          "matchedBy": "Wikipedia’s Current events filed this story under Middle Eastern crisis (2023-present) → 2026 Iran war → Yemeni civil war (2014–present) → Pakistan in the 2026 Iran war → Saudi Arabia in the 2026 Iran war → Saudi-led intervention in the Yemeni civil war (2026-10-26, matched by meaning with Laya on this Mac). Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac. Recent steps from Wikipedia’s Timeline of the 2026 Iran war.",
+          "filed": [
+            "Middle Eastern crisis (2023-present)",
+            "2026 Iran war",
+            "Yemeni civil war (2014–present)",
+            "Pakistan in the 2026 Iran war",
+            "Saudi Arabia in the 2026 Iran war",
+            "Saudi-led intervention in the Yemeni civil war"
+          ],
+          "ok": true,
+          "ms": 16918
+        },
+        {
+          "title": "APNU+AFC’s undisclosed ExxonMobil signing bonus before PAC",
+          "accept": "Guyana|APNU|ExxonMobil",
+          "root": "Guyana–United Kingdom relations",
+          "events": 3,
+          "matchedBy": "No Wikipedia topic matched this headline's words directly; it is about Guyana–United Kingdom relations, a subject in Guyana, so that is shown.",
+          "filed": [],
+          "ok": true,
+          "ms": 14053
+        },
+        {
+          "title": "Cayman athletes depart for Dakar Youth Olympic Games",
+          "accept": "Youth Olympics",
+          "root": "2026 Summer Youth Olympics",
+          "events": 11,
+          "matchedBy": "Futsal at the 2026 Summer Youth Olympics is part of 2026 Summer Youth Olympics, which is what the headline is about.",
+          "filed": [],
+          "ok": true,
+          "ms": 8986
+        },
+        {
+          "title": "Le président de l’Assemblée nationale reçoit la secrétaire d’Etat parlementaire au ministère allemand de la Justice",
+          "accept": "Mauritania|National Assembly",
+          "root": "President of Germany",
+          "events": 2,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words (translated on this Mac), preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": false,
+          "ms": 41940
+        },
+        {
+          "title": "Forty-two students honoured at Dominica’s inaugural National Schools’ Awards ceremony for academic excellence",
+          "accept": "Dominica$|Dominica (?!national football)",
+          "root": "Dominica",
+          "events": 4,
+          "matchedBy": "No Wikipedia topic clearly matched this headline. Showing the history of Dominica instead.",
+          "filed": [],
+          "ok": true,
+          "ms": 11605
+        },
+        {
+          "title": "Agricultura pesa 23% no PIB, mas continua sem protecção dos seguros",
+          "accept": "Agriculture in Angola|Angola",
+          "root": "Agriculture in Angola",
+          "events": 6,
+          "matchedBy": "No Wikipedia topic matched this headline's words directly; it is about Agriculture in Angola, a subject in Angola, so that is shown.",
+          "filed": [],
+          "ok": true,
+          "ms": 12333
+        },
+        {
+          "title": "CIVIS : la distribution d'eau perturbée aux Avirons",
+          "accept": "Avirons|Réunion",
+          "root": "Les Avirons",
+          "events": 1,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words (translated on this Mac), checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": true,
+          "ms": 35436
+        },
+        {
+          "title": "Økokrim vil løslate alle siktede for bedrageri mot Nato",
+          "accept": "NATO|Økokrim|Norway",
+          "root": "NATO",
+          "events": 18,
+          "matchedBy": "Matched in nb Wikipedia without translation, so this may be off. Add this language under Languages and headlines are translated on this Mac before matching.",
+          "filed": [],
+          "ok": true,
+          "ms": 12739
+        },
+        {
+          "title": "Vanessa Emde: Berliner Linke vertagt Entscheidung über umstrittene Abgeordnete weiter",
+          "accept": "Berlin|Linke|The Left",
+          "root": "2026 Berlin state election",
+          "events": 11,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words (translated on this Mac), preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": true,
+          "ms": 11863
+        },
+        {
+          "title": "ANNOUNCEMENT: Division of Agriculture",
+          "accept": "Micronesia|Agriculture",
+          "root": "Agriculture",
+          "events": 6,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": true,
+          "ms": 9062
+        },
+        {
+          "title": "Tône/artisanat : Des restaurateurs se forment à la gestion moderne et à l’hygiène",
+          "accept": "Togo",
+          "root": "Togo",
+          "events": 0,
+          "matchedBy": "No Wikipedia topic clearly matched this headline. Showing the history of Togo instead.",
+          "filed": [],
+          "ok": true,
+          "ms": 10125
+        },
+        {
+          "title": "Flávio Bolsonaro huye a EE. UU. tras su derrota electoral ante Lula",
+          "accept": "Flávio Bolsonaro|Brazilian general election",
+          "root": "Flávio Bolsonaro 2026 presidential campaign",
+          "events": 11,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words (translated on this Mac), preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": true,
+          "ms": 9389
+        },
+        {
+          "title": "Bernardo on saying Jinggoy got P573 million in kickbacks: It's hard to implicate a friend",
+          "accept": "Philippines|Jinggoy|Estrada|[Ff]lood control|Bernardo Bernardo",
+          "root": "Canada–Philippines relations",
+          "events": 9,
+          "matchedBy": "No Wikipedia topic matched this headline's words directly; it is about Canada–Philippines relations, a subject in Philippines, so that is shown.",
+          "filed": [],
+          "ok": true,
+          "ms": 24856
+        },
+        {
+          "title": "En Serbie, un assaillant abattu près de l’ambassade israélienne à Belgrade ; Israël confirme une tentative d’« attentat terroriste »",
+          "accept": "Belgrade|Israeli embassy",
+          "root": "2024 attack on the Israeli embassy in Belgrade",
+          "events": 3,
+          "matchedBy": "Wikipedia’s Current events filed this story under List of attacks against Israeli diplomatic missions and personnel (2026-10-28, matched by meaning with Laya on this Mac). Best match among English Wikipedia search results for the headline's words (translated on this Mac), preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [
+            "List of attacks against Israeli diplomatic missions and personnel"
+          ],
+          "ok": true,
+          "ms": 12991
+        },
+        {
+          "title": "Harry Kane: Ballon d’Or for Bayern Munich striker",
+          "accept": "Ballon d'Or|Harry Kane",
+          "root": "2026 Ballon d'Or",
+          "events": 2,
+          "matchedBy": "Wikipedia’s Current events filed this story under 2026 Ballon d'Or (2026-10-26, matched by meaning with Laya on this Mac). Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [
+            "2026 Ballon d'Or"
+          ],
+          "ok": true,
+          "ms": 8823
+        },
+        {
+          "title": "Where does Arsenal’s Fleetwood humiliation place in English cup shocks?",
+          "accept": "Fleetwood|Arsenal|FA Cup|EFL Cup",
+          "root": "Fleetwood",
+          "events": 8,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": true,
+          "ms": 9208
+        },
+        {
+          "title": "Nedbank buys its way into East Africa’s banking battle",
+          "accept": "Nedbank|Banking",
+          "root": "Banking in Uganda",
+          "events": 13,
+          "matchedBy": "The headline's words matched East Africa only by the country's name; it is about Banking in Uganda, so that is shown instead.",
+          "filed": [],
+          "ok": true,
+          "ms": 20690
+        },
+        {
+          "title": "Carnival Queens set for regional pageants",
+          "accept": "[Cc]arnival|Saint Lucia",
+          "root": "Queen carnival",
+          "events": 6,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": true,
+          "ms": 8393
+        },
+        {
+          "title": "Тофан: Власти расследуют возможную причастность иностранных государств к недавней кибератаке на Молдову",
+          "accept": "Moldova|[Cc]yber",
+          "root": "Moldova–Romania relations",
+          "events": 14,
+          "matchedBy": "No Wikipedia topic matched this headline's words directly; it is about Moldova–Romania relations, a subject in Moldova, so that is shown.",
+          "filed": [],
+          "ok": true,
+          "ms": 22718
+        },
+        {
+          "title": "Jamaica Association to host fundraiser with premiere of thriller 'Stew Peas'",
+          "accept": "Jamaica$|Stew Peas \\(film\\)|Virgin Islands",
+          "root": "Jamaica Teachers' Association",
+          "events": 1,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": false,
+          "ms": 5475
+        },
+        {
+          "title": "Israeli artillery shells Majdalzoun, al-Mansouri and Zawtar al-Sharqiyeh",
+          "accept": "Lebanon|Zawtar",
+          "root": "Battle of Zawtar al-Sharqiyah",
+          "events": 4,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": true,
+          "ms": 8606
+        },
+        {
+          "title": "Pljevlja raspisala konkurs za studentske nagrade: Uslov prosjek...",
+          "accept": "Pljevlja|Montenegro",
+          "root": "Pljevlja",
+          "events": 18,
+          "matchedBy": "Matched in sr Wikipedia without translation, so this may be off. Add this language under Languages and headlines are translated on this Mac before matching.",
+          "filed": [],
+          "ok": true,
+          "ms": 7786
+        },
+        {
+          "title": "Il \"était mû par la haine et il a tué pour ça\" : Kévin T., suspect de l'attentat de Trappes, un profil \"nourri d'idéologie raciste\"",
+          "accept": "Trappes",
+          "root": "Trappes",
+          "events": 3,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words (translated on this Mac), preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": true,
+          "ms": 6633
+        },
+        {
+          "title": "Melania or the pope: Who brokered Russia-Ukraine ceasefire in Oleshky?",
+          "accept": "Oleshky",
+          "root": "Peace negotiations in the Russo-Ukrainian war (2022–present)",
+          "events": 13,
+          "matchedBy": "Wikipedia’s Current events filed this story under Russo-Ukrainian war (2022–present) → Peace negotiations in the Russo-Ukrainian war (2022–present) → Blockade of Oleshky → United States and the Russo-Ukrainian war (2026-10-23, matched by meaning with Laya on this Mac). Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [
+            "Russo-Ukrainian war (2022–present)",
+            "Peace negotiations in the Russo-Ukrainian war (2022–present)",
+            "Blockade of Oleshky",
+            "United States and the Russo-Ukrainian war"
+          ],
+          "ok": false,
+          "ms": 10620
+        },
+        {
+          "title": "South Africa Deploys 500 Soldiers to Quell Anti-Immigration Violence",
+          "accept": "[Xx]enophobia|Immigration to South Africa",
+          "root": "2026 anti-immigrant movement and xenophobia in South Africa",
+          "events": 4,
+          "matchedBy": "Wikipedia’s Current events filed this story under 2026 anti-immigrant movement and xenophobia in South Africa (2026-10-21, matched by meaning with Laya on this Mac). Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [
+            "2026 anti-immigrant movement and xenophobia in South Africa"
+          ],
+          "ok": true,
+          "ms": 21801
+        },
+        {
+          "title": "States seeks interest for possible housing sites",
+          "accept": "Guernsey",
+          "root": "Bailiwick of Guernsey",
+          "events": 1,
+          "matchedBy": "No Wikipedia topic clearly matched this headline. Showing the history of Bailiwick of Guernsey instead. No dated events about it yet; the latest from Wikipedia’s 2026 in Guernsey show what else is happening there.",
+          "filed": [],
+          "ok": true,
+          "ms": 6198
+        },
+        {
+          "title": "Kacha, Mastercard Ink Deal to Expand Card Issuance in Ethiopia",
+          "accept": "Banking in Ethiopia|Ethiopia",
+          "root": "Banking in Ethiopia",
+          "events": 4,
+          "matchedBy": "No Wikipedia topic matched this headline's words directly; it is about Banking in Ethiopia, a subject in Ethiopia, so that is shown.",
+          "filed": [],
+          "ok": true,
+          "ms": 6268
+        },
+        {
+          "title": "US says five dead in strike on alleged drug-smuggling boat",
+          "accept": "Operation Southern Spear|drug",
+          "root": "United States strikes on alleged drug traffickers during Operation Southern Spear",
+          "events": 9,
+          "matchedBy": "Wikipedia’s Current events filed this story under War on drugs → Operation Southern Spear → United States strikes on alleged drug traffickers during Operation Southern Spear (2026-10-27, matched by meaning with Laya on this Mac). Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [
+            "War on drugs",
+            "Operation Southern Spear",
+            "United States strikes on alleged drug traffickers during Operation Southern Spear"
+          ],
+          "ok": true,
+          "ms": 9884
+        },
+        {
+          "title": "Jay-Z to perform at Super Bowl half-time show",
+          "accept": "Super Bowl",
+          "root": "Super Bowl LX halftime show",
+          "events": 3,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac. “How we got here” is from Wikipedia’s Super Bowl LXI halftime show, which is too new to be on Wikidata.",
+          "filed": [],
+          "ok": true,
+          "ms": 7052
+        },
+        {
+          "title": "India Evacuates Tens of Thousands as Cyclone Arnab Approaches",
+          "accept": "[Cc]yclone|Arnab",
+          "root": "2026 North Indian Ocean cyclone season",
+          "events": 13,
+          "matchedBy": "Wikipedia’s Current events filed this story under 2026 North Indian Ocean cyclone season (2026-10-27, matched by meaning with Laya on this Mac). Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [
+            "2026 North Indian Ocean cyclone season"
+          ],
+          "ok": true,
+          "ms": 6537
+        },
+        {
+          "title": "Jordan strikes militant groups in Syria after church attack",
+          "accept": "Jordan|Syria|church",
+          "root": "2026 Karak church shooting",
+          "events": 9,
+          "matchedBy": "Wikipedia’s Current events filed this story under 2026 Karak church shooting (2026-10-26, matched by meaning with Laya on this Mac). Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [
+            "2026 Karak church shooting"
+          ],
+          "ok": true,
+          "ms": 8968
+        },
+        {
+          "title": "DR Congo reports over 10,000 Ebola cases as the outbreak spreads abroad, with no approved vaccine or specific treatment for the Bundibugyo virus",
+          "accept": "2026 Ebola",
+          "root": "2026 Ebola epidemic",
+          "events": 20,
+          "matchedBy": "Wikipedia’s Current events filed this story under 2026 Ebola epidemic (2026-10-17, matched by meaning with Laya on this Mac). Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [
+            "2026 Ebola epidemic"
+          ],
+          "ok": true,
+          "ms": 9085
+        },
+        {
+          "title": "Lula’s win in Brazil deals blow to Trump’s Latin America push: former China envoy",
+          "accept": "2026 Brazilian general election",
+          "root": "2026 Brazilian general election",
+          "events": 15,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": true,
+          "ms": 12305
+        },
+        {
+          "title": "The Key Election Issues Dividing Israelis as They Vote",
+          "accept": "2026 Israeli legislative election",
+          "root": "2026 Israeli legislative election",
+          "events": 11,
+          "matchedBy": "Wikipedia’s Current events filed this story under 2026 Israeli legislative election (2026-10-27, matched by meaning with Laya on this Mac). Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [
+            "2026 Israeli legislative election"
+          ],
+          "ok": true,
+          "ms": 7470
+        },
+        {
+          "title": "Germany's Merz says erosion of global order means middle powers in Europe and Asia must be more assertive",
+          "accept": "Merz|German government|Germany",
+          "root": "Merz cabinet",
+          "events": 3,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": true,
+          "ms": 10618
+        }
+      ]
+    },
+    "off": {
+      "laya": false,
+      "languages": [
+        "ar",
+        "de",
+        "es",
+        "fr",
+        "id",
+        "it",
+        "nl",
+        "pl",
+        "pt",
+        "ru",
+        "tr"
+      ],
+      "status": "{\"enabled\":false,\"model\":{\"id\":\"sentence-transformers/all-MiniLM-L6-v2\",\"revision\":\"1110a243fdf4706b3f48f1d95db1a4f5529b4d41\",\"sizeBytes\":91099884,\"downloaded\":true,\"verified\":false},\"indexedDocuments\":0,\"totalDocuments\":0,\"busy\":false,\"lastError\":null}",
+      "complete": true,
+      "results": [
+        {
+          "title": "Dinala visits Toleza Farm, Kachenga Police Unit",
+          "accept": "Dinala|Malawi",
+          "root": "Roseby Dinala",
+          "events": 3,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country.",
+          "filed": [],
+          "ok": true,
+          "ms": 9366
+        },
+        {
+          "title": "Up-to-date national statistics still months away",
+          "accept": "Guernsey",
+          "root": "Bailiwick of Guernsey",
+          "events": 1,
+          "matchedBy": "No Wikipedia topic clearly matched this headline. Showing the history of Bailiwick of Guernsey instead. No dated events about it yet; the latest from Wikipedia’s 2026 in Guernsey show what else is happening there.",
+          "filed": [],
+          "ok": true,
+          "ms": 10613
+        },
+        {
+          "title": "Mbappe apologises for Mao Zedong comment after Chinese sponsors drop him",
+          "accept": "Mbapp",
+          "root": "Mao Zedong",
+          "events": 18,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country.",
+          "filed": [],
+          "ok": false,
+          "ms": 36286
+        },
+        {
+          "title": "Legal bid to overturn Drumcree march ban fails",
+          "accept": "Drumcree",
+          "root": "Drumcree conflict",
+          "events": 18,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country.",
+          "filed": [],
+          "ok": true,
+          "ms": 35112
+        },
+        {
+          "title": "Challenge to Drumcree Orange Order parade ban fails in Belfast High Court",
+          "accept": "Drumcree|Orange (Order|walk)|Parades in Northern Ireland",
+          "root": "Drumcree conflict",
+          "events": 18,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country.",
+          "filed": [],
+          "ok": true,
+          "ms": 6539
+        },
+        {
+          "title": "Polémique Mbappé en Chine : le Real Madrid s'excuse à son tour pour les propos sur Mao Zedong",
+          "accept": "Mbapp|Real Madrid",
+          "root": "Mao Zedong",
+          "events": 18,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words (translated on this Mac), preferring topics in this country.",
+          "filed": [],
+          "ok": false,
+          "ms": 9218
+        },
+        {
+          "title": "King Charles to discuss legacy of slavery with Commonwealth leaders at summit",
+          "accept": "Commonwealth Heads of Government|Charles III",
+          "root": "2026 Commonwealth Heads of Government Meeting",
+          "events": 4,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country.",
+          "filed": [],
+          "ok": true,
+          "ms": 13859
+        },
+        {
+          "title": "PM urges Japan's Uniqlo to expand investment in Bangladesh",
+          "accept": "Bangladesh|Uniqlo",
+          "root": "Bangladesh–Japan relations",
+          "events": 7,
+          "matchedBy": "No Wikipedia topic matched this headline's words directly; it is about Bangladesh–Japan relations, a subject in Bangladesh, so that is shown.",
+          "filed": [],
+          "ok": true,
+          "ms": 17918
+        },
+        {
+          "title": "Africa’s ‘unprecedented’ Ebola outbreak could reach UK, says top health official",
+          "accept": "2026 Ebola",
+          "root": "2026 Ebola epidemic",
+          "events": 18,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words.",
+          "filed": [],
+          "ok": true,
+          "ms": 13919
+        },
+        {
+          "title": "In Photos: China Begins Its Weeklong National Day Holiday",
+          "accept": "National Day|Golden Week|^China$",
+          "root": "National day",
+          "events": 0,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country.",
+          "filed": [],
+          "ok": false,
+          "ms": 3132
+        },
+        {
+          "title": "Culture and sports to merge into new bureau next month",
+          "accept": "Macau",
+          "root": "Macau",
+          "events": 1,
+          "matchedBy": "No Wikipedia topic clearly matched this headline. Showing the history of Macau instead. No dated events about it yet; the latest from Wikipedia’s 2026 in Macau show what else is happening there.",
+          "filed": [],
+          "ok": true,
+          "ms": 8058
+        },
+        {
+          "title": "Wilson Neves lança livro para o sector bancário",
+          "accept": "Angola|Banking",
+          "root": "Wilson das Neves",
+          "events": 6,
+          "matchedBy": "Matched in pt Wikipedia without translation, so this may be off. Add this language under Languages and headlines are translated on this Mac before matching.",
+          "filed": [],
+          "ok": false,
+          "ms": 7763
+        },
+        {
+          "title": "Almenys 46 morts en un accident de tren a Urda, Toledo",
+          "accept": "Toledo train|Urda|Spain|Andorra",
+          "root": "Urda, Toledo",
+          "events": 1,
+          "matchedBy": "Matched in ca Wikipedia without translation, so this may be off. Add this language under Languages and headlines are translated on this Mac before matching.",
+          "filed": [],
+          "ok": true,
+          "ms": 6429
+        },
+        {
+          "title": "How Ethiopia Became Russia’s Longstanding and Reliable Partner in Africa",
+          "accept": "Ethiopia–Russia",
+          "root": "Ethiopia",
+          "events": 3,
+          "matchedBy": "No Wikipedia topic clearly matched this headline. Showing the history of Ethiopia instead. No dated events about it yet; the latest from Wikipedia’s 2026 in Ethiopia show what else is happening there.",
+          "filed": [],
+          "ok": false,
+          "ms": 7366
+        },
+        {
+          "title": "Fin des travaux de signalisation sur 605 kilomètres de la rivière Kasaï",
+          "accept": "Kasa[iï]",
+          "root": "Kasai River",
+          "events": 1,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words (translated on this Mac), preferring topics in this country.",
+          "filed": [],
+          "ok": true,
+          "ms": 5193
+        },
+        {
+          "title": "BPA head: Cops leaving for higher pay, better terms",
+          "accept": "Barbados",
+          "root": "Barbados",
+          "events": 1,
+          "matchedBy": "No Wikipedia topic clearly matched this headline. Showing the history of Barbados instead. No dated events about it yet; the latest from Wikipedia’s 2026 in Barbados show what else is happening there.",
+          "filed": [],
+          "ok": true,
+          "ms": 9105
+        },
+        {
+          "title": "Israel Votes, But Who Wins?",
+          "accept": "2026 Israeli legislative election",
+          "root": "2026 Israeli legislative election",
+          "events": 15,
+          "matchedBy": "Wikipedia’s Current events filed this story under 2026 Israeli legislative election (2026-10-27). Best match among English Wikipedia search results for the headline's words, preferring topics in this country.",
+          "filed": [
+            "2026 Israeli legislative election"
+          ],
+          "ok": true,
+          "ms": 15025
+        },
+        {
+          "title": "Революционный суд Ирана приговорил к пяти годам претендующего на «Оскар» кинорежиссера Панахи",
+          "accept": "Panahi|Revolutionary Court|Iran",
+          "root": "Islamic Revolutionary Court",
+          "events": 3,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words (translated on this Mac), preferring topics in this country.",
+          "filed": [],
+          "ok": true,
+          "ms": 32079
+        },
+        {
+          "title": "Round 8 of the 2026 Guam Monster Energy Motocross Championship",
+          "accept": "Guam|[Mm]otocross",
+          "root": "2026 European Motocross Championship",
+          "events": 3,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words.",
+          "filed": [],
+          "ok": true,
+          "ms": 3230
+        },
+        {
+          "title": "Bruno Rodríguez lidera un acto de repudio contra el embajador de EE UU en la Asamblea General de la ONU",
+          "accept": "General Assembly|Cuba|Bruno Rodr",
+          "root": "General debate of the eightieth session of the United Nations General Assembly",
+          "events": 2,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words (translated on this Mac), preferring topics in this country.",
+          "filed": [],
+          "ok": true,
+          "ms": 37652
+        },
+        {
+          "title": "Myanmar regime imprisons two Islamic teachers and seizes mosque",
+          "accept": "Myanmar",
+          "root": "Islam in Myanmar",
+          "events": 18,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country.",
+          "filed": [],
+          "ok": true,
+          "ms": 5388
+        },
+        {
+          "title": "\"Eeuwige\" wereldreis van Amerikaans cruiseschip strandt in Cambodja, verschillende bewoners dakloos",
+          "accept": "Cambodia|[Cc]ruise",
+          "root": "Tourism in Cambodia",
+          "events": 1,
+          "matchedBy": "No Wikipedia topic matched this headline's words directly; it is about Tourism in Cambodia, a subject in Cambodia, so that is shown.",
+          "filed": [],
+          "ok": true,
+          "ms": 15958
+        },
+        {
+          "title": "BUEI To Host Annual Halloween Party",
+          "accept": "Bermuda",
+          "root": "Mickey's Halloween Party",
+          "events": 2,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words.",
+          "filed": [],
+          "ok": false,
+          "ms": 5143
+        },
+        {
+          "title": "Trump shows off tanker with ‘1m barrels of oil’ and floats Venezuela as 51st state",
+          "accept": "Venezuela",
+          "root": "2026 United States intervention in Venezuela",
+          "events": 18,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country.",
+          "filed": [],
+          "ok": true,
+          "ms": 15022
+        },
+        {
+          "title": "Machado’s Return to Venezuela Tests Limits of U.S. Sway",
+          "accept": "Venezuela|Machado",
+          "root": "Crisis in Venezuela",
+          "events": 13,
+          "matchedBy": "Wikipedia’s Current events filed this story under Crisis in Venezuela (2026-10-25). Best match among English Wikipedia search results for the headline's words, preferring topics in this country.",
+          "filed": [
+            "Crisis in Venezuela"
+          ],
+          "ok": true,
+          "ms": 6148
+        },
+        {
+          "title": "Real Madrid issues public apology to China over Mbappé's Mao Zedong comments",
+          "accept": "Mbapp|Real Madrid",
+          "root": "2026–27 Real Madrid CF season",
+          "events": 15,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country.",
+          "filed": [],
+          "ok": true,
+          "ms": 5948
+        },
+        {
+          "title": "Allahabad HC lawyers stage protest over alleged misbehaviour by judge, vandalise courtroom furniture",
+          "accept": "Allahabad",
+          "root": "Allahabad High Court",
+          "events": 0,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country.",
+          "filed": [],
+          "ok": true,
+          "ms": 39136
+        },
+        {
+          "title": "Norway, Finland’s leaders hold rare talks with Putin",
+          "accept": "Putin|Russia relations|Norway|Finland",
+          "root": "Finland–Norway relations",
+          "events": 0,
+          "matchedBy": "No Wikipedia topic matched this headline's words directly; it is about Finland–Norway relations, a subject in Norway, so that is shown.",
+          "filed": [],
+          "ok": true,
+          "ms": 45735
+        },
+        {
+          "title": "Accidente tren Toledo deja múltiples muertos y heridos",
+          "accept": "Toledo train",
+          "root": "2026 Toledo train collision",
+          "events": 1,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words (translated on this Mac), preferring topics in this country.",
+          "filed": [],
+          "ok": true,
+          "ms": 36246
+        },
+        {
+          "title": "India news: Cyclone Arnab turns deadly after landfall",
+          "accept": "[Cc]yclone|Arnab",
+          "root": "2026 North Indian Ocean cyclone season",
+          "events": 13,
+          "matchedBy": "Wikipedia’s Current events filed this story under 2026 North Indian Ocean cyclone season (2026-10-28). Best match among English Wikipedia search results for the headline's words, preferring topics in this country.",
+          "filed": [
+            "2026 North Indian Ocean cyclone season"
+          ],
+          "ok": true,
+          "ms": 8027
+        },
+        {
+          "title": "El Gobierno endurece el control financiero y fiscal de las entidades públicas",
+          "accept": "Equatorial Guinea",
+          "root": "Equatorial Guinea",
+          "events": 1,
+          "matchedBy": "No Wikipedia topic clearly matched this headline. Showing the history of Equatorial Guinea instead.",
+          "filed": [],
+          "ok": true,
+          "ms": 8054
+        },
+        {
+          "title": "Prado rams into electric pole after high-speed police chase in Kisumu",
+          "accept": "Kisumu|Kenya",
+          "root": "Kisumu",
+          "events": 0,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country.",
+          "filed": [],
+          "ok": true,
+          "ms": 25364
+        },
+        {
+          "title": "Golf simulators, football challenges: What’s new at Dubai Fitness Challenge 2026",
+          "accept": "Dubai",
+          "root": "Dubai",
+          "events": 8,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country. Recent steps from Wikipedia’s Timeline of Dubai.",
+          "filed": [],
+          "ok": true,
+          "ms": 10475
+        },
+        {
+          "title": "FNB launches enhanced eWallet Plus service",
+          "accept": "Eswatini|FNB|First National Bank",
+          "root": "Eswatini",
+          "events": 0,
+          "matchedBy": "No Wikipedia topic clearly matched this headline. Showing the history of Eswatini instead.",
+          "filed": [],
+          "ok": true,
+          "ms": 6220
+        },
+        {
+          "title": "Report: ISF pursuing 3 men who escorted Hezbollah explosives truck",
+          "accept": "Hezbollah|Lebanon",
+          "root": "Hezbollah",
+          "events": 18,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country.",
+          "filed": [],
+          "ok": true,
+          "ms": 8705
+        },
+        {
+          "title": "Xochimilco se une al paro indefinido en la UAM, suman 4 de 5 unidades",
+          "accept": "UAM|Autonomous Metropolitan",
+          "root": "UAM Xochimilco",
+          "events": 2,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words (translated on this Mac), preferring topics in this country.",
+          "filed": [],
+          "ok": true,
+          "ms": 21316
+        },
+        {
+          "title": "Sin acuerdo por el salario mínimo de 2027, decisión queda en manos del presidente Bernardo Arévalo",
+          "accept": "Guatemala|[Mm]inimum wage|Arévalo",
+          "root": "Inauguration of Bernardo Arévalo",
+          "events": 9,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words (translated on this Mac), preferring topics in this country.",
+          "filed": [],
+          "ok": true,
+          "ms": 11382
+        },
+        {
+          "title": "CM Vijay inaugurates electrical labs at 30 govt industrial training institutes in Tamil Nadu",
+          "accept": "Tamil Nadu|Vijay",
+          "root": "2026 Tamil Nadu Legislative Assembly election",
+          "events": 18,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country.",
+          "filed": [],
+          "ok": true,
+          "ms": 6504
+        },
+        {
+          "title": "Lluvias en Perú HOY EN VIVO: Pronóstico del Senamhi y regiones en alerta al norte",
+          "accept": "Peru|[Rr]ain|Senamhi|El Niño",
+          "root": "Peru–United Kingdom relations",
+          "events": 6,
+          "matchedBy": "No Wikipedia topic matched this headline's words directly; it is about Peru–United Kingdom relations, a subject in Peru, so that is shown.",
+          "filed": [],
+          "ok": true,
+          "ms": 24760
+        },
+        {
+          "title": "NOCZ unveils Team Zambia kit for Dakar 2026, as 6 athletes set for Games",
+          "accept": "Youth Olympics|Zambia",
+          "root": "Zambia at the 2026 Commonwealth Games",
+          "events": 1,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country.",
+          "filed": [],
+          "ok": true,
+          "ms": 7214
+        },
+        {
+          "title": "Sommet Russie-Afrique : Cheikh Niang conduit la délégation sénégalaise à Moscou",
+          "accept": "Russia–Africa Summit",
+          "root": "2023 Russia–Africa Summit",
+          "events": 4,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words (translated on this Mac), preferring topics in this country.",
+          "filed": [],
+          "ok": true,
+          "ms": 35560
+        },
+        {
+          "title": "Minister and Law Society agree on ‘focused’ engagement aimed at resolving legal aid row",
+          "accept": "Ireland|Law Society of Ireland|[Ll]egal aid",
+          "root": "Republic of Ireland",
+          "events": 6,
+          "matchedBy": "No Wikipedia topic clearly matched this headline. Showing the history of Republic of Ireland instead. No dated events about it yet; the latest from Wikipedia’s 2026 in Ireland show what else is happening there.",
+          "filed": [],
+          "ok": true,
+          "ms": 21015
+        },
+        {
+          "title": "Holness points to sabotage",
+          "accept": "Andrew Holness|Jamaica",
+          "root": "Andrew Holness",
+          "events": 18,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country.",
+          "filed": [],
+          "ok": true,
+          "ms": 5739
+        },
+        {
+          "title": "Iran’s Pezeshkian tells Putin Middle East can solve problems without US",
+          "accept": "Pezeshkian|Iran",
+          "root": "Masoud Pezeshkian",
+          "events": 17,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country.",
+          "filed": [],
+          "ok": true,
+          "ms": 8571
+        },
+        {
+          "title": "APNU+AFC’s undisclosed ExxonMobil signing bonus before PAC",
+          "accept": "Guyana|APNU|ExxonMobil",
+          "root": "Super PAC",
+          "events": 8,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words.",
+          "filed": [],
+          "ok": false,
+          "ms": 6732
+        },
+        {
+          "title": "Cayman athletes depart for Dakar Youth Olympic Games",
+          "accept": "Youth Olympics",
+          "root": "2026 Summer Youth Olympics",
+          "events": 11,
+          "matchedBy": "Futsal at the 2026 Summer Youth Olympics is part of 2026 Summer Youth Olympics, which is what the headline is about.",
+          "filed": [],
+          "ok": true,
+          "ms": 12165
+        },
+        {
+          "title": "Le président de l’Assemblée nationale reçoit la secrétaire d’Etat parlementaire au ministère allemand de la Justice",
+          "accept": "Mauritania|National Assembly",
+          "root": "President of Germany",
+          "events": 0,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words (translated on this Mac), preferring topics in this country.",
+          "filed": [],
+          "ok": false,
+          "ms": 41394
+        },
+        {
+          "title": "Forty-two students honoured at Dominica’s inaugural National Schools’ Awards ceremony for academic excellence",
+          "accept": "Dominica$|Dominica (?!national football)",
+          "root": "Forty-two Articles",
+          "events": 4,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country.",
+          "filed": [],
+          "ok": false,
+          "ms": 10790
+        },
+        {
+          "title": "Agricultura pesa 23% no PIB, mas continua sem protecção dos seguros",
+          "accept": "Agriculture in Angola|Angola",
+          "root": "Agriculture in Angola",
+          "events": 6,
+          "matchedBy": "No Wikipedia topic matched this headline's words directly; it is about Agriculture in Angola, a subject in Angola, so that is shown.",
+          "filed": [],
+          "ok": true,
+          "ms": 8027
+        },
+        {
+          "title": "CIVIS : la distribution d'eau perturbée aux Avirons",
+          "accept": "Avirons|Réunion",
+          "root": "Les Avirons",
+          "events": 1,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words (translated on this Mac).",
+          "filed": [],
+          "ok": true,
+          "ms": 33686
+        },
+        {
+          "title": "Økokrim vil løslate alle siktede for bedrageri mot Nato",
+          "accept": "NATO|Økokrim|Norway",
+          "root": "NATO",
+          "events": 18,
+          "matchedBy": "Matched in nb Wikipedia without translation, so this may be off. Add this language under Languages and headlines are translated on this Mac before matching.",
+          "filed": [],
+          "ok": true,
+          "ms": 14607
+        },
+        {
+          "title": "Vanessa Emde: Berliner Linke vertagt Entscheidung über umstrittene Abgeordnete weiter",
+          "accept": "Berlin|Linke|The Left",
+          "root": "2026 Berlin state election",
+          "events": 11,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words (translated on this Mac), preferring topics in this country.",
+          "filed": [],
+          "ok": true,
+          "ms": 9288
+        },
+        {
+          "title": "ANNOUNCEMENT: Division of Agriculture",
+          "accept": "Micronesia|Agriculture",
+          "root": "Agriculture",
+          "events": 6,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country.",
+          "filed": [],
+          "ok": true,
+          "ms": 6647
+        },
+        {
+          "title": "Tône/artisanat : Des restaurateurs se forment à la gestion moderne et à l’hygiène",
+          "accept": "Togo",
+          "root": "Togo",
+          "events": 0,
+          "matchedBy": "No Wikipedia topic clearly matched this headline. Showing the history of Togo instead.",
+          "filed": [],
+          "ok": true,
+          "ms": 7536
+        },
+        {
+          "title": "Flávio Bolsonaro huye a EE. UU. tras su derrota electoral ante Lula",
+          "accept": "Flávio Bolsonaro|Brazilian general election",
+          "root": "Flávio Bolsonaro 2026 presidential campaign",
+          "events": 11,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words (translated on this Mac), preferring topics in this country.",
+          "filed": [],
+          "ok": true,
+          "ms": 7938
+        },
+        {
+          "title": "Bernardo on saying Jinggoy got P573 million in kickbacks: It's hard to implicate a friend",
+          "accept": "Philippines|Jinggoy|Estrada|[Ff]lood control|Bernardo Bernardo",
+          "root": "Bernardo Bernardo",
+          "events": 4,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country.",
+          "filed": [],
+          "ok": true,
+          "ms": 12053
+        },
+        {
+          "title": "En Serbie, un assaillant abattu près de l’ambassade israélienne à Belgrade ; Israël confirme une tentative d’« attentat terroriste »",
+          "accept": "Belgrade|Israeli embassy",
+          "root": "2024 attack on the Israeli embassy in Belgrade",
+          "events": 3,
+          "matchedBy": "Wikipedia’s Current events filed this story under List of attacks against Israeli diplomatic missions and personnel (2026-10-28). Best match among English Wikipedia search results for the headline's words (translated on this Mac), preferring topics in this country.",
+          "filed": [
+            "List of attacks against Israeli diplomatic missions and personnel"
+          ],
+          "ok": true,
+          "ms": 9223
+        },
+        {
+          "title": "Harry Kane: Ballon d’Or for Bayern Munich striker",
+          "accept": "Ballon d'Or|Harry Kane",
+          "root": "2026 Ballon d'Or",
+          "events": 1,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country.",
+          "filed": [],
+          "ok": true,
+          "ms": 6367
+        },
+        {
+          "title": "Where does Arsenal’s Fleetwood humiliation place in English cup shocks?",
+          "accept": "Fleetwood|Arsenal|FA Cup|EFL Cup",
+          "root": "Fleetwood",
+          "events": 18,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country.",
+          "filed": [],
+          "ok": true,
+          "ms": 6017
+        },
+        {
+          "title": "Nedbank buys its way into East Africa’s banking battle",
+          "accept": "Nedbank|Banking",
+          "root": "Banking in Uganda",
+          "events": 18,
+          "matchedBy": "The headline's words matched East Africa only by the country's name; it is about Banking in Uganda, so that is shown instead.",
+          "filed": [],
+          "ok": true,
+          "ms": 14333
+        },
+        {
+          "title": "Carnival Queens set for regional pageants",
+          "accept": "[Cc]arnival|Saint Lucia",
+          "root": "Queen carnival",
+          "events": 6,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words.",
+          "filed": [],
+          "ok": true,
+          "ms": 3725
+        },
+        {
+          "title": "Тофан: Власти расследуют возможную причастность иностранных государств к недавней кибератаке на Молдову",
+          "accept": "Moldova|[Cc]yber",
+          "root": "Moldova–Romania relations",
+          "events": 18,
+          "matchedBy": "No Wikipedia topic matched this headline's words directly; it is about Moldova–Romania relations, a subject in Moldova, so that is shown.",
+          "filed": [],
+          "ok": true,
+          "ms": 28835
+        },
+        {
+          "title": "Jamaica Association to host fundraiser with premiere of thriller 'Stew Peas'",
+          "accept": "Jamaica$|Stew Peas \\(film\\)|Virgin Islands",
+          "root": "Jamaica Premier League",
+          "events": 6,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country.",
+          "filed": [],
+          "ok": false,
+          "ms": 8769
+        },
+        {
+          "title": "Israeli artillery shells Majdalzoun, al-Mansouri and Zawtar al-Sharqiyeh",
+          "accept": "Lebanon|Zawtar",
+          "root": "Battle of Zawtar al-Sharqiyah",
+          "events": 4,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country.",
+          "filed": [],
+          "ok": true,
+          "ms": 5572
+        },
+        {
+          "title": "Pljevlja raspisala konkurs za studentske nagrade: Uslov prosjek...",
+          "accept": "Pljevlja|Montenegro",
+          "root": "Pljevlja",
+          "events": 18,
+          "matchedBy": "Matched in sr Wikipedia without translation, so this may be off. Add this language under Languages and headlines are translated on this Mac before matching.",
+          "filed": [],
+          "ok": true,
+          "ms": 6002
+        },
+        {
+          "title": "Il \"était mû par la haine et il a tué pour ça\" : Kévin T., suspect de l'attentat de Trappes, un profil \"nourri d'idéologie raciste\"",
+          "accept": "Trappes",
+          "root": "Trappes",
+          "events": 3,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words (translated on this Mac), preferring topics in this country.",
+          "filed": [],
+          "ok": true,
+          "ms": 5303
+        },
+        {
+          "title": "Melania or the pope: Who brokered Russia-Ukraine ceasefire in Oleshky?",
+          "accept": "Oleshky",
+          "root": "Peace negotiations in the Russo-Ukrainian war (2022–present)",
+          "events": 14,
+          "matchedBy": "Wikipedia’s Current events filed this story under Russo-Ukrainian war (2022–present) → Peace negotiations in the Russo-Ukrainian war (2022–present) → Blockade of Oleshky → United States and the Russo-Ukrainian war (2026-10-23). Best match among English Wikipedia search results for the headline's words, preferring topics in this country.",
+          "filed": [
+            "Russo-Ukrainian war (2022–present)",
+            "Peace negotiations in the Russo-Ukrainian war (2022–present)",
+            "Blockade of Oleshky",
+            "United States and the Russo-Ukrainian war"
+          ],
+          "ok": false,
+          "ms": 6808
+        },
+        {
+          "title": "South Africa Deploys 500 Soldiers to Quell Anti-Immigration Violence",
+          "accept": "[Xx]enophobia|Immigration to South Africa",
+          "root": "2026 anti-immigrant movement and xenophobia in South Africa",
+          "events": 4,
+          "matchedBy": "Wikipedia’s Current events filed this story under 2026 anti-immigrant movement and xenophobia in South Africa (2026-10-21). Best match among English Wikipedia search results for the headline's words, preferring topics in this country.",
+          "filed": [
+            "2026 anti-immigrant movement and xenophobia in South Africa"
+          ],
+          "ok": true,
+          "ms": 24544
+        },
+        {
+          "title": "States seeks interest for possible housing sites",
+          "accept": "Guernsey",
+          "root": "Bailiwick of Guernsey",
+          "events": 1,
+          "matchedBy": "No Wikipedia topic clearly matched this headline. Showing the history of Bailiwick of Guernsey instead. No dated events about it yet; the latest from Wikipedia’s 2026 in Guernsey show what else is happening there.",
+          "filed": [],
+          "ok": true,
+          "ms": 4682
+        },
+        {
+          "title": "Kacha, Mastercard Ink Deal to Expand Card Issuance in Ethiopia",
+          "accept": "Banking in Ethiopia|Ethiopia",
+          "root": "Banking in Ethiopia",
+          "events": 4,
+          "matchedBy": "No Wikipedia topic matched this headline's words directly; it is about Banking in Ethiopia, a subject in Ethiopia, so that is shown.",
+          "filed": [],
+          "ok": true,
+          "ms": 5915
+        },
+        {
+          "title": "US says five dead in strike on alleged drug-smuggling boat",
+          "accept": "Operation Southern Spear|drug",
+          "root": "United States strikes on alleged drug traffickers during Operation Southern Spear",
+          "events": 9,
+          "matchedBy": "Wikipedia’s Current events filed this story under War on drugs → Operation Southern Spear → United States strikes on alleged drug traffickers during Operation Southern Spear (2026-10-27). Best match among English Wikipedia search results for the headline's words, preferring topics in this country.",
+          "filed": [
+            "War on drugs",
+            "Operation Southern Spear",
+            "United States strikes on alleged drug traffickers during Operation Southern Spear"
+          ],
+          "ok": true,
+          "ms": 8065
+        },
+        {
+          "title": "Jay-Z to perform at Super Bowl half-time show",
+          "accept": "Super Bowl",
+          "root": "Super Bowl LX halftime show",
+          "events": 3,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country. “How we got here” is from Wikipedia’s Super Bowl LXI halftime show, which is too new to be on Wikidata.",
+          "filed": [],
+          "ok": true,
+          "ms": 8104
+        },
+        {
+          "title": "India Evacuates Tens of Thousands as Cyclone Arnab Approaches",
+          "accept": "[Cc]yclone|Arnab",
+          "root": "2026 North Indian Ocean cyclone season",
+          "events": 13,
+          "matchedBy": "Wikipedia’s Current events filed this story under 2026 North Indian Ocean cyclone season (2026-10-27). Best match among English Wikipedia search results for the headline's words, preferring topics in this country.",
+          "filed": [
+            "2026 North Indian Ocean cyclone season"
+          ],
+          "ok": true,
+          "ms": 4876
+        },
+        {
+          "title": "Jordan strikes militant groups in Syria after church attack",
+          "accept": "Jordan|Syria|church",
+          "root": "2026 Karak church shooting",
+          "events": 9,
+          "matchedBy": "Wikipedia’s Current events filed this story under 2026 Karak church shooting (2026-10-26). Best match among English Wikipedia search results for the headline's words, preferring topics in this country.",
+          "filed": [
+            "2026 Karak church shooting"
+          ],
+          "ok": true,
+          "ms": 20427
+        },
+        {
+          "title": "DR Congo reports over 10,000 Ebola cases as the outbreak spreads abroad, with no approved vaccine or specific treatment for the Bundibugyo virus",
+          "accept": "2026 Ebola",
+          "root": "2026 Ebola epidemic",
+          "events": 18,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country.",
+          "filed": [],
+          "ok": true,
+          "ms": 7226
+        },
+        {
+          "title": "Lula’s win in Brazil deals blow to Trump’s Latin America push: former China envoy",
+          "accept": "2026 Brazilian general election",
+          "root": "2026 Brazilian general election",
+          "events": 15,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country.",
+          "filed": [],
+          "ok": true,
+          "ms": 35030
+        },
+        {
+          "title": "The Key Election Issues Dividing Israelis as They Vote",
+          "accept": "2026 Israeli legislative election",
+          "root": "2026 Israeli legislative election",
+          "events": 15,
+          "matchedBy": "Wikipedia’s Current events filed this story under 2026 Israeli legislative election (2026-10-27). Best match among English Wikipedia search results for the headline's words, preferring topics in this country.",
+          "filed": [
+            "2026 Israeli legislative election"
+          ],
+          "ok": true,
+          "ms": 5245
+        },
+        {
+          "title": "Germany's Merz says erosion of global order means middle powers in Europe and Asia must be more assertive",
+          "accept": "Merz|German government|Germany",
+          "root": "Asia–Europe Meeting",
+          "events": 2,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words.",
+          "filed": [],
+          "ok": false,
+          "ms": 5476
+        }
+      ]
+    }
+  }
+}

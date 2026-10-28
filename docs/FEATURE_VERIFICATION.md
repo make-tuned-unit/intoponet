@@ -1,5 +1,15 @@
 # Feature verification
 
+## Laya / Olds resumed comparison — 2026-10-28
+
+The 78-headline comparison on app commit `0d6aa72` completed sequentially with Laya on, then off: **71/78 on, 66/78 off** under the original regex labels. The requirement that off remain at least 71 **failed**. These results do not establish semantic accuracy: broad labels accept unrelated topics, including a European motocross championship for Guam and Peru–United Kingdom relations for a weather headline. The older off baseline also used older code and live data, so differences cannot all be attributed to code.
+
+Both completed runs used the same frozen build and profile with all 11 supported translation languages from the previous setup (`ar,de,es,fr,id,it,nl,pl,pt,ru,tr`). The former setup silently ignored unavailable `zh`; an initial partial run without translations was discarded. Typechecking, 501 tests, and the production build passed; five registry tests were skipped.
+
+[Full results, differences to investigate, and review caveats](feature-verification/laya-olds-2026-10-28.json) preserve every selected topic. The evaluator now saves partial progress, records installed languages, and supports explicit `OLDS_LANGS` installation with failures surfaced. The next work is to tighten misleading acceptance labels and trace the shared and off-only failures before repeating the full comparison. No application matching changes were made during these runs; the quality gate remains failed.
+
+## Earlier feature checks
+
 Run 2026-10-28 12:59 UTC · tier `full` · only OLDS_HEADLINE, OLDS_UI, OLDS_COUNTRY, OLDS_DEBATE · **4 passed, 0 failed, 0 blocked, 0 skipped, 23 assumed**.
 
 Each feature makes a promise to the user; its check drives the built app end to end. Defined in `docs/FEATURE_DAG.json`, checks in `experiments/e2e/checks.mjs`, run with `npm run verify:features`.
