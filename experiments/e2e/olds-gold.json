@@ -205,7 +205,8 @@
    "title": "FNB launches enhanced eWallet Plus service",
    "countryCode": "SZ",
    "lang": "en-SZ",
-   "accept": "Eswatini|FNB|First National Bank"
+   "accept": "^(?:Eswatini|History of Eswatini|Banking in Eswatini|FNB(?: Eswatini)?|First National Bank(?: \\([^)]*\\))?)$",
+   "rationale": "The banking service may resolve to the bank or country background, not FNB Stadium."
   },
   {
    "title": "Report: ISF pursuing 3 men who escorted Hezbollah explosives truck",

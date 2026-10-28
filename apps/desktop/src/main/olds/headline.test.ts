@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cleanHeadline, personNameAtStart, eventKindMatches, eventKindConflicts, foreignNamesIn, mentions, properPhrases, scoreCandidate, searchQueries, titleWordsIn, isRelevantCandidate, topicAge } from './headline'
+import { cleanHeadline, personNameAtStart, entityNameAtStart, personActivityConflicts, eventKindMatches, eventNameConflicts, eventKindConflicts, foreignNamesIn, mentions, properPhrases, scoreCandidate, searchQueries, titleWordsIn, isRelevantCandidate, topicAge } from './headline'
 import { headlineCountries, isWorkOrThing, keepCandidate, withoutCountryNames } from './oldsService'
 
 describe('headline matching', () => {
@@ -237,5 +237,52 @@ describe('death event relevance', () => {
     expect(eventKindConflicts(title, 'China marks anniversary of Mao Zedong’s death')).toBe(false)
     expect(eventKindConflicts('Death of John Smith', 'John Smith killed in crash')).toBe(false)
     expect(eventKindConflicts('Death of John Smith', 'John Smith wins election')).toBe(true)
+  })
+})
+
+
+describe('named events without country metadata', () => {
+  it('requires the organiser or competition name, not just a shared event type', () => {
+    expect(eventNameConflicts("Mickey's Halloween Party", 'BUEI To Host Annual Halloween Party', 'Bermuda')).toBe(true)
+    expect(eventNameConflicts('2026 European Motocross Championship', 'Round 8 of the 2026 Guam Monster Energy Motocross Championship', 'Guam')).toBe(true)
+    expect(eventNameConflicts('2026 GB3 Championship', 'Guam Motocross Championship', 'Guam')).toBe(true)
+    expect(eventNameConflicts('Zambia at the 2026 Commonwealth Games', 'Team Zambia kit for Dakar 2026 Games', 'Zambia')).toBe(true)
+    expect(eventNameConflicts('Zambia national football team', 'Team Zambia kit for Dakar Games', 'Zambia')).toBe(true)
+    expect(eventNameConflicts("Jamaica Teachers' Association", 'Jamaica Association to host fundraiser', 'Bermuda')).toBe(true)
+  })
+  it('keeps explicitly named competitions and teams', () => {
+    expect(eventNameConflicts('2026 Summer Youth Olympics', 'Cayman athletes depart for Dakar Youth Olympic Games', 'Cayman Islands')).toBe(false)
+    expect(eventNameConflicts('2026 European Motocross Championship', 'European Motocross Championship resumes')).toBe(false)
+    expect(eventNameConflicts('2026 GB3 Championship', 'GB3 Championship resumes')).toBe(false)
+    expect(eventNameConflicts('Zambia national football team', 'Zambia football team wins')).toBe(false)
+    expect(eventNameConflicts("Mickey's Halloween Party", "Mickey's Halloween Party returns")).toBe(false)
+  })
+})
+
+
+describe('current activity and deceased namesakes', () => {
+  it('rejects current actions attributed to long-deceased people', () => {
+    expect(personActivityConflicts('Wilson das Neves', 'Wilson Neves launches book for the banking sector', 2017, 2026)).toBe(true)
+    expect(personActivityConflicts('Bernardo Bernardo', 'Bernardo on saying Jinggoy got millions in kickbacks', 2018, 2026)).toBe(true)
+  })
+  it('keeps historical accounts, recent deaths, unknown dates and other subjects', () => {
+    expect(personActivityConflicts('Wilson das Neves', 'Wilson Neves launches book in 2010', 2017, 2026)).toBe(false)
+    expect(personActivityConflicts('Bernardo Bernardo', 'Bernardo says goodbye: archive interview', 2018, 2026)).toBe(false)
+    expect(personActivityConflicts('Wilson das Neves', 'Wilson Neves launches book', 2026, 2026)).toBe(false)
+    expect(personActivityConflicts('Wilson das Neves', 'Wilson Neves launches book', null, 2026)).toBe(false)
+    expect(personActivityConflicts('Mao Zedong', 'Mbappe apologises for Mao comment', 1976, 2026)).toBe(false)
+  })
+})
+
+
+describe('opening organisation identity', () => {
+  it('allows exact names and company suffixes, not affiliated places or people', () => {
+    expect(entityNameAtStart('FNB Stadium', 'FNB')).toBe(false)
+    expect(entityNameAtStart('FNB Stadium (Johannesburg)', 'FNB')).toBe(false)
+    expect(entityNameAtStart('Nedbank Cup', 'Nedbank')).toBe(false)
+    expect(entityNameAtStart('FNB (Eswatini)', 'FNB')).toBe(true)
+    expect(entityNameAtStart('Nedbank Group', 'Nedbank')).toBe(true)
+    expect(entityNameAtStart('Acme Holdings Ltd.', 'Acme')).toBe(true)
+    expect(entityNameAtStart('First National Bank', 'First National Bank')).toBe(true)
   })
 })

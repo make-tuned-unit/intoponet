@@ -177,6 +177,21 @@ export function eventKindConflicts(title: string, headline: string): boolean {
   return inTitle.length > 0 && inHeadline.length > 0 && !inTitle.some((kind) => inHeadline.includes(kind))
 }
 
+/** Shared event words do not identify an organiser, competition or team. Missing Wikidata
+ * country claims must not make another place's Halloween party or championship eligible. */
+export function eventNameConflicts(title: string, headline: string, country?: string | null): boolean {
+  if (!/\b(championships?|games|league|(?:football|cricket|basketball|rugby) team|halloween.*party|association)\b/i.test(title)) return false
+  const said = `${headline} ${country ?? ''}`
+  const named = title.replace(/\b(Summer|Winter|National|International|Men|Women|Junior|Senior)\b/g, '')
+  if (foreignNamesIn(named, said) > 0) return true
+  // Generic "Team Zambia" does not identify its football or cricket team.
+  const sport = title.match(/\b(football|cricket|basketball|rugby|darts|motocross|superbike)\b/i)?.[1]
+  if (sport && !new RegExp(`\\b${sport}\\b`, 'i').test(headline)) return true
+  // Acronym/digit competition names (GB3) are identifiers too, not generic championship words.
+  const codes = title.match(/\b[A-Z]{2,}\d+\b/g) ?? []
+  return codes.some((code) => !new RegExp(`\\b${code}\\b`).test(headline))
+}
+
 /** Years since a topic happened: a leading year in its title ("1976 Zaire …"), else its start date for events. */
 export function topicAge(title: string, startIso: string | null | undefined, eventLike: boolean, currentYear: number, endIso?: string | null): number | null {
   const leading = Number(title.match(/^(\d{4})\b/)?.[1] ?? NaN)
@@ -221,6 +236,29 @@ export function personNameAtStart(label: string, headline: string): boolean {
   if (!opening || !name) return false
   const start = normalize(opening)
   return start.includes(' ') ? start === name : start === name.split(/\s+/).at(-1)
+}
+
+/** An opening organisation name may omit a legal/company suffix, not a different entity's name. */
+export function entityNameAtStart(label: string, opening: string): boolean {
+  const normalize = (value: string): string => foldAccents(value).replace(/\s*\(.*?\)\s*$/, '').toLowerCase().trim()
+  const name = normalize(label)
+  const start = normalize(opening)
+  if (!start) return false
+  if (name === start) return true
+  if (!name.startsWith(`${start} `)) return false
+  return /^(?:(?:group|bank|holdings|corporation|company|limited|ltd|inc|plc|corp)\.?\s*)+$/.test(name.slice(start.length + 1))
+}
+
+/** Present-tense activity by a named subject is not evidence for a long-deceased namesake.
+ * Dated accounts, quotations and retrospectives remain eligible. */
+export function personActivityConflicts(label: string, headline: string, deathYear: number | null, currentYear: number): boolean {
+  if (deathYear === null || deathYear >= currentYear - 1) return false
+  if (/\b(legacy|remember\w*|tribute|anniversary|histor\w*|biograph\w*|posthumous\w*|archive\w*|once|quote\w*|wrote|said)\b/i.test(headline)) return false
+  if ([...headline.matchAll(/\b(1\d{3}|20\d{2})\b/g)].some((match) => Number(match[1]) <= deathYear)) return false
+  const current = cleanHeadline(headline).match(/^(\p{Lu}[\p{L}'’.-]+(?:\s+\p{Lu}[\p{L}'’.-]+){0,2})\s+(?:launches|unveils|announces|resigns|wins|visits|apologises|apologizes|says|on saying)\b/u)
+  if (!current) return false
+  const names = titleContentWords(current[1]!)
+  return names.length > 0 && titleWordsIn(label, current[1]!) === names.length
 }
 
 export function titleWordsIn(rawTitle: string, rawHeadline: string): number {

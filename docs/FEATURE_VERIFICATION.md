@@ -1,5 +1,15 @@
 # Feature verification
 
+## Completed full comparison and remaining-match fixes — 2026-10-28
+
+Both 78-story runs completed sequentially against one frozen build and the same translated profile. They initially scored 71/78 each. The on run's FNB Stadium result exposed another false positive; under the corrected FNB label the full scores are **70/78 on, 71/78 off**. For comparison, the original recorded runs score 66/78 on and 62/78 off under these current labels. Live search results vary, so these differences are not a controlled measurement of code changes alone. [All full results, build hashes, focused checks, and remaining failures](feature-verification/laya-olds-full-2026-10-28.json).
+
+The full runs verified better fallbacks for Guam motocross, Peru weather, Zambia's Dakar team, Guyana's signing bonus, and Bernardo's kickbacks story. Bilateral topics now require an actual relationship cue; competition/organiser names must be supported by the headline. Present-tense activity checks guard against deceased namesakes when usable death metadata exists. Cache version v13 makes existing users recompute old matches.
+
+After the full pair, the opening-organisation rule was narrowed to exact names or company/legal suffixes: FNB no longer establishes the identity of FNB Stadium. **FNB passed focused live checks in both modes on the final build.** Nedbank passed off, failed one on check with a broad East Africa result, then passed an on repeat; all outcomes are retained. Diplomatic call/meeting compatibility is covered by the existing regression test. Typechecking, 511 application/package tests, seven label tests, and the build passed; five registry tests were skipped.
+
+**The full quality gate remains unverified for the final patch.** The last complete comparison failed on ≥ off; the full set was not repeated after the organisation-name fix. Shared full-run misses remain: French Mbappé, China National Day, Wilson Neves, BUEI, Assemblée nationale, Jamaica Association, and Oleshky. BUEI now reports no topic rather than selecting Disney; its test input supplies no country context. Wilson still needs investigation despite the date guard.
+
 ## Matching fixes and stricter labels — 2026-10-28
 
 The follow-up fixes preserve a recognised opening surname through foreign-name filtering, require exact full-name agreement, exclude spelled-out quantities from subject overlap, and reject funeral topics when the headline provides no death-related cue. On the final frozen build, **5/5 focused stories passed with Laya on and 5/5 with Laya off**, run sequentially: Mbappé, Ethiopia–Russia, Norway–Finland, Dubai Fitness Challenge, and Dominica's student awards. [Focused results and build hash](feature-verification/laya-olds-fixes-2026-10-28.json).

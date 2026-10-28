@@ -23,6 +23,13 @@ describe('province-level topics', () => {
 })
 
 describe('two countries in one story', () => {
+  it('requires a relationship cue before inferring bilateral relations', () => {
+    expect(otherCountries('Rains in Peru: forecast and northern regions on alert', 'Peru', ['Peru'], ['United Kingdom'])).toEqual([])
+    expect(otherCountries('Bernardo on saying Jinggoy got millions in kickbacks', 'Philippines', [], ['Canada'])).toEqual([])
+    expect(otherCountries('APNU+AFC’s undisclosed ExxonMobil signing bonus before PAC', 'Guyana', [], ['United Kingdom'])).toEqual([])
+    expect(otherCountries('How Ethiopia became Russia’s longstanding partner', 'Ethiopia', ['Ethiopia', 'Russia'])).toEqual(['Russia'])
+    expect(otherCountries('New trade agreement with Japan', 'Canada', ['Japan'])).toEqual(['Japan'])
+  })
   it('looks up their relations, including the countries of people it names', () => {
     // Russia comes from Putin's citizenship on Wikidata (looked up at runtime).
     const others = otherCountries('Norway and Finland leaders hold rare call with Putin', 'Norway', ['Norway', 'Finland'], ['Russia'])

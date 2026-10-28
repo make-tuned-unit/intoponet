@@ -22,7 +22,7 @@ import { countryPlace, placesNamedIn } from '../../shared/places/places'
 import { COUNTRY_ROWS } from '../../shared/places/placeData'
 import { figuresIn, withoutCitations } from '../knowledge/claims'
 import type { OldsChronicleEntry, OldsRelatedTopic } from '@intoponet/browser-api'
-import { cleanHeadline, foreignNamesIn, isRelevantCandidate, mentions, properPhrases, personNameAtStart, NOT_A_TOPIC, PATH_PROPERTIES, foldAccents, scoreCandidate, searchQueries, titleContentWords, titleWordsIn, topicAge, eventKindConflicts, eventKindMatches, namedEvents } from './headline'
+import { cleanHeadline, foreignNamesIn, isRelevantCandidate, mentions, properPhrases, personNameAtStart, entityNameAtStart, personActivityConflicts, NOT_A_TOPIC, PATH_PROPERTIES, foldAccents, scoreCandidate, searchQueries, titleContentWords, titleWordsIn, topicAge, eventNameConflicts, eventKindConflicts, eventKindMatches, namedEvents } from './headline'
 
 const USER_AGENT = 'Intoponet/0.1 (+https://github.com/make-tuned-unit/intoponet; The Olds)'
 const TIMEOUT_MS = 15_000
@@ -781,9 +781,7 @@ export class OldsService {
     // The organisation the headline opens with ("Nedbank buys…"): its own article is the subject.
     const subjectEntity = (label: string): boolean => {
       if (translated || isTitleCase(text) || !opening) return false
-      const base = foldAccents(label.replace(/\s*\(.*?\)\s*$/, '')).toLowerCase()
-      const open = foldAccents(opening).toLowerCase()
-      return base === open || (base.startsWith(`${open} `) && base.split(/\s+/).length <= 3)
+      return entityNameAtStart(label, opening)
     }
     // The countries of the people the headline names ("call with Putin" → Russia), from their Wikidata citizenship.
     const headlineWords = new Set(foldAccents(cleanHeadline(text)).toLowerCase().split(/[^\p{L}]+/u).filter((word) => word.length >= 3))
@@ -814,6 +812,9 @@ export class OldsService {
       // A foreign person matched only by a surname that opens the headline ("Bernardo…" in Manila is not Paul Bernardo),
       // unless known worldwide (Mbappé).
       const person = ids(entity, 'P31').includes('Q5')
+      const death = (entity.claims?.['P570'] ?? []).find((claim) => claim.rank !== 'deprecated')?.mainsnak?.datavalue?.value as { time?: string } | undefined
+      const deathYear = death?.time?.match(/^\+?(\d{4})-/)?.[1]
+      if (person && !filedThread && lang === 'en' && personActivityConflicts(node.label, text, deathYear ? Number(deathYear) : null, currentYear)) return []
       if (person && surnameOnly && countries.length && storyQids.length && !storyQids.some((qid) => countries.includes(qid)) && !famous.has(item.qid)) return []
       const storyCountries = [...(query.countryCode ? [query.countryCode] : []), ...namedCountries]
       if (storyCountries.length && titleCountries.length && !titleCountries.some((code) => storyCountries.includes(code))) return []
@@ -867,7 +868,7 @@ export class OldsService {
       // A general concept ("Government", "Military parade") needs two words in common, not one.
       const conceptOk = (!general || filedThread || titleWordsIn(matchTitle, text) >= 2)
         // A different kind of event or body from the one the headline names (a football team for a school awards story).
-        && (filedThread || native || !eventKindConflicts(node.label, text))
+        && (filedThread || native || (!eventKindConflicts(node.label, text) && !eventNameConflicts(node.label, text, countryLabel)))
       return [{ id: item.qid, node, score, entity, weakOnly: weakOnly && !filedThread, general: general && !filedThread, words: words && conceptOk, rescuable: conceptOk && !general && titleWordsIn(matchTitle, text) >= 1 && !weakOnly,
         // A place named in full ("Dubai"): a city's description never reads like the story, so Laya does not veto it.
         // Not a person ("Mao Zedong" in an apology story) or a country (the story is usually its relations, not the country).
@@ -1487,7 +1488,7 @@ function countriesByName(text: string): string[] {
 
 const BROAD_CLASSES = new Set(['Q6256', 'Q3624078', 'Q5107', 'Q82794', 'Q35657', 'Q10864048', 'Q1620908', 'Q15642541', 'Q7275', 'Q3336843', 'Q11828004', 'Q107390', 'Q34876', 'Q515'])
 
-const CACHE_VERSION = 'v12'
+const CACHE_VERSION = 'v13'
 
 function cacheKey(query: OldsQuery): string {
   return `${CACHE_VERSION}|${rawCacheKey(query)}`

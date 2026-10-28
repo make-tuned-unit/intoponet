@@ -59,7 +59,9 @@ export function subjectTerms(headline: string, exclude: string[] = []): string[]
  * new leader is covered the day they appear in the news).
  */
 export function otherCountries(headline: string, country: string | null, named: string[], people: string[] = []): string[] {
-  void headline
+  // A second country (including citizenship inferred from a search hit) is not enough to make
+  // weather, local crime or a sports result a story about diplomatic relations.
+  if (!/\b(relations?|diploma\w*|bilateral|multilateral|ambassadors?|envoys?|summit|talks|call with|meeting with|negotiat\w*|treaty|alliance|allies|partner\w*|cooperat\w*|foreign policy|foreign minister|trade|tariffs?|sanctions?|border|ceasefire|peace deal|state visit)\b/i.test(headline)) return []
   return [...new Set([...named, ...people])].filter((name) => name !== country).slice(0, 3)
 }
 

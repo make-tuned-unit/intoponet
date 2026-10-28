@@ -6,6 +6,7 @@ const { stories } = JSON.parse(readFileSync(new URL('./olds-gold.json', import.m
 
 // These are actual wrong selections from the 2026-10-28 comparison, previously counted as passes.
 const cases = [
+  ['FNB launches', 'FNB Stadium', 'Eswatini'],
   ['Round 8 of', '2026 European Motocross Championship', 'Motocross'],
   ['Lluvias en Perú', 'Peru–United Kingdom relations', 'Climate of Peru'],
   ['NOCZ unveils', 'Zambia at the 2026 Commonwealth Games', '2026 Summer Youth Olympics'],
