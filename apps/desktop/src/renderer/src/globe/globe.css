@@ -1850,3 +1850,27 @@
 @media (prefers-reduced-motion: reduce) {
   .country-name { transition: none; }
 }
+
+/* A natural event in the card: NASA's satellite picture of the place, and news naming it. */
+.event-view { display: grid; gap: 12px; margin: 4px 0 12px; }
+.event-picture { margin: 0; }
+.event-picture button {
+  position: relative; display: block; width: 100%; padding: 0; border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px; overflow: hidden; background: #06121b; cursor: zoom-in;
+}
+.event-picture img { display: block; width: 100%; height: auto; aspect-ratio: auto; }
+.event-crosshair {
+  position: absolute; left: 50%; top: 50%; width: 26px; height: 26px; margin: -13px 0 0 -13px;
+  border: 1.5px solid rgba(255, 255, 255, 0.85); border-radius: 50%; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45), 0 0 12px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+.event-crosshair::after { content: ''; position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%; background: #fff; }
+.event-picture figcaption { margin-top: 5px; color: var(--muted); font-size: 10.5px; }
+.event-coverage h3 { margin: 0 0 6px; color: var(--muted); font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; }
+.event-coverage ul { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.event-coverage button { padding: 0; border: 0; background: none; color: var(--warm-white); font: inherit; font-size: 12.5px; line-height: 1.35; text-align: left; cursor: pointer; }
+.event-coverage button:hover { text-decoration: underline; text-underline-offset: 2px; }
+.event-coverage small { display: block; margin-top: 2px; color: var(--muted); font-size: 10.5px; }
+
+.event-picture.is-loading button { aspect-ratio: 1; display: grid; place-items: center; cursor: default; }
+.event-picture-wait { color: var(--muted); font-size: 11.5px; }

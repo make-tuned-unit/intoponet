@@ -133,6 +133,7 @@ import { useRecorder } from './captures/useRecorder'
 import { PinEditor, type PinEditorValue } from './PinEditor'
 import { createGlobeProjection, type GlobeMarker } from './globe/GlobeMarkers'
 import { CountryNames, createCountryView } from './globe/CountryNames'
+import { headlinesAbout } from './globe/naturalEvent'
 import { countryAt, countryShape } from '../../shared/places/countryAt'
 import { GlobeOverlay, type GlobeLabel } from './globe/GlobeOverlay'
 import { GlobeHeader, HoverCardContent, LayerCard, SignalPanel, type FieldView, type ListView } from './globe/GlobeHud'
@@ -2433,6 +2434,11 @@ export function App() {
           translation={translation}
           onHeadlineHistory={openOldsForHeadline}
           peers={windowGlobeSignals}
+          coverageFor={(signal) => {
+            if (!newsDigest) return []
+            const all = [...newsDigest.countries.flatMap((country) => country.headlines), ...newsDigest.places.flatMap((place) => place.headlines), ...(newsDigest.global ?? []).flatMap((story) => story.headlines)]
+            return headlinesAbout(signal, all)
+          }}
           contextFor={(signal) => {
             if (signal.layer !== 'news') return null
             const code = signal.id.match(/^news:country:([A-Z]{2})$/)?.[1] ?? nearestCountry(signal.lat, signal.lon)?.place.countryCode

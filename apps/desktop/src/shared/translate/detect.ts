@@ -133,3 +133,72 @@ export function detectLanguage(declared: string | null | undefined, text: string
   if (fromTag === 'en' && textLatin) return fromText
   return fromTag
 }
+
+/** Short function words that headlines use (headlines drop most others). */
+const HEADLINE_WORDS: Record<string, string[]> = {
+  en: ['after', 'over', 'says', 'from', 'as', 'at', 'will', 'into', 'its', 'new', 'amid', 'their'],
+  es: ['sus', 'su', 'entre', 'al', 'sobre', 'tras', 'ante', 'más', 'como', 'pero', 'hasta', 'según', 'desde'],
+  pt: ['seu', 'sua', 'mais', 'sobre', 'entre', 'após', 'ao', 'pelo', 'pela', 'nos', 'nas', 'até'],
+  fr: ['sur', 'entre', 'après', 'plus', 'avec', 'sans', 'aux', 'au', 'ses', 'son', 'leur', 'selon', 'contre'],
+  it: ['sul', 'nel', 'dopo', 'più', 'tra', 'fra', 'alla', 'dal', 'sulla', 'nella', 'contro'],
+  de: ['im', 'vom', 'zum', 'zur', 'nach', 'gegen', 'über', 'bei', 'aus', 'wird', 'mehr'],
+  nl: ['bij', 'naar', 'over', 'uit', 'na', 'tegen', 'wordt', 'meer'],
+}
+
+const HEADLINE_SETS = Object.entries(STOPWORDS).map(([code, words]) => [code, new Set([...words, ...(HEADLINE_WORDS[code] ?? [])])] as const)
+
+/** Letters that belong to one language (or a close pair), for headlines too short for word counts. */
+const LETTERS: Array<[RegExp, string]> = [
+  [/[łżźśćńąę]/i, 'pl'],
+  [/[őű]/i, 'hu'],
+  [/[șțăâî]/i, 'ro'],
+  [/[ğış]|İ/, 'tr'],
+  [/[ãõ]/i, 'pt'],
+  [/[řůě]/i, 'cs'],
+  [/[ľĺŕ]/i, 'sk'],
+  [/[ąęėįųūč]/i, 'lt'],
+  [/[āēīūļņķģ]/i, 'lv'],
+  [/[ñ¿¡]/i, 'es'],
+  [/[åæø]/i, 'da'],
+  [/ß|[äöü].*\b(der|die|das|und)\b/i, 'de'],
+  [/[ðþ]/i, 'is'],
+  [/[ơưạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹđ]/i, 'vi'],
+]
+
+/**
+ * The language of a short text such as a headline: its writing system, then
+ * letters only one language uses, then common words (two are enough here).
+ * Null when it cannot tell; English is returned only on clear evidence.
+ */
+export function detectHeadline(text: string): string | null {
+  const sample = text.slice(0, 400)
+  const letters = count(sample, /\p{L}/gu)
+  if (letters < 8) return null
+  for (const [pattern, code] of SCRIPTS) {
+    if (count(sample, pattern) / letters > 0.3) return detectFromText(sample.repeat(3)) ?? code
+  }
+  const words = sample.toLowerCase().match(/\p{L}+/gu) ?? []
+  const scores = HEADLINE_SETS.map(([code, set]) => [code, words.reduce((sum, word) => sum + (set.has(word) ? 1 : 0), 0)] as const)
+    .sort((a, b) => b[1] - a[1])
+  const lettered = LETTERS.find(([pattern]) => pattern.test(sample))?.[1]
+  const [top, second] = scores
+  if (lettered && (!top || top[0] === lettered || top[1] < 2 || (scores.find(([code]) => code === lettered)?.[1] ?? 0) >= 1)) return lettered
+  if (!top || top[1] < 2 || (second && second[1] === top[1])) return null
+  return top[0]
+}
+
+/**
+ * A headline's language: its feed's declared language, unless the headline
+ * plainly says otherwise (an outlet tagged one language publishing in
+ * another); detected when the feed declares none.
+ */
+export function headlineLanguage(declared: string | null | undefined, title: string): string | null {
+  const tag = normalizeLanguage(declared)
+  const found = detectHeadline(title)
+  if (!tag) return found
+  if (!found || found === tag) return tag
+  // Override only on strong evidence: another writing system, or a language-specific letter.
+  const otherScript = SCRIPTS.some(([pattern]) => count(title, pattern) > 3)
+  const letterProof = LETTERS.some(([pattern, code]) => code === found && pattern.test(title))
+  return otherScript || letterProof || tag === 'en' ? found : tag
+}

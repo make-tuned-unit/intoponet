@@ -1,6 +1,6 @@
 import { PIVOT_LANGUAGE, type PageTranslationState, type TranslateCommand, type TranslateEvent, type TranslateStatus } from '@intoponet/browser-api'
 import { CATALOG, catalogLanguages, isSupportedLanguage, pairBytes, pairsForLanguage, routeFor, TRANSLATE_ATTRIBUTION, type Catalog, type CatalogPair } from './catalog'
-import { detectLanguage } from './detect'
+import { detectLanguage } from '../../shared/translate/detect'
 import { pairKey, type Translator } from './engine'
 import { applyScript, collectScript, parseCollected, parseSample, resetScript, restoreScript, sampleScript, TRANSLATE_WORLD_ID } from './pageScript'
 import type { TranslateStore } from './store'

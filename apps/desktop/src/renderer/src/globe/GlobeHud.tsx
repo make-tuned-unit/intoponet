@@ -3,6 +3,7 @@ import { Activity, ArrowDownRight, ArrowLeft, ArrowUpRight, BookmarkPlus, BookOp
 import type { NewsHeadline, RisingTerm, WikiNewsItem } from '../../../shared/news/newsDigest'
 import { dayPhase, dayPhaseText } from '../earth/sun'
 import { BiggerPicture } from './BiggerPicture'
+import { EventView } from './EventView'
 import { CommunityBeacons } from '../beacons/CommunityBeacons'
 import { WorldStories } from './WorldStories'
 import type { GlobalStory } from '../../../shared/news/globalStories'
@@ -31,10 +32,11 @@ export function readableLinks(signal: GlobeSignal): Array<{ label: string; url: 
   if (signal.layer === 'natural') {
     const day = signal.observedAt.slice(0, 10)
     const box = [signal.lon - 8, signal.lat - 6, signal.lon + 8, signal.lat + 6].map((value) => value.toFixed(2)).join(',')
-    // A verified article, else the agency's own page (never a Wikipedia search, which finds nothing for most fires).
+    // A verified article when one exists; otherwise the card shows the satellite picture and news itself
+    // (agency records stay as a small source link below).
     const read = signal.articleUrl
       ? { label: 'Read about it', url: signal.articleUrl, title: `Wikipedia: ${decodeURIComponent(signal.articleUrl.split('/wiki/')[1]!).replace(/_/g, ' ')}` }
-      : !DATA_FILE.test(signal.url) ? { label: 'Agency report', url: signal.url, title: `The reporting agency’s page: ${signal.url}` } : null
+      : null
     return [
       ...(read ? [read] : []),
       { label: 'Satellite view', url: `https://worldview.earthdata.nasa.gov/?v=${box}&t=${day}`, title: `NASA Worldview satellite imagery of this area on ${day}` },
@@ -423,6 +425,7 @@ export function SignalPanel({
   onTerm,
   translation,
   onHeadlineHistory,
+  coverageFor,
   contextFor,
   onOldsTopic,
   world,
@@ -441,6 +444,8 @@ export function SignalPanel({
   onSave: (signal: GlobeSignal) => void
   onFly: (signal: GlobeSignal) => void
   /** Open The Olds for this signal, when it has a history to follow. */
+  /** News that names a natural event (from the local news digest). */
+  coverageFor?: ((signal: GlobeSignal) => Array<{ title: string; url: string; publisher: string; publishedAt: string }>) | undefined
   onHistory: ((signal: GlobeSignal) => void) | null
   emptyText: string
   listView: ListView
@@ -496,6 +501,7 @@ export function SignalPanel({
             <h2>{selected.title}</h2>
             {selected.placeLabel && selected.placeLabel !== selected.title && <p className="globe-place"><MapPin size={12} aria-hidden="true" />{selected.placeLabel}</p>}
             {selected.summary && <p className="globe-detail-summary">{selected.summary}</p>}
+            {selected.layer === 'natural' && <EventView signal={selected} now={now} coverage={coverageFor?.(selected) ?? []} onOpen={onOpen} />}
             {context && onHistory && (
               <BiggerPicture
                 countryCode={context.countryCode}
@@ -544,7 +550,7 @@ export function SignalPanel({
             <div className="globe-actions">
               {readableLinks(selected).map((link, index) => (
                 <button key={link.label} type="button" className={index === 0 ? 'globe-primary' : 'globe-secondary'} title={link.title} onClick={() => onOpen(link.url)}>
-                  {index === 0 ? <ExternalLink size={14} aria-hidden="true" /> : <Satellite size={14} aria-hidden="true" />}
+                  {link.label === 'Satellite view' ? <Satellite size={14} aria-hidden="true" /> : <ExternalLink size={14} aria-hidden="true" />}
                   {link.label}
                 </button>
               ))}

@@ -4,6 +4,7 @@ import { hostIsPaywalled } from '../../../shared/news/paywall'
 import { learnedPaywalls } from '../access/learnedPaywalls'
 import '../access/access.css'
 import { normalizeLanguage } from '@intoponet/browser-api'
+import { headlineLanguage } from '../../../shared/translate/detect'
 import type { NewsHeadline } from '../../../shared/news/newsDigest'
 import { relativeTime } from '../globe/globeSignals'
 import { formatMegabytes, languageName, modelFor, nativeName, RELATED_MODEL, type TranslateModel } from './useTranslate'
@@ -55,7 +56,7 @@ export function HeadlineList({
   const foreign = useMemo(() => {
     const byLang = new Map<string, NewsHeadline[]>()
     for (const headline of headlines) {
-      const own = normalizeLanguage(headline.lang)
+      const own = headlineLanguage(headline.lang, headline.title)
       if (!own || own === target || !translation) continue
       // Faroese and a few others have no model: translate roughly with their closest relative's.
       const code = modelFor(own, translation.supported)?.code
@@ -68,7 +69,7 @@ export function HeadlineList({
   const untranslatable = useMemo(() => {
     const codes = new Set<string>()
     for (const headline of headlines) {
-      const code = normalizeLanguage(headline.lang)
+      const code = headlineLanguage(headline.lang, headline.title)
       if (code && code !== target && translation && !modelFor(code, translation.supported)) codes.add(code)
     }
     return [...codes]
@@ -192,7 +193,7 @@ export function HeadlineList({
       <ul className={className}>
         {headlines.map((headline) => {
           const shown = on ? translated.get(headline.url) : undefined
-          const code = normalizeLanguage(headline.lang)
+          const code = headlineLanguage(headline.lang, headline.title)
           return (
             <li key={headline.url} className={onHistory ? 'has-history' : undefined}>
               <button type="button" onClick={() => onOpen(headline.url)} title={shown ? headline.title : undefined}>

@@ -1,3 +1,4 @@
+import { headlineLanguage } from '../translate/detect'
 import type { GlobalStory } from './globalStories'
 import { countryPlace, normalizePlaceText, placesInCountry, type Place } from '../places/places'
 import { COUNTRY_ROWS } from '../places/placeData'
@@ -305,7 +306,8 @@ export function buildNewsDigest(input: {
       publisher: source.publisherName,
       publishedAt: new Date(at).toISOString(),
       ...(placeRef ? { place: placeRef.name } : {}),
-      ...(source.language ? { lang: source.language } : {}),
+      // The headline's own language: its feed's, unless the headline plainly says otherwise (or the feed declares none).
+      ...((): { lang?: string } => { const lang = headlineLanguage(source.language, title); return lang ? { lang } : {} })(),
       at,
       countryCode: source.countryCode,
       publisherGroupId: source.publisherGroupId,

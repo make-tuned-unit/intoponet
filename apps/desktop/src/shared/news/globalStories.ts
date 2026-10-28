@@ -1,3 +1,4 @@
+import { headlineLanguage } from '../translate/detect'
 import { capitalEvidence, STOPWORDS, type NewsHeadline, type NewsItemInput, type NewsSourceMeta } from './newsDigest'
 
 /**
@@ -88,8 +89,8 @@ export function buildGlobalStories(input: { sources: NewsSourceMeta[]; items: Ne
       countryCode: source.countryCode,
       group: source.publisherGroupId,
       international: source.scope === 'international',
-      english: (source.language ?? '').toLowerCase().startsWith('en'),
-      lang: source.language ?? null,
+      english: (headlineLanguage(source.language, title) ?? 'en').startsWith('en'),
+      lang: headlineLanguage(source.language, title),
       tokens: storyTokens(title),
     })
   }

@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { BookOpen, ChevronDown, Globe2, History } from 'lucide-react'
 import type { GlobalStory } from '../../../shared/news/globalStories'
 import type { NewsHeadline, WikiNewsItem } from '../../../shared/news/newsDigest'
 import { HeadlineList } from '../translate/HeadlineList'
+import { useTranslatedTitles } from '../translate/useTranslatedTitles'
 import type { TranslateModel } from '../translate/useTranslate'
 import { relativeTime } from './globeSignals'
 import { hostIsPaywalled } from '../../../shared/news/paywall'
@@ -45,6 +46,9 @@ export function WorldStories({
   translation?: TranslateModel | undefined
 }) {
   const [expanded, setExpanded] = useState<string | null>(focusedId)
+  // Story titles in your language (same Original ↔ English choice as the headlines inside).
+  const titleItems = useMemo(() => stories.map((story) => ({ key: story.id, title: story.title, lang: story.headlines.find((item) => item.url === story.url)?.lang ?? null })), [stories])
+  const titles = useTranslatedTitles(titleItems, translation)
   const toggle = (story: GlobalStory): void => {
     const next = expanded === story.id ? null : story.id
     setExpanded(next)
@@ -60,6 +64,7 @@ export function WorldStories({
           <ol className="world-list">
             {stories.map((story, index) => {
               const open = expanded === story.id
+              const shown = titles.get(story.id)
               return (
                 <li key={story.id} className={open ? 'is-open' : ''}>
                   <button
@@ -71,7 +76,7 @@ export function WorldStories({
                   >
                     <span className="world-rank">{index + 1}</span>
                     <span className="world-text">
-                      <strong>{story.title}</strong>
+                      <strong title={shown ? `Original: ${story.title}` : undefined}>{shown ?? story.title}</strong>
                       <small>
                         <em>{story.countries.length} {story.countries.length === 1 ? 'country' : 'countries'}</em>{story.internationalDesks ? ` · ${story.internationalDesks} international desk${story.internationalDesks === 1 ? '' : 's'}` : ''} · {relativeTime(story.latestAt, now)}
                       </small>
@@ -88,7 +93,7 @@ export function WorldStories({
                         <button
                           type="button"
                           className="globe-history-button"
-                          onClick={() => onHistory({ title: story.title, url: story.url, publisher: story.publisher, publishedAt: story.latestAt, lang: story.headlines.find((item) => item.url === story.url)?.lang ?? 'en' }, /^en/i.test(story.headlines.find((item) => item.url === story.url)?.lang ?? 'en') ? story.title : null)}
+                          onClick={() => onHistory({ title: story.title, url: story.url, publisher: story.publisher, publishedAt: story.latestAt, lang: story.headlines.find((item) => item.url === story.url)?.lang ?? 'en' }, shown ?? (/^en/i.test(story.headlines.find((item) => item.url === story.url)?.lang ?? 'en') ? story.title : null))}
                         >
                           <History size={13} aria-hidden="true" /> The history behind it
                         </button>
