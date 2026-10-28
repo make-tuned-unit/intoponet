@@ -190,3 +190,10 @@ describe('generic cases from the 25-story review', () => {
     expect(titleWordsIn('Partido de la Gente', 'Dos hombres resultan heridos en ataques con machetes en el barrio de Alcaide')).toBe(0)
   })
 })
+
+describe('nationality words', () => {
+  it('do not name a topic on their own, but countries do', () => {
+    expect(isRelevantCandidate('English language', 'Where does Arsenal’s Fleetwood humiliation place in English cup shocks?')).toBe(false)
+    expect(isRelevantCandidate('Iran', 'Talks with Iran resume in Oman')).toBe(true)
+  })
+})

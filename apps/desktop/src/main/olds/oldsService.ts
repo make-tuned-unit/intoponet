@@ -659,7 +659,8 @@ export class OldsService {
   private async headlineThread(query: Extract<OldsQuery, { kind: 'headline' }>): Promise<OldsThread> {
     // Search English Wikipedia: translate the headline on this device first when we can.
     let text = query.text
-    let lang = query.lang && query.lang !== 'en' ? query.lang : 'en'
+    // A headline with no language given may still not be English: tell common languages by their function words.
+    let lang = query.lang && query.lang !== 'en' ? query.lang : guessLanguage(query.text) ?? 'en'
     let translated = false
     if (lang !== 'en' && this.options.translateToEnglish) {
       const english = await this.options.translateToEnglish(query.text, lang).catch(() => null)
@@ -724,6 +725,13 @@ export class OldsService {
     }
     // A story about a film, game or book may be about the work itself ("New 'Call of Duty' game imagines…").
     const aboutAWork = WORK_WORDS.test(text)
+    // The organisation the headline opens with ("Nedbank buys…"): its own article is the subject.
+    const subjectEntity = (label: string): boolean => {
+      if (translated || isTitleCase(text) || !opening) return false
+      const base = foldAccents(label.replace(/\s*\(.*?\)\s*$/, '')).toLowerCase()
+      const open = foldAccents(opening).toLowerCase()
+      return base === open || (base.startsWith(`${open} `) && base.split(/\s+/).length <= 3)
+    }
     const surnameOnly = !!opening && opening.split(/\s+/).length === 1
     // How widely known people are (Wikipedia editions about them): only for foreign people matched by surname.
     const famous = surnameOnly ? await this.famousAmong([...items.values()].map((item) => entities.get(item.qid)).filter((entity): entity is WikidataEntity => !!entity
@@ -753,7 +761,7 @@ export class OldsService {
       const storyCountries = [...(query.countryCode ? [query.countryCode] : []), ...namedCountries]
       if (storyCountries.length && titleCountries.length && !titleCountries.some((code) => storyCountries.includes(code))) return []
       // Films, TV series, songs and foods share words with the news ("Melania (film)", "Soldier Soldier", "Brazil nut").
-      if (isWorkOrThing(node.description) && !aboutAWork) return []
+      if (isWorkOrThing(node.description, aboutAWork)) return []
       // Sharing only the country's name ("German economic crisis" for a speech by Merz) is a weak match.
       // (The outlet's country counts too: "Cabinet of Egypt" for a renewables plan from an Egyptian paper.)
       const countryOnly = !native && !filedThread && titleWordsIn(node.label, `${text} ${countryLabel ?? ''}`) > 0 && titleWordsIn(node.label, subjectText) === 0
@@ -792,7 +800,8 @@ export class OldsService {
       const general = !isEventLike(entity) && ids(entity, 'P17').length === 0 && !ids(entity, 'P31').includes('Q5')
       // Without translation, one shared word is too weak ("ONU" → "EJ Onu"), unless the title is that one word.
       // The person the headline opens with is its subject ("Mbappe apologises…" → Kylian Mbappé).
-      const words = filedThread || (ids(entity, 'P31').includes('Q5') && subjectPerson(node.label) && titleWordsIn(node.label, text) > 0) || (native
+      const words = filedThread || (ids(entity, 'P31').includes('Q5') && subjectPerson(node.label) && titleWordsIn(node.label, text) > 0)
+        || (!ids(entity, 'P31').includes('Q5') && subjectEntity(node.label) && !general) || (native
         ? isRelevantCandidate(matchTitle, text, undefined, currentYear) && titleWordsIn(matchTitle, text) >= Math.min(2, titleContentWords(matchTitle).length)
         : isRelevantCandidate(node.label, text, countryLabel ?? undefined, currentYear))
       // A general concept ("Government", "Military parade") needs two words in common, not one.
@@ -818,7 +827,8 @@ export class OldsService {
     if (!chosen?.entity || !chosen.node) {
       // No topic: still place the story in its country's history, and say why.
       if (!query.countryCode) throw new Error('No Wikipedia topic matched this headline.')
-      const country = { ...await this.thread({ kind: 'country', countryCode: query.countryCode }).catch(() => { throw new Error('No Wikipedia topic matched this headline, and its country’s history could not be loaded. Try again in a moment.') }) }
+      const loadCountry = (): Promise<OldsThread> => this.thread({ kind: 'country', countryCode: query.countryCode! })
+      const country = { ...await loadCountry().catch(() => new Promise<OldsThread>((resolve) => setTimeout(resolve, 1_500)).then(loadCountry)).catch(() => { throw new Error('No Wikipedia topic matched this headline, and its country’s history could not be loaded. Try again in a moment.') }) }
       const year = new Date(this.now()).getUTCFullYear()
       const root = country.nodes.find((node) => node.id === country.rootId)!
       // The whole history of a country is not the story's history: keep only the events about its subject.
@@ -868,6 +878,21 @@ export class OldsService {
       }
     }
 
+    // Part of a larger event, adding words the headline never uses ("Futsal at the 2026 Summer Youth Olympics" for
+    // athletes leaving for the Youth Olympic Games): the larger event (Wikidata "part of") is the story.
+    if (!query.topic && lang === 'en' && foreignNamesIn(chosen.node.label, text) > 0) {
+      const parent = ids(chosen.entity, 'P361')[0]
+      const parentEntity = parent ? (await this.entities([parent], 'en').catch(() => new Map<string, WikidataEntity>())).get(parent) : undefined
+      const parentNode = parentEntity ? nodeFromEntity(parentEntity, 'en') : null
+      if (parent && parentNode && foreignNamesIn(parentNode.label, text) < foreignNamesIn(chosen.node.label, text) && titleWordsIn(parentNode.label, text) >= titleWordsIn(chosen.node.label, text) - 1 && titleWordsIn(parentNode.label, text) > 0) {
+        const better = await this.headlineThread({ ...query, topic: parent })
+        if (better.context) {
+          better.context.matchedBy = `${chosen.node.label} is part of ${parentNode.label}, which is what the headline is about.`
+          better.context.candidates = [{ id: chosen.id, label: chosen.node.label, description: chosen.node.description }, ...better.context.candidates.filter((candidate) => candidate.id !== chosen.id)].slice(0, 4)
+        }
+        return better
+      }
+    }
     // "Jay-Z to perform at Super Bowl half-time show": the next one in the series (Wikidata "followed by"), not the last.
     if (!query.topic && UPCOMING.test(cleanHeadline(text))) {
       const next = ids(chosen.entity, 'P156')[0]
@@ -1252,12 +1277,43 @@ export function withoutCountryNames(text: string, extra?: string | null): string
 }
 
 /** A description whose head noun is a work or a thing, not a topic: "1991 British television series", "species of tree", "2026 documentary film". */
-export function isWorkOrThing(description: string | null | undefined): boolean {
+export function isWorkOrThing(description: string | null | undefined, aboutAWork = false): boolean {
   if (!description) return false
+  // A story about a film or game may be about the work itself, never about a food or a coin.
+  if (aboutAWork) return isThing(description)
   // Plants and trees are things; dinosaurs and viruses can be news ("Nanotyrannus").
   if (/\b(species|genus|cultivar|variety) of (tree|plant|flowering plant|shrub|grass|herb|fungus|palm|cactus)\b/i.test(description)) return true
   const head = description.toLowerCase().replace(/\s+(by|directed|written|starring|from|produced|created|released|launched|issued|named|associated|owned|based|bearing|with|that|which|used|about|featuring|for|in|of|on)\b.*$/, '').replace(/,.*$/, '').trim()
   return /\b(film|movie|documentary|album|song|single|novel|book|(television|tv|drama|comedy|web|animated|anime|reality)( drama| comedy)? series|miniseries|sitcom|episode|video game|band|musical|opera|painting|comic|manga|anime|cultivar|dish|food|snack|nut|drink|beverage|brand|character|surname|given name|family name|name|coin|meme coin|memecoin|cryptocurrency|token|phrase|slogan|idiom|catchphrase|expression|proverb)$/.test(head)
+}
+
+/** Common European languages by their function words, for headlines whose feed gave no language. */
+export function guessLanguage(text: string): string | null {
+  const words = text.toLowerCase().split(/[^\p{L}]+/u).filter(Boolean)
+  if (words.length < 4) return null
+  const markers: Record<string, string[]> = {
+    es: ['el', 'la', 'los', 'las', 'del', 'que', 'por', 'para', 'con', 'una', 'ante', 'sus', 'según', 'también'],
+    pt: ['o', 'os', 'as', 'do', 'da', 'dos', 'das', 'que', 'para', 'com', 'uma', 'não', 'pelo', 'pela', 'em'],
+    fr: ['le', 'les', 'des', 'du', 'au', 'aux', 'est', 'une', 'pour', 'avec', 'sur', 'dans', 'qui', 'et'],
+    de: ['der', 'die', 'das', 'den', 'dem', 'und', 'mit', 'für', 'auf', 'ist', 'nicht', 'eine', 'nach', 'vom'],
+    it: ['il', 'gli', 'della', 'delle', 'del', 'che', 'per', 'con', 'una', 'nel', 'sono', 'alla'],
+    nl: ['het', 'een', 'van', 'voor', 'met', 'op', 'niet', 'naar', 'bij', 'zijn', 'wordt'],
+  }
+  const english = new Set(['the', 'of', 'and', 'to', 'in', 'for', 'on', 'with', 'is', 'as', 'at', 'by', 'from', 'after', 'over'])
+  const englishHits = words.filter((word) => english.has(word)).length
+  let best: { code: string; hits: number } | null = null
+  for (const [code, list] of Object.entries(markers)) {
+    const hits = words.filter((word) => list.includes(word)).length
+    if (hits >= 2 && hits > englishHits && (!best || hits > best.hits)) best = { code, hits }
+  }
+  return best?.code ?? null
+}
+
+/** Things (foods, coins, names, phrases), as opposed to works. */
+function isThing(description: string): boolean {
+  if (/\b(species|genus|cultivar|variety) of (tree|plant|flowering plant|shrub|grass|herb|fungus|palm|cactus)\b/i.test(description)) return true
+  const head = description.toLowerCase().replace(/\s+(by|directed|written|starring|from|produced|created|released|launched|issued|named|associated|owned|based|bearing|with|that|which|used|about|featuring|for|in|of|on)\b.*$/, '').replace(/,.*$/, '').trim()
+  return /\b(cultivar|dish|food|snack|nut|drink|beverage|surname|given name|family name|name|coin|meme coin|memecoin|cryptocurrency|token|phrase|slogan|idiom|catchphrase|expression|proverb)$/.test(head)
 }
 
 /** Names of the countries a text names (see headlineCountries). */

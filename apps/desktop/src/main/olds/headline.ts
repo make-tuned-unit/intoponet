@@ -1,3 +1,4 @@
+import { COUNTRY_ROWS } from '../../shared/places/placeData'
 /**
  * From a news headline to the topic it is about, and from that topic back
  * through history. Pure helpers; the network lives in OldsService.
@@ -222,7 +223,8 @@ export function titleWordsIn(rawTitle: string, rawHeadline: string): number {
   // Same stem, or one a 5+ letter prefix of the other ("India" ~ "Indian").
   const matches = (a: string): boolean => words.some((b) => a === b || (Math.min(a.length, b.length) >= 5 && (a.startsWith(b) || b.startsWith(a))))
   // Years are not shared subjects ("2026 GB3 Championship" ≠ "2026 Guam … Championship"); recency is scored separately.
-  return title.toLowerCase().replace(/\(.*?\)/g, '').split(/[^\p{L}\d]+/u).filter((word) => word.length > 2 && !STOPWORDS.has(word) && !MONTH_WORDS.has(word) && !/^\d{4}$/.test(word) && matches(stem(word))).length
+  // Each title word once ("Combined authorities and combined county authorities" shares one word, not two).
+  return new Set(title.toLowerCase().replace(/\(.*?\)/g, '').split(/[^\p{L}\d]+/u).filter((word) => word.length > 2 && !STOPWORDS.has(word) && !MONTH_WORDS.has(word) && !/^\d{4}$/.test(word) && matches(stem(word))).map(stem)).size
 }
 
 /** Content words of a title (parenthetical qualifiers dropped). */
@@ -272,10 +274,19 @@ export function isRelevantCandidate(title: string, headline: string, countryName
   // One shared word is only enough when it is a name (capitalised after the headline's first word, or the country)
   // and the title adds no other names ("Education in Honduras" is not a story about a drug seizure in Honduras).
   if (unexplainedNames(title, said) > 0) return false
+  // Nationality words ("English cup shocks") describe; they don't name the topic.
   const names = cleanHeadline(headline).split(/\s+/).slice(1)
     .map((word) => word.replace(/^[^\p{L}\d]+|[^\p{L}\d]+$/gu, ''))
-    .filter((word) => /^\p{Lu}/u.test(word))
+    .filter((word) => /^\p{Lu}/u.test(word) && !isDemonym(word))
   return titleWordsIn(title, [...names, countryName ?? ''].join(' ')) >= 1
+}
+
+const DEMONYM_WORDS = /^(English|British|French|German|Dutch|Swiss|Irish|Scottish|Welsh|Danish|Swedish|Finnish|Polish|Spanish|Turkish|Kurdish|Jewish|Greek|Thai|Chinese|Japanese|Vietnamese|Portuguese|Lebanese|Sudanese|Congolese|Senegalese|Maltese|Nepalese|Burmese|Taiwanese|American|African|European|Asian|Arab)$/
+/** A nationality word: a listed one, or a country's name with a suffix ("Iranian", "Kenyan"; never "Iran" or "Milan"). */
+function isDemonym(word: string): boolean {
+  if (DEMONYM_WORDS.test(word)) return true
+  const stem = word.replace(/(ian|ean|an|ese|ish|i)$/, '')
+  return stem !== word && stem.length >= 4 && COUNTRY_ROWS.some(([, name]) => name !== word && !name.includes(' ') && name.startsWith(stem))
 }
 
 /** Classes that are calendar units or whole states: never a topic or a step on a path. */

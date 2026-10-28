@@ -203,3 +203,9 @@ publisher's terms need checking before release, following the governance in
 `apps/desktop/src/shared/places/countryShapes.ts` is derived from Natural Earth 1:50m Admin 0 – Countries
 (https://www.naturalearthdata.com/), which is in the public domain. Simplified and re-encoded by
 `packages/place-catalog/scripts/build-country-shapes.mjs`. Made with Natural Earth.
+
+## Wikipedia test fixture
+
+`apps/desktop/src/main/olds/__fixtures__/current-events-2026-10-27.wikitext` is the wikitext of
+"Portal:Current events/2026 October 27" from English Wikipedia (https://en.wikipedia.org/wiki/Portal:Current_events/2026_October_27),
+by Wikipedia contributors, licensed CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/). Used unmodified as test data.

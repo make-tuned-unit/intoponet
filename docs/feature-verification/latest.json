@@ -1,12 +1,14 @@
 {
-  "started": "2026-10-28T12:41:23.794Z",
-  "finished": "2026-10-28T12:43:42.824Z",
+  "started": "2026-10-28T12:59:59.555Z",
+  "finished": "2026-10-28T13:03:06.202Z",
   "tier": "full",
   "only": [
     "OLDS_HEADLINE",
-    "OLDS_UI"
+    "OLDS_UI",
+    "OLDS_COUNTRY",
+    "OLDS_DEBATE"
   ],
-  "summary": "2 passed, 0 failed, 0 blocked, 0 skipped, 25 assumed",
+  "summary": "4 passed, 0 failed, 0 blocked, 0 skipped, 23 assumed",
   "results": {
     "BUILD": {
       "status": "assumed",
@@ -59,20 +61,22 @@
     "OLDS_HEADLINE": {
       "status": "pass",
       "notes": "Israel → 2026 Israeli legislative election: 18 dated events from 29 Dec 2022; Ebola, South Africa and Guernsey guards ok; related Judiciary of Israel, Israeli law, Politics of Israel, Elections in Israel. Brazil → 2026 Brazilian general election. Honduras → Honduras.",
-      "seconds": 86
+      "seconds": 99
     },
     "OLDS_COUNTRY": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Capital Tórshavn; 7 chapters; latest event 2025.",
+      "seconds": 6
     },
     "OLDS_DEBATE": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Anthropologist Joseph Henrich, Rodney Stark, Historian Joel Mokyr, Williams, Voltaire, Bob Allen",
+      "seconds": 3
     },
     "OLDS_UI": {
       "status": "pass",
       "notes": "Views Story/Timeline/List; sections: HOW WE GOT HERE.",
-      "seconds": 53
+      "seconds": 79
     },
     "BROWSE": {
       "status": "assumed",
