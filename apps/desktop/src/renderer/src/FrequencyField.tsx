@@ -6,6 +6,7 @@ import type { InterestSignal } from './interestField'
 import { useEffect, useState } from 'react'
 import { EarthScene } from './earth/EarthScene'
 import type { GlobeMarker, GlobeProjection } from './globe/GlobeMarkers'
+import type { CountryView } from './globe/CountryNames'
 
 export function FrequencyField({
   paused = false,
@@ -28,6 +29,9 @@ export function FrequencyField({
   onDiagnostics,
   onOrganicMetrics,
   dayNight = false,
+  countryView,
+  onSurfaceHover,
+  onSurfaceClick,
 }: {
   paused?: boolean
   panelOpen?: boolean
@@ -50,6 +54,9 @@ export function FrequencyField({
   onDiagnostics?: ((diagnostics: MembraneDiagnostics) => void) | undefined
   onOrganicMetrics?: ((metrics: OrganicMembraneMetrics) => void) | undefined
   dayNight?: boolean
+  countryView?: CountryView | undefined
+  onSurfaceHover?: ((point: { lat: number; lon: number } | null) => boolean) | undefined
+  onSurfaceClick?: ((point: { lat: number; lon: number }) => boolean) | undefined
 }) {
   const [pageHidden, setPageHidden] = useState(
     () => typeof document !== 'undefined' && document.hidden,
@@ -82,6 +89,9 @@ export function FrequencyField({
       onDiagnostics={onDiagnostics}
       onOrganicMetrics={onOrganicMetrics}
       dayNight={dayNight}
+      countryView={countryView}
+      onSurfaceHover={onSurfaceHover}
+      onSurfaceClick={onSurfaceClick}
     />
   )
 }

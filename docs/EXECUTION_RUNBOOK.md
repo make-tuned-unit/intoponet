@@ -1092,6 +1092,23 @@ Licence, Beacons and remaining PRD items, 2026-10-27:
     (a Jamaican minister's campaign in Canada);
   - the leader list is dated late 2026.
 
+### 2026-10-27 — Every country named and clickable on the globe
+
+- Country shapes from Natural Earth 1:50m (public domain), simplified to ~2 km
+  (590 KB, `build-country-shapes.mjs`); all 252 countries the app knows are
+  accounted for (246 shapes; overseas parts such as French Guiana and
+  Svalbard split out; 6 specks as points). A unit test proves each country
+  is found at its own label point.
+- Clicking bare globe finds the country under the cursor (enclaves, coasts
+  and specks like Vatican City handled) and opens it: its news when it has
+  coverage, otherwise "Near <country>".
+- Names fade in by zoom and Natural Earth's label priority without
+  overlapping panels or marker labels; the country in the middle of the view
+  and the one under the cursor are always named. Flying to a country frames
+  its middle, not its capital.
+- `COUNTRY_NAMES` in the feature DAG: names at the start, a click, and seven
+  flights (Canada to Tuvalu) each naming the right country.
+
 ## Gate ownership and evidence
 
 | Gate | Planner verification before promotion |

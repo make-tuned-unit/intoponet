@@ -1,7 +1,7 @@
 import { latLonToRender } from '@intoponet/frequency-field'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
-import { AdditiveBlending, BufferAttribute, BufferGeometry, Color, ShaderMaterial, Vector3 } from 'three'
+import { AdditiveBlending, BufferAttribute, BufferGeometry, Color, Raycaster, ShaderMaterial, Sphere, Vector2, Vector3 } from 'three'
 
 export type GlobeMarker = {
   id: string
@@ -92,6 +92,8 @@ export function GlobeMarkers({
   onHover,
   onSelect,
   emphasis = null,
+  onSurfaceHover,
+  onSurfaceClick,
 }: {
   markers: GlobeMarker[]
   selectedId: string | null
@@ -102,10 +104,14 @@ export function GlobeMarkers({
   onSelect: (id: string | null) => void
   /** When set, markers outside it are dimmed (e.g. countries using a rising term). */
   emphasis?: ReadonlySet<string> | null
+  /** The point on Earth under the cursor when no marker is (null off the globe); return true when something is there. */
+  onSurfaceHover?: ((point: { lat: number; lon: number } | null) => boolean) | undefined
+  /** A click on Earth where there is no marker. Return true when it was handled. */
+  onSurfaceClick?: ((point: { lat: number; lon: number }) => boolean) | undefined
 }) {
   const { camera, gl, size } = useThree()
-  const callbacks = useRef({ onHover, onSelect, interactive })
-  callbacks.current = { onHover, onSelect, interactive }
+  const callbacks = useRef({ onHover, onSelect, interactive, onSurfaceHover, onSurfaceClick })
+  callbacks.current = { onHover, onSelect, interactive, onSurfaceHover, onSurfaceClick }
   const hoverRef = useRef<string | null>(null)
 
   const positions = useMemo(() => markers.map((marker) => {
@@ -189,6 +195,20 @@ export function GlobeMarkers({
   useEffect(() => {
     const element = gl.domElement
     let down: { x: number; y: number } | null = null
+    const raycaster = new Raycaster()
+    const earth = new Sphere(new Vector3(), 1)
+    const ndc = new Vector2()
+    const hit = new Vector3()
+    // The point on Earth under the cursor, or null off the globe.
+    const surface = (event: PointerEvent): { lat: number; lon: number } | null => {
+      const rect = element.getBoundingClientRect()
+      ndc.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1)
+      raycaster.setFromCamera(ndc, camera)
+      if (!raycaster.ray.intersectSphere(earth, hit)) return null
+      return { lat: (Math.asin(Math.max(-1, Math.min(1, hit.y))) * 180) / Math.PI, lon: (Math.atan2(-hit.z, hit.x) * 180) / Math.PI }
+    }
+    let surfaceAt = 0
+    let surfaceOn = false
     const nearest = (event: PointerEvent): string | null => {
       const rect = element.getBoundingClientRect()
       const px = event.clientX - rect.left
@@ -210,12 +230,27 @@ export function GlobeMarkers({
     const onMove = (event: PointerEvent): void => {
       if (!callbacks.current.interactive || event.buttons !== 0) return
       const id = nearest(event)
+      // No marker here: the country under the cursor (throttled).
+      if (!id && callbacks.current.onSurfaceHover) {
+        const now = performance.now()
+        if (now - surfaceAt > 50) {
+          surfaceAt = now
+          surfaceOn = callbacks.current.onSurfaceHover(surface(event))
+        }
+      } else if (id && surfaceOn) {
+        surfaceOn = false
+        callbacks.current.onSurfaceHover?.(null)
+      }
+      element.style.cursor = id || surfaceOn ? 'pointer' : ''
       if (id === hoverRef.current) return
       hoverRef.current = id
-      element.style.cursor = id ? 'pointer' : ''
       callbacks.current.onHover(id)
     }
     const onLeave = (): void => {
+      if (surfaceOn) {
+        surfaceOn = false
+        callbacks.current.onSurfaceHover?.(null)
+      }
       if (hoverRef.current === null) return
       hoverRef.current = null
       element.style.cursor = ''
@@ -227,7 +262,12 @@ export function GlobeMarkers({
       const moved = Math.hypot(event.clientX - down.x, event.clientY - down.y)
       down = null
       if (moved > 5) return
-      callbacks.current.onSelect(nearest(event))
+      const id = nearest(event)
+      if (!id) {
+        const point = surface(event)
+        if (point && callbacks.current.onSurfaceClick?.(point)) return
+      }
+      callbacks.current.onSelect(id)
     }
     element.addEventListener('pointermove', onMove)
     element.addEventListener('pointerleave', onLeave)
@@ -240,7 +280,7 @@ export function GlobeMarkers({
       element.removeEventListener('pointerup', onUp)
       element.style.cursor = ''
     }
-  }, [gl, projection])
+  }, [gl, projection, camera])
 
   if (!markers.length) return null
   return <points geometry={geometry} material={material} renderOrder={20} frustumCulled={false} />

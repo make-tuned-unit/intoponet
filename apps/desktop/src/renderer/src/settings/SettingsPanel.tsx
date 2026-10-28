@@ -110,6 +110,7 @@ export function SettingsPanel({
             <li><strong>Wikipedia</strong> text in The Olds and World stories, CC BY-SA 4.0, often shortened or translated on this Mac. Each passage links to its article.</li>
             <li><strong>Wikidata</strong> facts and links, CC0. <strong>Wikimedia</strong> pageviews, CC0.</li>
             <li><strong>GeoNames</strong> place names and coordinates, CC BY 4.0 (geonames.org).</li>
+            <li><strong>Natural Earth</strong> country shapes and map labels, public domain (naturalearthdata.com).</li>
             <li><strong>Firefox Translations</strong> models and the Bergamot engine, Mozilla, MPL-2.0. Run on this Mac.</li>
             <li><strong>all-MiniLM-L6-v2</strong> (Laya’s meaning model), sentence-transformers, Apache-2.0. Runs on this Mac.</li>
             <li><strong>NASA</strong> Earth imagery (Blue Marble, Black Marble) and EONET natural events; <strong>USGS</strong> earthquakes. Public domain.</li>

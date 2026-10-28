@@ -7,58 +7,282 @@
     "full": "Also downloads on-device language models (about 70–80 MB each)."
   },
   "nodes": [
-    { "id": "BUILD", "title": "Typecheck, unit tests and production build", "deps": [], "tier": "core", "kind": "command",
+    {
+      "id": "BUILD",
+      "title": "Typecheck, unit tests and production build",
+      "deps": [],
+      "tier": "core",
+      "kind": "command",
       "promise": "The app is built from code that typechecks and passes every unit test.",
-      "run": ["npm run typecheck", "npm test", "npm run build"] },
-    { "id": "APP_BOOT", "title": "App starts", "deps": ["BUILD"], "tier": "core", "kind": "e2e",
-      "promise": "Intoponet opens to the globe with Private, Bookmarks, The Olds, Knowledge, My map and Settings in the header." },
-    { "id": "SETTINGS", "title": "Settings and Privacy", "deps": ["APP_BOOT"], "tier": "core", "kind": "e2e",
-      "promise": "Settings covers language, automatic translation, beacons, credits and privacy; Privacy covers private browsing, footprints, sites to leave out, pins and backups." },
-    { "id": "ACCESSIBILITY", "title": "Accessible and keyboard friendly", "deps": ["APP_BOOT"], "tier": "core", "kind": "e2e",
-      "promise": "No WCAG 2.1 AA violations; every header panel opens with Enter, closes with Escape and returns focus to its button." },
-    { "id": "LIBRARY", "title": "Encrypted private library, pins and beacon consent", "deps": ["APP_BOOT"], "tier": "core", "kind": "e2e",
-      "promise": "Saved pages live only in the encrypted library (old plain copies migrate without loss); pins can be hidden; publishing a pin as a beacon needs explicit agreement." },
-    { "id": "COLLECTIONS_IMPORT", "title": "Collections explained and split; tags", "deps": ["LIBRARY"], "tier": "core", "kind": "e2e",
-      "promise": "A collection explains what it holds (sites, topics, places) and can be split by site; pins carry several tags." },
-    { "id": "FLY_TO", "title": "Fly to a place", "deps": ["APP_BOOT"], "tier": "core", "kind": "e2e",
-      "promise": "Typing a place (even \"Charlottetown PEI\" or \"Fredericto\") and pressing Enter spins the globe there, closes any open page and marks the exact spot." },
-    { "id": "GLOBE_MOTION", "title": "Globe stays where you put it", "deps": ["FLY_TO"], "tier": "core", "kind": "e2e",
-      "promise": "Zooming after moving the globe keeps the place in view; it never swings back." },
-    { "id": "GLOBE_LIVE", "title": "Live public globe", "deps": ["APP_BOOT"], "tier": "network", "kind": "e2e",
-      "promise": "The globe shows live public signals (local news, reading, hazards) with World, Peaks, Rising and Fading highlights." },
-    { "id": "WORLD_STORIES", "title": "Stories covered across the world", "deps": ["GLOBE_LIVE"], "tier": "network", "kind": "e2e",
-      "promise": "The World tab lists stories covered by outlets in many countries, and the whole list can be scrolled." },
-    { "id": "COUNTRY_PANEL", "title": "A country's news and bigger picture", "deps": ["GLOBE_LIVE", "FLY_TO"], "tier": "network", "kind": "e2e",
-      "promise": "Opening a country shows key facts, genuinely recent history and its local headlines, without clipping." },
-    { "id": "OLDS_HEADLINE", "title": "The history behind a headline", "deps": ["APP_BOOT"], "tier": "network", "kind": "e2e",
-      "promise": "A headline opens the right topic with a dated, ordered chronology quoted from Wikipedia and relevant topics from the right country; broad matches give way to the actual event; no junk for unmatched headlines." },
-    { "id": "OLDS_COUNTRY", "title": "A country's history", "deps": ["APP_BOOT"], "tier": "network", "kind": "e2e",
-      "promise": "A country's history has key facts, chapters and events from the last ten years." },
-    { "id": "OLDS_DEBATE", "title": "Competing interpretations", "deps": ["APP_BOOT"], "tier": "network", "kind": "e2e",
-      "promise": "Where Wikipedia attributes competing views, The Olds shows them side by side with who holds each." },
-    { "id": "OLDS_UI", "title": "The Olds panel from a headline", "deps": ["COUNTRY_PANEL", "OLDS_HEADLINE"], "tier": "network", "kind": "e2e",
-      "promise": "A headline's history button opens The Olds with Story and Timeline views, no clipped timeline cards, and Escape closes it." },
-    { "id": "BROWSE", "title": "Browse the web", "deps": ["APP_BOOT"], "tier": "network", "kind": "e2e",
-      "promise": "Pages open in tabs with a named toolbar (Translate, Capture, Pin, Absorb, Bookmarks), and closing tabs never crashes the app." },
-    { "id": "PROTECTION", "title": "Ad and tracker protection", "deps": ["BROWSE"], "tier": "network", "kind": "e2e",
-      "promise": "Ads and trackers are blocked and the protection bar under the toolbar shows what was blocked." },
-    { "id": "PERMISSIONS", "title": "Site permissions and sign-in popups", "deps": ["BROWSE"], "tier": "network", "kind": "e2e",
-      "promise": "Sites ask for camera, microphone or location in a bar you answer; sign-in popups keep working; new-tab links open as tabs." },
-    { "id": "PRIVATE_BROWSING", "title": "Private browsing", "deps": ["BROWSE"], "tier": "network", "kind": "e2e",
-      "promise": "Private tabs are marked, leave no footprints, and close with their session when private browsing ends." },
-    { "id": "EXCLUDED_SITES", "title": "Sites to leave out", "deps": ["BROWSE"], "tier": "network", "kind": "e2e",
-      "promise": "Sites you leave out are never absorbed and leave no recent pages." },
-    { "id": "CAPTURE", "title": "Screenshots into folders", "deps": ["BROWSE"], "tier": "network", "kind": "e2e",
-      "promise": "A screenshot of the page is saved, and you can make a new folder while saving." },
-    { "id": "PAYWALL_ALTERNATIVES", "title": "Paywall detection", "deps": ["BROWSE", "GLOBE_LIVE"], "tier": "network", "kind": "e2e",
-      "promise": "Paywalled outlets are recognised so free coverage of the same story can be offered (never circumvented)." },
-    { "id": "ABSORB", "title": "Absorb, search and claims", "deps": ["BROWSE"], "tier": "network", "kind": "e2e",
-      "promise": "Absorbing a page (or just a selection) keeps it on this Mac; search returns the cited paragraph; claims are listed without false disputes." },
-    { "id": "BEACONS_REGISTRY", "title": "Beacon registry on Neon", "deps": ["LIBRARY"], "tier": "network", "kind": "e2e",
-      "promise": "The app reaches the live beacon registry, which is healthy and refuses unsigned requests." },
-    { "id": "AUTO_TRANSLATE", "title": "Automatic page translation", "deps": ["SETTINGS", "BROWSE"], "tier": "full", "kind": "e2e",
-      "promise": "With automatic translation on, a Russian page is detected and translated into your language on this Mac." },
-    { "id": "ROUGH_TRANSLATE", "title": "Languages without a model", "deps": ["COUNTRY_PANEL"], "tier": "full", "kind": "e2e",
-      "promise": "Faroese headlines translate roughly through Icelandic and say so." }
+      "run": [
+        "npm run typecheck",
+        "npm test",
+        "npm run build"
+      ]
+    },
+    {
+      "id": "APP_BOOT",
+      "title": "App starts",
+      "deps": [
+        "BUILD"
+      ],
+      "tier": "core",
+      "kind": "e2e",
+      "promise": "Intoponet opens to the globe with Private, Bookmarks, The Olds, Knowledge, My map and Settings in the header."
+    },
+    {
+      "id": "SETTINGS",
+      "title": "Settings and Privacy",
+      "deps": [
+        "APP_BOOT"
+      ],
+      "tier": "core",
+      "kind": "e2e",
+      "promise": "Settings covers language, automatic translation, beacons, credits and privacy; Privacy covers private browsing, footprints, sites to leave out, pins and backups."
+    },
+    {
+      "id": "ACCESSIBILITY",
+      "title": "Accessible and keyboard friendly",
+      "deps": [
+        "APP_BOOT"
+      ],
+      "tier": "core",
+      "kind": "e2e",
+      "promise": "No WCAG 2.1 AA violations; every header panel opens with Enter, closes with Escape and returns focus to its button."
+    },
+    {
+      "id": "LIBRARY",
+      "title": "Encrypted private library, pins and beacon consent",
+      "deps": [
+        "APP_BOOT"
+      ],
+      "tier": "core",
+      "kind": "e2e",
+      "promise": "Saved pages live only in the encrypted library (old plain copies migrate without loss); pins can be hidden; publishing a pin as a beacon needs explicit agreement."
+    },
+    {
+      "id": "COLLECTIONS_IMPORT",
+      "title": "Collections explained and split; tags",
+      "deps": [
+        "LIBRARY"
+      ],
+      "tier": "core",
+      "kind": "e2e",
+      "promise": "A collection explains what it holds (sites, topics, places) and can be split by site; pins carry several tags."
+    },
+    {
+      "id": "FLY_TO",
+      "title": "Fly to a place",
+      "deps": [
+        "APP_BOOT"
+      ],
+      "tier": "core",
+      "kind": "e2e",
+      "promise": "Typing a place (even \"Charlottetown PEI\" or \"Fredericto\") and pressing Enter spins the globe there, closes any open page and marks the exact spot."
+    },
+    {
+      "id": "GLOBE_MOTION",
+      "title": "Globe stays where you put it",
+      "deps": [
+        "FLY_TO"
+      ],
+      "tier": "core",
+      "kind": "e2e",
+      "promise": "Zooming after moving the globe keeps the place in view; it never swings back."
+    },
+    {
+      "id": "COUNTRY_NAMES",
+      "title": "Every country named and clickable",
+      "deps": [
+        "FLY_TO"
+      ],
+      "tier": "core",
+      "kind": "e2e",
+      "promise": "Country names fade in by zoom without overlapping; the country you spin or zoom to is always named, tiny ones included (Vatican, Nauru, Tuvalu); clicking any country, with or without news, opens it."
+    },
+    {
+      "id": "GLOBE_LIVE",
+      "title": "Live public globe",
+      "deps": [
+        "APP_BOOT"
+      ],
+      "tier": "network",
+      "kind": "e2e",
+      "promise": "The globe shows live public signals (local news, reading, hazards) with World, Peaks, Rising and Fading highlights."
+    },
+    {
+      "id": "WORLD_STORIES",
+      "title": "Stories covered across the world",
+      "deps": [
+        "GLOBE_LIVE"
+      ],
+      "tier": "network",
+      "kind": "e2e",
+      "promise": "The World tab lists stories covered by outlets in many countries, and the whole list can be scrolled."
+    },
+    {
+      "id": "COUNTRY_PANEL",
+      "title": "A country's news and bigger picture",
+      "deps": [
+        "GLOBE_LIVE",
+        "FLY_TO"
+      ],
+      "tier": "network",
+      "kind": "e2e",
+      "promise": "Opening a country shows key facts, genuinely recent history and its local headlines, without clipping."
+    },
+    {
+      "id": "OLDS_HEADLINE",
+      "title": "The history behind a headline",
+      "deps": [
+        "APP_BOOT"
+      ],
+      "tier": "network",
+      "kind": "e2e",
+      "promise": "A headline opens the right topic with a dated, ordered chronology quoted from Wikipedia and relevant topics from the right country; broad matches give way to the actual event; no junk for unmatched headlines."
+    },
+    {
+      "id": "OLDS_COUNTRY",
+      "title": "A country's history",
+      "deps": [
+        "APP_BOOT"
+      ],
+      "tier": "network",
+      "kind": "e2e",
+      "promise": "A country's history has key facts, chapters and events from the last ten years."
+    },
+    {
+      "id": "OLDS_DEBATE",
+      "title": "Competing interpretations",
+      "deps": [
+        "APP_BOOT"
+      ],
+      "tier": "network",
+      "kind": "e2e",
+      "promise": "Where Wikipedia attributes competing views, The Olds shows them side by side with who holds each."
+    },
+    {
+      "id": "OLDS_UI",
+      "title": "The Olds panel from a headline",
+      "deps": [
+        "COUNTRY_PANEL",
+        "OLDS_HEADLINE"
+      ],
+      "tier": "network",
+      "kind": "e2e",
+      "promise": "A headline's history button opens The Olds with Story and Timeline views, no clipped timeline cards, and Escape closes it."
+    },
+    {
+      "id": "BROWSE",
+      "title": "Browse the web",
+      "deps": [
+        "APP_BOOT"
+      ],
+      "tier": "network",
+      "kind": "e2e",
+      "promise": "Pages open in tabs with a named toolbar (Translate, Capture, Pin, Absorb, Bookmarks), and closing tabs never crashes the app."
+    },
+    {
+      "id": "PROTECTION",
+      "title": "Ad and tracker protection",
+      "deps": [
+        "BROWSE"
+      ],
+      "tier": "network",
+      "kind": "e2e",
+      "promise": "Ads and trackers are blocked and the protection bar under the toolbar shows what was blocked."
+    },
+    {
+      "id": "PERMISSIONS",
+      "title": "Site permissions and sign-in popups",
+      "deps": [
+        "BROWSE"
+      ],
+      "tier": "network",
+      "kind": "e2e",
+      "promise": "Sites ask for camera, microphone or location in a bar you answer; sign-in popups keep working; new-tab links open as tabs."
+    },
+    {
+      "id": "PRIVATE_BROWSING",
+      "title": "Private browsing",
+      "deps": [
+        "BROWSE"
+      ],
+      "tier": "network",
+      "kind": "e2e",
+      "promise": "Private tabs are marked, leave no footprints, and close with their session when private browsing ends."
+    },
+    {
+      "id": "EXCLUDED_SITES",
+      "title": "Sites to leave out",
+      "deps": [
+        "BROWSE"
+      ],
+      "tier": "network",
+      "kind": "e2e",
+      "promise": "Sites you leave out are never absorbed and leave no recent pages."
+    },
+    {
+      "id": "CAPTURE",
+      "title": "Screenshots into folders",
+      "deps": [
+        "BROWSE"
+      ],
+      "tier": "network",
+      "kind": "e2e",
+      "promise": "A screenshot of the page is saved, and you can make a new folder while saving."
+    },
+    {
+      "id": "PAYWALL_ALTERNATIVES",
+      "title": "Paywall detection",
+      "deps": [
+        "BROWSE",
+        "GLOBE_LIVE"
+      ],
+      "tier": "network",
+      "kind": "e2e",
+      "promise": "Paywalled outlets are recognised so free coverage of the same story can be offered (never circumvented)."
+    },
+    {
+      "id": "ABSORB",
+      "title": "Absorb, search and claims",
+      "deps": [
+        "BROWSE"
+      ],
+      "tier": "network",
+      "kind": "e2e",
+      "promise": "Absorbing a page (or just a selection) keeps it on this Mac; search returns the cited paragraph; claims are listed without false disputes."
+    },
+    {
+      "id": "BEACONS_REGISTRY",
+      "title": "Beacon registry on Neon",
+      "deps": [
+        "LIBRARY"
+      ],
+      "tier": "network",
+      "kind": "e2e",
+      "promise": "The app reaches the live beacon registry, which is healthy and refuses unsigned requests."
+    },
+    {
+      "id": "AUTO_TRANSLATE",
+      "title": "Automatic page translation",
+      "deps": [
+        "SETTINGS",
+        "BROWSE"
+      ],
+      "tier": "full",
+      "kind": "e2e",
+      "promise": "With automatic translation on, a Russian page is detected and translated into your language on this Mac."
+    },
+    {
+      "id": "ROUGH_TRANSLATE",
+      "title": "Languages without a model",
+      "deps": [
+        "COUNTRY_PANEL"
+      ],
+      "tier": "full",
+      "kind": "e2e",
+      "promise": "Faroese headlines translate roughly through Icelandic and say so."
+    }
   ]
 }

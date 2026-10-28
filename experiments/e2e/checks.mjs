@@ -104,6 +104,39 @@ export const checks = {
     return `Facts ok, recent history ${recent.join(', ')}, ${headlines} headlines.`
   },
 
+  async COUNTRY_NAMES(ctx) {
+    await ctx.delay(2000)
+    const atStart = await ctx.evaluate(`document.querySelectorAll('.country-name.is-on').length`)
+    expect(atStart >= 8, `Only ${atStart} country names at the default view.`)
+    // Click a named country (labels let clicks through to the globe).
+    const target = JSON.parse(await ctx.evaluate(`(() => { const el = document.querySelector('.country-name.is-on'); const r = el.getBoundingClientRect(); return JSON.stringify({ name: el.textContent, x: r.left + r.width / 2, y: r.top + r.height / 2 + 1 }) })()`))
+    for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) {
+      await ctx.send('Input.dispatchMouseEvent', { type, x: target.x, y: target.y, button: 'left', clickCount: 1, buttons: type === 'mousePressed' ? 1 : 0 })
+      await ctx.delay(type === 'mouseMoved' ? 200 : 60)
+    }
+    await ctx.wait(`(document.querySelector('.globe-header h1')?.textContent ?? '') !== 'Earth, live'`, 8000, 'the clicked country to open')
+    const opened = await ctx.evaluate(`document.querySelector('.globe-header h1')?.textContent ?? ''`)
+    // Fly to large and tiny countries: the one in the middle must be named.
+    const flights = { Canada: 'Canada', 'Vatican City': 'Vatican', Nauru: 'Nauru', Tuvalu: 'Tuvalu', Lesotho: 'Lesotho', 'New Zealand': 'New Zealand', Singapore: 'Singapore' }
+    const wrong = []
+    for (const [place, name] of Object.entries(flights)) {
+      await ctx.press('Escape')
+      await ctx.flyTo(place)
+      let last = ''
+      for (let i = 0, still = 0; i < 30 && still < 3; i += 1) {
+        await ctx.delay(400)
+        const now = await ctx.evaluate(`document.querySelector('.country-names').dataset.focus ?? ''`)
+        still = now === last ? still + 1 : 0
+        last = now
+      }
+      const focus = await ctx.evaluate(`[...document.querySelectorAll('.country-name.is-focus.is-on')].map((el) => el.textContent).join(', ')`)
+      if (focus !== name) wrong.push(`${place} → ${focus || 'no name'}`)
+    }
+    expect(!wrong.length, `The country in view was not named: ${wrong.join('; ')}`)
+    await ctx.shot('vatican')
+    return `${atStart} names at the start; clicked ${target.name} → ${opened}; ${Object.keys(flights).length} flights named correctly.`
+  },
+
   async WORLD_STORIES(ctx) {
     await ctx.waitForNews()
     await ctx.click('.globe-tabs button', 'World')

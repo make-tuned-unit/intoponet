@@ -132,6 +132,8 @@ import { useCaptures } from './captures/useCaptures'
 import { useRecorder } from './captures/useRecorder'
 import { PinEditor, type PinEditorValue } from './PinEditor'
 import { createGlobeProjection, type GlobeMarker } from './globe/GlobeMarkers'
+import { CountryNames, createCountryView } from './globe/CountryNames'
+import { countryAt, countryShape } from '../../shared/places/countryAt'
 import { GlobeOverlay, type GlobeLabel } from './globe/GlobeOverlay'
 import { GlobeHeader, HoverCardContent, LayerCard, SignalPanel, type FieldView, type ListView } from './globe/GlobeHud'
 import { OldsPanel, type OldsState } from './olds/OldsPanel'
@@ -344,6 +346,8 @@ export function App() {
   const [placesDismissed, setPlacesDismissed] = useState(false)
   const [clock, setClock] = useState(() => Date.now())
   const [globeProjection] = useState(createGlobeProjection)
+  // Where every country's name sits on screen; written by the scene each frame.
+  const [countryView] = useState(createCountryView)
   const [topicLocations, setTopicLocations] = useState<Record<string, PersonalTopicLocation>>({})
   const [designPreview, setDesignPreview] = useState(false)
   const [fieldLabOpen, setFieldLabOpen] = useState(
@@ -1963,6 +1967,20 @@ export function App() {
     if (signal) selectGlobeSignal(signal)
   }
 
+  /** Click a country anywhere on Earth: its news if it has coverage, otherwise fly there. */
+  const selectCountry = (code: string): void => {
+    const signal = allGlobeSignals.find((item) => item.id === `news:country:${code}`)
+    if (signal) {
+      setFocusedPlace(null)
+      selectGlobeSignal(signal)
+      return
+    }
+    const place = countryPlace(code)
+    if (place) flyToPlace(place)
+  }
+  // About 10 px of the globe at the current zoom: how close a click must be to a speck like Vatican City.
+  const surfaceCountry = (point: { lat: number; lon: number }) => countryAt(point.lat, point.lon, countryView.degPerPx * 10)
+
   const flyToPlace = (place: Place): void => {
     setFocusedPlace(place)
     setSelectedSignalId(null)
@@ -1971,7 +1989,9 @@ export function App() {
     focusedMapAnchor.current = { id: place.id, label: placeLabel(place), lat: place.lat, lon: place.lon, radiusKm: place.radiusKm }
     setBrowserFullWidth(false)
     if (panel.isVisible) void window.intoponet.browserHost.close()
-    flyToPoint(place.lat, place.lon, radiusForSpan(place.radiusKm * (place.kind === 'city' ? 1.4 : 2.4)))
+    // A country is framed on its label point (its middle), not its capital, so it is the country named in view.
+    const middle = place.kind === 'country' ? countryShape(place.countryCode) : null
+    flyToPoint(middle?.lat ?? place.lat, middle?.lon ?? place.lon, radiusForSpan(place.radiusKm * (place.kind === 'city' ? 1.4 : 2.4)))
   }
 
   const saveGlobeSignal = (signal: GlobeSignal): void => {
@@ -2073,6 +2093,17 @@ export function App() {
         projection={globeProjection}
         onMarkerHover={setHoveredMarkerId}
         onMarkerSelect={selectGlobeMarker}
+        countryView={countryView}
+        onSurfaceHover={(point) => {
+          countryView.hovered = point ? surfaceCountry(point)?.code ?? null : null
+          return countryView.hovered !== null
+        }}
+        onSurfaceClick={(point) => {
+          const country = surfaceCountry(point)
+          if (!country) return false
+          selectCountry(country.code)
+          return true
+        }}
         markerEmphasis={termEmphasis}
         dayNight
         membraneSettings={activityMembraneSettings}
@@ -2480,6 +2511,7 @@ export function App() {
           />
         )}
       </AnimatePresence>
+      {!fieldLabOpen && <CountryNames view={countryView} hidden={panel.isVisible} />}
       {!fieldLabOpen && (
         <GlobeOverlay
           projection={globeProjection}

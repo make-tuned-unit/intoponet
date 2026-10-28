@@ -20,6 +20,7 @@ import { OrbitRig } from './OrbitRig'
 import { FrequencyLighting } from './FrequencyLighting'
 import { Atmosphere } from './Atmosphere'
 import { GlobeMarkers, type GlobeMarker, type GlobeProjection } from '../globe/GlobeMarkers'
+import { CountryProjector, type CountryView } from '../globe/CountryNames'
 
 const EARTH_TINT = new Color('#74838a')
 const EARTH_FADE_MS = 1_400
@@ -138,6 +139,9 @@ export function EarthScene({
   onPoseChange,
   onOrganicMetrics,
   dayNight = false,
+  countryView,
+  onSurfaceHover,
+  onSurfaceClick,
 }: {
   paused?: boolean
   /** Freeze membrane material phase while leaving camera interaction/rendering active. */
@@ -163,6 +167,10 @@ export function EarthScene({
   onOrganicMetrics?: ((metrics: OrganicMembraneMetrics) => void) | undefined
   /** Light the globe by the real sun and show night with city lights. */
   dayNight?: boolean
+  /** Where each country's name sits on screen (for the name layer). */
+  countryView?: CountryView | undefined
+  onSurfaceHover?: ((point: { lat: number; lon: number } | null) => boolean) | undefined
+  onSurfaceClick?: ((point: { lat: number; lon: number }) => boolean) | undefined
 }) {
   const [sun, setSun] = useState<[number, number, number]>(() => sunDirection(new Date()))
   const aimed = {
@@ -203,8 +211,11 @@ export function EarthScene({
           onHover={(id) => onMarkerHover?.(id)}
           onSelect={(id) => onMarkerSelect?.(id)}
           emphasis={markerEmphasis}
+          onSurfaceHover={panelOpen ? undefined : onSurfaceHover}
+          onSurfaceClick={panelOpen ? undefined : onSurfaceClick}
         />
       )}
+      {countryView && <CountryProjector view={countryView} />}
       {signals === undefined ? (
         <FrequencyMembrane
           paused={phasePaused ?? paused}

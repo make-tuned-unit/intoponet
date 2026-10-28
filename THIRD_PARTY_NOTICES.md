@@ -197,3 +197,9 @@ publisher's terms need checking before release, following the governance in
    attribution for GeoNames somewhere in the app, such as an About or Credits
    screen (§4).
 5. Clear each news publisher's terms for commercial display (§4).
+
+## Natural Earth (country shapes)
+
+`apps/desktop/src/shared/places/countryShapes.ts` is derived from Natural Earth 1:50m Admin 0 – Countries
+(https://www.naturalearthdata.com/), which is in the public domain. Simplified and re-encoded by
+`packages/place-catalog/scripts/build-country-shapes.mjs`. Made with Natural Earth.
