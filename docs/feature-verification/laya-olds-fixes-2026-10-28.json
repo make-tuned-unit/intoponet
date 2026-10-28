@@ -1,0 +1,182 @@
+{
+  "evaluatedAt": "2026-10-28T22:20:47.751762+00:00",
+  "baseCommit": "3894e65",
+  "buildMainSha256": "35ac6856b2d9a4be4d51ba1133f0174fcd2b68ead8d8e80fe611278f1beeb9fc",
+  "scope": "Five focused live regressions, sequential Laya on then off, same frozen build and profile. Not a full 78-story rerun.",
+  "changes": [
+    "Keep a recognised subject surname through foreign-name filtering and do not penalize its unmentioned given name. Existing fame/country gates still apply.",
+    "Require exact opening full-name agreement instead of one shared word.",
+    "Exclude spelled-out quantities from subject overlap.",
+    "Reject funeral/death topics when an English headline provides no death-related cue, except editor-filed topics.",
+    "Tighten five acceptance labels and cover six observed false positives with tests.",
+    "Record gold-file hash in results; fail immediately for unmatched ONLY or failed Laya enable."
+  ],
+  "validation": {
+    "workspaceTypecheck": "passed; desktop repeated after final code change",
+    "unitTestsPassed": 505,
+    "labelTestsPassed": 6,
+    "skippedRegistryTests": 5,
+    "build": "passed",
+    "focusedOn": 5,
+    "focusedOff": 5,
+    "focusedTotal": 5
+  },
+  "historicalRescore": {
+    "originalOn": 71,
+    "originalOff": 66,
+    "tightenedOn": 66,
+    "tightenedOff": 62,
+    "total": 78,
+    "note": "Reclassification of prior recorded results, not a new app run."
+  },
+  "remaining": [
+    "Full 78-story evaluation on the final build is not yet run; prior full-quality gate remains failed.",
+    "Wilson Neves and Bernardo remain unresolved in intermediate focused checks.",
+    "Ethiopia search results varied between live runs; final focused runs passed both modes.",
+    "Other documented topic mismatches remain open."
+  ],
+  "runs": {
+    "on": {
+      "laya": true,
+      "languages": [
+        "ar",
+        "de",
+        "es",
+        "fr",
+        "id",
+        "it",
+        "nl",
+        "pl",
+        "pt",
+        "ru",
+        "tr"
+      ],
+      "goldSha256": "303c7fada0d7e5e6dfc6c1601fc8e03ba39d8ec80fefe4b486431be91a202a95",
+      "status": "{\"enabled\":true,\"model\":{\"id\":\"sentence-transformers/all-MiniLM-L6-v2\",\"revision\":\"1110a243fdf4706b3f48f1d95db1a4f5529b4d41\",\"sizeBytes\":91099884,\"downloaded\":true,\"verified\":true},\"indexedDocuments\":0,\"totalDocuments\":0,\"busy\":true,\"lastError\":null}",
+      "complete": true,
+      "results": [
+        {
+          "title": "Mbappe apologises for Mao Zedong comment after Chinese sponsors drop him",
+          "accept": "Mbapp",
+          "root": "Kylian Mbappé",
+          "events": 12,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac.",
+          "filed": [],
+          "ok": true,
+          "ms": 18751
+        },
+        {
+          "title": "How Ethiopia Became Russia’s Longstanding and Reliable Partner in Africa",
+          "accept": "Ethiopia–Russia",
+          "root": "Ethiopia–Russia relations",
+          "events": 12,
+          "matchedBy": "No Wikipedia topic matched this headline's words directly; it is about Ethiopia–Russia relations, a subject in Ethiopia, so that is shown.",
+          "filed": [],
+          "ok": true,
+          "ms": 21324
+        },
+        {
+          "title": "Norway, Finland’s leaders hold rare talks with Putin",
+          "accept": "Putin|Russia relations|Norway|Finland",
+          "root": "Finland–Norway relations",
+          "events": 0,
+          "matchedBy": "No Wikipedia topic matched this headline's words directly; it is about Finland–Norway relations, a subject in Norway, so that is shown.",
+          "filed": [],
+          "ok": true,
+          "ms": 30103
+        },
+        {
+          "title": "Golf simulators, football challenges: What’s new at Dubai Fitness Challenge 2026",
+          "accept": "Dubai",
+          "root": "Dubai",
+          "events": 11,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country, checked by meaning with Laya on this Mac. Recent steps from Wikipedia’s Timeline of Dubai.",
+          "filed": [],
+          "ok": true,
+          "ms": 15268
+        },
+        {
+          "title": "Forty-two students honoured at Dominica’s inaugural National Schools’ Awards ceremony for academic excellence",
+          "accept": "Dominica$|Dominica (?!national football)",
+          "root": "Dominica",
+          "events": 4,
+          "matchedBy": "No Wikipedia topic clearly matched this headline. Showing the history of Dominica instead.",
+          "filed": [],
+          "ok": true,
+          "ms": 12243
+        }
+      ]
+    },
+    "off": {
+      "laya": false,
+      "languages": [
+        "ar",
+        "de",
+        "es",
+        "fr",
+        "id",
+        "it",
+        "nl",
+        "pl",
+        "pt",
+        "ru",
+        "tr"
+      ],
+      "goldSha256": "303c7fada0d7e5e6dfc6c1601fc8e03ba39d8ec80fefe4b486431be91a202a95",
+      "status": "{\"enabled\":false,\"model\":{\"id\":\"sentence-transformers/all-MiniLM-L6-v2\",\"revision\":\"1110a243fdf4706b3f48f1d95db1a4f5529b4d41\",\"sizeBytes\":91099884,\"downloaded\":true,\"verified\":false},\"indexedDocuments\":0,\"totalDocuments\":0,\"busy\":false,\"lastError\":null}",
+      "complete": true,
+      "results": [
+        {
+          "title": "Mbappe apologises for Mao Zedong comment after Chinese sponsors drop him",
+          "accept": "Mbapp",
+          "root": "Kylian Mbappé",
+          "events": 18,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country.",
+          "filed": [],
+          "ok": true,
+          "ms": 11912
+        },
+        {
+          "title": "How Ethiopia Became Russia’s Longstanding and Reliable Partner in Africa",
+          "accept": "Ethiopia–Russia",
+          "root": "Ethiopia–Russia relations",
+          "events": 18,
+          "matchedBy": "No Wikipedia topic matched this headline's words directly; it is about Ethiopia–Russia relations, a subject in Ethiopia, so that is shown.",
+          "filed": [],
+          "ok": true,
+          "ms": 11833
+        },
+        {
+          "title": "Norway, Finland’s leaders hold rare talks with Putin",
+          "accept": "Putin|Russia relations|Norway|Finland",
+          "root": "Finland–Norway relations",
+          "events": 0,
+          "matchedBy": "No Wikipedia topic matched this headline's words directly; it is about Finland–Norway relations, a subject in Norway, so that is shown.",
+          "filed": [],
+          "ok": true,
+          "ms": 14570
+        },
+        {
+          "title": "Golf simulators, football challenges: What’s new at Dubai Fitness Challenge 2026",
+          "accept": "Dubai",
+          "root": "Dubai",
+          "events": 8,
+          "matchedBy": "Best match among English Wikipedia search results for the headline's words, preferring topics in this country. Recent steps from Wikipedia’s Timeline of Dubai.",
+          "filed": [],
+          "ok": true,
+          "ms": 8244
+        },
+        {
+          "title": "Forty-two students honoured at Dominica’s inaugural National Schools’ Awards ceremony for academic excellence",
+          "accept": "Dominica$|Dominica (?!national football)",
+          "root": "Dominica",
+          "events": 1,
+          "matchedBy": "No Wikipedia topic clearly matched this headline. Showing the history of Dominica instead. No dated events about it yet; the latest from Wikipedia’s 2026 in Dominica show what else is happening there.",
+          "filed": [],
+          "ok": true,
+          "ms": 20289
+        }
+      ]
+    }
+  }
+}

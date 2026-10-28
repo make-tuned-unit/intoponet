@@ -22,7 +22,7 @@ import { countryPlace, placesNamedIn } from '../../shared/places/places'
 import { COUNTRY_ROWS } from '../../shared/places/placeData'
 import { figuresIn, withoutCitations } from '../knowledge/claims'
 import type { OldsChronicleEntry, OldsRelatedTopic } from '@intoponet/browser-api'
-import { cleanHeadline, foreignNamesIn, isRelevantCandidate, mentions, properPhrases, NOT_A_TOPIC, PATH_PROPERTIES, foldAccents, scoreCandidate, searchQueries, titleContentWords, titleWordsIn, topicAge, eventKindConflicts, eventKindMatches, namedEvents } from './headline'
+import { cleanHeadline, foreignNamesIn, isRelevantCandidate, mentions, properPhrases, personNameAtStart, NOT_A_TOPIC, PATH_PROPERTIES, foldAccents, scoreCandidate, searchQueries, titleContentWords, titleWordsIn, topicAge, eventKindConflicts, eventKindMatches, namedEvents } from './headline'
 
 const USER_AGENT = 'Intoponet/0.1 (+https://github.com/make-tuned-unit/intoponet; The Olds)'
 const TIMEOUT_MS = 15_000
@@ -773,12 +773,9 @@ export class OldsService {
     const headlineNames = properPhrases(cleanHeadline(text).replace(/^\S+\s*/, '')).join(' ')
     const opening = cleanHeadline(text).match(/^(\p{Lu}[\p{L}'’.-]+(?:\s+\p{Lu}[\p{L}'’.-]+){0,2})/u)?.[1] ?? ''
     // Only in the headline as written (a translated "Rains" is not Claude Rains): a full name, or a surname that ends the person's name.
-    const subjectPerson = (label: string): boolean => {
-      if (translated || isTitleCase(text) || !opening || titleWordsIn(label, opening) === 0) return false
-      if (opening.split(/\s+/).length >= 2) return true
-      const surname = foldAccents(label.replace(/\s*\(.*?\)\s*$/, '')).toLowerCase().split(/\s+/).at(-1)
-      return surname === foldAccents(opening).toLowerCase()
-    }
+    const subjectPerson = (label: string): boolean =>
+      !translated && !isTitleCase(text) && personNameAtStart(label, text)
+
     // A story about a film, game or book may be about the work itself ("New 'Call of Duty' game imagines…").
     const aboutAWork = WORK_WORDS.test(text)
     // The organisation the headline opens with ("Nedbank buys…"): its own article is the subject.
@@ -837,7 +834,7 @@ export class OldsService {
       if (foreign) return []
       // A foreign topic that brings in a name the story never mentions ("Mickey's Halloween Party" for a party in Bermuda).
       const elsewhere = !filedThread && storyQids.length > 0 && countries.length > 0 && countries.length <= 2 && !storyQids.some((qid) => countries.includes(qid))
-      if (elsewhere && foreignNamesIn(matchTitle, text) > 0) return []
+      if (elsewhere && foreignNamesIn(matchTitle, text) > 0 && !(person && subjectPerson(node.label))) return []
       const kindScore = native ? 0 : eventKindMatches(node.label, text) ? 1.5 : eventKindConflicts(node.label, text) ? -3 : 0
       const score = filedBonus + (countryOnly ? -5 : 0) + kindScore + scoreCandidate({
         ageYears,
@@ -850,7 +847,8 @@ export class OldsService {
         isCountry: item.qid === countryQid || ids(entity, 'P31').some((id) => ['Q6256', 'Q3624078', 'Q7275', 'Q3024240', 'Q1763527', 'Q417175'].includes(id)),
         isDisambiguation: item.disambiguation,
         titleWordsInHeadline: titleWordsIn(matchTitle, text),
-        foreignNames: foreignNamesIn(matchTitle, text),
+        // A recognised surname does not need the person’s given name repeated in the headline.
+        foreignNames: person && subjectPerson(node.label) ? 0 : foreignNamesIn(matchTitle, text),
         otherCountry: storyQids.length > 0 && countries.length > 0 && countries.length <= 2 && !storyQids.some((qid) => countries.includes(qid)),
       })
       if (!Number.isFinite(score)) return []

@@ -168,6 +168,9 @@ const EVENT_KINDS: Array<[string, RegExp]> = [
 
 /** The headline names one kind of event and the title another ("Commonwealth leaders at summit" vs "Commonwealth Games"). */
 export function eventKindConflicts(title: string, headline: string): boolean {
+  // Mentioning a historical person does not make their death the headline's subject.
+  if (/\b(funeral|death of)\b/i.test(title)
+    && !/\b(dead|death|deaths|died|dies|dying|funeral|burial|buried|mourning|mourns?|obituary|killed|murder\w*|assassinat\w*|memorial|anniversary)\b/i.test(headline)) return true
   const kindsOf = (text: string): string[] => EVENT_KINDS.filter(([, pattern]) => pattern.test(text)).map(([kind]) => kind)
   const inTitle = kindsOf(title)
   const inHeadline = kindsOf(headline)
@@ -202,10 +205,22 @@ const COMBINING_FORMS: Record<string, string> = { russo: 'russia', sino: 'china'
 
 /** Month names date a story; they are not its subject ("September 30 attack" ≠ "September 11 attacks"). */
 const MONTH_WORDS = new Set(['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'])
+// Quantities do not identify a subject: forty-two students are not the Forty-two Articles.
+const NUMBER_WORDS = new Set('zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty thirty forty fifty sixty seventy eighty ninety hundred thousand million billion trillion'.split(' '))
 
 /** "Mbappé" ~ "Mbappe": compare without accents. */
 export function foldAccents(text: string): string {
   return text.normalize('NFD').replace(/\p{M}+/gu, '')
+}
+
+/** A full name or an exact surname opening the headline, never one word of a different full name. */
+export function personNameAtStart(label: string, headline: string): boolean {
+  const normalize = (value: string): string => foldAccents(value).toLowerCase().replace(/[’]/g, "'").trim()
+  const name = normalize(label.replace(/\s*\(.*?\)\s*$/, ''))
+  const opening = cleanHeadline(headline).match(/^(\p{Lu}[\p{L}'’.-]+(?:\s+\p{Lu}[\p{L}'’.-]+){0,2})/u)?.[1]
+  if (!opening || !name) return false
+  const start = normalize(opening)
+  return start.includes(' ') ? start === name : start === name.split(/\s+/).at(-1)
 }
 
 export function titleWordsIn(rawTitle: string, rawHeadline: string): number {
@@ -224,7 +239,7 @@ export function titleWordsIn(rawTitle: string, rawHeadline: string): number {
   const matches = (a: string): boolean => words.some((b) => a === b || (Math.min(a.length, b.length) >= 5 && (a.startsWith(b) || b.startsWith(a))))
   // Years are not shared subjects ("2026 GB3 Championship" ≠ "2026 Guam … Championship"); recency is scored separately.
   // Each title word once ("Combined authorities and combined county authorities" shares one word, not two).
-  return new Set(title.toLowerCase().replace(/\(.*?\)/g, '').split(/[^\p{L}\d]+/u).filter((word) => word.length > 2 && !STOPWORDS.has(word) && !MONTH_WORDS.has(word) && !/^\d{4}$/.test(word) && matches(stem(word))).map(stem)).size
+  return new Set(title.toLowerCase().replace(/\(.*?\)/g, '').split(/[^\p{L}\d]+/u).filter((word) => word.length > 2 && !STOPWORDS.has(word) && !MONTH_WORDS.has(word) && !NUMBER_WORDS.has(word) && !/^\d{4}$/.test(word) && matches(stem(word))).map(stem)).size
 }
 
 /** Content words of a title (parenthetical qualifiers dropped). */

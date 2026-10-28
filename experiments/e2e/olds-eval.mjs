@@ -8,10 +8,14 @@
 import { runAppCheck } from './lib.mjs'
 import { readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { createHash } from 'node:crypto'
 
 const out = process.argv[2] ?? 'olds-eval.json'
-const gold = JSON.parse(readFileSync(join(import.meta.dirname, 'olds-gold.json'), 'utf8')).stories
+const goldSource = readFileSync(join(import.meta.dirname, 'olds-gold.json'), 'utf8')
+const goldSha256 = createHash('sha256').update(goldSource).digest('hex')
+const gold = JSON.parse(goldSource).stories
   .filter((story) => !process.env.ONLY || new RegExp(process.env.ONLY).test(story.title))
+if (!gold.length) throw new Error('No gold stories matched ONLY.')
 const laya = process.env.LAYA === '1'
 const langs = (process.env.OLDS_LANGS ?? '').split(',').map((code) => code.trim()).filter(Boolean)
 if (process.env.E2E_PROFILE) rmSync(join(process.env.E2E_PROFILE, 'olds-cache'), { recursive: true, force: true })
@@ -25,7 +29,7 @@ const summary = await runAppCheck(async (ctx) => {
   if (langs.some((code) => !languages.includes(code))) throw new Error('Required translation models are missing.')
   console.log(`Installed translation languages: ${languages.join(',') || '(none)'}`)
   const status = await ctx.evaluate(laya
-    ? `window.intoponet.laya.enable().then((s) => JSON.stringify(s), (e) => 'ERR ' + e.message)`
+    ? `window.intoponet.laya.enable().then((s) => JSON.stringify(s))`
     : `window.intoponet.laya.status().then((s) => s.enabled ? window.intoponet.laya.disable({ deleteModel: false }) : s).then((s) => JSON.stringify(s))`)
   if (laya) await ctx.wait(`window.intoponet.laya.status().then((s) => s.enabled && s.model.downloaded && !s.busy)`, 900_000, 'Laya to be ready')
   const results = []
@@ -39,14 +43,14 @@ const summary = await runAppCheck(async (ctx) => {
       results.push({ title: story.title, accept: story.accept, root: '', error: String(error).slice(-120), ok: false, ms: Date.now() - started })
     }
     // Keep partial evidence if a long network-backed run is interrupted.
-    writeFileSync(out, JSON.stringify({ laya, languages, status: status.slice(0, 300), complete: false, results }, null, 1))
+    writeFileSync(out, JSON.stringify({ laya, languages, goldSha256, status: status.slice(0, 300), complete: false, results }, null, 1))
     const latest = results.at(-1)
     console.log(`[${results.length}/${gold.length}] ${latest.ok ? 'PASS' : 'FAIL'} ${story.title} → ${latest.root || latest.error} (${Math.round(latest.ms / 1000)} s)`)
   }
-  writeFileSync(out, JSON.stringify({ laya, languages, status: status.slice(0, 300), complete: true, results }, null, 1))
+  writeFileSync(out, JSON.stringify({ laya, languages, goldSha256, status: status.slice(0, 300), complete: true, results }, null, 1))
   const passed = results.filter((r) => r.ok).length
   const events = Math.round(results.reduce((sum, r) => sum + (r.events ?? 0), 0) / results.length * 10) / 10
   const seconds = Math.round(results.reduce((sum, r) => sum + r.ms, 0) / results.length / 100) / 10
-  return `Laya ${laya ? 'on' : 'off'}: ${passed}/${results.length} acceptable topics; ${events} dated events on average; ${seconds} s per story.\n` + results.filter((r) => !r.ok).map((r) => `  ✗ ${r.title.slice(0, 70)} → ${r.root || r.error}`).join('\n')
+  return `Laya ${laya ? 'on' : 'off'}: ${passed}/${results.length} label matches; ${events} dated events on average; ${seconds} s per story.\n` + results.filter((r) => !r.ok).map((r) => `  ✗ ${r.title.slice(0, 70)} → ${r.root || r.error}`).join('\n')
 }, { timeoutMs: 3_600_000 })
 console.log(summary)

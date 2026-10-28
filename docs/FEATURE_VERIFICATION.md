@@ -1,5 +1,13 @@
 # Feature verification
 
+## Matching fixes and stricter labels — 2026-10-28
+
+The follow-up fixes preserve a recognised opening surname through foreign-name filtering, require exact full-name agreement, exclude spelled-out quantities from subject overlap, and reject funeral topics when the headline provides no death-related cue. On the final frozen build, **5/5 focused stories passed with Laya on and 5/5 with Laya off**, run sequentially: Mbappé, Ethiopia–Russia, Norway–Finland, Dubai Fitness Challenge, and Dominica's student awards. [Focused results and build hash](feature-verification/laya-olds-fixes-2026-10-28.json).
+
+Five gold labels now reject known unrelated topics, with six regression cases included in `npm test`. Rescoring the previous full-run evidence under these stricter labels gives **66/78 on and 62/78 off**; this is reclassification of historical results, not a new full evaluation. The evaluator records the gold-file hash and calls scores “label matches.” Typechecking, 505 application/package tests, six label tests, and the production build passed; five registry tests remain skipped.
+
+The full 78-story run has **not** been repeated on the final fixes. Wilson Neves, Bernardo, and other documented mismatches remain open; the prior full-quality gate remains failed. Ethiopia's live results varied during investigation, although both final focused runs passed.
+
 ## Laya / Olds resumed comparison — 2026-10-28
 
 The 78-headline comparison on app commit `0d6aa72` completed sequentially with Laya on, then off: **71/78 on, 66/78 off** under the original regex labels. The requirement that off remain at least 71 **failed**. These results do not establish semantic accuracy: broad labels accept unrelated topics, including a European motocross championship for Guam and Peru–United Kingdom relations for a weather headline. The older off baseline also used older code and live data, so differences cannot all be attributed to code.

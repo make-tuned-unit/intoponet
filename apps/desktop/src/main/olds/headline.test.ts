@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cleanHeadline, eventKindMatches, foreignNamesIn, mentions, properPhrases, scoreCandidate, searchQueries, titleWordsIn, isRelevantCandidate, topicAge } from './headline'
+import { cleanHeadline, personNameAtStart, eventKindMatches, eventKindConflicts, foreignNamesIn, mentions, properPhrases, scoreCandidate, searchQueries, titleWordsIn, isRelevantCandidate, topicAge } from './headline'
 import { headlineCountries, isWorkOrThing, keepCandidate, withoutCountryNames } from './oldsService'
 
 describe('headline matching', () => {
@@ -202,5 +202,40 @@ describe('nationality words', () => {
   it('do not name a topic on their own, but countries do', () => {
     expect(isRelevantCandidate('English language', 'Where does Arsenal’s Fleetwood humiliation place in English cup shocks?')).toBe(false)
     expect(isRelevantCandidate('Iran', 'Talks with Iran resume in Oman')).toBe(true)
+  })
+})
+
+
+describe('people opening a headline', () => {
+  it('recognises exact surnames and full names without accents', () => {
+    expect(personNameAtStart('Kylian Mbappé', 'Mbappe apologises for Mao Zedong comment')).toBe(true)
+    expect(personNameAtStart('Kylian Mbappé', 'Kylian Mbappe apologises')).toBe(true)
+    expect(personNameAtStart('Mao Zedong', 'Mbappe apologises for Mao Zedong comment')).toBe(false)
+  })
+  it('does not treat partial full-name overlap as the same person', () => {
+    expect(personNameAtStart('Wilson das Neves', 'Wilson Neves launches banking book')).toBe(false)
+    expect(personNameAtStart('Wilson Smith', 'Wilson Neves launches banking book')).toBe(false)
+    expect(personNameAtStart('Wilson Neves', 'Wilson Neves launches banking book')).toBe(true)
+    expect(personNameAtStart('Claude Rains', 'Rain causes flooding')).toBe(false)
+  })
+})
+
+describe('quantities in headlines', () => {
+  it('does not turn a shared count into a subject match', () => {
+    const headline = 'Forty-two students honoured at Dominica’s inaugural National Schools’ Awards ceremony for academic excellence'
+    expect(titleWordsIn('Forty-two Articles', headline)).toBe(0)
+    expect(isRelevantCandidate('Forty-two Articles', headline, 'Dominica')).toBe(false)
+    expect(titleWordsIn('Seven Years War', 'Seven students receive awards')).toBe(0)
+    expect(titleWordsIn('Dominica', headline)).toBe(1)
+  })
+})
+
+describe('death event relevance', () => {
+  it('does not substitute a named person’s funeral for a story about their remarks', () => {
+    const title = 'Death and state funeral of Mao Zedong'
+    expect(eventKindConflicts(title, 'Mbappe apologises for Mao Zedong comment after Chinese sponsors drop him')).toBe(true)
+    expect(eventKindConflicts(title, 'China marks anniversary of Mao Zedong’s death')).toBe(false)
+    expect(eventKindConflicts('Death of John Smith', 'John Smith killed in crash')).toBe(false)
+    expect(eventKindConflicts('Death of John Smith', 'John Smith wins election')).toBe(true)
   })
 })

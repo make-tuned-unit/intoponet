@@ -114,7 +114,8 @@
    "title": "Round 8 of the 2026 Guam Monster Energy Motocross Championship",
    "countryCode": "GU",
    "lang": "en-GU",
-   "accept": "Guam|[Mm]otocross"
+   "accept": "^(?:Guam|History of Guam|Motocross)$|Guam.*[Mm]otocross",
+   "rationale": "Generic motocross or Guam background is acceptable; another region’s championship is not."
   },
   {
    "title": "Bruno Rodríguez lidera un acto de repudio contra el embajador de EE UU en la Asamblea General de la ONU",
@@ -234,13 +235,15 @@
    "title": "Lluvias en Perú HOY EN VIVO: Pronóstico del Senamhi y regiones en alerta al norte",
    "countryCode": "PE",
    "lang": "es-PE",
-   "accept": "Peru|[Rr]ain|Senamhi|El Niño"
+   "accept": "^(?:Peru|History of Peru|Climate of Peru)$|(?:[Ff]lood|[Rr]ain|El Niño|Senamhi|National Meteorology).*Peru|Peru.*(?:[Ff]lood|[Rr]ain|El Niño)|^El Niño$",
+   "rationale": "Country fallback or Peruvian weather topics; unrelated bilateral relations do not pass."
   },
   {
    "title": "NOCZ unveils Team Zambia kit for Dakar 2026, as 6 athletes set for Games",
    "countryCode": "ZM",
    "lang": "en-ZM",
-   "accept": "Youth Olympics|Zambia"
+   "accept": "^(?:Zambia|History of Zambia|2026 Summer Youth Olympics)$|Zambia.*(?:Youth Olympics|Youth Olympic Games)",
+   "rationale": "Dakar Youth Olympics or Zambia fallback; Commonwealth Games are a different event."
   },
   {
    "title": "Sommet Russie-Afrique : Cheikh Niang conduit la délégation sénégalaise à Moscou",
@@ -270,7 +273,8 @@
    "title": "APNU+AFC’s undisclosed ExxonMobil signing bonus before PAC",
    "countryCode": "GY",
    "lang": "en-GY",
-   "accept": "Guyana|APNU|ExxonMobil"
+   "accept": "^(?:Guyana|History of Guyana|ExxonMobil|Public Accounts Committee)$|[Pp]etroleum.*Guyana|[Oo]il.*Guyana|Guyana.*(?:[Oo]il|[Pp]etroleum)|A Partnership for National Unity",
+   "rationale": "Allow the named company, committee, oil sector or country fallback, not unrelated diplomatic relations."
   },
   {
    "title": "Cayman athletes depart for Dakar Youth Olympic Games",
@@ -336,7 +340,8 @@
    "title": "Bernardo on saying Jinggoy got P573 million in kickbacks: It's hard to implicate a friend",
    "countryCode": "PH",
    "lang": "en-PH",
-   "accept": "Philippines|Jinggoy|Estrada|[Ff]lood control|Bernardo Bernardo"
+   "accept": "^(?:Philippines|History of the Philippines|Jinggoy Estrada)$|[Ff]lood control.*Philippines|Philippine.*[Ff]lood control",
+   "rationale": "The actor Bernardo Bernardo and unrelated bilateral relations do not explain the kickbacks story."
   },
   {
    "title": "En Serbie, un assaillant abattu près de l’ambassade israélienne à Belgrade ; Israël confirme une tentative d’« attentat terroriste »",

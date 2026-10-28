@@ -17,7 +17,7 @@
     "benchmark:electron": "electron experiments/electron-compositor/main.cjs",
     "dag": "node scripts/dag.cjs",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present && node --test experiments/e2e/olds-gold.test.mjs",
     "verify:features": "node scripts/verify-features.mjs"
   },
   "engines": {
