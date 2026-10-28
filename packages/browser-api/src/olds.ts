@@ -179,6 +179,8 @@ export type OldsContext = {
   matchedBy: string
   /** Subject topics behind the story in its country ("Incarceration in Canada"), with key figures from each article. */
   related?: OldsRelatedTopic[]
+  /** Where Wikipedia's Current events filed this story: its thread(s), outermost first, and the matching item. */
+  filedUnder?: { threads: string[]; item: string; date: string; url: string }
 }
 
 export type OldsRelatedTopic = {

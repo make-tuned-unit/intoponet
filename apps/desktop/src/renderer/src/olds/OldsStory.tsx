@@ -108,6 +108,17 @@ export function OldsStory({
         <div className="olds-story-card is-today">
           <span className="olds-story-kind"><Newspaper size={11} aria-hidden="true" /> In the news</span>
           <strong>{context.headline}</strong>
+          {context.filedUnder && context.filedUnder.threads.length > 0 && (
+            <span className="olds-filed" title={`Wikipedia’s Current events, ${context.filedUnder.date}: ${context.filedUnder.item}`}>
+              Part of{' '}
+              {context.filedUnder.threads.map((title, index) => (
+                <span key={title}>
+                  {index > 0 && ' › '}
+                  {onFollowArticle ? <button type="button" onClick={() => onFollowArticle(title)}>{title}</button> : title}
+                </span>
+              ))}
+            </span>
+          )}
         </div>
       </div>
       {chronicle.length > 0 && (

@@ -41,7 +41,10 @@ async function connect(url) {
  * ctx: evaluate, send, delay, wait, click, type, press, shot, page(urlPart), profile, env.
  */
 export async function runAppCheck(check, { port = 9400 + Math.floor(Math.random() * 400), env: extraEnv = {}, evidenceDir, name, timeoutMs = 180_000 } = {}) {
-  const profile = mkdtempSync(join(process.env.E2E_TMP ?? tmpdir(), 'intoponet-e2e-'))
+  // E2E_PROFILE: a profile kept between runs (e.g. with translation models installed); otherwise a fresh one.
+  const keep = process.env.E2E_PROFILE
+  if (keep) mkdirSync(keep, { recursive: true })
+  const profile = keep ?? mkdtempSync(join(process.env.E2E_TMP ?? tmpdir(), 'intoponet-e2e-'))
   const env = { ...process.env, INTOPONET_CAPTURE_ROOT: join(profile, 'Pictures', 'Intoponet'), ...extraEnv }
   delete env.ELECTRON_RUN_AS_NODE
   const app = spawn(join(repo, 'node_modules/.bin/electron'), [`--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, join(repo, 'apps/desktop/out/main/index.js')], { env, stdio: 'ignore' })
@@ -116,6 +119,6 @@ export async function runAppCheck(check, { port = 9400 + Math.floor(Math.random(
     app.kill('SIGTERM')
     await delay(800)
     try { app.kill('SIGKILL') } catch { /* gone */ }
-    try { rmSync(profile, { recursive: true, force: true }) } catch { /* temp */ }
+    if (!keep) try { rmSync(profile, { recursive: true, force: true }) } catch { /* temp */ }
   }
 }

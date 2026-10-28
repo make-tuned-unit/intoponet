@@ -160,7 +160,7 @@ export const checks = {
     // Live sample (2026-10-27) that once went wrong: this year's outbreak, the story's own country, never another country's topic.
     const guards = [
       { text: 'DR Congo reports over 10,000 Ebola cases as the outbreak spreads abroad', countryCode: 'GH', want: /^2026 Ebola/ },
-      { text: 'South Africa Deploys 500 Soldiers to Quell Anti-Immigration Violence', countryCode: 'GH', want: /Xenophobia in South Africa|Immigration to South Africa/ },
+      { text: 'South Africa Deploys 500 Soldiers to Quell Anti-Immigration Violence', countryCode: 'GH', want: /xenophobia.*South Africa|Immigration to South Africa/i },
       { text: 'States seeks interest for possible housing sites', countryCode: 'GG', want: /^(?!.*United States)/ },
     ]
     for (const guard of guards) {

@@ -28,7 +28,7 @@ export function cleanHeadline(text: string): string {
     .replace(/\s+[-–—|]\s+[^-–—|]{2,40}$/, '') // "… - Reuters"
     .replace(/^[A-ZÀ-Ý ]{2,20}:\s+/, '') // "UPDATE: …", "TASS: …"
     // Column and section labels: "Reader Q&A:", "International News:", "Sport |", "iciHaïti -".
-    .replace(/^((Reader )?Q&A|Opinion|Analysis|Explainer|Editorial|Live|Watch|Video|Podcast|Interview|Review|Comment|Exclusive|Breaking( News)?|Factbox|Fact check|In pictures|Photos|Letters?|Long read|((International|World|Local|National|Regional|Business|Sports?|Political|Entertainment|Health|Tech|Science|Breaking|Latest|Top) )?News|Politics|Business|Sports?|World|Entertainment|Lifestyle|Health|Technology|Tech|Science|Culture|Economy|Crime|Weather|Update)\s*[:|–—]\s+/i, '') // column labels
+    .replace(/^((Reader )?Q&A|Opinion|Analysis|Explainer|Editorial|Live|Watch|Video|Podcast|Interview|Review|Comment|Exclusive|Breaking( News)?|Factbox|Fact check|In (pictures|photos|pics|charts|numbers|brief|focus|depth|video)|Photos|Letters?|Long read|((International|World|Local|National|Regional|Business|Sports?|Political|Entertainment|Health|Tech|Science|Breaking|Latest|Top) )?News|Politics|Business|Sports?|World|Entertainment|Lifestyle|Health|Technology|Tech|Science|Culture|Economy|Crime|Weather|Update)\s*[:|–—]\s+/i, '') // column labels
     .replace(/(\p{L})['’]s\b/gu, '$1') // "Germany's Merz" → "Germany Merz"
     .replace(/["“”«»‘’„]/g, ' ')
     .replace(/\s+/g, ' ')
@@ -65,21 +65,45 @@ export function namedEvents(headline: string): string[] {
     .flatMap((match) => [`${match[1]} ${match[2]!.trim().split(' ')[0]}`, `${match[1]} ${match[2]!.trim()}`]))]
 }
 
+/**
+ * Title case ("China Begins Its Weeklong National Day Holiday"): content words
+ * are capitalised whether or not they are names. A headline with lowercase
+ * content words ("…parade ban fails…") is sentence case, however many names it has.
+ */
+export function isTitleCase(text: string): boolean {
+  const words = text.split(/[^\p{L}\d'’-]+/u).filter((word) => word.length >= 4 && !STOPWORDS.has(word.toLowerCase()))
+  if (words.length < 3) return false
+  // Any lowercase content word ("…receives the…") means sentence case.
+  return words.every((word) => !/^\p{Ll}/u.test(word))
+}
+
 /** Search queries to try, most specific first. */
-export function searchQueries(headline: string, year?: number): string[] {
+export function searchQueries(headline: string, year?: number, country?: string | null): string[] {
   const clean = cleanHeadline(headline)
   const content = clean.split(/\s+/).filter((word) => !STOPWORDS.has(word.toLowerCase().replace(/[^\p{L}\d]/gu, ''))).join(' ')
   const names = properPhrases(clean)
   // Scripts without capitals (Arabic, Chinese, …) give no names: search short windows of the headline instead.
   const words = content.split(/\s+/).filter(Boolean)
-  const windows = names.length ? [] : [words.slice(0, 3), words.slice(3, 6), words.slice(-3)].map((window) => window.join(' '))
+  // Scripts without capitals give no names, and title case makes the whole headline one "name": search short windows instead.
+  const titleCased = isTitleCase(clean)
+  const windows = names.length && !titleCased ? [] : [words.slice(0, 3), words.slice(3, 6), words.slice(-3)].map((window) => window.join(' '))
   // "2026 Ebola …": news is usually about this year's event, not the famous old one.
   const current = year && names.length ? [`${year} ${names.slice(0, 2).join(' ')}`] : []
   // Named events ("Cyclone Arnab", "Operation Southern Spear") are searched on their own first.
   const named = namedEvents(headline)
   // The last name is often the place the story happened ("… Begins in Ukrainian City of Oleshky").
-  const queries = [...named, content, ...current, names.slice(0, 3).join(' '), ...names.slice(0, 2), ...(names.length > 2 ? names.slice(-1) : []), ...windows]
-  return [...new Set(queries.map((query) => query.trim()).filter((query) => query.length >= 3))].slice(0, 7)
+  // Scheduled events by kind ("Commonwealth leaders at summit" → "2026 Commonwealth summit").
+  const kind = clean.match(/\b(summit|election|elections|referendum|games|olympics|world cup|cup|festival|conference|championship|championships|tournament|grand prix|marathon|expo|awards)\b/i)?.[1]
+  // …and the event's own name with its kind ("Dakar Youth Olympic Games" → "2026 Dakar Youth Olympic Games").
+  const phrase = clean.match(/((?:\p{Lu}[\p{L}'’-]+\s+){1,3})(Summit|Games|Olympics|Cup|Festival|Conference|Championships?|Tournament|Grand Prix|Expo|Awards)\b/u)
+  const kinded = [
+    ...(year && kind && names.length ? [`${year} ${names[0]} ${kind.toLowerCase()}`] : []),
+    ...(year && phrase ? [`${year} ${phrase[1]!.trim()} ${phrase[2]}`] : []),
+  ]
+  const queries = [...named, content, ...current, ...kinded, names.slice(0, 3).join(' '), ...names.slice(0, 2), ...(names.length > 2 ? names.slice(-1) : []), ...windows]
+  // Local news rarely names its own country: search the headline's words in the outlet's country too.
+  const local = country && !clean.toLowerCase().includes(country.toLowerCase()) ? [`${content} ${country}`] : []
+  return [...new Set([...queries, ...local].map((query) => query.trim()).filter((query) => query.length >= 3))].slice(0, 8)
 }
 
 export type CandidateFacts = {
@@ -114,7 +138,7 @@ export function scoreCandidate(facts: CandidateFacts): number {
     - facts.foreignNames * 1.5
     - (facts.otherCountry ? 2 : 0)
     // A headline is news: this year's outbreak, not the one from 1976.
-    + (facts.ageYears == null ? 0 : facts.ageYears <= 1 ? 2 : facts.ageYears > 5 ? -2 : 0)
+    + (facts.ageYears == null ? 0 : facts.ageYears <= 0 ? 2.5 : facts.ageYears <= 1 ? 1.5 : facts.ageYears > 5 ? -2 : 0)
 }
 
 /** Kinds of event in a title → words in a headline that point to one ("Lula's win" → an election). */
@@ -130,6 +154,23 @@ const EVENT_HINTS: Array<[RegExp, RegExp]> = [
 /** Whether a headline's words point to the kind of event a title names. */
 export function eventKindMatches(title: string, headline: string): boolean {
   return EVENT_HINTS.some(([kind, hint]) => kind.test(title) && hint.test(headline))
+}
+
+/** Kinds of scheduled event: a "summit" story is not about the Games, nor an election about a cup. */
+const EVENT_KINDS: Array<[string, RegExp]> = [
+  ['meeting', /\b(summit|meeting|conference|talks|forum|assembly|session|chogm|g7|g20|cop\d+)\b/i],
+  ['sport', /\b(games|olympics|cup|championships?|tournament|league|grand prix|marathon|match|world series|super bowl|football (club|team)|national (football|basketball|rugby|cricket) team|f\.?c\.?)\b/i],
+  ['election', /\b(elections?|referendum|primary|primaries|vote|votes|polls?)\b/i],
+  ['culture', /\b(festival|awards?|song contest|eurovision|biennale|expo|fair)\b/i],
+  ['services', /\b(water|electricity|power cut|outage|blackout|internet|road works?|traffic)\b/i],
+]
+
+/** The headline names one kind of event and the title another ("Commonwealth leaders at summit" vs "Commonwealth Games"). */
+export function eventKindConflicts(title: string, headline: string): boolean {
+  const kindsOf = (text: string): string[] => EVENT_KINDS.filter(([, pattern]) => pattern.test(text)).map(([kind]) => kind)
+  const inTitle = kindsOf(title)
+  const inHeadline = kindsOf(headline)
+  return inTitle.length > 0 && inHeadline.length > 0 && !inTitle.some((kind) => inHeadline.includes(kind))
 }
 
 /** Years since a topic happened: a leading year in its title ("1976 Zaire …"), else its start date for events. */
@@ -149,7 +190,7 @@ export function foreignNamesIn(title: string, headline: string): number {
   const said = cleanHeadline(headline).toLowerCase()
   return title.replace(/\(.*?\)/g, '').split(/[\s–—\-/]+/)
     .map((word) => word.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, ''))
-    .filter((word) => /^\p{Lu}/u.test(word) && word.length > 2 && !STOPWORDS.has(word.toLowerCase()))
+    .filter((word) => /^\p{Lu}/u.test(word) && word.length > 2 && !STOPWORDS.has(word.toLowerCase()) && !GENERIC_TITLE_WORDS.has(word.toLowerCase()))
     .filter((word) => !said.includes(word.toLowerCase().slice(0, Math.max(4, Math.min(word.length - 2, 6)))))
     .length
 }
@@ -161,15 +202,27 @@ const COMBINING_FORMS: Record<string, string> = { russo: 'russia', sino: 'china'
 /** Month names date a story; they are not its subject ("September 30 attack" ≠ "September 11 attacks"). */
 const MONTH_WORDS = new Set(['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'])
 
-export function titleWordsIn(title: string, headline: string): number {
+/** "Mbappé" ~ "Mbappe": compare without accents. */
+export function foldAccents(text: string): string {
+  return text.normalize('NFD').replace(/\p{M}+/gu, '')
+}
+
+export function titleWordsIn(rawTitle: string, rawHeadline: string): number {
+  const title = foldAccents(rawTitle)
+  const headline = foldAccents(rawHeadline)
   const stem = (raw: string): string => {
     const word = COMBINING_FORMS[raw] ?? raw
     return word.slice(0, Math.max(4, Math.min(word.length, 6)))
   }
-  const words = [...new Set(cleanHeadline(headline).toLowerCase().split(/[^\p{L}\d]+/u).filter((word) => word.length > 2 && !STOPWORDS.has(word)).map(stem))]
+  // An acronym ("PAC", the Public Accounts Committee) only matches the same acronym, not "Pac-12".
+  const rawWords = cleanHeadline(headline).split(/[^\p{L}\d]+/u)
+  const acronyms = new Set(rawWords.filter((word) => /^\p{Lu}{2,6}$/u.test(word)).map((word) => word.toLowerCase()))
+  const titleAcronyms = new Set(title.split(/[^\p{L}\d]+/u).filter((word) => /^\p{Lu}{2,6}$/u.test(word)).map((word) => word.toLowerCase()))
+  const words = [...new Set(rawWords.map((word) => word.toLowerCase()).filter((word) => word.length > 2 && !STOPWORDS.has(word) && (!acronyms.has(word) || titleAcronyms.has(word))).map(stem))]
   // Same stem, or one a 5+ letter prefix of the other ("India" ~ "Indian").
   const matches = (a: string): boolean => words.some((b) => a === b || (Math.min(a.length, b.length) >= 5 && (a.startsWith(b) || b.startsWith(a))))
-  return title.toLowerCase().replace(/\(.*?\)/g, '').split(/[^\p{L}\d]+/u).filter((word) => word.length > 2 && !STOPWORDS.has(word) && !MONTH_WORDS.has(word) && matches(stem(word))).length
+  // Years are not shared subjects ("2026 GB3 Championship" ≠ "2026 Guam … Championship"); recency is scored separately.
+  return title.toLowerCase().replace(/\(.*?\)/g, '').split(/[^\p{L}\d]+/u).filter((word) => word.length > 2 && !STOPWORDS.has(word) && !MONTH_WORDS.has(word) && !/^\d{4}$/.test(word) && matches(stem(word))).length
 }
 
 /** Content words of a title (parenthetical qualifiers dropped). */
@@ -185,11 +238,12 @@ export function titleContentWords(title: string): string[] {
  * from a Honduran story about hospitals.
  */
 /** Capitalised words in titles that name a kind of event, not a person or place ("Trial of …", "… Crisis"). */
-const GENERIC_TITLE_WORDS = new Set('trial trials case cases affair scandal crisis war wars election elections referendum protests protest riots massacre attack attacks bombing assassination murder killing shooting investigation inquiry impeachment indictment summit treaty agreement accord deal ceasefire truce conflict invasion occupation siege battle campaign movement revolution coup independence partition reform reforms act law policy controversy dispute strike disaster earthquake flood hurricane cyclone pandemic outbreak epidemic government cabinet premiership presidency administration ministry party history timeline blockade offensive counteroffensive negotiations talks sanctions embargo standoff raid uprising crackdown evacuation ceasefire peace'.split(' '))
+const GENERIC_TITLE_WORDS = new Set('trial trials case cases affair scandal crisis war wars election elections referendum protests protest riots massacre attack attacks bombing assassination murder killing shooting investigation inquiry impeachment indictment summit treaty agreement accord deal ceasefire truce conflict invasion occupation siege battle campaign movement revolution coup independence partition reform reforms act law policy controversy dispute strike disaster earthquake flood hurricane cyclone pandemic outbreak epidemic government cabinet premiership presidency administration ministry party history timeline meeting heads conference forum session assembly games ceremony opening closing festival championship championships tournament cup season league blockade offensive counteroffensive negotiations talks sanctions embargo standoff raid uprising crackdown evacuation ceasefire peace'.split(' '))
 
 /** Unexplained names in a title, ignoring generic event words and a first name beside a matched surname. */
-function unexplainedNames(title: string, said: string): number {
-  const lower = cleanHeadline(said).toLowerCase()
+function unexplainedNames(rawTitle: string, said: string): number {
+  const title = foldAccents(rawTitle)
+  const lower = foldAccents(cleanHeadline(said)).toLowerCase()
   const words = title.replace(/\(.*?\)/g, '').split(/[\s–—\-/]+/).map((word) => word.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, ''))
   const matched = (word: string): boolean => lower.includes(word.toLowerCase().slice(0, Math.max(4, Math.min(word.length - 2, 6))))
   let count = 0
@@ -213,6 +267,8 @@ export function isRelevantCandidate(title: string, headline: string, countryName
   if (words < 1 || shared < Math.ceil(total / 3)) return false
   if (unexplainedNames(title, said) > shared) return false
   if (words > 1) return true
+  // In a title-case headline every word looks like a name: one shared word is enough only for this year's event.
+  if (isTitleCase(cleanHeadline(headline)) && !(currentYear && leading >= currentYear - 1)) return false
   // One shared word is only enough when it is a name (capitalised after the headline's first word, or the country)
   // and the title adds no other names ("Education in Honduras" is not a story about a drug seizure in Honduras).
   if (unexplainedNames(title, said) > 0) return false

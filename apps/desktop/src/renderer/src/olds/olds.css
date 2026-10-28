@@ -885,3 +885,23 @@
 .olds-chronicle-actions button:last-child:not(:first-child) { color: #e7c98f; }
 .olds-sheet:focus { outline: none; }
 .olds-sheet:focus-visible { box-shadow: 0 0 0 2px rgba(231, 201, 143, 0.55); }
+
+/* "Part of" the ongoing story, as Wikipedia's Current events filed it. */
+.olds-filed {
+  display: block;
+  margin-top: 6px;
+  color: var(--olds-muted, rgba(220, 232, 236, 0.7));
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+
+.olds-filed button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--olds-accent, #8fd6e1);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}

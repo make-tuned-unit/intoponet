@@ -64,3 +64,11 @@ describe('dates without a year', () => {
     expect(entries.map((e) => e.at.iso)).toEqual(['2026-10-20', '2026-10-24'])
   })
 })
+
+describe('timeline articles', () => {
+  it('dates undated lines by their day heading, and day headings by a year heading', () => {
+    const text = '== 2026 ==\n=== 14 October ===\n* The Rapid Support Forces shell El Fasher, killing at least 12 civilians in the market.\n=== 27 October ===\n* A drone strike on a market in Nyala kills over 100 people, according to local officials.'
+    const entries = chronologyFromWikitext('Timeline of the Sudanese civil war (2023–present)', text, 2026)
+    expect(entries.map((e) => e.at.iso)).toEqual(['2026-10-14', '2026-10-27'])
+  })
+})

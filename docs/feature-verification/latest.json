@@ -1,14 +1,12 @@
 {
-  "started": "2026-10-28T00:04:49.818Z",
-  "finished": "2026-10-28T00:06:45.099Z",
-  "tier": "network",
+  "started": "2026-10-28T12:41:23.794Z",
+  "finished": "2026-10-28T12:43:42.824Z",
+  "tier": "full",
   "only": [
-    "COUNTRY_NAMES",
-    "FLY_TO",
-    "GLOBE_MOTION",
-    "GLOBE_LIVE"
+    "OLDS_HEADLINE",
+    "OLDS_UI"
   ],
-  "summary": "4 passed, 0 failed, 0 blocked, 0 skipped, 23 assumed",
+  "summary": "2 passed, 0 failed, 0 blocked, 0 skipped, 25 assumed",
   "results": {
     "BUILD": {
       "status": "assumed",
@@ -35,24 +33,20 @@
       "notes": ""
     },
     "FLY_TO": {
-      "status": "pass",
-      "notes": "Charlottetown PEI and \"Fredericto\" flew on the globe, with the locator shown.",
-      "seconds": 11
+      "status": "assumed",
+      "notes": ""
     },
     "GLOBE_MOTION": {
-      "status": "pass",
-      "notes": "Locator 735,473 → 720,470 after zoom.",
-      "seconds": 9
+      "status": "assumed",
+      "notes": ""
     },
     "COUNTRY_NAMES": {
-      "status": "pass",
-      "notes": "16 names at the start; clicked Venezuela → Venezuela; 7 flights named correctly.",
-      "seconds": 58
+      "status": "assumed",
+      "notes": ""
     },
     "GLOBE_LIVE": {
-      "status": "pass",
-      "notes": "440 public signals from 4 sources. Hover to preview, click to explore, or search a place below.",
-      "seconds": 37
+      "status": "assumed",
+      "notes": ""
     },
     "WORLD_STORIES": {
       "status": "assumed",
@@ -63,8 +57,9 @@
       "notes": ""
     },
     "OLDS_HEADLINE": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Israel → 2026 Israeli legislative election: 18 dated events from 29 Dec 2022; Ebola, South Africa and Guernsey guards ok; related Judiciary of Israel, Israeli law, Politics of Israel, Elections in Israel. Brazil → 2026 Brazilian general election. Honduras → Honduras.",
+      "seconds": 86
     },
     "OLDS_COUNTRY": {
       "status": "assumed",
@@ -75,8 +70,9 @@
       "notes": ""
     },
     "OLDS_UI": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Views Story/Timeline/List; sections: HOW WE GOT HERE.",
+      "seconds": 53
     },
     "BROWSE": {
       "status": "assumed",

@@ -1109,6 +1109,27 @@ Licence, Beacons and remaining PRD items, 2026-10-27:
 - `COUNTRY_NAMES` in the feature DAG: names at the start, a click, and seven
   flights (Canada to Tuvalu) each naming the right country.
 
+### 2026-10-28 — The Olds: Current events, timelines and a 90-story review
+
+- Research (docs/research/olds-linking.md): TREC background linking, Wikipedia's
+  Current events portal, Wikidata event properties, timeline summarisation.
+- Stage 1 is now Wikipedia's Current events (45 days, one request): a
+  headline matched to an item gives the thread it is filed under ("Part of …"
+  in the story) and every dated item under that thread becomes a recent step in
+  "How we got here". Then "Timeline of …" articles (dated headings) and the
+  topic's own article for the deeper past; local stories that fall back to
+  their country get that country's "<year> in …" events.
+- Search: all queries at once plus the whole headline with `prefer-recent`,
+  fused by reciprocal rank; a country-scoped query for local news; event-name
+  queries ("2026 Dakar Youth Olympic Games").
+- Generic matching fixes from three fresh 30-story samples (two thirds local
+  news, 11 languages installed): accents, title case, acronyms, years,
+  institution words, kinds of event, people by citizenship (and fame for
+  surname-only matches), foreign institutions and namesakes, general concepts.
+- Misses on fresh samples: 18 → 9 → 6 of 30; most remaining stories are local
+  items with no Wikipedia article, which now fall back to the country with its
+  recent events rather than a wrong topic.
+
 ## Gate ownership and evidence
 
 | Gate | Planner verification before promotion |

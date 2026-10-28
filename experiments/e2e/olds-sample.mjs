@@ -5,12 +5,21 @@
 //   INTOPONET_OLDS_DEBUG=scores.jsonl …   also records every candidate's score
 // exclude.json: earlier samples (arrays of {title}) so a review sees new stories.
 import { runAppCheck } from './lib.mjs'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 
 const out = process.argv[2] ?? 'olds-sample.json'
 const count = Number(process.argv[3] ?? 10)
 const excluded = new Set((process.argv[4] && existsSync(process.argv[4]) ? JSON.parse(readFileSync(process.argv[4], 'utf8')) : []).map((item) => item.title.toLowerCase().slice(0, 40)))
+// OLDS_LANGS=es,fr,pt …: install these translation models first (with E2E_PROFILE they persist between runs).
+const langs = (process.env.OLDS_LANGS ?? '').split(',').map((code) => code.trim()).filter(Boolean)
+// Each run judges the current code: drop The Olds' cache from a kept profile.
+if (process.env.E2E_PROFILE) rmSync(join(process.env.E2E_PROFILE, 'olds-cache'), { recursive: true, force: true })
 const notes = await runAppCheck(async (ctx) => {
+  for (const code of langs) {
+    await ctx.evaluate(`window.intoponet.translate.install(${JSON.stringify(code)}).then(() => true, () => false)`)
+  }
+  if (langs.length) console.log('Installed:', await ctx.evaluate(`window.intoponet.translate.status().then((s) => s.languages.filter((l) => l.downloaded).map((l) => l.code).join(','))`))
   await ctx.waitForNews()
   const digest = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getNewsDigest()`))
   const english = (h) => !h.lang || h.lang.startsWith('en')

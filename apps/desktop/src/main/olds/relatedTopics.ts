@@ -11,7 +11,8 @@ import { cleanHeadline, properPhrases } from './headline'
 /** Subject families: trigger word stems → Wikipedia title patterns ({C} = country). */
 export const TOPIC_FAMILIES: Array<{ triggers: RegExp; topics: string[] }> = [
   { triggers: /\b(prison|jail|inmate|correctional|penitentiar|incarcerat|parole|custody|detention|detainee|solitary)/i, topics: ['Incarceration in {C}', 'Prisons in {C}', 'Crime in {C}', 'Criminal justice system of {C}'] },
-  { triggers: /\b(police|polic|officer|rcmp|arrest|shooting|homicide|murder|stabbing|assault|robbery|crime|criminal|gang)/i, topics: ['Crime in {C}', 'Law enforcement in {C}', 'Gun politics in {C}'] },
+  { triggers: /\b(league|championship|tournament|motocross|rugby|football|soccer|cricket|athletics|marathon|olympic|squad|grand prix)\b/i, topics: ['Sport in {C}'] },
+  { triggers: /\b(police|polic|cops?|officer|rcmp|arrest|shooting|homicide|murder|stabbing|assault|robbery|crime|criminal|gang)/i, topics: ['Crime in {C}', 'Law enforcement in {C}', 'Gun politics in {C}'] },
   { triggers: /\b(court|judge|trial|lawsuit|sentenc|charter|supreme court|verdict|appeal|lawyer|class action)/i, topics: ['Judiciary of {C}', 'Law of {C}', 'Criminal justice system of {C}'] },
   { triggers: /\b(hospital|health|patient|doctor|nurse|clinic|medic|emergency room|pharmac|disease|outbreak|vaccin)/i, topics: ['Health care in {C}', 'Healthcare in {C}', 'Public health in {C}'] },
   { triggers: /\b(overdose|opioid|fentanyl|drug|addiction|narcotic)/i, topics: ['Opioid epidemic in {C}', 'Drug policy of {C}', 'Opioid epidemic'] },
@@ -26,7 +27,8 @@ export const TOPIC_FAMILIES: Array<{ triggers: RegExp; topics: string[] }> = [
   { triggers: /\b(indigenous|first nation|aboriginal|métis|metis|inuit|native|reserve|treaty|residential school)/i, topics: ['Indigenous peoples in {C}', 'Indigenous rights', 'Canadian Indian residential school system'] },
   { triggers: /\b(wildfire|flood|hurricane|cyclone|typhoon|tornado|landslide|tsunami|monsoon|storm|drought|heat wave|earthquake|climate|emission|carbon)/i, topics: ['Climate change in {C}', 'Natural disasters in {C}', 'Environment of {C}'] },
   { triggers: /\b(renewable|solar|wind power|wind farm|green hydrogen|clean energy)/i, topics: ['Renewable energy in {C}', 'Energy in {C}'] },
-  { triggers: /\b(oil|gas|pipeline|energy|electric|power plant|nuclear|hydro|mining|mine)/i, topics: ['Energy in {C}', 'Energy policy of {C}', 'Mining in {C}'] },
+  // Lowercase only: "Monster Energy" is a sponsor, not a subject.
+  { triggers: /\b(oil|gas|pipeline|energy|electricity|electric grid|power plant|nuclear power|hydro|mining|mine)\b/, topics: ['Energy in {C}', 'Energy policy of {C}', 'Mining in {C}'] },
   { triggers: /\b(army|military|soldier|defence|defense|navy|air force|veteran|nato|troops)/i, topics: ['Military of {C}', 'Armed Forces of {C}', 'Foreign relations of {C}'] },
   { triggers: /\b(touris|tourist|visitor arrivals|cruise|hotel|airlift|winter seats|bookings)/i, topics: ['Tourism in {C}'] },
   { triggers: /\b(fish|fisher|lobster|farm|agricultur|crop|harvest)/i, topics: ['Fishing in {C}', 'Agriculture in {C}'] },

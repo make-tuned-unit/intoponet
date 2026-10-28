@@ -17,11 +17,12 @@ import type { OldsChapter, OldsContext, OldsCountryFacts, OldsPathStep, OldsSupp
 import { interpretationsFrom } from './interpretations'
 import { chronologyFromWikitext } from './chronology'
 import { otherCountries, relatedQueries, subjectTerms } from './relatedTopics'
-import { placesNamedIn } from '../../shared/places/places'
+import { dayPages, isTitleCase, matchHeadline, parseDayPage, threadItems, type CurrentEventItem } from './currentEvents'
+import { countryPlace, placesNamedIn } from '../../shared/places/places'
 import { COUNTRY_ROWS } from '../../shared/places/placeData'
 import { figuresIn, withoutCitations } from '../knowledge/claims'
 import type { OldsChronicleEntry, OldsRelatedTopic } from '@intoponet/browser-api'
-import { cleanHeadline, foreignNamesIn, isRelevantCandidate, mentions, properPhrases, NOT_A_TOPIC, PATH_PROPERTIES, scoreCandidate, searchQueries, titleContentWords, titleWordsIn, topicAge, eventKindMatches, namedEvents } from './headline'
+import { cleanHeadline, foreignNamesIn, isRelevantCandidate, mentions, properPhrases, NOT_A_TOPIC, PATH_PROPERTIES, foldAccents, scoreCandidate, searchQueries, titleContentWords, titleWordsIn, topicAge, eventKindConflicts, eventKindMatches, namedEvents } from './headline'
 
 const USER_AGENT = 'Intoponet/0.1 (+https://github.com/make-tuned-unit/intoponet; The Olds)'
 const TIMEOUT_MS = 15_000
@@ -122,11 +123,13 @@ export class OldsService {
       try {
         response = await this.fetchImpl(url, {
           headers: { 'user-agent': USER_AGENT, accept: 'application/sparql-results+json, application/json' },
-          signal: AbortSignal.timeout(timeoutMs),
+          // A second try waits longer (large Wikidata entities can be slow under load).
+          signal: AbortSignal.timeout(attempt === 0 ? timeoutMs : timeoutMs * 2),
         })
       } catch (error) {
-        // A dropped connection ("fetch failed") is retried once; a timeout is not (it already waited).
-        if (attempt === 0 && error instanceof TypeError) {
+        // A dropped connection ("fetch failed") or a timeout is retried once.
+        const timedOut = error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')
+        if (attempt === 0 && (error instanceof TypeError || timedOut)) {
           await new Promise((resolve) => setTimeout(resolve, 500 + Math.random() * 500))
           continue
         }
@@ -627,10 +630,21 @@ export class OldsService {
     if (!titles.length) return out
     const url = new URL(`https://${lang}.wikipedia.org/w/api.php`)
     url.search = new URLSearchParams({ action: 'query', prop: articleOnly ? 'pageprops|description' : 'pageprops', ppprop: 'wikibase_item|disambiguation', titles: titles.slice(0, 50).join('|'), redirects: '1', format: 'json', formatversion: '2' }).toString()
-    const payload = await this.getJson(url.toString()) as { query?: { pages?: Array<{ title?: string; missing?: boolean; description?: string; pageprops?: { wikibase_item?: unknown; disambiguation?: unknown } }> } }
+    const payload = await this.getJson(url.toString()) as { query?: { pages?: Array<{ title?: string; missing?: boolean; description?: string; pageprops?: { wikibase_item?: unknown; disambiguation?: unknown } }>; redirects?: Array<{ from: string; to: string }>; normalized?: Array<{ from: string; to: string }> } }
+    // Titles asked for under another name (a redirect, or different case) map to the same item.
+    const aliases = new Map<string, string[]>()
+    for (const step of [...(payload.query?.normalized ?? []), ...(payload.query?.redirects ?? [])]) {
+      const list = aliases.get(step.to) ?? []
+      list.push(step.from, ...(aliases.get(step.from) ?? []))
+      aliases.set(step.to, list)
+    }
     for (const page of payload.query?.pages ?? []) {
       const qid = page.pageprops?.wikibase_item
-      if (page.title && isQid(qid)) out.set(page.title, { qid, disambiguation: page.pageprops?.disambiguation !== undefined })
+      if (page.title && isQid(qid)) {
+        const entry = { qid, disambiguation: page.pageprops?.disambiguation !== undefined }
+        out.set(page.title, entry)
+        for (const alias of aliases.get(page.title) ?? []) out.set(alias, entry)
+      }
       // Articles too new to have a Wikidata item yet ("Cyclone Arnab").
       else if (articleOnly && page.title && !page.missing && page.pageprops?.disambiguation === undefined) articleOnly.set(page.title, page.description ?? null)
     }
@@ -663,13 +677,27 @@ export class OldsService {
       query = { ...query, countryCode: namedCountries[0]! }
     }
     const ranked: string[] = []
-    const queries = searchQueries(text, currentYear)
+    // Stage 1: Wikipedia's Current events. An item telling this story names the thread it is filed under.
+    const today = new Date(this.now()).toISOString().slice(0, 10)
+    const events = !query.topic ? await this.currentEventItems().catch(() => [] as CurrentEventItem[]) : []
+    // Untranslated, only names carry across languages: two must match.
+    const storyCountryName = query.countryCode ? countryPlace(query.countryCode)?.name ?? null : null
+    const filed = !query.topic ? matchHeadline(events, text, today, lang === 'en' ? 0 : 2, storyCountryName)[0] : undefined
+    const filedThreads = filed ? [...filed.item.threads].reverse() : [] // nearest first
+    for (const title of [...filedThreads, ...(filed?.item.links.slice(0, 8) ?? [])]) if (!ranked.includes(title)) ranked.push(title)
+    const outletCountry = query.countryCode ? countryPlace(query.countryCode)?.name ?? null : null
+    const queries = searchQueries(text, currentYear, lang === 'en' ? outletCountry : null)
     // A named event ("Cyclone Arnab") may have its own article: try that exact title first.
     for (const named of namedEvents(text)) if (!ranked.includes(named)) ranked.push(named)
-    for (const q of queries) {
-      if (ranked.length >= 40) break
-      const titles = await this.search(lang, q, 6).catch(() => [])
-      for (const title of titles) if (!ranked.includes(title)) ranked.push(title)
+    // Stage 2: search with every query at once, plus the whole headline favouring recently edited articles,
+    // and fuse the rankings (reciprocal rank fusion): a title several queries agree on rises.
+    const allQueries = [...queries, ...(lang === 'en' ? [`prefer-recent:0.5,30 ${cleanHeadline(text)}`] : [])]
+    const results = await Promise.all(allQueries.map((q) => this.search(lang, q, 6).catch(() => [] as string[])))
+    const fused = new Map<string, number>()
+    results.forEach((titles) => titles.forEach((title, rank) => fused.set(title, (fused.get(title) ?? 0) + 1 / (60 + rank))))
+    for (const [title] of [...fused].sort((a, b) => b[1] - a[1])) {
+      if (ranked.length >= 48) break
+      if (!ranked.includes(title)) ranked.push(title)
     }
     const articleOnly = new Map<string, string | null>()
     const items = await this.titleItems(lang, ranked, articleOnly).catch(() => new Map<string, { qid: string; disambiguation: boolean }>())
@@ -683,8 +711,23 @@ export class OldsService {
     const ids = (entity: WikidataEntity | undefined, property: string): string[] => ((entity?.claims?.[property] ?? []) as Array<{ mainsnak?: { datavalue?: { value?: { id?: string } } } }>)
       .map((claim) => claim.mainsnak?.datavalue?.value?.id).filter((id): id is string => typeof id === 'string')
     const subjectText = withoutCountryNames(text, countryLabel)
+    // Names in the headline (not its first word, which is capitalised anyway), and the person it opens with.
+    // (The first word is dropped: "Culture and sports to merge…" names no culture.)
+    const headlineNames = properPhrases(cleanHeadline(text).replace(/^\S+\s*/, '')).join(' ')
+    const opening = cleanHeadline(text).match(/^(\p{Lu}[\p{L}'’.-]+(?:\s+\p{Lu}[\p{L}'’.-]+){0,2})/u)?.[1] ?? ''
+    // Only in the headline as written (a translated "Rains" is not Claude Rains): a full name, or a surname that ends the person's name.
+    const subjectPerson = (label: string): boolean => {
+      if (translated || isTitleCase(text) || !opening || titleWordsIn(label, opening) === 0) return false
+      if (opening.split(/\s+/).length >= 2) return true
+      const surname = foldAccents(label.replace(/\s*\(.*?\)\s*$/, '')).toLowerCase().split(/\s+/).at(-1)
+      return surname === foldAccents(opening).toLowerCase()
+    }
     // A story about a film, game or book may be about the work itself ("New 'Call of Duty' game imagines…").
     const aboutAWork = WORK_WORDS.test(text)
+    const surnameOnly = !!opening && opening.split(/\s+/).length === 1
+    // How widely known people are (Wikipedia editions about them): only for foreign people matched by surname.
+    const famous = surnameOnly ? await this.famousAmong([...items.values()].map((item) => entities.get(item.qid)).filter((entity): entity is WikidataEntity => !!entity
+      && ids(entity, 'P31').includes('Q5') && subjectPerson(nodeFromEntity(entity, 'en')?.label ?? '') && !storyQids.some((qid) => countriesOf(entity).includes(qid)))).catch(() => new Set<string>()) : new Set<string>()
     const scored = ranked.flatMap((title, rank) => {
       const item = items.get(title)
       const entity = item ? entities.get(item.qid) : undefined
@@ -696,27 +739,49 @@ export class OldsService {
       const native = lang !== 'en'
       const matchTitle = native ? title : node.label
       // "Subsidized housing in the United States" is not about Guernsey: drop topics named for a country the story isn't about.
-      const titleCountries = native ? [] : headlineCountries(node.label)
+      // Filed by Wikipedia's editors under this thread (or linked from the item): that is the evidence, not word overlap.
+      const threadIndex = filedThreads.indexOf(title)
+      const filedThread = threadIndex !== -1
+      const filedLink = !filedThread && !!filed?.item.links.includes(title)
+      const titleCountries = native || filedThread ? [] : headlineCountries(node.label)
+      // Where a topic is: its country; a person's citizenship; an institution's jurisdiction.
+      const countries = countriesOf(entity)
+      // A foreign person matched only by a surname that opens the headline ("Bernardo…" in Manila is not Paul Bernardo),
+      // unless known worldwide (Mbappé).
+      const person = ids(entity, 'P31').includes('Q5')
+      if (person && surnameOnly && countries.length && storyQids.length && !storyQids.some((qid) => countries.includes(qid)) && !famous.has(item.qid)) return []
       const storyCountries = [...(query.countryCode ? [query.countryCode] : []), ...namedCountries]
       if (storyCountries.length && titleCountries.length && !titleCountries.some((code) => storyCountries.includes(code))) return []
       // Films, TV series, songs and foods share words with the news ("Melania (film)", "Soldier Soldier", "Brazil nut").
       if (isWorkOrThing(node.description) && !aboutAWork) return []
       // Sharing only the country's name ("German economic crisis" for a speech by Merz) is a weak match.
       // (The outlet's country counts too: "Cabinet of Egypt" for a renewables plan from an Egyptian paper.)
-      const countryOnly = !native && titleWordsIn(node.label, `${text} ${countryLabel ?? ''}`) > 0 && titleWordsIn(node.label, subjectText) === 0
+      const countryOnly = !native && !filedThread && titleWordsIn(node.label, `${text} ${countryLabel ?? ''}`) > 0 && titleWordsIn(node.label, subjectText) === 0
       const ageYears = topicAge(matchTitle, node.start?.iso, isEventLike(entity), currentYear, node.end?.iso)
       // The headline names the kind of event ("victory in … presidential election" → the election, not the presidency).
-      const score = (countryOnly ? -5 : 0) + (!native && eventKindMatches(node.label, text) ? 1.5 : 0) + scoreCandidate({
+      const filedBonus = filedThread ? Math.max(4, 6 - threadIndex) : filedLink ? 1.5 : 0
+      // A foreign institution or place (not an event) the headline never names is not this story ("Ministry of
+      // Education, Culture, Sports…" of Japan for a merger of bureaus in Macau).
+      const foreign = !filedThread && !isEventLike(entity) && storyQids.length > 0 && countries.length > 0 && countries.length <= 2
+        && !storyQids.some((qid) => countries.includes(qid)) && titleWordsIn(matchTitle, headlineNames) === 0
+      if (foreign) return []
+      // A foreign topic that brings in a name the story never mentions ("Mickey's Halloween Party" for a party in Bermuda).
+      const elsewhere = !filedThread && storyQids.length > 0 && countries.length > 0 && countries.length <= 2 && !storyQids.some((qid) => countries.includes(qid))
+      if (elsewhere && foreignNamesIn(matchTitle, text) > 0) return []
+      const kindScore = native ? 0 : eventKindMatches(node.label, text) ? 1.5 : eventKindConflicts(node.label, text) ? -3 : 0
+      const score = filedBonus + (countryOnly ? -5 : 0) + kindScore + scoreCandidate({
         ageYears,
         rank,
         eventLike: isEventLike(entity),
-        inCountry: storyQids.some((qid) => ids(entity, 'P17').includes(qid) || ids(entity, 'P276').includes(qid)),
-        isPerson: ids(entity, 'P31').includes('Q5'),
+        // Only for topics in one or two countries: an epidemic stated for many countries is not "in" each of them.
+        inCountry: countries.length <= 2 && storyQids.some((qid) => countries.includes(qid) || ids(entity, 'P276').includes(qid)),
+        // A person is a weak start for a history, unless the headline is about them ("Mbappe apologises…").
+        isPerson: ids(entity, 'P31').includes('Q5') && !subjectPerson(node.label),
         isCountry: item.qid === countryQid || ids(entity, 'P31').some((id) => ['Q6256', 'Q3624078', 'Q7275', 'Q3024240', 'Q1763527', 'Q417175'].includes(id)),
         isDisambiguation: item.disambiguation,
         titleWordsInHeadline: titleWordsIn(matchTitle, text),
         foreignNames: foreignNamesIn(matchTitle, text),
-        otherCountry: storyQids.length > 0 && ids(entity, 'P17').length > 0 && !storyQids.some((qid) => ids(entity, 'P17').includes(qid)),
+        otherCountry: storyQids.length > 0 && countries.length > 0 && countries.length <= 2 && !storyQids.some((qid) => countries.includes(qid)),
       })
       if (!Number.isFinite(score)) return []
       // A country-only match is a topic only when it is a current event ("2026 Brazilian general election"), never "Partition of India".
@@ -726,10 +791,15 @@ export class OldsService {
       // A general concept with no country ("Soldier") is a poor starting point for one country's news.
       const general = !isEventLike(entity) && ids(entity, 'P17').length === 0 && !ids(entity, 'P31').includes('Q5')
       // Without translation, one shared word is too weak ("ONU" → "EJ Onu"), unless the title is that one word.
-      const words = native
+      // The person the headline opens with is its subject ("Mbappe apologises…" → Kylian Mbappé).
+      const words = filedThread || (ids(entity, 'P31').includes('Q5') && subjectPerson(node.label) && titleWordsIn(node.label, text) > 0) || (native
         ? isRelevantCandidate(matchTitle, text, undefined, currentYear) && titleWordsIn(matchTitle, text) >= Math.min(2, titleContentWords(matchTitle).length)
-        : isRelevantCandidate(node.label, text, countryLabel ?? undefined, currentYear)
-      return [{ id: item.qid, node, score, entity, weakOnly, general, words }]
+        : isRelevantCandidate(node.label, text, countryLabel ?? undefined, currentYear))
+      // A general concept ("Government", "Military parade") needs two words in common, not one.
+      const conceptOk = (!general || filedThread || titleWordsIn(matchTitle, text) >= 2)
+        // A different kind of event or body from the one the headline names (a football team for a school awards story).
+        && (filedThread || native || !eventKindConflicts(node.label, text))
+      return [{ id: item.qid, node, score, entity, weakOnly: weakOnly && !filedThread, general: general && !filedThread, words: words && conceptOk }]
     })
     // Laya, when on, compares the headline's meaning with each candidate's title and description on this Mac.
     const similarity = lang === 'en' && this.options.meaning && scored.length
@@ -757,6 +827,21 @@ export class OldsService {
       const focused = focus.length && historyTitle && lang === 'en' ? await this.chronicle(historyTitle, 'en', focus).catch(() => []) : []
       if (focused.length) country.chronicle = focused
       else delete country.chronicle
+      // This year in the country ("2026 in Barbados"): its events about the story, or else its latest events, as the recent backdrop.
+      let yearNote = ''
+      if (!focused.length) {
+        const place = countryPlace(query.countryCode)?.name ?? root.label
+        for (const name of [...new Set([place, root.label])]) {
+          const title = `${year} in ${name}`
+          const about = lang === 'en' && focus.length ? await this.chronicle(title, 'en', focus, year).catch(() => []) : []
+          const latest = about.length ? about : (await this.chronicle(title, 'en', [], year).catch(() => [])).slice(-6)
+          if (latest.length) {
+            country.chronicle = latest
+            yearNote = about.length ? ` Events about it from Wikipedia’s ${title}.` : ` No dated events about it yet; the latest from Wikipedia’s ${title} show what else is happening there.`
+            break
+          }
+        }
+      }
       const related = lang === 'en' ? await this.relatedTopics(text, countryLabel, [root.label], byMeaning, query.countryCode).catch(() => []) : []
       // A subject topic the headline's words point to ("Xenophobia in South Africa") beats the whole country's history.
       const subject = await this.subjectTopic(text, countryLabel ?? root.label, related, true)
@@ -778,7 +863,7 @@ export class OldsService {
           chapter: country.chapters ? chapterForYear(country.chapters, year, year) : null,
           chapterSource: country.chaptersSource ?? null,
           ...(related.length ? { related } : {}),
-          matchedBy: `No Wikipedia topic clearly matched this headline${lang !== 'en' ? ` in ${lang} Wikipedia; add this language under Languages so headlines can be translated on this Mac first` : ''}. Showing the history of ${root.label} instead.`,
+          matchedBy: `No Wikipedia topic clearly matched this headline${lang !== 'en' ? ` in ${lang} Wikipedia; add this language under Languages so headlines can be translated on this Mac first` : ''}. Showing the history of ${root.label} instead.${yearNote}`,
         },
       }
     }
@@ -873,6 +958,13 @@ export class OldsService {
         if (better.context) better.context.matchedBy = `The headline matched ${chosen.node.label}, a broad place; it is about ${event!.title}, so that is shown instead. Wikipedia and Wikidata, ${translated ? 'translated on this Mac, ' : ''}checked against the headline’s words.`
         return better
       }
+      // A continent or region, with two countries in the story: their relations ("Ethiopia–Russia relations").
+      const relation = topicCountry && !ids(chosen.entity, 'P31').some((id) => ['Q6256', 'Q3624078'].includes(id)) ? await this.subjectTopic(text, topicCountry, related, true) : null
+      if (relation && / relations$/.test(relation.title) && relation.qid !== chosen.id) {
+        const better = await this.headlineThread({ ...query, topic: relation.qid })
+        if (better.context) better.context.matchedBy = `The headline matched ${chosen.node.label}, a broad region; it is about ${relation.title}, so that is shown instead.`
+        return better
+      }
     }
     // Matched only by the country's name ("South African Air Force" for anti-immigrant violence in South Africa):
     // a subject topic the headline's own words point to ("Xenophobia in South Africa") says more.
@@ -890,6 +982,25 @@ export class OldsService {
           better.context.candidates = [{ id: chosen.id, label: chosen.node.label, description: chosen.node.description }, ...better.context.candidates.filter((candidate) => candidate.id !== chosen.id)].slice(0, 4)
         }
         return better
+      }
+    }
+    // The story as Wikipedia's Current events filed it: its threads, and every dated item under the chosen thread.
+    if (filed && !query.topic) {
+      context.filedUnder = { threads: filed.item.threads, item: filed.item.text, date: filed.item.date, url: filed.item.url }
+      if (filed.item.threads.length) context.matchedBy = `Wikipedia’s Current events filed this story under ${filed.item.threads.join(' → ')} (${filed.item.date}). ${context.matchedBy}`
+      const chosenTitle = titleFromWikipediaUrl(chosen.node.wikipediaUrl) ?? chosen.node.label
+      const filedAs = [...filedThreads, ...filed.item.links].find((title) => title.toLowerCase() === chosenTitle.toLowerCase()) ?? filedThreads[0] ?? null
+      const steps = filedAs ? threadItems(events, filedAs) : []
+      const recent = (steps.length ? steps : [filed.item]).map(currentEventEntry)
+      if (!steps.includes(filed.item)) recent.push(currentEventEntry(filed.item))
+      thread.chronicle = mergeChronicles(thread.chronicle ?? [], recent)
+    }
+    // A "Timeline of …" article for the topic (often one per year): its dated entries are the recent run-up.
+    if (!query.topic || filed) {
+      const timeline = await this.timelineOf(titleFromWikipediaUrl(chosen.node.wikipediaUrl) ?? chosen.node.label, currentYear).catch(() => null)
+      if (timeline && timeline.entries.length >= 3) {
+        thread.chronicle = mergeChronicles(thread.chronicle ?? [], timeline.entries)
+        context.matchedBy += ` Recent steps from Wikipedia’s ${timeline.title}.`
       }
     }
     // A closer article that is too new for Wikidata ("Cyclone Arnab", "Super Bowl LXI halftime show"): its timeline tells this story better.
@@ -913,6 +1024,35 @@ export class OldsService {
     return { ...thread, context }
   }
 
+  /**
+   * The "Timeline of …" article that covers a topic now: "Timeline of the
+   * Sudanese civil war (2026)", "… (1 September 2026 – present)", or one with
+   * no dates. Found by title prefix; dated entries come from its headings and lines.
+   */
+  private async timelineOf(topic: string, currentYear: number): Promise<{ title: string; entries: OldsChronicleEntry[] } | null> {
+    const base = topic.replace(/\s*\(.*?\)\s*$/, '').trim()
+    if (base.length < 4 || /^Timeline of /i.test(base)) return null
+    const titles: string[] = []
+    for (const prefix of [`Timeline of the ${base}`, `Timeline of ${base}`]) {
+      const url = new URL('https://en.wikipedia.org/w/api.php')
+      url.search = new URLSearchParams({ action: 'query', list: 'prefixsearch', pssearch: prefix, pslimit: '20', psnamespace: '0', format: 'json', formatversion: '2' }).toString()
+      const payload = await this.getJson(url.toString(), 8_000) as { query?: { prefixsearch?: Array<{ title?: string }> } }
+      for (const hit of payload.query?.prefixsearch ?? []) {
+        // The same topic, maybe with dates in brackets: not "Timeline of the Sudanese civil war in Darfur".
+        if (hit.title && hit.title.replace(/\s*\(.*?\)\s*$/, '').toLowerCase() === prefix.toLowerCase()) titles.push(hit.title)
+      }
+      if (titles.length) break
+    }
+    if (!titles.length) return null
+    // The one reaching today: "present" or this year, else the latest year, else the undated one.
+    const yearOf = (title: string): number => /present\)/i.test(title) ? 9999 : Math.max(0, ...[...title.matchAll(/\b(\d{4})\b/g)].map((match) => Number(match[1])))
+    const best = [...titles].sort((a, b) => yearOf(b) - yearOf(a))[0]!
+    const years = [...best.matchAll(/\b(\d{4})\b/g)].map((match) => Number(match[1]))
+    const entries = await this.chronicle(best, 'en', [], years.length ? Math.max(...years) : currentYear)
+    // Credit the timeline article, not its date heading ("From “14 October”").
+    return { title: best, entries: entries.map((entry) => (/^\d{1,2} \p{L}+$|^\p{L}+ \d{1,2}$/u.test(entry.section) ? { ...entry, section: best } : entry)) }
+  }
+
   /** The first specific subject topic among the related ones ("Xenophobia in South Africa", not "Politics of …"). */
   private async subjectTopic(text: string, country: string, related: OldsRelatedTopic[], allowRelations: boolean): Promise<{ qid: string; title: string } | null> {
     const family = new Set(relatedQueries(text, country, [], [], allowRelations ? otherCountries(text, country, namedCountryNames(text)) : []).titles)
@@ -923,6 +1063,46 @@ export class OldsService {
     if (!subject) return null
     const qid = (await this.titleItems('en', [subject.title]).catch(() => new Map<string, { qid: string; disambiguation: boolean }>())).get(subject.title)?.qid
     return qid ? { qid, title: subject.title } : null
+  }
+
+  /**
+   * Items from the last 45 days of Wikipedia's Current events, parsed into
+   * threads. One request for up to 50 day pages; kept for three hours.
+   */
+  private currentEventsCache: { at: number; items: CurrentEventItem[] } | null = null
+  private async currentEventItems(): Promise<CurrentEventItem[]> {
+    const now = this.now()
+    if (this.currentEventsCache && now - this.currentEventsCache.at < CURRENT_EVENTS_TTL_MS) return this.currentEventsCache.items
+    const file = join(this.options.cacheDir, 'current-events.json')
+    const saved = await readFile(file, 'utf8').then((raw) => JSON.parse(raw) as { at: number; items: CurrentEventItem[] }).catch(() => null)
+    if (saved && now - saved.at < CURRENT_EVENTS_TTL_MS && Array.isArray(saved.items)) {
+      this.currentEventsCache = saved
+      return saved.items
+    }
+    const pages = dayPages(new Date(now), CURRENT_EVENTS_DAYS)
+    const url = new URL('https://en.wikipedia.org/w/api.php')
+    url.search = new URLSearchParams({ action: 'query', prop: 'revisions', rvprop: 'content', rvslots: 'main', titles: pages.map((page) => page.title).join('|'), format: 'json', formatversion: '2' }).toString()
+    const payload = await this.getJson(url.toString(), 20_000) as { query?: { pages?: Array<{ title?: string; missing?: boolean; revisions?: Array<{ slots?: { main?: { content?: string } } }> }> } }
+    const dates = new Map(pages.map((page) => [page.title, page.date]))
+    const items = (payload.query?.pages ?? []).flatMap((page) => {
+      const content = page.revisions?.[0]?.slots?.main?.content
+      const date = page.title ? dates.get(page.title) : undefined
+      return content && date ? parseDayPage(content, date, page.title) : []
+    })
+    this.currentEventsCache = { at: now, items }
+    await mkdir(this.options.cacheDir, { recursive: true }).catch(() => undefined)
+    await writeFile(file, JSON.stringify(this.currentEventsCache)).catch(() => undefined)
+    return items
+  }
+
+  /** People with articles in 60 or more Wikipedia languages: known worldwide. */
+  private async famousAmong(people: WikidataEntity[]): Promise<Set<string>> {
+    const ids = [...new Set(people.map((person) => person.id).filter((id): id is string => !!id && isQid(id)))].slice(0, 10)
+    if (!ids.length) return new Set()
+    const url = new URL('https://www.wikidata.org/w/api.php')
+    url.search = new URLSearchParams({ action: 'wbgetentities', ids: ids.join('|'), props: 'sitelinks', format: 'json' }).toString()
+    const payload = await this.getJson(url.toString(), 10_000) as { entities?: Record<string, { sitelinks?: Record<string, unknown> }> }
+    return new Set(Object.entries(payload.entities ?? {}).filter(([, entity]) => Object.keys(entity.sitelinks ?? {}).filter((site) => site.endsWith('wiki')).length >= 60).map(([id]) => id))
   }
 
   /** A country item's ISO 3166-1 alpha-2 code (P297). */
@@ -1004,6 +1184,53 @@ export class OldsService {
 
 /** Bump when thread contents change shape or selection (v2: history chapters, trivial-event filter; v3: source checks, summaries). */
 /** Wikidata classes for broad places, whose whole history is too wide for one story. */
+const CURRENT_EVENTS_DAYS = 45
+const CURRENT_EVENTS_TTL_MS = 3 * 60 * 60 * 1_000
+const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** A Current events item as a dated step in "How we got here". */
+function currentEventEntry(item: CurrentEventItem): OldsChronicleEntry {
+  const [year, month, day] = item.date.split('-').map(Number) as [number, number, number]
+  return {
+    at: { iso: item.date, precision: 'day', label: `${day} ${SHORT_MONTHS[month - 1]} ${year}` },
+    text: item.text,
+    section: 'Wikipedia Current events',
+    url: item.url,
+    link: item.links.find((link) => !item.threads.includes(link)) ?? null,
+  }
+}
+
+/**
+ * The article's own dated events (the deeper past) with the thread's recent
+ * steps from Current events, in time order: at most 8 recent steps and 12
+ * article events (earliest and latest kept), with near-duplicates dropped.
+ */
+export function mergeChronicles(article: OldsChronicleEntry[], recent: OldsChronicleEntry[]): OldsChronicleEntry[] {
+  const seen = new Set<string>()
+  const fresh = (entry: OldsChronicleEntry): boolean => {
+    const key = `${entry.at.iso.slice(0, 10)}:${entry.text.toLowerCase().replace(/[^\p{L}\d]+/gu, ' ').slice(0, 50)}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  }
+  // De-duplicate first, so a repeated item never costs a real step.
+  const latest = [...recent].sort((a, b) => a.at.iso.localeCompare(b.at.iso)).filter(fresh).slice(-8)
+  const background = article.filter(fresh)
+  const older = background.length > 12 ? [...background.slice(0, 4), ...background.slice(-8)] : background
+  return [...older, ...latest].sort((a, b) => a.at.iso.localeCompare(b.at.iso))
+}
+
+/** Where a topic is: its country (P17); else a person's citizenship (P27); else an institution's jurisdiction (P1001). */
+function countriesOf(entity: WikidataEntity): string[] {
+  const claim = (property: string): string[] => ((entity.claims?.[property] ?? []) as Array<{ mainsnak?: { datavalue?: { value?: { id?: string } } } }>)
+    .map((statement) => statement.mainsnak?.datavalue?.value?.id).filter((id): id is string => typeof id === 'string')
+  for (const property of ['P17', 'P27', 'P1001']) {
+    const found = claim(property)
+    if (found.length) return found
+  }
+  return []
+}
+
 /** Subject word stems from a headline, leaving out the topic's own words ("South Africa" in "History of South Africa"). */
 function focusStems(text: string, topicLabel: string): string[] {
   const topicWords = new Set(topicLabel.toLowerCase().split(/\s+/))

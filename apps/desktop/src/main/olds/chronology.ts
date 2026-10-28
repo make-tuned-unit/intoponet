@@ -9,7 +9,7 @@ import { splitSections, stripWikitext } from './historyArticle'
  * paraphrased or inferred; the reader can open every section.
  */
 
-const SKIP = /^(see also|notes|references|bibliography|sources|further reading|external links|gallery|footnotes|citations|works cited|explanatory notes|in popular culture|filmography|discography|awards|honours|honors)$/i
+const SKIP = /^(see also|notes|references|bibliography|sources|further reading|external links|gallery|footnotes|citations|works cited|explanatory notes|in popular culture|filmography|discography|awards|honours|honors|holidays|holidays and observances|public holidays|incumbents|deaths|births|scheduled events|predicted and scheduled events)$/i
 const MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december']
 const MONTH = '(January|February|March|April|May|June|July|August|September|October|November|December)'
 const SHORT_MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -73,7 +73,8 @@ export function isDebris(text: string): boolean {
 export function impliedYearOf(title: string, wikitext: string, currentYear: number): number | undefined {
   // Exactly one year in the title ("2026 … season"); a range ("1900–2000") says nothing about a single date.
   const titleYears = [...new Set([...title.matchAll(/\b(1\d{3}|20\d{2})\b/g)].map((match) => Number(match[1])))]
-  if (titleYears.length === 1 && titleYears[0]! <= currentYear) return titleYears[0]
+  const spansYears = /[–-]\s*(present|\d)/i.test(title)
+  if (titleYears.length === 1 && !spansYears && titleYears[0]! <= currentYear) return titleYears[0]
   const prose = wikitext.replace(/<ref[^>]*\/>/gi, '').replace(/<ref[^>]*>[\s\S]*?<\/ref>/gi, '').replace(/\{\{[^{}]*\}\}/g, '')
   const years = [...prose.matchAll(new RegExp(`\\b\\d{1,2} ${MONTH},? (\\d{4})\\b|\\b${MONTH} \\d{1,2},? (\\d{4})\\b`, 'g'))].map((match) => Number(match[2] ?? match[4]))
   if (years.length < 3) return undefined
@@ -116,8 +117,15 @@ export function chronologyFromWikitext(title: string, wikitext: string, currentY
   const seen = new Set<string>()
   let order = 0
   const impliedYear = impliedYearOf(title, wikitext, currentYear) ?? yearHint
+  let headingYear: number | undefined
   for (const section of sections) {
     if (SKIP.test(section.title.trim())) continue
+    // A year heading ("=== 2026 ===") dates the day headings under it.
+    const bareYear = section.title.trim().match(/^(1\d{3}|20\d{2})$/)
+    if (bareYear) headingYear = Number(bareYear[1])
+    const sectionYear = headingYear ?? impliedYear
+    // A dated heading ("=== 14 October ===" in a timeline article) dates the undated lines beneath it.
+    const headingDate = sectionYear || /\d{4}/.test(section.title) ? sentenceDate(section.title.trim(), currentYear, sectionYear) : null
     const prose = proseWithLinks(section.body)
     for (const raw of prose.split(/(?<=[.!?])\s+(?=[A-Z[“"])/)) {
       order += 1
@@ -126,7 +134,7 @@ export function chronologyFromWikitext(title: string, wikitext: string, currentY
       // Whole sentences only: a fragment ("in Brazil among …") means the split went wrong.
       if (text.length < 40 || text.length > 360 || !/^[\p{Lu}\d“"(]/u.test(text)) continue
       if (isDebris(text)) continue
-      const at = sentenceDate(text, currentYear, impliedYear)
+      const at = sentenceDate(text, currentYear, impliedYear) ?? (headingDate?.precision === 'day' ? headingDate : null)
       if (!at) continue
       const key = text.toLowerCase().replace(/[^\p{L}\d]+/gu, ' ').trim().slice(0, 60)
       if (seen.has(key)) continue
