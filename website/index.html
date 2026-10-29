@@ -12,11 +12,18 @@
 <header><a class="brand" href="#" aria-label="intoponet home"><img src="/mark.svg" alt="" width="34" height="34">intoponet</a><nav aria-label="Main navigation"><a href="#browser">The browser</a><a href="#vision">The vision</a><a class="nav-cta" href="#download">Coming to macOS <span aria-hidden="true">↗</span></a></nav></header>
 <main id="main">
 <section class="hero">
-  <div class="hero-orbit" aria-hidden="true"></div>
+  <div class="landscape" aria-hidden="true"><canvas id="terrain"></canvas><span class="terrain-caption">A FIELD OF POSSIBILITIES</span></div>
   <p class="eyebrow"><span class="dot"></span> A new perspective on the internet</p>
-  <h1>Follow your<br>curiosity.<br><em>Find your world.</em></h1>
-  <div class="hero-bottom"><p>A browser that makes the web a place to explore.<br class="desktop"> Discover what’s moving. Understand what came before.<br class="desktop"> Keep what matters, yours.</p><a class="button" href="#browser">Explore intoponet <span aria-hidden="true">↘</span></a></div>
+  <h1>The web has depth.<br>Your browser<br><em>should too.</em></h1>
+  <div class="hero-bottom"><p>Beyond the feed. Beyond the list.<br class="desktop"> Meet a living topography of places, stories and ideas.<br class="desktop"> An internet you can find your own way through.</p><a class="button" href="#browser">Explore intoponet <span aria-hidden="true">↘</span></a></div>
   <div class="hero-foot"><span>INDEPENDENT BY DESIGN. HUMAN BY NATURE.</span><span>EARLY PREVIEW / 2026</span></div>
+</section>
+<section class="perspective" id="perspective">
+  <div class="perspective-heading"><p class="eyebrow">A new dimension for discovery</p><h2>Less scrolling past.<br><em>More finding your way.</em></h2><p>The internet is a world of connections. But we often experience it one item at a time: a ranked result, another post, the next tab. The list gives us an order. It can leave the wider picture out of view.</p></div>
+  <div class="discovery-demo"><div class="demo-toolbar"><span>ONE WORLD. TWO PERSPECTIVES.</span><div role="group" aria-label="Discovery perspective"><button type="button" data-view="linear" aria-pressed="false">The list</button><button type="button" data-view="field" aria-pressed="true">The landscape</button></div></div>
+  <div class="discovery-stage" data-mode="field"><svg class="connections" viewBox="0 0 800 400" preserveAspectRatio="none" aria-hidden="true"><path d="M160 120Q300 40 425 100T660 150M160 120Q200 270 330 290T660 150M425 100Q500 240 330 290M425 100Q620 250 660 150"/></svg><div class="story-node node-one"><span>01 / PLACE</span><strong>A city in motion</strong><small>Start somewhere</small></div><div class="story-node node-two"><span>02 / STORY</span><strong>A question takes shape</strong><small>Follow a connection</small></div><div class="story-node node-three"><span>03 / CONTEXT</span><strong>What came before?</strong><small>Explore the history</small></div><div class="story-node node-four"><span>04 / DISCOVERY</span><strong>Somewhere unexpected</strong><small>Find your next direction</small></div></div>
+  <p class="demo-caption" aria-live="polite">A landscape makes room for relationships. Choose a direction, explore the context, and discover what lies nearby.</p><span class="demo-disclaimer">Concept illustration · not live news or a screenshot of the browser</span></div>
+  <div class="perspective-bottom"><span>FROM A SEQUENCE<br>TO A SENSE OF PLACE.</span><p>Intoponet’s topographic approach turns public signals into a landscape of attention. Peaks bring changing coverage into view. Geography gives stories a place. History gives them depth. You decide where to go next.</p></div>
 </section>
 <section class="product" id="browser">
   <div class="section-top"><p class="eyebrow">01 / A living view of the web</p><span class="small-label">Actual prototype · illustrative snapshot</span></div>
@@ -29,4 +36,6 @@
 <section class="download" id="download"><div><p class="eyebrow">A different way to find your way.</p><h2>See you<br><em>out there.</em></h2></div><div class="download-card"><img src="/mark.svg" alt="" width="56" height="56"><h3>intoponet for macOS</h3><p>Our first public download will arrive as a DMG. We’re getting the browser ready for you.</p><span class="unavailable">Download coming soon</span><p class="note">This is a preview of our direction. No installer is available yet.</p></div></section>
 </main>
 <footer><a class="brand" href="#"><img src="/mark.svg" alt="" width="28" height="28">intoponet</a><p>Explore beyond the expected.</p><span>© 2026 intoponet · Website preview</span></footer>
+<button class="motion-toggle" type="button" aria-pressed="false">Pause motion <span aria-hidden="true">Ⅱ</span></button>
+<script src="/motion.js" defer></script>
 </body></html>
