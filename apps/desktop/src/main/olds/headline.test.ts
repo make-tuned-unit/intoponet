@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cleanHeadline, personNameAtStart, entityNameAtStart, personActivityConflicts, eventKindMatches, eventNameConflicts, eventKindConflicts, foreignNamesIn, mentions, properPhrases, scoreCandidate, searchQueries, titleWordsIn, isRelevantCandidate, topicAge } from './headline'
+import { cleanHeadline, personNameAtStart, explicitPlacePhrases, fullPersonNameMentioned, entityNameAtStart, personActivityConflicts, eventKindMatches, eventNameConflicts, eventKindConflicts, foreignNamesIn, mentions, properPhrases, scoreCandidate, searchQueries, localLegislativeSubject, scopedSubjectMatches, titleWordsIn, isRelevantCandidate, topicAge } from './headline'
 import { headlineCountries, isWorkOrThing, keepCandidate, withoutCountryNames } from './oldsService'
 
 describe('headline matching', () => {
@@ -207,6 +207,11 @@ describe('nationality words', () => {
 
 
 describe('people opening a headline', () => {
+  it('keeps names preserved through translation without inventing namesakes', () => {
+    expect(personNameAtStart('Kylian Mbappé', 'Mbappé controversy in China: Real Madrid apologizes', 'Polémique Mbappé en Chine : le Real Madrid s’excuse')).toBe(true)
+    expect(personNameAtStart('Claude Rains', 'Rains cause flooding in Peru', 'Lluvias en Perú')).toBe(false)
+    expect(personNameAtStart('Kylian Mbappé', 'Mbappé apologizes', 'Polémique Mbappéville')).toBe(false)
+  })
   it('recognises exact surnames and full names without accents', () => {
     expect(personNameAtStart('Kylian Mbappé', 'Mbappe apologises for Mao Zedong comment')).toBe(true)
     expect(personNameAtStart('Kylian Mbappé', 'Kylian Mbappe apologises')).toBe(true)
@@ -231,6 +236,10 @@ describe('quantities in headlines', () => {
 })
 
 describe('death event relevance', () => {
+  it('distinguishes a film premiere fundraiser from a sporting league', () => {
+    expect(eventKindConflicts('Jamaica Premier League', "Jamaica Association to host fundraiser with premiere of thriller 'Stew Peas'")).toBe(true)
+    expect(eventKindConflicts('Jamaica Premier League', 'Jamaica football clubs prepare for the season')).toBe(false)
+  })
   it('does not substitute a named person’s funeral for a story about their remarks', () => {
     const title = 'Death and state funeral of Mao Zedong'
     expect(eventKindConflicts(title, 'Mbappe apologises for Mao Zedong comment after Chinese sponsors drop him')).toBe(true)
@@ -284,5 +293,54 @@ describe('opening organisation identity', () => {
     expect(entityNameAtStart('Nedbank Group', 'Nedbank')).toBe(true)
     expect(entityNameAtStart('Acme Holdings Ltd.', 'Acme')).toBe(true)
     expect(entityNameAtStart('First National Bank', 'First National Bank')).toBe(true)
+  })
+})
+
+
+describe('foreign full-name identity', () => {
+  it('does not identify a foreign namesake from a partial full name', () => {
+    expect(fullPersonNameMentioned('Wilson das Neves', 'Wilson Neves lança livro para o sector bancário')).toBe(false)
+    expect(fullPersonNameMentioned('Wilson Pires Neves', 'Wilson Neves lança livro')).toBe(false)
+    expect(fullPersonNameMentioned('Mao Zedong', 'Remarks about Mao Zedong')).toBe(true)
+    expect(fullPersonNameMentioned('Kylian Mbappé', 'Club apologises for Kylian Mbappe')).toBe(true)
+    expect(fullPersonNameMentioned('Ann Lee', 'Joann Leeway speaks')).toBe(false)
+  })
+  it('searches named holidays within their country', () => {
+    expect(searchQueries('In Photos: China Begins Its Weeklong National Day Holiday', 2026, 'China')).toContain('China National Day')
+    expect(searchQueries('India prepares for Republic Day', 2026, 'India')).toContain('India Republic Day')
+  })
+})
+
+
+describe('local legislative subjects', () => {
+  it('searches the local assembly rather than moving it to the visitor’s country', () => {
+    const headline = 'The President of the National Assembly receives the Parliamentary Secretary of State at the German Ministry of Justice'
+    expect(localLegislativeSubject(headline)).toBe('National Assembly')
+    expect(searchQueries(headline, 2026, 'Mauritania')[0]).toBe('National Assembly Mauritania')
+    expect(localLegislativeSubject('Germany’s President visits Mauritania')).toBeNull()
+    expect(localLegislativeSubject('President Trump visits China')).toBeNull()
+    expect(localLegislativeSubject('The President of the National Assembly of Germany visits Mauritania')).toBeNull()
+    expect(localLegislativeSubject('The Speaker of Parliament (Germany) visits Mauritania')).toBeNull()
+  })
+})
+
+
+describe('explicit local event focus', () => {
+  it('extracts place phrases that need geocoded confirmation', () => {
+    expect(explicitPlacePhrases('Who brokered Russia-Ukraine ceasefire in Oleshky?')).toEqual(['Oleshky'])
+    expect(explicitPlacePhrases('Troops clash near New York')).toEqual(['New York'])
+    expect(explicitPlacePhrases('Oleshky discusses a ceasefire')).toEqual([])
+    expect(eventKindMatches('Blockade of Oleshky', 'Russia-Ukraine ceasefire in Oleshky')).toBe(true)
+    expect(eventKindMatches('Blockade of Oleshky', 'Oleshky hosts a music festival')).toBe(false)
+  })
+})
+
+
+describe('country-specific headline subjects', () => {
+  it('recognises the exact holiday or local legislature, not generic overlapping words', () => {
+    expect(scopedSubjectMatches("National Day of the People's Republic of China", 'China begins its National Day holiday')).toBe(true)
+    expect(scopedSubjectMatches('China National Maritime Day', 'China begins its National Day holiday')).toBe(false)
+    expect(scopedSubjectMatches('National Assembly (Mauritania)', 'The President of the National Assembly receives a German visitor')).toBe(true)
+    expect(scopedSubjectMatches('President of Germany', 'The President of the National Assembly receives a German visitor')).toBe(false)
   })
 })

@@ -1,5 +1,15 @@
 # Feature verification
 
+## Headline matching and RSS trend verification — 2026-10-28
+
+The complete 78-story comparison passed at **78/78 with Laya on and 78/78 off**, sequentially on one frozen build with all 11 installed translation languages. Existing gold labels were unchanged. This meets on ≥ off and off ≥ 71. [Full results, hashes, and all focused attempts](feature-verification/laya-olds-resolution-2026-10-28.json).
+
+The fixes preserve names through translation, reject partial foreign namesakes, search and prefer country-specific holidays and legislatures, resolve otherwise unmatched acronyms only from explicit unambiguous Wikipedia snippet expansions, distinguish film fundraisers from sporting leagues, and prefer a current event at an explicitly named verified location. Cache v14 replaces earlier matches. Typechecking, 525 application/package tests, seven label tests, and the production build passed; five registry tests were skipped.
+
+These scores establish label matches, not complete semantic accuracy or historical depth. Several labels allow broad country fallbacks. A user-requested audit of sparse timeline history is subsequent work, not covered by this result. Live source variability also limits causal comparisons with earlier runs.
+
+RSS already feeds the globe’s Rising and Fading views independently of Wikipedia readership: 451 local feeds across 209 countries/territories plus 31 international feeds. Polling is every 20 minutes; trends compare the last 24 hours with the preceding 24, using comparable coverage. A live digest showed both rising and fading RSS country signals. Three added pipeline regression tests pass for RSS-only trends, missing coverage, and duplicate headlines; desktop typechecking passed again. [RSS observation](feature-verification/rss-news-trends-2026-10-28.json). No feed registry or cadence changes were made.
+
 ## Completed full comparison and remaining-match fixes — 2026-10-28
 
 Both 78-story runs completed sequentially against one frozen build and the same translated profile. They initially scored 71/78 each. The on run's FNB Stadium result exposed another false positive; under the corrected FNB label the full scores are **70/78 on, 71/78 off**. For comparison, the original recorded runs score 66/78 on and 62/78 off under these current labels. Live search results vary, so these differences are not a controlled measurement of code changes alone. [All full results, build hashes, focused checks, and remaining failures](feature-verification/laya-olds-full-2026-10-28.json).

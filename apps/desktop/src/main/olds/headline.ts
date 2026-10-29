@@ -79,6 +79,20 @@ export function isTitleCase(text: string): boolean {
 }
 
 /** Search queries to try, most specific first. */
+export function localLegislativeSubject(headline: string): string | null {
+  const clean = cleanHeadline(headline)
+  const match = clean.match(/^(?:The\s+)?(?:President|Speaker|Chair(?:man|woman)?)\s+of\s+(?:the\s+)?(National Assembly|Parliament|Senate)\b/i)
+  if (!match || /^\s*(?:\(|(?:of|in)\s+\p{Lu})/u.test(clean.slice(match[0].length))) return null
+  return match[1]!
+}
+
+/** A country-specific version of an explicitly named holiday or local legislature. */
+export function scopedSubjectMatches(title: string, headline: string): boolean {
+  const subject = localLegislativeSubject(headline)
+    ?? cleanHeadline(headline).match(/\b(National Day|Independence Day|Constitution Day|Republic Day)\b/i)?.[1]
+  return !!subject && foldAccents(title).toLowerCase().includes(foldAccents(subject).toLowerCase())
+}
+
 export function searchQueries(headline: string, year?: number, country?: string | null): string[] {
   const clean = cleanHeadline(headline)
   const content = clean.split(/\s+/).filter((word) => !STOPWORDS.has(word.toLowerCase().replace(/[^\p{L}\d]/gu, ''))).join(' ')
@@ -92,6 +106,10 @@ export function searchQueries(headline: string, year?: number, country?: string 
   const current = year && names.length ? [`${year} ${names.slice(0, 2).join(' ')}`] : []
   // Named events ("Cyclone Arnab", "Operation Southern Spear") are searched on their own first.
   const named = namedEvents(headline)
+  const holiday = clean.match(/\b(National Day|Independence Day|Constitution Day|Republic Day)\b/i)?.[1]
+  const holidayQueries = holiday && country ? [`${country} ${holiday}`] : []
+  const legislature = localLegislativeSubject(clean)
+  const localOfficeQueries = legislature && country ? [`${legislature} ${country}`] : []
   // The last name is often the place the story happened ("… Begins in Ukrainian City of Oleshky").
   // Scheduled events by kind ("Commonwealth leaders at summit" → "2026 Commonwealth summit").
   const kind = clean.match(/\b(summit|election|elections|referendum|games|olympics|world cup|cup|festival|conference|championship|championships|tournament|grand prix|marathon|expo|awards)\b/i)?.[1]
@@ -101,7 +119,7 @@ export function searchQueries(headline: string, year?: number, country?: string 
     ...(year && kind && names.length ? [`${year} ${names[0]} ${kind.toLowerCase()}`] : []),
     ...(year && phrase ? [`${year} ${phrase[1]!.trim()} ${phrase[2]}`] : []),
   ]
-  const queries = [...named, content, ...current, ...kinded, names.slice(0, 3).join(' '), ...names.slice(0, 2), ...(names.length > 2 ? names.slice(-1) : []), ...windows]
+  const queries = [...named, ...holidayQueries, ...localOfficeQueries, content, ...current, ...kinded, names.slice(0, 3).join(' '), ...names.slice(0, 2), ...(names.length > 2 ? names.slice(-1) : []), ...windows]
   // Local news rarely names its own country: search the headline's words in the outlet's country too.
   const local = country && !clean.toLowerCase().includes(country.toLowerCase()) ? [`${content} ${country}`] : []
   return [...new Set([...queries, ...local].map((query) => query.trim()).filter((query) => query.length >= 3))].slice(0, 8)
@@ -145,7 +163,7 @@ export function scoreCandidate(facts: CandidateFacts): number {
 /** Kinds of event in a title → words in a headline that point to one ("Lula's win" → an election). */
 const EVENT_HINTS: Array<[RegExp, RegExp]> = [
   [/\b(election|elections|referendum|primary|primaries)\b/i, /\b(win|wins|won|victory|victorious|vote|votes|voters|voting|poll|polls|ballot|elected|re-?elect\w*|campaign\w*|candidate\w*|runoff|landslide|defeat\w*)\b/i],
-  [/\b(war|offensive|counteroffensive|incursion|invasion|conflict|insurgency|battle|clashes)\b/i, /\b(attack\w*|troops|soldiers|fighting|fight|war|offensive|army|forces|shelling|strikes?|rebels?|militants?|front ?line|ceasefire|killed)\b/i],
+  [/\b(war|offensive|counteroffensive|incursion|invasion|conflict|insurgency|battle|clashes|blockade|siege)\b/i, /\b(attack\w*|troops|soldiers|fighting|fight|war|offensive|army|forces|shelling|strikes?|rebels?|militants?|front ?line|ceasefire|killed|blockade|siege)\b/i],
   [/\b(crisis|collapse|scandal)\b/i, /\b(crisis|collapse\w*|resign\w*|turmoil|scandal|no-confidence|coalition|snap)\b/i],
   [/\b(protests?|riots?|unrest|uprising|strikes?)\b/i, /\b(protest\w*|riot\w*|unrest|march\w*|demonstrat\w*|clashes|strike\w*|walkout)\b/i],
   [/\b(epidemic|outbreak|pandemic)\b/i, /\b(cases|outbreak|epidemic|virus|infections?|deaths|vaccin\w*|disease)\b/i],
@@ -162,7 +180,7 @@ const EVENT_KINDS: Array<[string, RegExp]> = [
   ['meeting', /\b(summit|meeting|conference|talks|forum|assembly|session|chogm|g7|g20|cop\d+)\b/i],
   ['sport', /\b(games|olympics|cup|championships?|tournament|league|grand prix|marathon|match|world series|super bowl|football (club|team)|national (football|basketball|rugby|cricket) team|f\.?c\.?)\b/i],
   ['election', /\b(elections?|referendum|primary|primaries|vote|votes|polls?)\b/i],
-  ['culture', /\b(festival|awards?|song contest|eurovision|biennale|expo|fair)\b/i],
+  ['culture', /\b(festival|awards?|song contest|eurovision|biennale|expo|fair|premiere|thriller|film|movie|fundraiser)\b/i],
   ['services', /\b(water|electricity|power cut|outage|blackout|internet|road works?|traffic)\b/i],
 ]
 
@@ -229,13 +247,32 @@ export function foldAccents(text: string): string {
 }
 
 /** A full name or an exact surname opening the headline, never one word of a different full name. */
-export function personNameAtStart(label: string, headline: string): boolean {
+export function personNameAtStart(label: string, headline: string, originalHeadline?: string): boolean {
   const normalize = (value: string): string => foldAccents(value).toLowerCase().replace(/[’]/g, "'").trim()
   const name = normalize(label.replace(/\s*\(.*?\)\s*$/, ''))
   const opening = cleanHeadline(headline).match(/^(\p{Lu}[\p{L}'’.-]+(?:\s+\p{Lu}[\p{L}'’.-]+){0,2})/u)?.[1]
   if (!opening || !name) return false
   const start = normalize(opening)
+  // Translation may reorder a real name, but must not invent an English namesake
+  // (Spanish "Lluvias" → "Rains" must not identify actor Claude Rains).
+  if (originalHeadline !== undefined) {
+    const original = normalize(originalHeadline).split(/[^\p{L}'-]+/u).filter(Boolean).join(' ')
+    if (!` ${original} `.includes(` ${start} `)) return false
+  }
   return start.includes(' ') ? start === name : start === name.split(/\s+/).at(-1)
+}
+
+/** Exact full names, with accents and punctuation normalized, rather than partial name overlap. */
+export function fullPersonNameMentioned(label: string, headline: string): boolean {
+  const words = (value: string): string[] => foldAccents(value).toLowerCase().split(/[^\p{L}]+/u).filter(Boolean)
+  const name = words(label.replace(/\s*\(.*?\)\s*$/, ''))
+  return name.length >= 2 && ` ${words(headline).join(' ')} `.includes(` ${name.join(' ')} `)
+}
+
+/** Potential locations after an explicit place preposition. Callers must verify these
+ * against actual geocoded entities; capitalisation alone is not location evidence. */
+export function explicitPlacePhrases(headline: string): string[] {
+  return [...cleanHeadline(headline).matchAll(/\b(?:in|at|near)\s+((?:\p{Lu}[\p{L}'’-]*)(?:\s+\p{Lu}[\p{L}'’-]*){0,3})/gu)].map((match) => match[1]!)
 }
 
 /** An opening organisation name may omit a legal/company suffix, not a different entity's name. */

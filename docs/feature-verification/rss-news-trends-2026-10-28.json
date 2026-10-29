@@ -1,0 +1,398 @@
+{
+  "capturedAt": "2026-10-29T00:52:15.725Z",
+  "digestGeneratedAt": "2026-10-29T00:52:08.877Z",
+  "registeredFeeds": 482,
+  "countriesWithStories": 204,
+  "note": "Read-only observation of the live evaluation profile. Existing RSS news momentum, separate from Wikipedia readership. No feed registry or polling changes.",
+  "pollMinutes": 20,
+  "comparisonWindowHours": 24,
+  "rising": [
+    {
+      "countryCode": "AD",
+      "country": "Andorra",
+      "recent": 69,
+      "previous": 6,
+      "momentum": 0.7974683544303798,
+      "comparableFeeds": 1
+    },
+    {
+      "countryCode": "AE",
+      "country": "United Arab Emirates",
+      "recent": 36,
+      "previous": 26,
+      "momentum": 0.15151515151515152,
+      "comparableFeeds": 2
+    },
+    {
+      "countryCode": "AO",
+      "country": "Angola",
+      "recent": 9,
+      "previous": 5,
+      "momentum": 0.2222222222222222,
+      "comparableFeeds": 1
+    },
+    {
+      "countryCode": "AR",
+      "country": "Argentina",
+      "recent": 24,
+      "previous": 8,
+      "momentum": 0.4444444444444444,
+      "comparableFeeds": 1
+    },
+    {
+      "countryCode": "AU",
+      "country": "Australia",
+      "recent": 24,
+      "previous": 15,
+      "momentum": 0.20930232558139536,
+      "comparableFeeds": 3
+    },
+    {
+      "countryCode": "BD",
+      "country": "Bangladesh",
+      "recent": 79,
+      "previous": 0,
+      "momentum": 0.9518072289156626,
+      "comparableFeeds": 1
+    },
+    {
+      "countryCode": "BE",
+      "country": "Belgium",
+      "recent": 79,
+      "previous": 15,
+      "momentum": 0.6530612244897959,
+      "comparableFeeds": 2
+    },
+    {
+      "countryCode": "BM",
+      "country": "Bermuda",
+      "recent": 63,
+      "previous": 43,
+      "momentum": 0.18181818181818182,
+      "comparableFeeds": 2
+    },
+    {
+      "countryCode": "BT",
+      "country": "Bhutan",
+      "recent": 15,
+      "previous": 0,
+      "momentum": 0.7894736842105263,
+      "comparableFeeds": 2
+    },
+    {
+      "countryCode": "CG",
+      "country": "Republic of the Congo",
+      "recent": 4,
+      "previous": 2,
+      "momentum": 0.2,
+      "comparableFeeds": 2
+    },
+    {
+      "countryCode": "CL",
+      "country": "Chile",
+      "recent": 171,
+      "previous": 4,
+      "momentum": 0.9329608938547486,
+      "comparableFeeds": 1
+    },
+    {
+      "countryCode": "CU",
+      "country": "Cuba",
+      "recent": 34,
+      "previous": 22,
+      "momentum": 0.2,
+      "comparableFeeds": 2
+    },
+    {
+      "countryCode": "DE",
+      "country": "Germany",
+      "recent": 36,
+      "previous": 27,
+      "momentum": 0.13432835820895522,
+      "comparableFeeds": 4
+    },
+    {
+      "countryCode": "DO",
+      "country": "Dominican Republic",
+      "recent": 36,
+      "previous": 19,
+      "momentum": 0.288135593220339,
+      "comparableFeeds": 1
+    },
+    {
+      "countryCode": "EC",
+      "country": "Ecuador",
+      "recent": 41,
+      "previous": 9,
+      "momentum": 0.5925925925925926,
+      "comparableFeeds": 2
+    },
+    {
+      "countryCode": "FI",
+      "country": "Finland",
+      "recent": 12,
+      "previous": 6,
+      "momentum": 0.2727272727272727,
+      "comparableFeeds": 1
+    },
+    {
+      "countryCode": "FR",
+      "country": "France",
+      "recent": 15,
+      "previous": 8,
+      "momentum": 0.25925925925925924,
+      "comparableFeeds": 3
+    },
+    {
+      "countryCode": "GB",
+      "country": "United Kingdom",
+      "recent": 54,
+      "previous": 23,
+      "momentum": 0.38271604938271603,
+      "comparableFeeds": 4
+    },
+    {
+      "countryCode": "HR",
+      "country": "Croatia",
+      "recent": 107,
+      "previous": 67,
+      "momentum": 0.2247191011235955,
+      "comparableFeeds": 2
+    },
+    {
+      "countryCode": "IN",
+      "country": "India",
+      "recent": 7,
+      "previous": 3,
+      "momentum": 0.2857142857142857,
+      "comparableFeeds": 1
+    },
+    {
+      "countryCode": "JM",
+      "country": "Jamaica",
+      "recent": 33,
+      "previous": 8,
+      "momentum": 0.5555555555555556,
+      "comparableFeeds": 1
+    },
+    {
+      "countryCode": "KM",
+      "country": "Comoros",
+      "recent": 11,
+      "previous": 7,
+      "momentum": 0.18181818181818182,
+      "comparableFeeds": 2
+    },
+    {
+      "countryCode": "KZ",
+      "country": "Kazakhstan",
+      "recent": 82,
+      "previous": 25,
+      "momentum": 0.5135135135135135,
+      "comparableFeeds": 1
+    },
+    {
+      "countryCode": "LS",
+      "country": "Lesotho",
+      "recent": 4,
+      "previous": 1,
+      "momentum": 0.3333333333333333,
+      "comparableFeeds": 1
+    },
+    {
+      "countryCode": "LY",
+      "country": "Libya",
+      "recent": 9,
+      "previous": 5,
+      "momentum": 0.2222222222222222,
+      "comparableFeeds": 1
+    },
+    {
+      "countryCode": "MV",
+      "country": "Maldives",
+      "recent": 19,
+      "previous": 8,
+      "momentum": 0.3548387096774194,
+      "comparableFeeds": 1
+    },
+    {
+      "countryCode": "NZ",
+      "country": "New Zealand",
+      "recent": 68,
+      "previous": 19,
+      "momentum": 0.5384615384615384,
+      "comparableFeeds": 1
+    },
+    {
+      "countryCode": "PA",
+      "country": "Panama",
+      "recent": 120,
+      "previous": 73,
+      "momentum": 0.23857868020304568,
+      "comparableFeeds": 2
+    },
+    {
+      "countryCode": "RE",
+      "country": "Reunion",
+      "recent": 22,
+      "previous": 5,
+      "momentum": 0.5483870967741935,
+      "comparableFeeds": 2
+    },
+    {
+      "countryCode": "RW",
+      "country": "Rwanda",
+      "recent": 13,
+      "previous": 9,
+      "momentum": 0.15384615384615385,
+      "comparableFeeds": 1
+    },
+    {
+      "countryCode": "ST",
+      "country": "Sao Tome and Principe",
+      "recent": 7,
+      "previous": 3,
+      "momentum": 0.2857142857142857,
+      "comparableFeeds": 2
+    },
+    {
+      "countryCode": "TL",
+      "country": "Timor Leste",
+      "recent": 10,
+      "previous": 5,
+      "momentum": 0.2631578947368421,
+      "comparableFeeds": 1
+    },
+    {
+      "countryCode": "US",
+      "country": "United States",
+      "recent": 31,
+      "previous": 22,
+      "momentum": 0.15789473684210525,
+      "comparableFeeds": 3
+    },
+    {
+      "countryCode": "UY",
+      "country": "Uruguay",
+      "recent": 68,
+      "previous": 18,
+      "momentum": 0.5555555555555556,
+      "comparableFeeds": 1
+    },
+    {
+      "countryCode": "VI",
+      "country": "U.S. Virgin Islands",
+      "recent": 6,
+      "previous": 4,
+      "momentum": 0.14285714285714285,
+      "comparableFeeds": 1
+    },
+    {
+      "countryCode": "VU",
+      "country": "Vanuatu",
+      "recent": 4,
+      "previous": 2,
+      "momentum": 0.2,
+      "comparableFeeds": 1
+    },
+    {
+      "countryCode": "ZA",
+      "country": "South Africa",
+      "recent": 36,
+      "previous": 13,
+      "momentum": 0.4339622641509434,
+      "comparableFeeds": 1
+    },
+    {
+      "countryCode": "ZM",
+      "country": "Zambia",
+      "recent": 5,
+      "previous": 0,
+      "momentum": 0.5555555555555556,
+      "comparableFeeds": 1
+    }
+  ],
+  "fading": [
+    {
+      "countryCode": "BI",
+      "country": "Burundi",
+      "recent": 5,
+      "previous": 7,
+      "momentum": -0.125,
+      "comparableFeeds": 2
+    },
+    {
+      "countryCode": "BO",
+      "country": "Bolivia",
+      "recent": 15,
+      "previous": 20,
+      "momentum": -0.1282051282051282,
+      "comparableFeeds": 1
+    },
+    {
+      "countryCode": "CN",
+      "country": "China",
+      "recent": 1,
+      "previous": 25,
+      "momentum": -0.8,
+      "comparableFeeds": 1
+    },
+    {
+      "countryCode": "ET",
+      "country": "Ethiopia",
+      "recent": 0,
+      "previous": 4,
+      "momentum": -0.5,
+      "comparableFeeds": 2
+    },
+    {
+      "countryCode": "JE",
+      "country": "Jersey",
+      "recent": 4,
+      "previous": 6,
+      "momentum": -0.14285714285714285,
+      "comparableFeeds": 1
+    },
+    {
+      "countryCode": "KP",
+      "country": "North Korea",
+      "recent": 5,
+      "previous": 11,
+      "momentum": -0.3,
+      "comparableFeeds": 2
+    },
+    {
+      "countryCode": "PT",
+      "country": "Portugal",
+      "recent": 23,
+      "previous": 32,
+      "momentum": -0.15254237288135594,
+      "comparableFeeds": 1
+    },
+    {
+      "countryCode": "SA",
+      "country": "Saudi Arabia",
+      "recent": 16,
+      "previous": 60,
+      "momentum": -0.55,
+      "comparableFeeds": 2
+    },
+    {
+      "countryCode": "SE",
+      "country": "Sweden",
+      "recent": 5,
+      "previous": 8,
+      "momentum": -0.17647058823529413,
+      "comparableFeeds": 2
+    },
+    {
+      "countryCode": "ZW",
+      "country": "Zimbabwe",
+      "recent": 3,
+      "previous": 11,
+      "momentum": -0.4444444444444444,
+      "comparableFeeds": 1
+    }
+  ],
+  "validation": "Three regression tests cover RSS-only Rising/Fading, missing coverage, and duplicate headlines."
+}
