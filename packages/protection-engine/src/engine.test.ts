@@ -129,6 +129,22 @@ describe('ProtectionPageContextStore', () => {
     expect(pages.counters(101)).toEqual({ blockedAds: 1, blockedTrackers: 0 })
   })
 
+  it('keeps the prior commit when Electron reports the failed destination as getURL()', () => {
+    const pages = new ProtectionPageContextStore()
+    pages.setCommittedUrl(101, 'https://old.example/article')
+    pages.recordBlocked(101, 'tracker')
+    pages.beginNavigation(101, 701, 'https://unreachable.example/final')
+    pages.recordBlocked(101, 'ad')
+    pages.failNavigation(
+      101,
+      'https://unreachable.example/final',
+      'https://unreachable.example/final',
+    )
+
+    expect(pages.topLevelUrl(101)).toBe('https://old.example/article')
+    expect(pages.counters(101)).toEqual({ blockedAds: 0, blockedTrackers: 1 })
+  })
+
   it('tracks a redirect target and ignores a failure for an earlier redirect URL', () => {
     const pages = new ProtectionPageContextStore()
     pages.setCommittedUrl(101, 'https://old.example/')
@@ -146,6 +162,19 @@ describe('ProtectionPageContextStore', () => {
 
     pages.commitNavigation(101, 'https://final.example/page')
     expect(pages.counters(101)).toEqual({ blockedAds: 0, blockedTrackers: 1 })
+  })
+
+  it('does not replace a committed page with an intermediate failed-redirect URL', () => {
+    const pages = new ProtectionPageContextStore()
+    pages.setCommittedUrl(101, 'https://old.example/article')
+    pages.beginNavigation(101, 702, 'https://redirect.example/start')
+    pages.beginNavigation(101, 702, 'https://unreachable.example/final')
+    pages.failNavigation(
+      101,
+      'https://unreachable.example/final',
+      'https://redirect.example/start',
+    )
+    expect(pages.topLevelUrl(101)).toBe('https://old.example/article')
   })
 
   it('removes closed page state', () => {

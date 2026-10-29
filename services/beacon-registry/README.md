@@ -24,6 +24,13 @@ The public side of Beacons (PRD §4.6): a small HTTP API over Postgres (Neon). S
 4. In the app, open Settings › Beacons and enter the registry's https address. For
    development, you can instead set `INTOPONET_BEACON_REGISTRY` before launching.
 
+The standalone server applies per-network limits to the direct TCP peer address
+only. It ignores `X-Forwarded-For`; when deployed behind a reverse proxy, clients
+will share the proxy's address for this interim limit unless a trusted-proxy
+contract is implemented. Neon Functions do not expose a verified client address
+to this function, so the function does not guess one from request headers and
+does not apply the per-network limit. This remains a private-beta limitation.
+
 ## API
 
 | Method | Path | Notes |
@@ -43,4 +50,10 @@ The tests run against a real Postgres, which they wipe:
 
 ```sh
 BEACON_TEST_DATABASE_URL=postgres://postgres@127.0.0.1:55432/beacons npm test --workspace @intoponet/beacon-registry
+```
+
+The HTTP boundary tests use a local mock registry and need no database:
+
+```sh
+npm run test --workspace @intoponet/beacon-registry -- src/http.test.ts src/functionHttp.test.ts
 ```

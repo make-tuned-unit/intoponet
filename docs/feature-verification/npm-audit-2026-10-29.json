@@ -1,0 +1,52 @@
+{
+  "checkedAt": "2026-10-29T19:03:17.936209+00:00",
+  "command": "npm audit --omit=dev --json",
+  "scope": "npm production dependency advisories only; excludes development dependencies, including the Electron runtime classified as a dev dependency. Not a Chromium CVE assessment, independent audit, or full packaged SBOM.",
+  "report": {
+    "auditReportVersion": 2,
+    "vulnerabilities": {},
+    "metadata": {
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "dependencies": {
+        "prod": 61,
+        "dev": 422,
+        "optional": 78,
+        "peer": 13,
+        "peerOptional": 0,
+        "total": 483
+      }
+    }
+  },
+  "allDependencies": {
+    "command": "npm audit --json",
+    "report": {
+      "auditReportVersion": 2,
+      "vulnerabilities": {},
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 61,
+          "dev": 422,
+          "optional": 78,
+          "peer": 13,
+          "peerOptional": 0,
+          "total": 483
+        }
+      }
+    }
+  }
+}

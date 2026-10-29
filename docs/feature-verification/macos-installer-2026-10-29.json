@@ -1,0 +1,32 @@
+{
+  "checkedAt": "2026-10-29T19:35:59.801651+00:00",
+  "artifact": "dist/macos/preview/0.1.0-arm64/Intoponet-0.1.0-arm64.dmg",
+  "sha256": "333ae8bc2883703ed59e0ccf228fe2c491fc0e5c80675bf1f1bc8915685d4d92",
+  "mount": "read-only; copied to isolated temporary directory; detached after verification",
+  "icon": "icon.icns",
+  "checksumSidecars": "passed",
+  "smoke": {
+    "appPath": "temporary copy from mounted DMG",
+    "executable": "temporary app executable",
+    "isolatedProfile": "removed temporary profile",
+    "startup": {
+      "title": "intoponet",
+      "renderedTextCharacters": 2868,
+      "browserHostBridge": true
+    },
+    "firstCrashAutoReload": {
+      "previousTargetId": "9E4C89233046EA66099D66C2BFFC4645",
+      "replacementTargetId": "946926AD30BB3AFE644BBB56D128BB3E",
+      "pageRequests": 2
+    },
+    "secondCrashPause": {
+      "crashedTargetId": "946926AD30BB3AFE644BBB56D128BB3E",
+      "automaticReloadsAfterPause": 0
+    },
+    "manualReload": {
+      "restoredUrl": "http://127.0.0.1:61607/renderer-crash-5af69631-5bc0-4597-856e-d83cd4397c66",
+      "pageRequests": 3
+    },
+    "result": "passed"
+  }
+}

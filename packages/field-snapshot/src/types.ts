@@ -80,7 +80,7 @@ export type SnapshotBand = {
 export type FieldSnapshot = {
   schema: typeof fieldSnapshotSchema
   id: string
-  algorithm: 'log1p-separated-v2'
+  algorithm: 'log1p-separated-v2' | 'log1p-separated-v3'
   createdAt: string
   coverageNote: string
   sources: SourceRecord[]

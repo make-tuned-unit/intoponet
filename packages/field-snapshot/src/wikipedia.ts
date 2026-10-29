@@ -7,6 +7,7 @@ import {
   type SourceMeasurement,
   type SourceRecord,
 } from './types'
+import { snapshotIdentity } from './identity'
 
 export const wikipediaAttribution = 'Wikipedia contributors, CC BY-SA 4.0'
 export const wikipediaCoverage =
@@ -154,10 +155,12 @@ export function publicFieldSnapshot(
   usgsChecked = false,
 ): FieldSnapshot {
   const snapshot = aggregateSnapshot(records, now)
+  const coverageNote = coverageForRecords(snapshot.sources, usgsChecked)
+  const { id: _oldId, ...content } = snapshot
+  const identified = { ...content, coverageNote }
   return {
-    ...snapshot,
-    id: `public-${new Date(now).toISOString().slice(0, 13)}`,
-    coverageNote: coverageForRecords(records, usgsChecked),
+    ...identified,
+    id: snapshotIdentity(identified),
   }
 }
 
@@ -177,6 +180,11 @@ export function parseFieldSnapshot(raw: string): FieldSnapshot | null {
       (value['schema'] !== fieldSnapshotSchema && value['schema'] !== legacyFieldSnapshotSchema)
     ) return null
     const legacy = value['schema'] === legacyFieldSnapshotSchema
+    if (
+      !legacy &&
+      value['algorithm'] !== 'log1p-separated-v2' &&
+      value['algorithm'] !== 'log1p-separated-v3'
+    ) return null
     if (!Array.isArray(value['sources'])) return null
     const sources = value['sources'].flatMap((item): SourceRecord[] => {
       if (!isRecord(item)) return []
@@ -228,17 +236,22 @@ export function parseFieldSnapshot(raw: string): FieldSnapshot | null {
       ]
     })
     if (sources.length === 0) return null
-    const createdAt = typeof value['createdAt'] === 'string' ? value['createdAt'] : ''
-    const snapshot = aggregateSnapshot(sources, Date.parse(createdAt) || Date.now())
+    const rawCreatedAt = typeof value['createdAt'] === 'string' ? value['createdAt'] : ''
+    const evaluatedAt = Date.parse(rawCreatedAt)
+    if (!rawCreatedAt || !Number.isFinite(evaluatedAt)) return null
+    const createdAt = new Date(evaluatedAt).toISOString()
+    if (!legacy && createdAt !== rawCreatedAt) return null
+    const snapshot = aggregateSnapshot(sources, evaluatedAt)
     const note = typeof value['coverageNote'] === 'string' ? value['coverageNote'] : snapshot.coverageNote
     const honest =
       note.includes('Not the whole web') || note.includes('Not public activity') || note.includes('Synthetic')
-    return {
+    const content = {
       ...snapshot,
-      id: typeof value['id'] === 'string' ? value['id'] : snapshot.id,
       createdAt: createdAt || snapshot.createdAt,
       coverageNote: honest ? note : snapshot.coverageNote,
     }
+    const { id: _aggregateId, ...withoutId } = content
+    return { ...withoutId, id: snapshotIdentity(withoutId) }
   } catch {
     return null
   }

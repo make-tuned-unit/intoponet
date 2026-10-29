@@ -234,7 +234,7 @@ export function createRegistry(options: { query: Query; secret: string; adminTok
         return { status: 404, body: { error: 'Not found.' } }
       } catch (error) {
         if (/invalid input syntax for type uuid/i.test(String(error))) return { status: 404, body: { error: 'Not found.' } }
-        return { status: 500, body: { error: 'The registry hit an error. Nothing was changed.' } }
+        return { status: 500, body: { error: 'The registry hit an error.' } }
       }
     },
   }

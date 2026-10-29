@@ -116,6 +116,11 @@ describe('network isolation', () => {
         await attempt('https', () => require('node:https').request('https://example.org'));
         await attempt('net', () => require('node:net').connect(80, 'example.org'));
         await attempt('dns', () => require('node:dns').lookup('example.org', () => {}));
+        await attempt('dns-promises', () => require('node:dns/promises').lookup('example.org'));
+        await attempt('dns-resolver', () => new (require('node:dns').Resolver)().resolve('example.org', () => {}));
+        await attempt('dns-promise-resolver', () => new (require('node:dns/promises').Resolver)().resolve('example.org'));
+        await attempt('child-process', () => require('node:child_process').spawn(process.execPath, ['-e', '']));
+        await attempt('nested-worker', () => new (require('node:worker_threads').Worker)('', { eval: true }));
         parentPort.postMessage(results);
       })();`
     const worker = new Worker(code, { eval: true })
@@ -124,7 +129,10 @@ describe('network isolation', () => {
       worker.once('error', reject)
     })
     await worker.terminate()
-    expect(results).toEqual(['fetch:refused', 'http:refused', 'https:refused', 'net:refused', 'dns:refused'])
+    expect(results).toEqual([
+      'fetch:refused', 'http:refused', 'https:refused', 'net:refused', 'dns:refused', 'dns-promises:refused',
+      'dns-resolver:refused', 'dns-promise-resolver:refused', 'child-process:refused', 'nested-worker:refused',
+    ])
   })
 })
 

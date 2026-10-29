@@ -351,7 +351,7 @@ export function relativeTime(iso: string, now: number): string {
 export const STALE_AFTER_MS = 2 * 60 * 60 * 1000
 
 export function freshness(snapshot: FieldSnapshot | null, now: number): { label: string; stale: boolean } {
-  if (!snapshot) return { label: 'No public data yet', stale: true }
+  if (!snapshot) return { label: 'No public snapshot yet', stale: true }
   const at = Date.parse(snapshot.createdAt)
   if (!Number.isFinite(at)) return { label: 'Update time unknown', stale: true }
   return { label: `Updated ${relativeTime(snapshot.createdAt, now)}`, stale: now - at > STALE_AFTER_MS }

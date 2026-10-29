@@ -92,7 +92,7 @@ describe('globe signals', () => {
   it('reports staleness', () => {
     expect(freshness(snapshot, now)).toEqual({ label: 'Updated 30 min ago', stale: false })
     expect(freshness(snapshot, now + 5 * 3_600_000).stale).toBe(true)
-    expect(freshness(null, now).stale).toBe(true)
+    expect(freshness(null, now)).toEqual({ label: 'No public snapshot yet', stale: true })
   })
 })
 

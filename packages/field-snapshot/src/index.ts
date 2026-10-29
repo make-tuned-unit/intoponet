@@ -9,6 +9,7 @@ export type {
 } from './types'
 export { fieldSnapshotSchema, legacyFieldSnapshotSchema } from './types'
 export { aggregateSnapshot, assertAttributable, bandsFromSnapshot, dedupeSources } from './aggregate'
+export { snapshotIdentity, snapshotIdentityVersion } from './identity'
 export {
   dedupFactor,
   geographicRelevance,

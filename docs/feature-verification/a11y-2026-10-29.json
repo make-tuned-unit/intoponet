@@ -1,0 +1,127 @@
+{
+  "checkedAt": "2026-10-29T19:11:21.178Z",
+  "build": "built desktop app via CDP",
+  "axeVersion": "4.10.2",
+  "tags": [
+    "wcag2a",
+    "wcag2aa",
+    "wcag21a",
+    "wcag21aa",
+    "wcag22aa"
+  ],
+  "runtimeEvidence": {
+    "eyebrow": "No public snapshot yet",
+    "summary": "47 public signals across 4 active layers. Hover to preview, click to explore, or search a place below."
+  },
+  "screens": {
+    "home": {
+      "screenSelector": ".app-shell",
+      "tags": [
+        "wcag2a",
+        "wcag2aa",
+        "wcag21a",
+        "wcag21aa",
+        "wcag22aa"
+      ],
+      "violations": []
+    },
+    "bookmarks": {
+      "screenSelector": ".bookmark-pane",
+      "tags": [
+        "wcag2a",
+        "wcag2aa",
+        "wcag21a",
+        "wcag21aa",
+        "wcag22aa"
+      ],
+      "violations": []
+    },
+    "my map": {
+      "screenSelector": ".bookmark-drawer h2: My map",
+      "tags": [
+        "wcag2a",
+        "wcag2aa",
+        "wcag21a",
+        "wcag21aa",
+        "wcag22aa"
+      ],
+      "violations": []
+    },
+    "privacy": {
+      "screenSelector": ".bookmark-drawer h2: Privacy",
+      "tags": [
+        "wcag2a",
+        "wcag2aa",
+        "wcag21a",
+        "wcag21aa",
+        "wcag22aa"
+      ],
+      "violations": []
+    },
+    "settings": {
+      "screenSelector": ".settings-drawer",
+      "tags": [
+        "wcag2a",
+        "wcag2aa",
+        "wcag21a",
+        "wcag21aa",
+        "wcag22aa"
+      ],
+      "violations": []
+    },
+    "knowledge": {
+      "screenSelector": ".knowledge-sheet[role=\"dialog\"]",
+      "tags": [
+        "wcag2a",
+        "wcag2aa",
+        "wcag21a",
+        "wcag21aa",
+        "wcag22aa"
+      ],
+      "violations": []
+    },
+    "olds": {
+      "screenSelector": ".olds-sheet",
+      "tags": [
+        "wcag2a",
+        "wcag2aa",
+        "wcag21a",
+        "wcag21aa",
+        "wcag22aa"
+      ],
+      "violations": []
+    },
+    "country": {
+      "screenSelector": ".globe-panel[aria-label=\"Near Japan\"]",
+      "tags": [
+        "wcag2a",
+        "wcag2aa",
+        "wcag21a",
+        "wcag21aa",
+        "wcag22aa"
+      ],
+      "violations": []
+    }
+  },
+  "keyboard": [
+    {
+      "screen": "settings",
+      "openMethod": "pointer",
+      "closeKey": "Escape",
+      "focusReturned": true
+    },
+    {
+      "screen": "settings",
+      "openMethod": "Enter",
+      "closeKey": "Escape",
+      "focusReturned": true
+    },
+    {
+      "screen": "The Olds",
+      "openMethod": "pointer",
+      "closeKey": "Escape",
+      "focusMovedIntoPanel": true,
+      "focusReturned": true
+    }
+  ]
+}

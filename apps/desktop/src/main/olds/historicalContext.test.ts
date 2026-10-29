@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import type { OldsChronicleEntry } from '@intoponet/browser-api'
-import { historicalArticles, historicalSeriesArticles, olderContext } from './historicalContext'
+import { historicalArticles, historicalSeriesArticles, linkedHistoricalSeriesEditions, olderContext } from './historicalContext'
 
 const event = (year: number, text = `A distinct sourced event in ${year}.`): OldsChronicleEntry => ({ at: { iso: String(year), label: String(year), precision: 'year' }, text, section: 'History', url: 'https://en.wikipedia.org/wiki/Elections_in_Israel#History', link: null })
 
 describe('historical context from explicit subject articles', () => {
   it('finds earlier editions linked directly from the current event article', () => {
     const currentArticle = '== Previous elections ==\n[[2020 Israeli legislative election]]\n[[2019 Israeli legislative election]]\n[[2019 Israeli local elections]]'
+    expect(linkedHistoricalSeriesEditions('2026 Israeli legislative election', currentArticle, 2026)).toEqual([
+      '2019 Israeli legislative election',
+      '2020 Israeli legislative election',
+    ])
     expect(historicalSeriesArticles('2026 Israeli legislative election', currentArticle, 2026)).toEqual([
       '2019 Israeli legislative election',
       '2020 Israeli legislative election',
@@ -14,8 +18,16 @@ describe('historical context from explicit subject articles', () => {
   })
   it('samples only exact earlier editions of a documented event series', () => {
     const links = [1949, 1951, 1977, 1984, 2003, 2015, 2026].map((year) => `[[${year} Israeli legislative election|${year}]]`).join('\n')
-    expect(historicalSeriesArticles('2026 Israeli legislative election', links + '[[1948 Israeli war]]', 2026)).toEqual(['1949 Israeli legislative election', '1977 Israeli legislative election', '2015 Israeli legislative election'])
+    expect(historicalSeriesArticles('2026 Israeli legislative election', links + '[[1948 Israeli war]]', 2026)).toEqual(['1949 Israeli legislative election', '1984 Israeli legislative election', '2015 Israeli legislative election'])
     expect(historicalSeriesArticles('Israel', links, 2026)).toEqual([])
+  })
+  it('chooses the nearest middle edition when an even count makes the midpoint ambiguous', () => {
+    const links = [1971, 1977, 1991, 1996].map((year) => `[[${year} Tamil Nadu Legislative Assembly election]]`).join('\n')
+    expect(historicalSeriesArticles('2026 Tamil Nadu Legislative Assembly election', links, 2026)).toEqual([
+      '1971 Tamil Nadu Legislative Assembly election',
+      '1991 Tamil Nadu Legislative Assembly election',
+      '1996 Tamil Nadu Legislative Assembly election',
+    ])
   })
   it('follows the election subject, not the country, parties, references or recent elections', () => {
     const text = `== Electoral system ==

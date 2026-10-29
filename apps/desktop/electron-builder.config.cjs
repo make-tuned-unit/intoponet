@@ -20,6 +20,7 @@ module.exports = {
   ],
   asar: true,
   mac: {
+    icon: path.join(__dirname, 'resources/Intoponet.icns'),
     category: 'public.app-category.productivity',
     target: ['dmg'],
     identity: isRelease ? process.env.INTOPONET_MAC_SIGN_IDENTITY : null,

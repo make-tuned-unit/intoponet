@@ -1,10 +1,10 @@
 import { randomBytes } from 'node:crypto'
-import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { analyze, extractDates, extractPlaces } from './analyze'
-import { parseKnowledgeCommand, KNOWLEDGE_LIMITS, type AbsorbPreview } from './contract'
+import { parseKnowledgeCommand, KNOWLEDGE_LIMITS, type AbsorbPreview, type KnowledgeDocument } from './contract'
 import { createAesGcmCrypto, type KnowledgeCrypto } from './crypto'
 import { EXTRACT_SCRIPT, parseExtraction, selectionParagraphs } from './extract'
 import { pageRefusal, REFUSALS, urlRefusal } from './policy'
@@ -154,11 +154,86 @@ describe('search', () => {
     expect(snippet.length).toBeLessThanOrEqual(244)
     expect(snippet.slice(matches[0]![0], matches[0]![1])).toBe('needle')
   })
+
+  it.each([
+    ['non-array payload', { unexpected: 'not an index' }],
+    ['invalid record entry', [{ invalid: true }]],
+  ])('fails closed on a malformed authenticated index (%s) and preserves it on a later put', async (_case, rawIndex) => {
+    const crypto = createAesGcmCrypto(randomBytes(32))
+    const indexPath = join(dir, 'index.bin')
+    const original = crypto.seal(Buffer.from(JSON.stringify(rawIndex), 'utf8'))
+    await writeFile(indexPath, original)
+    const store = new KnowledgeStore(dir, crypto)
+    const document: KnowledgeDocument = {
+      id: knowledgeIdFor('https://en.wikipedia.org/wiki/Halifax_Explosion'),
+      url: 'https://en.wikipedia.org/wiki/Halifax_Explosion',
+      title: 'Halifax Explosion',
+      siteName: null,
+      lang: null,
+      publishedAt: null,
+      absorbedAt: '2026-10-29T00:00:00.000Z',
+      scope: 'article',
+      wordCount: 1,
+      paragraphCount: 1,
+      entities: [],
+      places: [],
+      dates: [],
+      note: null,
+      paragraphs: ['existing private text'],
+    }
+
+    await expect(store.list()).rejects.toThrow(/index/i)
+    await expect(store.put(document)).rejects.toThrow(/index/i)
+    await expect(readFile(indexPath)).resolves.toEqual(original)
+    await expect(readdir(dir)).resolves.toEqual(['index.bin'])
+  })
+
+  it('fails closed when encrypted documents remain but index.bin is missing', async () => {
+    const crypto = createAesGcmCrypto(randomBytes(32))
+    const id = knowledgeIdFor('https://en.wikipedia.org/wiki/Halifax_Explosion')
+    const documentPath = join(dir, `${id}.bin`)
+    const original = crypto.seal(Buffer.from(JSON.stringify({ paragraphs: ['existing private text'] }), 'utf8'))
+    await writeFile(documentPath, original)
+    const store = new KnowledgeStore(dir, crypto)
+    const document: KnowledgeDocument = {
+      id,
+      url: 'https://en.wikipedia.org/wiki/Halifax_Explosion',
+      title: 'Halifax Explosion',
+      siteName: null,
+      lang: null,
+      publishedAt: null,
+      absorbedAt: '2026-10-29T00:00:00.000Z',
+      scope: 'article',
+      wordCount: 1,
+      paragraphCount: 1,
+      entities: [],
+      places: [],
+      dates: [],
+      note: null,
+      paragraphs: ['replacement text'],
+    }
+
+    await expect(store.list()).rejects.toThrow(/index.*missing/i)
+    await expect(store.put(document)).rejects.toThrow(/index.*missing/i)
+    await expect(readFile(documentPath)).resolves.toEqual(original)
+    await expect(readdir(dir)).resolves.toEqual([`${id}.bin`])
+  })
 })
 
 describe('KnowledgeService', () => {
   const service = (page: KnowledgePage | null, crypto: KnowledgeCrypto = createAesGcmCrypto(randomBytes(32))) =>
     new KnowledgeService({ dir, crypto, getActivePage: () => page })
+
+  it('keeps a startup crypto failure visible through the knowledge command handler', async () => {
+    const failure = new Error('The encrypted knowledge key is missing.')
+    const knowledge = new KnowledgeService({
+      dir,
+      crypto: Promise.reject(failure),
+      getActivePage: () => null,
+    })
+
+    await expect(knowledge.handle({ type: 'list' })).rejects.toBe(failure)
+  })
 
   it('previews in an isolated world, commits, lists, searches, updates, reindexes and removes', async () => {
     const page = fakePage('https://en.wikipedia.org/wiki/Halifax_Explosion', {})

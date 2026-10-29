@@ -230,3 +230,9 @@ if (mode === 'release') {
 } else {
   console.log(`Verified local unsigned preview DMG (not for public distribution): ${dmg}`)
 }
+
+// Hash only after release stapling and Gatekeeper checks have completed, so
+// the inventory describes the exact DMG bytes delivered to an operator.
+run(process.execPath, [
+  path.join(root, 'scripts/release-inventory.cjs'), mode, arch, dmg,
+], { cwd: root })

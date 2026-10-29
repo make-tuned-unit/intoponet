@@ -205,4 +205,101 @@ describe('OldsService', () => {
     expect(seriesFetches.sort()).toEqual([...editionTitles].sort())
     expect(seriesFetches).toHaveLength(3)
   })
+
+  it('uses a recent previous edition only to find older same-series pages', async () => {
+    dir = await mkdtemp(join(tmpdir(), 'olds-series-bridge-'))
+    const currentTitle = '2026 Example national election'
+    const bridgeTitle = '2021 Example national election'
+    const olderTitle = '2016 Example national election'
+    const seriesFetches: string[] = []
+    const fetchImpl: typeof fetch = async (input) => {
+      const url = new URL(String(input))
+      if (url.hostname === 'www.wikidata.org' && url.searchParams.get('action') === 'wbgetentities') {
+        return new Response(JSON.stringify({ entities: {
+          Q9001: {
+            id: 'Q9001',
+            labels: { en: { value: currentTitle } },
+            descriptions: { en: { value: 'national election' } },
+            sitelinks: { enwiki: { title: currentTitle } },
+            claims: {},
+          },
+        } }))
+      }
+      if (url.hostname === 'en.wikipedia.org') {
+        if (url.searchParams.get('action') === 'parse') {
+          const title = url.searchParams.get('page') ?? ''
+          if (title === bridgeTitle || title === olderTitle) seriesFetches.push(title)
+          const wikitext = title === currentTitle
+            ? `[[${bridgeTitle}]]\n[[2019 Example local election]]`
+            : title === bridgeTitle
+              ? `[[${olderTitle}]]\n[[2016 Example state election]]`
+              : `The ${olderTitle} was held on 5 May 2016, and voters chose a new president.`
+          return new Response(JSON.stringify({ parse: { title, wikitext } }))
+        }
+        if (url.searchParams.get('action') === 'query') {
+          const title = url.searchParams.get('titles') ?? currentTitle
+          return new Response(JSON.stringify({ query: { pages: [{ title, extract: '' }] } }))
+        }
+      }
+      return new Response(JSON.stringify({}))
+    }
+    const service = new OldsService({ cacheDir: dir, fetchImpl, now: () => Date.parse('2026-10-28T12:00:00Z') })
+
+    const thread = await service.thread({ kind: 'qid', qid: 'Q9001' })
+
+    expect(thread.chronicle?.map((entry) => entry.at.iso)).toEqual(['2016-05-05'])
+    expect(thread.chronicle?.[0]?.sourceTitle).toBe(olderTitle)
+    expect(thread.chronicle?.[0]?.url).toContain(encodeURIComponent(olderTitle.replace(/ /g, '_')))
+    expect(seriesFetches).toEqual([bridgeTitle, olderTitle])
+  })
+
+  it('samples the balanced middle edition when an even series has a sparse quarter point', async () => {
+    dir = await mkdtemp(join(tmpdir(), 'olds-series-midpoint-'))
+    const currentTitle = '2026 Example national election'
+    const editionTitles = [
+      '1971 Example national election',
+      '1977 Example national election',
+      '1991 Example national election',
+      '2001 Example national election',
+    ]
+    const fetched: string[] = []
+    const fetchImpl: typeof fetch = async (input) => {
+      const url = new URL(String(input))
+      if (url.hostname === 'www.wikidata.org' && url.searchParams.get('action') === 'wbgetentities') {
+        return new Response(JSON.stringify({ entities: {
+          Q9002: {
+            id: 'Q9002',
+            labels: { en: { value: currentTitle } },
+            descriptions: { en: { value: 'national election' } },
+            sitelinks: { enwiki: { title: currentTitle } },
+            claims: {},
+          },
+        } }))
+      }
+      if (url.hostname === 'en.wikipedia.org') {
+        if (url.searchParams.get('action') === 'parse') {
+          const title = url.searchParams.get('page') ?? ''
+          if (editionTitles.includes(title)) fetched.push(title)
+          const wikitext = title === currentTitle
+            ? editionTitles.map((edition) => `[[${edition}]]`).join('\n')
+            : title === editionTitles[1]
+              ? 'This earlier edition has no dated prose sentence in the main narrative.'
+              : `On 1 March ${title.slice(0, 4)}, voters chose assembly members in a statewide election held under the previous electoral law.`
+          return new Response(JSON.stringify({ parse: { title, wikitext } }))
+        }
+        if (url.searchParams.get('action') === 'query') {
+          const title = url.searchParams.get('titles') ?? currentTitle
+          return new Response(JSON.stringify({ query: { pages: [{ title, extract: '' }] } }))
+        }
+      }
+      return new Response(JSON.stringify({}))
+    }
+    const service = new OldsService({ cacheDir: dir, fetchImpl, now: () => Date.parse('2026-10-28T12:00:00Z') })
+
+    const thread = await service.thread({ kind: 'qid', qid: 'Q9002' })
+
+    expect(fetched).toEqual([editionTitles[0], editionTitles[2], editionTitles[3]])
+    expect(thread.chronicle?.map((entry) => entry.at.iso)).toEqual(['1971-03-01', '1991-03-01', '2001-03-01'])
+    expect(thread.chronicle?.map((entry) => entry.sourceTitle)).toEqual([editionTitles[0], editionTitles[2], editionTitles[3]])
+  })
 })

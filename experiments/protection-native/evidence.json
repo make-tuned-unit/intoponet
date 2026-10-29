@@ -1,44 +1,59 @@
 {
-  "probe": "protection-native-v1",
-  "command": "./node_modules/.bin/esbuild experiments/protection-native/probe.ts --bundle --platform=node --format=cjs --external:electron --outfile=/tmp/intoponet-protection-native-probe.cjs && ./node_modules/.bin/electron /tmp/intoponet-protection-native-probe.cjs",
-  "electron": "45.0.0",
-  "chromium": "156.0.8078.48",
-  "siteOrigins": [
-    "http://site-a.intoponet.test:63741",
-    "http://site-b.intoponet.test:63741"
-  ],
-  "siteAProtection": "paused",
-  "siteBProtection": "enabled",
-  "pageState": [
+  "probe": "protection-native-v2",
+  "command": "node experiments/protection-native/run-probe.mjs",
+  "runtime": {
+    "electron": "45.0.0",
+    "chromium": "156.0.8078.48",
+    "profile": "isolated temporary user-data directory",
+    "fixtureTransport": "loopback HTTP only; dynamic port and .test host resolver mappings"
+  },
+  "baseline": {
+    "twoTabs": "paused site loaded both fixture scripts; protected site canceled both before server delivery",
+    "fixtureServerRequests": {
+      "ad": 1,
+      "tracker": 1
+    },
+    "blockedCounters": [
+      { "blockedAds": 0, "blockedTrackers": 0 },
+      { "blockedAds": 1, "blockedTrackers": 1 }
+    ]
+  },
+  "redirect": {
+    "chain": "redirect.intoponet.test/redirect-to-b → site-b.intoponet.test/page",
+    "committedContext": "site-b.intoponet.test/page",
+    "protectedScriptsDelivered": false,
+    "protectedCounters": { "blockedAds": 1, "blockedTrackers": 1 }
+  },
+  "failedNavigation": {
+    "chain": "site-b page → redirect.intoponet.test/redirect-unreachable → unresolved unreachable.intoponet.test",
+    "failure": "ERR_NAME_NOT_RESOLVED",
+    "restoredContext": "site-b.intoponet.test/page",
+    "pendingCountsDiscarded": true
+  },
+  "unattributedRequests": [
     {
-      "adLoaded": true,
-      "trackerLoaded": true,
-      "pageDone": true
+      "kind": "service-worker fetch",
+      "webContentsId": "absent",
+      "initiatorOrigin": "http://localhost:<port>",
+      "resourceType": "xhr",
+      "decision": "blocked by tracker host rule before fixture delivery",
+      "perTabCounter": "not attributed"
     },
     {
-      "adLoaded": false,
-      "trackerLoaded": false,
-      "pageDone": true
+      "kind": "Electron session.fetch from the main process",
+      "webContentsId": "absent",
+      "initiatorOrigin": "absent",
+      "resourceType": "other",
+      "decision": "blocked by ad host rule before fixture delivery",
+      "perTabCounter": "not attributed"
     }
   ],
-  "fixtureServerRequests": {
-    "ad": 1,
-    "tracker": 1
-  },
-  "blockedOrigins": ["http://site-b.intoponet.test:63741"],
-  "topLevelContexts": [
-    "http://site-a.intoponet.test:63741/page",
-    "http://site-b.intoponet.test:63741/page"
-  ],
-  "counters": [
-    { "blockedAds": 0, "blockedTrackers": 0 },
-    { "blockedAds": 1, "blockedTrackers": 1 }
-  ],
   "passed": true,
-  "coverage": "Two live WebContentsViews in one hidden Electron window and one shared in-memory session. Uses the production routeProtectionRequest helper, LocalProtectionEngine, and ProtectionPageContextStore. Fixture scripts targeting ads.intoponet.test and track.intoponet.test were allowed for paused site A and canceled before reaching the local server for protected site B.",
   "limitations": [
-    "This harness does not boot the full Intoponet main process or exercise the renderer shield controls and protection IPC persistence.",
-    "It does not test redirect chains, failed navigation rollback, service-worker requests without a WebContents ID, certificates, or external network requests.",
-    "The hidden-window probe verifies Chromium request interception and page execution, not visible compositing or accessibility behavior."
+    "The probe exercises the production routeProtectionRequest helper and ProtectionPageContextStore in a minimal Electron host, not the full Intoponet UI, shield controls, persistence, or private-session UX.",
+    "For requests without a WebContents ID, a known initiator origin is used for first-party and site-pause scope. Without an initiator, only destination host rules can be applied; no top-level site exception or per-tab count is available.",
+    "This probe covers these local fixture paths only. It does not prove all service-worker, redirect, subframe, WebSocket, DNS, TLS, or Chromium-internal requests pass through Electron webRequest.",
+    "The ruleset is a small local fixture, not EasyList/EasyPrivacy and not malware or phishing protection.",
+    "The hidden-window test verifies interception and page execution, not visible compositing or accessibility."
   ]
 }

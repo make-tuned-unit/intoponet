@@ -37,14 +37,17 @@ export class KnowledgeStore {
   async list(): Promise<KnowledgeRecord[]> {
     if (this.records) return this.records
     if (!existsSync(this.indexPath())) {
+      if (existsSync(this.dir) && (await readdir(this.dir)).some((name) => name.endsWith('.bin'))) {
+        throw new Error('The encrypted knowledge index is missing while encrypted records remain; restore index.bin before changing this library.')
+      }
       this.records = []
       return this.records
     }
     const raw = await this.readSealed(this.indexPath())
-    this.records = Array.isArray(raw) ? raw.flatMap((item) => {
-      const record = parseRecord(item)
-      return record ? [record] : []
-    }) : []
+    if (!Array.isArray(raw)) throw new Error('The encrypted knowledge index is malformed; existing records were left untouched.')
+    const parsed = raw.map((item) => parseRecord(item))
+    if (parsed.some((record) => record === null)) throw new Error('The encrypted knowledge index contains an invalid record; existing records were left untouched.')
+    this.records = parsed.filter((record): record is KnowledgeRecord => record !== null)
     return this.records
   }
 

@@ -3,6 +3,7 @@ import { aggregateSnapshot, assertAttributable, bandsFromSnapshot, dedupeSources
 import { demoFieldSnapshot, syntheticRegistry } from './fixtures'
 import type { SourceRecord } from './types'
 import { rawTotal } from './topography'
+import { snapshotIdentity } from './identity'
 import { hitsFromGeosearch, parseFieldSnapshot, publicFieldSnapshot, recordsFromHits, viewsFromPayload, weightFromViews, wikipediaPageviewsUrl } from './wikipedia'
 
 const publicSource: SourceRecord = {
@@ -55,10 +56,55 @@ describe('field snapshot', () => {
     expect(snapshot.coverageNote).toContain('Public records only')
   })
 
+  it('assigns stable content identities for reordered inputs and duplicate URL winners', () => {
+    const now = Date.parse('2026-10-23T00:00:00.000Z')
+    const duplicateA = { ...publicSource, id: 'z-copy', title: 'Zulu copy', weight: 2, url: 'https://EXAMPLE.org/archive' }
+    const duplicateB = { ...publicSource, id: 'a-copy', title: 'Alpha copy', weight: 4 }
+    const second = { ...publicSource, id: 'second', url: 'https://other.example/record', title: 'Second record' }
+    const input = [duplicateA, second, duplicateB]
+    const snapshot = aggregateSnapshot(input, now)
+    const reordered = aggregateSnapshot([...input].reverse(), now)
+
+    expect(snapshot.id).toMatch(/^snapshot-v1-[a-f0-9]{64}$/)
+    expect(snapshotIdentity(snapshot)).toBe(snapshot.id)
+    expect(reordered).toEqual(snapshot)
+    expect(snapshot.sources.map((source) => source.id)).toEqual(['a-copy', 'second'])
+  })
+
+  it('canonicalizes URL host case without merging case-sensitive path variants', () => {
+    const upperPath = { ...publicSource, id: 'upper-path', url: 'https://example.org/A' }
+    const lowerPath = { ...publicSource, id: 'lower-path', url: 'https://example.org/a' }
+    const hostCaseCopy = { ...publicSource, id: 'host-case-copy', url: 'HTTPS://EXAMPLE.ORG/A#section' }
+    expect(dedupeSources([upperPath, lowerPath, hostCaseCopy]).map((source) => source.id))
+      .toEqual(['host-case-copy', 'lower-path'])
+  })
+
+  it('changes identity when content or explicit evaluation time changes', () => {
+    const now = Date.parse('2026-10-23T00:00:00.000Z')
+    const original = aggregateSnapshot([publicSource], now)
+    const changedContent = aggregateSnapshot([{ ...publicSource, title: 'Different title' }], now)
+    const changedTime = aggregateSnapshot([publicSource], now + 1_000)
+    expect(changedContent.id).not.toBe(original.id)
+    expect(changedTime.id).not.toBe(original.id)
+  })
+
+  it('rejects invalid evaluation timestamps instead of generating a wall-clock identity', () => {
+    expect(() => aggregateSnapshot([publicSource], Number.NaN)).toThrow('valid timestamp')
+    expect(() => aggregateSnapshot([publicSource], Number.POSITIVE_INFINITY)).toThrow('valid timestamp')
+  })
+
+  it('includes public coverage metadata in the content identity', () => {
+    const now = Date.parse('2026-10-23T00:00:00.000Z')
+    const withoutCoverageCheck = publicFieldSnapshot([publicSource], now, false)
+    const withCoverageCheck = publicFieldSnapshot([publicSource], now, true)
+    expect(withCoverageCheck.coverageNote).not.toBe(withoutCoverageCheck.coverageNote)
+    expect(withCoverageCheck.id).not.toBe(withoutCoverageCheck.id)
+  })
+
   it('publishes the demo field as a synthetic snapshot', () => {
     const snapshot = demoFieldSnapshot()
     expect(snapshot.schema).toBe('intoponet.field-snapshot.v2')
-    expect(snapshot.algorithm).toBe('log1p-separated-v2')
+    expect(snapshot.algorithm).toBe('log1p-separated-v3')
     expect(snapshot.sources).toHaveLength(syntheticRegistry.length)
     expect(snapshot.bands.every((band) => band.sourceType === 'synthetic')).toBe(true)
     expect(snapshot.coverageNote).toContain('Synthetic')
@@ -235,14 +281,16 @@ describe('field snapshot', () => {
     }
     const migrated = parseFieldSnapshot(JSON.stringify(legacy))
     expect(migrated?.schema).toBe('intoponet.field-snapshot.v2')
+    expect(migrated?.id).toMatch(/^snapshot-v1-[a-f0-9]{64}$/)
     expect(migrated?.sources.map((source) => source.measurement.kind)).toEqual([
-      'legacy-pageviews-weight',
       'legacy-earthquake-weight',
+      'legacy-pageviews-weight',
     ])
     expect(migrated?.sources.every((source) => source.measurement.value === null)).toBe(true)
     expect(migrated?.sources.every((source) => source.measurement.unit === 'unknown')).toBe(true)
-    expect(migrated?.sources[0]?.measurement.transformation).toContain('raw pageview count')
-    expect(migrated?.sources[0]?.weight).toBe(1.5)
+    const migratedWiki = migrated?.sources.find((source) => source.measurement.kind === 'legacy-pageviews-weight')
+    expect(migratedWiki?.measurement.transformation).toContain('raw pageview count')
+    expect(migratedWiki?.weight).toBe(1.5)
     expect(migrated?.bands).toHaveLength(2)
   })
 
@@ -253,6 +301,38 @@ describe('field snapshot', () => {
     }
     delete serialized.sources[0]?.['measurement']
     expect(parseFieldSnapshot(JSON.stringify(serialized))).toBeNull()
+  })
+
+  it('recomputes current identities on parse and reflects content tampering', () => {
+    const snapshot = aggregateSnapshot([publicSource], Date.parse('2026-10-23T00:00:00.000Z'))
+    const roundTrip = parseFieldSnapshot(JSON.stringify(snapshot))
+    expect(roundTrip).toEqual(snapshot)
+
+    const forgedId = { ...snapshot, id: 'public-2026-10-23T00' }
+    expect(parseFieldSnapshot(JSON.stringify(forgedId))?.id).toBe(snapshot.id)
+
+    const alteredSource = {
+      ...snapshot,
+      sources: snapshot.sources.map((source) => ({ ...source, title: 'Tampered title' })),
+    }
+    const parsedTampering = parseFieldSnapshot(JSON.stringify(alteredSource))
+    expect(parsedTampering?.id).not.toBe(snapshot.id)
+    expect(parsedTampering?.sources[0]?.title).toBe('Tampered title')
+  })
+
+  it('migrates prior v2 aggregation identities and computation to v3', () => {
+    const current = aggregateSnapshot([publicSource], Date.parse('2026-10-23T00:00:00.000Z'))
+    const previous = { ...current, algorithm: 'log1p-separated-v2' as const, id: 'snapshot-1' }
+    const migrated = parseFieldSnapshot(JSON.stringify(previous))
+    expect(migrated?.algorithm).toBe('log1p-separated-v3')
+    expect(migrated?.id).not.toBe(previous.id)
+    expect(migrated?.id).toMatch(/^snapshot-v1-[a-f0-9]{64}$/)
+  })
+
+  it('rejects invalid current-format evaluation timestamps', () => {
+    const snapshot = aggregateSnapshot([publicSource], Date.parse('2026-10-23T00:00:00.000Z'))
+    expect(parseFieldSnapshot(JSON.stringify({ ...snapshot, createdAt: 'not a timestamp' }))).toBeNull()
+    expect(parseFieldSnapshot(JSON.stringify({ ...snapshot, createdAt: '' }))).toBeNull()
   })
 
   it('lays the corridor through the sources and keeps city waves finer', () => {

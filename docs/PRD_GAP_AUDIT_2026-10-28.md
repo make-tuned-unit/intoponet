@@ -31,3 +31,7 @@ README's Phase 0 inventory and blanket permission/popup denial are obsolete. The
 ## Website direction
 
 `website/` is a static Vercel placeholder using a real prototype screenshot, clearly distinguished from live data. It separates current capabilities, public-release work and longer-term ambitions. Download stays unavailable until an approved signed/notarized DMG exists. No waitlist, analytics or invented download URL is included.
+
+## Follow-up — 29 October
+
+See [the execution plan](PRD_EXECUTION_PLAN.md) for current evidence. An unsigned macOS DMG pipeline and packaged renderer-crash verification now exist; public signing, updates, independent review and licensing remain open. Snapshot IDs are now content-addressed with deterministic ordering, but globally shared ingestion/delivery is not implemented. The five registry database tests passed on isolated local PostgreSQL. Historical enrichment was audited again: 47 of 80 threads still have limited depth. Laya runtime canaries reveal that the current JavaScript guards can be bypassed by previously captured native function references; a proper OS boundary remains unresolved.

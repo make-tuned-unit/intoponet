@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { cpus } from 'node:os'
 import { join } from 'node:path'
-import { LAYA_MODEL, modelDir } from './model'
+import { LAYA_MODEL, modelDir, verifyModelBuffer } from './model'
 import { WordPieceTokenizer } from './tokenizer'
 
 /** What Laya needs from an embedding backend (the real one is a worker pool). */
@@ -34,7 +34,8 @@ export class EmbeddingPool implements Embedder {
   private tokenizer: WordPieceTokenizer
   private vocab: string
   private workers: WorkerLike[] = []
-  private starting: Promise<void> | null = null
+  private starting: { generation: number; promise: Promise<void> } | null = null
+  private generation = 0
   private next = 0
   private seq = 0
   private readonly pending = new Map<number, { resolve: (vectors: Float32Array[]) => void; reject: (error: Error) => void }>()
@@ -50,7 +51,11 @@ export class EmbeddingPool implements Embedder {
   }
 
   static async open(root: string, createWorker: CreateWorker, options: { size?: number; idleMs?: number } = {}): Promise<EmbeddingPool> {
-    const vocab = await readFile(join(modelDir(root), 'vocab.txt'), 'utf8')
+    const file = LAYA_MODEL.files.find((candidate) => candidate.name === 'vocab.txt')
+    if (!file) throw new Error('Pinned Laya vocabulary fingerprint is missing.')
+    const vocabBytes = await readFile(join(modelDir(root), file.name))
+    if (!verifyModelBuffer(file, vocabBytes)) throw new Error('The Laya vocabulary failed its pinned size and SHA-256 check.')
+    const vocab = vocabBytes.toString('utf8')
     const size = options.size ?? Math.max(1, Math.min(3, cpus().length - 2))
     return new EmbeddingPool(root, vocab, createWorker, size, options.idleMs ?? 120_000)
   }
@@ -60,20 +65,46 @@ export class EmbeddingPool implements Embedder {
   }
 
   private async start(): Promise<void> {
-    if (this.workers.length) return
-    this.starting ??= (async () => {
-      const file = await readFile(join(modelDir(this.root), 'model.safetensors'))
-      const weights = new SharedArrayBuffer(file.byteLength)
-      new Uint8Array(weights).set(file)
-      for (let i = 0; i < this.size; i += 1) {
-        const worker = this.createWorker({ weights, vocab: this.vocab, maxTokens: LAYA_MODEL.maxTokens })
-        worker.on('message', (message) => this.receive(message))
-        worker.on('error', (error) => this.failAll(error))
-        worker.on('exit', () => { this.workers = this.workers.filter((item) => item !== worker) })
-        this.workers.push(worker)
+    for (;;) {
+      const generation = this.generation
+      if (this.workers.length) return
+      const current = this.starting
+      if (current) {
+        if (current.generation === generation) {
+          await current.promise
+          if (generation !== this.generation) throw new Error('Laya stopped.')
+          return
+        }
+        await current.promise.catch(() => undefined)
+        if (generation !== this.generation) throw new Error('Laya stopped.')
+        continue
       }
-    })().finally(() => { this.starting = null })
-    await this.starting
+
+      const promise = this.startGeneration(generation).finally(() => {
+        if (this.starting?.promise === promise) this.starting = null
+      })
+      this.starting = { generation, promise }
+      await promise
+      if (generation !== this.generation) throw new Error('Laya stopped.')
+      return
+    }
+  }
+
+  private async startGeneration(generation: number): Promise<void> {
+    const file = LAYA_MODEL.files.find((candidate) => candidate.name === 'model.safetensors')
+    if (!file) throw new Error('Pinned Laya model fingerprint is missing.')
+    const modelBytes = await readFile(join(modelDir(this.root), file.name))
+    if (!verifyModelBuffer(file, modelBytes)) throw new Error('The Laya model failed its pinned size and SHA-256 check.')
+    if (generation !== this.generation) throw new Error('Laya stopped.')
+    const weights = new SharedArrayBuffer(modelBytes.byteLength)
+    new Uint8Array(weights).set(modelBytes)
+    for (let i = 0; i < this.size; i += 1) {
+      const worker = this.createWorker({ weights, vocab: this.vocab, maxTokens: LAYA_MODEL.maxTokens })
+      worker.on('message', (message) => this.receive(message))
+      worker.on('error', (error) => this.failAll(error))
+      worker.on('exit', () => { this.workers = this.workers.filter((item) => item !== worker) })
+      this.workers.push(worker)
+    }
   }
 
   private receive(message: unknown): void {
@@ -102,7 +133,9 @@ export class EmbeddingPool implements Embedder {
   /** Embed texts; work is split across workers, order is preserved. */
   async embed(texts: string[]): Promise<Float32Array[]> {
     if (!texts.length) return []
+    const generation = this.generation
     await this.start()
+    if (generation !== this.generation || !this.workers.length) throw new Error('Laya stopped.')
     if (this.idleTimer) clearTimeout(this.idleTimer)
     const per = Math.ceil(texts.length / this.workers.length)
     const parts: Promise<Float32Array[]>[] = []
@@ -119,6 +152,7 @@ export class EmbeddingPool implements Embedder {
   }
 
   async close(): Promise<void> {
+    this.generation += 1
     if (this.idleTimer) clearTimeout(this.idleTimer)
     this.idleTimer = null
     const workers = this.workers

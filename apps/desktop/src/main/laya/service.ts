@@ -51,8 +51,9 @@ const realModelOps: ModelOps = { download: downloadModel, verify: (root) => veri
 
 /**
  * Laya: optional, local-only semantic retrieval over absorbed pages.
- * Off until enabled; the model is pinned and verified; inference runs in
- * network-less workers; answers are cited passages, never generated text.
+ * Off until enabled; the model is pinned and revalidated at use; inference
+ * runs in Node workers with guarded network APIs, not an OS network sandbox.
+ * Answers are cited passages, never generated text.
  */
 export class LayaService {
   private readonly dir: string

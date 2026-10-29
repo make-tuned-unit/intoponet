@@ -1,6 +1,6 @@
 {
   "schema": "intoponet.execution-dag.v1",
-  "updated": "2026-10-24",
+  "updated": "2026-10-29",
   "statusMeaning": {
     "verified": "Acceptance evidence reviewed by the planning agent; unlocks dependents",
     "active": "Assigned to a worker; does not unlock dependents",
@@ -56,10 +56,10 @@
       "deps": [
         "PROTECTION_NATIVE"
       ],
-      "status": "planned",
+      "status": "verified",
       "owner": "cheap-worker",
       "accept": "Native tests cover redirects, failed navigation, service workers and requests without a WebContents ID; unsupported interception is documented and bounded in protection claims",
-      "evidence": "Current native probe covers two tabs and early resources only"
+      "evidence": "2026-10-29: Electron 45.0.0 / Chromium 156.0.8078.48 isolated-profile probe passed. Verified redirect context, failed-navigation rollback, service-worker fetch without webContentsId (initiator origin used), and main-process session.fetch without ID/initiator (destination host rule only). Both unattributed requests were blocked before fixture delivery with no page counters. See docs/protection-edge-verification.md; broad request coverage remains unclaimed."
     },
     {
       "id": "PUBLIC_BOUNDARY",
@@ -315,10 +315,10 @@
       "deps": [
         "LIBRARY_RECOVERY"
       ],
-      "status": "planned",
+      "status": "active",
       "owner": "cheap-worker",
       "accept": "ADR-004 covers key/backup/recovery; migrated encrypted store supports optional footprints, private mode, inspect, export, delete, retention and offline access",
-      "evidence": "Current safeStorage sealed JSON and basic export/delete are provisional"
+      "evidence": "2026-10-29: implemented key-loss/index-corruption fail-closed safeguards, atomic safeStorage key rotation, and honest partial-deletion feedback with temporary-directory regressions. ADR-004-local-data.md records storage/retention/export/backup behavior. Signed-app Keychain continuity, restore drill, future-path backup exclusion and policy decisions remain open; not verified."
     },
     {
       "id": "ABSORB",
@@ -341,7 +341,7 @@
       "status": "planned",
       "owner": "cheap-worker",
       "accept": "Local embeddings and retrieval cite saved sources; model is optional, hash verified, network isolated, and prompt injection has no privileged effect; browser works with Laya off",
-      "evidence": "Current keyword search has no model or semantic retrieval"
+      "evidence": "2026-10-29: local embedding/retrieval worker and model integrity checks are implemented; runtime egress/offline verification is active. See docs/PRD_EXECUTION_PLAN.md. Full isolation acceptance remains open."
     },
     {
       "id": "G3",
@@ -360,10 +360,10 @@
       "deps": [
         "SOURCE_GOVERNANCE"
       ],
-      "status": "planned",
+      "status": "active",
       "owner": "cheap-worker",
       "accept": "Licensed event/edge corpus records time, relationship type, citation, attribution, confidence and contested interpretations; analogy/sequence never imply cause",
-      "evidence": "Current graph contains synthetic fixtures only"
+      "evidence": "2026-10-29: attributed Wikipedia/Wikidata events and typed edges implemented. Historical depth audit and enrichment follow-up active; prior audit flagged 47/80 limited. Not complete corpus acceptance."
     },
     {
       "id": "OLDS_UI",
@@ -452,7 +452,7 @@
       "status": "planned",
       "owner": "planner",
       "accept": "Signed builds/updates, CVE owner, dependency/SBOM/licence review, LICENSE/NOTICE/SECURITY/CONTRIBUTING, independent security and accessibility reviews, no unauthorized egress",
-      "evidence": "Not currently a releasable general-public browser"
+      "evidence": "2026-10-29: unsigned arm64 DMG pipeline and gated signing/notarization commands implemented; preview integrity and bundle contents checked. Signed build/updates, owner/licensing and independent audits remain open."
     },
     {
       "id": "COMMUNITY_NETWORK",

@@ -1,0 +1,103 @@
+{
+  "timestamp": "2026-10-29T19:22:31.799Z",
+  "experiment": "laya-sandbox",
+  "status": "completed",
+  "electron": "45.0.0",
+  "chromium": "156.0.8078.48",
+  "node": "24.22.0",
+  "model": {
+    "id": "sentence-transformers/all-MiniLM-L6-v2",
+    "revision": "1110a243fdf4706b3f48f1d95db1a4f5529b4d41",
+    "verifiedFromPinnedHashes": true,
+    "files": [
+      {
+        "name": "model.safetensors",
+        "bytes": 90868376,
+        "sha256": "53aa51172d142c89d9012cce15ae4d6cc0ca6895895114379cacb4fab128d9db"
+      },
+      {
+        "name": "vocab.txt",
+        "bytes": 231508,
+        "sha256": "07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3"
+      }
+    ]
+  },
+  "renderer": {
+    "sandboxed": true,
+    "contextIsolated": true,
+    "sessionPersistent": false,
+    "userDataDirectoryIsolated": true,
+    "webRtcIpPolicy": "disable_non_proxied_udp",
+    "evidence": {
+      "preloadSandboxed": true,
+      "preloadContextIsolated": true,
+      "rendererHasRequire": false,
+      "rendererHasProcess": false,
+      "rendererHasFetch": true,
+      "rendererHasWebRTC": true,
+      "fetchOutcome": "blocked",
+      "websocketOutcome": "blocked",
+      "imageOutcome": "blocked",
+      "frameLoadEvent": "fired",
+      "workerOutcome": "blocked",
+      "serviceWorkerOutcome": "blocked",
+      "fileReadOutcome": "blocked",
+      "navigationOutcome": "blocked",
+      "webRequestHttpOutcome": "blocked",
+      "webRequestWebSocketOutcome": "blocked",
+      "webRtcStunAttempted": true,
+      "webRtcIceGatheringState": "complete"
+    }
+  },
+  "vectors": [
+    {
+      "dimensions": 384,
+      "norm": 0.999999998890738
+    },
+    {
+      "dimensions": 384,
+      "norm": 1.0000000023055455
+    }
+  ],
+  "networkCanary": {
+    "webRequestBlockedRequests": [
+      {
+        "scheme": "http:",
+        "host": "127.0.0.1:61121"
+      },
+      {
+        "scheme": "ws:",
+        "host": "127.0.0.1:61121"
+      }
+    ],
+    "cspDenials": [
+      "Connecting to 'http://127.0.0.1:61121/renderer-http' violates the following Content Security Policy directive: \"connect-src 'none'\". The action has been blocked.",
+      "Connecting to 'ws://127.0.0.1:61121/renderer-websocket' violates the following Content Security Policy directive: \"connect-src 'none'\". The action has been blocked.",
+      "Loading the image 'http://127.0.0.1:61121/renderer-http' violates the following Content Security Policy directive: \"img-src 'none'\". The action has been blocked.",
+      "Framing 'http://127.0.0.1:61121/' violates the following Content Security Policy directive: \"frame-src 'none'\". The request has been blocked.\n",
+      "Creating a worker from 'blob:laya-sandbox://app/0f095b0d-1031-4cf8-bc74-d7004c433782' violates the following Content Security Policy directive: \"worker-src 'none'\". The action has been blocked.",
+      "Connecting to 'file:///etc/hosts' violates the following Content Security Policy directive: \"connect-src 'none'\". The action has been blocked."
+    ],
+    "navigationAttemptsBlocked": 1,
+    "httpRequestsObserved": 1,
+    "websocketUpgradesObserved": 0,
+    "webRtcStunUdpPacketsObserved": 0,
+    "webRtcTurnTcpConnectionsObserved": 1,
+    "mainProcessPositiveControl": "one HTTP GET was deliberately issued by Node fetch before renderer probes",
+    "brokerProbe": {
+      "http": "blocked",
+      "websocket": "blocked"
+    }
+  },
+  "conclusions": {
+    "nodeAndFilesystemBridge": true,
+    "chromiumNetworkBrokerHttpWebSocket": true,
+    "restrictiveCspImageFrameWorker": true,
+    "topLevelNavigationDenied": true,
+    "webRtcTransportDenied": false,
+    "completeEgressDenialProven": false,
+    "strictIsolationAccepted": false,
+    "strictIsolationBlocker": "RTCPeerConnection exists and created a TCP connection to the loopback TURN canary under disable_non_proxied_udp."
+  },
+  "failures": []
+}

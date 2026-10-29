@@ -1356,11 +1356,15 @@ app.whenReady().then(async () => {
   ipcMain.handle(oldsChannels.command, (_event, value: unknown) => olds.thread(parseOldsCommand(value).query))
   // Absorb + local knowledge: extracted on this device, encrypted with an OS-keychain key, never sent anywhere.
   const knowledgeDir = join(app.getPath('userData'), 'knowledge')
+  const layaDir = join(app.getPath('userData'), 'laya')
   const knowledgeCrypto = loadKnowledgeCrypto(knowledgeDir, {
     available: () => safeStorage.isAsyncEncryptionAvailable(),
     encrypt: (value) => safeStorage.encryptStringAsync(value),
-    decrypt: async (sealed) => (await safeStorage.decryptStringAsync(sealed)).result,
-  })
+    decrypt: (sealed) => safeStorage.decryptStringAsync(sealed),
+  }, { relatedDataDirs: [join(layaDir, 'vectors')] })
+  // Key/decryption failures should surface when Knowledge is used, not become
+  // an unhandled rejection during startup. Keep the original promise rejected.
+  void knowledgeCrypto.catch(() => undefined)
   let laya: LayaService | null = null
   const knowledge = new KnowledgeService({
     dir: knowledgeDir,
@@ -1370,10 +1374,10 @@ app.whenReady().then(async () => {
     onChange: (change) => laya?.onKnowledgeChange(change),
   })
   ipcMain.handle(knowledgeChannels.command, (_event, value: unknown) => knowledge.handle(parseKnowledgeCommand(value)))
-  // Laya: optional on-device meaning search over absorbed pages. Off until the user enables it;
-  // the model runs in workers with no network or file access.
+  // Laya: optional on-device meaning search over absorbed pages. Its Node worker
+  // guards selected outbound APIs, but it is not OS-level network/filesystem isolated.
   laya = new LayaService({
-    dir: join(app.getPath('userData'), 'laya'),
+    dir: layaDir,
     crypto: knowledgeCrypto,
     knowledge,
     openEmbedder: openLayaEmbedder,

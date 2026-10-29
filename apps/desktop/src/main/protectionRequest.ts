@@ -21,7 +21,9 @@ export type ProtectionTab = {
 }
 
 export type RoutedProtectionDecision = {
+  /** -1 denotes an unattributed Electron request; it is never a real tab ID. */
   webContentsId: number
+  topLevelUrl: string | null
   decision: BlockingDecision
 }
 
@@ -41,9 +43,28 @@ export function routeProtectionRequest(
   tabs: readonly ProtectionTab[],
 ): RoutedProtectionDecision | null {
   const webContentsId = details.webContentsId ?? details.webContents?.id
-  if (webContentsId === undefined) return null
-  const tab = tabs.find((item) => item.view.webContents.id === webContentsId)
-  if (!tab) return null
+  const tab = webContentsId === undefined
+    ? undefined
+    : tabs.find((item) => item.view.webContents.id === webContentsId)
+
+  if (!tab || webContentsId === undefined) {
+    // Electron can omit a tab ID for service-worker and browser-started
+    // requests. Use the issuing origin when available (service workers) for
+    // first-party and site-pause checks; without one, enforce known host rules
+    // without inventing a page context or counter.
+    const topLevelUrl = details.initiatorOrigin
+      ? safeHttpUrl(details.initiatorOrigin)
+      : null
+    const decision = protection.evaluate({
+      requestUrl: details.url,
+      topLevelUrl,
+      initiatorOrigin: details.initiatorOrigin ?? details.referrer ?? null,
+      resourceType: mapElectronResourceType(details.resourceType),
+      profileId: 'default',
+      isPrivate: false,
+    })
+    return { webContentsId: -1, decision, topLevelUrl }
+  }
 
   const pageUrl = tab.view.webContents.getURL() || tab.url
   if (details.resourceType === 'mainFrame') {
@@ -63,5 +84,5 @@ export function routeProtectionRequest(
   if (decision.action === 'block' && decision.category) {
     pages.recordBlocked(webContentsId, decision.category)
   }
-  return { webContentsId, decision }
+  return { webContentsId, topLevelUrl, decision }
 }

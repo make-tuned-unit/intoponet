@@ -6,6 +6,7 @@ import {
   type SourceLicence,
   type SourceRecord,
 } from './types'
+import { canonicalJson, snapshotIdentity } from './identity'
 
 const referenceScale = 8
 const licences = new Set<SourceLicence>([
@@ -16,6 +17,20 @@ const licences = new Set<SourceLicence>([
   'open-data',
   'link-only',
 ])
+
+function sourceUrlKey(value: string): string {
+  try {
+    const url = new URL(value)
+    url.hash = ''
+    return url.href
+  } catch {
+    return value
+  }
+}
+
+function compareText(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0
+}
 
 export function assertAttributable(source: SourceRecord): void {
   if (!source.id.trim() || !source.title.trim()) {
@@ -69,10 +84,18 @@ function measurementIdentity(source: SourceRecord): [string, string, string | nu
 }
 
 export function dedupeSources(sources: SourceRecord[]): SourceRecord[] {
+  const sorted = [...sources].sort((left, right) => {
+    const leftKey = sourceUrlKey(left.url)
+    const rightKey = sourceUrlKey(right.url)
+    if (leftKey !== rightKey) return compareText(leftKey, rightKey)
+    const leftValue = canonicalJson(left)
+    const rightValue = canonicalJson(right)
+    return compareText(leftValue, rightValue)
+  })
   const seen = new Set<string>()
   const unique: SourceRecord[] = []
-  for (const source of sources) {
-    const key = source.url.replace(/\/$/, '').toLowerCase()
+  for (const source of sorted) {
+    const key = sourceUrlKey(source.url)
     if (seen.has(key)) continue
     seen.add(key)
     unique.push(source)
@@ -84,6 +107,10 @@ export function aggregateSnapshot(
   sources: SourceRecord[],
   now = Date.parse('2026-10-23T00:00:00.000Z'),
 ): FieldSnapshot {
+  const createdAt = new Date(now)
+  if (!Number.isFinite(now) || !Number.isFinite(createdAt.getTime())) {
+    throw new TypeError('Snapshot evaluation time must be a valid timestamp.')
+  }
   const unique = dedupeSources(sources)
   for (const source of unique) assertAttributable(source)
 
@@ -97,7 +124,12 @@ export function aggregateSnapshot(
     sources: SourceRecord[]
   }
   const cells = new Map<string, Cell>()
-  const scored = scoreSources(unique, now)
+  // Establish a complete tie order before scoreSources applies the weight sort;
+  // this fixes host de-duplication and floating-point sum order across input permutations.
+  const scoringOrder = [...unique].sort((left, right) =>
+    compareText(canonicalJson(left), canonicalJson(right)),
+  )
+  const scored = scoreSources(scoringOrder, now)
   for (const source of scored) {
     const lat = Math.round(source.lat / 10) * 10
     const lon = Math.round(source.lon / 10) * 10
@@ -126,7 +158,7 @@ export function aggregateSnapshot(
       lon: cell.lon,
       amplitude: Math.min(1, Math.log1p(cell.raw) / Math.log1p(referenceScale)),
       confidence: synthetic ? 0.3 : Math.min(0.9, 0.4 + cell.sources.length * 0.1),
-      sourceIds: cell.sources.map((source) => source.id),
+      sourceIds: cell.sources.map((source) => source.id).sort(),
       sourceType: synthetic ? ('synthetic' as const) : ('public-aggregate' as const),
       measurement: {
         kind: cell.measurement.kind,
@@ -136,12 +168,12 @@ export function aggregateSnapshot(
     }
   })
 
+  bands.sort((left, right) => compareText(left.id, right.id))
   const syntheticCount = unique.filter((source) => source.kind === 'synthetic-fixture').length
-  return {
+  const snapshot: Omit<FieldSnapshot, 'id'> = {
     schema: fieldSnapshotSchema,
-    id: syntheticCount === unique.length ? 'snapshot-synthetic-v1' : `snapshot-${unique.length}`,
-    algorithm: 'log1p-separated-v2',
-    createdAt: new Date(now).toISOString(),
+    algorithm: 'log1p-separated-v3',
+    createdAt: createdAt.toISOString(),
     coverageNote:
       syntheticCount > 0
         ? 'Synthetic fixture snapshot. Not public activity.'
@@ -149,6 +181,7 @@ export function aggregateSnapshot(
     sources: unique,
     bands,
   }
+  return { ...snapshot, id: snapshotIdentity(snapshot) }
 }
 
 export function bandsFromSnapshot(

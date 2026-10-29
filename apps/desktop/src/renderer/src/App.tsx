@@ -1382,7 +1382,7 @@ export function App() {
       await window.intoponet.knowledge.removeAll()
       setKnowledgeRecords([])
     } catch {
-      setError('The private library could not be deleted. Existing data was left untouched.')
+      setError('The private library could not be fully deleted. Some data may already have been removed; check the library and try again.')
       return
     }
     setBookmarks([])
@@ -1601,10 +1601,15 @@ export function App() {
     const closed = (Object.keys(now) as Array<keyof typeof now>).find((key) => before[key] && !now[key])
     const opened = (Object.keys(now) as Array<keyof typeof now>).some((key) => now[key] && !before[key])
     panelFocus.current = now
-    // Switching straight to another panel is not a close.
-    if (!closed || opened) return
+    // A newly opened panel can close its predecessor in a second render. Do
+    // not restore focus to that predecessor's header button while another
+    // panel is already open; the new panel owns focus during a switch.
+    if (!closed || opened || Object.values(now).some(Boolean)) return
     // After exit animations, which may move focus themselves.
     window.setTimeout(() => {
+      // A new panel may have opened during the exit delay. In that case its
+      // own focus target must win over this stale return target.
+      if (Object.values(panelFocus.current).some(Boolean)) return
       const now = document.activeElement
       // Leave focus alone only when it is in a field outside the panel that is closing.
       const leaving = now?.closest('.olds-sheet, .knowledge-sheet, .knowledge-backdrop, .bookmark-drawer, .settings-drawer, .bm-surface')
@@ -2454,7 +2459,7 @@ export function App() {
           summary={fieldView === 'public'
             ? focusedPlace
               ? `${panelSignals.length} public ${panelSignals.length === 1 ? 'signal' : 'signals'} within ${Math.max(1_200, Math.round(focusedPlace.radiusKm * 3)).toLocaleString()} km of ${placeLabel(focusedPlace)}.`
-              : `${visibleGlobeSignals.length} public signals from ${globeLayerSet.size === 1 ? '1 source' : `${globeLayerSet.size} sources`}. Hover to preview, click to explore, or search a place below.`
+              : `${visibleGlobeSignals.length} public signals across ${globeLayerSet.size} active ${globeLayerSet.size === 1 ? 'layer' : 'layers'}. Hover to preview, click to explore, or search a place below.`
             : `${bookmarks.filter((bookmark) => bookmark.fieldAnchor).length} pinned places · ${knowledgeRecords.length} absorbed ${knowledgeRecords.length === 1 ? 'page' : 'pages'} · ${personalActivity.visits.length} visits this session. Nothing here is shared.`}
           trail={focusedPlace ? (focusedPlace.kind === 'country' ? [focusedPlace.name] : [focusedPlace.country, focusedPlace.name].filter((step, index, all) => step && all.indexOf(step) === index)) : []}
           onEarth={showEarth}

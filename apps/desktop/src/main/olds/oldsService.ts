@@ -17,7 +17,7 @@ import type { OldsChapter, OldsContext, OldsCountryFacts, OldsPathStep, OldsSupp
 import { interpretationsFrom } from './interpretations'
 import { expansionFromSnippets } from './acronyms'
 import { chronologyFromWikitext } from './chronology'
-import { historicalArticles, historicalSeriesArticles, olderContext } from './historicalContext'
+import { historicalArticles, historicalSeriesArticles, linkedHistoricalSeriesEditions, olderContext } from './historicalContext'
 import { otherCountries, relatedQueries, subjectTerms } from './relatedTopics'
 import { dayPages, isTitleCase, matchHeadline, parseDayPage, shortlist, threadItems, type CurrentEventItem } from './currentEvents'
 import { countryPlace, placesNamedIn } from '../../shared/places/places'
@@ -694,6 +694,8 @@ export class OldsService {
       // even when it has no separate history article to point us toward.
       // Accept only exact same-series titles and keep the existing three-page
       // fetch bound.
+      const directEditions = linkedHistoricalSeriesEditions(title, rootWikitext, currentYear)
+      const recentBridge = directEditions.filter((edition) => Number(edition.slice(0, 4)) >= currentYear - 5).at(-1)
       const series = new Set(historicalSeriesArticles(title, rootWikitext, currentYear))
       for (const sourceTitle of sources) {
         try {
@@ -705,7 +707,19 @@ export class OldsService {
           for (const target of historicalSeriesArticles(title, body, currentYear)) series.add(target)
         } catch { thread.partial = true }
       }
-      for (const sourceTitle of [...series].slice(0, 3)) {
+      let bridgePages = 0
+      // A current event page may link only its immediately previous edition,
+      // which is too recent to show as historical context. Read that edition
+      // as a bounded index of older editions, but never show its recent prose.
+      if (recentBridge && series.size < 3) {
+        bridgePages = 1 // The lookup consumes one of the three edition-page slots even if it fails.
+        try {
+          url.searchParams.set('page', recentBridge)
+          const bridge = await this.getJson(url.toString(), 12_000) as { parse?: { wikitext?: string } }
+          for (const target of historicalSeriesArticles(title, bridge.parse?.wikitext ?? '', currentYear)) series.add(target)
+        } catch { thread.partial = true }
+      }
+      for (const sourceTitle of [...series].slice(0, Math.max(0, 3 - bridgePages))) {
         try {
           const year = sourceTitle.slice(0, 4)
           candidates.push(...(await this.chronicle(sourceTitle, 'en', [], undefined, 80))
@@ -1044,7 +1058,7 @@ export class OldsService {
           chapter: country.chapters ? chapterForYear(country.chapters, year, year) : null,
           chapterSource: country.chaptersSource ?? null,
           ...(related.length ? { related } : {}),
-          matchedBy: `No Wikipedia topic clearly matched this headline${lang !== 'en' ? ` in ${lang} Wikipedia; add this language under Languages so headlines can be translated on this Mac first` : ''}. Showing the history of ${root.label} instead.${yearNote}`,
+          matchedBy: `Geographic fallback: no specific Wikipedia subject or event clearly matched this headline${lang !== 'en' ? ` in ${lang} Wikipedia; add this language under Languages so headlines can be translated on this Mac first` : ''}. Showing ${root.label}'s place-level history.${yearNote}`,
         },
       }
     }
@@ -1087,7 +1101,12 @@ export class OldsService {
       if (relevant.length >= 6) thread.chronicle = relevant
     }
     // A broad topic (a country, region or continent): keep only events about this story's subject.
-    const broad = ids(chosen.entity, 'P31').some((id) => BROAD_CLASSES.has(id)) || /\b(region|country|continent|province|state of|subcontinent|territory)\b/i.test(chosen.node.description ?? '') || /^History of /.test(chosen.node.label)
+    const description = chosen.node.description ?? ''
+    const placeTypeDescription = /^(?:(?:one of the|a|an|the)\s+)?(?:(?:British|administrative|municipal|urban|coastal|inhabited|large|small|capital)\s+)*(?:Crown dependenc(?:y|ies)|island|city|town|village|municipality|borough|district|county)\b/i.test(description)
+    const broad = ids(chosen.entity, 'P31').some((id) => BROAD_CLASSES.has(id))
+      || /\b(region|country|continent|province|state of|subcontinent|territory)\b/i.test(description)
+      || placeTypeDescription
+      || /^History of /.test(chosen.node.label)
     if (broad && lang === 'en') {
       const focus = focusStems(text, chosen.node.label)
       const title = titleFromWikipediaUrl(chosen.node.wikipediaUrl)
@@ -1173,7 +1192,10 @@ export class OldsService {
     if (!query.topic && topicCountry && related.length) {
       const countryWords = topicCountry.toLowerCase().split(/\s+/).join(' ')
       const subjectOnly = cleanHeadline(text).replace(new RegExp(`\\b(${countryWords.split(' ').map((word) => word.slice(0, 5)).join('|')})\\p{L}*`, 'giu'), ' ')
-      const weak = ('weakOnly' in chosen && chosen.weakOnly === true) || ('general' in chosen && chosen.general === true)
+      // A place can be the exact name overlap while still being only the location
+      // of a story. Give specific subject families a chance before calling the
+      // place itself the subject.
+      const weak = broad || ('weakOnly' in chosen && chosen.weakOnly === true) || ('general' in chosen && chosen.general === true)
       void subjectOnly
       const subject = weak ? await this.subjectTopic(text, topicCountry, related, false) : null
       const subjectQid = subject?.qid
@@ -1223,6 +1245,12 @@ export class OldsService {
         thread.chronicle = timeline
         context.matchedBy += ` “How we got here” is from Wikipedia’s ${newer[0]}, which is too new to be on Wikidata.`
       }
+    }
+    if (broad && !query.topic) {
+      const filedNote = filed?.item.threads.length
+        ? ` Wikipedia’s Current events page filed it under ${filed.item.threads.join(' → ')} (${filed.item.date}), but that filing did not identify a narrower historical topic.`
+        : ''
+      context.matchedBy = `Geographic fallback: the headline matched ${chosen.node.label}, a broad place, but no specific subject or event was verified. Showing ${chosen.node.label}'s place-level history.${filedNote}`
     }
     return { ...thread, context }
   }
@@ -1594,7 +1622,7 @@ function countriesByName(text: string): string[] {
 
 const BROAD_CLASSES = new Set(['Q6256', 'Q3624078', 'Q5107', 'Q82794', 'Q35657', 'Q10864048', 'Q1620908', 'Q15642541', 'Q7275', 'Q3336843', 'Q11828004', 'Q107390', 'Q34876', 'Q515'])
 
-const CACHE_VERSION = 'v16'
+const CACHE_VERSION = 'v19'
 
 function cacheKey(query: OldsQuery): string {
   return `${CACHE_VERSION}|${rawCacheKey(query)}`

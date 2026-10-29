@@ -20,6 +20,7 @@ export const LAYA_MODEL = {
 } as const
 
 export type ModelFile = (typeof LAYA_MODEL.files)[number]
+export type ModelFingerprint = { readonly bytes: number; readonly sha256: string }
 
 export const modelSizeBytes = (): number => LAYA_MODEL.files.reduce((sum, file) => sum + file.bytes, 0)
 
@@ -35,6 +36,12 @@ export async function sha256File(path: string): Promise<string> {
   const hash = createHash('sha256')
   for await (const chunk of createReadStream(path)) hash.update(chunk as Buffer)
   return hash.digest('hex')
+}
+
+/** Check the exact bytes already read for point-of-use integrity validation. */
+export function verifyModelBuffer(file: ModelFingerprint, bytes: Uint8Array): boolean {
+  if (bytes.byteLength !== file.bytes) return false
+  return createHash('sha256').update(bytes).digest('hex') === file.sha256
 }
 
 /** True when every file is present with the pinned size and hash. */

@@ -1,6 +1,7 @@
 import { createServer } from 'node:http'
 import pg from 'pg'
 import { createRegistry } from './registry.ts'
+import { createRegistryHttpHandler } from './http.ts'
 
 /**
  * Standalone HTTP server for the registry. Environment:
@@ -20,33 +21,8 @@ const registry = createRegistry({
   ...(process.env['BEACON_ADMIN_TOKEN'] ? { adminToken: process.env['BEACON_ADMIN_TOKEN'] } : {}),
 })
 
-createServer(async (request, response) => {
-  const chunks: Buffer[] = []
-  let size = 0
-  for await (const chunk of request) {
-    size += (chunk as Buffer).length
-    if (size > 16_384) {
-      response.writeHead(413).end()
-      return
-    }
-    chunks.push(chunk as Buffer)
-  }
-  let body: unknown = null
-  try {
-    body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString('utf8')) : null
-  } catch {
-    response.writeHead(400, { 'content-type': 'application/json' }).end(JSON.stringify({ error: 'Body must be JSON.' }))
-    return
-  }
-  const address = new URL(request.url ?? '/', 'http://registry')
-  const forwarded = String(request.headers['x-forwarded-for'] ?? '').split(',')[0]?.trim()
-  const result = await registry.handle({
-    method: request.method ?? 'GET',
-    path: address.pathname,
-    query: address.searchParams,
-    body,
-    ip: forwarded || request.socket.remoteAddress || 'unknown',
-    ...(request.headers.authorization ? { authorization: request.headers.authorization } : {}),
-  })
-  response.writeHead(result.status, { 'content-type': 'application/json', ...(result.headers ?? {}) }).end(JSON.stringify(result.body))
-}).listen(Number(process.env['PORT'] ?? 8787), () => console.log(`Beacon registry on :${process.env['PORT'] ?? 8787}`))
+const port = Number(process.env['PORT'] ?? 8787)
+createServer(
+  { maxHeaderSize: 8_192, headersTimeout: 10_000, requestTimeout: 30_000 },
+  createRegistryHttpHandler(registry),
+).listen(port, () => console.log(`Beacon registry on :${port}`))

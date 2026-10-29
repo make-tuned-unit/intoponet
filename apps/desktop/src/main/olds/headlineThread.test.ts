@@ -9,11 +9,11 @@ const dirs: string[] = []
 afterEach(async () => { await Promise.all(dirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true }))) })
 
 describe('headline event selection through the service', () => {
-  async function select({ geocoded = true, ended = false, dated = true, filed = false } = {}) {
+  async function select({ geocoded = true, ended = false, dated = true, filed = false, eventDescription = 'ongoing blockade' } = {}) {
     const dir = await mkdtemp(join(tmpdir(), 'olds-local-event-'))
     dirs.push(dir)
     const entities = {
-      Q1000: { id: 'Q1000', labels: { en: { value: 'Blockade of Oleshky' } }, descriptions: { en: { value: 'ongoing blockade' } }, sitelinks: { enwiki: { title: 'Blockade of Oleshky' } }, claims: { P31: claim({ id: 'Q198' }), P17: claim({ id: 'Q212' }), ...(dated ? { P580: claim({ time: '+2022-01-01T00:00:00Z', precision: 11 }) } : {}), ...(ended ? { P582: claim({ time: '+2024-01-01T00:00:00Z', precision: 11 }) } : {}) } },
+      Q1000: { id: 'Q1000', labels: { en: { value: 'Blockade of Oleshky' } }, descriptions: { en: { value: eventDescription } }, sitelinks: { enwiki: { title: 'Blockade of Oleshky' } }, claims: { P31: claim({ id: 'Q198' }), P17: claim({ id: 'Q212' }), ...(dated ? { P580: claim({ time: '+2022-01-01T00:00:00Z', precision: 11 }) } : {}), ...(ended ? { P582: claim({ time: '+2024-01-01T00:00:00Z', precision: 11 }) } : {}) } },
       Q1001: { id: 'Q1001', labels: { en: { value: 'Peace negotiations in the Russo-Ukrainian war' } }, descriptions: { en: { value: 'ongoing war' } }, sitelinks: { enwiki: { title: 'Peace negotiations in the Russo-Ukrainian war' } }, claims: { P31: claim({ id: 'Q198' }), P17: claim({ id: 'Q212' }), P580: claim({ time: '+2022-01-01T00:00:00Z', precision: 11 }) } },
       Q1002: { id: 'Q1002', labels: { en: { value: 'Oleshky' } }, descriptions: { en: { value: 'city in Ukraine' } }, sitelinks: { enwiki: { title: 'Oleshky' } }, claims: { P31: claim({ id: 'Q515' }), P17: claim({ id: 'Q212' }), ...(geocoded ? { P625: claim({ latitude: 46.6, longitude: 32.7 }) } : {}) } },
       Q212: { id: 'Q212', labels: { en: { value: 'Ukraine' } }, claims: { P31: claim({ id: 'Q6256' }) } },
@@ -41,20 +41,66 @@ describe('headline event selection through the service', () => {
         url: 'https://en.wikipedia.org/wiki/Portal:Current_events/2026_October_27' }],
     }))
     const service = new OldsService({ cacheDir: dir, fetchImpl, now: () => Date.parse('2026-10-28T12:00:00Z') })
-    return (await service.thread({ kind: 'headline', text: 'Who brokered Russia-Ukraine peace negotiations and ceasefire in Oleshky', countryCode: 'UA' })).rootId
+    return service.thread({ kind: 'headline', text: 'Who brokered Russia-Ukraine peace negotiations and ceasefire in Oleshky', countryCode: 'UA' })
   }
 
   it('prefers the current event in the explicitly named verified place', async () => {
-    expect(await select()).toBe('Q1000')
+    const thread = await select()
+    expect(thread.rootId).toBe('Q1000')
+    expect(thread.context?.matchedBy).not.toMatch(/^Geographic fallback:/)
+  })
+  it('does not classify a specific event from its mention of a city or island', async () => {
+    const thread = await select({ filed: true, eventDescription: 'ongoing blockade in the city of Oleshky and on a nearby island' })
+    expect(thread.rootId).toBe('Q1000')
+    expect(thread.context?.matchedBy).not.toMatch(/^Geographic fallback:/)
   })
   it('uses a dated editorial filing when Wikidata has no start date', async () => {
-    expect(await select({ dated: false, filed: true })).toBe('Q1000')
-    expect(await select({ dated: false })).toBe('Q1001')
+    expect((await select({ dated: false, filed: true })).rootId).toBe('Q1000')
+    expect((await select({ dated: false })).rootId).toBe('Q1001')
   })
   it('does not give that priority to an ended event', async () => {
-    expect(await select({ ended: true })).toBe('Q1001')
+    expect((await select({ ended: true })).rootId).toBe('Q1001')
   })
   it('does not infer location priority from capitalisation alone', async () => {
-    expect(await select({ geocoded: false })).toBe('Q1001')
+    expect((await select({ geocoded: false })).rootId).toBe('Q1001')
+  })
+
+  it('labels a Crown Dependency name match as a geographic fallback when no narrower topic is verified', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'olds-place-fallback-'))
+    dirs.push(dir)
+    await writeFile(join(dir, 'current-events.json'), JSON.stringify({ at: Date.parse('2026-10-28T12:00:00Z'), items: [] }))
+    const title = 'Bailiwick of Guernsey'
+    const entity = {
+      id: 'Q25230',
+      labels: { en: { value: title } },
+      descriptions: { en: { value: 'one of the British Crown Dependencies in the Channel Islands' } },
+      sitelinks: { enwiki: { title } },
+      // Deliberately use an unfamiliar class: the geographic description is
+      // the evidence that makes this a place, as it is for the live root.
+      claims: { P31: claim({ id: 'Q999999' }), P625: claim({ latitude: 49.45, longitude: -2.54 }) },
+    }
+    const fetchImpl: typeof fetch = async (input) => {
+      const url = new URL(String(input))
+      const params = url.searchParams
+      let payload: unknown = {}
+      if (url.hostname === 'en.wikipedia.org' && params.get('list') === 'search') {
+        payload = { query: { search: [{ title }] } }
+      } else if (url.hostname === 'en.wikipedia.org' && params.get('prop')?.includes('pageprops')) {
+        payload = { query: { pages: [{ title, pageprops: { wikibase_item: 'Q25230' } }] } }
+      } else if (url.hostname === 'www.wikidata.org' && params.get('action') === 'wbgetentities') {
+        payload = { entities: { Q25230: entity } }
+      } else if (url.hostname === 'en.wikipedia.org' && params.get('action') === 'parse') {
+        payload = { parse: { title, wikitext: '' } }
+      } else if (url.hostname === 'en.wikipedia.org' && params.get('prop')?.includes('extracts')) {
+        payload = { query: { pages: [{ title, extract: '' }] } }
+      }
+      return new Response(JSON.stringify(payload))
+    }
+    const service = new OldsService({ cacheDir: dir, fetchImpl, now: () => Date.parse('2026-10-28T12:00:00Z') })
+
+    const thread = await service.thread({ kind: 'headline', text: 'Bailiwick of Guernsey considers new housing sites' })
+
+    expect(thread.context?.topicId).toBe('Q25230')
+    expect(thread.context?.matchedBy).toMatch(/^Geographic fallback: the headline matched Bailiwick of Guernsey, a broad place, but no specific subject or event was verified\./)
   })
 })

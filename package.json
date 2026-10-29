@@ -18,6 +18,9 @@
     "package:macos:release": "node scripts/package-macos.cjs release",
     "benchmark:electron": "electron experiments/electron-compositor/main.cjs",
     "dag": "node scripts/dag.cjs",
+    "build:laya-sandbox": "node experiments/laya-sandbox/run.mjs --build-only",
+    "verify:laya-sandbox": "node experiments/laya-sandbox/run.mjs",
+    "verify:laya-privacy": "node --experimental-strip-types experiments/laya-privacy-verification/verify.mjs",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present && node --test experiments/e2e/olds-gold.test.mjs",
     "verify:features": "node scripts/verify-features.mjs"
@@ -26,6 +29,7 @@
     "node": ">=22"
   },
   "devDependencies": {
-    "electron-builder": "^26.18.0"
+    "electron-builder": "^26.18.0",
+    "esbuild": "^0.25.12"
   }
 }

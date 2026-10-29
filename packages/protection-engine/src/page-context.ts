@@ -50,8 +50,14 @@ export class ProtectionPageContextStore {
   failNavigation(webContentsId: number, failedUrl: string, committedUrl: string): void {
     const page = this.pages.get(webContentsId)
     if (!page?.pending || !sameNavigationUrl(page.pending.url, failedUrl)) return
+    const failedTarget = page.pending.url
     page.pending = null
-    if (committedUrl) page.committed.url = committedUrl
+    // Electron's getURL() may expose the failed destination or an intermediate
+    // redirect while did-fail-load fires. Only use the supplied URL if there
+    // was no earlier committed context to preserve.
+    if (!page.committed.url && committedUrl && !sameNavigationUrl(failedTarget, committedUrl)) {
+      page.committed.url = committedUrl
+    }
   }
 
   topLevelUrl(webContentsId: number): string | null {

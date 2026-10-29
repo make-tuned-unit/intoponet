@@ -1,0 +1,24 @@
+{
+  "appPath": "/Users/me/Developer/Intoponet/dist/macos/preview/0.1.0-arm64/mac-arm64/Intoponet.app",
+  "executable": "/Users/me/Developer/Intoponet/dist/macos/preview/0.1.0-arm64/mac-arm64/Intoponet.app/Contents/MacOS/Intoponet",
+  "isolatedProfile": "/var/folders/hq/nx9hk1515831m37ff_h7zhc40000gn/T/intoponet-runtime-epjNpT",
+  "startup": {
+    "title": "intoponet",
+    "renderedTextCharacters": 2856,
+    "browserHostBridge": true
+  },
+  "firstCrashAutoReload": {
+    "previousTargetId": "86212AAFEE17628200C39101220CF20B",
+    "replacementTargetId": "F9DCB0CC674C65852A0A7524B1E64878",
+    "pageRequests": 2
+  },
+  "secondCrashPause": {
+    "crashedTargetId": "F9DCB0CC674C65852A0A7524B1E64878",
+    "automaticReloadsAfterPause": 0
+  },
+  "manualReload": {
+    "restoredUrl": "http://127.0.0.1:56592/renderer-crash-cd51a0ac-101d-441d-85be-08a1cebfe4e4",
+    "pageRequests": 3
+  },
+  "result": "passed"
+}

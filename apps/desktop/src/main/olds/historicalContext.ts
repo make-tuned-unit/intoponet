@@ -26,16 +26,21 @@ export function historicalArticles(title: string, wikitext: string, country?: st
   return [...new Set(candidates.sort((a, b) => b.priority - a.priority).map((candidate) => candidate.title))].slice(0, 3)
 }
 
-/** For a dated recurring event, a linked subject article may document the
- * same series. Sample earlier editions across its span; exact series identity
- * is required, so a shared country or word never establishes the connection. */
-export function historicalSeriesArticles(title: string, wikitext: string, currentYear: number): string[] {
+/** Exact links to earlier editions of the event series named by the root. */
+export function linkedHistoricalSeriesEditions(title: string, wikitext: string, currentYear: number): string[] {
   const series = title.match(/^\d{4}\s+(.+)$/)?.[1]
   if (!series) return []
-  const entries = [...new Set([...wikitext.matchAll(/\[\[(\d{4}\s+[^|\]#]+)(?:[^\]]*)\]\]/g)].map((match) => match[1]!.trim()))]
-    .filter((target) => target.slice(5).toLowerCase() === series.toLowerCase() && Number(target.slice(0, 4)) < currentYear - 5)
+  return [...new Set([...wikitext.matchAll(/\[\[(\d{4}\s+[^|\]#]+)(?:[^\]]*)\]\]/g)].map((match) => match[1]!.trim()))]
+    .filter((target) => target.slice(5).toLowerCase() === series.toLowerCase() && Number(target.slice(0, 4)) < currentYear)
     .sort()
-  return entries.length <= 3 ? entries : [entries[0]!, entries[Math.floor((entries.length - 1) / 2)]!, entries.at(-1)!]
+}
+
+/** For a dated recurring event, sample older editions across its span; exact
+ * series identity is required, so a shared country or word never qualifies. */
+export function historicalSeriesArticles(title: string, wikitext: string, currentYear: number): string[] {
+  const entries = linkedHistoricalSeriesEditions(title, wikitext, currentYear)
+    .filter((target) => Number(target.slice(0, 4)) < currentYear - 5)
+  return entries.length <= 3 ? entries : [entries[0]!, entries[Math.round((entries.length - 1) / 2)]!, entries.at(-1)!]
 }
 
 /** Reserve room for older context across distinct periods, without replacing
