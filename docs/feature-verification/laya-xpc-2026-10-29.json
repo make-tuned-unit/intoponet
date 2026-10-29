@@ -1,0 +1,73 @@
+{
+  "experiment": "laya-xpc-isolation-probe",
+  "signing": "ad-hoc inside temporary app bundles",
+  "hostAndServiceIDsArePerRun": true,
+  "results": [
+    {
+      "mode": "allowed",
+      "signedEntitlements": {
+        "appSandbox": true,
+        "networkClient": true
+      },
+      "expectedNetworkClient": true,
+      "hostPositiveControlConnected": true,
+      "hostUdpPositiveControlSent": true,
+      "loopbackTcpCanaryConnections": 2,
+      "loopbackUdpCanaryDatagrams": 2,
+      "result": "network-client-positive-control-passed",
+      "serviceConnectedToLoopback": true,
+      "serviceReply": "synthetic inference service reply",
+      "serviceReturnedFixedText": true,
+      "serviceSentUdp": true,
+      "serviceTcpErrno": 0,
+      "serviceTcpError": "",
+      "serviceTcpFailureOperation": "none",
+      "serviceUdpErrno": 0,
+      "serviceUdpError": "",
+      "serviceUdpFailureOperation": "none"
+    },
+    {
+      "mode": "denied",
+      "signedEntitlements": {
+        "appSandbox": true,
+        "networkClient": false
+      },
+      "expectedNetworkClient": false,
+      "hostPositiveControlConnected": true,
+      "hostUdpPositiveControlSent": true,
+      "loopbackTcpCanaryConnections": 1,
+      "loopbackUdpCanaryDatagrams": 1,
+      "result": "service-network-denial-observed",
+      "serviceConnectedToLoopback": false,
+      "serviceReply": "synthetic inference service reply",
+      "serviceReturnedFixedText": true,
+      "serviceSentUdp": false,
+      "serviceTcpErrno": 1,
+      "serviceTcpError": "Operation not permitted",
+      "serviceTcpFailureOperation": "connect",
+      "serviceUdpErrno": 1,
+      "serviceUdpError": "Operation not permitted",
+      "serviceUdpFailureOperation": "sendto"
+    }
+  ],
+  "sandboxContainers": [
+    {
+      "bundleID": "org.intoponet.LayaIsolationProbe.529867f689a04320.allowed.service",
+      "existedBefore": false,
+      "createdByProbe": true,
+      "removed": false,
+      "cleanupError": "EPERM from the OS while removing this exact container; left in place"
+    },
+    {
+      "bundleID": "org.intoponet.LayaIsolationProbe.529867f689a04320.denied.service",
+      "existedBefore": false,
+      "createdByProbe": true,
+      "removed": false,
+      "cleanupError": "EPERM from the OS while removing this exact container; left in place"
+    }
+  ],
+  "checkedAt": "2026-10-29T22:30:18.366561+00:00",
+  "verification": "Parent rerun of paired synthetic XPC experiment; not production Laya",
+  "macOS": "26.2",
+  "xcode": "Xcode 26.6\nBuild version 17F113"
+}

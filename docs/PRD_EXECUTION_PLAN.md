@@ -110,6 +110,16 @@ Time Machine exclusions now persist the user’s intent and reapply to named pri
 
 All workspace typechecks and **647 tests** passed with zero skips: 641 workspace/gold tests, including registry tests on isolated PostgreSQL, plus six release-inventory tests. Eight-screen axe/keyboard checks again reported zero violations. This supersedes the earlier 606-test checkpoint. See the integration and installer evidence records for exact commands and artifact hashes. The threat model now reflects current public sources, shared cache, RSS, Beacon and Laya boundaries without treating JavaScript guards as OS isolation.
 
+### Cache, permission and OS-boundary follow-through — 29 October
+
+Local public snapshots now use bounded UTF-8 reads and atomic mode-0600 replacement. Failed writes preserve the previous cache and disclose the error; cached data older than two hours is marked stale and reads retain previous source-failure disclosures.
+
+Permission decisions awaiting macOS no longer survive reset, a newer overlapping Block, navigation, renderer failure, tab/popup closure or private-session exit. Exit invalidates requests before asynchronous cleanup. Any frame changing documents conservatively cancels the owner's pending requests; frame-specific tracking remains a compatibility improvement. The parent reviewed the race tests and reran the native Electron fixture for fake-camera Allow/reset/Block, pending navigation/destruction and self-signed TLS denial. Real OS media grants and the complete certificate matrix remain unverified.
+
+An isolated, ad-hoc signed XPC prototype now demonstrates the supported App Sandbox direction: the same service reaches loopback TCP/UDP with the network-client entitlement and receives EPERM without it, while the host controls and typed reply still succeed. Parent evidence is in `feature-verification/laya-xpc-2026-10-29.json`. This is not production Laya, real model inference, a native Electron bridge, or release signing. macOS refused removal of generated test-container metadata; the exact IDs are recorded. Production strict no-egress remains open.
+
+All workspace typechecks and **665 tests** passed with zero skips (659 workspace/gold and six release-inventory tests), including an isolated PostgreSQL run. The rebuilt preview DMG/ZIP passed package checks. This supersedes the 647-test checkpoint. No installer, public endpoint or production inference helper was published.
+
 ## Requirements still open
 
 - Strict Laya no-egress capability boundary (the sandbox prototype has a demonstrated WebRTC TCP escape path and is not production-integrated).

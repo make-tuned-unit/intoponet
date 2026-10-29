@@ -39,10 +39,13 @@ events. The available public records become a versioned
 weight, USGS records retain a bounded magnitude weight, and EONET records
 represent reported natural events. Earthquake magnitude is a physical
 measurement, not a human-interest or importance score. The local snapshot
-cache is written directly by this path; newly created files request mode
-`0644`, while an existing file keeps its current mode. It is not the atomic
-shared-artifact cache described below. Article body text is not fetched or
-stored, and private-library data is not an aggregation input.
+cache is read with a 5 MiB bound and replaced atomically through a temporary
+file created with mode `0600`; failed replacements remove the temporary file
+and leave the prior cache in place. A cache write failure is surfaced in local
+field status while the refreshed snapshot remains available in memory. This
+locally generated cache is distinct from the origin-bound shared-artifact
+cache described below. Article body text is not fetched or stored, and
+private-library data is not an aggregation input.
 
 When `INTOPONET_SHARED_PUBLIC_SNAPSHOT_URL` is configured, the client instead
 requests only `/latest` and the immutable artifact named by that manifest. It
@@ -83,10 +86,9 @@ snapshot, the renderer may display the clearly labelled synthetic fixture.
 ### Remaining gaps
 
 - The local fetcher does not authenticate response provenance beyond HTTPS and
-  parsing. Its direct-write cache (new files request `0644`) has no manifest
-  digest or atomic replacement, and its read path does not apply the shared
-  client's byte cap and origin binding. A compromised upstream or network
-  path could supply misleading local records.
+  parsing. Its bounded, atomic local cache has no signed manifest or configured
+  origin binding because this mode independently assembles source records. A
+  compromised upstream or network path could supply misleading local records.
 - The optional shared client's digest verifies consistency between the fetched
   manifest and artifact, not who published either one. There is no signature,
   pinned publisher key, reviewed public endpoint, or scheduled shared-ingestion

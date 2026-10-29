@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en" data-intoponet-probe="browser-policy-v1">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Local browser policy probe</title>
+  <body>
+    <script>
+      window.captureFakeCamera = async () => {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+          window.probeStream = stream
+          return { ok: true, tracks: stream.getVideoTracks().map((track) => track.label) }
+        } catch (error) {
+          return { ok: false, name: error && error.name ? error.name : 'Error' }
+        }
+      }
+      window.stopProbeTracks = () => {
+        for (const track of window.probeStream ? window.probeStream.getTracks() : []) track.stop()
+        window.probeStream = null
+      }
+      window.queryCameraPermission = async () => {
+        try { return (await navigator.permissions.query({ name: 'camera' })).state }
+        catch (error) { return 'unsupported:' + (error && error.name ? error.name : 'Error') }
+      }
+    </script>
+  </body>
+</html>

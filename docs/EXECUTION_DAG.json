@@ -114,7 +114,7 @@
       "status": "blocked",
       "owner": "planner",
       "accept": "Both candidates have recorded packaged sandbox/site-isolation, cert, popup, permission, download, protocol, WebRTC, credential/passkey, update and crash results; ADR-007 decisions are signed off",
-      "evidence": "CEF browser policy host and matched security harness are not yet built; updater/CVE owner and policy decisions remain open"
+      "evidence": "2026-10-29: parent-rerun native Electron fixture verifies fake-camera Allow/Block/reset, pending navigation/destruction cancellation and top-level self-signed TLS denial using production policy helpers. Reset denies future access but an already-active fake track remains live. Packaged crash/retry evidence also passes. CEF equivalent host, complete certificate/permission matrices, device tests, updater/CVE owner and policy decisions remain open; matched gate is still blocked."
     },
     {
       "id": "G0",

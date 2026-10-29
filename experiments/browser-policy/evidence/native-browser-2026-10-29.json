@@ -1,0 +1,161 @@
+{
+  "status": "passed",
+  "results": {
+    "runtime": {
+      "electronVersion": "45.0.0",
+      "chromiumVersion": "156.0.8078.48",
+      "platform": "darwin",
+      "architecture": "arm64"
+    },
+    "fixture": {
+      "httpOrigin": "http://localhost:50788",
+      "alternateLoopbackOrigin": "http://127.0.0.1:50788",
+      "selfSignedTlsHost": "localhost",
+      "serverBindings": [
+        "127.0.0.1"
+      ]
+    },
+    "permission": {
+      "secureContext": true,
+      "initialCameraPermission": "denied",
+      "firstRequest": {
+        "origin": "http://localhost:50788",
+        "kinds": [
+          "camera"
+        ]
+      },
+      "firstCaptureResult": {
+        "ok": true,
+        "tracks": [
+          "fake_device_0"
+        ]
+      },
+      "permissionCallbackResults": [
+        true,
+        false,
+        false,
+        false,
+        false
+      ],
+      "afterAllowPermission": "granted",
+      "permissionReset": {
+        "queryStateAfterReset": "denied",
+        "activeTrackStateBeforeReset": [
+          "live"
+        ],
+        "activeTrackStateAfterReset": [
+          "live"
+        ],
+        "activeCaptureRemainsLiveAfterReset": true,
+        "subsequentPrompt": {
+          "origin": "http://localhost:50788",
+          "kinds": [
+            "camera"
+          ],
+          "decision": "dismiss"
+        },
+        "subsequentCapture": {
+          "ok": false,
+          "name": "NotAllowedError"
+        }
+      },
+      "blockedOrigin": "http://127.0.0.1:50788",
+      "blockedCapture": {
+        "ok": false,
+        "name": "NotAllowedError"
+      },
+      "afterBlockPermission": "denied",
+      "blockedPermissionCheck": false,
+      "blockedDecisionRetained": true,
+      "ownerLifecycle": {
+        "requestOrigin": "http://127.0.0.1:50788",
+        "pendingBeforeNavigation": 1,
+        "pendingAfterNavigation": 0,
+        "callbackGranted": false,
+        "cancelledOnMainFrameNavigation": true,
+        "pendingBeforeDestroy": 1,
+        "pendingAfterDestroy": 0,
+        "destroyCallbackGranted": false,
+        "cancelledOnWebContentsDestroyed": true
+      },
+      "systemAccessCalls": [
+        "camera"
+      ],
+      "requests": [
+        {
+          "origin": "http://localhost:50788",
+          "kinds": [
+            "camera"
+          ]
+        },
+        {
+          "origin": "http://localhost:50788",
+          "kinds": [
+            "camera"
+          ]
+        },
+        {
+          "origin": "http://127.0.0.1:50788",
+          "kinds": [
+            "camera"
+          ]
+        },
+        {
+          "origin": "http://127.0.0.1:50788",
+          "kinds": [
+            "camera"
+          ]
+        },
+        {
+          "origin": "http://127.0.0.1:50788",
+          "kinds": [
+            "camera"
+          ]
+        }
+      ]
+    },
+    "certificate": {
+      "events": [
+        {
+          "url": "https://localhost:50789/fixture",
+          "error": "net::ERR_CERT_AUTHORITY_INVALID",
+          "prevented": true,
+          "callbackAllow": false
+        }
+      ],
+      "mainFrameFailures": [
+        {
+          "errorCode": -202,
+          "description": "ERR_CERT_AUTHORITY_INVALID",
+          "validatedURL": "https://localhost:50789/fixture"
+        }
+      ],
+      "denied": true,
+      "navigationFailed": true,
+      "fixtureContentLoaded": false
+    },
+    "conclusions": {
+      "permissionAllowed": true,
+      "permissionResetDeniedFutureRequest": true,
+      "activeCaptureRemainsLiveAfterReset": true,
+      "permissionBlocked": true,
+      "pendingCancelledOnNavigation": true,
+      "pendingCancelledOnDestroy": true,
+      "certDenied": true,
+      "certificateNavigationFailed": true,
+      "certificateFixtureNotLoaded": true
+    },
+    "limitations": [
+      "The probe uses a temporary Electron BrowserWindow and in-memory permission store, not the packaged Intoponet UI/WebContentsView.",
+      "Camera uses Chromium fake-device mode; no camera hardware or macOS camera permission prompt is invoked.",
+      "The certificate is a temporary self-signed localhost certificate; this does not test expired, hostname-mismatch, public-CA, redirect, or subframe certificate matrices.",
+      "This probe does not test OS permission grant/revocation behavior, persistent permission-file storage, renderer process crashes, private-session cleanup, or cross-platform behavior."
+    ]
+  },
+  "generatedAt": "2026-10-29T22:32:08.869Z",
+  "profileIsolation": {
+    "usedTemporaryUserDataDirectory": true,
+    "profileDirectoryRemovedAfterRun": true,
+    "electronRunAsNodeRemoved": true
+  }
+}

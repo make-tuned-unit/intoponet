@@ -1,10 +1,8 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
   articleCandidates,
   eonetFeed,
   pageInfoFromPayload,
-  parseFieldSnapshot,
   publicFieldSnapshot,
   READING_NOW_LIMITS,
   recordsFromEonet,
@@ -21,7 +19,8 @@ import {
 } from '@intoponet/field-snapshot'
 import { app } from 'electron'
 import type { PublicFieldStatus } from '@intoponet/browser-api'
-import { SharedPublicSnapshotClient, type SharedSnapshotStatus } from './shared-public-field'
+import { SharedPublicSnapshotClient, SHARED_SNAPSHOT_STALE_AFTER_MS, type SharedSnapshotStatus } from './shared-public-field'
+import { readLocalPublicFieldCache, writeLocalPublicFieldCache } from './public-field-cache'
 
 // Wikimedia asks API clients for a descriptive agent with a contact URL.
 const userAgent = 'Intoponet/0.1 (local spatial browser; public field snapshot; https://github.com/make-tuned-unit/intoponet)'
@@ -108,27 +107,28 @@ function sharedStatus(status: SharedSnapshotStatus, stateOverride?: PublicFieldS
 }
 
 function readCache(): FieldSnapshot | null {
-  if (!existsSync(cachePath())) return null
-  try {
-    return parseFieldSnapshot(readFileSync(cachePath(), 'utf8'))
-  } catch {
-    return null
-  }
+  return readLocalPublicFieldCache(cachePath())
 }
 
 /** Latest snapshot as JSON: in-memory first, then the on-disk cache. */
-export function cachedPublicField(): string | null {
+export function cachedPublicField(now = Date.now()): string | null {
   const shared = sharedClient()
   if (shared) {
-    const result = shared.cached()
+    const result = shared.cached(now)
     current = result.snapshot
     publishStatus(sharedStatus(result.status))
     return current ? JSON.stringify(current) : null
   }
   current ??= readCache()
-  publishStatus(current
-    ? localStatus('current', 'Showing the latest independently collected public snapshot from this device.')
-    : localStatus('error', 'No verified public snapshot is cached on this device.'))
+  // A cache read must not erase an earlier refresh/source failure disclosure.
+  if (latestStatus.state !== 'error' && latestStatus.state !== 'stale') {
+    const stale = current !== null && now - Date.parse(current.createdAt) > SHARED_SNAPSHOT_STALE_AFTER_MS
+    publishStatus(current
+      ? stale
+        ? localStatus('stale', 'Showing this device’s cached public snapshot, which is older than 2 hours.', current.createdAt)
+        : localStatus('current', 'Showing the latest independently collected public snapshot from this device.', current.createdAt)
+      : localStatus('error', 'No verified public snapshot is cached on this device.'))
+  }
   return current ? JSON.stringify(current) : null
 }
 
@@ -316,15 +316,24 @@ export async function refreshPublicField(now = Date.now()): Promise<FieldSnapsho
   }
   const snapshot = publicFieldSnapshot(records, now, usgs !== null)
   current = snapshot
+  let cacheWriteFailed = false
   try {
-    writeFileSync(cachePath(), JSON.stringify(snapshot), { encoding: 'utf8', mode: 0o644 })
+    writeLocalPublicFieldCache(cachePath(), snapshot)
   } catch (error) {
+    cacheWriteFailed = true
     console.error('Could not cache the public field snapshot.', error instanceof Error ? error.message : error)
   }
   const failedGroups = [...failing]
-  publishStatus(failedGroups.length
-    ? localStatus('stale', `Some independent public sources failed (${failedGroups.join(', ')}); cached records were retained for those sources.`, snapshot.createdAt)
-    : localStatus('current', 'Using independently collected public sources from this device.', snapshot.createdAt))
+  if (cacheWriteFailed) {
+    const retained = failedGroups.length
+      ? ` Some sources also failed (${failedGroups.join(', ')}), so their prior cached records were retained.`
+      : ''
+    publishStatus(localStatus('error', `The refreshed public snapshot is available in memory, but its local cache could not be written.${retained}`, snapshot.createdAt))
+  } else {
+    publishStatus(failedGroups.length
+      ? localStatus('stale', `Some independent public sources failed (${failedGroups.join(', ')}); cached records were retained for those sources.`, snapshot.createdAt)
+      : localStatus('current', 'Using independently collected public sources from this device.', snapshot.createdAt))
+  }
   return snapshot
 }
 

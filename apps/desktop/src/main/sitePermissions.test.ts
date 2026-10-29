@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { EventEmitter } from 'node:events'
 import { describePermissionKinds, parseSitePermissionCommand, type SitePermissionEvent } from '@intoponet/browser-api'
-import { kindsFor, originOf, SitePermissionBroker, SitePermissionStore } from './sitePermissions'
+import { bindPermissionOwnerLifecycle, kindsFor, originOf, SitePermissionBroker, SitePermissionStore } from './sitePermissions'
 import { popupPlan, PopupLimiter } from './popups'
 
 describe('permission mapping', () => {
@@ -79,6 +80,95 @@ describe('permission broker', () => {
     new SitePermissionStore(file).set('https://a.test', ['notifications'], 'block')
     expect(new SitePermissionStore(file).get('https://a.test')).toEqual({ notifications: 'block' })
     expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({ 'https://a.test': { notifications: 'block' } })
+  })
+})
+
+describe('permission owner lifecycle', () => {
+  it('cancels at document navigation start, including child frames, but keeps same-document requests', () => {
+    const contents = Object.assign(new EventEmitter(), { id: 73 })
+    const drop = vi.fn()
+    bindPermissionOwnerLifecycle(contents as unknown as Parameters<typeof bindPermissionOwnerLifecycle>[0], drop)
+    contents.emit('did-start-navigation', { isSameDocument: true, isMainFrame: true })
+    expect(drop).not.toHaveBeenCalled()
+    contents.emit('did-start-navigation', { isSameDocument: false, isMainFrame: true })
+    expect(drop).toHaveBeenCalledExactlyOnceWith(73)
+    contents.emit('did-start-navigation', { isSameDocument: false, isMainFrame: false })
+    expect(drop).toHaveBeenCalledTimes(2)
+    contents.emit('render-process-gone')
+    contents.emit('destroyed')
+    expect(drop).toHaveBeenCalledTimes(4)
+  })
+})
+
+describe('permission decisions awaiting macOS', () => {
+  const origin = 'https://media.test'
+  function pendingMedia() {
+    const normal = new SitePermissionStore(null)
+    const priv = new SitePermissionStore(null)
+    let resolveAccess!: (allowed: boolean) => void
+    const systemAccess = vi.fn(() => new Promise<boolean>((resolve) => { resolveAccess = resolve }))
+    const broker = new SitePermissionBroker({ store: (p) => p ? priv : normal, emit: () => undefined, systemAccess })
+    const answers: boolean[] = []
+    const request = (owner = 1, isPrivate = false) => {
+      broker.request({ origin, kinds: ['camera'], owner, isPrivate }, (value) => answers.push(value))
+      return broker.list().at(-1)!.id
+    }
+    return { normal, priv, broker, answers, request, systemAccess, resolve: (value: boolean) => resolveAccess(value) }
+  }
+
+  it.each(['reset', 'navigation', 'private-exit'] as const)('does not revive a permission after %s during the OS prompt', async (reason) => {
+    const s = pendingMedia()
+    const isPrivate = reason === 'private-exit'
+    const id = s.request(1, isPrivate)
+    const decision = s.broker.decide(id, 'allow')
+    expect((isPrivate ? s.priv : s.normal).get(origin)).toEqual({})
+    if (reason === 'reset') s.broker.reset(origin, false, 'camera')
+    else if (reason === 'navigation') s.broker.dropOwner(1)
+    else s.broker.clear(true)
+    s.resolve(true)
+    await decision
+    expect(s.answers).toEqual([false])
+    expect(s.normal.get(origin)).toEqual({})
+    expect(s.priv.get(origin)).toEqual({})
+    expect(s.broker.list()).toEqual([])
+  })
+
+  it('deduplicates Allow while waiting and lets Block override it', async () => {
+    const s = pendingMedia()
+    const id = s.request()
+    const decision = s.broker.decide(id, 'allow')
+    await s.broker.decide(id, 'allow')
+    expect(s.systemAccess).toHaveBeenCalledTimes(1)
+    await s.broker.decide(id, 'block')
+    s.resolve(true)
+    await decision
+    expect(s.answers).toEqual([false])
+    expect(s.normal.get(origin)).toEqual({ camera: 'block' })
+  })
+
+  it('does not let an older tab allowance overwrite a newer block for the same origin', async () => {
+    const s = pendingMedia()
+    const first = s.request(1)
+    const decision = s.broker.decide(first, 'allow')
+    const second = s.request(2)
+    await s.broker.decide(second, 'block')
+    s.resolve(true)
+    await decision
+    expect(s.answers).toEqual([false, false])
+    expect(s.normal.get(origin)).toEqual({ camera: 'block' })
+  })
+
+  it('reset is scoped to the chosen profile and permission', async () => {
+    const s = pendingMedia()
+    const id = s.request(1, true)
+    const decision = s.broker.decide(id, 'allow')
+    s.broker.reset(origin, false)
+    s.broker.reset(origin, true, 'notifications')
+    s.resolve(true)
+    await decision
+    expect(s.answers).toEqual([true])
+    expect(s.priv.get(origin)).toEqual({ camera: 'allow' })
+    expect(s.normal.get(origin)).toEqual({})
   })
 })
 

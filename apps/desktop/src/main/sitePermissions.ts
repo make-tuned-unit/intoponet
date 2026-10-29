@@ -2,6 +2,20 @@ import { randomUUID } from 'node:crypto'
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 import type { SitePermissionDecision, SitePermissionEvent, SitePermissionKind, SitePermissionMap, SitePermissionRequest } from '@intoponet/browser-api'
+import type { WebContents } from 'electron'
+
+/** Page and popup prompts expire with their owning document/process. */
+export function bindPermissionOwnerLifecycle(contents: Pick<WebContents, 'id' | 'on' | 'once'>, dropOwner: (owner: number) => void): void {
+  const id = contents.id
+  contents.on('did-start-navigation', (details) => {
+    // Requests currently carry an owner, not a frame ID. Conservatively
+    // invalidate that owner's prompts when any frame changes documents.
+    if (!details.isSameDocument) dropOwner(id)
+  })
+  contents.on('did-navigate', () => dropOwner(id))
+  contents.on('render-process-gone', () => dropOwner(id))
+  contents.once('destroyed', () => dropOwner(id))
+}
 
 /** Chromium permissions granted without asking: harmless, and expected by ordinary pages. */
 const ALWAYS_ALLOW = new Set(['fullscreen', 'clipboard-sanitized-write', 'pointerLock', 'keyboardLock'])
@@ -80,7 +94,7 @@ export class SitePermissionStore {
   }
 }
 
-type Pending = { request: SitePermissionRequest; callbacks: Array<(granted: boolean) => void>; owner: number; timer: ReturnType<typeof setTimeout> }
+type Pending = { request: SitePermissionRequest; callbacks: Array<(granted: boolean) => void>; owner: number; timer: ReturnType<typeof setTimeout>; decisionVersion: number; allowing: boolean }
 
 /**
  * Turns Chromium permission requests into one prompt per site and request,
@@ -124,25 +138,54 @@ export class SitePermissionBroker {
     const request: SitePermissionRequest = { id: randomUUID(), origin: input.origin, kinds, isPrivate: input.isPrivate }
     const timer = setTimeout(() => this.finish(request.id, false), this.options.timeoutMs ?? 120_000)
     timer.unref?.()
-    this.pending.set(request.id, { request, callbacks: [callback], owner: input.owner, timer })
+    this.pending.set(request.id, { request, callbacks: [callback], owner: input.owner, timer, decisionVersion: 0, allowing: false })
     this.options.emit({ type: 'request', request })
   }
 
   async decide(id: string, decision: SitePermissionDecision | 'dismiss'): Promise<void> {
     const item = this.pending.get(id)
     if (!item) return
+    if (decision === 'allow' && item.allowing) return
+    const version = ++item.decisionVersion
+    item.allowing = decision === 'allow'
     const { origin, kinds, isPrivate } = item.request
     if (decision !== 'dismiss') {
-      this.options.store(isPrivate).set(origin, kinds, decision)
-      this.options.emit({ type: 'changed', origin })
+      for (const [otherId, other] of this.pending) {
+        if (otherId !== id && other.request.origin === origin && other.request.isPrivate === isPrivate
+          && other.request.kinds.some((kind) => kinds.includes(kind))) this.finish(otherId, false)
+      }
     }
     let granted = decision === 'allow'
     if (granted && this.options.systemAccess) {
       for (const kind of kinds) {
         if ((kind === 'camera' || kind === 'microphone') && !(await this.options.systemAccess(kind).catch(() => false))) granted = false
+        // Navigation, reset, teardown or a newer decision invalidates the
+        // response even when the OS permission dialog cannot be canceled.
+        if (this.pending.get(id) !== item || item.decisionVersion !== version) return
       }
     }
+    if (this.pending.get(id) !== item || item.decisionVersion !== version) return
+    if (decision !== 'dismiss') {
+      this.options.store(isPrivate).set(origin, kinds, decision)
+      this.options.emit({ type: 'changed', origin })
+    }
     this.finish(id, granted)
+  }
+
+  /** Reset also invalidates outstanding requests, including an OS prompt. */
+  reset(origin: string, isPrivate: boolean, kind?: SitePermissionKind): void {
+    this.options.store(isPrivate).reset(origin, kind)
+    for (const [id, item] of this.pending) {
+      if (item.request.origin === origin && item.request.isPrivate === isPrivate
+        && (!kind || item.request.kinds.includes(kind))) this.finish(id, false)
+    }
+    this.options.emit({ type: 'changed', origin })
+  }
+
+  /** Leaving a private session must invalidate consent still awaiting the OS. */
+  clear(isPrivate: boolean): void {
+    for (const [id, item] of this.pending) if (item.request.isPrivate === isPrivate) this.finish(id, false)
+    this.options.store(isPrivate).clear()
   }
 
   /** A page navigated away or closed: its open prompts no longer apply. */

@@ -42,8 +42,9 @@ import {
   TAB_DOCK_TWEEN_MS,
 } from './tabDockBounds'
 import { shellShortcutForInput } from './shellShortcuts'
-import { kindsFor, originOf, SitePermissionBroker, SitePermissionStore } from './sitePermissions'
+import { bindPermissionOwnerLifecycle, kindsFor, originOf, SitePermissionBroker, SitePermissionStore } from './sitePermissions'
 import { popupPlan, PopupLimiter } from './popups'
+import { rejectCertificateErrorForSession } from './browserCertificatePolicy'
 import { CrashRecoveryPolicy } from './crashRecovery'
 import { BeaconPublisher } from './beacons/publisher'
 import { DEFAULT_BEACON_REGISTRY } from './beacons/defaults'
@@ -514,9 +515,7 @@ function wireDownloadSession(partition = 'persist:intoponet-default'): void {
     return sitePermissions?.check(originOf(requestingOrigin), kinds, isPrivate) === true
   })
   app.on('certificate-error', (event, webContents, _url, _error, _certificate, callback) => {
-    if (webContents.session !== browsing) return
-    event.preventDefault()
-    callback(false)
+    rejectCertificateErrorForSession(event, webContents, browsing, callback)
   })
   browsing.on('will-download', (_event, item) => {
     const filename = item.getFilename() || 'download'
@@ -667,6 +666,7 @@ const crashRecovery = new CrashRecoveryPolicy()
 
 /** A popup window opened by a page: http(s) only, nested popups become tabs, closes with its page. */
 function wirePopupWindow(child: BrowserWindow, opener: WebContentsView): void {
+  bindPermissionOwnerLifecycle(child.webContents, (owner) => sitePermissions?.dropOwner(owner))
   child.webContents.on('will-navigate', (event, url) => { if (!safeHttpUrl(url)) event.preventDefault() })
   child.webContents.setWindowOpenHandler(({ url }) => {
     const tab = createBrowserTab(url, true, privateViews.has(opener))
@@ -877,6 +877,7 @@ function buildView(isPrivate = privateMode): WebContentsView {
   // Capture the id now: by the time 'destroyed' fires, view.webContents is gone.
   const contentsId = view.webContents.id
   view.webContents.once('destroyed', () => popupLimiter.forget(contentsId))
+  bindPermissionOwnerLifecycle(view.webContents, (owner) => sitePermissions?.dropOwner(owner))
   view.webContents.on('will-navigate', (event, url) => {
     if (!safeHttpUrl(url)) event.preventDefault()
   })
@@ -894,8 +895,6 @@ function buildView(isPrivate = privateMode): WebContentsView {
     void applyCosmeticFilters(view.webContents)
   })
   view.webContents.on('did-navigate', (_event, url) => {
-    // Prompts from the previous page no longer apply.
-    sitePermissions?.dropOwner(view.webContents.id)
     rememberTab(view)
     protectionPages.commitNavigation(view.webContents.id, url)
     if (pageView !== view) return
@@ -1323,8 +1322,7 @@ app.whenReady().then(async () => {
     if (command.type === 'decide') return sitePermissions!.decide(command.id, command.decision)
     if (command.type === 'pending') return sitePermissions!.list()
     if (command.type === 'reset') {
-      store.reset(command.origin, command.kind)
-      if (window && !window.isDestroyed()) window.webContents.send(sitePermissionChannels.event, { type: 'changed', origin: command.origin })
+      sitePermissions!.reset(command.origin, Boolean(pageView && privateViews.has(pageView)), command.kind)
     }
     return store.get(command.origin)
   })
@@ -1426,11 +1424,11 @@ app.whenReady().then(async () => {
       privateMode = command.on
       if (!command.on) {
         // Leaving private browsing closes private tabs and wipes their session.
+        sitePermissions!.clear(true)
         for (const tab of openTabs.filter((item) => privateViews.has(item.view))) discardTab(tab.id)
         const privateSession = session.fromPartition(PRIVATE_PARTITION)
         await privateSession.clearStorageData().catch(() => undefined)
         await privateSession.clearCache().catch(() => undefined)
-        privatePermissions.clear()
         emitPanelState()
       }
       await emitPrivacy()

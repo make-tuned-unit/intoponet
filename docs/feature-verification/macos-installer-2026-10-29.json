@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-10-29T19:57:58.350575+00:00",
+  "checkedAt": "2026-10-29T22:31:43.826604+00:00",
   "mode": "unsigned preview; no publication",
   "commands": [
     {
@@ -9,18 +9,18 @@
         "-readonly",
         "-nobrowse",
         "-mountpoint",
-        "/tmp/intoponet-smoke-oxroxjjo/mount",
+        "/tmp/intoponet-smoke-bp6s91ix/mount",
         "/Users/me/Developer/Intoponet/dist/macos/preview/0.1.0-arm64/Intoponet-0.1.0-arm64.dmg"
       ],
       "exitCode": 0,
-      "stdout": "expected   CRC32 $818EC547\n/dev/disk14         \tGUID_partition_scheme          \t\n/dev/disk14s1       \tApple_HFS                      \t/private/tmp/intoponet-smoke-oxroxjjo/mount\n",
+      "stdout": "expected   CRC32 $ED35385C\n/dev/disk14         \tGUID_partition_scheme          \t\n/dev/disk14s1       \tApple_HFS                      \t/private/tmp/intoponet-smoke-bp6s91ix/mount\n",
       "stderr": ""
     },
     {
       "command": [
         "ditto",
-        "/tmp/intoponet-smoke-oxroxjjo/mount/Intoponet.app",
-        "/tmp/intoponet-smoke-oxroxjjo/Intoponet.app"
+        "/tmp/intoponet-smoke-bp6s91ix/mount/Intoponet.app",
+        "/tmp/intoponet-smoke-bp6s91ix/Intoponet.app"
       ],
       "exitCode": 0,
       "stdout": "",
@@ -30,10 +30,10 @@
       "command": [
         "node",
         "experiments/browser-runtime-verification/verify-crash-recovery.mjs",
-        "/tmp/intoponet-smoke-oxroxjjo/Intoponet.app"
+        "/tmp/intoponet-smoke-bp6s91ix/Intoponet.app"
       ],
       "exitCode": 0,
-      "stdout": "{\n  \"appPath\": \"/tmp/intoponet-smoke-oxroxjjo/Intoponet.app\",\n  \"executable\": \"/tmp/intoponet-smoke-oxroxjjo/Intoponet.app/Contents/MacOS/Intoponet\",\n  \"isolatedProfile\": \"/var/folders/hq/nx9hk1515831m37ff_h7zhc40000gn/T/intoponet-runtime-cfqY1c\",\n  \"startup\": {\n    \"title\": \"intoponet\",\n    \"renderedTextCharacters\": 2868,\n    \"browserHostBridge\": true\n  },\n  \"firstCrashAutoReload\": {\n    \"previousTargetId\": \"28CDA3107A0D8EAE51032FFA777CC402\",\n    \"replacementTargetId\": \"025EDE8672AA8F72DC2799FEC4330DAE\",\n    \"pageRequests\": 2\n  },\n  \"secondCrashPause\": {\n    \"crashedTargetId\": \"025EDE8672AA8F72DC2799FEC4330DAE\",\n    \"automaticReloadsAfterPause\": 0\n  },\n  \"manualReload\": {\n    \"restoredUrl\": \"http://127.0.0.1:63078/renderer-crash-eb433501-d3cb-4129-a0da-42de77bf4e6c\",\n    \"pageRequests\": 3\n  },\n  \"result\": \"passed\"\n}\n",
+      "stdout": "{\n  \"appPath\": \"/tmp/intoponet-smoke-bp6s91ix/Intoponet.app\",\n  \"executable\": \"/tmp/intoponet-smoke-bp6s91ix/Intoponet.app/Contents/MacOS/Intoponet\",\n  \"isolatedProfile\": \"/var/folders/hq/nx9hk1515831m37ff_h7zhc40000gn/T/intoponet-runtime-kJ2KWh\",\n  \"startup\": {\n    \"title\": \"intoponet\",\n    \"renderedTextCharacters\": 2868,\n    \"browserHostBridge\": true\n  },\n  \"firstCrashAutoReload\": {\n    \"previousTargetId\": \"A8B6FA078438A0586FC8CC7378D8C1DB\",\n    \"replacementTargetId\": \"EC4B548A6F9A69038C231CDD9D2203E4\",\n    \"pageRequests\": 2\n  },\n  \"secondCrashPause\": {\n    \"crashedTargetId\": \"EC4B548A6F9A69038C231CDD9D2203E4\",\n    \"automaticReloadsAfterPause\": 0\n  },\n  \"manualReload\": {\n    \"restoredUrl\": \"http://127.0.0.1:50696/renderer-crash-8eb7c047-30cc-4763-8f12-21073ef85512\",\n    \"pageRequests\": 3\n  },\n  \"result\": \"passed\"\n}\n",
       "stderr": ""
     },
     {
@@ -50,7 +50,7 @@
       "command": [
         "hdiutil",
         "detach",
-        "/tmp/intoponet-smoke-oxroxjjo/mount"
+        "/tmp/intoponet-smoke-bp6s91ix/mount"
       ],
       "exitCode": 0,
       "stdout": "\"disk14\" ejected.\n",
@@ -60,19 +60,19 @@
   "checksumVerification": [
     {
       "file": "Intoponet-0.1.0-arm64.dmg",
-      "sha256": "003b94b24763a6be3854ebbd77020ddea893641f07c538f0b49437d00a69652e"
+      "sha256": "2dde0f1019816d079537588330f0af3183dc67b373a11bdaeb417fc5f3ed2566"
     },
     {
       "file": "Intoponet-0.1.0-arm64-mac.zip",
-      "sha256": "8752d5628f75ea76eec452dd5766f6cfda5cd43e494c009ed31d9c10d4ada815"
+      "sha256": "2d667cb78550263a5f00543a3b3fc2f8f94248a820efa431fab1feabbafd56dc"
     },
     {
       "file": "Intoponet-0.1.0-arm64.cdx.json",
-      "sha256": "cc56c8a35dd9f606e38feeea5e12967a1384c64e6385c37f328a6ab8e6f9bb2c"
+      "sha256": "99ed2a116dc12eab607ccf8c4b736b8a73ead36d88e33fdfb0740519724c32c0"
     },
     {
       "file": "Intoponet-0.1.0-arm64.inventory.json",
-      "sha256": "682a263086663ea0dc07131e985ec359d35d6d12b9cf0fe1832646a7598475ee"
+      "sha256": "783e5589368b303c3a3b7e983a8a04291d6947eef7a092bc5d89e1bfa5955d4e"
     }
   ],
   "updates": {
@@ -82,6 +82,5 @@
     "manifest": null,
     "checks": "manual only; check and download are one explicit user action",
     "persistentUpdaterIdentifier": false
-  },
-  "updatePreviewGuard": "Preview built with sample parent update URL; inventory disabled and no feed manifest."
+  }
 }
