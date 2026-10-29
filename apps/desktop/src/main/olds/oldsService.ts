@@ -17,6 +17,7 @@ import type { OldsChapter, OldsContext, OldsCountryFacts, OldsPathStep, OldsSupp
 import { interpretationsFrom } from './interpretations'
 import { expansionFromSnippets } from './acronyms'
 import { chronologyFromWikitext } from './chronology'
+import { historicalArticles, historicalSeriesArticles, olderContext } from './historicalContext'
 import { otherCountries, relatedQueries, subjectTerms } from './relatedTopics'
 import { dayPages, isTitleCase, matchHeadline, parseDayPage, shortlist, threadItems, type CurrentEventItem } from './currentEvents'
 import { countryPlace, placesNamedIn } from '../../shared/places/places'
@@ -115,6 +116,7 @@ export class OldsService {
         : query.kind === 'chapter'
           ? await this.chapterThread(query.article, query.section)
         : await this.itemThread(query.kind === 'qid' ? query.qid : await this.resolveTitle(query.title, lang), lang)
+    if (query.kind !== 'country' && query.kind !== 'chapter' && lang === 'en') await this.addHistoricalContext(thread)
     // A thread whose history article could not be fetched is shown but not kept, so the next open retries.
     if (!(thread as { partial?: boolean }).partial) {
       this.remember(key, thread)
@@ -659,6 +661,61 @@ export class OldsService {
     const wikitext = payload.parse?.wikitext
     if (typeof wikitext !== 'string') return []
     return chronologyFromWikitext(payload.parse?.title ?? title, wikitext, new Date(this.now()).getUTCFullYear(), lang, limit, focus, yearHint)
+  }
+
+  /** Expand a historically sparse narrative through the article's explicit subject
+   * pointers. A country's founding node alone is not historical context. */
+  private async addHistoricalContext(thread: OldsThread): Promise<void> {
+    const currentYear = new Date(this.now()).getUTCFullYear()
+    const existing = thread.chronicle ?? []
+    const olderYears = new Set(existing.filter((entry) => Number(entry.at.iso.slice(0, 4)) < currentYear - 5).map((entry) => entry.at.iso.slice(0, 4)))
+    if (olderYears.size >= 3) return
+    const root = thread.nodes.find((node) => node.id === thread.rootId)
+    const title = titleFromWikipediaUrl(root?.wikipediaUrl ?? null)
+    if (!title) return
+    const limitedNote = 'Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.'
+    // Country/place fallbacks were deliberately filtered to the headline's subject.
+    // Do not refill them with unrelated centuries of the place's general history.
+    if (thread.facts || thread.chapters || /\b(country|sovereign state|city|town|village|territory|island nation)\b/i.test(root?.description ?? '')) {
+      thread.historyNote = limitedNote
+      return
+    }
+    const country = thread.context?.path.find((step) => /country|sovereign state/i.test(step.node.description ?? ''))?.node.label
+      ?? thread.nodes.find((node) => node.id !== thread.rootId && /^(?:sovereign state|country)\b/i.test(node.description ?? ''))?.label
+    let added: OldsChronicleEntry[] = []
+    try {
+      const url = new URL('https://en.wikipedia.org/w/api.php')
+      url.search = new URLSearchParams({ action: 'parse', page: title, prop: 'wikitext', redirects: '1', format: 'json', formatversion: '2' }).toString()
+      const payload = await this.getJson(url.toString(), 12_000) as { parse?: { wikitext?: string } }
+      const sources = historicalArticles(title, payload.parse?.wikitext ?? '', country)
+      const candidates: OldsChronicleEntry[] = []
+      const series = new Set<string>()
+      for (const sourceTitle of sources) {
+        try {
+          url.searchParams.set('page', sourceTitle)
+          const background = await this.getJson(url.toString(), 12_000) as { parse?: { title?: string; wikitext?: string } }
+          const body = background.parse?.wikitext ?? ''
+          const resolved = background.parse?.title ?? sourceTitle
+          candidates.push(...chronologyFromWikitext(resolved, body, currentYear, 'en', 80).map((entry) => ({ ...entry, sourceTitle: resolved })))
+          for (const target of historicalSeriesArticles(title, body, currentYear)) series.add(target)
+        } catch { thread.partial = true }
+      }
+      for (const sourceTitle of [...series].slice(0, 3)) {
+        try {
+          const year = sourceTitle.slice(0, 4)
+          candidates.push(...(await this.chronicle(sourceTitle, 'en', [], undefined, 80))
+            .filter((entry) => entry.at.iso.startsWith(year) && /^(Introduction|Results|Aftermath|Government formation)$/i.test(entry.section))
+            .map((entry) => ({ ...entry, sourceTitle })))
+        } catch { thread.partial = true }
+      }
+      added = olderContext(existing, candidates, currentYear)
+    } catch { thread.partial = true }
+    if (added.length) {
+      thread.chronicle = [...added, ...existing].sort((a, b) => a.at.iso.localeCompare(b.at.iso))
+      thread.historyNote = 'Earlier context comes from linked subject articles and earlier events in the same series. These are selected passages, not a complete history or a claim about what caused this story.'
+    } else {
+      thread.historyNote = limitedNote
+    }
   }
 
   /** Article text with "== Section ==" markers (for interpretations). */
@@ -1532,7 +1589,7 @@ function countriesByName(text: string): string[] {
 
 const BROAD_CLASSES = new Set(['Q6256', 'Q3624078', 'Q5107', 'Q82794', 'Q35657', 'Q10864048', 'Q1620908', 'Q15642541', 'Q7275', 'Q3336843', 'Q11828004', 'Q107390', 'Q34876', 'Q515'])
 
-const CACHE_VERSION = 'v14'
+const CACHE_VERSION = 'v15'
 
 function cacheKey(query: OldsQuery): string {
   return `${CACHE_VERSION}|${rawCacheKey(query)}`

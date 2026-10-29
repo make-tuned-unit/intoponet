@@ -1,0 +1,1523 @@
+{
+  "checkedAt": "2026-10-29T01:15:06.484Z",
+  "baseCommit": "8637f4f",
+  "buildMainSha256": "0e16a324bf57ae6634cc8577bd2d9dd8be1a75152b6136acfad79267e5399fca",
+  "method": "Apply the production historical-enrichment stage to 80 saved headline threads from the completed evaluation profile, preserving topic selection and original chronicle. Uses live Wikipedia sources. This is a historical-depth audit, not another full end-to-end matching comparison.",
+  "coverage": {
+    "cachedThreads": 80,
+    "goldHeadlinesCovered": 78,
+    "recentOnlyBefore": 35,
+    "noDatedNarrativeBefore": 8,
+    "expanded": 10,
+    "limitedAfter": 47,
+    "fetchFailures": 0
+  },
+  "validation": {
+    "typecheck": "passed",
+    "testsPassed": 540,
+    "registryTestsSkipped": 5,
+    "productionBuild": "passed",
+    "dateGuardRegression": "passed after final parser tightening",
+    "hover": "Built app: immediate click toggle, no early expansion, cancelled on pointer leave, expanded after 1 second.",
+    "historyUI": "Public API checks for Israel/Ebola passed; rendered Israeli election includes dated context from 1949 onward; vertical clipping check passed after layout correction."
+  },
+  "limitations": [
+    "Older passages are selected context, not a complete political/social history or evidence of causation.",
+    "Three distinct older years is a screening heuristic, not an editorial completeness judgment.",
+    "Broad country/city fallbacks are not padded with unrelated general history; unresolved limited timelines remain in this report.",
+    "Earlier UI attempts exposed clipping (fixed), a test that had not selected World, and an isolated older date stopping context expansion (fixed).",
+    "The full 78/78 matching pair predates this historical-context patch. Topic selection code was unchanged; the full pair was not repeated."
+  ],
+  "rows": [
+    {
+      "headline": "Machado’s Return to Venezuela Tests Limits of U.S. Sway",
+      "root": "Crisis in Venezuela",
+      "before": 13,
+      "after": 13,
+      "earliestBefore": "1961",
+      "earliestAfter": "1961",
+      "added": [],
+      "note": null,
+      "partial": false
+    },
+    {
+      "headline": "PM urges Japan's Uniqlo to expand investment in Bangladesh",
+      "root": "Bangladesh",
+      "before": 6,
+      "after": 6,
+      "earliestBefore": "2026-06-02",
+      "earliestAfter": "2026-06-02",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "States seeks interest for possible housing sites",
+      "root": "Bailiwick of Guernsey",
+      "before": 1,
+      "after": 1,
+      "earliestBefore": "2026-06-08",
+      "earliestAfter": "2026-06-08",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "En Serbie, un assaillant abattu près de l’ambassade israélienne à Belgrade ; Israël confirme une tentative d’« attentat terroriste »",
+      "root": "2024 attack on the Israeli embassy in Belgrade",
+      "before": 4,
+      "after": 4,
+      "earliestBefore": "2024-06-29",
+      "earliestAfter": "2024-06-29",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "Революционный суд Ирана приговорил к пяти годам претендующего на «Оскар» кинорежиссера Панахи",
+      "root": "Islamic Revolutionary Court",
+      "before": 3,
+      "after": 3,
+      "earliestBefore": "1979",
+      "earliestAfter": "1979",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "CM Vijay inaugurates electrical labs at 30 govt industrial training institutes in Tamil Nadu",
+      "root": "2026 Tamil Nadu Legislative Assembly election",
+      "before": 18,
+      "after": 18,
+      "earliestBefore": "2023-09-25",
+      "earliestAfter": "2023-09-25",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "Minister and Law Society agree on ‘focused’ engagement aimed at resolving legal aid row",
+      "root": "Republic of Ireland",
+      "before": 6,
+      "after": 6,
+      "earliestBefore": "2026-09-02",
+      "earliestAfter": "2026-09-02",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "Il \"était mû par la haine et il a tué pour ça\" : Kévin T., suspect de l'attentat de Trappes, un profil \"nourri d'idéologie raciste\"",
+      "root": "Trappes",
+      "before": 3,
+      "after": 3,
+      "earliestBefore": "2013-07",
+      "earliestAfter": "2013-07",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "Jordan strikes militant groups in Syria after church attack",
+      "root": "2026 Karak church shooting",
+      "before": 9,
+      "after": 9,
+      "earliestBefore": "2016",
+      "earliestAfter": "2016",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "Polémique Mbappé en Chine : le Real Madrid s'excuse à son tour pour les propos sur Mao Zedong",
+      "root": "Kylian Mbappé",
+      "before": 18,
+      "after": 18,
+      "earliestBefore": "1998-12-20",
+      "earliestAfter": "1998-12-20",
+      "added": [],
+      "note": null,
+      "partial": false
+    },
+    {
+      "headline": "Holness points to sabotage",
+      "root": "Andrew Holness",
+      "before": 18,
+      "after": 18,
+      "earliestBefore": "1972-07-22",
+      "earliestAfter": "1972-07-22",
+      "added": [],
+      "note": null,
+      "partial": false
+    },
+    {
+      "headline": "Allahabad HC lawyers stage protest over alleged misbehaviour by judge, vandalise courtroom furniture",
+      "root": "Allahabad High Court",
+      "before": 0,
+      "after": 0,
+      "earliestBefore": null,
+      "earliestAfter": null,
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "Wilson Neves lança livro para o sector bancário",
+      "root": "Angola",
+      "before": 3,
+      "after": 3,
+      "earliestBefore": "2026-03-28",
+      "earliestAfter": "2026-03-28",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "Agricultura pesa 23% no PIB, mas continua sem protecção dos seguros",
+      "root": "Agriculture in Angola",
+      "before": 6,
+      "after": 6,
+      "earliestBefore": "1975",
+      "earliestAfter": "1975",
+      "added": [],
+      "note": null,
+      "partial": false
+    },
+    {
+      "headline": "CIVIS : la distribution d'eau perturbée aux Avirons",
+      "root": "Les Avirons",
+      "before": 1,
+      "after": 1,
+      "earliestBefore": "2009-01-22",
+      "earliestAfter": "2009-01-22",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "Dinala visits Toleza Farm, Kachenga Police Unit",
+      "root": "Crime in Malawi",
+      "before": 18,
+      "after": 18,
+      "earliestBefore": "2005",
+      "earliestAfter": "2005",
+      "added": [],
+      "note": null,
+      "partial": false
+    },
+    {
+      "headline": "Carnival Queens set for regional pageants",
+      "root": "Queen carnival",
+      "before": 6,
+      "after": 6,
+      "earliestBefore": "1881-12-14",
+      "earliestAfter": "1881-12-14",
+      "added": [],
+      "note": null,
+      "partial": false
+    },
+    {
+      "headline": "Тофан: Власти расследуют возможную причастность иностранных государств к недавней кибератаке на Молдову",
+      "root": "Moldova",
+      "before": 6,
+      "after": 6,
+      "earliestBefore": "2026-02-06",
+      "earliestAfter": "2026-02-06",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "NOCZ unveils Team Zambia kit for Dakar 2026, as 6 athletes set for Games",
+      "root": "Zambia",
+      "before": 5,
+      "after": 5,
+      "earliestBefore": "2026-02-04",
+      "earliestAfter": "2026-02-04",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "Golf simulators, football challenges: What’s new at Dubai Fitness Challenge 2026",
+      "root": "Dubai",
+      "before": 8,
+      "after": 8,
+      "earliestBefore": "2026-08-13",
+      "earliestAfter": "2026-08-13",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "Culture and sports to merge into new bureau next month",
+      "root": "Macau",
+      "before": 1,
+      "after": 1,
+      "earliestBefore": "2026-03-19",
+      "earliestAfter": "2026-03-19",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "Jamaica Association to host fundraiser with premiere of thriller 'Stew Peas'",
+      "root": "Jamaica",
+      "before": 0,
+      "after": 0,
+      "earliestBefore": null,
+      "earliestAfter": null,
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "Jay-Z to perform at Super Bowl half-time show",
+      "root": "Super Bowl LX halftime show",
+      "before": 3,
+      "after": 3,
+      "earliestBefore": "2026-10-07",
+      "earliestAfter": "2026-10-07",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "Israeli artillery shells Majdalzoun, al-Mansouri and Zawtar al-Sharqiyeh",
+      "root": "Battle of Zawtar al-Sharqiyah",
+      "before": 4,
+      "after": 4,
+      "earliestBefore": "2026-03-02",
+      "earliestAfter": "2026-03-02",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "Sommet Russie-Afrique : Cheikh Niang conduit la délégation sénégalaise à Moscou",
+      "root": "2023 Russia–Africa Summit",
+      "before": 4,
+      "after": 4,
+      "earliestBefore": "2023-06",
+      "earliestAfter": "2023-06",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "BUEI To Host Annual Halloween Party",
+      "root": "Bermuda",
+      "before": 0,
+      "after": 0,
+      "earliestBefore": null,
+      "earliestAfter": null,
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "Sin acuerdo por el salario mínimo de 2027, decisión queda en manos del presidente Bernardo Arévalo",
+      "root": "Inauguration of Bernardo Arévalo",
+      "before": 9,
+      "after": 9,
+      "earliestBefore": "2022-07",
+      "earliestAfter": "2022-07",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "US says five dead in strike on alleged drug-smuggling boat",
+      "root": "United States strikes on alleged drug traffickers during Operation Southern Spear",
+      "before": 9,
+      "after": 14,
+      "earliestBefore": "2025",
+      "earliestAfter": "1986",
+      "added": [
+        {
+          "at": {
+            "iso": "1986",
+            "precision": "year",
+            "label": "1986"
+          },
+          "text": "The Maritime Drug Law Enforcement Act (MDLEA), implemented in 1986 by the United States, is a piece of legislation combatting the illegal drug trade.",
+          "section": "Introduction",
+          "url": "https://en.wikipedia.org/wiki/Maritime_Drug_Law_Enforcement_Act",
+          "link": "Illegal drug trade",
+          "sourceTitle": "Maritime Drug Law Enforcement Act"
+        },
+        {
+          "at": {
+            "iso": "1996",
+            "precision": "year",
+            "label": "1996"
+          },
+          "text": "The Act was first revised in 1996 to increase U.S. jurisdiction.",
+          "section": "Amendments",
+          "url": "https://en.wikipedia.org/wiki/Maritime_Drug_Law_Enforcement_Act#Amendments",
+          "link": null,
+          "sourceTitle": "Maritime Drug Law Enforcement Act"
+        },
+        {
+          "at": {
+            "iso": "2008-10-03",
+            "precision": "day",
+            "label": "3 Oct 2008"
+          },
+          "text": "The Act was further amended on October 3, 2008, to include what is now item 70508.",
+          "section": "Amendments",
+          "url": "https://en.wikipedia.org/wiki/Maritime_Drug_Law_Enforcement_Act#Amendments",
+          "link": null,
+          "sourceTitle": "Maritime Drug Law Enforcement Act"
+        },
+        {
+          "at": {
+            "iso": "2016-02-08",
+            "precision": "day",
+            "label": "8 Feb 2016"
+          },
+          "text": "The Act was amended for a third time on February 8, 2016, to include some minor changes surrounding the phrasing of different sections of the legislation.",
+          "section": "Amendments",
+          "url": "https://en.wikipedia.org/wiki/Maritime_Drug_Law_Enforcement_Act#Amendments",
+          "link": null,
+          "sourceTitle": "Maritime Drug Law Enforcement Act"
+        },
+        {
+          "at": {
+            "iso": "2020",
+            "precision": "year",
+            "label": "2020"
+          },
+          "text": "President of Venezuela Nicolás Maduro was originally indicted in the US on drug charges including narcoterrorism in 2020.",
+          "section": "Background",
+          "url": "https://en.wikipedia.org/wiki/United_States_military_buildup_in_the_Caribbean_during_Operation_Southern_Spear#Background",
+          "link": "Nicolás Maduro",
+          "sourceTitle": "United States military buildup in the Caribbean during Operation Southern Spear"
+        }
+      ],
+      "note": "Earlier context comes from linked subject articles and earlier events in the same series. These are selected passages, not a complete history or a claim about what caused this story.",
+      "partial": false
+    },
+    {
+      "headline": "Where does Arsenal’s Fleetwood humiliation place in English cup shocks?",
+      "root": "Fleetwood",
+      "before": 18,
+      "after": 18,
+      "earliestBefore": "1838",
+      "earliestAfter": "1838",
+      "added": [],
+      "note": null,
+      "partial": false
+    },
+    {
+      "headline": "APNU+AFC’s undisclosed ExxonMobil signing bonus before PAC",
+      "root": "Guyana",
+      "before": 5,
+      "after": 5,
+      "earliestBefore": "2026-01-05",
+      "earliestAfter": "2026-01-05",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "DR Congo reports over 10,000 Ebola cases as the outbreak spreads abroad, with no approved vaccine or specific treatment for the Bundibugyo virus",
+      "root": "2026 Ebola epidemic",
+      "before": 18,
+      "after": 24,
+      "earliestBefore": "2025-06-03",
+      "earliestAfter": "1976",
+      "added": [
+        {
+          "at": {
+            "iso": "1976",
+            "precision": "year",
+            "label": "1976"
+          },
+          "text": "Between 1976 and 1998, in 30,000 mammals, birds, reptiles, amphibians and arthropods sampled from regions of EBOV outbreaks, no Ebola virus was detected apart from some genetic traces found in six rodents (belonging to the species Mus setulosus and Praomys) and one shrew (Sylvisorex ollula) collected from the Central African Republic.",
+          "section": "Reservoir",
+          "url": "https://en.wikipedia.org/wiki/Ebola#Reservoir",
+          "link": "Arthropod",
+          "sourceTitle": "Ebola"
+        },
+        {
+          "at": {
+            "iso": "1989",
+            "precision": "year",
+            "label": "1989"
+          },
+          "text": "In late 1989, Hazelton Research Products' Reston Quarantine Unit in Reston, Virginia, had an outbreak of fatal illness amongst certain lab monkeys.",
+          "section": "Reston virus",
+          "url": "https://en.wikipedia.org/wiki/Ebola#Reston_virus",
+          "link": "Reston, Virginia",
+          "sourceTitle": "Ebola"
+        },
+        {
+          "at": {
+            "iso": "1995",
+            "precision": "year",
+            "label": "1995"
+          },
+          "text": "The second major outbreak occurred in Zaire (now the Democratic Republic of the Congo, DRC), in 1995, affecting 315 and killing 254.",
+          "section": "1995–2014",
+          "url": "https://en.wikipedia.org/wiki/Ebola#1995%E2%80%932014",
+          "link": "Democratic Republic of the Congo",
+          "sourceTitle": "Ebola"
+        },
+        {
+          "at": {
+            "iso": "2000",
+            "precision": "year",
+            "label": "2000"
+          },
+          "text": "In 2000, Uganda had an outbreak infecting 425 and killing 224; in this case, the Sudan virus was found to be the Ebola species responsible for the outbreak.",
+          "section": "1995–2014",
+          "url": "https://en.wikipedia.org/wiki/Ebola#1995%E2%80%932014",
+          "link": "Uganda",
+          "sourceTitle": "Ebola"
+        },
+        {
+          "at": {
+            "iso": "2012",
+            "precision": "year",
+            "label": "2012"
+          },
+          "text": "The WHO confirmed two small outbreaks in Uganda in 2012, both caused by the Sudan variant.",
+          "section": "1995–2014",
+          "url": "https://en.wikipedia.org/wiki/Ebola#1995%E2%80%932014",
+          "link": null,
+          "sourceTitle": "Ebola"
+        },
+        {
+          "at": {
+            "iso": "2020-06-01",
+            "precision": "day",
+            "label": "1 Jun 2020"
+          },
+          "text": "On 1 June 2020, the Congolese health ministry announced a new DRC outbreak of Ebola in Mbandaka, Équateur Province, a region along the Congo River.",
+          "section": "2020 Équateur province",
+          "url": "https://en.wikipedia.org/wiki/Ebola#2020_%C3%89quateur_province",
+          "link": "Mbandaka",
+          "sourceTitle": "Ebola"
+        }
+      ],
+      "note": "Earlier context comes from linked subject articles and earlier events in the same series. These are selected passages, not a complete history or a claim about what caused this story.",
+      "partial": false
+    },
+    {
+      "headline": "How Ethiopia Became Russia’s Longstanding and Reliable Partner in Africa",
+      "root": "Ethiopia–Russia relations",
+      "before": 18,
+      "after": 18,
+      "earliestBefore": "1889-10",
+      "earliestAfter": "1889-10",
+      "added": [],
+      "note": null,
+      "partial": false
+    },
+    {
+      "headline": "India news: Cyclone Arnab turns deadly after landfall",
+      "root": "2026 North Indian Ocean cyclone season",
+      "before": 13,
+      "after": 19,
+      "earliestBefore": "2026-01-07",
+      "earliestAfter": "1945",
+      "added": [
+        {
+          "at": {
+            "iso": "1945",
+            "precision": "year",
+            "label": "1945"
+          },
+          "text": "The official practice of naming tropical cyclones started in 1945 within the western Pacific.",
+          "section": "Introduction",
+          "url": "https://en.wikipedia.org/wiki/List_of_historical_tropical_cyclone_names",
+          "link": "History of tropical cyclone naming",
+          "sourceTitle": "List of historical tropical cyclone names"
+        },
+        {
+          "at": {
+            "iso": "1950",
+            "precision": "year",
+            "label": "1950"
+          },
+          "text": "Naming continued through the next few years, and in 1950, names also started to be assigned to tropical storms forming in the northern Atlantic Ocean.",
+          "section": "Introduction",
+          "url": "https://en.wikipedia.org/wiki/List_of_historical_tropical_cyclone_names",
+          "link": null,
+          "sourceTitle": "List of historical tropical cyclone names"
+        },
+        {
+          "at": {
+            "iso": "1960",
+            "precision": "year",
+            "label": "1960"
+          },
+          "text": "In 1960, naming also began in the southwestern Indian Ocean, and in 1963 the Philippine Meteorological Service (then known as the Philippine Weather Bureau and later reorganized as PAGASA) started assigning names to tropical cyclones that moved into or formed in their area of responsibility.",
+          "section": "Introduction",
+          "url": "https://en.wikipedia.org/wiki/List_of_historical_tropical_cyclone_names",
+          "link": "PAGASA",
+          "sourceTitle": "List of historical tropical cyclone names"
+        },
+        {
+          "at": {
+            "iso": "2000-01-01",
+            "precision": "day",
+            "label": "1 Jan 2000"
+          },
+          "text": "On January 1, 2000, the Japan Meteorological Agency, as the official Regional Specialized Meteorological Center, took over the naming of tropical cyclones in this basin.",
+          "section": "Western North Pacific",
+          "url": "https://en.wikipedia.org/wiki/List_of_historical_tropical_cyclone_names#Western_North_Pacific",
+          "link": "Japan Meteorological Agency",
+          "sourceTitle": "List of historical tropical cyclone names"
+        },
+        {
+          "at": {
+            "iso": "2010-03-12",
+            "precision": "day",
+            "label": "12 Mar 2010"
+          },
+          "text": "On March 12, 2010, Brazilian public and private weather services decided to name a tropical storm \"Anita\" in order to avoid confusion in future references.",
+          "section": "South Atlantic",
+          "url": "https://en.wikipedia.org/wiki/List_of_historical_tropical_cyclone_names#South_Atlantic",
+          "link": null,
+          "sourceTitle": "List of historical tropical cyclone names"
+        },
+        {
+          "at": {
+            "iso": "2020",
+            "precision": "year",
+            "label": "2020"
+          },
+          "text": "However, following the devastation wrought by hurricanes Eta and Iota in 2020, the former policy was rejected, and it was decided that Eta and Iota would be permanently retired, and that the Greek alphabet would be discontinued and replaced with an auxiliary name list, which has not yet been used.",
+          "section": "North Atlantic",
+          "url": "https://en.wikipedia.org/wiki/List_of_historical_tropical_cyclone_names#North_Atlantic",
+          "link": "Hurricane Eta",
+          "sourceTitle": "List of historical tropical cyclone names"
+        }
+      ],
+      "note": "Earlier context comes from linked subject articles and earlier events in the same series. These are selected passages, not a complete history or a claim about what caused this story.",
+      "partial": false
+    },
+    {
+      "headline": "King Charles to discuss legacy of slavery with Commonwealth leaders at summit",
+      "root": "2026 Commonwealth Heads of Government Meeting",
+      "before": 4,
+      "after": 4,
+      "earliestBefore": "2025-04-01",
+      "earliestAfter": "2025-04-01",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "India Evacuates Tens of Thousands as Cyclone Arnab Approaches",
+      "root": "2026 North Indian Ocean cyclone season",
+      "before": 13,
+      "after": 19,
+      "earliestBefore": "2026-01-07",
+      "earliestAfter": "1945",
+      "added": [
+        {
+          "at": {
+            "iso": "1945",
+            "precision": "year",
+            "label": "1945"
+          },
+          "text": "The official practice of naming tropical cyclones started in 1945 within the western Pacific.",
+          "section": "Introduction",
+          "url": "https://en.wikipedia.org/wiki/List_of_historical_tropical_cyclone_names",
+          "link": "History of tropical cyclone naming",
+          "sourceTitle": "List of historical tropical cyclone names"
+        },
+        {
+          "at": {
+            "iso": "1950",
+            "precision": "year",
+            "label": "1950"
+          },
+          "text": "Naming continued through the next few years, and in 1950, names also started to be assigned to tropical storms forming in the northern Atlantic Ocean.",
+          "section": "Introduction",
+          "url": "https://en.wikipedia.org/wiki/List_of_historical_tropical_cyclone_names",
+          "link": null,
+          "sourceTitle": "List of historical tropical cyclone names"
+        },
+        {
+          "at": {
+            "iso": "1960",
+            "precision": "year",
+            "label": "1960"
+          },
+          "text": "In 1960, naming also began in the southwestern Indian Ocean, and in 1963 the Philippine Meteorological Service (then known as the Philippine Weather Bureau and later reorganized as PAGASA) started assigning names to tropical cyclones that moved into or formed in their area of responsibility.",
+          "section": "Introduction",
+          "url": "https://en.wikipedia.org/wiki/List_of_historical_tropical_cyclone_names",
+          "link": "PAGASA",
+          "sourceTitle": "List of historical tropical cyclone names"
+        },
+        {
+          "at": {
+            "iso": "2000-01-01",
+            "precision": "day",
+            "label": "1 Jan 2000"
+          },
+          "text": "On January 1, 2000, the Japan Meteorological Agency, as the official Regional Specialized Meteorological Center, took over the naming of tropical cyclones in this basin.",
+          "section": "Western North Pacific",
+          "url": "https://en.wikipedia.org/wiki/List_of_historical_tropical_cyclone_names#Western_North_Pacific",
+          "link": "Japan Meteorological Agency",
+          "sourceTitle": "List of historical tropical cyclone names"
+        },
+        {
+          "at": {
+            "iso": "2010-03-12",
+            "precision": "day",
+            "label": "12 Mar 2010"
+          },
+          "text": "On March 12, 2010, Brazilian public and private weather services decided to name a tropical storm \"Anita\" in order to avoid confusion in future references.",
+          "section": "South Atlantic",
+          "url": "https://en.wikipedia.org/wiki/List_of_historical_tropical_cyclone_names#South_Atlantic",
+          "link": null,
+          "sourceTitle": "List of historical tropical cyclone names"
+        },
+        {
+          "at": {
+            "iso": "2020",
+            "precision": "year",
+            "label": "2020"
+          },
+          "text": "However, following the devastation wrought by hurricanes Eta and Iota in 2020, the former policy was rejected, and it was decided that Eta and Iota would be permanently retired, and that the Greek alphabet would be discontinued and replaced with an auxiliary name list, which has not yet been used.",
+          "section": "North Atlantic",
+          "url": "https://en.wikipedia.org/wiki/List_of_historical_tropical_cyclone_names#North_Atlantic",
+          "link": "Hurricane Eta",
+          "sourceTitle": "List of historical tropical cyclone names"
+        }
+      ],
+      "note": "Earlier context comes from linked subject articles and earlier events in the same series. These are selected passages, not a complete history or a claim about what caused this story.",
+      "partial": false
+    },
+    {
+      "headline": "Tône/artisanat : Des restaurateurs se forment à la gestion moderne et à l’hygiène",
+      "root": "Togo",
+      "before": 0,
+      "after": 0,
+      "earliestBefore": null,
+      "earliestAfter": null,
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "Up-to-date national statistics still months away",
+      "root": "Bailiwick of Guernsey",
+      "before": 1,
+      "after": 1,
+      "earliestBefore": "2026-06-08",
+      "earliestAfter": "2026-06-08",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "Pljevlja raspisala konkurs za studentske nagrade: Uslov prosjek...",
+      "root": "Pljevlja",
+      "before": 18,
+      "after": 18,
+      "earliestBefore": "1465",
+      "earliestAfter": "1465",
+      "added": [],
+      "note": null,
+      "partial": false
+    },
+    {
+      "headline": "Israel Votes, But Who Wins?",
+      "root": "2026 Israeli legislative election",
+      "before": 15,
+      "after": 20,
+      "earliestBefore": "2022-12-29",
+      "earliestAfter": "1949-02",
+      "added": [
+        {
+          "at": {
+            "iso": "1949-02",
+            "precision": "month",
+            "label": "Feb 1949"
+          },
+          "text": "The Constituent Assembly convened in February 1949.",
+          "section": "Aftermath",
+          "url": "https://en.wikipedia.org/wiki/1949_Israeli_Constituent_Assembly_election#Aftermath",
+          "link": null,
+          "sourceTitle": "1949 Israeli legislative election"
+        },
+        {
+          "at": {
+            "iso": "1984-07-23",
+            "precision": "day",
+            "label": "23 Jul 1984"
+          },
+          "text": "Legislative elections were held in Israel on 23 July 1984 to elect the eleventh Knesset.",
+          "section": "Introduction",
+          "url": "https://en.wikipedia.org/wiki/1984_Israeli_legislative_election",
+          "link": "Israel",
+          "sourceTitle": "1984 Israeli legislative election"
+        },
+        {
+          "at": {
+            "iso": "1992",
+            "precision": "year",
+            "label": "1992"
+          },
+          "text": "In 1992, in an attempt to produce more stable governments, Israel adopted a system of direct election of the prime minister.",
+          "section": "History",
+          "url": "https://en.wikipedia.org/wiki/Elections_in_Israel#History",
+          "link": null,
+          "sourceTitle": "Elections in Israel"
+        },
+        {
+          "at": {
+            "iso": "2014-03-11",
+            "precision": "day",
+            "label": "11 Mar 2014"
+          },
+          "text": "On 11 March 2014, the Knesset approved a new law to raise the threshold to 3.25% (approximately 4 seats).",
+          "section": "History",
+          "url": "https://en.wikipedia.org/wiki/Elections_in_Israel#History",
+          "link": null,
+          "sourceTitle": "Elections in Israel"
+        },
+        {
+          "at": {
+            "iso": "2020-03-02",
+            "precision": "day",
+            "label": "2 Mar 2020"
+          },
+          "text": "Legislative elections were held in Israel on 2 March 2020 to elect members of the twenty-third Knesset.",
+          "section": "Introduction",
+          "url": "https://en.wikipedia.org/wiki/2020_Israeli_legislative_election",
+          "link": "Israel",
+          "sourceTitle": "2020 Israeli legislative election"
+        }
+      ],
+      "note": "Earlier context comes from linked subject articles and earlier events in the same series. These are selected passages, not a complete history or a claim about what caused this story.",
+      "partial": false
+    },
+    {
+      "headline": "Real Madrid issues public apology to China over Mbappé's Mao Zedong comments",
+      "root": "2026–27 Real Madrid CF season",
+      "before": 15,
+      "after": 15,
+      "earliestBefore": "2026-05-18",
+      "earliestAfter": "2026-05-18",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "Israel’s election gives survivor Netanyahu a path to keep power",
+      "root": "2026 Israeli legislative election",
+      "before": 18,
+      "after": 23,
+      "earliestBefore": "2022-12-29",
+      "earliestAfter": "1949-02",
+      "added": [
+        {
+          "at": {
+            "iso": "1949-02",
+            "precision": "month",
+            "label": "Feb 1949"
+          },
+          "text": "The Constituent Assembly convened in February 1949.",
+          "section": "Aftermath",
+          "url": "https://en.wikipedia.org/wiki/1949_Israeli_Constituent_Assembly_election#Aftermath",
+          "link": null,
+          "sourceTitle": "1949 Israeli legislative election"
+        },
+        {
+          "at": {
+            "iso": "1984-07-23",
+            "precision": "day",
+            "label": "23 Jul 1984"
+          },
+          "text": "Legislative elections were held in Israel on 23 July 1984 to elect the eleventh Knesset.",
+          "section": "Introduction",
+          "url": "https://en.wikipedia.org/wiki/1984_Israeli_legislative_election",
+          "link": "Israel",
+          "sourceTitle": "1984 Israeli legislative election"
+        },
+        {
+          "at": {
+            "iso": "1992",
+            "precision": "year",
+            "label": "1992"
+          },
+          "text": "In 1992, in an attempt to produce more stable governments, Israel adopted a system of direct election of the prime minister.",
+          "section": "History",
+          "url": "https://en.wikipedia.org/wiki/Elections_in_Israel#History",
+          "link": null,
+          "sourceTitle": "Elections in Israel"
+        },
+        {
+          "at": {
+            "iso": "2014-03-11",
+            "precision": "day",
+            "label": "11 Mar 2014"
+          },
+          "text": "On 11 March 2014, the Knesset approved a new law to raise the threshold to 3.25% (approximately 4 seats).",
+          "section": "History",
+          "url": "https://en.wikipedia.org/wiki/Elections_in_Israel#History",
+          "link": null,
+          "sourceTitle": "Elections in Israel"
+        },
+        {
+          "at": {
+            "iso": "2020-03-02",
+            "precision": "day",
+            "label": "2 Mar 2020"
+          },
+          "text": "Legislative elections were held in Israel on 2 March 2020 to elect members of the twenty-third Knesset.",
+          "section": "Introduction",
+          "url": "https://en.wikipedia.org/wiki/2020_Israeli_legislative_election",
+          "link": "Israel",
+          "sourceTitle": "2020 Israeli legislative election"
+        }
+      ],
+      "note": "Earlier context comes from linked subject articles and earlier events in the same series. These are selected passages, not a complete history or a claim about what caused this story.",
+      "partial": false
+    },
+    {
+      "headline": "Trump shows off tanker with ‘1m barrels of oil’ and floats Venezuela as 51st state",
+      "root": "2026 United States intervention in Venezuela",
+      "before": 18,
+      "after": 20,
+      "earliestBefore": "2019",
+      "earliestAfter": "1989",
+      "added": [
+        {
+          "at": {
+            "iso": "1989",
+            "precision": "year",
+            "label": "1989"
+          },
+          "text": "In 1989, President Bush ordered the invasion of Panama to depose the country's de facto dictator, Manuel Noriega.",
+          "section": "Background",
+          "url": "https://en.wikipedia.org/wiki/United_States_military_buildup_in_the_Caribbean_during_Operation_Southern_Spear#Background",
+          "link": "United States invasion of Panama",
+          "sourceTitle": "United States military buildup in the Caribbean during Operation Southern Spear"
+        },
+        {
+          "at": {
+            "iso": "2017",
+            "precision": "year",
+            "label": "2017"
+          },
+          "text": "In 2017, during his first presidency, Trump said that he was \"not going to rule out a military option\" to address the worsening crisis in Venezuela.",
+          "section": "Introduction",
+          "url": "https://en.wikipedia.org/wiki/Proposed_United_States_invasion_of_Venezuela",
+          "link": "First presidency of Donald Trump",
+          "sourceTitle": "Proposed United States invasion of Venezuela"
+        }
+      ],
+      "note": "Earlier context comes from linked subject articles and earlier events in the same series. These are selected passages, not a complete history or a claim about what caused this story.",
+      "partial": false
+    },
+    {
+      "headline": "Kacha, Mastercard Ink Deal to Expand Card Issuance in Ethiopia",
+      "root": "Banking in Ethiopia",
+      "before": 4,
+      "after": 4,
+      "earliestBefore": "1906-02-16",
+      "earliestAfter": "1906-02-16",
+      "added": [],
+      "note": null,
+      "partial": false
+    },
+    {
+      "headline": "Germany's Merz says erosion of global order means middle powers in Europe and Asia must be more assertive",
+      "root": "Merz cabinet",
+      "before": 3,
+      "after": 3,
+      "earliestBefore": "2025-04-09",
+      "earliestAfter": "2025-04-09",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "Norway, Finland’s leaders hold rare talks with Putin",
+      "root": "Finland–Norway relations",
+      "before": 0,
+      "after": 0,
+      "earliestBefore": null,
+      "earliestAfter": null,
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "Vanessa Emde: Berliner Linke vertagt Entscheidung über umstrittene Abgeordnete weiter",
+      "root": "2026 Berlin state election",
+      "before": 11,
+      "after": 11,
+      "earliestBefore": "2021-11-04",
+      "earliestAfter": "2021-11-04",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "Nedbank buys its way into East Africa’s banking battle",
+      "root": "Banking in Uganda",
+      "before": 18,
+      "after": 18,
+      "earliestBefore": "1966",
+      "earliestAfter": "1966",
+      "added": [],
+      "note": null,
+      "partial": false
+    },
+    {
+      "headline": "Accidente tren Toledo deja múltiples muertos y heridos",
+      "root": "2026 Toledo train collision",
+      "before": 1,
+      "after": 1,
+      "earliestBefore": "2026-10-28",
+      "earliestAfter": "2026-10-28",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "In Photos: China Begins Its Weeklong National Day Holiday",
+      "root": "National Day of the People's Republic of China",
+      "before": 11,
+      "after": 11,
+      "earliestBefore": "1949-10-01",
+      "earliestAfter": "1949-10-01",
+      "added": [],
+      "note": null,
+      "partial": false
+    },
+    {
+      "headline": "Bruno Rodríguez lidera un acto de repudio contra el embajador de EE UU en la Asamblea General de la ONU",
+      "root": "General debate of the eightieth session of the United Nations General Assembly",
+      "before": 2,
+      "after": 2,
+      "earliestBefore": "1955",
+      "earliestAfter": "1955",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "Xochimilco se une al paro indefinido en la UAM, suman 4 de 5 unidades",
+      "root": "UAM Xochimilco",
+      "before": 2,
+      "after": 2,
+      "earliestBefore": "1974-11-11",
+      "earliestAfter": "1974-11-11",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "FNB launches enhanced eWallet Plus service",
+      "root": "Eswatini",
+      "before": 0,
+      "after": 0,
+      "earliestBefore": null,
+      "earliestAfter": null,
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "Melania or the pope: Who brokered Russia-Ukraine ceasefire in Oleshky?",
+      "root": "Blockade of Oleshky",
+      "before": 7,
+      "after": 7,
+      "earliestBefore": "2022-02-24",
+      "earliestAfter": "2022-02-24",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "Report: ISF pursuing 3 men who escorted Hezbollah explosives truck",
+      "root": "Hezbollah",
+      "before": 18,
+      "after": 18,
+      "earliestBefore": "1978-03-19",
+      "earliestAfter": "1978-03-19",
+      "added": [],
+      "note": null,
+      "partial": false
+    },
+    {
+      "headline": "Round 8 of the 2026 Guam Monster Energy Motocross Championship",
+      "root": "Guam",
+      "before": 3,
+      "after": 3,
+      "earliestBefore": "2026-01-09",
+      "earliestAfter": "2026-01-09",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "Challenge to Drumcree Orange Order parade ban fails in Belfast High Court",
+      "root": "Drumcree conflict",
+      "before": 18,
+      "after": 18,
+      "earliestBefore": "1795-07",
+      "earliestAfter": "1795-07",
+      "added": [],
+      "note": null,
+      "partial": false
+    },
+    {
+      "headline": "Legal bid to overturn Drumcree march ban fails",
+      "root": "Drumcree conflict",
+      "before": 18,
+      "after": 18,
+      "earliestBefore": "1795-07",
+      "earliestAfter": "1795-07",
+      "added": [],
+      "note": null,
+      "partial": false
+    },
+    {
+      "headline": "Almenys 46 morts en un accident de tren a Urda, Toledo",
+      "root": "Urda, Toledo",
+      "before": 1,
+      "after": 1,
+      "earliestBefore": "2026-10-28",
+      "earliestAfter": "2026-10-28",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "Prado rams into electric pole after high-speed police chase in Kisumu",
+      "root": "Kisumu",
+      "before": 0,
+      "after": 0,
+      "earliestBefore": null,
+      "earliestAfter": null,
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "South Africa Deploys 500 Soldiers to Quell Anti-Immigration Violence",
+      "root": "2026 anti-immigrant movement and xenophobia in South Africa",
+      "before": 4,
+      "after": 4,
+      "earliestBefore": "2026-05",
+      "earliestAfter": "2026-05",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "ANNOUNCEMENT: Division of Agriculture",
+      "root": "Agriculture",
+      "before": 6,
+      "after": 6,
+      "earliestBefore": "1492",
+      "earliestAfter": "1492",
+      "added": [],
+      "note": null,
+      "partial": false
+    },
+    {
+      "headline": "El Gobierno endurece el control financiero y fiscal de las entidades públicas",
+      "root": "Equatorial Guinea",
+      "before": 1,
+      "after": 1,
+      "earliestBefore": "1972",
+      "earliestAfter": "1972",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "Le président de l’Assemblée nationale reçoit la secrétaire d’Etat parlementaire au ministère allemand de la Justice",
+      "root": "National Assembly (Mauritania)",
+      "before": 9,
+      "after": 9,
+      "earliestBefore": "1946",
+      "earliestAfter": "1946",
+      "added": [],
+      "note": null,
+      "partial": false
+    },
+    {
+      "headline": "Forty-two students honoured at Dominica’s inaugural National Schools’ Awards ceremony for academic excellence",
+      "root": "Dominica",
+      "before": 1,
+      "after": 1,
+      "earliestBefore": "2026-01-05",
+      "earliestAfter": "2026-01-05",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "Flávio Bolsonaro huye a EE. UU. tras su derrota electoral ante Lula",
+      "root": "Flávio Bolsonaro",
+      "before": 10,
+      "after": 10,
+      "earliestBefore": "1981-04-30",
+      "earliestAfter": "1981-04-30",
+      "added": [],
+      "note": null,
+      "partial": false
+    },
+    {
+      "headline": "The Key Election Issues Dividing Israelis as They Vote",
+      "root": "2026 Israeli legislative election",
+      "before": 15,
+      "after": 20,
+      "earliestBefore": "2022-12-29",
+      "earliestAfter": "1949-02",
+      "added": [
+        {
+          "at": {
+            "iso": "1949-02",
+            "precision": "month",
+            "label": "Feb 1949"
+          },
+          "text": "The Constituent Assembly convened in February 1949.",
+          "section": "Aftermath",
+          "url": "https://en.wikipedia.org/wiki/1949_Israeli_Constituent_Assembly_election#Aftermath",
+          "link": null,
+          "sourceTitle": "1949 Israeli legislative election"
+        },
+        {
+          "at": {
+            "iso": "1984-07-23",
+            "precision": "day",
+            "label": "23 Jul 1984"
+          },
+          "text": "Legislative elections were held in Israel on 23 July 1984 to elect the eleventh Knesset.",
+          "section": "Introduction",
+          "url": "https://en.wikipedia.org/wiki/1984_Israeli_legislative_election",
+          "link": "Israel",
+          "sourceTitle": "1984 Israeli legislative election"
+        },
+        {
+          "at": {
+            "iso": "1992",
+            "precision": "year",
+            "label": "1992"
+          },
+          "text": "In 1992, in an attempt to produce more stable governments, Israel adopted a system of direct election of the prime minister.",
+          "section": "History",
+          "url": "https://en.wikipedia.org/wiki/Elections_in_Israel#History",
+          "link": null,
+          "sourceTitle": "Elections in Israel"
+        },
+        {
+          "at": {
+            "iso": "2014-03-11",
+            "precision": "day",
+            "label": "11 Mar 2014"
+          },
+          "text": "On 11 March 2014, the Knesset approved a new law to raise the threshold to 3.25% (approximately 4 seats).",
+          "section": "History",
+          "url": "https://en.wikipedia.org/wiki/Elections_in_Israel#History",
+          "link": null,
+          "sourceTitle": "Elections in Israel"
+        },
+        {
+          "at": {
+            "iso": "2020-03-02",
+            "precision": "day",
+            "label": "2 Mar 2020"
+          },
+          "text": "Legislative elections were held in Israel on 2 March 2020 to elect members of the twenty-third Knesset.",
+          "section": "Introduction",
+          "url": "https://en.wikipedia.org/wiki/2020_Israeli_legislative_election",
+          "link": "Israel",
+          "sourceTitle": "2020 Israeli legislative election"
+        }
+      ],
+      "note": "Earlier context comes from linked subject articles and earlier events in the same series. These are selected passages, not a complete history or a claim about what caused this story.",
+      "partial": false
+    },
+    {
+      "headline": "Africa’s ‘unprecedented’ Ebola outbreak could reach UK, says top health official",
+      "root": "2026 Ebola epidemic",
+      "before": 18,
+      "after": 24,
+      "earliestBefore": "2025-06-03",
+      "earliestAfter": "1976",
+      "added": [
+        {
+          "at": {
+            "iso": "1976",
+            "precision": "year",
+            "label": "1976"
+          },
+          "text": "Between 1976 and 1998, in 30,000 mammals, birds, reptiles, amphibians and arthropods sampled from regions of EBOV outbreaks, no Ebola virus was detected apart from some genetic traces found in six rodents (belonging to the species Mus setulosus and Praomys) and one shrew (Sylvisorex ollula) collected from the Central African Republic.",
+          "section": "Reservoir",
+          "url": "https://en.wikipedia.org/wiki/Ebola#Reservoir",
+          "link": "Arthropod",
+          "sourceTitle": "Ebola"
+        },
+        {
+          "at": {
+            "iso": "1989",
+            "precision": "year",
+            "label": "1989"
+          },
+          "text": "In late 1989, Hazelton Research Products' Reston Quarantine Unit in Reston, Virginia, had an outbreak of fatal illness amongst certain lab monkeys.",
+          "section": "Reston virus",
+          "url": "https://en.wikipedia.org/wiki/Ebola#Reston_virus",
+          "link": "Reston, Virginia",
+          "sourceTitle": "Ebola"
+        },
+        {
+          "at": {
+            "iso": "1995",
+            "precision": "year",
+            "label": "1995"
+          },
+          "text": "The second major outbreak occurred in Zaire (now the Democratic Republic of the Congo, DRC), in 1995, affecting 315 and killing 254.",
+          "section": "1995–2014",
+          "url": "https://en.wikipedia.org/wiki/Ebola#1995%E2%80%932014",
+          "link": "Democratic Republic of the Congo",
+          "sourceTitle": "Ebola"
+        },
+        {
+          "at": {
+            "iso": "2000",
+            "precision": "year",
+            "label": "2000"
+          },
+          "text": "In 2000, Uganda had an outbreak infecting 425 and killing 224; in this case, the Sudan virus was found to be the Ebola species responsible for the outbreak.",
+          "section": "1995–2014",
+          "url": "https://en.wikipedia.org/wiki/Ebola#1995%E2%80%932014",
+          "link": "Uganda",
+          "sourceTitle": "Ebola"
+        },
+        {
+          "at": {
+            "iso": "2012",
+            "precision": "year",
+            "label": "2012"
+          },
+          "text": "The WHO confirmed two small outbreaks in Uganda in 2012, both caused by the Sudan variant.",
+          "section": "1995–2014",
+          "url": "https://en.wikipedia.org/wiki/Ebola#1995%E2%80%932014",
+          "link": null,
+          "sourceTitle": "Ebola"
+        },
+        {
+          "at": {
+            "iso": "2020-06-01",
+            "precision": "day",
+            "label": "1 Jun 2020"
+          },
+          "text": "On 1 June 2020, the Congolese health ministry announced a new DRC outbreak of Ebola in Mbandaka, Équateur Province, a region along the Congo River.",
+          "section": "2020 Équateur province",
+          "url": "https://en.wikipedia.org/wiki/Ebola#2020_%C3%89quateur_province",
+          "link": "Mbandaka",
+          "sourceTitle": "Ebola"
+        }
+      ],
+      "note": "Earlier context comes from linked subject articles and earlier events in the same series. These are selected passages, not a complete history or a claim about what caused this story.",
+      "partial": false
+    },
+    {
+      "headline": "Iran’s Pezeshkian tells Putin Middle East can solve problems without US",
+      "root": "Masoud Pezeshkian",
+      "before": 17,
+      "after": 17,
+      "earliestBefore": "1954-09-29",
+      "earliestAfter": "1954-09-29",
+      "added": [],
+      "note": null,
+      "partial": false
+    },
+    {
+      "headline": "Myanmar regime imprisons two Islamic teachers and seizes mosque",
+      "root": "Islam in Myanmar",
+      "before": 18,
+      "after": 18,
+      "earliestBefore": "1617",
+      "earliestAfter": "1617",
+      "added": [],
+      "note": null,
+      "partial": false
+    },
+    {
+      "headline": "Bernardo on saying Jinggoy got P573 million in kickbacks: It's hard to implicate a friend",
+      "root": "Philippines",
+      "before": 0,
+      "after": 0,
+      "earliestBefore": null,
+      "earliestAfter": null,
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "Økokrim vil løslate alle siktede for bedrageri mot Nato",
+      "root": "NATO",
+      "before": 18,
+      "after": 18,
+      "earliestBefore": "1947-03-04",
+      "earliestAfter": "1947-03-04",
+      "added": [],
+      "note": null,
+      "partial": false
+    },
+    {
+      "headline": "Cayman athletes depart for Dakar Youth Olympic Games",
+      "root": "Cayman Islands at the 2026 Summer Youth Olympics",
+      "before": 1,
+      "after": 1,
+      "earliestBefore": "2026-11-13",
+      "earliestAfter": "2026-11-13",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "Ibrahim Maza Algeria",
+      "root": "Ibrahim Maza",
+      "before": 5,
+      "after": 5,
+      "earliestBefore": "2005-11-24",
+      "earliestAfter": "2005-11-24",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "Mbappe apologises for Mao Zedong comment after Chinese sponsors drop him",
+      "root": "Kylian Mbappé",
+      "before": 18,
+      "after": 18,
+      "earliestBefore": "1998-12-20",
+      "earliestAfter": "1998-12-20",
+      "added": [],
+      "note": null,
+      "partial": false
+    },
+    {
+      "headline": "Lula’s win in Brazil deals blow to Trump’s Latin America push: former China envoy",
+      "root": "2026 Brazilian general election",
+      "before": 15,
+      "after": 19,
+      "earliestBefore": "2016",
+      "earliestAfter": "1930-03-01",
+      "added": [
+        {
+          "at": {
+            "iso": "1930-03-01",
+            "precision": "day",
+            "label": "1 Mar 1930"
+          },
+          "text": "General elections were held in Brazil on 1 March 1930.",
+          "section": "Introduction",
+          "url": "https://en.wikipedia.org/wiki/1930_Brazilian_general_election",
+          "link": "Brazil",
+          "sourceTitle": "1930 Brazilian general election"
+        },
+        {
+          "at": {
+            "iso": "1963-01-06",
+            "precision": "day",
+            "label": "6 Jan 1963"
+          },
+          "text": "In the first, held on January 6, 1963, the people voted for the re-establishment of the presidential system of government (82% of valid ballots), which had been modified by a constitutional amendment in 1961.",
+          "section": "Referendums",
+          "url": "https://en.wikipedia.org/wiki/Elections_in_Brazil#Referendums",
+          "link": null,
+          "sourceTitle": "Elections in Brazil"
+        },
+        {
+          "at": {
+            "iso": "1993-04-21",
+            "precision": "day",
+            "label": "21 Apr 1993"
+          },
+          "text": "A second referendum, as ordered by the Federal Constitution of 1988, was held on April 21, 1993, when the voters voted for a republican form of government and reaffirmed the presidential system.",
+          "section": "Referendums",
+          "url": "https://en.wikipedia.org/wiki/Elections_in_Brazil#Referendums",
+          "link": null,
+          "sourceTitle": "Elections in Brazil"
+        },
+        {
+          "at": {
+            "iso": "2000",
+            "precision": "year",
+            "label": "2000"
+          },
+          "text": "In 2000, Microbase and Diebold-Procomp developed the UE2000 together.",
+          "section": "Development",
+          "url": "https://en.wikipedia.org/wiki/Electronic_voting_in_Brazil#Development",
+          "link": null,
+          "sourceTitle": "Electronic voting in Brazil"
+        }
+      ],
+      "note": "Earlier context comes from linked subject articles and earlier events in the same series. These are selected passages, not a complete history or a claim about what caused this story.",
+      "partial": false
+    },
+    {
+      "headline": "BPA head: Cops leaving for higher pay, better terms",
+      "root": "Barbados",
+      "before": 1,
+      "after": 1,
+      "earliestBefore": "2026-02-11",
+      "earliestAfter": "2026-02-11",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "Harry Kane: Ballon d’Or for Bayern Munich striker",
+      "root": "Harry Kane",
+      "before": 18,
+      "after": 18,
+      "earliestBefore": "1993-07-28",
+      "earliestAfter": "1993-07-28",
+      "added": [],
+      "note": null,
+      "partial": false
+    },
+    {
+      "headline": "Fin des travaux de signalisation sur 605 kilomètres de la rivière Kasaï",
+      "root": "Kasai River",
+      "before": 1,
+      "after": 1,
+      "earliestBefore": "1877-03-09",
+      "earliestAfter": "1877-03-09",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "Lluvias en Perú HOY EN VIVO: Pronóstico del Senamhi y regiones en alerta al norte",
+      "root": "Peru",
+      "before": 2,
+      "after": 2,
+      "earliestBefore": "1836-03-17",
+      "earliestAfter": "1836-03-17",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    },
+    {
+      "headline": "\"Eeuwige\" wereldreis van Amerikaans cruiseschip strandt in Cambodja, verschillende bewoners dakloos",
+      "root": "Tourism in Cambodia",
+      "before": 1,
+      "after": 1,
+      "earliestBefore": "2013",
+      "earliestAfter": "2013",
+      "added": [],
+      "note": "Historical coverage is limited. These selected dated passages are not a full account of the history behind this story; a place’s founding date alone does not supply that context.",
+      "partial": false
+    }
+  ]
+}

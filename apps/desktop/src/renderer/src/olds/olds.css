@@ -845,7 +845,7 @@
    and the timeline area scrolls vertically instead of clipping cards under the chapter band. */
 .olds-head, .olds-title, .olds-sources, .olds-eras, .olds-chapter-bar { flex: none; }
 .olds-main { min-height: 0; overflow-y: auto; scrollbar-width: thin; }
-.olds-track-wrap { flex: 1 0 300px; }
+.olds-track-wrap { flex: 1 0 360px; }
 
 /* Competing interpretations (OLD-005): attributed readings side by side, unranked. */
 .olds-debate { display: grid; align-content: start; gap: 10px; flex: 1; min-width: 0; padding: 4px 22px 14px; overflow-y: auto; }
@@ -908,6 +908,9 @@
 
 /* Dated events from "How we got here" on the timeline and in the list. */
 .olds-event-card { max-width: 280px; text-align: left; }
+.olds-event-card .olds-rel { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .olds-event-text { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; color: var(--warm-white, #eef4f2); font-size: 12px; line-height: 1.35; }
 .olds-list-text { display: block; margin: 2px 0; color: var(--warm-white, #eef4f2); font-size: 12.5px; line-height: 1.4; font-weight: 400; }
 .olds-list-empty { color: var(--muted, rgba(220, 232, 236, 0.7)); font-size: 12.5px; }
+.olds-sheet:has(.olds-history-note) { height: min(560px, calc(100% - 200px)); }
+.olds-history-note { flex: none; margin: 4px 24px 10px; color: var(--text-muted, #a9b9bf); font-size: 12px; line-height: 1.45; }

@@ -123,7 +123,7 @@ export function OldsStory({
       </div>
       {chronicle.length > 0 && (
         <section className="olds-chronicle" aria-label="How we got here">
-          <h3 title="Dated events quoted from the topic’s own Wikipedia article, in time order. Open a section to see its sources.">How we got here</h3>
+          <h3 title="Dated passages from the topic’s Wikipedia article and explicitly linked background articles. Open each passage to see its sources.">How we got here</h3>
           <ol>
             {chronicle.map((entry, index) => (
               <li key={`${entry.at.iso}-${index}`}>
@@ -131,7 +131,7 @@ export function OldsStory({
                 <div>
                   <p>{entry.text}</p>
                   <span className="olds-chronicle-actions">
-                    <button type="button" onClick={() => onOpen(entry.url)}>From “{entry.section}”</button>
+                    <button type="button" onClick={() => onOpen(entry.url)}>{entry.sourceTitle ? `Context: ${entry.sourceTitle} · ` : 'From '}“{entry.section}”</button>
                     {entry.link && onFollowArticle && <button type="button" onClick={() => onFollowArticle(entry.link!)}>{entry.link}: its history <ArrowRight size={10} aria-hidden="true" /></button>}
                   </span>
                 </div>

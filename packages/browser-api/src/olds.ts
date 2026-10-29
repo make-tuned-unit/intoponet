@@ -117,8 +117,10 @@ export type OldsThread = {
   context?: OldsContext
   /** Attributed, competing readings of this topic from its Wikipedia article (OLD-005), unranked. */
   interpretations?: OldsInterpretation[]
-  /** "How we got here": dated events quoted from the topic's own Wikipedia article, oldest first. */
+  /** "How we got here": dated passages from the topic and linked historical context, oldest first. */
   chronicle?: OldsChronicleEntry[]
+  /** Limits of the dated narrative, distinct from a country's founding date. */
+  historyNote?: string
   fetchedAt: string
   attribution: string
   note: string
@@ -129,6 +131,8 @@ export type OldsChronicleEntry = {
   /** The sentence as written in the article. */
   text: string
   section: string
+  /** Wider context from an explicitly linked subject article or its documented event series. */
+  sourceTitle?: string
   /** The article section it comes from. */
   url: string
   /** The first article the sentence links to (open its history). */

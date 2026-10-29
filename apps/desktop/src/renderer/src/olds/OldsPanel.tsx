@@ -344,6 +344,7 @@ export function OldsPanel({
         <div className="olds-status" role="status"><Loader2 size={16} className="olds-spin" aria-hidden="true" /> Looking up sourced history…</div>
       )}
       {state.status === 'error' && <div className="olds-status is-error" role="alert">{state.message}</div>}
+      {thread?.historyNote && <p className="olds-history-note">{thread.historyNote}</p>}
 
       {thread && entries.length === 0 && !thread.context && (
         <div className="olds-status">No sourced historical links were found for this yet. That means Wikidata has no statements, not that there is no history.</div>
@@ -477,10 +478,10 @@ export function OldsPanel({
               <ol className="olds-timeline" aria-label="Timeline">
                 {timeline.map((item, index) => item.kind === 'event' ? (
                   <li key={`event-${item.index}`} className={`olds-item is-event ${index % 2 ? 'is-low' : 'is-high'}`} data-year={item.year}>
-                    <button type="button" className="olds-card olds-event-card" onClick={() => onOpen(item.event.url)} title={`From “${item.event.section}” — open the passage`}>
+                    <button type="button" className="olds-card olds-event-card" onClick={() => onOpen(item.event.url)} title={`From ${item.event.sourceTitle ? `${item.event.sourceTitle}: ` : ''}“${item.event.section}” — open the passage`}>
                       <span className="olds-card-date">{item.event.at.label}</span>
                       <span className="olds-event-text">{item.event.text}</span>
-                      <span className="olds-rel">From “{item.event.section}”</span>
+                      <span className="olds-rel">{item.event.sourceTitle ? `Context: ${item.event.sourceTitle} · ` : 'From '}“{item.event.section}”</span>
                     </button>
                     <span className="olds-tick" aria-hidden="true" />
                   </li>
@@ -550,7 +551,7 @@ export function OldsPanel({
                         <button type="button" onClick={() => onOpen(event.url)}>
                           <strong>{event.at.label}</strong>
                           <span className="olds-list-text">{event.text}</span>
-                          <small>From “{event.section}”</small>
+                          <small>{event.sourceTitle ? `Context: ${event.sourceTitle} · ` : 'From '}“{event.section}”</small>
                         </button>
                       </li>
                     ))}

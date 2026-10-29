@@ -8,6 +8,10 @@ describe('chronology from an article', () => {
     expect(sentenceDate('In 2016, police opened the case.', 2026)).toMatchObject({ iso: '2016', precision: 'year' })
     expect(sentenceDate('He was born in a small town and studied law.', 2026)).toBeNull()
     expect(sentenceDate('Smith (2019) argued the opposite.', 2026)).toBeNull()
+    expect(sentenceDate('The first election was held in 1949.', 2026)?.iso).toBe('1949')
+    expect(sentenceDate('The system introduced in 1949 was changed in 1992.', 2026)).toBeNull()
+    expect(sentenceDate('Reuters reported in November that construction began at a base abandoned in 2004.', 2026)).toBeNull()
+    expect(sentenceDate('The government withdrew from an agreement it had established in 2015.', 2026)).toBeNull()
   })
   it('quotes dated sentences in time order, with section links and the first linked article', () => {
     const wikitext = `The '''trial''' began in [[May 2020]]. Police began investigating in December 2016 after a [[State Comptroller]] report.<ref>x</ref>

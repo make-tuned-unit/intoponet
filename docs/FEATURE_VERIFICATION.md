@@ -1,5 +1,17 @@
 # Feature verification
 
+## Historical context audit and delayed layer hover — 2026-10-28
+
+Audited **80 cached headline threads covering all 78 evaluation headlines**, plus two additional stories. Before enrichment, 35 narratives started in 2022 or later and eight had no dated narrative. Ten gained older sourced passages; 47 still have limited coverage and now say so. The others already had at least three distinct older years; that is a screening heuristic, not a completeness guarantee. [Per-story audit and remaining gaps](feature-verification/timeline-context-2026-10-28.json).
+
+The Israeli election example now includes sourced context from 1949, 1984, 1992, 2014, and 2020 before its recent narrative. Context comes only from explicit subject-article pointers and exact earlier editions of the same documented event series, with bounded lookups. Every added passage names and links its source. General country/city fallbacks are not padded with unrelated national history. The date parser accepts an unambiguous single year in the main clause while rejecting historical dates in reported or subordinate clauses. Cache v15 recomputes old threads.
+
+Compact layer buttons now toggle immediately; hover or focus waits **one second** before expanding. Leaving cancels pending expansion and unmounting clears timers. A built-app pointer check verified click timing, cancellation, and delayed expansion. The history check verified the public API for Israel and Ebola, the rendered election timeline, attribution, and no vertical card clipping. The timeline has more room for source labels.
+
+Typechecking, 540 tests and the production build passed (five registry tests skipped); the final date-guard change also passed its focused tests. The prior 78/78 on/off matching result remains recorded under its own frozen build; it was not rerun after this context-only follow-up.
+
+Reproduce with `node experiments/e2e/layer-hover.mjs` and `node experiments/e2e/olds-history-context.mjs` after building. To audit saved threads, bundle `experiments/e2e/olds-history-audit.ts` with esbuild for Node/ESM and pass a cache directory and output path. This stage audit preserves the earlier topic selections; it does not claim to rerun headline matching.
+
 ## Headline matching and RSS trend verification — 2026-10-28
 
 The complete 78-story comparison passed at **78/78 with Laya on and 78/78 off**, sequentially on one frozen build with all 11 installed translation languages. Existing gold labels were unchanged. This meets on ≥ off and off ≥ 71. [Full results, hashes, and all focused attempts](feature-verification/laya-olds-resolution-2026-10-28.json).

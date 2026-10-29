@@ -11,7 +11,7 @@ import type { GlobalStory } from '../../../shared/news/globalStories'
 import type { OldsNode } from '@intoponet/browser-api'
 import { HeadlineList } from '../translate/HeadlineList'
 import type { TranslateModel } from '../translate/useTranslate'
-import { useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useGlassSheen } from '../glass/useGlassSheen'
 import '../glass/glass.css'
 import './globe.css'
@@ -185,26 +185,39 @@ export function LayerCard({
 }) {
   const sheen = useGlassSheen<HTMLDivElement>()
   const [aboutOpen, setAboutOpen] = useState(false)
-  // Compact by default: three layer icons. Hover or keyboard focus opens the full card.
+  // Leave time to toggle the compact icons before opening their details.
   const [open, setOpen] = useState(false)
+  const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const expand = (): void => {
+    if (openTimer.current) clearTimeout(openTimer.current)
+    openTimer.current = null
     if (closeTimer.current) clearTimeout(closeTimer.current)
     setOpen(true)
   }
+  const scheduleExpand = (): void => {
+    if (closeTimer.current) clearTimeout(closeTimer.current)
+    if (!openTimer.current) openTimer.current = setTimeout(expand, 1_000)
+  }
   const collapse = (): void => {
+    if (openTimer.current) clearTimeout(openTimer.current)
+    openTimer.current = null
     if (closeTimer.current) clearTimeout(closeTimer.current)
     closeTimer.current = setTimeout(() => setOpen(false), 280)
   }
+  useEffect(() => () => {
+    if (openTimer.current) clearTimeout(openTimer.current)
+    if (closeTimer.current) clearTimeout(closeTimer.current)
+  }, [])
   void pinsVisible; void pinCount; void onTogglePins; void dayNight; void onToggleDayNight
   return (
     <aside
       ref={sheen}
       className={`globe-layers lg-surface lg-sheen${open || aboutOpen ? '' : ' is-compact'}`}
       aria-label="Field layers"
-      onPointerEnter={expand}
+      onPointerEnter={scheduleExpand}
       onPointerLeave={collapse}
-      onFocus={expand}
+      onFocus={scheduleExpand}
       onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) collapse() }}
     >
       {!(open || aboutOpen) ? (

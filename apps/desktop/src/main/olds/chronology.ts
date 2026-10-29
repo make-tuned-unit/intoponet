@@ -37,6 +37,14 @@ export function sentenceDate(sentence: string, currentYear: number, impliedYear?
   // "In 2016, …" / "By 1998 the …" at the start of a sentence: the sentence is about that year.
   m = sentence.match(/^(?:In|By|Since|During|From|After|Before|Until|On|Throughout|Between|Early in|Late in|In early|In late|In mid-)\s*(\d{4})\b/)
   if (m && ok(Number(m[1]))) return { iso: m[1]!, precision: 'year', label: m[1]! }
+  // A single explicit year inside a sentence also dates an event ("The first
+  // election was held in 1949"). Multiple years or bibliographic years do not.
+  const years = [...new Set(sentence.match(/\b(?:1\d{3}|20\d{2})\b/g) ?? [])]
+  m = sentence.match(/\b(?:in|during|by) (\d{4})\b/i)
+  if (m && years.length === 1 && ok(Number(m[1]))
+    && !/\b(reported|announced|said|told|which|that|had|when)\b/i.test(sentence.slice(0, m.index))) {
+    return { iso: m[1]!, precision: 'year', label: m[1]! }
+  }
   // Articles about one year ("2026 … cyclone season") write "On 7 January, …" without it.
   if (impliedYear && ok(impliedYear)) {
     m = sentence.match(new RegExp(`^(?:On|By|Early on|Late on|Later on|Around|From)?\\s*(\\d{1,2}) ${MONTH}\\b(?!,? \\d{4})`)) ?? sentence.match(new RegExp(`(?:^|, )on (\\d{1,2}) ${MONTH}\\b(?!,? \\d{4})`))
