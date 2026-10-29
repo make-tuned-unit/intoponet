@@ -18,7 +18,7 @@ import {
   type SourceRecord,
 } from '@intoponet/field-snapshot'
 import { app } from 'electron'
-import type { PublicFieldStatus } from '@intoponet/browser-api'
+import type { LocalPublicSource, PublicFieldStatus, PublicSourceHealth } from '@intoponet/browser-api'
 import { SharedPublicSnapshotClient, SHARED_SNAPSHOT_STALE_AFTER_MS, type SharedSnapshotStatus } from './shared-public-field'
 import { readLocalPublicFieldCache, writeLocalPublicFieldCache } from './public-field-cache'
 
@@ -80,7 +80,12 @@ function publishStatus(status: PublicFieldStatus): void {
   statusListener?.(status)
 }
 
-function localStatus(state: PublicFieldStatus['state'], message: string, evaluationTime = current?.createdAt ?? null): PublicFieldStatus {
+function localStatus(
+  state: PublicFieldStatus['state'],
+  message: string,
+  evaluationTime = current?.createdAt ?? null,
+  sourceHealth?: Record<LocalPublicSource, PublicSourceHealth>,
+): PublicFieldStatus {
   return {
     mode: 'local',
     sourceLabel: 'Wikipedia · USGS · NASA EONET',
@@ -88,6 +93,7 @@ function localStatus(state: PublicFieldStatus['state'], message: string, evaluat
     state,
     evaluationTime,
     message,
+    ...(sourceHealth ? { sourceHealth } : {}),
   }
 }
 
@@ -110,6 +116,44 @@ function readCache(): FieldSnapshot | null {
   return readLocalPublicFieldCache(cachePath())
 }
 
+function recordsFor(records: SourceRecord[], group: SourceGroup): SourceRecord[] {
+  return records.filter((record) => record.id.startsWith(groupPrefix[group]))
+}
+
+function makeSourceHealth(
+  records: SourceRecord[],
+  state: PublicSourceHealth['state'],
+  lastCheckedAt: number | null,
+): PublicSourceHealth {
+  const retrieved = records.map((record) => record.retrievedAt).filter((value) => Number.isFinite(Date.parse(value))).sort()
+  const observations = records.map((record) => {
+    const value = record.measurement.windowEnd ?? record.publishedAt
+    if (typeof value !== 'string') return null
+    if (/^\d{8}$/.test(value)) return `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}T23:59:59.000Z`
+    const time = Date.parse(value)
+    return Number.isFinite(time) ? new Date(time).toISOString() : null
+  }).filter((value): value is string => value !== null).sort()
+  return {
+    state,
+    lastCheckedAt: lastCheckedAt === null ? null : new Date(lastCheckedAt).toISOString(),
+    latestRecordRetrievedAt: retrieved.at(-1) ?? null,
+    latestObservationAt: observations.at(-1) ?? null,
+    recordCount: records.length,
+  }
+}
+
+function sourceHealthFromSnapshot(snapshot: FieldSnapshot, state: PublicSourceHealth['state'] = 'cached'): Record<LocalPublicSource, PublicSourceHealth> {
+  const healthForGroup = (group: SourceGroup): PublicSourceHealth => {
+    const records = recordsFor(snapshot.sources, group)
+    return makeSourceHealth(records, records.length ? state : 'unavailable', null)
+  }
+  return {
+    reading: healthForGroup('reading'),
+    usgs: healthForGroup('usgs'),
+    eonet: healthForGroup('eonet'),
+  }
+}
+
 /** Latest snapshot as JSON: in-memory first, then the on-disk cache. */
 export function cachedPublicField(now = Date.now()): string | null {
   const shared = sharedClient()
@@ -123,10 +167,11 @@ export function cachedPublicField(now = Date.now()): string | null {
   // A cache read must not erase an earlier refresh/source failure disclosure.
   if (latestStatus.state !== 'error' && latestStatus.state !== 'stale') {
     const stale = current !== null && now - Date.parse(current.createdAt) > SHARED_SNAPSHOT_STALE_AFTER_MS
+    const health = latestStatus.sourceHealth ?? (current ? sourceHealthFromSnapshot(current) : undefined)
     publishStatus(current
       ? stale
-        ? localStatus('stale', 'Showing this device’s cached public snapshot, which is older than 2 hours.', current.createdAt)
-        : localStatus('current', 'Showing the latest independently collected public snapshot from this device.', current.createdAt)
+        ? localStatus('stale', 'Showing this device’s cached public snapshot, which is older than 2 hours.', current.createdAt, health)
+        : localStatus('current', 'Showing the latest available independent public records; per-source freshness is shown below.', current.createdAt, health)
       : localStatus('error', 'No verified public snapshot is cached on this device.'))
   }
   return current ? JSON.stringify(current) : null
@@ -294,7 +339,12 @@ export async function refreshPublicField(now = Date.now()): Promise<FieldSnapsho
   }
   current ??= readCache()
   const previous = current
-  publishStatus(localStatus('fetching', 'Refreshing independent public sources.', previous?.createdAt ?? null))
+  publishStatus(localStatus(
+    'fetching',
+    'Checking independent public sources; per-source freshness is shown below.',
+    previous?.createdAt ?? null,
+    latestStatus.sourceHealth ?? (previous ? sourceHealthFromSnapshot(previous) : undefined),
+  ))
   const expectedDay = utcMidnight(now - DAY_MS).toISOString().slice(0, 10).replace(/-/g, '')
   const readingDue = readingDayOf(previous) !== expectedDay && now - readingCheckedAt >= READING_CHECK_MS
   const [reading, usgs, eonet] = await Promise.all([
@@ -308,10 +358,25 @@ export async function refreshPublicField(now = Date.now()): Promise<FieldSnapsho
     ...(usgs ?? recordsOf(previous, 'usgs')),
     ...(eonet ?? recordsOf(previous, 'eonet')),
   ]
+  const readingRecords = recordsFor(records, 'reading')
+  const usgsRecords = recordsFor(records, 'usgs')
+  const eonetRecords = recordsFor(records, 'eonet')
+  const sourceHealth: Record<LocalPublicSource, PublicSourceHealth> = {
+    reading: makeSourceHealth(
+      readingRecords,
+      readingDue
+        ? reading === null ? readingRecords.length ? 'failed' : 'unavailable'
+          : reading.length === 0 && readingRecords.length > 0 ? 'cached' : 'current'
+        : failing.has('reading') ? readingRecords.length ? 'failed' : 'unavailable' : 'not-due',
+      readingDue ? now : readingCheckedAt || null,
+    ),
+    usgs: makeSourceHealth(usgsRecords, usgs === null ? usgsRecords.length ? 'failed' : 'unavailable' : 'current', now),
+    eonet: makeSourceHealth(eonetRecords, eonet === null ? eonetRecords.length ? 'failed' : 'unavailable' : 'current', now),
+  }
   if (records.length === 0) {
     publishStatus(previous
-      ? localStatus('stale', `Public source refresh failed (${[...failing].join(', ')}); keeping this device's last verified snapshot.`, previous.createdAt)
-      : localStatus('error', 'No public source returned a verified snapshot.'))
+      ? localStatus('stale', `Public source refresh failed (${[...failing].join(', ')}); keeping this device's last verified snapshot.`, previous.createdAt, sourceHealth)
+      : localStatus('error', 'No public source returned a verified snapshot.', null, sourceHealth))
     return previous
   }
   const snapshot = publicFieldSnapshot(records, now, usgs !== null)
@@ -328,11 +393,11 @@ export async function refreshPublicField(now = Date.now()): Promise<FieldSnapsho
     const retained = failedGroups.length
       ? ` Some sources also failed (${failedGroups.join(', ')}), so their prior cached records were retained.`
       : ''
-    publishStatus(localStatus('error', `The refreshed public snapshot is available in memory, but its local cache could not be written.${retained}`, snapshot.createdAt))
+    publishStatus(localStatus('error', `The refreshed public snapshot is available in memory, but its local cache could not be written.${retained}`, snapshot.createdAt, sourceHealth))
   } else {
     publishStatus(failedGroups.length
-      ? localStatus('stale', `Some independent public sources failed (${failedGroups.join(', ')}); cached records were retained for those sources.`, snapshot.createdAt)
-      : localStatus('current', 'Using independently collected public sources from this device.', snapshot.createdAt))
+      ? localStatus('stale', `Some independent public sources failed (${failedGroups.join(', ')}); retained records remain available. Per-source check and record times are shown below.`, snapshot.createdAt, sourceHealth)
+      : localStatus('current', 'Using the latest available independent public records; per-source freshness is shown below.', snapshot.createdAt, sourceHealth))
   }
   return snapshot
 }

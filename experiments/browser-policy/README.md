@@ -49,6 +49,18 @@ On 2026-10-29 with Electron 45.0.0 / Chromium 156.0.8078.48 on macOS arm64:
   net::ERR_CERT_AUTHORITY_INVALID / -202. The production certificate helper
   prevented the default and called callback(false); the fixture marker was
   absent after the failed navigation.
+- An HTTP top-level navigation redirected to that self-signed HTTPS origin;
+  Electron reported `isMainFrame: true`, the production helper prevented the
+  default and called `callback(false)`, and the target failed with
+  `ERR_CERT_AUTHORITY_INVALID` / -202.
+- An HTTP parent page loaded an HTTPS iframe with the same invalid certificate.
+  Electron reported `isMainFrame: false`; the helper prevented the default
+  and called `callback(false)`. The parent document stayed loaded and its
+  marker and heading remained readable.
+- Two concurrent HTTP downloads with the same `Content-Disposition` filename
+  completed in the runner's temporary downloads directory as
+  `same-name.txt` and `same-name (1).txt`; both saved payloads matched their
+  expected bytes. The runner removes this directory at exit.
 - profileDirectoryRemovedAfterRun was true in the evidence report.
 
 ## Limits
@@ -62,15 +74,21 @@ camera access. Resetting a saved permission decision does not stop an existing
 media track in this probe. The probe does not exercise the production UI's
 behavior for stopping/reloading active captures or dispatching device-change
 events. It also does not test microphone, location, notifications, clipboard,
-OS-dialog races, renderer process crash handling, redirects, subframes, expired
-certificates, hostname mismatch, public CA trust, WebRTC, other platforms, or
-certificate exception behavior.
+OS-dialog races, renderer process crash handling, expiry, hostname mismatch,
+public CA trust, WebRTC, or other platforms. The certificate matrix uses one
+temporary self-signed localhost certificate, so it does not characterize other
+certificate errors. No trust override was installed: Electron documents
+`setCertificateVerifyProc` as accepting a certificate when its callback returns
+`0`, which would bypass the exact failure under test. These results do not
+establish broader redirect or iframe policy beyond the exercised loopback cases
+and do not test certificate exception behavior.
 
-Electron's official certificate-error app event defines the event callback
-and default handling; the Session API requires permission request and check
+Electron's official `certificate-error` app event defines `isMainFrame`, the
+event callback, and default handling; the Session API requires permission request and check
 handlers for complete permission handling. The probe's sandboxed renderer
 preferences use Electron's BrowserWindow webPreferences. References:
 
 - https://www.electronjs.org/docs/latest/api/app#event-certificate-error
+- https://www.electronjs.org/docs/latest/api/session#sessetcertificateverifyprocproc
 - https://www.electronjs.org/docs/latest/api/session#sessetpermissionrequesthandlerhandler
 - https://www.electronjs.org/docs/latest/api/browser-window#new-browserwindowoptions

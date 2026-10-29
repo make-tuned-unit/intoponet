@@ -21,6 +21,11 @@ const localRecord: SourceRecord = {
   topics: ['civic-memory'], weight: 1, publishedAt: new Date(fixtureTime).toISOString(),
   measurement: { kind: 'declared-index', value: 1, unit: 'index', sourceId: 'example', sourceUrl: 'https://example.org/metric', transformation: 'test fixture' },
 }
+const localGroupRecords = [
+  localRecord,
+  { ...localRecord, id: 'usgs-local-fixture', title: 'Retained quake fixture', url: 'https://example.org/usgs' },
+  { ...localRecord, id: 'eonet-local-fixture', title: 'Retained event fixture', url: 'https://example.org/eonet' },
+]
 
 async function localModule(dir: string) {
   process.env['INTOPONET_TEST_USER_DATA'] = dir
@@ -102,6 +107,62 @@ describe('local public-field cache status', () => {
     expect(JSON.parse(cached!).id).toBe(snapshot.id)
     expect(field.publicFieldStatus()).toMatchObject({ state: 'stale', evaluationTime: snapshot.createdAt })
     expect(field.publicFieldStatus().message).toContain('older than 2 hours')
+  })
+
+  it('shows the age of retained records when source failures regenerate the snapshot time', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'intoponet-public-field-local-'))
+    dirs.push(dir)
+    const snapshot = publicFieldSnapshot(localGroupRecords, fixtureTime, true)
+    await writeFile(join(dir, 'public-field-snapshot.json'), JSON.stringify(snapshot))
+    const field = await localModule(dir)
+    globalThis.fetch = (async () => new Response('', { status: 503 })) as typeof fetch
+    const now = fixtureTime + 4 * 60 * 60 * 1_000
+
+    const refreshed = await field.refreshPublicField(now)
+    const status = field.publicFieldStatus()
+
+    expect(refreshed?.createdAt).toBe(new Date(now).toISOString())
+    expect(refreshed?.sources.every((record) => record.retrievedAt === new Date(fixtureTime).toISOString())).toBe(true)
+    expect(status.sourceHealth).toMatchObject({
+      reading: { state: 'failed', lastCheckedAt: new Date(now).toISOString(), latestRecordRetrievedAt: new Date(fixtureTime).toISOString(), recordCount: 1 },
+      usgs: { state: 'failed', latestRecordRetrievedAt: new Date(fixtureTime).toISOString(), recordCount: 1 },
+      eonet: { state: 'failed', latestRecordRetrievedAt: new Date(fixtureTime).toISOString(), recordCount: 1 },
+    })
+  })
+
+  it('marks Wikipedia intentionally not due while daily USGS and EONET checks continue', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'intoponet-public-field-local-'))
+    dirs.push(dir)
+    const field = await localModule(dir)
+    const now = Date.parse('2026-10-23T12:34:56.000Z')
+    const checkedUrls: string[] = []
+    const topPayload = { items: [{ articles: [{ article: 'Kehlsteinhaus', views: 120_000, rank: 1 }] }] }
+    const pagePayload = { query: { pages: [{ title: 'Kehlsteinhaus', coordinates: [{ lat: 47.6115, lon: 13.0421, primary: true, globe: 'earth' }] }] } }
+    globalThis.fetch = (async (input) => {
+      const url = String(input)
+      checkedUrls.push(url)
+      if (url.startsWith('https://wikimedia.org/api/rest_v1/metrics/pageviews/top/')) return new Response(JSON.stringify(topPayload))
+      if (url.startsWith('https://en.wikipedia.org/w/api.php')) return new Response(JSON.stringify(pagePayload))
+      if (url.includes('earthquake.usgs.gov')) return new Response(JSON.stringify({ features: [] }))
+      if (url.includes('eonet.gsfc.nasa.gov')) return new Response(JSON.stringify({ events: [] }))
+      return new Response('', { status: 404 })
+    }) as typeof fetch
+
+    const first = await field.refreshPublicField(now)
+    const firstReadingCheck = field.publicFieldStatus().sourceHealth?.reading.lastCheckedAt
+    expect(first?.sources.some((record) => record.id.startsWith('wikitop-'))).toBe(true)
+    expect(firstReadingCheck).toBe(new Date(now).toISOString())
+    checkedUrls.length = 0
+
+    const second = await field.refreshPublicField(now + 20 * 60 * 1_000)
+    const readingStatus = field.publicFieldStatus().sourceHealth?.reading
+
+    expect(second).not.toBeNull()
+    expect(readingStatus).toMatchObject({ state: 'not-due', lastCheckedAt: firstReadingCheck, latestRecordRetrievedAt: new Date(now).toISOString(), recordCount: 1 })
+    expect(checkedUrls).toEqual([
+      'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_week.geojson',
+      'https://eonet.gsfc.nasa.gov/api/v3/events?status=open&days=30&limit=200',
+    ])
   })
 
   it('preserves an earlier source-failure status when cached data is read again', async () => {

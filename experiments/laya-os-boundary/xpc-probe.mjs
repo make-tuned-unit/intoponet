@@ -1,4 +1,4 @@
-import { copyFile, lstat, mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
+import { copyFile, lstat, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { spawn } from 'node:child_process'
@@ -14,18 +14,34 @@ const here = path.dirname(fileURLToPath(import.meta.url))
 const token = randomUUID().replaceAll('-', '').slice(0, 16)
 const temp = await mkdtemp(path.join(os.tmpdir(), 'laya-xpc-probe-'))
 const containerRoot = path.join(os.homedir(), 'Library', 'Containers')
+const cachesRoot = path.join(os.homedir(), 'Library', 'Caches')
 const baseID = `org.intoponet.LayaIsolationProbe.${token}`
 const cases = [
   { mode: 'allowed', networkClient: true },
   { mode: 'denied', networkClient: false },
 ]
 const ownedContainers = []
+let fixtureDir
 
 try {
+  await mkdir(cachesRoot, { recursive: true })
+  fixtureDir = await mkdtemp(path.join(cachesRoot, `laya-xpc-synthetic-fixture-${token}-`))
+  const fixturePath = path.join(fixtureDir, 'synthetic-model.bin')
+  const fixtureBytes = Buffer.from('synthetic fixture outside service container\n', 'utf8')
+  await writeFile(fixturePath, fixtureBytes, { mode: 0o600, flag: 'wx' })
+  if (!(await readFile(fixturePath)).equals(fixtureBytes) || path.resolve(fixturePath).startsWith(`${path.resolve(containerRoot)}${path.sep}`)) {
+    throw new Error('Synthetic fixture setup failed or was not outside the service container root')
+  }
+
   const hostBinary = path.join(temp, 'ProbeHost')
   const serviceBinary = path.join(temp, 'ProbeService')
-  await command('xcrun', ['swiftc', '-O', '-framework', 'Foundation', path.join(here, 'xpc-host.swift'), '-o', hostBinary])
-  await command('xcrun', ['swiftc', '-O', '-framework', 'Foundation', path.join(here, 'xpc-service.swift'), '-o', serviceBinary])
+  const serviceSourcePath = path.join(temp, 'ProbeService.swift')
+  const serviceSource = (await readFile(path.join(here, 'xpc-service.swift')))
+    .toString('utf8')
+    .replace('__LAYA_PROBE_FIXTURE_PATH__', swiftString(fixturePath))
+  await writeFile(serviceSourcePath, serviceSource, { mode: 0o600, flag: 'wx' })
+  await command('xcrun', ['swiftc', '-O', '-framework', 'Foundation', '-framework', 'CryptoKit', serviceSourcePath, '-o', serviceBinary])
+  await command('xcrun', ['swiftc', '-O', '-framework', 'Foundation', '-framework', 'CryptoKit', path.join(here, 'xpc-host.swift'), '-o', hostBinary])
 
   const results = []
   for (const testCase of cases) {
@@ -96,6 +112,7 @@ try {
     signing: 'ad-hoc inside temporary app bundles',
     hostAndServiceIDsArePerRun: true,
     results,
+    syntheticFixtureOutsideContainer: true,
     sandboxContainers: cleanup,
   }, null, 2))
 } catch (error) {
@@ -107,6 +124,7 @@ try {
     console.error(`Could not clean the exact probe-owned sandbox container: ${error instanceof Error ? error.message : String(error)}`)
     process.exitCode = 1
   })
+  if (fixtureDir) await rm(fixtureDir, { recursive: true, force: true })
   await rm(temp, { recursive: true, force: true })
 }
 
@@ -156,6 +174,10 @@ async function lstatOrNull(file) {
 function entitlements(networkClient) {
   const network = networkClient ? '<key>com.apple.security.network.client</key><true/>' : ''
   return `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0"><dict><key>com.apple.security.app-sandbox</key><true/>${network}</dict></plist>\n`
+}
+
+function swiftString(value) {
+  return JSON.stringify(value)
 }
 
 function plist(value) {

@@ -8,8 +8,8 @@
       "architecture": "arm64"
     },
     "fixture": {
-      "httpOrigin": "http://localhost:50788",
-      "alternateLoopbackOrigin": "http://127.0.0.1:50788",
+      "httpOrigin": "http://localhost:52310",
+      "alternateLoopbackOrigin": "http://127.0.0.1:52310",
       "selfSignedTlsHost": "localhost",
       "serverBindings": [
         "127.0.0.1"
@@ -19,7 +19,7 @@
       "secureContext": true,
       "initialCameraPermission": "denied",
       "firstRequest": {
-        "origin": "http://localhost:50788",
+        "origin": "http://localhost:52310",
         "kinds": [
           "camera"
         ]
@@ -48,7 +48,7 @@
         ],
         "activeCaptureRemainsLiveAfterReset": true,
         "subsequentPrompt": {
-          "origin": "http://localhost:50788",
+          "origin": "http://localhost:52310",
           "kinds": [
             "camera"
           ],
@@ -59,7 +59,7 @@
           "name": "NotAllowedError"
         }
       },
-      "blockedOrigin": "http://127.0.0.1:50788",
+      "blockedOrigin": "http://127.0.0.1:52310",
       "blockedCapture": {
         "ok": false,
         "name": "NotAllowedError"
@@ -68,7 +68,7 @@
       "blockedPermissionCheck": false,
       "blockedDecisionRetained": true,
       "ownerLifecycle": {
-        "requestOrigin": "http://127.0.0.1:50788",
+        "requestOrigin": "http://127.0.0.1:52310",
         "pendingBeforeNavigation": 1,
         "pendingAfterNavigation": 0,
         "callbackGranted": false,
@@ -83,31 +83,31 @@
       ],
       "requests": [
         {
-          "origin": "http://localhost:50788",
+          "origin": "http://localhost:52310",
           "kinds": [
             "camera"
           ]
         },
         {
-          "origin": "http://localhost:50788",
+          "origin": "http://localhost:52310",
           "kinds": [
             "camera"
           ]
         },
         {
-          "origin": "http://127.0.0.1:50788",
+          "origin": "http://127.0.0.1:52310",
           "kinds": [
             "camera"
           ]
         },
         {
-          "origin": "http://127.0.0.1:50788",
+          "origin": "http://127.0.0.1:52310",
           "kinds": [
             "camera"
           ]
         },
         {
-          "origin": "http://127.0.0.1:50788",
+          "origin": "http://127.0.0.1:52310",
           "kinds": [
             "camera"
           ]
@@ -117,8 +117,23 @@
     "certificate": {
       "events": [
         {
-          "url": "https://localhost:50789/fixture",
+          "url": "https://localhost:52311/fixture",
           "error": "net::ERR_CERT_AUTHORITY_INVALID",
+          "isMainFrame": true,
+          "prevented": true,
+          "callbackAllow": false
+        },
+        {
+          "url": "https://localhost:52311/fixture?redirect=1",
+          "error": "net::ERR_CERT_AUTHORITY_INVALID",
+          "isMainFrame": true,
+          "prevented": true,
+          "callbackAllow": false
+        },
+        {
+          "url": "https://localhost:52311/fixture?subframe=1",
+          "error": "net::ERR_CERT_AUTHORITY_INVALID",
+          "isMainFrame": false,
           "prevented": true,
           "callbackAllow": false
         }
@@ -127,12 +142,69 @@
         {
           "errorCode": -202,
           "description": "ERR_CERT_AUTHORITY_INVALID",
-          "validatedURL": "https://localhost:50789/fixture"
+          "validatedURL": "https://localhost:52311/fixture"
         }
       ],
       "denied": true,
       "navigationFailed": true,
-      "fixtureContentLoaded": false
+      "fixtureContentLoaded": false,
+      "redirectedTopLevel": {
+        "events": [
+          {
+            "url": "https://localhost:52311/fixture?redirect=1",
+            "error": "net::ERR_CERT_AUTHORITY_INVALID",
+            "isMainFrame": true,
+            "prevented": true,
+            "callbackAllow": false
+          }
+        ],
+        "failures": [
+          {
+            "errorCode": -202,
+            "description": "ERR_CERT_AUTHORITY_INVALID",
+            "validatedURL": "https://localhost:52311/fixture?redirect=1"
+          }
+        ],
+        "denied": true,
+        "navigationFailed": true
+      },
+      "untrustedIframe": {
+        "events": [
+          {
+            "url": "https://localhost:52311/fixture?subframe=1",
+            "error": "net::ERR_CERT_AUTHORITY_INVALID",
+            "isMainFrame": false,
+            "prevented": true,
+            "callbackAllow": false
+          }
+        ],
+        "parentMarker": "browser-policy-parent",
+        "parentTitle": "HTTP parent stayed usable",
+        "parentRemainedUsable": true,
+        "denied": true
+      }
+    },
+    "download": {
+      "results": [
+        {
+          "filename": "same-name.txt",
+          "state": "completed",
+          "bytes": 29,
+          "expectedPayloadMatched": true
+        },
+        {
+          "filename": "same-name (1).txt",
+          "state": "completed",
+          "bytes": 30,
+          "expectedPayloadMatched": true
+        }
+      ],
+      "distinctReservedFilenames": true,
+      "payloadsIntact": true,
+      "temporaryDirectoryContains": [
+        "same-name (1).txt",
+        "same-name.txt"
+      ]
     },
     "conclusions": {
       "permissionAllowed": true,
@@ -143,16 +215,23 @@
       "pendingCancelledOnDestroy": true,
       "certDenied": true,
       "certificateNavigationFailed": true,
-      "certificateFixtureNotLoaded": true
+      "certificateFixtureNotLoaded": true,
+      "redirectDenied": true,
+      "redirectNavigationFailed": true,
+      "iframeCertificateDenied": true,
+      "parentRemainedUsable": true,
+      "downloadNamesDistinct": true,
+      "downloadPayloadsIntact": true
     },
     "limitations": [
       "The probe uses a temporary Electron BrowserWindow and in-memory permission store, not the packaged Intoponet UI/WebContentsView.",
       "Camera uses Chromium fake-device mode; no camera hardware or macOS camera permission prompt is invoked.",
-      "The certificate is a temporary self-signed localhost certificate; this does not test expired, hostname-mismatch, public-CA, redirect, or subframe certificate matrices.",
+      "The temporary self-signed localhost certificate was rejected for a direct navigation, an HTTP redirect target, and an HTTPS iframe. Expired certificates, hostname mismatch, public-CA trust, and other certificate errors remain untested.",
+      "Two same-name HTTP downloads were written to a runner-owned temporary directory; this is not a test against the user Downloads directory or a packaged release.",
       "This probe does not test OS permission grant/revocation behavior, persistent permission-file storage, renderer process crashes, private-session cleanup, or cross-platform behavior."
     ]
   },
-  "generatedAt": "2026-10-29T22:32:08.869Z",
+  "generatedAt": "2026-10-29T23:08:54.988Z",
   "profileIsolation": {
     "usedTemporaryUserDataDirectory": true,
     "profileDirectoryRemovedAfterRun": true,

@@ -14,6 +14,7 @@ const evidencePath = join(here, 'evidence/native-browser-2026-10-29.json')
 const tempRoot = await mkdtemp(join(tmpdir(), 'intoponet-browser-policy-'))
 const profile = join(tempRoot, 'profile')
 const buildDir = join(tempRoot, 'build')
+const downloads = join(tempRoot, 'downloads')
 const certificate = join(tempRoot, 'localhost-cert.pem')
 const key = join(tempRoot, 'localhost-key.pem')
 const fixture = join(tempRoot, 'fixture.html')
@@ -25,6 +26,7 @@ let timeout
 try {
   await mkdir(profile, { recursive: true })
   await mkdir(buildDir, { recursive: true })
+  await mkdir(downloads, { recursive: true })
   await copyFile(join(here, 'fixture.html'), fixture)
   const generated = spawnSync('/usr/bin/openssl', [
     'req', '-x509', '-newkey', 'rsa:2048', '-nodes',
@@ -52,6 +54,7 @@ try {
     certificate,
     key,
     fixture,
+    downloads,
   ], { cwd: root, env: electronEnv, stdio: ['ignore', 'pipe', 'pipe'] })
   child.stdout.setEncoding('utf8').on('data', (part) => { output += part })
   child.stderr.setEncoding('utf8').on('data', (part) => { errors += part })

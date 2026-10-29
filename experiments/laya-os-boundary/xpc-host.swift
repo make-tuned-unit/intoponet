@@ -1,8 +1,11 @@
 import Foundation
 import Darwin
+import CryptoKit
 
 @objc protocol LayaProbeProtocol {
     func probe(port: Int, udpPort: Int, withReply reply: @escaping (String, Bool, String, Int, String, Bool, String, Int, String) -> Void)
+    func inspectModel(_ bytes: NSData, expectedDigest: NSData, withReply reply: @escaping (String, Int, String, String) -> Void)
+    func inspectOutsideFixture(withReply reply: @escaping (Bool, Int, String) -> Void)
 }
 
 final class Canary {
@@ -124,7 +127,7 @@ func sendUDPToLoopback(_ port: Int) -> (sent: Bool, errorCode: Int, errorText: S
     address.sin_family = sa_family_t(AF_INET)
     address.sin_port = in_port_t(port).bigEndian
     address.sin_addr = in_addr(s_addr: inet_addr("127.0.0.1"))
-    var bytes: [UInt8] = [0x48, 0x4f, 0x53, 0x54]
+    let bytes: [UInt8] = [0x48, 0x4f, 0x53, 0x54]
     let sent = withUnsafePointer(to: &address) { addressPointer in
         addressPointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { socketAddress in
             bytes.withUnsafeBytes { data in
@@ -174,6 +177,47 @@ do {
         connection.invalidate(); canary.close(); udpCanary.close()
         throw NSError(domain: "XPC", code: 2, userInfo: [NSLocalizedDescriptionKey: "XPC call timed out"])
     }
+
+    let modelBytes = Data((0..<1024).map { UInt8($0 & 0xff) })
+    let expectedDigest = Data(SHA256.hash(data: modelBytes))
+    let expectedDigestText = expectedDigest.map { String(format: "%02x", $0) }.joined()
+    let expectedChecksum = String(modelBytes.reduce(UInt64(0)) { ($0 + UInt64($1)) & 0xffff_ffff })
+    let emptyBytes = Data()
+    let emptyDigest = Data(SHA256.hash(data: emptyBytes))
+    var tamperedDigestBytes = [UInt8](expectedDigest)
+    tamperedDigestBytes[0] ^= 0xff
+    let tamperedDigest = Data(tamperedDigestBytes)
+    let oversizedBytes = Data(repeating: 0x5a, count: 4097)
+    let oversizedDigest = Data(SHA256.hash(data: oversizedBytes))
+
+    func modelRequest(bytes: Data, digest: Data) throws -> (String, Int, String, String) {
+        let completion = DispatchSemaphore(value: 0)
+        var response: (String, Int, String, String)?
+        proxy.inspectModel(bytes as NSData, expectedDigest: digest as NSData) { status, byteCount, digestText, checksum in
+            response = (status, byteCount, digestText, checksum)
+            completion.signal()
+        }
+        guard completion.wait(timeout: .now() + 10) == .success, let response else {
+            throw NSError(domain: "XPC", code: 3, userInfo: [NSLocalizedDescriptionKey: "Synthetic model request timed out"])
+        }
+        return response
+    }
+
+    let validModel = try modelRequest(bytes: modelBytes, digest: expectedDigest)
+    let emptyModel = try modelRequest(bytes: emptyBytes, digest: emptyDigest)
+    let malformedModel = try modelRequest(bytes: modelBytes, digest: Data([0x01, 0x02]))
+    let tamperedModel = try modelRequest(bytes: modelBytes, digest: tamperedDigest)
+    let oversizedModel = try modelRequest(bytes: oversizedBytes, digest: oversizedDigest)
+    let fileCompletion = DispatchSemaphore(value: 0)
+    var outsideFixture: (Bool, Int, String)?
+    proxy.inspectOutsideFixture { readable, errorCode, errorText in
+        outsideFixture = (readable, errorCode, errorText)
+        fileCompletion.signal()
+    }
+    guard fileCompletion.wait(timeout: .now() + 10) == .success, let outsideFixture else {
+        throw NSError(domain: "XPC", code: 4, userInfo: [NSLocalizedDescriptionKey: "Synthetic filesystem probe timed out"])
+    }
+
     Thread.sleep(forTimeInterval: 0.15)
     connection.invalidate()
     canary.close()
@@ -193,6 +237,17 @@ do {
         "serviceUdpError": result.8,
         "loopbackUdpCanaryDatagrams": udpCanary.received,
         "serviceReply": result.0,
+        "syntheticModel": [
+            "expectedSize": modelBytes.count,
+            "expectedDigest": expectedDigestText,
+            "expectedChecksum": expectedChecksum,
+            "validRequest": ["status": validModel.0, "bytes": validModel.1, "digest": validModel.2, "checksum": validModel.3],
+            "emptyRequest": ["status": emptyModel.0, "bytes": emptyModel.1, "detail": emptyModel.3],
+            "malformedDigestRequest": ["status": malformedModel.0, "bytes": malformedModel.1, "detail": malformedModel.3],
+            "tamperedDigestRequest": ["status": tamperedModel.0, "bytes": tamperedModel.1, "detail": tamperedModel.3],
+            "oversizedRequest": ["status": oversizedModel.0, "bytes": oversizedModel.1],
+        ],
+        "outsideSyntheticFixture": ["readable": outsideFixture.0, "errno": outsideFixture.1, "error": outsideFixture.2],
         "expectedNetworkClient": expectedAllowed,
         "result": expectedAllowed
             ? (result.1 && canary.accepted == 2 && result.5 && udpCanary.received == 2 ? "network-client-positive-control-passed" : "network-client-positive-control-failed")
@@ -200,7 +255,16 @@ do {
     ]
     let data = try JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted, .sortedKeys])
     print(String(decoding: data, as: UTF8.self))
-    if report["result"] as? String == "network-client-positive-control-failed" || report["result"] as? String == "service-network-denial-failed" { exit(1) }
+    let modelPassed = validModel.0 == "accepted" && validModel.1 == modelBytes.count && validModel.2 == expectedDigestText && validModel.3 == expectedChecksum
+        && emptyModel.0 == "rejected-empty" && emptyModel.1 == 0 && emptyModel.3 == "empty-payload"
+        && malformedModel.0 == "rejected-digest" && malformedModel.3 == "invalid-digest-length"
+        && tamperedModel.0 == "rejected-digest" && tamperedModel.3 == "digest-mismatch"
+        && oversizedModel.0 == "rejected-size" && oversizedModel.1 == oversizedBytes.count
+    let fileDenied = !outsideFixture.0 && outsideFixture.1 != 0
+    let networkPassed = expectedAllowed
+        ? report["result"] as? String == "network-client-positive-control-passed"
+        : report["result"] as? String == "service-network-denial-observed"
+    if !networkPassed || !modelPassed || !fileDenied { exit(1) }
 } catch {
     fputs("Probe failed: \(error)\n", stderr)
     exit(1)

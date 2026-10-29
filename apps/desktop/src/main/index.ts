@@ -45,6 +45,7 @@ import { shellShortcutForInput } from './shellShortcuts'
 import { bindPermissionOwnerLifecycle, kindsFor, originOf, SitePermissionBroker, SitePermissionStore } from './sitePermissions'
 import { popupPlan, PopupLimiter } from './popups'
 import { rejectCertificateErrorForSession } from './browserCertificatePolicy'
+import { reserveDownloadPath, sanitizeDownloadFilename } from './downloadReservation'
 import { CrashRecoveryPolicy } from './crashRecovery'
 import { BeaconPublisher } from './beacons/publisher'
 import { DEFAULT_BEACON_REGISTRY } from './beacons/defaults'
@@ -478,20 +479,6 @@ function deleteSealedLibrary(): void {
   if (existsSync(privateLibraryPath())) unlinkSync(privateLibraryPath())
 }
 
-function uniqueDownloadPath(filename: string): string {
-  const downloads = app.getPath('downloads')
-  const extIndex = filename.lastIndexOf('.')
-  const stem = extIndex > 0 ? filename.slice(0, extIndex) : filename
-  const ext = extIndex > 0 ? filename.slice(extIndex) : ''
-  let candidate = join(downloads, filename)
-  let index = 1
-  while (existsSync(candidate)) {
-    candidate = join(downloads, `${stem} (${index})${ext}`)
-    index += 1
-  }
-  return candidate
-}
-
 function navigationFailureReason(code: number, description: string): string {
   if (code <= -200 && code >= -219) {
     return `The site certificate was not trusted (${description}). The page was not loaded.`
@@ -518,14 +505,24 @@ function wireDownloadSession(partition = 'persist:intoponet-default'): void {
     rejectCertificateErrorForSession(event, webContents, browsing, callback)
   })
   browsing.on('will-download', (_event, item) => {
-    const filename = item.getFilename() || 'download'
-    const destination = uniqueDownloadPath(filename)
-    item.setSavePath(destination)
+    const requestedFilename = item.getFilename() || 'download'
+    let reservation: ReturnType<typeof reserveDownloadPath> | null = null
+    try {
+      reservation = reserveDownloadPath(app.getPath('downloads'), requestedFilename)
+      item.setSavePath(reservation.path)
+    } catch {
+      item.cancel()
+      reservation?.cleanupIfEmpty()
+      emit({ type: 'download-finished', filename: sanitizeDownloadFilename(requestedFilename), path: '', state: 'interrupted' })
+      return
+    }
+    if (!reservation) return
     item.once('done', (_download, state) => {
+      if (state !== 'completed') reservation.cleanupIfEmpty()
       emit({
         type: 'download-finished',
-        filename,
-        path: destination,
+        filename: reservation.filename,
+        path: reservation.path,
         state,
       })
     })

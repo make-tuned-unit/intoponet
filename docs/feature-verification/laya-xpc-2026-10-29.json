@@ -14,6 +14,11 @@
       "hostUdpPositiveControlSent": true,
       "loopbackTcpCanaryConnections": 2,
       "loopbackUdpCanaryDatagrams": 2,
+      "outsideSyntheticFixture": {
+        "errno": 1,
+        "error": "Operation not permitted",
+        "readable": false
+      },
       "result": "network-client-positive-control-passed",
       "serviceConnectedToLoopback": true,
       "serviceReply": "synthetic inference service reply",
@@ -24,7 +29,37 @@
       "serviceTcpFailureOperation": "none",
       "serviceUdpErrno": 0,
       "serviceUdpError": "",
-      "serviceUdpFailureOperation": "none"
+      "serviceUdpFailureOperation": "none",
+      "syntheticModel": {
+        "emptyRequest": {
+          "bytes": 0,
+          "detail": "empty-payload",
+          "status": "rejected-empty"
+        },
+        "expectedChecksum": "130560",
+        "expectedDigest": "785b0751fc2c53dc14a4ce3d800e69ef9ce1009eb327ccf458afe09c242c26c9",
+        "expectedSize": 1024,
+        "malformedDigestRequest": {
+          "bytes": 1024,
+          "detail": "invalid-digest-length",
+          "status": "rejected-digest"
+        },
+        "oversizedRequest": {
+          "bytes": 4097,
+          "status": "rejected-size"
+        },
+        "tamperedDigestRequest": {
+          "bytes": 1024,
+          "detail": "digest-mismatch",
+          "status": "rejected-digest"
+        },
+        "validRequest": {
+          "bytes": 1024,
+          "checksum": "130560",
+          "digest": "785b0751fc2c53dc14a4ce3d800e69ef9ce1009eb327ccf458afe09c242c26c9",
+          "status": "accepted"
+        }
+      }
     },
     {
       "mode": "denied",
@@ -37,6 +72,11 @@
       "hostUdpPositiveControlSent": true,
       "loopbackTcpCanaryConnections": 1,
       "loopbackUdpCanaryDatagrams": 1,
+      "outsideSyntheticFixture": {
+        "errno": 1,
+        "error": "Operation not permitted",
+        "readable": false
+      },
       "result": "service-network-denial-observed",
       "serviceConnectedToLoopback": false,
       "serviceReply": "synthetic inference service reply",
@@ -47,27 +87,58 @@
       "serviceTcpFailureOperation": "connect",
       "serviceUdpErrno": 1,
       "serviceUdpError": "Operation not permitted",
-      "serviceUdpFailureOperation": "sendto"
+      "serviceUdpFailureOperation": "sendto",
+      "syntheticModel": {
+        "emptyRequest": {
+          "bytes": 0,
+          "detail": "empty-payload",
+          "status": "rejected-empty"
+        },
+        "expectedChecksum": "130560",
+        "expectedDigest": "785b0751fc2c53dc14a4ce3d800e69ef9ce1009eb327ccf458afe09c242c26c9",
+        "expectedSize": 1024,
+        "malformedDigestRequest": {
+          "bytes": 1024,
+          "detail": "invalid-digest-length",
+          "status": "rejected-digest"
+        },
+        "oversizedRequest": {
+          "bytes": 4097,
+          "status": "rejected-size"
+        },
+        "tamperedDigestRequest": {
+          "bytes": 1024,
+          "detail": "digest-mismatch",
+          "status": "rejected-digest"
+        },
+        "validRequest": {
+          "bytes": 1024,
+          "checksum": "130560",
+          "digest": "785b0751fc2c53dc14a4ce3d800e69ef9ce1009eb327ccf458afe09c242c26c9",
+          "status": "accepted"
+        }
+      }
     }
   ],
+  "syntheticFixtureOutsideContainer": true,
   "sandboxContainers": [
     {
-      "bundleID": "org.intoponet.LayaIsolationProbe.529867f689a04320.allowed.service",
+      "bundleID": "org.intoponet.LayaIsolationProbe.1dff69172fff4810.allowed.service",
       "existedBefore": false,
       "createdByProbe": true,
       "removed": false,
       "cleanupError": "EPERM from the OS while removing this exact container; left in place"
     },
     {
-      "bundleID": "org.intoponet.LayaIsolationProbe.529867f689a04320.denied.service",
+      "bundleID": "org.intoponet.LayaIsolationProbe.1dff69172fff4810.denied.service",
       "existedBefore": false,
       "createdByProbe": true,
       "removed": false,
       "cleanupError": "EPERM from the OS while removing this exact container; left in place"
     }
   ],
-  "checkedAt": "2026-10-29T22:30:18.366561+00:00",
-  "verification": "Parent rerun of paired synthetic XPC experiment; not production Laya",
+  "checkedAt": "2026-10-29T23:13:04.244801+00:00",
+  "verification": "Parent rerun: synthetic byte handoff, digest comparison and filesystem denial; not production Laya",
   "macOS": "26.2",
   "xcode": "Xcode 26.6\nBuild version 17F113"
 }

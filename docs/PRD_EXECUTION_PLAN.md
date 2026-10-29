@@ -120,6 +120,16 @@ An isolated, ad-hoc signed XPC prototype now demonstrates the supported App Sand
 
 All workspace typechecks and **665 tests** passed with zero skips (659 workspace/gold and six release-inventory tests), including an isolated PostgreSQL run. The rebuilt preview DMG/ZIP passed package checks. This supersedes the 647-test checkpoint. No installer, public endpoint or production inference helper was published.
 
+### Source freshness, downloads and XPC handoff — 29 October
+
+Local coverage details now distinguish source checks from record age: Wikipedia, USGS and EONET each report check state, latest record retrieval, latest observation and record count. Failed sources retain their original record dates; skipped Wikipedia cadence is explicit. Shared snapshots still use their immutable artifact status, and RSS remains a separate service.
+
+Download filenames are sanitized, UTF-8 bounded and exclusively reserved, preventing concurrent downloads from selecting the same destination. Cleanup checks the empty file's device/inode; unidentified placeholders are preserved rather than risking another file. Parent-reviewed unit tests cover collision, symlink, filesystem failure and cleanup paths. The native probe verified two simultaneous same-name downloads with intact distinct payloads in a temporary directory. It also verified TLS denial through redirects and embedded frames while the parent page remained usable. The UI now explains that forgetting a media permission does not stop active capture; closing or reloading the page is needed.
+
+The paired XPC prototype accepts and verifies bounded synthetic bytes and rejects empty, oversized, malformed-hash and mismatched-hash requests. Both services were denied access to a fixed synthetic file outside their containers, while TCP/UDP controls retained the expected entitlement-dependent outcomes. Parent rerun evidence is in `feature-verification/laya-xpc-2026-10-29.json`. Caller-supplied hashes establish consistency, not pinned model authenticity; the size check follows XPC deserialization. Real inference, transport bounds, peer validation, Electron integration and release signing remain open. Exact macOS-managed container leftovers are recorded.
+
+All workspace typechecks and **677 tests** passed with zero skips (671 workspace/gold plus six release-inventory tests), including registry tests against isolated PostgreSQL. The rebuilt unsigned preview passed package verification; no installer was published. This supersedes the 665-test checkpoint.
+
 ## Requirements still open
 
 - Strict Laya no-egress capability boundary (the sandbox prototype has a demonstrated WebRTC TCP escape path and is not production-integrated).

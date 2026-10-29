@@ -99,9 +99,10 @@ snapshot, the renderer may display the clearly labelled synthetic fixture.
   not resistant to coordinated pageview manipulation. Pageviews must not be
   presented as representative public opinion or importance.
 - Per-source failure can retain old records while the newly generated snapshot
-  receives a current creation time. Freshness is therefore snapshot-level and
-  can overstate the age of an individual cached source; per-source retrieval
-  freshness should be represented explicitly.
+  receives a current creation time. The coverage detail now separately reports each local source’s check state,
+  last attempt, latest record retrieval and latest observation time. The aggregate
+  creation time is not evidence that every source was freshly collected. These
+  fields summarize each source and do not establish every record’s age.
 - Network errors are logged by message in the host. Review logging and
   outbound traffic during release hardening; do not add browsing URLs, private
   library content or user-specific identifiers to fetches or logs.

@@ -132,6 +132,20 @@ export type PublicFieldStatus = {
   state: 'fetching' | 'current' | 'stale' | 'error'
   evaluationTime: string | null
   message: string
+  /** Present only for independently collected local sources; RSS is reported separately. */
+  sourceHealth?: Record<LocalPublicSource, PublicSourceHealth>
+}
+
+export type LocalPublicSource = 'reading' | 'usgs' | 'eonet'
+export type PublicSourceHealth = {
+  state: 'current' | 'cached' | 'not-due' | 'failed' | 'unavailable'
+  /** Latest request attempt, including failures; null when status was reconstructed from cache. */
+  lastCheckedAt: string | null
+  /** Latest record retrieval timestamp, distinct from the aggregate snapshot time. */
+  latestRecordRetrievedAt: string | null
+  /** Latest source window end or record publication time when available. */
+  latestObservationAt: string | null
+  recordCount: number
 }
 
 export interface BrowserHostApi {

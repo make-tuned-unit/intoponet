@@ -52,6 +52,7 @@ import {
   History,
 } from 'lucide-react'
 import { TranslateBar } from './translate/TranslateBar'
+import { formatPublicSourceHealth } from './globe/publicFieldStatus'
 import { SiteIcon } from './SiteIcon'
 import { FreeCoverageBar } from './access/FreeCoverageBar'
 import { learnedPaywalls, rememberPaywall } from './access/learnedPaywalls'
@@ -547,8 +548,9 @@ export function App() {
       return [{ id: location.id, label: location.label, lat: location.lat, lon: location.lon }]
     })
   }, [topicLocationOptions, topicLocations])
+  const publicSourceHealthNote = publicFieldStatus ? formatPublicSourceHealth(publicFieldStatus) : ''
   const publicFieldStatusNote = publicFieldStatus
-    ? `${publicFieldStatus.mode === 'shared' ? 'Shared mode' : 'Local mode'} · ${publicFieldStatus.sourceLabel}${publicFieldStatus.configuredOrigin ? ` (${publicFieldStatus.configuredOrigin})` : ''} · ${publicFieldStatus.state}: ${publicFieldStatus.message}`
+    ? `${publicFieldStatus.mode === 'shared' ? 'Shared mode' : 'Local mode'} · ${publicFieldStatus.sourceLabel}${publicFieldStatus.configuredOrigin ? ` (${publicFieldStatus.configuredOrigin})` : ''} · ${publicFieldStatus.state}: ${publicFieldStatus.message}${publicSourceHealthNote ? ` Source detail: ${publicSourceHealthNote}.` : ''}`
     : ''
   const fieldNote = publicSnapshot
     ? `${snapshotLabel(publicSnapshot)}${publicFieldStatusNote ? ` ${publicFieldStatusNote}` : ''}`
@@ -3522,7 +3524,12 @@ export function App() {
                 <SitePermissionChips
                   origin={pageOrigin}
                   map={sitePermissionMap}
-                  onReset={(kind) => void window.intoponet.sitePermissions.reset(pageOrigin, kind).then(setSitePermissionMap, () => undefined)}
+                  onReset={(kind) => void window.intoponet.sitePermissions.reset(pageOrigin, kind).then((map) => {
+                    setSitePermissionMap(map)
+                    setNotice(kind === 'camera' || kind === 'microphone'
+                      ? 'Saved permission cleared. Close or reload this page to stop any active camera or microphone capture.'
+                      : 'Saved permission cleared. This site will ask again.')
+                  }, () => setNotice('The saved permission could not be cleared. Try again.'))}
                 />
               )}
               <span className="shield-bar-actions">
