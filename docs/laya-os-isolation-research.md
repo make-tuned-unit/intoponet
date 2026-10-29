@@ -1,6 +1,7 @@
 # Laya OS-level isolation research
 
-**Date:** 2026-10-29  
+**Date:** 2026-10-29
+
 **Status:** Design research plus disposable `sandbox-exec` and XPC probes. No production migration or release isolation claim.
 
 ## Finding
