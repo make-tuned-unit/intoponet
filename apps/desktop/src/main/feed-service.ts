@@ -808,7 +808,7 @@ export class FeedFetchService {
         const minPoll = Math.max(MIN_POLL_MS, (source.activePollingMinSeconds ?? source.pollingMinSeconds ?? source.proposedPollingMinSeconds ?? 300) * 1_000)
         state.nextAttemptAt = timestamp(this.now() + Math.max(minPoll, maxAge))
         await this.persist()
-        result = asResult(sourceId, state, 'not-modified')
+        result = asResult(sourceId, state, 'not-modified', [], !noStore)
       } else if (!response.ok) {
         const retry = retryAfterMs(response.headers.get('retry-after'), this.now())
         await response.body?.cancel().catch(() => undefined)

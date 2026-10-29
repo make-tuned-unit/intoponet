@@ -3,7 +3,7 @@ import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync 
 import { join } from 'node:path'
 import type { PublicItem } from '@intoponet/field-snapshot'
 import { createAtomicFeedStorage, FeedFetchService, type FeedRegistry, type FeedRegistrySource } from '../feed-service'
-import { addCoverage, buildNewsDigest, type CoverageIntervals, type NewsFeedHealth, type NewsItemInput, type NewsSourceMeta } from '../../shared/news/newsDigest'
+import { addCoverage, buildNewsDigest, NEWS_COVERAGE_TOLERANCE_MS, parseNewsDigest, type CoverageIntervals, type NewsFeedHealth, type NewsItemInput, type NewsSourceMeta } from '../../shared/news/newsDigest'
 import type { FeedFetchResult } from '../feed-service'
 import newsFeeds from './newsFeeds.json'
 import internationalFeeds from './internationalFeeds.json'
@@ -35,7 +35,41 @@ const POLL_SECONDS = 20 * 60
 /** Four days, so the 24 h and previous-24 h windows stay comparable across restarts. */
 const RETENTION_DAYS = 4
 const COVERAGE_KEEP_MS = 4 * 24 * 60 * 60 * 1000
+const COVERAGE_SCHEMA_VERSION = 2
+const MAX_COVERAGE_CONTINUITY_MS = Math.max(POLL_SECONDS * 3 * 1_000, NEWS_COVERAGE_TOLERANCE_MS)
 const DIGEST_DEBOUNCE_MS = 4_000
+
+/** Record only continuous successful observation; an RSS item's publication date is not a fetch observation. */
+export function observeNewsCoverage(
+  result: Pick<FeedFetchResult, 'sourceId' | 'status' | 'persistenceAllowed'>,
+  coverage: CoverageIntervals,
+  lastFetch: Map<string, number>,
+  now = Date.now(),
+): void {
+  const sourceId = result.sourceId
+  const previousFetch = lastFetch.get(sourceId)
+  if ((previousFetch !== undefined && now < previousFetch) || (coverage[sourceId] ?? []).some(([, end]) => end > now)) {
+    // Wall-clock rollback invalidates future-dated observation spans.
+    coverage[sourceId] = []
+    lastFetch.delete(sourceId)
+  }
+  if (!result.persistenceAllowed || result.status === 'error') {
+    lastFetch.delete(sourceId)
+    if (!result.persistenceAllowed) coverage[sourceId] = []
+    return
+  }
+  if (result.status !== 'updated' && result.status !== 'not-modified') return
+
+  // A 200 refresh can contain old stories without proving the service observed
+  // that whole period. Start at the prior successful poll, or at this poll when
+  // continuity is unknown (including after an app restart or a failed request).
+  const prior = lastFetch.get(sourceId)
+  const start = prior !== undefined && now - prior <= MAX_COVERAGE_CONTINUITY_MS
+    ? prior
+    : now
+  lastFetch.set(sourceId, now)
+  coverage[sourceId] = addCoverage(coverage[sourceId] ?? [], [start, now], now - COVERAGE_KEEP_MS)
+}
 
 export function newsFeedEntries(): NewsFeedEntry[] {
   const seen = new Set<string>()
@@ -97,11 +131,7 @@ export function startNewsService(options: { userData: string; emit: (payload: st
     // Best effort only.
   }
   let latest: string | null = null
-  try {
-    if (existsSync(digestPath)) latest = readFileSync(digestPath, 'utf8')
-  } catch {
-    latest = null
-  }
+  latest = readCachedNewsDigest(digestPath)
   if (latest) options.emit(latest)
   if (!feeds.length) return { stop: () => undefined, latest: () => latest, trends: async () => ({ rising: [], fading: [], recentStories: 0, previousStories: 0, outlets: 0, uncompared: 0, latest: [], earlier: [] }) }
 
@@ -125,19 +155,7 @@ export function startNewsService(options: { userData: string; emit: (payload: st
   const coverage: CoverageIntervals = readCoverage(coveragePath, new Set(feeds.map((feed) => feed.sourceId)))
   const lastFetch = new Map<string, number>()
   const observe = (result: FeedFetchResult): void => {
-    const now = Date.now()
-    let start: number | null = null
-    if (result.status === 'updated') {
-      // The feed's own output spans from its oldest item to now.
-      const times = result.receivedItems.map((item) => Date.parse(item.publishedAt ?? item.discoveredAt)).filter(Number.isFinite)
-      if (times.length) start = Math.min(...times)
-    } else if (result.status === 'not-modified') {
-      // Unchanged since our previous successful fetch.
-      start = lastFetch.get(result.sourceId) ?? coverage[result.sourceId]?.at(-1)?.[1] ?? null
-    }
-    if (result.status === 'updated' || result.status === 'not-modified') lastFetch.set(result.sourceId, now)
-    if (start === null || start > now) return
-    coverage[result.sourceId] = addCoverage(coverage[result.sourceId] ?? [], [start, now], now - COVERAGE_KEEP_MS)
+    observeNewsCoverage(result, coverage, lastFetch)
   }
   const service = new FeedFetchService({
     registry: newsRegistry(feeds),
@@ -150,6 +168,7 @@ export function startNewsService(options: { userData: string; emit: (payload: st
     onResult: (result) => {
       // no-store feeds: keep their latest headlines in memory only, never on disk.
       if (!result.persistenceAllowed && result.status === 'updated') transient.set(result.sourceId, result.receivedItems)
+      else if (!result.persistenceAllowed) transient.delete(result.sourceId)
       else if (result.persistenceAllowed && result.status === 'updated') transient.delete(result.sourceId)
       observe(result)
       scheduleDigest()
@@ -172,6 +191,7 @@ export function startNewsService(options: { userData: string; emit: (payload: st
     const all = [...stored, ...memoryOnly]
     lastItems = all
     latest = JSON.stringify({
+      coverageSchemaVersion: COVERAGE_SCHEMA_VERSION,
       ...buildNewsDigest({ sources: meta, items: all, health, now, coverage }),
       global: buildGlobalStories({ sources: meta, items: all, now }),
       inTheNews,
@@ -180,11 +200,12 @@ export function startNewsService(options: { userData: string; emit: (payload: st
     try {
       // The on-disk copy (shown at the next launch) excludes no-store feeds.
       writeFileSync(digestPath, JSON.stringify({
+        coverageSchemaVersion: COVERAGE_SCHEMA_VERSION,
         ...buildNewsDigest({ sources: meta, items: stored, health, now, coverage }),
         global: buildGlobalStories({ sources: meta, items: stored, now }),
         inTheNews,
       }), { encoding: 'utf8', mode: 0o644 })
-      writeFileSync(coveragePath, JSON.stringify(coverage), { encoding: 'utf8', mode: 0o644 })
+      writeFileSync(coveragePath, JSON.stringify({ schemaVersion: COVERAGE_SCHEMA_VERSION, sources: coverage }), { encoding: 'utf8', mode: 0o644 })
     } catch {
       // The digest is rebuilt from the feed cache on the next update.
     }
@@ -219,8 +240,28 @@ export function startNewsService(options: { userData: string; emit: (payload: st
       const languages = [...new Set(meta.filter((source) => source.countryCode === place.countryCode && source.language).map((source) => source.language!))]
       const local = place.name && geonameId ? await localPlaceNames(geonameId, languages).catch(() => []) : []
       const aliases = [...new Set([...(place.aliases ?? []), ...local])].filter((alias) => alias !== place.name)
-      return placeTrends({ sources: meta, items: lastItems, coverage, now: Date.now(), place: { ...place, ...(aliases.length ? { aliases } : {}) } })
+      const snapshot = await service.snapshot()
+      const health = Object.fromEntries(Object.entries(snapshot.sources).map(([sourceId, state]) => [sourceId, state.health]))
+      return placeTrends({ sources: meta, items: lastItems, coverage, health, now: Date.now(), place: { ...place, ...(aliases.length ? { aliases } : {}) } })
     },
+  }
+}
+
+/** Cached trends are emitted only when their observation-provenance version is current. */
+export function readCachedNewsDigest(path: string, now = Date.now()): string | null {
+  try {
+    if (!existsSync(path)) return null
+    const raw = readFileSync(path, 'utf8')
+    const value = JSON.parse(raw) as unknown
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) return null
+    if ((value as Record<string, unknown>)['coverageSchemaVersion'] !== COVERAGE_SCHEMA_VERSION) return null
+    const digest = parseNewsDigest(raw)
+    if (!digest) return null
+    const generatedAt = Date.parse(digest.generatedAt)
+    if (!Number.isFinite(generatedAt) || generatedAt > now + 60_000 || now - generatedAt > NEWS_COVERAGE_TOLERANCE_MS) return null
+    return raw
+  } catch {
+    return null
   }
 }
 
@@ -231,7 +272,11 @@ export function readCoverage(path: string, known: ReadonlySet<string>, now = Dat
     if (!existsSync(path)) return result
     const raw = JSON.parse(readFileSync(path, 'utf8')) as unknown
     if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return result
-    for (const [sourceId, spans] of Object.entries(raw as Record<string, unknown>)) {
+    const envelope = raw as Record<string, unknown>
+    // Legacy coverage was inferred from article dates and could bridge outages.
+    // Invalidate it rather than treating that history as verified monitoring.
+    if (envelope['schemaVersion'] !== COVERAGE_SCHEMA_VERSION || typeof envelope['sources'] !== 'object' || envelope['sources'] === null || Array.isArray(envelope['sources'])) return result
+    for (const [sourceId, spans] of Object.entries(envelope['sources'] as Record<string, unknown>)) {
       if (!known.has(sourceId) || !Array.isArray(spans)) continue
       const valid = spans.filter((span): span is [number, number] =>
         Array.isArray(span) && span.length === 2 && Number.isFinite(span[0]) && Number.isFinite(span[1]) && span[0] <= span[1] && span[1] <= now + 60_000)

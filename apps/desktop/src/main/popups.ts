@@ -51,3 +51,58 @@ export class PopupLimiter {
     this.recent.delete(owner)
   }
 }
+
+export function popupDecision(
+  details: { url: string; disposition: string; features: string },
+  limiter: PopupLimiter,
+  owner: number,
+  now = Date.now(),
+): PopupPlan {
+  const plan = popupPlan(details)
+  if (plan.action === 'deny') return plan
+  if (!limiter.allow(owner, now)) {
+    return { action: 'deny', reason: 'This page opened several windows at once; the rest were blocked.' }
+  }
+  return plan
+}
+
+/** Popup windows do not own more popup windows: allow only HTTP(S) children as tabs. */
+export function nestedPopupDecision(
+  details: { url: string; disposition: string; features: string },
+  limiter: PopupLimiter,
+  owner: number,
+  now = Date.now(),
+): PopupPlan {
+  const plan = popupPlan(details)
+  if (plan.action === 'deny') return plan
+  let url: URL
+  try { url = new URL(details.url) } catch { return { action: 'deny', reason: 'Blocked a popup with an invalid address.' } }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    return { action: 'deny', reason: 'Blocked a popup to an unsupported address.' }
+  }
+  const rateLimited = popupDecision(details, limiter, owner, now)
+  if (rateLimited.action === 'deny') return rateLimited
+  return { action: 'tab', background: false }
+}
+
+export function popupWindowOptions(
+  plan: Extract<PopupPlan, { action: 'window' }>,
+  parent?: Electron.BrowserWindow | null,
+): Electron.BrowserWindowConstructorOptions {
+  return {
+    width: plan.width,
+    height: plan.height,
+    ...(parent && !parent.isDestroyed() ? { parent } : {}),
+    autoHideMenuBar: true,
+    backgroundColor: '#ffffff',
+    title: 'Sign-in window',
+    webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false },
+  }
+}
+
+export function bindPopupCloseWithOwner(child: Electron.BrowserWindow, opener: Electron.WebContents): void {
+  // The owner is already gone; the popup must not veto its own lifetime cleanup.
+  const closeWithOpener = (): void => { if (!child.isDestroyed()) child.destroy() }
+  opener.once('destroyed', closeWithOpener)
+  child.once('closed', () => { if (!opener.isDestroyed()) opener.removeListener('destroyed', closeWithOpener) })
+}

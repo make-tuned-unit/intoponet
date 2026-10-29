@@ -21,6 +21,7 @@ import { app } from 'electron'
 import type { LocalPublicSource, PublicFieldStatus, PublicSourceHealth } from '@intoponet/browser-api'
 import { SharedPublicSnapshotClient, SHARED_SNAPSHOT_STALE_AFTER_MS, type SharedSnapshotStatus } from './shared-public-field'
 import { readLocalPublicFieldCache, writeLocalPublicFieldCache } from './public-field-cache'
+import { readBoundedPublicJson } from './boundedPublicJson'
 
 // Wikimedia asks API clients for a descriptive agent with a contact URL.
 const userAgent = 'Intoponet/0.1 (local spatial browser; public field snapshot; https://github.com/make-tuned-unit/intoponet)'
@@ -190,11 +191,15 @@ async function getJson(url: string): Promise<unknown> {
       signal: AbortSignal.timeout(15_000),
     })
     if (response.status === 429 && attempt < 2) {
+      await response.body?.cancel().catch(() => undefined)
       await delay(3_000 * (attempt + 1))
       continue
     }
-    if (!response.ok) throw new HttpError(response.status)
-    return response.json() as Promise<unknown>
+    if (!response.ok) {
+      await response.body?.cancel().catch(() => undefined)
+      throw new HttpError(response.status)
+    }
+    return readBoundedPublicJson(response)
   }
   throw new HttpError(429)
 }

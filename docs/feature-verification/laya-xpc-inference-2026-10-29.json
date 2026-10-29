@@ -1,0 +1,197 @@
+{
+  "experiment": "laya-xpc-isolation-probe",
+  "signing": "ad-hoc inside temporary app bundles",
+  "hostAndServiceIDsArePerRun": true,
+  "explicitModelRootProvided": true,
+  "pinnedModelAndVocabVerifiedBeforeLaunch": true,
+  "pinnedArtifacts": [
+    {
+      "name": "model.safetensors",
+      "bytes": 90868376,
+      "sha256": "53aa51172d142c89d9012cce15ae4d6cc0ca6895895114379cacb4fab128d9db"
+    },
+    {
+      "name": "vocab.txt",
+      "bytes": 231508,
+      "sha256": "07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3"
+    }
+  ],
+  "comparison": {
+    "baselineRuntime": "Node V8 using the same esbuild IIFE and verified byte buffers",
+    "fixedSyntheticText": "The quick brown fox jumps over the lazy dog.",
+    "v8ElapsedMs": 257,
+    "vectorLength": 384,
+    "tolerance": {
+      "maxAbsoluteDelta": 1e-05,
+      "minimumCosineSimilarity": 0.999999
+    }
+  },
+  "results": [
+    {
+      "mode": "allowed",
+      "signedEntitlements": {
+        "appSandbox": true,
+        "networkClient": true
+      },
+      "result": "network-client-positive-control-passed",
+      "tcp": {
+        "hostConnected": true,
+        "serviceConnected": true,
+        "serviceFailureOperation": "none",
+        "serviceErrno": 0,
+        "canaryConnections": 2
+      },
+      "udp": {
+        "hostSent": true,
+        "serviceSent": true,
+        "serviceFailureOperation": "none",
+        "serviceErrno": 0,
+        "canaryDatagrams": 2
+      },
+      "outsideSyntheticFixture": {
+        "errno": 1,
+        "error": "Operation not permitted",
+        "readable": false
+      },
+      "syntheticPayloadChecks": {
+        "emptyRequest": {
+          "bytes": 0,
+          "detail": "empty-payload",
+          "status": "rejected-empty"
+        },
+        "expectedChecksum": "130560",
+        "expectedDigest": "785b0751fc2c53dc14a4ce3d800e69ef9ce1009eb327ccf458afe09c242c26c9",
+        "expectedSize": 1024,
+        "malformedDigestRequest": {
+          "bytes": 1024,
+          "detail": "invalid-digest-length",
+          "status": "rejected-digest"
+        },
+        "oversizedRequest": {
+          "bytes": 4097,
+          "status": "rejected-size"
+        },
+        "tamperedDigestRequest": {
+          "bytes": 1024,
+          "detail": "digest-mismatch",
+          "status": "rejected-digest"
+        },
+        "validRequest": {
+          "bytes": 1024,
+          "checksum": "130560",
+          "digest": "785b0751fc2c53dc14a4ce3d800e69ef9ce1009eb327ccf458afe09c242c26c9",
+          "status": "accepted"
+        }
+      }
+    },
+    {
+      "mode": "denied",
+      "signedEntitlements": {
+        "appSandbox": true,
+        "networkClient": false
+      },
+      "result": "service-network-denial-observed",
+      "tcp": {
+        "hostConnected": true,
+        "serviceConnected": false,
+        "serviceFailureOperation": "connect",
+        "serviceErrno": 1,
+        "canaryConnections": 1
+      },
+      "udp": {
+        "hostSent": true,
+        "serviceSent": false,
+        "serviceFailureOperation": "sendto",
+        "serviceErrno": 1,
+        "canaryDatagrams": 1
+      },
+      "outsideSyntheticFixture": {
+        "errno": 1,
+        "error": "Operation not permitted",
+        "readable": false
+      },
+      "syntheticPayloadChecks": {
+        "emptyRequest": {
+          "bytes": 0,
+          "detail": "empty-payload",
+          "status": "rejected-empty"
+        },
+        "expectedChecksum": "130560",
+        "expectedDigest": "785b0751fc2c53dc14a4ce3d800e69ef9ce1009eb327ccf458afe09c242c26c9",
+        "expectedSize": 1024,
+        "malformedDigestRequest": {
+          "bytes": 1024,
+          "detail": "invalid-digest-length",
+          "status": "rejected-digest"
+        },
+        "oversizedRequest": {
+          "bytes": 4097,
+          "status": "rejected-size"
+        },
+        "tamperedDigestRequest": {
+          "bytes": 1024,
+          "detail": "digest-mismatch",
+          "status": "rejected-digest"
+        },
+        "validRequest": {
+          "bytes": 1024,
+          "checksum": "130560",
+          "digest": "785b0751fc2c53dc14a4ce3d800e69ef9ce1009eb327ccf458afe09c242c26c9",
+          "status": "accepted"
+        }
+      },
+      "javaScriptCoreInference": {
+        "status": "inference-complete",
+        "tokenIDs": [
+          101,
+          1996,
+          4248,
+          2829,
+          4419,
+          14523,
+          2058,
+          1996,
+          13971,
+          3899,
+          1012,
+          102
+        ],
+        "tokenCount": 12,
+        "vectorLength": 384,
+        "vectorNorm": 0.9999999987027195,
+        "serviceVerifiedPinnedModelAndVocab": true,
+        "modelChunkCount": 87,
+        "textKind": "fixed-synthetic-only",
+        "v8VectorSHA256Float32NativeBytes": "d0809d0bcc5b6d3cdd7f6325c45d5959c4193f8fba413a6cb5fa2555bddb1800",
+        "vectorSHA256Float32NativeBytes": "d0809d0bcc5b6d3cdd7f6325c45d5959c4193f8fba413a6cb5fa2555bddb1800",
+        "tokenIDsExact": true,
+        "maxAbsoluteDelta": 2.0816681711721685e-17,
+        "maxAbsoluteDeltaTolerance": 1e-05,
+        "cosineSimilarity": 1,
+        "minimumCosineSimilarity": 0.999999,
+        "passed": true
+      }
+    }
+  ],
+  "syntheticFixtureOutsideContainer": true,
+  "sandboxContainers": [
+    {
+      "bundleID": "org.intoponet.LayaIsolationProbe.793b7c68ef5142f4.allowed.service",
+      "existedBefore": false,
+      "createdByProbe": true,
+      "removed": false,
+      "cleanupError": "EPERM from the OS while removing this exact container; left in place"
+    },
+    {
+      "bundleID": "org.intoponet.LayaIsolationProbe.793b7c68ef5142f4.denied.service",
+      "existedBefore": false,
+      "createdByProbe": true,
+      "removed": false,
+      "cleanupError": "EPERM from the OS while removing this exact container; left in place"
+    }
+  ],
+  "checkedAt": "2026-10-29T23:40:14.588522+00:00",
+  "verification": "Parent rerun with actual pinned model and fixed synthetic sentence; JavaScriptCore/V8 numerical parity",
+  "macOS": "26.2",
+  "xcode": "Xcode 26.6\nBuild version 17F113"
+}

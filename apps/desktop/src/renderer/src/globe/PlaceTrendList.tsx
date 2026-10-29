@@ -36,7 +36,7 @@ export function PlaceTrendList({ state, direction, now, onOpen, translation, onH
           <p className="place-trends-note">
             {state.data.recentStories || state.data.previousStories
               ? <>{state.data.recentStories} {state.data.recentStories === 1 ? 'story' : 'stories'} in the last 24 h, {state.data.previousStories} the day before, from feeds watched on both days.</>
-              : <>Its feeds haven’t been watched for two full days yet, so there is nothing fair to compare.</>}
+              : <>Its feeds need about two days of successful polling before a fair comparison is possible.</>}
             {state.data.uncompared > 0 && <> {state.data.uncompared} more {state.data.uncompared === 1 ? 'story' : 'stories'} shown but not compared.</>}
           </p>
           {trends.length > 0 ? (

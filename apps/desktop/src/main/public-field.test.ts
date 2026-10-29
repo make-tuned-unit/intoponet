@@ -165,15 +165,18 @@ describe('local public-field cache status', () => {
     ])
   })
 
-  it('preserves an earlier source-failure status when cached data is read again', async () => {
+  it.each(['http-failure', 'oversized-response'])('retains records and failure status after %s when cached data is read again', async (failureKind) => {
     const dir = await mkdtemp(join(tmpdir(), 'intoponet-public-field-local-'))
     dirs.push(dir)
     const snapshot = publicFieldSnapshot([localRecord], fixtureTime, true)
     await writeFile(join(dir, 'public-field-snapshot.json'), JSON.stringify(snapshot))
     const field = await localModule(dir)
-    globalThis.fetch = (async () => new Response('', { status: 503 })) as typeof fetch
+    globalThis.fetch = (async () => failureKind === 'http-failure'
+      ? new Response('', { status: 503 })
+      : new Response('{}', { headers: { 'content-length': String(6 * 1024 * 1024) } })) as typeof fetch
 
-    await field.refreshPublicField(fixtureTime + 1_000)
+    const retained = await field.refreshPublicField(fixtureTime + 1_000)
+    expect(retained?.sources[0]?.retrievedAt).toBe(localRecord.retrievedAt)
     const failure = field.publicFieldStatus()
     field.cachedPublicField(fixtureTime + 1_000)
 

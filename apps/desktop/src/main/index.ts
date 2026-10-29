@@ -43,7 +43,7 @@ import {
 } from './tabDockBounds'
 import { shellShortcutForInput } from './shellShortcuts'
 import { bindPermissionOwnerLifecycle, kindsFor, originOf, SitePermissionBroker, SitePermissionStore } from './sitePermissions'
-import { popupPlan, PopupLimiter } from './popups'
+import { bindPopupCloseWithOwner, nestedPopupDecision, popupDecision, popupWindowOptions, PopupLimiter } from './popups'
 import { rejectCertificateErrorForSession } from './browserCertificatePolicy'
 import { reserveDownloadPath, sanitizeDownloadFilename } from './downloadReservation'
 import { CrashRecoveryPolicy } from './crashRecovery'
@@ -665,15 +665,19 @@ const crashRecovery = new CrashRecoveryPolicy()
 function wirePopupWindow(child: BrowserWindow, opener: WebContentsView): void {
   bindPermissionOwnerLifecycle(child.webContents, (owner) => sitePermissions?.dropOwner(owner))
   child.webContents.on('will-navigate', (event, url) => { if (!safeHttpUrl(url)) event.preventDefault() })
-  child.webContents.setWindowOpenHandler(({ url }) => {
+  const childContentsId = child.webContents.id
+  child.webContents.setWindowOpenHandler(({ url, disposition, features }) => {
+    const plan = nestedPopupDecision({ url, disposition, features }, popupLimiter, childContentsId)
+    if (plan.action === 'deny') {
+      emit({ type: 'navigation-failed', url, reason: plan.reason })
+      return { action: 'deny' }
+    }
     const tab = createBrowserTab(url, true, privateViews.has(opener))
     if (tab) void tab.webContents.loadURL(url).catch(() => undefined)
     return { action: 'deny' }
   })
-  const closeWithOpener = (): void => { if (!child.isDestroyed()) child.close() }
-  const openerContents = opener.webContents
-  openerContents.once('destroyed', closeWithOpener)
-  child.once('closed', () => { if (!openerContents.isDestroyed()) openerContents.removeListener('destroyed', closeWithOpener) })
+  child.webContents.once('destroyed', () => popupLimiter.forget(childContentsId))
+  bindPopupCloseWithOwner(child, opener.webContents)
 }
 
 function createBrowserTab(urlValue: string, activate = true, isPrivate = privateMode): WebContentsView | null {
@@ -845,9 +849,9 @@ function buildView(isPrivate = privateMode): WebContentsView {
   })
   preferReadablePageTheme(view.webContents)
   view.webContents.setWindowOpenHandler(({ url, disposition, features }) => {
-    const plan = popupPlan({ url, disposition, features })
-    if (plan.action === 'deny' || !popupLimiter.allow(view.webContents.id)) {
-      emit({ type: 'navigation-failed', url, reason: plan.action === 'deny' ? plan.reason : 'This page opened several windows at once; the rest were blocked.' })
+    const plan = popupDecision({ url, disposition, features }, popupLimiter, view.webContents.id)
+    if (plan.action === 'deny') {
+      emit({ type: 'navigation-failed', url, reason: plan.reason })
       return { action: 'deny' }
     }
     if (plan.action === 'tab') {
@@ -857,18 +861,7 @@ function buildView(isPrivate = privateMode): WebContentsView {
       return { action: 'deny' }
     }
     // Sign-in style popup: a small real window that keeps window.opener (same session as its page).
-    return {
-      action: 'allow',
-      overrideBrowserWindowOptions: {
-        width: plan.width,
-        height: plan.height,
-        ...(window && !window.isDestroyed() ? { parent: window } : {}),
-        autoHideMenuBar: true,
-        backgroundColor: '#ffffff',
-        title: 'Sign-in window',
-        webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false },
-      },
-    }
+    return { action: 'allow', overrideBrowserWindowOptions: popupWindowOptions(plan, window) }
   })
   view.webContents.on('did-create-window', (child) => wirePopupWindow(child, view))
   // Capture the id now: by the time 'destroyed' fires, view.webContents is gone.

@@ -8,8 +8,8 @@
       "architecture": "arm64"
     },
     "fixture": {
-      "httpOrigin": "http://localhost:52310",
-      "alternateLoopbackOrigin": "http://127.0.0.1:52310",
+      "httpOrigin": "http://localhost:54260",
+      "alternateLoopbackOrigin": "http://127.0.0.1:54260",
       "selfSignedTlsHost": "localhost",
       "serverBindings": [
         "127.0.0.1"
@@ -19,7 +19,7 @@
       "secureContext": true,
       "initialCameraPermission": "denied",
       "firstRequest": {
-        "origin": "http://localhost:52310",
+        "origin": "http://localhost:54260",
         "kinds": [
           "camera"
         ]
@@ -48,7 +48,7 @@
         ],
         "activeCaptureRemainsLiveAfterReset": true,
         "subsequentPrompt": {
-          "origin": "http://localhost:52310",
+          "origin": "http://localhost:54260",
           "kinds": [
             "camera"
           ],
@@ -59,7 +59,7 @@
           "name": "NotAllowedError"
         }
       },
-      "blockedOrigin": "http://127.0.0.1:52310",
+      "blockedOrigin": "http://127.0.0.1:54260",
       "blockedCapture": {
         "ok": false,
         "name": "NotAllowedError"
@@ -68,7 +68,7 @@
       "blockedPermissionCheck": false,
       "blockedDecisionRetained": true,
       "ownerLifecycle": {
-        "requestOrigin": "http://127.0.0.1:52310",
+        "requestOrigin": "http://127.0.0.1:54260",
         "pendingBeforeNavigation": 1,
         "pendingAfterNavigation": 0,
         "callbackGranted": false,
@@ -83,31 +83,31 @@
       ],
       "requests": [
         {
-          "origin": "http://localhost:52310",
+          "origin": "http://localhost:54260",
           "kinds": [
             "camera"
           ]
         },
         {
-          "origin": "http://localhost:52310",
+          "origin": "http://localhost:54260",
           "kinds": [
             "camera"
           ]
         },
         {
-          "origin": "http://127.0.0.1:52310",
+          "origin": "http://127.0.0.1:54260",
           "kinds": [
             "camera"
           ]
         },
         {
-          "origin": "http://127.0.0.1:52310",
+          "origin": "http://127.0.0.1:54260",
           "kinds": [
             "camera"
           ]
         },
         {
-          "origin": "http://127.0.0.1:52310",
+          "origin": "http://127.0.0.1:54260",
           "kinds": [
             "camera"
           ]
@@ -117,21 +117,21 @@
     "certificate": {
       "events": [
         {
-          "url": "https://localhost:52311/fixture",
+          "url": "https://localhost:54261/fixture",
           "error": "net::ERR_CERT_AUTHORITY_INVALID",
           "isMainFrame": true,
           "prevented": true,
           "callbackAllow": false
         },
         {
-          "url": "https://localhost:52311/fixture?redirect=1",
+          "url": "https://localhost:54261/fixture?redirect=1",
           "error": "net::ERR_CERT_AUTHORITY_INVALID",
           "isMainFrame": true,
           "prevented": true,
           "callbackAllow": false
         },
         {
-          "url": "https://localhost:52311/fixture?subframe=1",
+          "url": "https://localhost:54261/fixture?subframe=1",
           "error": "net::ERR_CERT_AUTHORITY_INVALID",
           "isMainFrame": false,
           "prevented": true,
@@ -142,7 +142,7 @@
         {
           "errorCode": -202,
           "description": "ERR_CERT_AUTHORITY_INVALID",
-          "validatedURL": "https://localhost:52311/fixture"
+          "validatedURL": "https://localhost:54261/fixture"
         }
       ],
       "denied": true,
@@ -151,7 +151,7 @@
       "redirectedTopLevel": {
         "events": [
           {
-            "url": "https://localhost:52311/fixture?redirect=1",
+            "url": "https://localhost:54261/fixture?redirect=1",
             "error": "net::ERR_CERT_AUTHORITY_INVALID",
             "isMainFrame": true,
             "prevented": true,
@@ -162,7 +162,7 @@
           {
             "errorCode": -202,
             "description": "ERR_CERT_AUTHORITY_INVALID",
-            "validatedURL": "https://localhost:52311/fixture?redirect=1"
+            "validatedURL": "https://localhost:54261/fixture?redirect=1"
           }
         ],
         "denied": true,
@@ -171,7 +171,7 @@
       "untrustedIframe": {
         "events": [
           {
-            "url": "https://localhost:52311/fixture?subframe=1",
+            "url": "https://localhost:54261/fixture?subframe=1",
             "error": "net::ERR_CERT_AUTHORITY_INVALID",
             "isMainFrame": false,
             "prevented": true,
@@ -206,6 +206,98 @@
         "same-name.txt"
       ]
     },
+    "popup": {
+      "attempts": [
+        {
+          "owner": "public",
+          "action": "tab",
+          "url": "http://localhost:54260/fixture?popup-tab=1"
+        },
+        {
+          "owner": "private",
+          "action": "window",
+          "url": "http://localhost:54260/fixture?popup-sized=1"
+        },
+        {
+          "owner": "private",
+          "action": "tab",
+          "url": "http://localhost:54260/fixture?private-popup-tab=1"
+        },
+        {
+          "owner": "burst",
+          "action": "window",
+          "url": "http://localhost:54260/fixture?burst=0"
+        },
+        {
+          "owner": "burst",
+          "action": "window",
+          "url": "http://localhost:54260/fixture?burst=1"
+        },
+        {
+          "owner": "burst",
+          "action": "window",
+          "url": "http://localhost:54260/fixture?burst=2"
+        },
+        {
+          "owner": "burst",
+          "action": "deny",
+          "url": "http://localhost:54260/fixture?burst=3"
+        }
+      ],
+      "publicNewTabPlanObserved": true,
+      "publicTabUsesOpenerSession": true,
+      "unsupportedSchemeDecisionDenied": true,
+      "unsupportedPopupObservedByHandler": false,
+      "unsupportedPopupCreatedNoWindow": true,
+      "privatePopupPlanObserved": true,
+      "privatePopupUsesOpenerSession": true,
+      "privatePopupKeepsOpener": true,
+      "privatePopupHasNoNode": true,
+      "beforeUnloadHandlerInstalled": true,
+      "popupCloseVetoedByBeforeUnload": true,
+      "ownerDestroyTriggeredBeforeUnload": false,
+      "ownerDestroyVetoedByBeforeUnload": false,
+      "privateNewTabPlanObserved": true,
+      "privateTabUsesPrivateSession": true,
+      "burstDecisions": [
+        "window",
+        "window",
+        "window",
+        "deny"
+      ],
+      "burstLimitBlockedFourth": true,
+      "burstChildrenClosedWithOpener": true,
+      "privateChildCountBeforeOpenerClose": 1,
+      "childrenClosedWithOpener": true,
+      "nestedBurstAttempts": [
+        {
+          "owner": "private",
+          "action": "tab",
+          "url": "http://localhost:54260/fixture?nested-burst=0"
+        },
+        {
+          "owner": "private",
+          "action": "tab",
+          "url": "http://localhost:54260/fixture?nested-burst=1"
+        },
+        {
+          "owner": "private",
+          "action": "tab",
+          "url": "http://localhost:54260/fixture?nested-burst=2"
+        },
+        {
+          "owner": "private",
+          "action": "deny",
+          "url": "http://localhost:54260/fixture?nested-burst=3"
+        }
+      ],
+      "nestedBurstLimitBlockedFourth": true,
+      "nestedTabCount": 3,
+      "nestedTabsUsePrivateSession": true,
+      "nestedUnsupportedSchemeDenied": true,
+      "nestedAboutBlankDenied": true,
+      "rootAboutBlankStillWindow": true
+    },
     "conclusions": {
       "permissionAllowed": true,
       "permissionResetDeniedFutureRequest": true,
@@ -221,17 +313,37 @@
       "iframeCertificateDenied": true,
       "parentRemainedUsable": true,
       "downloadNamesDistinct": true,
-      "downloadPayloadsIntact": true
+      "downloadPayloadsIntact": true,
+      "publicNewTabPlanObserved": true,
+      "publicTabUsesOpenerSession": true,
+      "unsupportedSchemeDecisionDenied": true,
+      "unsupportedPopupCreatedNoWindow": true,
+      "privatePopupPlanObserved": true,
+      "privatePopupUsesOpenerSession": true,
+      "privatePopupKeepsOpener": true,
+      "privatePopupHasNoNode": true,
+      "privateNewTabPlanObserved": true,
+      "privateTabUsesPrivateSession": true,
+      "burstLimitBlockedFourth": true,
+      "burstChildrenClosedWithOpener": true,
+      "childrenClosedWithOpener": true,
+      "nestedBurstLimitBlockedFourth": true,
+      "nestedTabsUsePrivateSession": true,
+      "nestedUnsupportedSchemeDenied": true,
+      "nestedAboutBlankDenied": true,
+      "rootAboutBlankStillWindow": true
     },
     "limitations": [
       "The probe uses a temporary Electron BrowserWindow and in-memory permission store, not the packaged Intoponet UI/WebContentsView.",
       "Camera uses Chromium fake-device mode; no camera hardware or macOS camera permission prompt is invoked.",
       "The temporary self-signed localhost certificate was rejected for a direct navigation, an HTTP redirect target, and an HTTPS iframe. Expired certificates, hostname mismatch, public-CA trust, and other certificate errors remain untested.",
       "Two same-name HTTP downloads were written to a runner-owned temporary directory; this is not a test against the user Downloads directory or a packaged release.",
+      "Popup behavior was exercised in temporary BrowserWindows with the production planner/limiter/options/lifetime helpers; tabs use BrowserWindow stand-ins rather than the production WebContentsView tab UI.",
+      "Nested popup behavior uses the production nested policy helper with BrowserWindow stand-ins for tabs; no external page or packaged tab UI was used.",
       "This probe does not test OS permission grant/revocation behavior, persistent permission-file storage, renderer process crashes, private-session cleanup, or cross-platform behavior."
     ]
   },
-  "generatedAt": "2026-10-29T23:08:54.988Z",
+  "generatedAt": "2026-10-29T23:40:18.017Z",
   "profileIsolation": {
     "usedTemporaryUserDataDirectory": true,
     "profileDirectoryRemovedAfterRun": true,

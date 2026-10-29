@@ -111,10 +111,31 @@ describe('momentum (rising and fading)', () => {
 
   it('uses observed coverage intervals when given', () => {
     const items = [...stories('ke-a', 6, 1, 'Recent'), ...stories('ke-a', 6, 30, 'Earlier')]
-    const gap = buildNewsDigest({ sources: ke, now, health: {}, items, coverage: { 'ke-a': [[now - 50 * 3_600_000, now - 30 * 3_600_000], [now - 10 * 3_600_000, now]] } })
+    const gap = buildNewsDigest({ sources: ke, now, health: { 'ke-a': 'healthy' }, items, coverage: { 'ke-a': [[now - 50 * 3_600_000, now - 30 * 3_600_000], [now - 10 * 3_600_000, now]] } })
     expect(gap.countries[0]!.momentum).toBeNull()
-    const full = buildNewsDigest({ sources: ke, now, health: {}, items, coverage: { 'ke-a': [[now - 50 * 3_600_000, now]] } })
+    const full = buildNewsDigest({ sources: ke, now, health: { 'ke-a': 'healthy' }, items, coverage: { 'ke-a': [[now - 50 * 3_600_000, now]] } })
     expect(full.countries[0]!.momentum).toBe(0)
+  })
+
+  it('excludes a stale feed from comparisons even when its old coverage spans both days', () => {
+    const digest = buildNewsDigest({
+      sources: ke, now, health: { 'ke-a': 'stale', 'ke-b': 'healthy' },
+      items: [...stories('ke-a', 8, 1, 'Recent'), ...stories('ke-a', 8, 30, 'Earlier')],
+      coverage: { 'ke-a': [[now - 60 * 3_600_000, now]] },
+    })
+    expect(digest.countries[0]!.comparableFeeds).toBe(0)
+    expect(digest.countries[0]!.momentum).toBeNull()
+    expect(digest.countries[0]!.healthyFeedCount).toBe(1)
+  })
+
+  it('does not infer current monitoring from old publication timestamps when coverage is supplied', () => {
+    const digest = buildNewsDigest({
+      sources: ke, now, health: { 'ke-a': 'healthy' },
+      items: [item('ke-a', 'An old report from three days back', 70), ...stories('ke-a', 8, 2, 'Recent'), ...stories('ke-a', 8, 30, 'Earlier')],
+      coverage: {},
+    })
+    expect(digest.countries[0]!.comparableFeeds).toBe(0)
+    expect(digest.countries[0]!.momentum).toBeNull()
   })
 })
 

@@ -6,7 +6,41 @@ import CryptoKit
     func probe(port: Int, udpPort: Int, withReply reply: @escaping (String, Bool, String, Int, String, Bool, String, Int, String) -> Void)
     func inspectModel(_ bytes: NSData, expectedDigest: NSData, withReply reply: @escaping (String, Int, String, String) -> Void)
     func inspectOutsideFixture(withReply reply: @escaping (Bool, Int, String) -> Void)
+    func beginPinnedModelUpload(modelBytes: Int, vocab: NSData, withReply reply: @escaping (Bool, String) -> Void)
+    func appendPinnedModelChunk(index: Int, bytes: NSData, withReply reply: @escaping (Bool, String) -> Void)
+    func finishPinnedModelUpload(withReply reply: @escaping (Bool, String) -> Void)
+    func inferSyntheticText(_ text: String, withReply reply: @escaping (String) -> Void)
 }
+
+func waitForStatus(_ operation: (@escaping (Bool, String) -> Void) -> Void, label: String) throws -> (Bool, String) {
+    let semaphore = DispatchSemaphore(value: 0)
+    var response: (Bool, String)?
+    operation { success, detail in response = (success, detail); semaphore.signal() }
+    guard semaphore.wait(timeout: .now() + 30) == .success, let response else {
+        throw NSError(domain: "XPC", code: 10, userInfo: [NSLocalizedDescriptionKey: "Timed out: \(label)"])
+    }
+    return response
+}
+
+func waitForText(_ operation: (@escaping (String) -> Void) -> Void, label: String, timeout: TimeInterval = 120) throws -> String {
+    let semaphore = DispatchSemaphore(value: 0)
+    var response: String?
+    operation { text in response = text; semaphore.signal() }
+    guard semaphore.wait(timeout: .now() + timeout) == .success, let response else {
+        throw NSError(domain: "XPC", code: 11, userInfo: [NSLocalizedDescriptionKey: "Timed out: \(label)"])
+    }
+    return response
+}
+
+func sha256(_ data: Data) -> String {
+    Data(SHA256.hash(data: data)).map { String(format: "%02x", $0) }.joined()
+}
+
+let pinnedModelBytes = 90_868_376
+let pinnedModelSHA = "53aa51172d142c89d9012cce15ae4d6cc0ca6895895114379cacb4fab128d9db"
+let pinnedVocabBytes = 231_508
+let pinnedVocabSHA = "07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3"
+let uploadChunkBytes = 1_048_576
 
 final class Canary {
     private let lock = NSLock()
@@ -143,9 +177,11 @@ func sendUDPToLoopback(_ port: Int) -> (sent: Bool, errorCode: Int, errorText: S
 }
 
 do {
-    guard CommandLine.arguments.count == 3 else { throw NSError(domain: "XPC", code: 9, userInfo: [NSLocalizedDescriptionKey: "Expected XPC service name and network mode arguments"]) }
+    guard CommandLine.arguments.count == 5 else { throw NSError(domain: "XPC", code: 9, userInfo: [NSLocalizedDescriptionKey: "Expected service name, network mode, and explicitly selected pinned model file paths"]) }
     let serviceName = CommandLine.arguments[1]
     let expectedAllowed = CommandLine.arguments[2] == "allowed"
+    let modelPath = CommandLine.arguments[3]
+    let vocabPath = CommandLine.arguments[4]
     let canary = try Canary()
     let udpCanary = try UdpCanary()
     let hostControl = connectToLoopback(canary.port)
@@ -218,6 +254,43 @@ do {
         throw NSError(domain: "XPC", code: 4, userInfo: [NSLocalizedDescriptionKey: "Synthetic filesystem probe timed out"])
     }
 
+    var pinnedModelInference: [String: Any]?
+    if !expectedAllowed {
+        let modelBytes = try Data(contentsOf: URL(fileURLWithPath: modelPath), options: .mappedIfSafe)
+        let vocabBytes = try Data(contentsOf: URL(fileURLWithPath: vocabPath), options: .mappedIfSafe)
+        guard modelBytes.count == pinnedModelBytes, sha256(modelBytes) == pinnedModelSHA,
+              vocabBytes.count == pinnedVocabBytes, sha256(vocabBytes) == pinnedVocabSHA else {
+            throw NSError(domain: "PinnedModel", code: 1, userInfo: [NSLocalizedDescriptionKey: "Explicitly selected model files do not match pinned bytes"])
+        }
+        let begin = try waitForStatus({ proxy.beginPinnedModelUpload(modelBytes: modelBytes.count, vocab: vocabBytes as NSData, withReply: $0) }, label: "begin model upload")
+        guard begin.0 else { throw NSError(domain: "PinnedModel", code: 2, userInfo: [NSLocalizedDescriptionKey: begin.1]) }
+        var chunkIndex = 0
+        for start in stride(from: 0, to: modelBytes.count, by: uploadChunkBytes) {
+            let end = min(start + uploadChunkBytes, modelBytes.count)
+            let chunk = modelBytes.subdata(in: start..<end) as NSData
+            let result = try waitForStatus({ proxy.appendPinnedModelChunk(index: chunkIndex, bytes: chunk, withReply: $0) }, label: "model chunk \(chunkIndex)")
+            guard result.0 else { throw NSError(domain: "PinnedModel", code: 3, userInfo: [NSLocalizedDescriptionKey: result.1]) }
+            chunkIndex += 1
+        }
+        let finish = try waitForStatus({ proxy.finishPinnedModelUpload(withReply: $0) }, label: "finish model upload")
+        guard finish.0 else { throw NSError(domain: "PinnedModel", code: 4, userInfo: [NSLocalizedDescriptionKey: finish.1]) }
+        let summaryText = try waitForText({ proxy.inferSyntheticText("The quick brown fox jumps over the lazy dog.", withReply: $0) }, label: "JavaScriptCore MiniLM inference", timeout: 240)
+        guard let summaryData = summaryText.data(using: .utf8),
+              let summary = try? JSONSerialization.jsonObject(with: summaryData) as? [String: Any],
+              summary["status"] as? String == "inference-complete",
+              summary["vectorLength"] as? Int == 384,
+              let norm = summary["vectorNorm"] as? Double, abs(norm - 1) < 0.0001,
+              let tokenIDs = summary["tokenIDs"] as? [Int], tokenIDs.count >= 3 else {
+            throw NSError(domain: "PinnedModel", code: 5, userInfo: [NSLocalizedDescriptionKey: "JavaScriptCore inference returned an invalid vector summary: \(summaryText.prefix(200))"])
+        }
+        pinnedModelInference = summary.merging([
+            "hostVerifiedPinnedModelAndVocab": true,
+            "serviceVerifiedPinnedModelAndVocab": true,
+            "chunkCount": chunkIndex,
+            "textKind": "fixed-synthetic-only",
+        ]) { _, new in new }
+    }
+
     Thread.sleep(forTimeInterval: 0.15)
     connection.invalidate()
     canary.close()
@@ -225,7 +298,7 @@ do {
     let report: [String: Any] = [
         "hostPositiveControlConnected": hostControl,
         "hostUdpPositiveControlSent": hostUDP.sent,
-        "serviceReturnedFixedText": result.0 == "synthetic inference service reply",
+        "serviceReturnedFixedText": result.0 == "synthetic XPC control reply",
         "serviceConnectedToLoopback": result.1,
         "serviceTcpFailureOperation": result.2,
         "serviceTcpErrno": result.3,
@@ -237,6 +310,7 @@ do {
         "serviceUdpError": result.8,
         "loopbackUdpCanaryDatagrams": udpCanary.received,
         "serviceReply": result.0,
+        "pinnedModelInference": pinnedModelInference.map { $0 as Any } ?? NSNull(),
         "syntheticModel": [
             "expectedSize": modelBytes.count,
             "expectedDigest": expectedDigestText,
@@ -264,7 +338,7 @@ do {
     let networkPassed = expectedAllowed
         ? report["result"] as? String == "network-client-positive-control-passed"
         : report["result"] as? String == "service-network-denial-observed"
-    if !networkPassed || !modelPassed || !fileDenied { exit(1) }
+    if !networkPassed || !modelPassed || !fileDenied || (!expectedAllowed && pinnedModelInference == nil) { exit(1) }
 } catch {
     fputs("Probe failed: \(error)\n", stderr)
     exit(1)

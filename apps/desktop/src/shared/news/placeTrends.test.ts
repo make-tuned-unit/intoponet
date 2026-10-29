@@ -32,6 +32,24 @@ describe('rising and fading in one place', () => {
     const gap = placeTrends({ sources, items, coverage: { a: whole, b: [[now - 20 * 3_600_000, now]], c: whole }, now, place: { countryCode: 'CD', name: 'Goma' } })
     expect(gap.fading.map((trend) => trend.term)).not.toContain('embouteillages')
   })
+  it('does not treat persisted coverage on a stale feed as current comparison health', () => {
+    const stale = placeTrends({
+      sources, items, coverage, health: { a: 'stale', b: 'error', c: 'error' },
+      now, place: { countryCode: 'CD', name: 'Goma' },
+    })
+    expect(stale.rising).toEqual([])
+    expect(stale.fading).toEqual([])
+    expect(stale.recentStories + stale.previousStories).toBe(0)
+    expect(stale.uncompared).toBe(7)
+  })
+  it('does not infer observation from old headlines when no coverage interval exists', () => {
+    const noObservation = placeTrends({
+      sources, items: [item('a', 'Goma reports budget debate and new measures', 40)], coverage: {},
+      health: { a: 'healthy' }, now, place: { countryCode: 'CD', name: 'Goma' },
+    })
+    expect(noObservation.recentStories + noObservation.previousStories).toBe(0)
+    expect(noObservation.uncompared).toBe(1)
+  })
   it('counts only feeds watched across both days, and says how many it set aside', () => {
     const gap = placeTrends({ sources, items, coverage: { a: whole, b: [[now - 20 * 3_600_000, now]], c: whole }, now, place: { countryCode: 'CD', name: 'Goma' } })
     expect(gap.uncompared).toBeGreaterThan(0)

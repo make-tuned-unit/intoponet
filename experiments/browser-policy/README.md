@@ -61,6 +61,21 @@ On 2026-10-29 with Electron 45.0.0 / Chromium 156.0.8078.48 on macOS arm64:
   completed in the runner's temporary downloads directory as
   `same-name.txt` and `same-name (1).txt`; both saved payloads matched their
   expected bytes. The runner removes this directory at exit.
+- Native public and private target-blank requests reached the production popup
+  decision helper as tab plans and their BrowserWindow stand-ins used the
+  corresponding opener sessions. A sized private popup inherited its opener's
+  Electron session, retained `window.opener`, and had no Node global. Four
+  quick popup requests yielded three child windows and a denied fourth; each
+  set of children closed when its opener was destroyed. A normal close was
+  vetoed by a test child's `beforeunload` handler; owner teardown force-destroyed
+  the child without consulting that handler again. A `file:` request was
+  denied by the unit-tested production decision helper, but the renderer
+  request itself did not reach Electron's window-open handler in this run.
+- A nested popup burst from a private child yielded three tab decisions and a
+  denied fourth request; three tab stand-ins inherited the private session.
+  Helper checks deny nested `mailto:` and `about:blank` while the root planner
+  still permits `about:blank` as a child window. Those special-scheme checks
+  were direct helper calls, not renderer-dispatched native requests.
 - profileDirectoryRemovedAfterRun was true in the evidence report.
 
 ## Limits
@@ -82,6 +97,13 @@ certificate errors. No trust override was installed: Electron documents
 `0`, which would bypass the exact failure under test. These results do not
 establish broader redirect or iframe policy beyond the exercised loopback cases
 and do not test certificate exception behavior.
+Popup checks used BrowserWindow stand-ins for tabs; they do not exercise the
+production WebContentsView tab UI, packaged app, real sign-in websites, private
+mode cleanup, or other platforms. The `file:` renderer request was not observed
+by `setWindowOpenHandler`; only the production decision helper's unit test
+establishes its `deny` result for that URL. Nested special-scheme and
+`about:blank` behavior also has helper-level coverage; no renderer-dispatched
+native requests for those cases are claimed.
 
 Electron's official `certificate-error` app event defines `isMainFrame`, the
 event callback, and default handling; the Session API requires permission request and check

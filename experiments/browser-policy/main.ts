@@ -5,6 +5,7 @@ import { BrowserWindow, app, session } from 'electron'
 import { bindPermissionOwnerLifecycle, kindsFor, originOf, SitePermissionBroker, SitePermissionStore } from '../../apps/desktop/src/main/sitePermissions'
 import { rejectCertificateErrorForSession } from '../../apps/desktop/src/main/browserCertificatePolicy'
 import { reserveDownloadPath } from '../../apps/desktop/src/main/downloadReservation'
+import { bindPopupCloseWithOwner, nestedPopupDecision, popupDecision, popupWindowOptions, PopupLimiter } from '../../apps/desktop/src/main/popups'
 
 app.commandLine.appendSwitch('use-fake-device-for-media-stream')
 app.commandLine.appendSwitch('disable-background-networking')
@@ -25,7 +26,14 @@ const inMemoryStore = new SitePermissionStore(null)
 let browser: BrowserWindow | null = null
 let certificateBrowser: BrowserWindow | null = null
 let subframeBrowser: BrowserWindow | null = null
+let privatePopupOpener: BrowserWindow | null = null
+let burstPopupOpener: BrowserWindow | null = null
 let lifecycleBrowser: BrowserWindow | null = null
+const popupWindows: BrowserWindow[] = []
+const popupTabs: BrowserWindow[] = []
+const popupAttempts: Array<{ owner: string; action: string; url: string }> = []
+const nestedPopupTabs: BrowserWindow[] = []
+const nestedPopupAttempts: Array<{ owner: string; action: string; url: string }> = []
 let httpServer: ReturnType<typeof createHttpServer> | null = null
 let httpsServer: ReturnType<typeof createHttpsServer> | null = null
 
@@ -39,6 +47,49 @@ function nextPermissionRequest(): Promise<(typeof permissionRequests)[number]> {
 function report(status: string, results: Record<string, unknown>): void {
   console.log('Browser policy native probe report:')
   console.log(JSON.stringify({ status, results }, null, 2))
+}
+
+function installPopupPolicy(opener: BrowserWindow, owner: string, isPrivate: boolean): void {
+  const limiter = new PopupLimiter()
+  opener.webContents.setWindowOpenHandler(({ url, disposition, features }) => {
+    const plan = popupDecision({ url, disposition, features }, limiter, opener.webContents.id)
+    popupAttempts.push({ owner, action: plan.action, url })
+    if (plan.action === 'deny') return { action: 'deny' }
+    if (plan.action === 'tab') {
+      const tab = new BrowserWindow({
+        show: false,
+        webPreferences: { partition: isPrivate ? 'browser-policy-private-probe' : 'browser-policy-native-probe', sandbox: true, nodeIntegration: false, contextIsolation: true },
+      })
+      popupTabs.push(tab)
+      void tab.loadURL(url).catch(() => undefined)
+      return { action: 'deny' }
+    }
+    return { action: 'allow', overrideBrowserWindowOptions: popupWindowOptions(plan) }
+  })
+  opener.webContents.on('did-create-window', (child) => {
+    popupWindows.push(child)
+    bindPopupCloseWithOwner(child, opener.webContents)
+    const childContentsId = child.webContents.id
+    child.webContents.setWindowOpenHandler(({ url, disposition, features }) => {
+      const plan = nestedPopupDecision({ url, disposition, features }, limiter, childContentsId)
+      nestedPopupAttempts.push({ owner, action: plan.action, url })
+      if (plan.action === 'deny') return { action: 'deny' }
+      const nestedTab = new BrowserWindow({
+        show: false,
+        webPreferences: { partition: isPrivate ? 'browser-policy-private-probe' : 'browser-policy-native-probe', sandbox: true, nodeIntegration: false, contextIsolation: true },
+      })
+      nestedPopupTabs.push(nestedTab)
+      void nestedTab.loadURL(url).catch(() => undefined)
+      return { action: 'deny' }
+    })
+    child.webContents.once('destroyed', () => limiter.forget(childContentsId))
+  })
+}
+
+async function waitForCondition(condition: () => boolean, message: string): Promise<void> {
+  const deadline = Date.now() + 10_000
+  while (!condition() && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 25))
+  if (!condition()) throw new Error(message)
 }
 
 function listen(server: ReturnType<typeof createHttpServer> | ReturnType<typeof createHttpsServer>): Promise<number> {
@@ -148,6 +199,7 @@ async function run(): Promise<void> {
       webSecurity: true,
     },
   })
+  installPopupPolicy(browser, 'public', false)
   const webContents = browser.webContents
   bindPermissionOwnerLifecycle(webContents, (owner) => broker.dropOwner(owner))
   await webContents.loadURL('http://localhost:' + httpPort + '/fixture')
@@ -306,6 +358,85 @@ async function run(): Promise<void> {
   const downloadNamesDistinct = downloads.length === 2 && new Set(downloads.map((item) => item.filename)).size === 2
   const downloadPayloadsIntact = downloads.length === 2 && downloads.every((item) => item.state === 'completed' && item.expectedPayloadMatched)
   const temporaryDownloadFiles = readdirSync(downloadsDirectory).sort()
+
+  const publicSession = webContents.session
+  const publicPopupCountBeforeUnsupported = popupWindows.length + popupTabs.length
+  const publicAttemptStart = popupAttempts.length
+  await webContents.executeJavaScript(`(() => { const link = document.createElement('a'); link.href = 'http://localhost:${httpPort}/fixture?popup-tab=1'; link.target = '_blank'; document.body.append(link); link.click(); link.remove() })()`, true)
+  await waitForCondition(() => popupTabs.length >= 1, 'Timed out waiting for native public new-tab popup plan')
+  const publicTabUsesOpenerSession = popupTabs[0]!.webContents.session === publicSession
+  const publicNewTabPlanObserved = popupAttempts.slice(publicAttemptStart).some((attempt) => attempt.owner === 'public' && attempt.action === 'tab')
+  await webContents.executeJavaScript("(() => { const link = document.createElement('a'); link.href = 'file:///tmp/intoponet-popup-probe-denied'; link.target = '_blank'; document.body.append(link); link.click(); link.remove() })()", true)
+  await new Promise((resolve) => setTimeout(resolve, 250))
+  const unsupportedSchemeDecisionDenied = popupDecision({ url: 'file:///tmp/intoponet-popup-probe-denied', disposition: 'new-window', features: '' }, new PopupLimiter(), 900).action === 'deny'
+  const unsupportedPopupObservedByHandler = popupAttempts.some((attempt) => attempt.owner === 'public' && attempt.url.startsWith('file:'))
+  const unsupportedPopupCreatedNoWindow = popupWindows.length + popupTabs.length === publicPopupCountBeforeUnsupported + 1
+
+  privatePopupOpener = new BrowserWindow({
+    show: false,
+    webPreferences: { partition: 'browser-policy-private-probe', sandbox: true, nodeIntegration: false, contextIsolation: true, webSecurity: true },
+  })
+  installPopupPolicy(privatePopupOpener, 'private', true)
+  await privatePopupOpener.loadURL(`http://localhost:${httpPort}/fixture?private-popup-opener`)
+  const privateSession = privatePopupOpener.webContents.session
+  const privateAttemptStart = popupAttempts.length
+  await privatePopupOpener.webContents.executeJavaScript(`(() => { window.open('http://localhost:${httpPort}/fixture?popup-sized=1', 'signin', 'width=640,height=480'); return true })()`, true)
+  await waitForCondition(() => popupWindows.length >= 1, 'Timed out waiting for sized native popup')
+  const privatePopup = popupWindows[0]!
+  await waitForCondition(() => privatePopup.webContents.getURL().includes('popup-sized=1'), 'Sized popup did not navigate to the local child fixture')
+  const privatePopupUsesOpenerSession = privatePopup.webContents.session === privateSession
+  const privatePopupKeepsOpener = await privatePopup.webContents.executeJavaScript('window.opener !== null') as boolean
+  const privatePopupHasNoNode = await privatePopup.webContents.executeJavaScript("typeof process === 'undefined'") as boolean
+  const privatePopupPlanObserved = popupAttempts.slice(privateAttemptStart).some((attempt) => attempt.owner === 'private' && attempt.action === 'window')
+  const nestedBurstStart = nestedPopupAttempts.length
+  await privatePopup.webContents.executeJavaScript(`(() => { for (let i = 0; i < 4; i++) window.open('http://localhost:${httpPort}/fixture?nested-burst=' + i, 'nested' + i, 'width=400,height=300') })()`, true)
+  await waitForCondition(() => nestedPopupAttempts.length - nestedBurstStart >= 4, 'Timed out waiting for nested popup burst decisions')
+  await waitForCondition(() => nestedPopupTabs.filter((tab) => tab.webContents.getURL().includes('nested-burst=')).length === 3, 'Timed out waiting for nested private tabs')
+  const nestedBurstDecisions = nestedPopupAttempts.slice(nestedBurstStart).map((attempt) => attempt.action)
+  const nestedBurstLimitBlockedFourth = nestedBurstDecisions.filter((action) => action === 'tab').length === 3 && nestedBurstDecisions.filter((action) => action === 'deny').length === 1
+  const nestedTabsUsePrivateSession = nestedPopupTabs.length === 3 && nestedPopupTabs.every((tab) => tab.webContents.session === privateSession)
+  const nestedUnsupportedSchemeDenied = nestedPopupDecision({ url: 'mailto:blocked@example.test', disposition: 'new-window', features: '' }, new PopupLimiter(), 991).action === 'deny'
+  const nestedAboutBlankDenied = nestedPopupDecision({ url: 'about:blank', disposition: 'new-window', features: '' }, new PopupLimiter(), 992).action === 'deny'
+  const rootAboutBlankStillWindow = popupDecision({ url: 'about:blank', disposition: 'new-window', features: '' }, new PopupLimiter(), 993).action === 'window'
+  let beforeUnloadAttempts = 0
+  privatePopup.webContents.on('will-prevent-unload', () => { beforeUnloadAttempts += 1 })
+  await privatePopup.webContents.executeJavaScript("window.addEventListener('beforeunload', (event) => { event.preventDefault(); event.returnValue = '' }); window.__intoponetBeforeUnloadInstalled = true")
+  const beforeUnloadHandlerInstalled = await privatePopup.webContents.executeJavaScript("window.__intoponetBeforeUnloadInstalled === true") as boolean
+  privatePopup.close()
+  await new Promise((resolve) => setTimeout(resolve, 200))
+  const popupCloseVetoedByBeforeUnload = beforeUnloadAttempts > 0 && !privatePopup.isDestroyed()
+  const privateTabAttemptStart = popupAttempts.length
+  await privatePopupOpener.webContents.executeJavaScript(`(() => { const link = document.createElement('a'); link.href = 'http://localhost:${httpPort}/fixture?private-popup-tab=1'; link.target = '_blank'; document.body.append(link); link.click(); link.remove() })()`, true)
+  await waitForCondition(() => popupTabs.length >= 2, 'Timed out waiting for private new-tab plan')
+  const privateTabUsesPrivateSession = popupTabs[1]!.webContents.session === privateSession
+  const privateNewTabPlanObserved = popupAttempts.slice(privateTabAttemptStart).some((attempt) => attempt.owner === 'private' && attempt.action === 'tab')
+  burstPopupOpener = new BrowserWindow({
+    show: false,
+    webPreferences: { partition: 'browser-policy-private-probe', sandbox: true, nodeIntegration: false, contextIsolation: true, webSecurity: true },
+  })
+  installPopupPolicy(burstPopupOpener, 'burst', true)
+  await burstPopupOpener.loadURL(`http://localhost:${httpPort}/fixture?private-burst-opener`)
+  const burstStart = popupAttempts.length
+  await burstPopupOpener.webContents.executeJavaScript(`(() => { for (let i = 0; i < 4; i++) window.open('http://localhost:${httpPort}/fixture?burst=' + i, 'burst' + i, 'width=400,height=300') })()`, true)
+  await waitForCondition(() => popupAttempts.length - burstStart >= 4, 'Timed out waiting for popup burst decisions')
+  const burstDecisions = popupAttempts.slice(burstStart).map((attempt) => attempt.action)
+  await waitForCondition(() => popupWindows.filter((child) => child.webContents.getURL().includes('burst=')).length === 3, 'Timed out waiting for three allowed burst popups')
+  const burstLimitBlockedFourth = burstDecisions.filter((action) => action === 'window').length === 3 && burstDecisions.filter((action) => action === 'deny').length === 1
+  const burstChildren = popupWindows.filter((child) => child.webContents.getURL().includes('burst='))
+  const burstChildrenClosed = burstChildren.map((child) => new Promise<void>((resolve) => child.once('closed', () => resolve())))
+  burstPopupOpener.destroy()
+  await Promise.all(burstChildrenClosed)
+  const burstChildrenClosedWithOpener = burstChildren.length === 3 && burstChildren.every((child) => child.isDestroyed())
+  const privateChildrenBeforeClose = popupWindows.filter((child) => !child.isDestroyed() && child.webContents.session === privateSession)
+  const privateChildrenClosed = privateChildrenBeforeClose.map((child) => new Promise<void>((resolve) => child.once('closed', () => resolve())))
+  const beforeUnloadAttemptsBeforeOwnerDestroy = beforeUnloadAttempts
+  privatePopupOpener.destroy()
+  await new Promise((resolve) => setTimeout(resolve, 200))
+  const ownerDestroyTriggeredBeforeUnload = beforeUnloadAttempts > beforeUnloadAttemptsBeforeOwnerDestroy
+  const ownerDestroyVetoedByBeforeUnload = ownerDestroyTriggeredBeforeUnload && !privatePopup.isDestroyed()
+  if (!privatePopup.isDestroyed()) privatePopup.destroy()
+  await Promise.all(privateChildrenClosed)
+  const childrenClosedWithOpener = privateChildrenBeforeClose.length === 1 && !ownerDestroyVetoedByBeforeUnload && privateChildrenBeforeClose.every((child) => child.isDestroyed())
   const permissionAllowed = firstCaptureResult.ok && afterAllowPermission === 'granted'
   const permissionResetDeniedFutureRequest = afterResetPermission === 'denied' && !afterResetCapture.ok
   const permissionBlocked = !blockedCapture.ok && afterBlockPermission === 'denied' && blockedPermissionCheck === false && blockedDecisionRetained
@@ -313,7 +444,7 @@ async function run(): Promise<void> {
     && activeTrackStateBeforeReset.every((state) => state === 'live')
     && activeTrackStateAfterReset.length > 0
     && activeTrackStateAfterReset.every((state) => state === 'live')
-  const passed = secureContext && permissionAllowed && permissionResetDeniedFutureRequest && activeCaptureRemainsLiveAfterReset && permissionBlocked && pendingCancelledOnNavigation && pendingCancelledOnDestroy && certDenied && certificateNavigationFailed && !certificateFixtureLoaded && redirectDenied && redirectNavigationFailed && iframeCertificateDenied && parentRemainedUsable && downloadNamesDistinct && downloadPayloadsIntact
+  const passed = secureContext && permissionAllowed && permissionResetDeniedFutureRequest && activeCaptureRemainsLiveAfterReset && permissionBlocked && pendingCancelledOnNavigation && pendingCancelledOnDestroy && certDenied && certificateNavigationFailed && !certificateFixtureLoaded && redirectDenied && redirectNavigationFailed && iframeCertificateDenied && parentRemainedUsable && downloadNamesDistinct && downloadPayloadsIntact && publicNewTabPlanObserved && publicTabUsesOpenerSession && unsupportedSchemeDecisionDenied && unsupportedPopupCreatedNoWindow && privatePopupPlanObserved && privatePopupUsesOpenerSession && privatePopupKeepsOpener && privatePopupHasNoNode && beforeUnloadHandlerInstalled && popupCloseVetoedByBeforeUnload && !ownerDestroyVetoedByBeforeUnload && privateNewTabPlanObserved && privateTabUsesPrivateSession && burstLimitBlockedFourth && burstChildrenClosedWithOpener && childrenClosedWithOpener && nestedBurstLimitBlockedFourth && nestedTabsUsePrivateSession && nestedUnsupportedSchemeDenied && nestedAboutBlankDenied && rootAboutBlankStillWindow
 
   report(passed ? 'passed' : 'failed', {
     runtime: { electronVersion: process.versions.electron, chromiumVersion: process.versions.chrome, platform: process.platform, architecture: process.arch },
@@ -362,12 +493,44 @@ async function run(): Promise<void> {
       untrustedIframe: { events: subframeEvents, parentMarker, parentTitle, parentRemainedUsable, denied: iframeCertificateDenied },
     },
     download: { results: downloads, distinctReservedFilenames: downloadNamesDistinct, payloadsIntact: downloadPayloadsIntact, temporaryDirectoryContains: temporaryDownloadFiles },
-    conclusions: { permissionAllowed, permissionResetDeniedFutureRequest, activeCaptureRemainsLiveAfterReset, permissionBlocked, pendingCancelledOnNavigation, pendingCancelledOnDestroy, certDenied, certificateNavigationFailed, certificateFixtureNotLoaded: !certificateFixtureLoaded, redirectDenied, redirectNavigationFailed, iframeCertificateDenied, parentRemainedUsable, downloadNamesDistinct, downloadPayloadsIntact },
+    popup: {
+      attempts: popupAttempts,
+      publicNewTabPlanObserved,
+      publicTabUsesOpenerSession,
+      unsupportedSchemeDecisionDenied,
+      unsupportedPopupObservedByHandler,
+      unsupportedPopupCreatedNoWindow,
+      privatePopupPlanObserved,
+      privatePopupUsesOpenerSession,
+      privatePopupKeepsOpener,
+      privatePopupHasNoNode,
+      beforeUnloadHandlerInstalled,
+      popupCloseVetoedByBeforeUnload,
+      ownerDestroyTriggeredBeforeUnload,
+      ownerDestroyVetoedByBeforeUnload,
+      privateNewTabPlanObserved,
+      privateTabUsesPrivateSession,
+      burstDecisions,
+      burstLimitBlockedFourth,
+      burstChildrenClosedWithOpener,
+      privateChildCountBeforeOpenerClose: privateChildrenBeforeClose.length,
+      childrenClosedWithOpener,
+      nestedBurstAttempts: nestedPopupAttempts.slice(nestedBurstStart),
+      nestedBurstLimitBlockedFourth,
+      nestedTabCount: nestedPopupTabs.length,
+      nestedTabsUsePrivateSession,
+      nestedUnsupportedSchemeDenied,
+      nestedAboutBlankDenied,
+      rootAboutBlankStillWindow,
+    },
+    conclusions: { permissionAllowed, permissionResetDeniedFutureRequest, activeCaptureRemainsLiveAfterReset, permissionBlocked, pendingCancelledOnNavigation, pendingCancelledOnDestroy, certDenied, certificateNavigationFailed, certificateFixtureNotLoaded: !certificateFixtureLoaded, redirectDenied, redirectNavigationFailed, iframeCertificateDenied, parentRemainedUsable, downloadNamesDistinct, downloadPayloadsIntact, publicNewTabPlanObserved, publicTabUsesOpenerSession, unsupportedSchemeDecisionDenied, unsupportedPopupCreatedNoWindow, privatePopupPlanObserved, privatePopupUsesOpenerSession, privatePopupKeepsOpener, privatePopupHasNoNode, privateNewTabPlanObserved, privateTabUsesPrivateSession, burstLimitBlockedFourth, burstChildrenClosedWithOpener, childrenClosedWithOpener, nestedBurstLimitBlockedFourth, nestedTabsUsePrivateSession, nestedUnsupportedSchemeDenied, nestedAboutBlankDenied, rootAboutBlankStillWindow },
     limitations: [
       'The probe uses a temporary Electron BrowserWindow and in-memory permission store, not the packaged Intoponet UI/WebContentsView.',
       'Camera uses Chromium fake-device mode; no camera hardware or macOS camera permission prompt is invoked.',
       'The temporary self-signed localhost certificate was rejected for a direct navigation, an HTTP redirect target, and an HTTPS iframe. Expired certificates, hostname mismatch, public-CA trust, and other certificate errors remain untested.',
       'Two same-name HTTP downloads were written to a runner-owned temporary directory; this is not a test against the user Downloads directory or a packaged release.',
+      'Popup behavior was exercised in temporary BrowserWindows with the production planner/limiter/options/lifetime helpers; tabs use BrowserWindow stand-ins rather than the production WebContentsView tab UI.',
+      'Nested popup behavior uses the production nested policy helper with BrowserWindow stand-ins for tabs; no external page or packaged tab UI was used.',
       'This probe does not test OS permission grant/revocation behavior, persistent permission-file storage, renderer process crashes, private-session cleanup, or cross-platform behavior.',
     ],
   })
@@ -381,6 +544,9 @@ void run().catch((error) => {
   browser?.destroy()
   certificateBrowser?.destroy()
   subframeBrowser?.destroy()
+  privatePopupOpener?.destroy()
+  burstPopupOpener?.destroy()
+  for (const child of [...popupWindows, ...popupTabs, ...nestedPopupTabs]) if (!child.isDestroyed()) child.destroy()
   lifecycleBrowser?.destroy()
   await Promise.all([httpServer, httpsServer].filter((server): server is NonNullable<typeof server> => server !== null).map((server) => new Promise<void>((resolve) => server.close(() => resolve()))))
   app.quit()

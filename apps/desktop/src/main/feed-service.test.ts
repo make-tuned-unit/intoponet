@@ -352,6 +352,40 @@ describe('FEED_FETCH service', () => {
     expect(requests).toBe(1)
   })
 
+  it('marks a no-store 304 as non-persistent and clears previously cached content', async () => {
+    const now = FIXED_NOW
+    const storage = new MemoryStorage()
+    storage.value = JSON.stringify({
+      schemaVersion: 1,
+      updatedAt: new Date(now - 60_000).toISOString(),
+      sources: {
+        'hinckley-bosworth-news': {
+          health: 'healthy', failures: 0, deadLetters: [],
+          etag: '"previous"', nextAttemptAt: new Date(now - 1).toISOString(),
+          items: [{
+            schemaVersion: '1.0', id: 'retained', sourceId: 'hinckley-bosworth-news',
+            canonicalUrl: 'https://example.org/retained', title: 'Retained public item',
+            language: 'en-GB', discoveredAt: new Date(now - 60_000).toISOString(),
+            sourceContentHash: 'a'.repeat(64), topicIds: [], aboutLocations: [], provenanceId: 'prov-retained',
+          }],
+        },
+      },
+    })
+    const service = new FeedFetchService({
+      registry: registry('https://public-looking.gov/rss'), storage, now: () => now,
+      resolveHost: async () => ['93.184.216.34'],
+      fetchImpl: async () => new Response(null, { status: 304, headers: { 'cache-control': 'no-store' } }),
+    })
+
+    const result = await service.refreshSource('hinckley-bosworth-news')
+
+    expect(result.status).toBe('not-modified')
+    expect(result.persistenceAllowed).toBe(false)
+    expect((await service.snapshot()).sources['hinckley-bosworth-news']?.items).toEqual([])
+    expect(storage.value).not.toContain('Retained public item')
+    expect(storage.value).not.toContain('"previous"')
+  })
+
   it('does not replay CRLF or oversized validators from a malformed persistent cursor', async () => {
     const sentHeaders: Array<{ etag: string | undefined; lastModified: string | undefined }> = []
     const server = createServer((request, response) => {

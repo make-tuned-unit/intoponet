@@ -147,7 +147,7 @@ const HOUR = 3_600_000
 /** Smoothing so a handful of stories can't swing momentum to ±1. */
 export const MOMENTUM_SMOOTHING = 4
 /** Coverage gaps shorter than this are tolerated (polling cadence, clock skew). */
-const COVERAGE_TOLERANCE_MS = 90 * 60_000
+export const NEWS_COVERAGE_TOLERANCE_MS = 90 * 60_000
 
 /**
  * Coverage-aware change between the last 24 h and the 24 h before:
@@ -165,10 +165,10 @@ export function coversWindow(intervals: Array<[number, number]>, from: number, t
   const sorted = [...intervals].filter(([a, b]) => b >= from && a <= to).sort((x, y) => x[0] - y[0])
   let reached = from
   for (const [start, end] of sorted) {
-    if (start - reached > COVERAGE_TOLERANCE_MS) return false
+    if (start - reached > NEWS_COVERAGE_TOLERANCE_MS) return false
     reached = Math.max(reached, end)
   }
-  return to - reached <= COVERAGE_TOLERANCE_MS
+  return to - reached <= NEWS_COVERAGE_TOLERANCE_MS
 }
 
 /** Add one observation span to a feed's intervals, merging overlaps; drops spans older than `keepAfter`. */
@@ -177,7 +177,7 @@ export function addCoverage(intervals: Array<[number, number]>, span: [number, n
   const merged: Array<[number, number]> = []
   for (const [start, end] of all) {
     const last = merged[merged.length - 1]
-    if (last && start <= last[1] + COVERAGE_TOLERANCE_MS) last[1] = Math.max(last[1], end)
+    if (last && start <= last[1] + NEWS_COVERAGE_TOLERANCE_MS) last[1] = Math.max(last[1], end)
     else merged.push([start, end])
   }
   return merged
@@ -272,8 +272,12 @@ export function buildNewsDigest(input: {
     if (Number.isFinite(at)) oldestBySource.set(item.sourceId, Math.min(oldestBySource.get(item.sourceId) ?? Infinity, at))
   }
   const comparable = new Set(input.sources.filter((source) => {
+    // A stale/error feed can leave old coverage intervals behind. Those intervals
+    // describe past observations, not current availability for this comparison.
+    const health = input.health[source.sourceId]
+    if (health !== undefined && health !== 'healthy') return false
     const intervals = input.coverage?.[source.sourceId]
-    if (intervals) return coversWindow(intervals, previousStart, input.now)
+    if (input.coverage) return intervals ? coversWindow(intervals, previousStart, input.now) : false
     return (oldestBySource.get(source.sourceId) ?? Infinity) <= previousStart
   }).map((source) => source.sourceId))
   const horizon = input.now - windowHours * 3_600_000
@@ -360,7 +364,7 @@ export function buildNewsDigest(input: {
       storyCount: list.length,
       outletCount: new Set(list.map((story) => story.publisherGroupId)).size,
       feedCount: feeds.length,
-      healthyFeedCount: feeds.filter((feed) => input.health[feed.sourceId] === 'healthy' || input.health[feed.sourceId] === 'stale').length,
+      healthyFeedCount: feeds.filter((feed) => input.health[feed.sourceId] === 'healthy').length,
       latestAt: new Date(list[0]!.at).toISOString(),
       ...change(list, feeds.filter((feed) => comparable.has(feed.sourceId)).length),
       headlines: mixed.map(strip),
@@ -391,7 +395,7 @@ export function buildNewsDigest(input: {
       })
     }
   }
-  const healthyFeedCount = input.sources.filter((source) => input.health[source.sourceId] === 'healthy' || input.health[source.sourceId] === 'stale').length
+  const healthyFeedCount = input.sources.filter((source) => input.health[source.sourceId] === 'healthy').length
   return {
     schema: NEWS_DIGEST_SCHEMA,
     generatedAt: new Date(input.now).toISOString(),

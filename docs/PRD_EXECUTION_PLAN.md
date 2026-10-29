@@ -130,6 +130,18 @@ The paired XPC prototype accepts and verifies bounded synthetic bytes and reject
 
 All workspace typechecks and **677 tests** passed with zero skips (671 workspace/gold plus six release-inventory tests), including registry tests against isolated PostgreSQL. The rebuilt unsigned preview passed package verification; no installer was published. This supersedes the 665-test checkpoint.
 
+### RSS comparisons, popup lifecycle and real XPC inference — 29 October
+
+RSS Rising/Fading comparisons now require successful observed polling across both windows. Old publication dates, restart gaps, stale/error feeds, no-store responses and clock rollback no longer establish continuous coverage. The versioned coverage migration discards legacy inferred intervals; existing installations need about two days of successful polling before comparisons return. Cached digests must match the coverage version and freshness bounds. Global rising terms and local momentum both use comparable feeds. See `feature-verification/rss-news-observation-freshness-2026-10-29.md`.
+
+Native popup checks exposed and fixed two production gaps: a child's beforeunload handler could prevent closure with its owner, and nested popups bypassed burst limits. Owner teardown now destroys its child windows, and nested HTTP(S) tabs use the limiter while preserving private sessions. The independent native fixture passed; full packaged tab-UI and real OS media-grant verification remain separate gates.
+
+Public-field JSON responses are now bounded to 5 MiB of decoded bytes, including absent or inaccurate Content-Length. Oversized streams are cancelled, malformed UTF-8 is rejected, and failed sources retain their original freshness evidence. This limit does not cover every application's network client.
+
+The experimental App Sandbox XPC service now verifies pinned model/vocabulary buffers and performs actual MiniLM inference in JavaScriptCore. The fixed sentence matched V8 token IDs and the Float32 vector digest, with cosine similarity 1. Paired TCP/UDP entitlement controls and outside-container file denial passed. See `feature-verification/laya-xpc-inference-2026-10-29.json`. This is not the production Laya worker: Electron integration, peer validation, transport allocation bounds, lifecycle management and signed-release verification remain open. Exact macOS-managed test-container leftovers are recorded in the evidence.
+
+All workspace typechecks and **701 tests** passed with zero skips (695 workspace/gold plus six release-inventory tests), including registry tests against isolated PostgreSQL. This supersedes the 677-test checkpoint. The unsigned preview was rebuilt; installer verification is recorded separately. No public installer or production inference helper was published.
+
 ## Requirements still open
 
 - Strict Laya no-egress capability boundary (the sandbox prototype has a demonstrated WebRTC TCP escape path and is not production-integrated).
