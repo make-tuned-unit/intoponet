@@ -1,5 +1,6 @@
 node_modules/
 dist/
+apps/desktop/.release-package/
 out/
 .DS_Store
 *.log

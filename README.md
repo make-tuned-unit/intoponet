@@ -5,27 +5,28 @@ visible while real websites run in a sandboxed Chromium surface.
 
 ## Current scope
 
-This repository is at the Phase 0 / early Phase 1 cut from the
-[product requirements](./INTOPONET_PRD.md). The active implementation is an
-Electron compositor spike behind a typed browser-host API. It is not a final
-engine decision: the CEF comparator and ADR evidence are still required.
+The implementation now includes a Chromium browser shell, public geographic
+exploration, worldwide RSS coverage and trends, private local knowledge,
+Laya retrieval, sourced Olds timelines, and explicit private-beta Beacons.
+Electron remains the working host; the final engine decision and release
+acceptance gates remain open.
 
-Implemented:
+Implemented capabilities include:
 
-- Recognizable Earth with a synthetic frequency membrane (spec Phases A–B)
-- keyboard-first Explore, Search and URL launcher with host auto-detect
-- real Chromium `WebContentsView` with no Node integration
-- origin display, find-in-page, print, stop, minimize/restore
-- local bookmarks with private notes, renameable collections, and recent pages
-- multiple Chromium tabs with a shared persistent browser profile
-- downloads saved to the user Downloads folder
-- local exploration-context persistence
-- a limited public field from English Wikipedia/Wikimedia and USGS records,
-  with source coverage and synthetic fallback disclosed in the UI
-- reduced-motion, reduced-transparency and keyboard focus states
-- dependency-gated delivery plan in [docs/DELIVERY_DAG.md](./docs/DELIVERY_DAG.md)
-- executable work queue and verification gates in [docs/EXECUTION_RUNBOOK.md](./docs/EXECUTION_RUNBOOK.md)
-- frequency appearance, signal meaning, and coverage plan in [docs/FIELD_PLAN.md](./docs/FIELD_PLAN.md)
+- real Chromium pages, multiple tabs, direct URL navigation and keyboard controls
+- origin-bound permission prompts and controlled sign-in popups
+- worldwide RSS, Wikipedia readership and natural-event source layers
+- Rising/Fading coverage comparisons with source and coverage disclosures
+- private bookmarks, tags, collections, geographic pins and encrypted local storage
+- explicit Absorb and optional local Laya retrieval with source citations
+- Olds story, timeline and list views with attributed historical context
+- explicit public Beacon preview, consent and withdrawal for private beta
+- reduced-motion and keyboard support, pending full accessibility verification
+
+See [verification evidence](docs/FEATURE_VERIFICATION.md), the
+[PRD gap audit](docs/PRD_GAP_AUDIT_2026-10-28.md), and the
+[current execution plan](docs/PRD_EXECUTION_PLAN.md). Code presence is not
+completion of every PRD acceptance gate.
 
 ## Run
 
@@ -48,11 +49,12 @@ npm run build
 
 ## Security posture
 
-This is a development spike, not a general-public browser. Site permissions are
-denied by default, non-HTTP(S) navigation is blocked, popups are refused, and
-the renderer receives only an allowlisted browser API. Downloads go to the
-user Downloads folder without a chooser. It does not yet include production
-safe-browsing, certificate, password, update or crash-recovery policy.
+This is a development prototype, not a general-public browser release.
+Website renderers are sandboxed and receive no native/Node bridge. Permissions
+use origin-bound prompts; popups follow a controlled tab/sign-in flow.
+Production signing, updates, independent security validation, compatibility
+and accessibility evidence remain release gates. See
+[ADR-007](docs/architecture/ADR-007-browser-policy.md) for policy and limitations.
 
 Useful shortcuts once a page is open: `⌘L` launcher, `⌘F` find, `⌘R` reload,
 `⌘[` / `⌘]` back and forward, `⌘+` / `⌘-` / `⌘0` zoom, `⌘⇧C` copy address,

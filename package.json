@@ -14,6 +14,8 @@
     "start": "node scripts/launch-desktop.cjs",
     "preview": "node scripts/launch-desktop.cjs preview",
     "build": "npm run build --workspace @intoponet/desktop",
+    "package:macos:preview": "node scripts/package-macos.cjs preview",
+    "package:macos:release": "node scripts/package-macos.cjs release",
     "benchmark:electron": "electron experiments/electron-compositor/main.cjs",
     "dag": "node scripts/dag.cjs",
     "typecheck": "npm run typecheck --workspaces --if-present",
@@ -22,5 +24,8 @@
   },
   "engines": {
     "node": ">=22"
+  },
+  "devDependencies": {
+    "electron-builder": "^26.18.0"
   }
 }

@@ -148,4 +148,61 @@ describe('OldsService', () => {
     expect(again.edges.length).toBe(thread.edges.length)
     expect(calls.length).toBe(before)
   })
+
+  it('enriches from editions linked only by the root article, with bounded attributed fetches', async () => {
+    dir = await mkdtemp(join(tmpdir(), 'olds-root-series-'))
+    const currentTitle = '2026 Example national election'
+    const editionTitles = [
+      '2008 Example national election',
+      '2012 Example national election',
+      '2020 Example national election',
+    ]
+    const seriesFetches: string[] = []
+    const rootWikitext = editionTitles.map((title) => `[[${title}]]`).join('\n') + '\n[[2019 Example presidential election]]'
+    const edition = (title: string) => `The ${title} was held on 12 June ${title.slice(0, 4)}, and voters chose a new president.`
+    const fetchImpl: typeof fetch = async (input) => {
+      const url = new URL(String(input))
+      if (url.hostname === 'www.wikidata.org' && url.searchParams.get('action') === 'wbgetentities') {
+        return new Response(JSON.stringify({ entities: {
+          Q9000: {
+            id: 'Q9000',
+            labels: { en: { value: currentTitle } },
+            descriptions: { en: { value: 'national election' } },
+            sitelinks: { enwiki: { title: currentTitle } },
+            claims: {},
+          },
+        } }))
+      }
+      if (url.hostname === 'en.wikipedia.org') {
+        if (url.searchParams.get('action') === 'parse') {
+          const title = url.searchParams.get('page') ?? ''
+          if (editionTitles.includes(title)) seriesFetches.push(title)
+          return new Response(JSON.stringify({ parse: {
+            title,
+            // No dated narrative or background article pointer: prior editions
+            // are linked only from the root's own article body.
+            wikitext: title === currentTitle ? rootWikitext : edition(title),
+          } }))
+        }
+        if (url.searchParams.get('action') === 'query') {
+          const title = url.searchParams.get('titles') ?? currentTitle
+          if (url.searchParams.get('prop') === 'pageprops') {
+            return new Response(JSON.stringify({ query: { pages: [{ pageprops: { wikibase_item: 'Q9000' } }] } }))
+          }
+          return new Response(JSON.stringify({ query: { pages: [{ title, extract: '' }] } }))
+        }
+      }
+      return new Response(JSON.stringify({}))
+    }
+    const service = new OldsService({ cacheDir: dir, fetchImpl, now: () => Date.parse('2026-10-28T12:00:00Z') })
+
+    const thread = await service.thread({ kind: 'qid', qid: 'Q9000' })
+
+    expect(thread.chronicle?.map((entry) => entry.at.iso)).toEqual(['2008-06-12', '2012-06-12', '2020-06-12'])
+    expect(thread.chronicle?.map((entry) => entry.sourceTitle)).toEqual(editionTitles)
+    expect(thread.chronicle?.every((entry) => editionTitles.some((title) => entry.url.includes(encodeURIComponent(title.replace(/ /g, '_')))))).toBe(true)
+    expect(thread.historyNote).toContain('Earlier context comes from linked subject articles and earlier events in the same series')
+    expect(seriesFetches.sort()).toEqual([...editionTitles].sort())
+    expect(seriesFetches).toHaveLength(3)
+  })
 })

@@ -5,6 +5,13 @@ import { historicalArticles, historicalSeriesArticles, olderContext } from './hi
 const event = (year: number, text = `A distinct sourced event in ${year}.`): OldsChronicleEntry => ({ at: { iso: String(year), label: String(year), precision: 'year' }, text, section: 'History', url: 'https://en.wikipedia.org/wiki/Elections_in_Israel#History', link: null })
 
 describe('historical context from explicit subject articles', () => {
+  it('finds earlier editions linked directly from the current event article', () => {
+    const currentArticle = '== Previous elections ==\n[[2020 Israeli legislative election]]\n[[2019 Israeli legislative election]]\n[[2019 Israeli local elections]]'
+    expect(historicalSeriesArticles('2026 Israeli legislative election', currentArticle, 2026)).toEqual([
+      '2019 Israeli legislative election',
+      '2020 Israeli legislative election',
+    ])
+  })
   it('samples only exact earlier editions of a documented event series', () => {
     const links = [1949, 1951, 1977, 1984, 2003, 2015, 2026].map((year) => `[[${year} Israeli legislative election|${year}]]`).join('\n')
     expect(historicalSeriesArticles('2026 Israeli legislative election', links + '[[1948 Israeli war]]', 2026)).toEqual(['1949 Israeli legislative election', '1977 Israeli legislative election', '2015 Israeli legislative election'])

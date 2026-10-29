@@ -92,18 +92,27 @@ the synthetic fixture field with its synthetic/demo label.
 - an explicit, discriminated command API in `@intoponet/browser-api`
 - runtime validation and trusted-shape copying for every IPC command
 - HTTP(S)-only in-panel navigation
-- denied website permission requests during the spike
-- popup targets denied with an explicit shell error
+- site permission prompts for mapped sensitive requests, remembered per origin;
+  private-tab decisions stay in memory and unknown requests are denied
+- HTTP(S) popup handling: new-tab dispositions become tabs and sized windows
+  remain sandboxed but preserve `window.opener`; burst popups are rate-limited
+- renderer crash recovery retries the last URL once per tab in a 60-second
+  window; a second crash latches automatic recovery off until explicit Reload,
+  new navigation or tab close; page form state is not restored
 - HTTPS and insecure HTTP origins have distinct, continuously visible states
 - no telemetry or cloud model endpoint
 
 ## Known gaps before public beta
 
 - IPC parser fuzz/property tests beyond the current malformed-payload cases
-- download, certificate-error, WebAuthn, password/autofill and popup policies
+- download, WebAuthn, password/autofill and external-protocol policies
+- integration evidence for certificate failures, permission prompts/revocation,
+  popup navigation/opener behavior, and private-session cleanup
 - safe-browsing/malware protection and external-protocol consent
-- profile encryption/key management and private browsing partitions
-- crash recovery, signed updates, Chromium CVE intake and emergency releases
+- profile encryption/key management and verification that private-session data
+  clears and stays isolated as intended
+- packaged renderer/GPU crash and memory-pressure recovery evidence; signed
+  updates, Chromium CVE intake and emergency releases
 - dependency lock/SBOM, license review and independent security assessment
 
 Any unsandboxed web content, generic privileged page bridge, hidden inference

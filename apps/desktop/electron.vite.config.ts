@@ -7,6 +7,7 @@ const fieldSnapshot = resolve(__dirname, '../../packages/field-snapshot/src/inde
 const localKnowledge = resolve(__dirname, '../../packages/local-knowledge/src/index.ts')
 const workspacePackages = [
   '@intoponet/browser-api',
+  '@intoponet/beacon-core',
   '@intoponet/field-snapshot',
   '@intoponet/frequency-field',
   '@intoponet/local-knowledge',

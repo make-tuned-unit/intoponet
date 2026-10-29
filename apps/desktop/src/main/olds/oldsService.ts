@@ -687,9 +687,14 @@ export class OldsService {
       const url = new URL('https://en.wikipedia.org/w/api.php')
       url.search = new URLSearchParams({ action: 'parse', page: title, prop: 'wikitext', redirects: '1', format: 'json', formatversion: '2' }).toString()
       const payload = await this.getJson(url.toString(), 12_000) as { parse?: { wikitext?: string } }
-      const sources = historicalArticles(title, payload.parse?.wikitext ?? '', country)
+      const rootWikitext = payload.parse?.wikitext ?? ''
+      const sources = historicalArticles(title, rootWikitext, country)
       const candidates: OldsChronicleEntry[] = []
-      const series = new Set<string>()
+      // A current edition often links its own previous editions directly,
+      // even when it has no separate history article to point us toward.
+      // Accept only exact same-series titles and keep the existing three-page
+      // fetch bound.
+      const series = new Set(historicalSeriesArticles(title, rootWikitext, currentYear))
       for (const sourceTitle of sources) {
         try {
           url.searchParams.set('page', sourceTitle)
@@ -1589,7 +1594,7 @@ function countriesByName(text: string): string[] {
 
 const BROAD_CLASSES = new Set(['Q6256', 'Q3624078', 'Q5107', 'Q82794', 'Q35657', 'Q10864048', 'Q1620908', 'Q15642541', 'Q7275', 'Q3336843', 'Q11828004', 'Q107390', 'Q34876', 'Q515'])
 
-const CACHE_VERSION = 'v15'
+const CACHE_VERSION = 'v16'
 
 function cacheKey(query: OldsQuery): string {
   return `${CACHE_VERSION}|${rawCacheKey(query)}`

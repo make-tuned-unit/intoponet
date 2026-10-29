@@ -39,6 +39,7 @@ import {
 import { shellShortcutForInput } from './shellShortcuts'
 import { kindsFor, originOf, SitePermissionBroker, SitePermissionStore } from './sitePermissions'
 import { popupPlan, PopupLimiter } from './popups'
+import { CrashRecoveryPolicy } from './crashRecovery'
 import { BeaconPublisher } from './beacons/publisher'
 import { DEFAULT_BEACON_REGISTRY } from './beacons/defaults'
 import { ENCRYPTED_DNS, networkPrivacySnapshot, WEBRTC_POLICY } from './networkPrivacy'
@@ -149,9 +150,10 @@ function safeHttpUrl(value: string): URL | null {
 }
 
 function persistentState(): PersistentBrowserState {
+  const currentUrl = pageView?.webContents.getURL()
   return {
     version: 2,
-    url: pageView?.webContents.getURL() || lastKnownUrl,
+    url: safeHttpUrl(currentUrl ?? '') ? currentUrl! : lastKnownUrl,
     bounds: lastBounds,
     wasVisible: pageAttached,
     // Private tabs are never saved or restored.
@@ -561,7 +563,7 @@ function safeFavicon(value: string): string {
 function tabSnapshots(): PageTabSnapshot[] {
   return openTabs.map((tab) => ({
     id: tab.id,
-    url: tab.view.webContents.getURL() || tab.url,
+    url: safeHttpUrl(tab.view.webContents.getURL()) ? tab.view.webContents.getURL() : tab.url,
     title: tab.view.webContents.getTitle() || tab.title || tab.url,
     favicon: tab.favicon,
     active: tab.id === activeTabId,
@@ -592,7 +594,7 @@ function rememberTab(view: WebContentsView): void {
   if (!tab) return
   const url = view.webContents.getURL()
   const title = view.webContents.getTitle()
-  if (url) tab.url = url
+  if (safeHttpUrl(url)) tab.url = url
   if (title) tab.title = title
   emitTabs()
 }
@@ -613,12 +615,13 @@ function showTab(id: string): WebContentsView | null {
   if (pageView && pageView !== tab.view) detachActive()
   activeTabId = tab.id
   pageView = tab.view
-  lastKnownUrl = tab.view.webContents.getURL() || tab.url
+  const selectedUrl = tab.view.webContents.getURL()
+  lastKnownUrl = safeHttpUrl(selectedUrl) ? selectedUrl : tab.url
   attachPageView()
   emitTabs()
   emitProtectionState()
   const current = tab.view.webContents.getURL()
-  if ((!current || current === 'about:blank') && safeHttpUrl(tab.url)) {
+  if ((!current || current === 'about:blank') && safeHttpUrl(tab.url) && crashRecovery.canAutoRecover(tab.id)) {
     void tab.view.webContents.loadURL(tab.url)
   }
   return tab.view
@@ -629,6 +632,7 @@ function discardTab(id: string): void {
   if (index < 0) return
   const [tab] = openTabs.splice(index, 1)
   if (!tab) return
+  crashRecovery.forget(tab.id)
   if (pageView === tab.view) {
     detachActive()
     pageView = null
@@ -653,6 +657,7 @@ function makeRoomForTab(): void {
 }
 
 const popupLimiter = new PopupLimiter()
+const crashRecovery = new CrashRecoveryPolicy()
 
 /** A popup window opened by a page: http(s) only, nested popups become tabs, closes with its page. */
 function wirePopupWindow(child: BrowserWindow, opener: WebContentsView): void {
@@ -941,14 +946,18 @@ function buildView(isPrivate = privateMode): WebContentsView {
   )
   view.webContents.on('render-process-gone', (_event, details) => {
     const tab = openTabs.find((item) => item.view === view)
-    const crashedUrl = tab?.url || lastKnownUrl
+    const currentUrl = view.webContents.getURL()
+    const crashedUrl = safeHttpUrl(currentUrl) ? currentUrl : tab?.url || lastKnownUrl
+    const mayAutoRecover = tab ? crashRecovery.recordCrash(tab.id) : false
     if (pageView === view) detachActive()
     if (pageView === view) pageView = null
     protectionPages.remove(view.webContents.id)
     emit({
       type: 'navigation-failed',
       url: crashedUrl,
-      reason: `The page renderer stopped (${details.reason}). Reloading.`,
+      reason: mayAutoRecover
+        ? `The page renderer stopped (${details.reason}). Reloading once.`
+        : `The page renderer stopped (${details.reason}). Automatic reload is paused after repeated crashes. Use Reload to try again.`,
     })
     if (!tab || !safeHttpUrl(crashedUrl)) return
     const replacement = buildView(privateViews.has(view))
@@ -958,7 +967,7 @@ function buildView(isPrivate = privateMode): WebContentsView {
       pageView = replacement
       lastKnownUrl = crashedUrl
       attachPageView()
-      void replacement.webContents.loadURL(crashedUrl)
+      if (mayAutoRecover) void replacement.webContents.loadURL(crashedUrl)
     }
     emitTabs()
   })
@@ -1082,6 +1091,8 @@ async function handleBrowserCommand(
       const target = safeHttpUrl(command.url)
       if (!target) throw new Error('Only HTTP and HTTPS destinations are supported.')
       const view = createPageView()
+      const tab = openTabs.find((item) => item.view === view)
+      if (tab) crashRecovery.manualRetry(tab.id)
       attachPageView()
       lastKnownUrl = target.toString()
       schedulePersistentStateSave()
@@ -1098,9 +1109,20 @@ async function handleBrowserCommand(
         pageView.webContents.navigationHistory.goForward()
       }
       break
-    case 'reload':
-      pageView?.webContents.reload()
+    case 'reload': {
+      if (!pageView) break
+      const tab = openTabs.find((item) => item.view === pageView)
+      const currentUrl = pageView.webContents.getURL()
+      if (!currentUrl || currentUrl === 'about:blank') {
+        if (tab && safeHttpUrl(tab.url)) {
+          crashRecovery.manualRetry(tab.id)
+          void pageView.webContents.loadURL(tab.url)
+        }
+      } else {
+        pageView.webContents.reload()
+      }
       break
+    }
     case 'stop':
       pageView?.webContents.stop()
       break
