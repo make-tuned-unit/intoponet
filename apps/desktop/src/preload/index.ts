@@ -5,6 +5,7 @@ import { sitePermissionChannels, type SitePermissionApi, type SitePermissionComm
 import { layaChannels, type LayaApi, type LayaCommand, type LayaHit, type LayaPassage, type LayaProgress, type LayaRelated, type LayaStatus, type LayaTheme } from '@intoponet/browser-api'
 import { knowledgeChannels, oldsChannels, type AbsorbPreview, type AbsorbRefusal, type KnowledgeApi, type KnowledgeCommand, type KnowledgeDocument, type KnowledgeClaim, type KnowledgeHit, type KnowledgeRecord, type OldsApi, type OldsQuery, type OldsThread } from '@intoponet/browser-api'
 import { contextBridge, ipcRenderer } from 'electron'
+import { updateChannels, type UpdatesApi, type UpdateCommand, type UpdateStatus } from '@intoponet/browser-api'
 import {
   CAPTURE_SCHEME,
   captureChannels,
@@ -21,6 +22,7 @@ import {
   type PageTabSnapshot,
   type PrivateLibraryReadResult,
   type ProtectionSnapshot,
+  type PublicFieldStatus,
 } from '@intoponet/browser-api'
 
 const invoke = (
@@ -30,6 +32,7 @@ const invoke = (
   | ProtectionSnapshot
   | PageTabSnapshot[]
   | PrivateLibraryReadResult
+  | PublicFieldStatus
   | string
   | null
 > =>
@@ -119,6 +122,7 @@ const browserHost: BrowserHostApi = {
     await invoke({ type: 'delete-private-library' })
   },
   getFieldSnapshot: () => invoke({ type: 'get-field-snapshot' }) as Promise<string | null>,
+  getPublicFieldStatus: () => invoke({ type: 'get-public-field-status' }) as Promise<PublicFieldStatus>,
   getNewsDigest: () => invoke({ type: 'get-news-digest' }) as Promise<string | null>,
   getPlaceTrends: (place: { countryCode: string; name?: string; aliases?: string[]; geonameId?: string }) => invoke({ type: 'get-place-trends', ...place }) as Promise<string | null>,
   subscribe: (listener) => {
@@ -251,8 +255,20 @@ const access = {
   page: () => ipcRenderer.invoke('intoponet:page-access') as Promise<{ url: string; title: string; paywalled: boolean; signals: string[]; doi: string | null } | null>,
 }
 
+const updateInvoke = (command: UpdateCommand): Promise<UpdateStatus> => ipcRenderer.invoke(updateChannels.command, command) as Promise<UpdateStatus>
+const updates: UpdatesApi = {
+  status: () => updateInvoke({ type: 'status' }),
+  checkAndDownload: () => updateInvoke({ type: 'check-and-download' }),
+  restart: () => updateInvoke({ type: 'restart' }),
+  subscribe: (listener) => {
+    const handler = (_event: Electron.IpcRendererEvent, status: UpdateStatus): void => listener(status)
+    ipcRenderer.on(updateChannels.event, handler)
+    return () => ipcRenderer.removeListener(updateChannels.event, handler)
+  },
+}
+
 const favicons = {
   get: (hosts: string[]) => ipcRenderer.invoke('intoponet:favicons', hosts) as Promise<Record<string, string>>,
 }
 
-contextBridge.exposeInMainWorld('intoponet', Object.freeze({ browserHost, captures, olds, knowledge, laya, translate, privacy, sitePermissions, beacons, favicons, access }))
+contextBridge.exposeInMainWorld('intoponet', Object.freeze({ browserHost, captures, olds, knowledge, laya, translate, privacy, sitePermissions, beacons, favicons, access, updates }))

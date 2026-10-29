@@ -3,6 +3,7 @@ import type {
   FindInPageResult,
   PageTabSnapshot,
   ProtectionSnapshot,
+  PublicFieldStatus,
 } from '@intoponet/browser-api'
 import { demoFieldSnapshot, parseFieldSnapshot, snapshotLabel } from '@intoponet/field-snapshot'
 import type { FieldSnapshot } from '@intoponet/field-snapshot'
@@ -325,6 +326,8 @@ export function App() {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [libraryReady, setLibraryReady] = useState(false)
   const [publicSnapshot, setPublicSnapshot] = useState<FieldSnapshot | null>(null)
+  const [publicFieldStatus, setPublicFieldStatus] = useState<PublicFieldStatus | null>(null)
+  const publicFieldStatusEvents = useRef(0)
   const [personalActivity, setPersonalActivity] = useState(emptyPersonalActivity)
   const [globePrefs, setGlobePrefs] = useState(readGlobePrefs)
   const fieldView = globePrefs.view
@@ -544,14 +547,19 @@ export function App() {
       return [{ id: location.id, label: location.label, lat: location.lat, lon: location.lon }]
     })
   }, [topicLocationOptions, topicLocations])
-  const fieldNote = publicSnapshot ? snapshotLabel(publicSnapshot) : demoFieldSnapshot().coverageNote
+  const publicFieldStatusNote = publicFieldStatus
+    ? `${publicFieldStatus.mode === 'shared' ? 'Shared mode' : 'Local mode'} · ${publicFieldStatus.sourceLabel}${publicFieldStatus.configuredOrigin ? ` (${publicFieldStatus.configuredOrigin})` : ''} · ${publicFieldStatus.state}: ${publicFieldStatus.message}`
+    : ''
+  const fieldNote = publicSnapshot
+    ? `${snapshotLabel(publicSnapshot)}${publicFieldStatusNote ? ` ${publicFieldStatusNote}` : ''}`
+    : demoFieldSnapshot().coverageNote
   const fieldProvenanceNote = designPreview
     ? 'Synthetic radial preview for visual QA. Not public activity; observed sources remain unchanged. Surface shading · glow off.'
     : fieldView === 'personal'
       ? `This session: ${personalActivity.visits.length} eligible visits · ${unplacedPersonalVisitCount(personalActivity)} without a topic destination. Nothing is shared.`
       : publicSnapshot
         ? `${fieldNote} Adult or ineligible public records are filtered before rendering.`
-        : 'No public snapshot is available. Design preview is synthetic and explicitly labeled.'
+        : `No public snapshot is available.${publicFieldStatusNote ? ` ${publicFieldStatusNote}` : ''} Design preview is synthetic and explicitly labeled.`
 
   useEffect(() => {
     if (!publicSnapshot || !selectedTopic || activeTopic === selectedTopic.label) return
@@ -656,6 +664,11 @@ export function App() {
       }
       if (event.type === 'field-snapshot') {
         setPublicSnapshot(parseFieldSnapshot(event.payload))
+        return
+      }
+      if (event.type === 'public-field-status') {
+        publicFieldStatusEvents.current += 1
+        setPublicFieldStatus(event.status)
       }
     })
     void window.intoponet.browserHost.getState().then(setPanel)
@@ -669,6 +682,9 @@ export function App() {
     })
     void window.intoponet.browserHost.getFieldSnapshot().then((payload) => {
       if (payload) setPublicSnapshot(parseFieldSnapshot(payload))
+    })
+    void window.intoponet.browserHost.getPublicFieldStatus().then((status) => {
+      if (publicFieldStatusEvents.current === 0) setPublicFieldStatus(status)
     })
     return unsubscribe
   }, [])
@@ -2484,7 +2500,9 @@ export function App() {
           onTogglePins={() => updateGlobePrefs({ pins: !globePrefs.pins })}
           dayNight={globePrefs.dayNight}
           onToggleDayNight={() => updateGlobePrefs({ dayNight: !globePrefs.dayNight })}
-          coverageNote={eligiblePublicSnapshot?.coverageNote ?? 'No public snapshot yet.'}
+          coverageNote={eligiblePublicSnapshot
+            ? `${snapshotLabel(eligiblePublicSnapshot)}${publicFieldStatusNote ? ` ${publicFieldStatusNote}` : ''}`
+            : `No public snapshot yet.${publicFieldStatusNote ? ` ${publicFieldStatusNote}` : ''}`}
           placesAttribution={PLACE_ATTRIBUTION}
           personal={(
             <>

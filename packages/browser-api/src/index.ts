@@ -119,10 +119,20 @@ export type BrowserHostEvent =
   /** Shell shortcuts pressed while the native page view had keyboard focus. */
   | { type: 'shortcut'; action: ShellShortcut }
   | { type: 'field-snapshot'; payload: string }
+  | { type: 'public-field-status'; status: PublicFieldStatus }
   /** Validated per-country local news digest (JSON). */
   | { type: 'news-digest'; payload: string }
 
 export type ShellShortcut = 'focus-launcher' | 'toggle-bookmarks' | 'capture' | 'toggle-private' | 'absorb-selection'
+
+export type PublicFieldStatus = {
+  mode: 'local' | 'shared'
+  sourceLabel: string
+  configuredOrigin: string | null
+  state: 'fetching' | 'current' | 'stale' | 'error'
+  evaluationTime: string | null
+  message: string
+}
 
 export interface BrowserHostApi {
   open(intent: NavigationIntent): Promise<void>
@@ -157,6 +167,7 @@ export interface BrowserHostApi {
   writePrivateLibrary(payload: string): Promise<void>
   deletePrivateLibrary(): Promise<void>
   getFieldSnapshot(): Promise<string | null>
+  getPublicFieldStatus(): Promise<PublicFieldStatus>
   getNewsDigest(): Promise<string | null>
   /** What is rising and fading in one place's news (JSON), or null before the first digest. */
   getPlaceTrends(place: { countryCode: string; name?: string; aliases?: string[]; geonameId?: string }): Promise<string | null>
@@ -198,6 +209,7 @@ export type BrowserHostCommand =
   | { type: 'write-private-library'; payload: string }
   | { type: 'delete-private-library' }
   | { type: 'get-field-snapshot' }
+  | { type: 'get-public-field-status' }
   | { type: 'get-news-digest' }
   /** What is rising and fading in one place's news (a country, or a city by name). */
   | { type: 'get-place-trends'; countryCode: string; name?: string; aliases?: string[]; geonameId?: string }
@@ -232,6 +244,7 @@ const commandTypes = new Set<BrowserHostCommand['type']>([
   'write-private-library',
   'delete-private-library',
   'get-field-snapshot',
+  'get-public-field-status',
   'get-news-digest',
   'get-place-trends',
 ])
@@ -365,6 +378,7 @@ export function parseBrowserHostCommand(value: unknown): BrowserHostCommand {
     case 'read-private-library':
     case 'delete-private-library':
     case 'get-field-snapshot':
+    case 'get-public-field-status':
     case 'get-news-digest':
     case 'close':
     case 'restore':
@@ -391,3 +405,4 @@ export * from './translate'
 export * from './privacy'
 export * from './sitePermissions'
 export * from './beacons'
+export * from './updates'

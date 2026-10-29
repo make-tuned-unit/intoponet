@@ -43,11 +43,11 @@ Electron documents that `safeStorage` is platform-specific: macOS uses Keychain,
 
 ## Backup behavior and limits
 
-The privacy command currently passes `private-library.v1.seal`, `userData/knowledge`, `userData/laya`, and `userData/personal` to `tmutil addexclusion` / `isexcluded` on macOS. It filters out paths that do not yet exist. As a result, the status may report all currently existing targets excluded while a missing future target (for example, a not-yet-created private library or Laya directory) has no exclusion yet. The captured files under `~/Pictures/Intoponet` are not included. The control only concerns Time Machine; it does not manage other backup/cloud products.
+The privacy command persists the user's exclusion request and uses unprivileged sticky exclusions (`tmutil addexclusion`) for existing members of four named targets: `private-library.v1.seal`, `userData/knowledge`, `userData/laya`, and `userData/personal`. Fixed-path exclusions (`-p`) are deliberately not used because the installed `tmutil` manual requires root and Full Disk Access for that mode. On startup and when one of the exact top-level paths is created or replaced, the app reapplies the request to paths that exist. This is best-effort: a watcher may miss an event, an atomic replacement may briefly create a new file without the old file's exclusion metadata, or `tmutil` may fail. If an enabled request cannot be verified across all four existing targets, the UI keeps the switch checked and reports partial/unavailable status rather than claiming success. Disabling removes legacy sticky exclusions for existing paths and verifies the result. The captured files under `~/Pictures/Intoponet` are not included. The control only concerns Time Machine; it does not manage other backup/cloud products.
 
 Apple notes that items excluded from Time Machine backups can still appear in local snapshots. An exclusion therefore does not retroactively remove prior backups or guarantee that no local snapshot contains the data. The status should be described as a best-effort current path exclusion, not as “private data is not backed up.”
 
-When backup exclusion is enabled, the UI warns that the library, knowledge, and meaning index will be lost if the Mac is lost. This is a reasonable warning: an excluded copy has no app-managed recovery path. When exclusion is off, encrypted app-data files may be backed up, but a usable restore still depends on the corresponding OS keychain material being available to the restored app/user. No restore drill is part of current evidence.
+When backup exclusion is enabled, the UI says Time Machine will skip the four named private-store paths during future backups. When exclusion is off, these paths are included in future Time Machine backups with other Mac data. Neither state removes prior backups or guarantees absence from local snapshots. A usable restore still depends on the corresponding OS keychain material being available to the restored app/user. No restore drill is part of current evidence.
 
 ## Offline behavior
 
@@ -62,7 +62,7 @@ This audit adds temporary-directory regression tests for two data-loss cases: a 
 Open product/security decisions before verification:
 
 1. Clarify §8.1's private-tab knowledge wording against the separate explicit Absorb action. Explicit user-requested Absorb remains available; decide whether the interface needs additional persistence disclosure for saves made from a private tab.
-2. Decide whether capture files belong in the backup exclusion switch and how exclusions should cover stores that do not exist yet. Current status is incomplete for those targets.
+2. Decide whether capture files belong in the backup exclusion switch. They remain outside its current four-path scope.
 3. Decide whether Laya and absorbed knowledge need age-based retention in addition to source-linked/manual deletion.
 4. Define whether portable exports stay intentionally plaintext or gain an optional password-encrypted format.
 5. Specify a restore/Keychain-loss flow and test it with a signed packaged macOS app. Decide whether recovery means restore the same Mac account/keychain or restore a separately-held user export.

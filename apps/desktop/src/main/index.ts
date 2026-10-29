@@ -14,8 +14,13 @@ import {
   protocol,
   shell,
   systemPreferences,
+  autoUpdater,
 } from 'electron'
 import type { MenuItemConstructorOptions } from 'electron'
+import { UpdateController } from './updates'
+import { updateChannels, parseUpdateCommand } from '@intoponet/browser-api'
+
+declare const __INTOPONET_MAC_UPDATE_URL__: string
 
 if (!app.isReady()) {
   app.commandLine.appendSwitch(
@@ -23,7 +28,7 @@ if (!app.isReady()) {
     'WebContentsForceDark,WebContentsForceDarkVariations',
   )
 }
-import { cachedPublicField, startPublicFieldRefresh } from './public-field'
+import { cachedPublicField, publicFieldStatus, startPublicFieldRefresh } from './public-field'
 import { startNewsService } from './news/newsService'
 import { readSealedPrivateLibrary } from './privateLibraryStorage'
 import { routeProtectionRequest } from './protectionRequest'
@@ -54,7 +59,7 @@ import { openLayaEmbedder } from './laya/openEmbedder'
 import { TranslateService } from './translate/service'
 import { FaviconCache, isIconHost } from './faviconCache'
 import { ACCESS_SCRIPT, ACCESS_WORLD_ID, parseAccess } from './access/pageAccess'
-import { backupExclusionStatus, setBackupExclusion } from './backupExclusion'
+import { backupExclusionAvailable, backupExclusionStatus, readBackupExclusionIntent, setBackupExclusion, watchBackupExclusionPaths } from './backupExclusion'
 import { TranslateStore } from './translate/store'
 import { openTranslationEngine } from './translate/openEngine'
 import { loadKnowledgeCrypto } from './knowledge/crypto'
@@ -76,6 +81,7 @@ import {
   type PageTabSnapshot,
   type PrivateLibraryReadResult,
   type ProtectionSnapshot,
+  type PublicFieldStatus,
   parseBrowserHostCommand,
   resolveNavigationIntent,
 } from '@intoponet/browser-api'
@@ -1046,6 +1052,7 @@ async function handleBrowserCommand(
   | ProtectionSnapshot
   | PageTabSnapshot[]
   | PrivateLibraryReadResult
+  | PublicFieldStatus
   | string
   | null
 > {
@@ -1207,6 +1214,8 @@ async function handleBrowserCommand(
       return null
     case 'get-field-snapshot':
       return cachedPublicField()
+    case 'get-public-field-status':
+      return publicFieldStatus()
     case 'get-news-digest':
       return newsService?.latest() ?? null
     case 'get-place-trends':
@@ -1387,7 +1396,9 @@ app.whenReady().then(async () => {
   app.once('will-quit', () => { void laya?.close() })
   setTimeout(() => { void laya?.backfill().catch(() => undefined) }, 15_000).unref?.()
   // Private browsing and backup exclusion for the private stores (PRD MEM-001, §8.4).
-  const backupPaths = [privateLibraryPath(), join(app.getPath('userData'), 'knowledge'), join(app.getPath('userData'), 'laya'), join(app.getPath('userData'), 'personal')]
+  const userDataPath = app.getPath('userData')
+  const backupPaths = [privateLibraryPath(), join(userDataPath, 'knowledge'), join(userDataPath, 'laya'), join(userDataPath, 'personal')]
+  const backupExclusionIntentPath = join(userDataPath, 'backup-exclusion.json')
   const excludedSitesFile = join(app.getPath('userData'), 'excluded-sites.json')
   try {
     const raw = JSON.parse(readFileSync(excludedSitesFile, 'utf8')) as unknown
@@ -1399,12 +1410,16 @@ app.whenReady().then(async () => {
     excludedSites,
     privateMode,
     privateTabs: openTabs.filter((tab) => privateViews.has(tab.view)).length,
-    backupExcluded: await backupExclusionStatus(backupPaths),
+    backupExcluded: await backupExclusionStatus(backupPaths, readBackupExclusionIntent(backupExclusionIntentPath)),
+    backupExclusionAvailable: backupExclusionAvailable(),
+    backupExclusionRequested: readBackupExclusionIntent(backupExclusionIntentPath),
     backupPaths,
   })
   const emitPrivacy = async (): Promise<void> => {
     if (window && !window.isDestroyed()) window.webContents.send(privacyChannels.event, await privacyState())
   }
+  const stopBackupExclusionWatch = watchBackupExclusionPaths(userDataPath, backupPaths, backupExclusionIntentPath, () => { void emitPrivacy() })
+  app.once('will-quit', stopBackupExclusionWatch)
   ipcMain.handle(privacyChannels.command, async (_event, value: unknown) => {
     const command = parsePrivacyCommand(value)
     if (command.type === 'set-private-mode') {
@@ -1426,8 +1441,11 @@ app.whenReady().then(async () => {
       await emitPrivacy()
     }
     if (command.type === 'set-backup-exclusion') {
-      await setBackupExclusion(backupPaths, command.on)
-      await emitPrivacy()
+      try {
+        await setBackupExclusion(backupPaths, command.on, backupExclusionIntentPath)
+      } finally {
+        await emitPrivacy()
+      }
     }
     return privacyState()
   })
@@ -1481,6 +1499,16 @@ app.whenReady().then(async () => {
       return null
     }
   })
+  const updateController = new UpdateController({
+    enabled: __INTOPONET_MAC_UPDATE_URL__.length > 0,
+    packaged: app.isPackaged,
+    platform: process.platform,
+    currentVersion: app.getVersion(),
+    feedUrl: __INTOPONET_MAC_UPDATE_URL__,
+    adapter: app.isPackaged && process.platform === 'darwin' && __INTOPONET_MAC_UPDATE_URL__.length > 0 ? autoUpdater : undefined,
+    emit: (status) => { if (window && !window.isDestroyed()) window.webContents.send(updateChannels.event, status) },
+  })
+  ipcMain.handle(updateChannels.command, (_event, value: unknown) => updateController.handle(parseUpdateCommand(value)))
   app.once('will-quit', () => { void translateService?.close() })
   ipcMain.handle(
     browserHostChannels.command,
@@ -1497,6 +1525,8 @@ app.whenReady().then(async () => {
   // 20 minutes; Wikipedia's daily most-read when a new day is published).
   const stopPublicField = startPublicFieldRefresh((snapshot) => {
     emit({ type: 'field-snapshot', payload: JSON.stringify(snapshot) })
+  }, (status) => {
+    emit({ type: 'public-field-status', status })
   })
   app.once('will-quit', stopPublicField)
 

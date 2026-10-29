@@ -4,6 +4,7 @@ import { formatMegabytes, languageName, nativeName, type TranslateModel } from '
 import type { AppSettings } from './appSettings'
 import { BeaconSettings } from '../beacons/BeaconSettings'
 import { LayaSettings } from './LayaSettings'
+import { UpdatesSettings } from './UpdatesSettings'
 
 /** Settings: your reading language, automatic translation, downloaded languages, and a way to Privacy. */
 export function SettingsPanel({
@@ -116,6 +117,8 @@ export function SettingsPanel({
         <LayaSettings />
 
         <BeaconSettings />
+
+        <UpdatesSettings />
 
         <section>
           <h3>Credits and licences</h3>

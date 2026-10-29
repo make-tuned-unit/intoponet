@@ -20,6 +20,8 @@ import {
   type SourceRecord,
 } from '@intoponet/field-snapshot'
 import { app } from 'electron'
+import type { PublicFieldStatus } from '@intoponet/browser-api'
+import { SharedPublicSnapshotClient, type SharedSnapshotStatus } from './shared-public-field'
 
 // Wikimedia asks API clients for a descriptive agent with a contact URL.
 const userAgent = 'Intoponet/0.1 (local spatial browser; public field snapshot; https://github.com/make-tuned-unit/intoponet)'
@@ -42,9 +44,68 @@ function cachePath(): string {
   return join(app.getPath('userData'), 'public-field-snapshot.json')
 }
 
+function sharedCachePath(): string {
+  return join(app.getPath('userData'), 'public-field-shared-snapshot.json')
+}
+
+let configuredSharedClient: SharedPublicSnapshotClient | null | undefined
+function sharedClient(): SharedPublicSnapshotClient | null {
+  if (configuredSharedClient !== undefined) return configuredSharedClient
+  if (!Object.hasOwn(process.env, 'INTOPONET_SHARED_PUBLIC_SNAPSHOT_URL')) {
+    configuredSharedClient = null
+    return null
+  }
+  configuredSharedClient = new SharedPublicSnapshotClient({
+    endpoint: process.env['INTOPONET_SHARED_PUBLIC_SNAPSHOT_URL'] ?? '',
+    cachePath: sharedCachePath(),
+  })
+  latestStatus = sharedStatus(configuredSharedClient.status())
+  return configuredSharedClient
+}
+
 let current: FieldSnapshot | null = null
 let readingCheckedAt = 0
 const failing = new Set<SourceGroup>()
+let latestStatus: PublicFieldStatus = {
+  mode: 'local',
+  sourceLabel: 'Wikipedia · USGS · NASA EONET',
+  configuredOrigin: null,
+  state: 'fetching',
+  evaluationTime: null,
+  message: 'Checking independent public sources.',
+}
+let statusListener: ((status: PublicFieldStatus) => void) | null = null
+
+function publishStatus(status: PublicFieldStatus): void {
+  latestStatus = status
+  statusListener?.(status)
+}
+
+function localStatus(state: PublicFieldStatus['state'], message: string, evaluationTime = current?.createdAt ?? null): PublicFieldStatus {
+  return {
+    mode: 'local',
+    sourceLabel: 'Wikipedia · USGS · NASA EONET',
+    configuredOrigin: null,
+    state,
+    evaluationTime,
+    message,
+  }
+}
+
+function sharedStatus(status: SharedSnapshotStatus, stateOverride?: PublicFieldStatus['state']): PublicFieldStatus {
+  const state = stateOverride ?? (status.state === 'fresh' ? 'current'
+    : status.state === 'stale' ? 'stale'
+      : status.state === 'error' || status.state === 'invalid-configuration' ? 'error'
+        : 'current')
+  return {
+    mode: 'shared',
+    sourceLabel: 'Shared public snapshot',
+    configuredOrigin: status.endpointOrigin,
+    state,
+    evaluationTime: status.evaluationTime,
+    message: status.message,
+  }
+}
 
 function readCache(): FieldSnapshot | null {
   if (!existsSync(cachePath())) return null
@@ -57,8 +118,24 @@ function readCache(): FieldSnapshot | null {
 
 /** Latest snapshot as JSON: in-memory first, then the on-disk cache. */
 export function cachedPublicField(): string | null {
+  const shared = sharedClient()
+  if (shared) {
+    const result = shared.cached()
+    current = result.snapshot
+    publishStatus(sharedStatus(result.status))
+    return current ? JSON.stringify(current) : null
+  }
   current ??= readCache()
+  publishStatus(current
+    ? localStatus('current', 'Showing the latest independently collected public snapshot from this device.')
+    : localStatus('error', 'No verified public snapshot is cached on this device.'))
   return current ? JSON.stringify(current) : null
+}
+
+/** A renderer-safe status record; it contains only public source state, never personal data. */
+export function publicFieldStatus(): PublicFieldStatus {
+  sharedClient()
+  return latestStatus
 }
 
 async function getJson(url: string): Promise<unknown> {
@@ -200,8 +277,24 @@ async function attempt(group: SourceGroup, run: () => Promise<SourceRecord[]>): 
  * records; the old four-anchor geosearch records are no longer carried.
  */
 export async function refreshPublicField(now = Date.now()): Promise<FieldSnapshot | null> {
+  const shared = sharedClient()
+  if (shared) {
+    const prior = shared.cached(now)
+    publishStatus({
+      ...sharedStatus(prior.status, 'fetching'),
+      message: prior.snapshot ? 'Checking the configured shared source; its verified snapshot remains available.' : 'Fetching the configured shared public snapshot.',
+    })
+    const result = await shared.refresh(now)
+    current = result.snapshot
+    publishStatus(sharedStatus(result.status))
+    if (result.status.state === 'error' || result.status.state === 'stale' || result.status.state === 'invalid-configuration') {
+      console.error(`Shared public field ${result.status.state}: ${result.status.message}`)
+    }
+    return result.snapshot
+  }
   current ??= readCache()
   const previous = current
+  publishStatus(localStatus('fetching', 'Refreshing independent public sources.', previous?.createdAt ?? null))
   const expectedDay = utcMidnight(now - DAY_MS).toISOString().slice(0, 10).replace(/-/g, '')
   const readingDue = readingDayOf(previous) !== expectedDay && now - readingCheckedAt >= READING_CHECK_MS
   const [reading, usgs, eonet] = await Promise.all([
@@ -215,7 +308,12 @@ export async function refreshPublicField(now = Date.now()): Promise<FieldSnapsho
     ...(usgs ?? recordsOf(previous, 'usgs')),
     ...(eonet ?? recordsOf(previous, 'eonet')),
   ]
-  if (records.length === 0) return previous
+  if (records.length === 0) {
+    publishStatus(previous
+      ? localStatus('stale', `Public source refresh failed (${[...failing].join(', ')}); keeping this device's last verified snapshot.`, previous.createdAt)
+      : localStatus('error', 'No public source returned a verified snapshot.'))
+    return previous
+  }
   const snapshot = publicFieldSnapshot(records, now, usgs !== null)
   current = snapshot
   try {
@@ -223,6 +321,10 @@ export async function refreshPublicField(now = Date.now()): Promise<FieldSnapsho
   } catch (error) {
     console.error('Could not cache the public field snapshot.', error instanceof Error ? error.message : error)
   }
+  const failedGroups = [...failing]
+  publishStatus(failedGroups.length
+    ? localStatus('stale', `Some independent public sources failed (${failedGroups.join(', ')}); cached records were retained for those sources.`, snapshot.createdAt)
+    : localStatus('current', 'Using independently collected public sources from this device.', snapshot.createdAt))
   return snapshot
 }
 
@@ -235,8 +337,13 @@ export async function loadPublicField(): Promise<FieldSnapshot | null> {
  * Emit the cached field immediately, refresh now, then every 20 minutes.
  * Returns a stop function; timers never keep the process alive.
  */
-export function startPublicFieldRefresh(emit: (snapshot: FieldSnapshot) => void): () => void {
+export function startPublicFieldRefresh(
+  emit: (snapshot: FieldSnapshot) => void,
+  emitStatus?: (status: PublicFieldStatus) => void,
+): () => void {
+  statusListener = emitStatus ?? null
   const cached = cachedPublicField()
+  emitStatus?.(publicFieldStatus())
   if (cached && current) emit(current)
   let running = false
   const tick = (): void => {
@@ -250,5 +357,8 @@ export function startPublicFieldRefresh(emit: (snapshot: FieldSnapshot) => void)
   tick()
   const timer = setInterval(tick, PUBLIC_FIELD_REFRESH_MS)
   timer.unref()
-  return () => clearInterval(timer)
+  return () => {
+    clearInterval(timer)
+    if (statusListener === emitStatus) statusListener = null
+  }
 }

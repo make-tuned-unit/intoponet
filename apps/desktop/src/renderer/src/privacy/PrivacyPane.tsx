@@ -120,15 +120,23 @@ export function PrivacyPane({
 
       <section>
         <h3><HardDrive size={13} aria-hidden="true" /> Backups</h3>
-        {state?.backupExcluded === null || !state ? (
+        {!state ? (
           <p>Time Machine status is unavailable on this computer.</p>
         ) : (
           <>
             <label className="privacy-switch">
-              <input type="checkbox" checked={state.backupExcluded} onChange={(event) => onBackupExclusion(event.target.checked)} />
+              <input type="checkbox" checked={state.backupExclusionRequested === true || state.backupExcluded === true} disabled={!state.backupExclusionAvailable} onChange={(event) => onBackupExclusion(event.target.checked)} />
               <span>Leave my private library out of Time Machine</span>
             </label>
-            <p>{state.backupExcluded ? 'Your library, knowledge and meaning index are not backed up. If this Mac is lost, they are gone.' : 'Time Machine backs up your library, knowledge and meaning index with the rest of this Mac.'}</p>
+            <p>{!state.backupExclusionAvailable
+              ? 'Time Machine exclusions are unavailable on this computer.'
+              : state.backupExcluded === null
+              ? state.backupExclusionRequested === true
+                ? 'Your exclusion request is saved, but Time Machine status is partial or unavailable. Missing stores will be excluded when created if this app can apply the setting. Existing backups and local snapshots are unchanged.'
+                : 'Time Machine status is partial or unavailable on this computer. The switch records your choice for the named private-store paths.'
+              : state.backupExcluded
+                ? 'Time Machine currently skips the named library, knowledge, meaning-index and personal-data paths. Existing backups and local snapshots are unchanged.'
+                : 'Time Machine includes the named paths in future backups with the rest of this Mac.'}</p>
           </>
         )}
       </section>

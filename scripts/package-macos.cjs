@@ -7,6 +7,7 @@ const { accessSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, wr
 const path = require('node:path')
 
 const root = path.resolve(__dirname, '..')
+const { macUpdateBuildSetting } = require('./update-config.cjs')
 const desktop = path.join(root, 'apps/desktop')
 const packageDir = path.join(desktop, '.release-package')
 const mode = process.argv[2]
@@ -176,16 +177,16 @@ if (mode === 'release') validateReleaseCredentials()
 const outputDir = path.join(root, 'dist/macos', mode, `${desktopPackage.version}-${arch}`)
 
 console.log(`Building Intoponet macOS ${mode} package (${arch})`)
-run('npm', ['run', 'build'])
-verifyBundledRuntime()
-prepareStandaloneApp()
-rmSync(outputDir, { recursive: true, force: true })
-mkdirSync(outputDir, { recursive: true })
-
+let updateUrl = ''
+try {
+  updateUrl = macUpdateBuildSetting(mode, process.env)
+} catch (error) {
+  fail(error.message)
+}
 const buildEnv = {
   ...process.env,
   INTOPONET_MAC_RELEASE: mode === 'release' ? '1' : '0',
-  INTOPONET_MAC_OUTPUT: outputDir,
+  INTOPONET_MAC_UPDATE_URL: updateUrl,
 }
 if (mode === 'preview') {
   buildEnv.CSC_IDENTITY_AUTO_DISCOVERY = 'false'
@@ -196,6 +197,13 @@ if (mode === 'preview') {
   delete buildEnv.APPLE_API_KEY_ID
   delete buildEnv.APPLE_API_ISSUER
 }
+run('npm', ['run', 'build'], { env: buildEnv })
+verifyBundledRuntime()
+prepareStandaloneApp()
+rmSync(outputDir, { recursive: true, force: true })
+mkdirSync(outputDir, { recursive: true })
+
+buildEnv.INTOPONET_MAC_OUTPUT = outputDir
 run(path.join(root, 'node_modules/.bin/electron-builder'), [
   '--projectDir', packageDir,
   '--config', path.join(desktop, 'electron-builder.config.cjs'),
@@ -231,8 +239,14 @@ if (mode === 'release') {
   console.log(`Verified local unsigned preview DMG (not for public distribution): ${dmg}`)
 }
 
-// Hash only after release stapling and Gatekeeper checks have completed, so
-// the inventory describes the exact DMG bytes delivered to an operator.
+// Produce the Squirrel.Mac archive only after the app has been signed and stapled,
+// so the update feed can refer to the exact verified app bundle.
+const zip = path.join(outputDir, `Intoponet-${desktopPackage.version}-${arch}-mac.zip`)
+rmSync(zip, { force: true })
+run('ditto', ['-c', '-k', '--sequesterRsrc', '--keepParent', app, zip])
+
+// Hash only after stapling and Gatekeeper checks have completed, so the
+// inventory describes the exact DMG and update ZIP bytes delivered to an operator.
 run(process.execPath, [
-  path.join(root, 'scripts/release-inventory.cjs'), mode, arch, dmg,
+  path.join(root, 'scripts/release-inventory.cjs'), mode, arch, dmg, zip, updateUrl,
 ], { cwd: root })

@@ -17,6 +17,8 @@ import { fieldSnapshotSchema, isUtcTimestamp, parseFieldSnapshot, type FieldSnap
 
 export const MAX_SNAPSHOT_BYTES = 5 * 1024 * 1024
 export const MAX_SNAPSHOT_SOURCES = 10_000
+/** Match desktop acceptance while tolerating modest publisher/client clock skew. */
+export const MAX_SNAPSHOT_FUTURE_SKEW_MS = 5 * 60 * 1000
 const snapshotIdPattern = /^snapshot-v1-[a-f0-9]{64}$/
 const manifestSchema = 'intoponet.shared-public-snapshot-latest.v1'
 
@@ -147,7 +149,10 @@ function projectKnownBandFields(band: unknown): unknown {
   }
 }
 
-function validateForPublication(raw: string): FieldSnapshot {
+function validateForPublication(raw: string, now: number): FieldSnapshot {
+  if (!Number.isFinite(now) || !Number.isFinite(new Date(now).getTime())) {
+    throw new TypeError('Publisher evaluation clock must be a valid timestamp.')
+  }
   const bytes = Buffer.byteLength(raw, 'utf8')
   if (bytes === 0 || bytes > MAX_SNAPSHOT_BYTES) throw new Error('Snapshot payload is empty or exceeds the size limit.')
   let input: unknown
@@ -182,6 +187,9 @@ function validateForPublication(raw: string): FieldSnapshot {
     throw new Error('Snapshot contains invalid or non-public source records.')
   }
   if (advertised.id !== parsed.id) throw new Error('Advertised snapshot ID does not match normalized public content.')
+  if (Date.parse(parsed.createdAt) > now + MAX_SNAPSHOT_FUTURE_SKEW_MS) {
+    throw new Error('Snapshot evaluation time is unreasonably far in the future.')
+  }
   if (!Array.isArray(advertised.bands) || advertised.bands.length !== parsed.bands.length) {
     throw new Error('Snapshot bands do not match normalized public content.')
   }
@@ -245,8 +253,8 @@ function replaceLatestAtomically(storeDir: string, manifest: LatestManifest): vo
   }
 }
 
-export function publishSnapshot(raw: string, storeDirInput: string): LatestManifest {
-  const snapshot = validateForPublication(raw)
+export function publishSnapshot(raw: string, storeDirInput: string, now = Date.now()): LatestManifest {
+  const snapshot = validateForPublication(raw, now)
   const storeDir = path.resolve(storeDirInput)
   mkdirSync(storeDir, { recursive: true, mode: 0o700 })
   const bytes = normalizedBytes(snapshot)

@@ -9,6 +9,7 @@ import { aggregateSnapshot, type SourceRecord } from '@intoponet/field-snapshot'
 import {
   createPublicSnapshotHandler,
   MAX_SNAPSHOT_BYTES,
+  MAX_SNAPSHOT_FUTURE_SKEW_MS,
   publishSnapshot,
 } from './store.ts'
 
@@ -187,6 +188,21 @@ describe('public snapshot publisher and read service', () => {
     rejectsSource({ retrievedAt: 'yesterday' }, /timestamps/)
     rejectsSource({ publishedAt: '2026-02-30T00:00:00Z' }, /timestamps/)
     rejectsSource({ title: 't'.repeat(501) }, /title/)
+  })
+
+  it('rejects a snapshot evaluation time beyond the client clock-skew allowance', () => {
+    const now = Date.parse('2026-10-29T12:00:00.000Z')
+    const withinSkew = snapshot('Within clock skew', now + MAX_SNAPSHOT_FUTURE_SKEW_MS)
+    expect(() => publishSnapshot(JSON.stringify(withinSkew), directory, now)).not.toThrow()
+
+    const tooFarAhead = snapshot('Beyond clock skew', now + MAX_SNAPSHOT_FUTURE_SKEW_MS + 1)
+    expect(() => publishSnapshot(JSON.stringify(tooFarAhead), directory, now)).toThrow(/evaluation time is unreasonably far in the future/)
+    expect(() => publishSnapshot(JSON.stringify(snapshot('Bad publisher clock')), directory, Number.NaN)).toThrow(/Publisher evaluation clock/)
+
+    const scheduledEvent = aggregateSnapshot([{ ...publicSource, endedAt: '2030-01-01T00:00:00.000Z' }], now)
+    const scheduledManifest = publishSnapshot(JSON.stringify(scheduledEvent), directory, now)
+    expect(scheduledManifest.evaluationTime).toBe(new Date(now).toISOString())
+    expect(readFileSync(path.join(directory, `${scheduledManifest.snapshotId}.json`), 'utf8')).toContain('"endedAt":"2030-01-01T00:00:00.000Z"')
   })
 
   it('fails closed for missing or dangling latest pointers and tampered artifact bytes', async () => {

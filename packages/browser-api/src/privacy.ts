@@ -12,8 +12,12 @@ export const privacyChannels = {
 export type PrivacyState = {
   privateMode: boolean
   privateTabs: number
-  /** Whether the private stores (library, knowledge, Laya) are excluded from Time Machine; null when unknown. */
+  /** Effective exclusion status for library, knowledge, Laya, and personal-data paths; null when unavailable, partial, or unverified. */
   backupExcluded: boolean | null
+  /** Whether this computer can apply the Time Machine setting. */
+  backupExclusionAvailable: boolean
+  /** Persisted user choice, kept separate so an enabled request remains checked while paths are missing or status is partial. */
+  backupExclusionRequested: boolean | null
   backupPaths: string[]
   /** Sites you never want absorbed or remembered (PRD ABS-005): no Absorb, no recent pages, no interest signals. */
   excludedSites: string[]

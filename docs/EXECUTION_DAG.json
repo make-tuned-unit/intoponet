@@ -318,7 +318,7 @@
       "status": "active",
       "owner": "cheap-worker",
       "accept": "ADR-004 covers key/backup/recovery; migrated encrypted store supports optional footprints, private mode, inspect, export, delete, retention and offline access",
-      "evidence": "2026-10-29: implemented key-loss/index-corruption fail-closed safeguards, atomic safeStorage key rotation, and honest partial-deletion feedback with temporary-directory regressions. ADR-004-local-data.md records storage/retention/export/backup behavior. Signed-app Keychain continuity, restore drill, future-path backup exclusion and policy decisions remain open; not verified."
+      "evidence": "2026-10-29: key-loss/index-corruption fail-closed safeguards, atomic safeStorage key rotation, honest partial-deletion feedback, and persisted best-effort Time Machine exclusion intent implemented. Temporary-directory regressions cover operation ordering, future-store reapplication, watcher failure and disposal. ADR-004 records storage/retention/export/backup limits. No real Time Machine/restore or signed-app Keychain drill was performed; policy decisions remain open. Not verified."
     },
     {
       "id": "ABSORB",
@@ -452,7 +452,7 @@
       "status": "planned",
       "owner": "planner",
       "accept": "Signed builds/updates, CVE owner, dependency/SBOM/licence review, LICENSE/NOTICE/SECURITY/CONTRIBUTING, independent security and accessibility reviews, no unauthorized egress",
-      "evidence": "2026-10-29: unsigned arm64 DMG pipeline and gated signing/notarization commands implemented; preview integrity and bundle contents checked. Signed build/updates, owner/licensing and independent audits remain open."
+      "evidence": "2026-10-29: unsigned arm64 DMG/ZIP pipeline, CycloneDX inventory and checksums, gated signing/notarization commands, and disabled-until-configured manual native updater implemented. Preview strips update URL before compilation. Unit tests cover update states/feed metadata; no live signed update, public feed, automatic-update policy or rollback validation. Owner/licensing and independent audits remain open."
     },
     {
       "id": "COMMUNITY_NETWORK",

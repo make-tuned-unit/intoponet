@@ -32,13 +32,21 @@ public URL, proxy, deployment, authorization policy, or external data source.
 
 - Input must use the current `intoponet.field-snapshot.v2` schema with the
   `log1p-separated-v3` aggregation algorithm, a valid explicit evaluation time,
-  and a matching canonical `snapshot-v1-<sha256>` ID.
+  and a matching canonical `snapshot-v1-<sha256>` ID. The publisher rejects a
+  snapshot evaluation time more than five minutes ahead of its injected clock
+  (the CLI uses the local system clock), matching desktop client clock-skew
+  tolerance. It accepts old evaluation times, which clients label stale.
 - Every source must be a validated `public-record`; synthetic fixtures and
   synthetic or legacy measurement data are rejected. The publisher checks
   finite latitude/longitude within geographic bounds, a finite positive radius
   no larger than 20,040 km, canonical UTC timestamps, and bounded source,
   measurement, topic, and optional-detail strings. Input is capped at 5 MiB and
   10,000 sources.
+- The future-time bound applies to the snapshot evaluation time only. Source
+  metadata dates are checked for canonical UTC syntax; the publisher does not
+  reject a source record merely because a future event date such as `endedAt`
+  follows the snapshot evaluation time. Those dates remain publisher-supplied
+  source assertions.
 - Unknown fields are removed by parsing and serializing the normalized
   contract. The stored artifact is the exact immutable JSON byte sequence for
   that normalized snapshot. The publisher rejects an ID that does not match

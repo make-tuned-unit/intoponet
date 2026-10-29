@@ -5,6 +5,7 @@ const { createHash } = require('node:crypto')
 const { execFileSync } = require('node:child_process')
 const { readFileSync, statSync, writeFileSync } = require('node:fs')
 const path = require('node:path')
+const { normalizeMacUpdateUrl } = require('./update-config.cjs')
 
 const root = path.resolve(__dirname, '..')
 
@@ -76,7 +77,7 @@ function addBundledRuntimes(bom, { electronVersion, chromiumVersion, electronToC
   return bom
 }
 
-function writeReleaseInventory({ outputDir, dmg, mode, arch, version, bom, runtime }) {
+function writeReleaseInventory({ outputDir, dmg, zip, updateUrl, mode, arch, version, bom, runtime }) {
   if (!['preview', 'release'].includes(mode)) throw new Error(`Unsupported package mode: ${mode}`)
   if (!['arm64', 'x64'].includes(arch)) throw new Error(`Unsupported architecture: ${arch}`)
   if (!path.isAbsolute(outputDir) || !path.isAbsolute(dmg)) throw new Error('Output directory and DMG path must be absolute')
@@ -88,10 +89,51 @@ function writeReleaseInventory({ outputDir, dmg, mode, arch, version, bom, runti
   const dmgStat = statSync(resolvedDmg)
   if (!dmgStat.isFile()) throw new Error('DMG artifact must be a regular file')
 
+  let resolvedZip = null
+  let zipStat = null
+  if (zip !== undefined) {
+    if (!path.isAbsolute(zip)) throw new Error('Update ZIP path must be absolute')
+    resolvedZip = path.resolve(zip)
+    if (path.dirname(resolvedZip) !== resolvedOut || path.extname(resolvedZip).toLowerCase() !== '.zip') {
+      throw new Error('Update ZIP must be a direct child of the mode-specific output directory')
+    }
+    zipStat = statSync(resolvedZip)
+    if (!zipStat.isFile()) throw new Error('Update ZIP must be a regular file')
+  }
+
+  const normalizedUpdateUrl = updateUrl ? normalizeMacUpdateUrl(updateUrl) : null
+  if (updateUrl && !normalizedUpdateUrl) throw new Error('Update feed URL must be a trusted HTTPS host/path without credentials, query, or fragment')
+  if (normalizedUpdateUrl && !resolvedZip) throw new Error('A configured update feed requires the macOS update ZIP')
+
   const sbomPath = path.join(resolvedOut, `Intoponet-${version}-${arch}.cdx.json`)
   const inventoryPath = path.join(resolvedOut, `Intoponet-${version}-${arch}.inventory.json`)
   const checksumsPath = path.join(resolvedOut, 'SHA256SUMS.txt')
   writeFileSync(sbomPath, `${JSON.stringify(bom, null, 2)}\n`)
+  const artifacts = [
+    { file: path.basename(resolvedDmg), bytes: dmgStat.size, sha256: sha256File(resolvedDmg) },
+  ]
+  if (resolvedZip && zipStat) artifacts.push({ file: path.basename(resolvedZip), bytes: zipStat.size, sha256: sha256File(resolvedZip) })
+  let updateManifestPath = null
+  if (normalizedUpdateUrl && resolvedZip && zipStat) {
+    updateManifestPath = path.join(resolvedOut, 'releases.json')
+    const sourceEpoch = process.env.SOURCE_DATE_EPOCH
+    if (sourceEpoch !== undefined && !/^\d+$/.test(String(sourceEpoch))) throw new Error('SOURCE_DATE_EPOCH must be a non-negative integer')
+    const pubDate = new Date(sourceEpoch === undefined ? Date.now() : Number(sourceEpoch) * 1000).toISOString()
+    const release = {
+      version,
+      updateTo: {
+        version,
+        name: 'Intoponet',
+        pub_date: pubDate,
+        url: `${normalizedUpdateUrl}/${encodeURIComponent(path.basename(resolvedZip))}`,
+        sha256: sha256File(resolvedZip),
+        size: zipStat.size,
+      },
+    }
+    writeFileSync(updateManifestPath, `${JSON.stringify({ currentRelease: version, releases: [release] }, null, 2)}\n`)
+    artifacts.push({ file: path.basename(updateManifestPath), bytes: statSync(updateManifestPath).size, sha256: sha256File(updateManifestPath) })
+  }
+  artifacts.push({ file: path.basename(sbomPath), bytes: statSync(sbomPath).size, sha256: sha256File(sbomPath) })
   const inventory = {
     schemaVersion: 1,
     product: 'Intoponet',
@@ -99,10 +141,15 @@ function writeReleaseInventory({ outputDir, dmg, mode, arch, version, bom, runti
     platform: 'macOS',
     architecture: arch,
     mode,
-    artifacts: [
-      { file: path.basename(resolvedDmg), bytes: dmgStat.size, sha256: sha256File(resolvedDmg) },
-      { file: path.basename(sbomPath), bytes: statSync(sbomPath).size, sha256: sha256File(sbomPath) },
-    ],
+    artifacts,
+    updates: {
+      enabled: Boolean(normalizedUpdateUrl),
+      protocol: normalizedUpdateUrl ? 'Electron native autoUpdater / Squirrel.Mac JSON feed' : null,
+      feedUrl: normalizedUpdateUrl ? `${normalizedUpdateUrl}/releases.json` : null,
+      manifest: updateManifestPath ? path.basename(updateManifestPath) : null,
+      checks: 'manual only; check and download are one explicit user action',
+      persistentUpdaterIdentifier: false,
+    },
     runtime: {
       electron: runtime.electronVersion,
       chromium: runtime.chromiumVersion,
@@ -114,13 +161,13 @@ function writeReleaseInventory({ outputDir, dmg, mode, arch, version, bom, runti
     },
   }
   writeFileSync(inventoryPath, `${JSON.stringify(inventory, null, 2)}\n`)
-  const checksumFiles = [resolvedDmg, sbomPath, inventoryPath]
+  const checksumFiles = [resolvedDmg, ...(resolvedZip ? [resolvedZip] : []), ...(updateManifestPath ? [updateManifestPath] : []), sbomPath, inventoryPath]
   writeFileSync(checksumsPath, `${checksumFiles.map((file) => `${sha256File(file)}  ${path.basename(file)}`).join('\n')}\n`)
-  return { sbomPath, inventoryPath, checksumsPath, inventory }
+  return { sbomPath, inventoryPath, checksumsPath, updateManifestPath, inventory }
 }
 
 function main(args) {
-  const [mode, arch, dmg] = args
+  const [mode, arch, dmg, zip, updateUrl] = args
   if (!['preview', 'release'].includes(mode) || !['arm64', 'x64'].includes(arch) || !dmg) {
     throw new Error('usage: node scripts/release-inventory.cjs <preview|release> <arm64|x64> <absolute-dmg-path>')
   }
@@ -147,6 +194,8 @@ function main(args) {
   const result = writeReleaseInventory({
     outputDir,
     dmg: path.resolve(dmg),
+    ...(zip ? { zip: path.resolve(zip) } : {}),
+    ...(updateUrl ? { updateUrl } : {}),
     mode,
     arch,
     version: desktopPackage.version,

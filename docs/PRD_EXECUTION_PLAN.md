@@ -68,7 +68,7 @@ Owner input requested for release licensing and availability of Apple signing cr
 - Parent reran the eight-screen WCAG 2.2-tagged axe and keyboard scenario: zero reported violations, required screen states and focus-return checks passed. Full conformance, VoiceOver and localization are not established.
 - Parent reran the native protection probe: redirects, failed-navigation context rollback, service-worker initiators and unattributed requests passed. The failed-navigation rollback defect is fixed; rule coverage remains a small fixture set.
 - Registry HTTP tests passed 9/9, covering direct-peer addressing and byte-limited JSON boundaries. The production Neon deployment still has no trusted edge network identity and was not changed.
-- Release packaging now generates a CycloneDX inventory including Electron/Chromium metadata and final-artifact SHA-256 sums; four inventory tests passed. Automatic updates and release ownership remain open.
+- Release packaging now generates a CycloneDX inventory including Electron/Chromium metadata and final-artifact SHA-256 sums. A disabled-until-configured manual native macOS update path, signed app ZIP, and optional Squirrel.Mac feed manifest are implemented with focused tests. No endpoint is configured and no live signed update has been verified; background checks, rollback policy, and release ownership remain open.
 
 ### Wave 4 in progress
 
@@ -100,12 +100,22 @@ After the private-store and pool lifecycle fixes, all workspace typechecks passe
 
 The final installer smoke mounted the DMG read-only, copied its app to a temporary directory, verified its bundled icon, and passed real startup/renderer crash/retry checks. DMG/SBOM/inventory checksums all matched. The volume was detached and temporary data removed; see `feature-verification/macos-installer-2026-10-29.json`.
 
+### Shared delivery, updates and backup follow-through — 29 October
+
+The desktop can now use an explicitly configured shared HTTPS snapshot origin. It verifies exact bytes, canonical identity, public-only content and published evaluation time, uses a separate origin-bound atomic cache, and never silently recomputes local data on shared-source failure. Stale data, cache failures and clock discrepancies remain visible. Publisher/client future-time bounds agree. RSS/news remains a separate per-device service; this is not global shared news ingestion or endpoint approval.
+
+Manual native macOS updates are implemented behind a release-build feed setting. Preview packaging clears that setting before compilation. A check downloads an available update; the UI explains that it applies on restart or the next launch. Final app ZIPs, optional Squirrel.Mac manifests and SHA-256 inventory are generated locally. Signed live updates, automatic scheduling, recovery and production hosting are not verified.
+
+Time Machine exclusions now persist the user’s intent and reapply to named private stores at startup or creation. Operations serialize against user changes, watcher errors do not crash the host, and cleanup cancels queued work. Effective exclusion stays separate from requested intent; missing paths or failed verification remain unknown. No administrator privileges or real Time Machine settings were used in verification; restore and signed-app Keychain drills remain open.
+
+All workspace typechecks and **647 tests** passed with zero skips: 641 workspace/gold tests, including registry tests on isolated PostgreSQL, plus six release-inventory tests. Eight-screen axe/keyboard checks again reported zero violations. This supersedes the earlier 606-test checkpoint. See the integration and installer evidence records for exact commands and artifact hashes. The threat model now reflects current public sources, shared cache, RSS, Beacon and Laya boundaries without treating JavaScript guards as OS isolation.
+
 ## Requirements still open
 
 - Strict Laya no-egress capability boundary (the sandbox prototype has a demonstrated WebRTC TCP escape path and is not production-integrated).
 - Public shared ingestion, app adoption of a reviewed snapshot endpoint, source-rights approval and freshness/coverage operations; the new artifact service alone does not close this gate.
 - Historical breadth/editorial interpretation: the last stage audit still flags 47/80 threads; geographic fallback is now explicit.
-- Signed/notarized release, automatic updates/rollback validation, CVE ownership, license choice, and independent security review. Owner input on licensing and Apple signing setup remains requested.
+- Signed/notarized release, live update verification, automatic check policy, rollback validation, CVE ownership, license choice, and independent security review. Owner input on licensing, Apple signing setup, and a trusted update endpoint remains requested.
 - Full native accessibility/VoiceOver, localization/RTL, 60/120 Hz hardware evidence and final engine decision. Automated axe/keyboard results do not substitute for these.
 - Signed-app Keychain continuity, restore drill and remaining backup/retention policy in ADR-004.
 - Trusted edge Beacon abuse controls, moderation/appeals/retention, federation synchronization and withdrawal propagation.

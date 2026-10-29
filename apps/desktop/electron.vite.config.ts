@@ -2,6 +2,17 @@ import { resolve } from 'node:path'
 import react from '@vitejs/plugin-react'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 
+const updateUrlInput = process.env.INTOPONET_MAC_UPDATE_URL ?? ''
+const updateUrl = updateUrlInput
+  ? (() => {
+      const url = new URL(updateUrlInput)
+      if (url.protocol !== 'https:' || !url.hostname.includes('.') || url.username || url.password || url.search || url.hash || url.hostname.endsWith('.local') || url.hostname.endsWith('.localhost') || /^(\d{1,3}\.){3}\d{1,3}$/.test(url.hostname) || url.hostname.includes(':') || (url.port && url.port !== '443')) {
+        throw new Error('INTOPONET_MAC_UPDATE_URL must be a trusted HTTPS origin/path without credentials, query, or fragment')
+      }
+      return url.toString().replace(/\/$/, '')
+    })()
+  : ''
+
 const frequencyField = resolve(__dirname, '../../packages/frequency-field/src/index.ts')
 const fieldSnapshot = resolve(__dirname, '../../packages/field-snapshot/src/index.ts')
 const localKnowledge = resolve(__dirname, '../../packages/local-knowledge/src/index.ts')
@@ -16,6 +27,7 @@ const workspacePackages = [
 
 export default defineConfig({
   main: {
+    define: { __INTOPONET_MAC_UPDATE_URL__: JSON.stringify(updateUrl) },
     plugins: [externalizeDepsPlugin({ exclude: workspacePackages })],
   },
   preload: {
