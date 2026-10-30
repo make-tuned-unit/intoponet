@@ -61,7 +61,8 @@ describe('manual update controller', () => {
     expect(adapter.quitAndInstall).not.toHaveBeenCalled()
     controller.handle({ type: 'restart' })
     expect(adapter.quitAndInstall).toHaveBeenCalledTimes(1)
-    expect(emit).toHaveBeenCalledWith({ state: 'downloaded', currentVersion: '1.2.3', error: undefined })
+    expect(emit).toHaveBeenCalledWith(expect.objectContaining({ state: 'downloaded', currentVersion: '1.2.3' }))
+    expect(emit.mock.calls.at(-1)?.[0]).not.toHaveProperty('error')
   })
 
   it('does not expose raw error details that could contain URLs or request data', () => {
@@ -69,7 +70,8 @@ describe('manual update controller', () => {
     const controller = new UpdateController(enabledOptions(adapter))
     controller.handle({ type: 'check-and-download' })
     adapter.emit('error', new Error('https://secret.example/token=private'))
-    expect(controller.status()).toEqual({ state: 'error', currentVersion: '1.2.3', error: 'The update operation failed. Try again later.' })
+    expect(controller.status()).toMatchObject({ state: 'error', currentVersion: '1.2.3', error: 'The update operation failed. Try again later.' })
+    expect(Object.keys(controller.status()).sort()).toEqual(['automatic', 'currentVersion', 'error', 'lastCheckedAt', 'state'])
   })
 
   it('fails closed if native feed setup throws and preserves a downloaded update if restart throws', () => {
@@ -109,5 +111,73 @@ describe('update feed and IPC validation', () => {
     expect(() => parseUpdateCommand({ type: 'download', url: 'https://attacker.example' })).toThrow(/Invalid update command/)
     expect(() => parseUpdateCommand({ type: 'status', extra: 'ignored' })).toThrow(/Invalid update command/)
     expect(() => parseUpdateCommand(null)).toThrow(/Invalid update command/)
+  })
+})
+
+describe('automatic update checks', () => {
+  const fakeClock = () => {
+    let now = Date.parse('2026-10-30T12:00:00Z')
+    const pending: Array<{ at: number; run: () => void; cancelled: boolean }> = []
+    return {
+      now: () => now,
+      schedule: (run: () => void, delayMs: number) => { const task = { at: now + delayMs, run, cancelled: false }; pending.push(task); return { cancel: () => { task.cancelled = true } } },
+      advance: (ms: number) => {
+        now += ms
+        for (const task of [...pending].sort((a, b) => a.at - b.at)) if (!task.cancelled && task.at <= now) { task.cancelled = true; task.run() }
+      },
+    }
+  }
+
+  it('checks shortly after launch, then about daily, and remembers the last check', async () => {
+    const { AUTO_FIRST_DELAY_MS, AUTO_INTERVAL_MS } = await import('./updates')
+    const adapter = new FakeUpdater(); const clock = fakeClock(); const saved: unknown[] = []
+    const controller = new UpdateController({ ...enabledOptions(adapter), now: clock.now, schedule: clock.schedule, preferences: { load: () => ({ automatic: true }), save: (p) => saved.push(p) } })
+    expect(controller.status()).toMatchObject({ automatic: true })
+    controller.startAutomatic()
+    clock.advance(AUTO_FIRST_DELAY_MS - 1)
+    expect(adapter.checkForUpdates).not.toHaveBeenCalled()
+    clock.advance(1)
+    expect(adapter.checkForUpdates).toHaveBeenCalledTimes(1)
+    expect(saved.at(-1)).toMatchObject({ automatic: true, lastCheckedAt: clock.now() })
+    adapter.emit('update-not-available')
+    clock.advance(AUTO_INTERVAL_MS)
+    expect(adapter.checkForUpdates).toHaveBeenCalledTimes(2)
+  })
+
+  it('waits out the rest of the day after a recent check, and never interrupts a pending install', async () => {
+    const { AUTO_INTERVAL_MS } = await import('./updates')
+    const adapter = new FakeUpdater(); const clock = fakeClock()
+    const controller = new UpdateController({ ...enabledOptions(adapter), now: clock.now, schedule: clock.schedule, preferences: { load: () => ({ automatic: true, lastCheckedAt: clock.now() - 2 * 60 * 60 * 1000 }), save: () => {} } })
+    controller.startAutomatic()
+    clock.advance(AUTO_INTERVAL_MS - 2 * 60 * 60 * 1000 - 1)
+    expect(adapter.checkForUpdates).not.toHaveBeenCalled()
+    clock.advance(1)
+    expect(adapter.checkForUpdates).toHaveBeenCalledTimes(1)
+    adapter.emit('update-available')
+    adapter.emit('update-downloaded', {}, '', '0.1.3', new Date(), 'https://intoponet.com/updates/arm64/x.zip')
+    expect(controller.status()).toMatchObject({ state: 'downloaded', availableVersion: '0.1.3' })
+    clock.advance(AUTO_INTERVAL_MS)
+    expect(adapter.checkForUpdates).toHaveBeenCalledTimes(1)
+  })
+
+  it('stops when turned off and persists the choice', async () => {
+    const { AUTO_FIRST_DELAY_MS } = await import('./updates')
+    const adapter = new FakeUpdater(); const clock = fakeClock(); const saved: Array<{ automatic: boolean }> = []
+    const controller = new UpdateController({ ...enabledOptions(adapter), now: clock.now, schedule: clock.schedule, preferences: { load: () => ({ automatic: true }), save: (p) => saved.push(p) } })
+    controller.startAutomatic()
+    expect(controller.handle({ type: 'set-automatic', enabled: false })).toMatchObject({ automatic: false })
+    expect(saved.at(-1)).toMatchObject({ automatic: false })
+    clock.advance(AUTO_FIRST_DELAY_MS * 10)
+    expect(adapter.checkForUpdates).not.toHaveBeenCalled()
+    const off = new UpdateController({ ...enabledOptions(new FakeUpdater()), now: clock.now, schedule: clock.schedule, preferences: { load: () => ({ automatic: false }), save: () => {} } })
+    off.startAutomatic()
+    expect(off.status()).toMatchObject({ automatic: false })
+  })
+
+  it('validates the set-automatic command', () => {
+    expect(parseUpdateCommand({ type: 'set-automatic', enabled: true })).toEqual({ type: 'set-automatic', enabled: true })
+    expect(() => parseUpdateCommand({ type: 'set-automatic', enabled: 'yes' })).toThrow()
+    expect(() => parseUpdateCommand({ type: 'set-automatic' })).toThrow()
+    expect(() => parseUpdateCommand({ type: 'restart', enabled: true })).toThrow()
   })
 })

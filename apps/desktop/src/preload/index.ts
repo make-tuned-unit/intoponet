@@ -260,6 +260,7 @@ const updates: UpdatesApi = {
   status: () => updateInvoke({ type: 'status' }),
   checkAndDownload: () => updateInvoke({ type: 'check-and-download' }),
   restart: () => updateInvoke({ type: 'restart' }),
+  setAutomatic: (enabled) => updateInvoke({ type: 'set-automatic', enabled }),
   subscribe: (listener) => {
     const handler = (_event: Electron.IpcRendererEvent, status: UpdateStatus): void => listener(status)
     ipcRenderer.on(updateChannels.event, handler)

@@ -1501,6 +1501,11 @@ app.whenReady().then(async () => {
     feedUrl: __INTOPONET_MAC_UPDATE_URL__,
     adapter: app.isPackaged && process.platform === 'darwin' && __INTOPONET_MAC_UPDATE_URL__.length > 0 ? autoUpdater : undefined,
     emit: (status) => { if (window && !window.isDestroyed()) window.webContents.send(updateChannels.event, status) },
+    // The automatic-check setting and last check time, kept between launches.
+    preferences: {
+      load: () => JSON.parse(readFileSync(join(app.getPath('userData'), 'updates.json'), 'utf8')) as { automatic: boolean; lastCheckedAt?: number },
+      save: (preferences) => writeFileSync(join(app.getPath('userData'), 'updates.json'), JSON.stringify(preferences), { mode: 0o600 }),
+    },
   })
   ipcMain.handle(updateChannels.command, (_event, value: unknown) => updateController.handle(parseUpdateCommand(value)))
   app.once('will-quit', () => { void translateService?.close() })
@@ -1509,6 +1514,7 @@ app.whenReady().then(async () => {
     (_event, value: unknown) => handleBrowserCommand(parseBrowserHostCommand(value)),
   )
   createWindow()
+  updateController.startAutomatic()
   if (restoredState?.wasVisible && pageView && lastKnownUrl) {
     attachPageView()
     void pageView.webContents.loadURL(lastKnownUrl)

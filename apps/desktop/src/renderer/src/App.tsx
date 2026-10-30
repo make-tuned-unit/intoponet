@@ -1,4 +1,5 @@
 import brandLogo from './brand/intoponet-horizontal-on-dark.svg'
+import { UpdateBanner } from './settings/UpdateBanner'
 import type {
   BrowserPanelSnapshot,
   FindInPageResult,
@@ -3646,6 +3647,7 @@ export function App() {
         </span>
       </div>
 
+      <UpdateBanner />
       {notice && (
         <div className="notice-message" role="status">
           {notice}

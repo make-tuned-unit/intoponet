@@ -22,6 +22,10 @@ export function UpdatesSettings() {
     finally { setBusy(false) }
   }
 
+  const setAutomatic = async (enabled: boolean): Promise<void> => {
+    try { setStatus(await window.intoponet.updates.setAutomatic(enabled)) } catch { /* the switch reflects the saved state on the next status */ }
+  }
+
   const restart = async (): Promise<void> => {
     setBusy(true)
     try { setStatus(await window.intoponet.updates.restart()) }
@@ -44,18 +48,27 @@ export function UpdatesSettings() {
       : status.state === 'downloading'
         ? 'An update is available and is downloading…'
         : status.state === 'downloaded'
-          ? 'The update is ready. Restart now, or it will be applied the next time you open Intoponet.'
+          ? `${status.availableVersion ? `Intoponet ${status.availableVersion}` : 'The update'} is ready. Restart now, or it will be applied the next time you quit and reopen Intoponet.`
           : status.state === 'not-available'
             ? 'Intoponet is up to date.'
             : status.state === 'error'
               ? status.error ?? 'The update operation failed. Try again later.'
-              : 'Check manually for a new version. No update checks run in the background.'
+              : status.automatic
+                ? 'Intoponet checks for updates on its own, shortly after it opens and then about once a day.'
+                : 'Automatic checks are off. Check for a new version below.'
 
   return (
     <section aria-labelledby="updates-heading">
       <h3 id="updates-heading">Software updates</h3>
       <p>Version {status.currentVersion}. {description}</p>
-      <p>Checking contacts the update server with your app version and normal network metadata, including your IP address. No checks happen in the background.</p>
+      {status.state !== 'disabled' && (
+        <label className="privacy-switch">
+          <input type="checkbox" checked={status.automatic ?? true} onChange={(event) => void setAutomatic(event.target.checked)} />
+          <span>Check for updates automatically</span>
+        </label>
+      )}
+      {status.lastCheckedAt && <p>Last checked {new Date(status.lastCheckedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}.</p>}
+      <p>Each check contacts the update server with your app version and normal network metadata, including your IP address. Nothing about your browsing is sent.</p>
       {status.error && <p className="settings-error" role="alert">{status.error}</p>}
       {status.state === 'downloaded' ? (
         <button type="button" className="settings-primary" onClick={() => void restart()} disabled={busy}>

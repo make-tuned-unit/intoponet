@@ -1717,3 +1717,38 @@ button.origin-badge,
 .privacy-sites button:hover { color: var(--warm-white); background: rgba(195, 237, 232, 0.12); }
 .settings-credits { display: grid; gap: 6px; margin: 0; padding-left: 16px; color: var(--muted); font-size: 11.5px; line-height: 1.45; }
 .settings-credits strong { color: var(--warm-white); font-weight: 550; }
+
+/* Update ready: a quiet bar below the toolbar. "Later" lets it install on the next quit. */
+.update-banner {
+  position: absolute;
+  z-index: 13;
+  left: 50%;
+  top: 82px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(32, 244, 228, 0.32);
+  background: rgba(6, 19, 32, 0.92);
+  backdrop-filter: blur(18px);
+  color: var(--warm-white);
+  font-size: 13px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  -webkit-app-region: no-drag;
+}
+
+.update-banner svg { color: var(--teal); flex: none; }
+
+.update-banner button {
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.update-banner-primary { background: var(--teal); color: var(--void); font-weight: 600; }
+.update-banner-later { background: transparent; color: var(--muted); }
+.update-banner-later:hover { color: var(--warm-white); }
