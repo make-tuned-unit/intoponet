@@ -34,6 +34,7 @@ certificate and App Store Connect API key have been provisioned:
 
 ```sh
 export INTOPONET_MAC_SIGN_IDENTITY='Developer ID Application: Example (TEAMID1234)'
+# Optional: omit CSC_LINK/CSC_KEY_PASSWORD to sign with the identity in the login keychain.
 export CSC_LINK='/absolute/path/to/developer-id-application.p12'
 export CSC_KEY_PASSWORD='…'
 export APPLE_API_KEY='/absolute/path/to/AuthKey_KEYID1234.p8'
@@ -42,11 +43,17 @@ export APPLE_API_ISSUER='00000000-0000-0000-0000-000000000000'
 npm run package:macos:release
 ```
 
+Instead of the three `APPLE_API_*` variables, you can set `APPLE_KEYCHAIN_PROFILE`
+to a profile saved with `xcrun notarytool store-credentials <name> --apple-id <id>
+--team-id <TEAMID>` (an app-specific password). electron-builder and the script's DMG
+submission both use it.
+
 The command fails before building if any credential is missing or malformed.
-`CSC_LINK` must point to a local `.p12` file. The signing identity must be a
+When set, `CSC_LINK` must point to a local `.p12` file; otherwise the identity
+must already be a valid code-signing identity in the login keychain. The signing identity must be a
 Developer ID Application identity with its Team ID. The App Store Connect key
 is used by electron-builder to notarize and staple the app; the script then
-submits the DMG to Apple's `notarytool` service and staples that ticket too.
+signs the DMG, submits it to Apple's `notarytool` service and staples that ticket too.
 It fails unless `codesign` verifies the app, `stapler` validates both app and
 DMG tickets, and Gatekeeper (`spctl`) accepts the app. Never put credentials or
 certificate files in the repository.

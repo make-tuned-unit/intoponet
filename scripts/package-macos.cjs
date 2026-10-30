@@ -55,8 +55,21 @@ function validateReleaseCredentials() {
   if (!/^Developer ID Application: .+\([A-Z0-9]{10}\)$/.test(identity)) {
     fail('INTOPONET_MAC_SIGN_IDENTITY must be a Developer ID Application identity including its 10-character Team ID')
   }
-  validateReadableFile('CSC_LINK', '.p12', 'exported code-signing certificate (.p12)')
-  required('CSC_KEY_PASSWORD')
+  if (process.env.CSC_LINK) {
+    validateReadableFile('CSC_LINK', '.p12', 'exported code-signing certificate (.p12)')
+    required('CSC_KEY_PASSWORD')
+  } else {
+    // No exported certificate: sign with the identity already in the login keychain.
+    const identities = run('security', ['find-identity', '-v', '-p', 'codesigning'], { stdio: 'pipe' })
+    if (!identities.includes(`"${identity}"`)) {
+      fail(`release is blocked; "${identity}" is not a valid code-signing identity in the keychain (or set CSC_LINK to a .p12)`)
+    }
+  }
+  if (process.env.APPLE_KEYCHAIN_PROFILE) {
+    // Credentials saved earlier with `xcrun notarytool store-credentials <profile>`.
+    if (!/^[A-Za-z0-9._-]{1,64}$/.test(process.env.APPLE_KEYCHAIN_PROFILE)) fail('APPLE_KEYCHAIN_PROFILE must be a notarytool profile name')
+    return
+  }
   validateReadableFile('APPLE_API_KEY', '.p8', 'App Store Connect API key (.p8)')
   if (!/^[A-Z0-9]{10}$/.test(required('APPLE_API_KEY_ID'))) {
     fail('APPLE_API_KEY_ID must be the 10-character App Store Connect key ID')
@@ -196,6 +209,7 @@ if (mode === 'preview') {
   delete buildEnv.APPLE_API_KEY
   delete buildEnv.APPLE_API_KEY_ID
   delete buildEnv.APPLE_API_ISSUER
+  delete buildEnv.APPLE_KEYCHAIN_PROFILE
 }
 run('npm', ['run', 'build'], { env: buildEnv })
 verifyBundledRuntime()
@@ -223,17 +237,17 @@ if (mode === 'release') {
   run('codesign', ['--verify', '--deep', '--strict', '--verbose=2', app])
   run('xcrun', ['stapler', 'validate', app])
 
-  const apiKey = process.env.APPLE_API_KEY
-  run('xcrun', [
-    'notarytool', 'submit', dmg,
-    '--key', apiKey,
-    '--key-id', process.env.APPLE_API_KEY_ID,
-    '--issuer', process.env.APPLE_API_ISSUER,
-    '--wait',
-  ])
+  const credentials = process.env.APPLE_KEYCHAIN_PROFILE
+    ? ['--keychain-profile', process.env.APPLE_KEYCHAIN_PROFILE]
+    : ['--key', process.env.APPLE_API_KEY, '--key-id', process.env.APPLE_API_KEY_ID, '--issuer', process.env.APPLE_API_ISSUER]
+  // Sign the disk image itself so Gatekeeper can verify it before mounting.
+  run('codesign', ['--sign', process.env.INTOPONET_MAC_SIGN_IDENTITY, '--timestamp', dmg])
+  run('codesign', ['--verify', '--strict', '--verbose=2', dmg])
+  run('xcrun', ['notarytool', 'submit', dmg, ...credentials, '--wait'])
   run('xcrun', ['stapler', 'staple', dmg])
   run('xcrun', ['stapler', 'validate', dmg])
   run('spctl', ['--assess', '--type', 'execute', '--verbose=2', app])
+  run('spctl', ['--assess', '--type', 'open', '--context', 'context:primary-signature', '--verbose=2', dmg])
   console.log(`Verified signed and notarized macOS release: ${dmg}`)
 } else {
   console.log(`Verified local unsigned preview DMG (not for public distribution): ${dmg}`)

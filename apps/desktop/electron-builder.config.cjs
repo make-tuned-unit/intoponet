@@ -23,7 +23,8 @@ module.exports = {
     icon: path.join(__dirname, 'resources/Intoponet.icns'),
     category: 'public.app-category.productivity',
     target: ['dmg', 'zip'],
-    identity: isRelease ? process.env.INTOPONET_MAC_SIGN_IDENTITY : null,
+    // electron-builder expects the certificate name without its type prefix.
+    identity: isRelease ? process.env.INTOPONET_MAC_SIGN_IDENTITY.replace(/^Developer ID Application: /, '') : null,
     hardenedRuntime: isRelease,
     entitlements: path.join(__dirname, 'resources/entitlements.mac.plist'),
     entitlementsInherit: path.join(__dirname, 'resources/entitlements.mac.inherit.plist'),
