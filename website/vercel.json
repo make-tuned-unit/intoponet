@@ -45,7 +45,12 @@
   "redirects": [
     {
       "source": "/download/mac",
-      "destination": "https://ddkihznkhbvrxe4k.public.blob.vercel-storage.com/releases/0.1.0/Intoponet-0.1.0-arm64.dmg",
+      "destination": "https://ddkihznkhbvrxe4k.public.blob.vercel-storage.com/releases/0.1.1/Intoponet-0.1.1-arm64.dmg",
+      "permanent": false
+    },
+    {
+      "source": "/updates/arm64/Intoponet-0.1.1-arm64-mac.zip",
+      "destination": "https://ddkihznkhbvrxe4k.public.blob.vercel-storage.com/releases/0.1.1/Intoponet-0.1.1-arm64-mac.zip",
       "permanent": false
     },
     {

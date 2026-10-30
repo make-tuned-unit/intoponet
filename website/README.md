@@ -4,7 +4,7 @@ Live placeholder: https://intoponet-preview.vercel.app
 
 Static HTML/CSS/JavaScript with actual prototype screenshots and a dependency-free WebGL globe. Vercel project `intoponet-preview` uses `website` as its repository root. No build step or runtime dependencies. For local preview, serve this directory with any static server.
 
-Release downloads: the signed, notarized DMG and update ZIP live in the public Vercel Blob store `intoponet-releases` (`releases/<version>/`). `vercel.json` redirects `/download/mac` and `/updates/arm64/<zip>` there; `updates/arm64/releases.json` is the Squirrel.Mac feed and `releases/<version>/` holds checksums, inventory and SBOM. For a new release: build with `npm run package:macos:release`, upload both files to Blob, copy the feed and checksum files here, update the two redirects and the version on the page. Never link an unsigned preview build.
+Release downloads (upload to Blob before deploying the site): the signed, notarized DMG and update ZIP live in the public Vercel Blob store `intoponet-releases` (`releases/<version>/`). `vercel.json` redirects `/download/mac` and `/updates/arm64/<zip>` there; `updates/arm64/releases.json` is the Squirrel.Mac feed and `releases/<version>/` holds checksums, inventory and SBOM. For a new release: build with `npm run package:macos:release`, upload both files to Blob, copy the feed and checksum files here, update the two redirects and the version on the page. Never link an unsigned preview build.
 
 `api/registry.js` is the Beacon registry edge proxy, served at `/registry/*` (see `services/beacon-registry/README.md`). Deploy from the repository root (`vercel deploy`); `.vercelignore` uploads only this directory.
 
