@@ -5,6 +5,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { signingText, type SignedRequest } from '@intoponet/beacon-core'
 import { BeaconPublisher, normalizeRegistry } from './publisher'
+import { DEFAULT_BEACON_REGISTRY, RETIRED_BEACON_REGISTRIES } from './defaults'
+import { writeFileSync } from 'node:fs'
 
 const box = { available: () => true, seal: (text: string) => Buffer.from(`sealed:${text}`), open: (sealed: Buffer) => sealed.toString().replace(/^sealed:/, '') }
 
@@ -23,6 +25,17 @@ function setup() {
 }
 
 describe('beacon publisher', () => {
+  it('replaces a saved retired registry with the current default, but keeps other choices', () => {
+    const { files } = setup()
+    const make = () => new BeaconPublisher({ files, box, fetchImpl: fetch, defaultRegistry: DEFAULT_BEACON_REGISTRY })
+    writeFileSync(files.settings, JSON.stringify({ registry: `${RETIRED_BEACON_REGISTRIES[0]}/` }))
+    expect(make().registry()).toBe(DEFAULT_BEACON_REGISTRY)
+    writeFileSync(files.settings, JSON.stringify({ registry: 'https://mirror.example.org/registry' }))
+    expect(make().registry()).toBe('https://mirror.example.org/registry')
+    writeFileSync(files.settings, JSON.stringify({ registry: '' }))
+    expect(make().registry()).toBe('')
+  })
+
   it('only accepts https registries (or localhost)', () => {
     expect(normalizeRegistry('https://beacons.example.org/')).toBe('https://beacons.example.org')
     expect(normalizeRegistry('http://localhost:8787')).toBe('http://localhost:8787')

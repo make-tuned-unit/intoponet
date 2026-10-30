@@ -1,7 +1,7 @@
 # ADR-006: Beacon abuse controls and anti-Sybil approach
 
-Status: Accepted for a private beta; open for public launch (PRD BCN-006).
-Date: 2026-10-27
+Status: Accepted for public launch with the controls below (PRD BCN-006). Sybil resistance remains a known limit.
+Date: 2026-10-27; updated 2026-10-30
 
 ## Context
 
@@ -40,25 +40,47 @@ public launch.
 - **Federation (§14):** `/v1/export` serves the public aggregates, so independent nodes can
   mirror without a gatekeeper.
 
-## Known gaps (must close before public launch)
+## Public-launch controls (added 2026-10-30)
 
-- **Hosting:** the registry runs as a Neon Function (project `intoponet-beacons`,
-  Atlas Atlantic org, aws-us-east-1). On Functions, `X-Forwarded-For` is not a
-  trustworthy client address, so the Function enforces no per-network limit. Only the
-  per-key, per-page and report limits apply. Put an edge proxy (for example a
-  Cloudflare Worker with a rate limiter) in front, and add the network limit there,
-  before public launch.
+- **Edge proxy and per-network limits:** the app talks to
+  `https://intoponet.com/registry`, a Vercel Function (`website/api/registry.js`). Vercel sets
+  `x-real-ip` from the connection and overwrites client-supplied values. The proxy forwards
+  only public routes (never `/v1/admin`), caps bodies at 16 KiB and adds a shared edge
+  secret plus the client address. When `BEACON_EDGE_SECRET` is configured, the Neon
+  Function refuses publishes and reports without a valid edge secret (403). The native
+  Neon URL therefore serves reads only, and per-network limits always apply to writes.
+- **New-key probation:** device keys are recorded with their first-seen time
+  (`beacon_keys`). For their first 3 days they may publish 3 beacons a day instead of 10.
+- **Network limits:** 30 publishes and 60 reports per network per day (daily-salted hash).
+- **Global ceiling:** at most 1,000 publishes a day across all publishers
+  (`BEACON_GLOBAL_PUBLISH_PER_DAY` overrides). Beyond it the registry answers 503.
+- **Pause switch:** `BEACON_PUBLISH_PAUSED=1` stops new publishes while withdrawals,
+  reports and reads continue.
+- **Moderation audit:** every automatic hide and moderator restore/remove is written to
+  `beacon_moderation_log` with a reason (moderator decisions require one).
+  `GET /v1/admin/log` shows it to moderators.
+- **Transparency:** `GET /v1/transparency` publishes monthly counts of reports by kind and
+  moderation actions by type, plus the current limits and retention periods. It
+  publishes no URLs, keys or report text.
+- **Retention:** a daily Neon Function Trigger calls `purge()` (see `RETENTION_DAYS`):
+  usage counters 30 days, withdrawn beacons 30 days, reports on resolved items 180 days,
+  idle keys 180 days, moderation log 2 years.
+- **Policy and appeals:** see [Beacon moderation policy](../beacon-moderation-policy.md).
 
-- **Sybil resistance:** one person can make many keys. Network limits slow this but do not
-  stop it, especially across VPNs. Candidates:
+## Remaining limits
+
+- **Sybil resistance:** one person can still make many keys across many networks.
+  Probation, network limits and the global ceiling bound the damage and its speed, and
+  prominence still saturates per region; they do not prove uniqueness. Candidates remain:
   - Privacy Pass or RFC 9578-style blind tokens issued after a cheap human check;
   - device attestation (App Attest), which costs some privacy;
   - stake-free reputation, where a key's weight rises only after its beacons survive
     review.
-- **Moderation:** policy, appeal flow, moderator audit log and transparency reporting.
-- **Legal review:** retention of reports and moderation records.
+- **Single moderator token:** the audit log records actor type, not which moderator.
+- **Legal review:** retention periods are an operator choice and have not had legal review.
 
 ## Consequences
 
-Beacons can be tested with real users while the public field treats them as a separate,
-capped input (§10). The anti-Sybil choice must be revisited before public launch.
+Beacons can ship publicly while the public field treats them as a separate, capped input
+(§10). Volume abuse is bounded and auditable; uniqueness is not proven, so the anti-Sybil
+choice must be revisited as usage grows.

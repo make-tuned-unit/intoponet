@@ -19,10 +19,39 @@ export type Query = <T = Record<string, unknown>>(sql: string, params?: unknown[
 export type RegistryRequest = { method: string; path: string; query: URLSearchParams; body: unknown; ip?: string; authorization?: string }
 export type RegistryResponse = { status: number; body: unknown; headers?: Record<string, string> }
 
-export const LIMITS = { publishPerKeyPerDay: 10, publishPerNetworkPerDay: 30, reportsPerKeyPerDay: 20, hideAfterReports: 3, readLimit: 100, reportText: 500 } as const
+export const LIMITS = {
+  publishPerKeyPerDay: 10,
+  /** Keys younger than probationDays may publish only this many a day, which slows mass-created keys. */
+  publishPerNewKeyPerDay: 3,
+  probationDays: 3,
+  publishPerNetworkPerDay: 30,
+  reportsPerKeyPerDay: 20,
+  reportsPerNetworkPerDay: 60,
+  /** Circuit breaker across every publisher; an operator can raise it with globalPublishPerDay. */
+  globalPublishPerDay: 1_000,
+  hideAfterReports: 3,
+  readLimit: 100,
+  reportText: 500,
+  reviewReason: 500,
+} as const
+
+/** How long records are kept. Applied by purge(), which a daily trigger runs. */
+export const RETENTION_DAYS = { usage: 30, withdrawnBeacons: 30, resolvedReports: 180, idleKeys: 180, moderationLog: 730 } as const
 const REPORT_KINDS = new Set(['spam', 'harmful', 'misleading', 'broken', 'contest'])
 
-export function createRegistry(options: { query: Query; secret: string; adminToken?: string; now?: () => number }) {
+export type RegistryOptions = {
+  query: Query
+  secret: string
+  adminToken?: string
+  now?: () => number
+  /** Refuse new publishes (withdrawals, reports and reads keep working). */
+  publishPaused?: boolean
+  /** Refuse publishes and reports that arrive without a trusted client address (i.e. not via the edge proxy). */
+  requireNetwork?: boolean
+  globalPublishPerDay?: number
+}
+
+export function createRegistry(options: RegistryOptions) {
   const { query } = options
   const now = options.now ?? Date.now
   const day = (): string => new Date(now()).toISOString().slice(0, 10)
@@ -38,6 +67,23 @@ export function createRegistry(options: { query: Query; secret: string; adminTok
     )
     return (rows[0]?.count ?? 0) <= limit
   }
+
+  /** Records when a device key was first seen; returns its age in days. */
+  const keyAgeDays = async (key: string): Promise<number> => {
+    const rows = await query<{ first_seen: Date }>(
+      `insert into beacon_keys (publisher_key, first_seen, last_seen) values ($1, $2, $2)
+       on conflict (publisher_key) do update set last_seen = excluded.last_seen
+       returning first_seen`,
+      [key, new Date(now())],
+    )
+    const first = rows[0]?.first_seen ? +new Date(rows[0].first_seen) : now()
+    return (now() - first) / 86_400_000
+  }
+
+  const networkRequired = (req: RegistryRequest): RegistryResponse | null =>
+    options.requireNetwork && !req.ip
+      ? { status: 403, body: { error: 'Send this through the registry’s public address.' } }
+      : null
 
   /** Verify a signed request: fresh, never seen before, signed by the key it names. */
   const verifySigned = async (value: unknown, kind: SignedRequest<unknown>['kind']): Promise<{ ok: true; request: SignedRequest<unknown> } | { ok: false; status: number; error: string }> => {
@@ -56,20 +102,28 @@ export function createRegistry(options: { query: Query; secret: string; adminTok
       valid = false
     }
     if (!valid) return { ok: false, status: 401, error: 'Signature does not match.' }
-    await query(`delete from beacon_nonces where at < now() - interval '10 minutes'`)
+    await query(`delete from beacon_nonces where at < $1`, [new Date(now() - 10 * 60_000)])
     const fresh = await query(`insert into beacon_nonces (nonce) values ($1) on conflict do nothing returning nonce`, [nonce])
     if (!fresh.length) return { ok: false, status: 409, error: 'This request was already used.' }
     return { ok: true, request }
   }
 
   const publish = async (req: RegistryRequest): Promise<RegistryResponse> => {
+    if (options.publishPaused) return { status: 503, body: { error: 'Publishing beacons is paused for now. Your saved pages are unaffected.' }, headers: { 'retry-after': '3600' } }
+    const blocked = networkRequired(req)
+    if (blocked) return blocked
     const signed = await verifySigned(req.body, 'publish')
     if (!signed.ok) return { status: signed.status, body: { error: signed.error } }
     const checked = validateBeacon(signed.request.body)
     if (!checked.ok) return { status: 422, body: { error: checked.reason } }
     const key = signed.request.publisherKey
-    if (!(await bump(`key:${key}`, 'publish', LIMITS.publishPerKeyPerDay))) return { status: 429, body: { error: `You can publish up to ${LIMITS.publishPerKeyPerDay} beacons a day.` } }
+    const onProbation = (await keyAgeDays(key)) < LIMITS.probationDays
+    const keyLimit = onProbation ? LIMITS.publishPerNewKeyPerDay : LIMITS.publishPerKeyPerDay
+    if (!(await bump(`key:${key}`, 'publish', keyLimit))) {
+      return { status: 429, body: { error: onProbation ? `New devices can publish up to ${keyLimit} beacons a day for their first ${LIMITS.probationDays} days.` : `You can publish up to ${keyLimit} beacons a day.` } }
+    }
     if (req.ip && !(await bump(`net:${networkId(req.ip)}`, 'publish', LIMITS.publishPerNetworkPerDay))) return { status: 429, body: { error: 'Too many beacons from this network today.' } }
+    if (!(await bump('global', 'publish', options.globalPublishPerDay ?? LIMITS.globalPublishPerDay))) return { status: 503, body: { error: 'The registry has reached today’s publishing limit. Try again tomorrow.' }, headers: { 'retry-after': '3600' } }
     const beacon = checked.payload
     const rows = await query<{ id: string }>(
       `insert into beacons (url, title, topic, note, place_label, lat, lon, cell, publisher_key)
@@ -91,6 +145,8 @@ export function createRegistry(options: { query: Query; secret: string; adminTok
   }
 
   const report = async (req: RegistryRequest, url: string): Promise<RegistryResponse> => {
+    const blocked = networkRequired(req)
+    if (blocked) return blocked
     const signed = await verifySigned(req.body, 'report')
     if (!signed.ok) return { status: signed.status, body: { error: signed.error } }
     const body = signed.request.body as { url?: unknown; kind?: unknown; text?: unknown } | null
@@ -100,7 +156,9 @@ export function createRegistry(options: { query: Query; secret: string; adminTok
     const text = typeof body.text === 'string' ? body.text.trim().slice(0, LIMITS.reportText) : ''
     if (body.kind === 'contest' && text.length < 10) return { status: 422, body: { error: 'Say briefly what you dispute and why (at least 10 characters).' } }
     const key = signed.request.publisherKey
+    await keyAgeDays(key)
     if (!(await bump(`key:${key}`, 'report', LIMITS.reportsPerKeyPerDay))) return { status: 429, body: { error: 'Too many reports today.' } }
+    if (req.ip && !(await bump(`net:${networkId(req.ip)}`, 'report', LIMITS.reportsPerNetworkPerDay))) return { status: 429, body: { error: 'Too many reports from this network today.' } }
     const targets = await query<{ id: string }>(`select id from beacons where url = $1 and withdrawn_at is null`, [url])
     if (!targets.length) return { status: 404, body: { error: 'No live beacons point at that address.' } }
     for (const target of targets) {
@@ -108,14 +166,67 @@ export function createRegistry(options: { query: Query; secret: string; adminTok
     }
     // Three independent reports (not counting contests) hide a resource until a moderator reviews it.
     if (body.kind !== 'contest') {
-      await query(
+      const hidden = await query(
         `update beacons b set hidden = true, review_state = 'pending'
-         where b.url = $1 and b.withdrawn_at is null and b.review_state <> 'cleared'
-           and (select count(distinct r.reporter_key) from beacon_reports r join beacons x on x.id = r.beacon_id where x.url = $1 and r.kind <> 'contest') >= $2`,
+         where b.url = $1 and b.withdrawn_at is null and b.review_state = 'none'
+           and (select count(distinct r.reporter_key) from beacon_reports r join beacons x on x.id = r.beacon_id where x.url = $1 and r.kind <> 'contest') >= $2
+         returning b.id`,
         [url, LIMITS.hideAfterReports],
       )
+      if (hidden.length) await logModeration(url, 'auto-hide', `${LIMITS.hideAfterReports} or more independent reports`, 'system')
     }
     return { status: 202, body: { received: true } }
+  }
+
+  const logModeration = async (url: string, action: string, reason: string, actor: 'moderator' | 'system'): Promise<void> => {
+    await query(`insert into beacon_moderation_log (url, action, reason, actor) values ($1, $2, $3, $4)`, [url, action, reason, actor])
+  }
+
+  /** Deletes records past their retention period (RETENTION_DAYS). Safe to run repeatedly. */
+  const purge = async (): Promise<Record<string, number>> => {
+    const at = new Date(now())
+    const days = (n: number): Date => new Date(+at - n * 86_400_000)
+    const count = async (sql: string, params: unknown[]): Promise<number> => (await query(`${sql} returning 1`, params)).length
+    return {
+      nonces: await count(`delete from beacon_nonces where at < $1`, [new Date(+at - 10 * 60_000)]),
+      usage: await count(`delete from beacon_usage where day < $1::date`, [days(RETENTION_DAYS.usage)]),
+      withdrawnBeacons: await count(`delete from beacons where withdrawn_at < $1`, [days(RETENTION_DAYS.withdrawnBeacons)]),
+      resolvedReports: await count(
+        `delete from beacon_reports r using beacons b where b.id = r.beacon_id and r.created_at < $1 and b.review_state in ('none', 'cleared', 'removed') and r.kind <> 'contest'`,
+        [days(RETENTION_DAYS.resolvedReports)],
+      ),
+      idleKeys: await count(
+        `delete from beacon_keys k where k.last_seen < $1 and not exists (select 1 from beacons b where b.publisher_key = k.publisher_key)`,
+        [days(RETENTION_DAYS.idleKeys)],
+      ),
+      moderationLog: await count(`delete from beacon_moderation_log where at < $1`, [days(RETENTION_DAYS.moderationLog)]),
+    }
+  }
+
+  /** Public, aggregate moderation counts per month (no URLs, keys or report text). */
+  const transparency = async (): Promise<RegistryResponse> => {
+    const moderation = await query<{ month: string; action: string; count: string }>(
+      `select to_char(date_trunc('month', at), 'YYYY-MM') as month, action, count(*) as count
+       from beacon_moderation_log group by 1, 2 order by 1 desc, 2`,
+    )
+    const reports = await query<{ month: string; kind: string; count: string }>(
+      `select to_char(date_trunc('month', created_at), 'YYYY-MM') as month, kind, count(*) as count
+       from beacon_reports group by 1, 2 order by 1 desc, 2`,
+    )
+    const months = new Map<string, { month: string; reports: Record<string, number>; moderation: Record<string, number> }>()
+    const entry = (month: string) => months.get(month) ?? months.set(month, { month, reports: {}, moderation: {} }).get(month)!
+    for (const row of reports) entry(row.month).reports[row.kind] = Number(row.count)
+    for (const row of moderation) entry(row.month).moderation[row.action] = Number(row.count)
+    return {
+      status: 200,
+      body: {
+        months: [...months.values()].sort((a, b) => b.month.localeCompare(a.month)),
+        limits: { ...LIMITS, globalPublishPerDay: options.globalPublishPerDay ?? LIMITS.globalPublishPerDay },
+        retentionDays: RETENTION_DAYS,
+        note: 'Report counts cover reports still within their retention period.',
+      },
+      headers: { 'cache-control': 'public, max-age=300' },
+    }
   }
 
   type Row = { url: string; title: string; topic: string; note: string | null; place_label: string | null; lat: number | null; lon: number | null; cell: string; publishers: string; first_at: Date; last_at: Date }
@@ -195,20 +306,30 @@ export function createRegistry(options: { query: Query; secret: string; adminTok
       return { status: 200, body: { queue: rows } }
     }
     if (req.method === 'POST' && rest[0] === 'review') {
-      const body = req.body as { url?: unknown; action?: unknown } | null
-      if (typeof body?.url !== 'string' || (body.action !== 'restore' && body.action !== 'remove')) return { status: 400, body: { error: 'Send { url, action: "restore" | "remove" }.' } }
-      await query(
+      const body = req.body as { url?: unknown; action?: unknown; reason?: unknown } | null
+      const reason = typeof body?.reason === 'string' ? body.reason.trim().slice(0, LIMITS.reviewReason) : ''
+      if (typeof body?.url !== 'string' || (body.action !== 'restore' && body.action !== 'remove') || reason.length < 5) {
+        return { status: 400, body: { error: 'Send { url, action: "restore" | "remove", reason } with a reason of at least 5 characters.' } }
+      }
+      const rows = await query(
         body.action === 'restore'
-          ? `update beacons set hidden = false, review_state = 'cleared' where url = $1 and withdrawn_at is null`
-          : `update beacons set hidden = true, review_state = 'removed' where url = $1 and withdrawn_at is null`,
+          ? `update beacons set hidden = false, review_state = 'cleared' where url = $1 and withdrawn_at is null returning id`
+          : `update beacons set hidden = true, review_state = 'removed' where url = $1 and withdrawn_at is null returning id`,
         [body.url],
       )
+      if (!rows.length) return { status: 404, body: { error: 'No live beacons point at that address.' } }
+      await logModeration(body.url, body.action, reason, 'moderator')
       return { status: 200, body: { reviewed: body.url, action: body.action } }
     }
+    if (req.method === 'GET' && rest[0] === 'log') {
+      return { status: 200, body: { log: await query(`select url, action, reason, actor, at from beacon_moderation_log order by at desc limit 200`) } }
+    }
+    if (req.method === 'POST' && rest[0] === 'purge') return { status: 200, body: await purge() }
     return { status: 404, body: { error: 'Not found.' } }
   }
 
   return {
+    purge,
     async handle(req: RegistryRequest): Promise<RegistryResponse> {
       const parts = req.path.replace(/^\/+|\/+$/g, '').split('/')
       if (parts[0] !== 'v1') return { status: 404, body: { error: 'Not found.' } }
@@ -230,6 +351,7 @@ export function createRegistry(options: { query: Query; secret: string; adminTok
         }
         // Federation: anyone may mirror the public aggregates (PRD §14: no permanent central gatekeeper).
         if (resource === 'export' && req.method === 'GET') return await read({ ...req, query: new URLSearchParams({ limit: String(LIMITS.readLimit) }) })
+        if (resource === 'transparency' && req.method === 'GET') return await transparency()
         if (resource === 'admin') return await admin(req, rest)
         return { status: 404, body: { error: 'Not found.' } }
       } catch (error) {

@@ -25,11 +25,25 @@ The public side of Beacons (PRD §4.6): a small HTTP API over Postgres (Neon). S
    development, you can instead set `INTOPONET_BEACON_REGISTRY` before launching.
 
 The standalone server applies per-network limits to the direct TCP peer address
-only. It ignores `X-Forwarded-For`; when deployed behind a reverse proxy, clients
-will share the proxy's address for this interim limit unless a trusted-proxy
-contract is implemented. Neon Functions do not expose a verified client address
-to this function, so the function does not guess one from request headers and
-does not apply the per-network limit. This remains a private-beta limitation.
+only. It ignores `X-Forwarded-For`; behind a reverse proxy, every client would share
+the proxy's address.
+
+On Neon Functions there is no trustworthy client address, so production goes through
+the edge proxy in `website/api/registry.js` (served at `https://intoponet.com/registry`). Set
+the same `BEACON_EDGE_SECRET` (32+ random characters) on the Function and on the Vercel
+project, plus `BEACON_REGISTRY_ORIGIN` (the Function's invocation URL, no trailing
+slash) on Vercel. With the secret set, the Function refuses publishes and reports that
+don't come through the proxy. See ADR-006 for every limit.
+
+Operator switches (Function env): `BEACON_PUBLISH_PAUSED=1` pauses publishing;
+`BEACON_GLOBAL_PUBLISH_PER_DAY` overrides the daily ceiling. A daily trigger
+(`beacon-retention` in `neon.ts`) purges records past their retention period;
+`POST /v1/admin/purge` runs it by hand.
+
+After `neon deploy --env .env.local`, confirm new code is serving (for example
+`GET /v1/transparency` returns 200). On 30 October 2026 `neon deploy` reported success
+without replacing the running code; `neon functions deploy beacons --src src/function.ts`
+(which keeps existing Function env) did.
 
 ## API
 
@@ -41,8 +55,11 @@ does not apply the per-network limit. This remains a private-beta limitation.
 | POST | `/v1/beacons/:id/withdraw` | Signed by the publishing key. |
 | POST | `/v1/reports` | Signed `report`. Kinds: spam, harmful, misleading, broken, contest (contest needs a reason). |
 | GET | `/v1/export` | Public aggregates, for mirrors and federation. |
+| GET | `/v1/transparency` | Monthly report and moderation counts, limits and retention. No URLs or keys. |
 | GET | `/v1/admin/queue` | Bearer `BEACON_ADMIN_TOKEN`. |
-| POST | `/v1/admin/review` | `{ url, action: "restore" or "remove" }`. Bearer token required. |
+| POST | `/v1/admin/review` | `{ url, action: "restore" or "remove", reason }`. Bearer token required; logged. |
+| GET | `/v1/admin/log` | Latest 200 moderation decisions. Bearer token required. |
+| POST | `/v1/admin/purge` | Run the retention purge now. Bearer token required. |
 
 ## Tests
 

@@ -15,3 +15,5 @@ experiments/*/results/*.jsonl
 .playwright-mcp/
 experiments/e2e/evidence/
 apps/desktop/.eval-build/
+.vercel
+.env*

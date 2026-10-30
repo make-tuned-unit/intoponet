@@ -3,6 +3,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { canonicalBeaconUrl, signingText, validateBeacon, type SignedRequest } from '@intoponet/beacon-core'
 import type { BeaconDraft, BeaconPreview, BeaconReportKind, BeaconResource, BeaconState, PublishedBeacon } from '@intoponet/browser-api'
+import { RETIRED_BEACON_REGISTRIES } from './defaults'
 
 /**
  * Beacon publisher (PRD §7 "the only component allowed to transmit a
@@ -49,7 +50,8 @@ export class BeaconPublisher {
   }
 
   registry(): string {
-    const saved = this.load<{ registry?: string }>(this.options.files.settings, {}).registry
+    const stored = this.load<{ registry?: string }>(this.options.files.settings, {}).registry
+    const saved = stored !== undefined && RETIRED_BEACON_REGISTRIES.includes(normalizeRegistry(stored) ?? '') ? undefined : stored
     return normalizeRegistry(saved ?? this.options.defaultRegistry ?? '') ?? ''
   }
 

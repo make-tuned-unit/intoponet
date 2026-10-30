@@ -48,3 +48,24 @@ create table if not exists beacon_nonces (
   nonce text primary key,
   at timestamptz not null default now()
 );
+
+-- When each anonymous device key was first and last seen. New keys are on
+-- probation (lower publish limits) for their first days. Idle keys are purged.
+create table if not exists beacon_keys (
+  publisher_key text primary key,
+  first_seen timestamptz not null default now(),
+  last_seen timestamptz not null default now()
+);
+
+-- Every moderation decision, automatic or by a moderator, with its reason.
+-- Feeds the public transparency counts; kept for two years.
+create table if not exists beacon_moderation_log (
+  id bigserial primary key,
+  url text not null,
+  action text not null check (action in ('auto-hide', 'restore', 'remove')),
+  reason text not null,
+  actor text not null check (actor in ('moderator', 'system')),
+  at timestamptz not null default now()
+);
+create index if not exists beacon_moderation_log_at on beacon_moderation_log (at);
+create index if not exists beacon_nonces_at on beacon_nonces (at);
