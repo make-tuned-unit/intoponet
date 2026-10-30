@@ -1239,7 +1239,7 @@ function createWindow(): void {
     minHeight: 620,
     width: 1440,
     height: 940,
-    backgroundColor: '#07111B',
+    backgroundColor: '#061320',
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 20, y: 20 },
     webPreferences: {
@@ -1275,6 +1275,12 @@ function createWindow(): void {
 }
 
 app.whenReady().then(async () => {
+  app.setAboutPanelOptions({
+    applicationName: 'Intoponet',
+    applicationVersion: app.getVersion(),
+    copyright: 'Explore beyond the expected.\n© 2026 the Intoponet authors',
+    website: 'https://intoponet.com',
+  })
   try {
     app.configureHostResolver({ secureDnsMode: ENCRYPTED_DNS.mode, secureDnsServers: ENCRYPTED_DNS.servers })
     encryptedDnsActive = true

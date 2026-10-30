@@ -5,6 +5,7 @@ import type { AppSettings } from './appSettings'
 import { BeaconSettings } from '../beacons/BeaconSettings'
 import { LayaSettings } from './LayaSettings'
 import { UpdatesSettings } from './UpdatesSettings'
+import brandSymbol from '../brand/intoponet-mark-spectrum.svg'
 
 /** Settings: your reading language, automatic translation, downloaded languages, and a way to Privacy. */
 export function SettingsPanel({
@@ -53,7 +54,7 @@ export function SettingsPanel({
     <aside className="settings-drawer bookmark-drawer lg-surface" aria-labelledby="settings-heading">
       <div className="drawer-heading">
         <div>
-          <span>Intoponet</span>
+          <span className="drawer-brand"><img src={brandSymbol} alt="" width={30} height={16} />intoponet</span>
           <h2 id="settings-heading"><Settings size={17} aria-hidden="true" /> Settings</h2>
         </div>
         <button type="button" onClick={onClose} aria-label="Close settings"><X size={17} /></button>

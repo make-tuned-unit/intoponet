@@ -111,8 +111,8 @@
 }
 
 .bm-search:focus-within {
-  border-color: rgba(80, 217, 199, 0.45);
-  box-shadow: 0 0 0 3px rgba(80, 217, 199, 0.12), inset 0 1px 2px rgba(0, 0, 0, 0.35);
+  border-color: rgba(32, 244, 228, 0.45);
+  box-shadow: 0 0 0 3px rgba(32, 244, 228, 0.12), inset 0 1px 2px rgba(0, 0, 0, 0.35);
 }
 
 .bm-search input {
@@ -210,7 +210,7 @@
   border-radius: 11px;
   color: var(--void);
   background: linear-gradient(160deg, #7cf0e0, var(--teal));
-  box-shadow: 0 6px 18px -6px rgba(80, 217, 199, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  box-shadow: 0 6px 18px -6px rgba(32, 244, 228, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.5);
   cursor: pointer;
   transition: filter 220ms var(--lg-spring), background 300ms var(--lg-spring);
 }
@@ -221,8 +221,8 @@
 
 .bm-save-button.is-saved {
   color: var(--teal);
-  background: rgba(80, 217, 199, 0.14);
-  box-shadow: inset 0 0 0 1px rgba(80, 217, 199, 0.4);
+  background: rgba(32, 244, 228, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(32, 244, 228, 0.4);
 }
 
 /* Monogram tiles: private, no favicon requests. */
@@ -266,8 +266,8 @@
 }
 
 .bm-group.is-drop-target {
-  border-color: rgba(80, 217, 199, 0.5);
-  background: rgba(80, 217, 199, 0.08);
+  border-color: rgba(32, 244, 228, 0.5);
+  background: rgba(32, 244, 228, 0.08);
 }
 
 .bm-group-header {
@@ -456,7 +456,7 @@
 }
 
 .bm-inline-input:focus {
-  border-color: rgba(80, 217, 199, 0.45);
+  border-color: rgba(32, 244, 228, 0.45);
 }
 
 /* Footer */
@@ -481,9 +481,9 @@
 }
 
 .bm-new-group:hover {
-  border-color: rgba(80, 217, 199, 0.45);
+  border-color: rgba(32, 244, 228, 0.45);
   color: var(--warm-white);
-  background: rgba(80, 217, 199, 0.06);
+  background: rgba(32, 244, 228, 0.06);
 }
 
 .bm-create {
@@ -581,7 +581,7 @@
   font-size: 11px;
   border: 1px solid rgba(214, 246, 241, 0.16);
   border-radius: 7px;
-  background: rgba(7, 17, 27, 0.92);
+  background: rgba(6, 19, 32, 0.92);
   opacity: 0;
   pointer-events: none;
 }

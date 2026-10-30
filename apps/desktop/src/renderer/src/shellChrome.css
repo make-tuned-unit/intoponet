@@ -16,7 +16,7 @@
   height: 10px;
   overflow: hidden;
   border-bottom-color: transparent;
-  background: linear-gradient(180deg, rgba(17, 37, 48, 0.92), rgba(7, 17, 27, 0.92));
+  background: linear-gradient(180deg, rgba(17, 37, 48, 0.92), rgba(6, 19, 32, 0.92));
 }
 
 .browser-panel .browser-chrome > :not(.chrome-rail) {
@@ -37,8 +37,8 @@
   width: 54px;
   height: 4px;
   border-radius: 999px;
-  background: linear-gradient(90deg, rgba(80, 217, 199, 0.35), rgba(166, 155, 232, 0.45));
-  box-shadow: 0 0 12px rgba(80, 217, 199, 0.35);
+  background: linear-gradient(90deg, rgba(32, 244, 228, 0.35), rgba(166, 155, 232, 0.45));
+  box-shadow: 0 0 12px rgba(32, 244, 228, 0.35);
   opacity: 0;
   transform: translateX(-50%);
   transition: opacity 240ms var(--lg-spring), width 320ms var(--lg-spring);
@@ -141,7 +141,7 @@
 
 .network-privacy li.is-on::before {
   background: var(--teal);
-  box-shadow: 0 0 8px rgba(80, 217, 199, 0.7);
+  box-shadow: 0 0 8px rgba(32, 244, 228, 0.7);
 }
 
 .network-privacy li.is-off::before {

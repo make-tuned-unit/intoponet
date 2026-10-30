@@ -1,3 +1,4 @@
+import brandLogo from './brand/intoponet-horizontal-on-dark.svg'
 import type {
   BrowserPanelSnapshot,
   FindInPageResult,
@@ -2348,12 +2349,7 @@ export function App() {
           aria-label="Return to field"
           onClick={showEarth}
         >
-          <span className="brand-mark" aria-hidden="true">
-            <i />
-            <i />
-            <i />
-          </span>
-          <span>intoponet</span>
+          <img className="brand-logo" src={brandLogo} alt="intoponet" width={144} height={28} draggable={false} />
         </button>
         <div className="topbar-actions">
           <div className="privacy-state">

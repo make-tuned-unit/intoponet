@@ -186,7 +186,7 @@ export function EarthScene({
       frameloop="always"
       gl={{ antialias: true, powerPreference: 'high-performance', alpha: false }}
     >
-      <color attach="background" args={['#07111b']} />
+      <color attach="background" args={['#061320']} />
       <FrequencyLighting profile={signals === undefined ? 'legacy' : 'physical'} />
       <OrbitRig
         distance={pose?.radius ?? scaleDistance[scale]}

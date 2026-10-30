@@ -44,9 +44,9 @@
   font-size: clamp(30px, 2.5vw, 44px);
   font-weight: 400;
   line-height: 1;
-  letter-spacing: -0.05em;
+  letter-spacing: -0.024em;
   text-wrap: balance;
-  text-shadow: 0 2px 24px rgba(7, 17, 27, 0.85);
+  text-shadow: 0 2px 24px rgba(6, 19, 32, 0.85);
 }
 
 .globe-eyebrow {
@@ -64,7 +64,7 @@
   height: 7px;
   border-radius: 50%;
   background: var(--teal);
-  box-shadow: 0 0 0 0 rgba(80, 217, 199, 0.6);
+  box-shadow: 0 0 0 0 rgba(32, 244, 228, 0.6);
   animation: globe-live 2.4s ease-out infinite;
 }
 
@@ -74,8 +74,8 @@
 }
 
 @keyframes globe-live {
-  0% { box-shadow: 0 0 0 0 rgba(80, 217, 199, 0.55); }
-  70%, 100% { box-shadow: 0 0 0 8px rgba(80, 217, 199, 0); }
+  0% { box-shadow: 0 0 0 0 rgba(32, 244, 228, 0.55); }
+  70%, 100% { box-shadow: 0 0 0 8px rgba(32, 244, 228, 0); }
 }
 
 .globe-summary {
@@ -242,8 +242,8 @@
 
 .globe-window button.is-active {
   color: var(--warm-white);
-  border-color: rgba(80, 217, 199, 0.4);
-  background: rgba(80, 217, 199, 0.1);
+  border-color: rgba(32, 244, 228, 0.4);
+  background: rgba(32, 244, 228, 0.1);
 }
 
 .globe-about-toggle {
@@ -595,7 +595,7 @@
   border: 0;
   border-radius: 12px;
   background: linear-gradient(160deg, #7ff0e0, #3fc2b1);
-  box-shadow: 0 8px 22px -10px rgba(80, 217, 199, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 22px -10px rgba(32, 244, 228, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.4);
   font: inherit;
   font-size: 12.5px;
   font-weight: 600;
@@ -674,7 +674,7 @@
   color: rgba(236, 248, 246, 0.92);
   border-left: 2px solid var(--label-color);
   border-radius: 0 7px 7px 0;
-  background: linear-gradient(90deg, rgba(7, 17, 27, 0.72), rgba(7, 17, 27, 0.28));
+  background: linear-gradient(90deg, rgba(6, 19, 32, 0.72), rgba(6, 19, 32, 0.28));
   font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -758,7 +758,7 @@
   height: 28px;
   border-radius: 9px;
   color: var(--teal);
-  background: rgba(80, 217, 199, 0.1);
+  background: rgba(32, 244, 228, 0.1);
 }
 
 .place-suggestions strong {
@@ -810,7 +810,7 @@
 
 @media (prefers-reduced-transparency: reduce) {
   .globe-label {
-    background: rgba(7, 17, 27, 0.92);
+    background: rgba(6, 19, 32, 0.92);
   }
 }
 
@@ -962,8 +962,8 @@
 .globe-trend.is-new {
   padding: 0 8px;
   color: var(--teal);
-  background: rgba(80, 217, 199, 0.1);
-  box-shadow: inset 0 0 0 1px rgba(80, 217, 199, 0.3);
+  background: rgba(32, 244, 228, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(32, 244, 228, 0.3);
 }
 
 .globe-trend-word.is-rising { color: #ffd29a; }
@@ -1274,7 +1274,7 @@
   color: var(--warm-white);
   border: 1px solid rgba(231, 201, 143, 0.25);
   border-radius: 999px;
-  background: rgba(7, 17, 27, 0.4);
+  background: rgba(6, 19, 32, 0.4);
   font: inherit;
   font-size: 11.5px;
   text-align: left;
@@ -1742,7 +1742,7 @@
   width: 10px;
   height: 10px;
   background: var(--locator);
-  box-shadow: 0 0 0 2px rgba(7, 17, 27, 0.85), 0 0 14px 4px rgba(255, 210, 122, 0.75);
+  box-shadow: 0 0 0 2px rgba(6, 19, 32, 0.85), 0 0 14px 4px rgba(255, 210, 122, 0.75);
 }
 .globe-locator-ring {
   width: 14px;
@@ -1765,7 +1765,7 @@
   color: #fff4dd;
   font-size: 12px;
   font-weight: 600;
-  background: rgba(7, 17, 27, 0.78);
+  background: rgba(6, 19, 32, 0.78);
   border: 1px solid rgba(255, 210, 122, 0.55);
   backdrop-filter: blur(8px);
 }
@@ -1890,7 +1890,7 @@
 .place-trend:hover { background: rgba(255, 255, 255, 0.06); }
 .place-trend-term { grid-area: term; font-size: 13px; font-weight: 550; text-transform: capitalize; }
 .place-trend-change { grid-area: change; min-width: 30px; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 600; text-align: center; }
-.is-rising .place-trend-change { background: rgba(80, 217, 199, 0.16); color: var(--teal); }
+.is-rising .place-trend-change { background: rgba(32, 244, 228, 0.16); color: var(--teal); }
 .is-fading .place-trend-change { background: rgba(240, 165, 138, 0.14); color: #f0a58a; }
 .place-trend small { grid-area: meta; color: var(--muted); font-size: 10.5px; }
 .place-trend-chevron { grid-area: chevron; color: var(--muted); transition: transform 0.2s ease; }

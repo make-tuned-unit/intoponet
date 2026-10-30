@@ -7,7 +7,7 @@
   display: grid;
   place-items: center;
   padding: 72px 28px 28px;
-  background: radial-gradient(ellipse at 50% 40%, rgba(7, 17, 27, 0.35), rgba(7, 17, 27, 0.72));
+  background: radial-gradient(ellipse at 50% 40%, rgba(6, 19, 32, 0.35), rgba(6, 19, 32, 0.72));
   backdrop-filter: blur(6px);
 }
 
@@ -585,7 +585,7 @@
   overflow: hidden;
   border-radius: 14px;
   color: #e4dcff;
-  background: linear-gradient(120deg, rgba(166, 155, 232, 0.14), rgba(80, 217, 199, 0.06));
+  background: linear-gradient(120deg, rgba(166, 155, 232, 0.14), rgba(32, 244, 228, 0.06));
   box-shadow: inset 0 0 0 1px rgba(195, 182, 255, 0.22);
   font-size: 12.5px;
   line-height: 1.45;
@@ -627,7 +627,7 @@
 .laya-bar span {
   display: block;
   height: 100%;
-  background: linear-gradient(90deg, #c3b6ff, #50d9c7);
+  background: linear-gradient(90deg, #c3b6ff, #20f4e4);
   transition: width 300ms ease;
 }
 

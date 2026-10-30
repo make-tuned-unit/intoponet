@@ -5,7 +5,7 @@
  */
 :root {
   --lg-fill: linear-gradient(160deg, rgba(64, 104, 116, 0.30), rgba(12, 28, 40, 0.58) 46%, rgba(8, 19, 29, 0.72));
-  --lg-fill-strong: linear-gradient(160deg, rgba(58, 94, 108, 0.42), rgba(10, 25, 36, 0.82) 50%, rgba(7, 17, 27, 0.9));
+  --lg-fill-strong: linear-gradient(160deg, rgba(58, 94, 108, 0.42), rgba(10, 25, 36, 0.82) 50%, rgba(6, 19, 32, 0.9));
   --lg-edge: rgba(214, 246, 241, 0.16);
   --lg-edge-bright: rgba(232, 252, 249, 0.34);
   --lg-blur: blur(30px) saturate(1.7);
@@ -16,7 +16,7 @@
     inset 0 -1px 0 rgba(0, 0, 0, 0.28);
   --lg-inset-fill: rgba(4, 12, 20, 0.42);
   --lg-hover: rgba(205, 245, 240, 0.08);
-  --lg-active: rgba(80, 217, 199, 0.16);
+  --lg-active: rgba(32, 244, 228, 0.16);
   --lg-spring: cubic-bezier(0.22, 1, 0.36, 1);
 }
 

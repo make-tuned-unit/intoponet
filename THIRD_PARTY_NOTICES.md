@@ -183,7 +183,8 @@ publisher's terms need checking before release, following the governance in
 | `apps/desktop/src/renderer/assets/earth-night.jpg` (4096×2048) | NASA Earth Observatory, Black Marble 2016 (Night Lights), https://earthobservatory.nasa.gov/features/NightLights | Public domain (NASA) | "NASA Earth Observatory / Black Marble" (requested, not required) |
 | `apps/desktop/src/renderer/assets/earth-day.jpg` (4096×2048) | The source comment says "NASA Blue Marble". **The exact file and its origin are not recorded. Check before release.** If it is NASA Visible Earth Blue Marble (https://visibleearth.nasa.gov/collection/1484/blue-marble), it is public domain. If it came from a third-party remix (for example a texture pack), that source's licence applies instead. | Licence not determined; check before release | "NASA Visible Earth / Blue Marble", if confirmed |
 | Icons | lucide-react (see §1) | ISC / MIT | Covered by §1 |
-| Fonts | None bundled. The UI uses the system fonts "Avenir Next", Avenir and "Helvetica Neue" from macOS. Nothing is loaded from web font services. | n/a (system fonts are not redistributed) | None |
+| Fonts | Inter (variable, optical size), by Rasmus Andersson and The Inter Project Authors, https://github.com/rsms/inter. Bundled in the app via `@fontsource-variable/inter` 5.3.0 and self-hosted on the website (`website/fonts/`, with `Inter-LICENSE.txt`). Nothing is loaded from web font services. | SIL Open Font License 1.1 | Copyright notice and licence shipped alongside the font files |
+| Brand assets | `apps/desktop/src/renderer/src/brand/`, `apps/desktop/resources/Intoponet.icns`, `website/brand/`, the website icons and Open Graph image: Intoponet Cinematic Brand Kit v3 (October 2026), made for this project. | Owned by the project (not third-party). Not yet trademark-cleared. | None |
 
 ---
 

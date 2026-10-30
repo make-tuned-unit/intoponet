@@ -31,7 +31,7 @@ export const GLOBE_LAYERS: Record<GlobeLayerId, {
   reading: {
     label: 'Reading now',
     source: 'Wikipedia most-read',
-    color: '#50d9c7',
+    color: '#20f4e4',
     gain: 0.9,
     radiusKm: 420,
     describe: 'English Wikipedia’s most-read articles from the latest full day, placed where the article is about. Articles without coordinates are not mapped.',

@@ -13,7 +13,7 @@
 
 .tour-dim {
   inset: 0;
-  background: radial-gradient(ellipse at 50% 45%, rgba(7, 17, 27, 0.25), rgba(3, 9, 15, 0.72));
+  background: radial-gradient(ellipse at 50% 45%, rgba(6, 19, 32, 0.25), rgba(3, 9, 15, 0.72));
 }
 
 /* The page around the spotlight is dimmed by the spotlight's own shadow. */
@@ -21,7 +21,7 @@
   border-radius: 18px;
   box-shadow:
     0 0 0 1.5px rgba(141, 242, 228, 0.75),
-    0 0 28px 4px rgba(80, 217, 199, 0.28),
+    0 0 28px 4px rgba(32, 244, 228, 0.28),
     0 0 0 9999px rgba(3, 9, 15, 0.62);
 }
 
@@ -112,8 +112,8 @@
   cursor: pointer;
 }
 
-.tour-progress .is-done button { background: rgba(80, 217, 199, 0.7); }
-.tour-progress .is-current button { background: rgba(80, 217, 199, 0.32); }
+.tour-progress .is-done button { background: rgba(32, 244, 228, 0.7); }
+.tour-progress .is-current button { background: rgba(32, 244, 228, 0.32); }
 .tour-progress i { position: absolute; inset: 0 auto 0 0; background: var(--teal); }
 
 .tour-actions {
@@ -142,8 +142,8 @@
 .tour-actions button:disabled { opacity: 0.4; cursor: default; }
 
 .tour-actions .tour-next {
-  border-color: rgba(80, 217, 199, 0.6);
-  background: linear-gradient(180deg, rgba(80, 217, 199, 0.32), rgba(80, 217, 199, 0.18));
+  border-color: rgba(32, 244, 228, 0.6);
+  background: linear-gradient(180deg, rgba(32, 244, 228, 0.32), rgba(32, 244, 228, 0.18));
   font-weight: 600;
 }
 

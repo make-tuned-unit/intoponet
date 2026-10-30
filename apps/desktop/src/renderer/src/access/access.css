@@ -5,7 +5,7 @@
   gap: 6px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--hairline);
-  background: rgba(7, 17, 27, 0.78);
+  background: rgba(6, 19, 32, 0.78);
   color: var(--muted);
   font-size: 12px;
 }

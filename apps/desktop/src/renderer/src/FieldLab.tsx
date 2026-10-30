@@ -92,7 +92,7 @@ function materialTagTexture(label: string): CanvasTexture {
   canvas.height = 96
   const context = canvas.getContext('2d')
   if (context) {
-    context.fillStyle = 'rgba(7, 17, 27, 0.72)'
+    context.fillStyle = 'rgba(6, 19, 32, 0.72)'
     context.beginPath()
     context.roundRect(4, 4, 376, 88, 22)
     context.fill()

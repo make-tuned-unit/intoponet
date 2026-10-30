@@ -1,0 +1,28 @@
+/* Intoponet brand v3 "Cinematic" tokens (06_DEVELOPER/brand-tokens.css), plus the
+   --into-* names the app already uses, mapped onto v3 values.
+   --into-panel is a lifted Midnight for surfaces (derived, not a kit value). */
+:root {
+  --into-midnight-v3: #061320;
+  --into-abyss: #030c18;
+  --into-teal: #20f4e4;
+  --into-cyan: #00c7e4;
+  --into-coral: #ff6856;
+  --into-cream: #f7f5f0;
+  --into-fog: #9eb8c0;
+  --into-mineral: #10303c;
+  --into-panel: #0d2131;
+  --into-gradient: linear-gradient(105deg, #00c7e4 0%, #20f4e4 26%, #a2ffe4 50%, #ff9a85 72%, #ff6856 100%);
+
+  --into-deep: var(--into-midnight-v3);
+  --into-midnight: var(--into-panel);
+  --into-signal-teal: var(--into-teal);
+  --into-mineral-teal: #a2ffe4;
+  --into-acid-coral: var(--into-coral);
+  --into-alabaster: var(--into-cream);
+  --into-fog-grey: var(--into-fog);
+  --into-ink: var(--into-midnight-v3);
+  --into-font-display: "Inter Display", "Inter Variable", Inter, system-ui, sans-serif;
+  --into-font-body: "Inter Variable", Inter, system-ui, sans-serif;
+  --into-radius-card: 24px;
+  --into-radius-pill: 999px;
+}

@@ -38,8 +38,8 @@
   width: 54px;
   height: 4px;
   border-radius: 999px;
-  background: linear-gradient(90deg, rgba(80, 217, 199, 0.35), rgba(166, 155, 232, 0.45));
-  box-shadow: 0 0 12px rgba(80, 217, 199, 0.35);
+  background: linear-gradient(90deg, rgba(32, 244, 228, 0.35), rgba(166, 155, 232, 0.45));
+  box-shadow: 0 0 12px rgba(32, 244, 228, 0.35);
   transform: translateX(-50%);
   transition: width 320ms var(--lg-spring), opacity 240ms var(--lg-spring);
 }
@@ -89,8 +89,8 @@
 
 .dock-search:focus-within {
   flex-basis: 720px;
-  border-color: rgba(80, 217, 199, 0.5);
-  box-shadow: 0 0 0 4px rgba(80, 217, 199, 0.12), 0 0 28px -6px rgba(80, 217, 199, 0.4), inset 0 1px 2px rgba(0, 0, 0, 0.35);
+  border-color: rgba(32, 244, 228, 0.5);
+  box-shadow: 0 0 0 4px rgba(32, 244, 228, 0.12), 0 0 28px -6px rgba(32, 244, 228, 0.4), inset 0 1px 2px rgba(0, 0, 0, 0.35);
 }
 
 .dock-search-field {
@@ -123,7 +123,7 @@
   border-radius: 10px;
   color: var(--void);
   background: linear-gradient(160deg, #7cf0e0, var(--teal));
-  box-shadow: 0 6px 16px -6px rgba(80, 217, 199, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  box-shadow: 0 6px 16px -6px rgba(32, 244, 228, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.5);
   cursor: pointer;
 }
 
@@ -158,7 +158,7 @@
 }
 
 .dock-bookmarks.is-active {
-  border-color: rgba(80, 217, 199, 0.45);
+  border-color: rgba(32, 244, 228, 0.45);
   color: var(--teal);
   background: var(--lg-active);
 }
@@ -193,10 +193,10 @@
   position: absolute;
   inset: -1px;
   z-index: 0;
-  border: 1px solid rgba(80, 217, 199, 0.5);
+  border: 1px solid rgba(32, 244, 228, 0.5);
   border-radius: 12px;
-  background: linear-gradient(160deg, rgba(80, 217, 199, 0.18), rgba(80, 217, 199, 0.06));
-  box-shadow: 0 0 22px -8px rgba(80, 217, 199, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  background: linear-gradient(160deg, rgba(32, 244, 228, 0.18), rgba(32, 244, 228, 0.06));
+  box-shadow: 0 0 22px -8px rgba(32, 244, 228, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 .dock-tab button {

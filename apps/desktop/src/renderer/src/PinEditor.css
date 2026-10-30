@@ -18,7 +18,7 @@
   border: 1px solid rgba(213, 244, 241, 0.24);
   border-radius: 16px;
   color: var(--warm-white);
-  background: linear-gradient(150deg, rgba(28, 52, 63, 0.98), rgba(7, 17, 27, 0.99));
+  background: linear-gradient(150deg, rgba(28, 52, 63, 0.98), rgba(6, 19, 32, 0.99));
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.48);
 }
 
