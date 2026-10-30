@@ -1,0 +1,5 @@
+411afbd197ec82edabdcdee1774adf9863db61efca2366826f2aa9b85b07ecc4  Intoponet-0.1.2-arm64.dmg
+9a607eabdbe9fcbc0939941dfdabd5f0b11ae767cb4add6a74d53127488c702a  Intoponet-0.1.2-arm64-mac.zip
+e254d88712538701b06d22f08f35db152beaad26409240e311019c349794c756  releases.json
+010625a12b727b48a03bce0a4dd60acf0312ad9dda856c48621ea9bf12909917  Intoponet-0.1.2-arm64.cdx.json
+29a39d8a18a5199d2e3f6cd9015215b1d9c8754469a2832ead0b840dbcc6bcc1  Intoponet-0.1.2-arm64.inventory.json
