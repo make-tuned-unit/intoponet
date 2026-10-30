@@ -386,3 +386,14 @@ describe('events and editions the headline does not point to (live sample 2, 30 
     expect(unmentionedEditions('Central Committee of the Chinese Communist Party', 'CPC Central Committee holds press conference')).toEqual([])
   })
 })
+
+describe('capitals standing for their country', () => {
+  it('maps a named capital to its country, and leaves other cities alone', async () => {
+    const { capitalCountries } = await import('./oldsService')
+    expect(capitalCountries('Is Donald Trump’s ‘Chinamaxxing’ pushing Beijing’s soft power?')).toEqual(['CN'])
+    expect(capitalCountries('Moscow says talks stalled')).toEqual(['RU'])
+    expect(capitalCountries('Ottawa unveils budget')).toEqual(['CA'])
+    expect(capitalCountries('Toronto rents rise')).toEqual([])
+    expect(capitalCountries('Washington state wildfires spread')).toEqual([])
+  })
+})
