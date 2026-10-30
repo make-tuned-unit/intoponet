@@ -1,54 +1,12 @@
+// Ambient motion is CSS-only (the hero artwork's slow drift and small illustration loops).
+// It follows the visitor's reduced-motion setting and pauses while the tab is hidden.
 const preference = matchMedia('(prefers-reduced-motion: reduce)');
-const motionButton = document.querySelector('.motion-toggle');
 let paused = preference.matches;
-let frame = 0, time = 0, previous = 0, visible = true;
-let signal = 1, targetSignal = 1;
-const canvas = document.querySelector('#terrain');
-const globe = window.createIntoponetGlobe?.(canvas);
-const pointer = { x: 0, y: 0, targetX: 0, targetY: 0 };
-function tick(now) {
-  frame = 0;
-  if (paused || !visible || document.hidden) return;
-  if (now - previous >= 32) {
-    const dt = Math.min((now - previous) / 1000, .05);
-    time += dt; previous = now;
-    pointer.x += (pointer.targetX - pointer.x) * .06;
-    pointer.y += (pointer.targetY - pointer.y) * .06;
-    signal += (targetSignal - signal) * .09;
-    globe?.draw(time, pointer.x, pointer.y, signal);
-  }
-  frame = requestAnimationFrame(tick);
-}
-function start() { if (globe && !frame && !paused && visible && !document.hidden) { previous = performance.now(); frame = requestAnimationFrame(tick); } }
-function syncMotion() {
-  document.documentElement.classList.toggle('motion-paused', paused);
-  motionButton.setAttribute('aria-pressed', String(paused));
-  motionButton.textContent = paused ? 'Play motion ▷' : 'Pause motion Ⅱ';
-  cancelAnimationFrame(frame); frame = 0; start();
-}
-motionButton.addEventListener('click', () => { paused = !paused; syncMotion(); });
+function syncMotion() { document.documentElement.classList.toggle('motion-paused', paused); }
 preference.addEventListener('change', event => { paused = event.matches; syncMotion(); });
 document.addEventListener('visibilitychange', () => {
   document.documentElement.classList.toggle('page-hidden', document.hidden);
-  if (document.hidden) { cancelAnimationFrame(frame); frame = 0; } else start();
 });
-new IntersectionObserver(entries => {
-  visible = entries[0].isIntersecting;
-  if (visible) start(); else { cancelAnimationFrame(frame); frame = 0; }
-}).observe(canvas);
-document.querySelector('.world-scene').addEventListener('pointermove', event => {
-  if (event.pointerType !== 'mouse' || paused) return;
-  const box = canvas.getBoundingClientRect();
-  pointer.targetX = (event.clientX - box.left) / box.width - .5;
-  pointer.targetY = (event.clientY - box.top) / box.height - .5;
-});
-document.querySelector('.world-scene').addEventListener('pointerleave', () => { pointer.targetX = 0; pointer.targetY = 0; });
-document.querySelectorAll('[data-globe]').forEach(button => button.addEventListener('click', () => {
-  targetSignal = button.dataset.globe === 'signals' ? 1 : 0;
-  document.querySelectorAll('[data-globe]').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
-  document.querySelector('.world-scene').classList.toggle('night-mode', !targetSignal);
-  if (paused) { signal = targetSignal; globe?.draw(time, pointer.x, pointer.y, signal); }
-}));
 const revealObserver = new IntersectionObserver(entries => {
   for (const entry of entries) if (entry.isIntersecting) { entry.target.classList.add('revealed'); revealObserver.unobserve(entry.target); }
 }, { threshold: .08 });
@@ -56,7 +14,7 @@ document.querySelectorAll('.section-intro,.feature-story,.privacy>div,.vision h2
 const sceneObserver = new IntersectionObserver(entries => {
   entries.forEach(entry => entry.target.classList.toggle('in-view', entry.isIntersecting));
 }, { threshold: .1 });
-document.querySelectorAll('.detail-card,.discovery-demo,.privacy,.world-scene').forEach(el => sceneObserver.observe(el));
+document.querySelectorAll('.detail-card,.discovery-demo,.privacy,.hero,.ev-card').forEach(el => sceneObserver.observe(el));
 document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => {
   const linear = button.dataset.view === 'linear';
   document.querySelector('.discovery-stage').dataset.mode = button.dataset.view;

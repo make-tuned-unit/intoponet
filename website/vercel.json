@@ -1,1 +1,57 @@
-{"$schema":"https://openapi.vercel.sh/vercel.json","buildCommand":null,"outputDirectory":".","headers":[{"source":"/(.*)","headers":[{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"strict-origin-when-cross-origin"},{"key":"Content-Security-Policy","value":"default-src 'self'; img-src 'self'; style-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'none'"}]}]}
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": null,
+  "outputDirectory": ".",
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; img-src 'self'; style-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'none'"
+        }
+      ]
+    },
+    {
+      "source": "/updates/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/registry/:path*",
+      "destination": "/api/registry?__path=:path*"
+    }
+  ],
+  "functions": {
+    "api/registry.js": {
+      "maxDuration": 15
+    }
+  },
+  "cleanUrls": true,
+  "redirects": [
+    {
+      "source": "/download/mac",
+      "destination": "https://ddkihznkhbvrxe4k.public.blob.vercel-storage.com/releases/0.1.0/Intoponet-0.1.0-arm64.dmg",
+      "permanent": false
+    },
+    {
+      "source": "/updates/arm64/Intoponet-0.1.0-arm64-mac.zip",
+      "destination": "https://ddkihznkhbvrxe4k.public.blob.vercel-storage.com/releases/0.1.0/Intoponet-0.1.0-arm64-mac.zip",
+      "permanent": false
+    }
+  ]
+}

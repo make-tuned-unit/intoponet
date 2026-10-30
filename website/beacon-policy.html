@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Beacon moderation policy — intoponet</title>
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="intoponet">
+  <meta property="og:title" content="Beacon moderation policy — intoponet">
+  <meta property="og:description" content="What is removed from public Beacons, how moderation decisions are made, how to appeal, and how long records are kept.">
+  <meta property="og:url" content="https://intoponet.com/beacon-policy">
+  <meta property="og:image" content="https://intoponet.com/open-graph-1200x630.png">
+  <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="intoponet — Explore beyond the expected.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="description" content="What is removed from public Beacons, how moderation decisions are made, how to appeal, and how long records are kept.">
+  <meta name="theme-color" content="#061320"><link rel="stylesheet" href="/style.css">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/brand/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <link rel="preload" href="/fonts/inter-latin-opsz-normal.woff2" as="font" type="font/woff2" crossorigin>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header><a class="brand" href="/" aria-label="intoponet home"><img class="brand-logo" src="/brand/intoponet-horizontal-on-dark.svg" alt="intoponet" width="175" height="34"></a><nav aria-label="Main navigation"><a class="nav-cta" href="/#download">Download for macOS <span aria-hidden="true">↓</span></a></nav></header>
+<main id="main" class="policy">
+<p class="eyebrow">Beacons</p>
+<h1>Beacon moderation policy</h1>
+<p>Beacons are public recommendations that people choose to publish from intoponet. This page says what is removed, how decisions are made, how to appeal, and what is kept.</p>
+
+<h2>What a Beacon contains</h2>
+<p>A web address (with tracking parameters removed), its title, a topic, an optional short public note and an optional place rounded to about 10 km. Beacons are never tied to an account. Each device signs its Beacons with an anonymous key that is never published.</p>
+
+<h2>What is removed</h2>
+<ul>
+  <li>Content that is illegal where the registry operates, including child sexual abuse material, which is also reported to the relevant authority.</li>
+  <li>Personal information about private individuals (doxxing), harassment or threats.</li>
+  <li>Malware, phishing, or pages that collect sign-in or payment details deceptively.</li>
+  <li>Spam: bulk, automated or commercial promotion, or coordinated attempts to inflate a page’s prominence.</li>
+</ul>
+<p>Disagreement is not grounds for removal. People can <strong>contest</strong> a Beacon with a short reason, which is shown publicly next to it.</p>
+
+<h2>How decisions are made</h2>
+<ol>
+  <li>Anyone can report a Beacon as spam, harmful, misleading or broken.</li>
+  <li>Three independent reports hide the page from the public field until a moderator reviews it. This automatic step is logged.</li>
+  <li>A moderator restores or removes it and must record a reason. Every decision is logged.</li>
+  <li>Restored pages are not hidden again by further automatic reports; a moderator can still remove them.</li>
+</ol>
+<p>Publishing limits slow abuse: 3 Beacons a day for a new device’s first 3 days, then 10; 30 a day from one network; and a ceiling across the whole registry. Publishing can be paused in an emergency without affecting withdrawals, reports or reading.</p>
+
+<h2>Appeals</h2>
+<p>If your Beacon was removed and you think that was wrong, email <a href="mailto:support@atlasatlantic.co">support@atlasatlantic.co</a> with the page address and why it should be restored. A different moderator from the original decision reviews it where possible. The outcome is logged like any other decision.</p>
+
+<h2>Withdrawal</h2>
+<p>You can withdraw your own Beacon at any time from the app. Mirrors that copied public aggregates before you withdrew may keep their copies.</p>
+
+<h2>Transparency</h2>
+<p><a href="/registry/v1/transparency">Monthly counts</a> of reports by kind and moderation actions by type are public, with the current limits and retention periods. They never include addresses, keys or report text.</p>
+
+<h2>Retention</h2>
+<table>
+  <thead><tr><th scope="col">Record</th><th scope="col">Kept for</th></tr></thead>
+  <tbody>
+    <tr><td>Daily rate-limit counters (network addresses only as a daily-salted hash)</td><td>30 days</td></tr>
+    <tr><td>Withdrawn Beacons</td><td>30 days after withdrawal</td></tr>
+    <tr><td>Reports on resolved pages (contests stay with their Beacon)</td><td>180 days</td></tr>
+    <tr><td>Device keys with no Beacons</td><td>180 days after last use</td></tr>
+    <tr><td>Moderation log</td><td>2 years</td></tr>
+  </tbody>
+</table>
+<p class="note">Last updated 30 October 2026.</p>
+</main>
+<footer><a class="brand" href="/"><img class="brand-logo" src="/brand/intoponet-horizontal-on-dark.svg" alt="intoponet" width="144" height="28"></a><p>support@atlasatlantic.co</p></footer>
+</body>
+</html>
