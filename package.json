@@ -22,7 +22,7 @@
     "verify:laya-sandbox": "node experiments/laya-sandbox/run.mjs",
     "verify:laya-privacy": "node --experimental-strip-types experiments/laya-privacy-verification/verify.mjs",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present && node --test experiments/e2e/olds-gold.test.mjs website/api/_registry-proxy.test.mjs",
+    "test": "npm run test --workspaces --if-present && node --test experiments/e2e/olds-gold.test.mjs website/api/_registry-proxy.test.mjs website/api/_download-notify.test.mjs",
     "verify:features": "node scripts/verify-features.mjs"
   },
   "engines": {

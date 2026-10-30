@@ -32,6 +32,10 @@
   ],
   "rewrites": [
     {
+      "source": "/download/mac",
+      "destination": "/api/download"
+    },
+    {
       "source": "/registry/:path*",
       "destination": "/api/registry?__path=:path*"
     }
@@ -39,15 +43,13 @@
   "functions": {
     "api/registry.js": {
       "maxDuration": 15
+    },
+    "api/download.js": {
+      "maxDuration": 15
     }
   },
   "cleanUrls": true,
   "redirects": [
-    {
-      "source": "/download/mac",
-      "destination": "https://ddkihznkhbvrxe4k.public.blob.vercel-storage.com/releases/0.1.2/Intoponet-0.1.2-arm64.dmg",
-      "permanent": false
-    },
     {
       "source": "/updates/arm64/Intoponet-0.1.2-arm64-mac.zip",
       "destination": "https://ddkihznkhbvrxe4k.public.blob.vercel-storage.com/releases/0.1.2/Intoponet-0.1.2-arm64-mac.zip",
