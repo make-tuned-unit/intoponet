@@ -49,3 +49,11 @@ test('formats country and time plainly', () => {
   assert.equal(countryName('xx'), null)
   assert.match(composeEmail({ version: '0.1.2', when: new Date('2026-10-30T23:15:00Z'), country: null, timeZone: 'America/Halifax' }).subject, /^Intoponet 0\.1\.2 downloaded$/)
 })
+
+test('reports the reason Resend gives when a send is rejected', async () => {
+  const { sendNotification } = await import('./_download-notify.js')
+  const result = await sendNotification(env, { subject: 's', text: 't' }, async () => new Response(JSON.stringify({ name: 'validation_error', message: 'You can only send testing emails to your own email address.' }), { status: 403 }))
+  assert.equal(result.sent, false)
+  assert.match(result.reason, /^resend-403 validation_error: You can only send testing emails/)
+  assert.doesNotMatch(result.reason, /re_test|owner@example/)
+})

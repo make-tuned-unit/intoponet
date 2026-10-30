@@ -36,7 +36,11 @@ export async function sendNotification(env, message, fetchImpl = fetch) {
     body: JSON.stringify({ from: env.DOWNLOAD_NOTIFY_FROM || 'Intoponet <onboarding@resend.dev>', to: [to], subject: message.subject, text: message.text }),
     signal: AbortSignal.timeout(8_000),
   })
-  if (!response.ok) return { sent: false, reason: `resend-${response.status}` }
+  if (!response.ok) {
+    // Resend's own explanation (never the key or the recipient), so a rejected send can be fixed.
+    const detail = await response.json().then((body) => `${body?.name ?? ''}: ${String(body?.message ?? '').slice(0, 200)}`).catch(() => '')
+    return { sent: false, reason: `resend-${response.status}${detail ? ` ${detail}` : ''}` }
+  }
   return { sent: true }
 }
 
