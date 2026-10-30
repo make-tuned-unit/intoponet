@@ -168,7 +168,25 @@ const EVENT_HINTS: Array<[RegExp, RegExp]> = [
   [/\b(protests?|riots?|unrest|uprising|strikes?)\b/i, /\b(protest\w*|riot\w*|unrest|march\w*|demonstrat\w*|clashes|strike\w*|walkout)\b/i],
   [/\b(epidemic|outbreak|pandemic)\b/i, /\b(cases|outbreak|epidemic|virus|infections?|deaths|vaccin\w*|disease)\b/i],
   [/\b(earthquake|flood\w*|cyclone|hurricane|typhoon|wildfires?|season)\b/i, /\b(quake|earthquake|flood\w*|storm|cyclone|hurricane|typhoon|wildfire|fire|evacuat\w*|landfall)\b/i],
+  // Accidents: a "train collision" article tells the story of a "deadly train crash".
+  [/\b(collision|crash|derailment|disaster|accident|explosion|sinking|shipwreck)\b/i, /\b(crash\w*|collid\w*|collision|derail\w*|accidents?|disaster|explo(?:sion|ded|des)|sank|sinks?|sinking|capsiz\w*|wreck\w*)\b/i],
 ]
+
+/** Whether a title names a kind of event (an election, a war, a protest…). */
+export function eventKindNamed(title: string): boolean {
+  return EVENT_HINTS.some(([kind]) => kind.test(title))
+}
+
+const ORDINAL_WORDS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth', 'eleventh', 'twelfth']
+
+/** Editions a title names ("Third plenary session of the 11th Central Committee") that the headline never mentions. */
+export function unmentionedEditions(title: string, headline: string): string[] {
+  const fold = (value: string): string => foldAccents(value).toLowerCase()
+  const text = ` ${fold(cleanHeadline(headline)).replace(/[^\p{L}\d]+/gu, ' ')} `
+  const editions = [...fold(title).matchAll(/\b(\d+(?:st|nd|rd|th)|[a-z]+)\b/g)].map((match) => match[1]!)
+    .filter((word) => /^\d+(st|nd|rd|th)$/.test(word) || ORDINAL_WORDS.includes(word))
+  return editions.filter((edition) => !text.includes(` ${edition} `))
+}
 
 /** Whether a headline's words point to the kind of event a title names. */
 export function eventKindMatches(title: string, headline: string): boolean {
@@ -189,6 +207,9 @@ export function eventKindConflicts(title: string, headline: string): boolean {
   // Mentioning a historical person does not make their death the headline's subject.
   if (/\b(funeral|death of)\b/i.test(title)
     && !/\b(dead|death|deaths|died|dies|dying|funeral|burial|buried|mourning|mourns?|obituary|killed|murder\w*|assassinat\w*|memorial|anniversary)\b/i.test(headline)) return true
+  // A named storm shares its name with people ("Hurricane Isaias" vs President Isaias): only a weather story is about it.
+  if (/^(?:\d{4}\s+)?(?:Hurricane|Cyclone|Typhoon|Tropical Storm|Storm|Super Typhoon)\b/i.test(title)
+    && !/\b(hurricane|cyclone|typhoon|storm|tropical|landfall|winds?|rain\w*|flood\w*|weather|evacuat\w*)\b/i.test(headline)) return true
   const kindsOf = (text: string): string[] => EVENT_KINDS.filter(([, pattern]) => pattern.test(text)).map(([kind]) => kind)
   const inTitle = kindsOf(title)
   const inHeadline = kindsOf(headline)
@@ -267,6 +288,37 @@ export function fullPersonNameMentioned(label: string, headline: string): boolea
   const words = (value: string): string[] => foldAccents(value).toLowerCase().split(/[^\p{L}]+/u).filter(Boolean)
   const name = words(label.replace(/\s*\(.*?\)\s*$/, ''))
   return name.length >= 2 && ` ${words(headline).join(' ')} `.includes(` ${name.join(' ')} `)
+}
+
+const OFFICE_TITLES = ['president', 'prime minister', 'vice president', 'chancellor', 'king', 'queen', 'emir', 'sultan', 'pope', 'governor', 'senator', 'mayor', 'general', 'minister']
+
+/**
+ * A person named with their office ("President Isaias", "Prime Minister Carney"): the name after the
+ * title is one of theirs, and their description holds that same office, so a namesake does not qualify.
+ */
+export function officeHolderNamed(label: string, description: string | null | undefined, headline: string): boolean {
+  if (!description) return false
+  const fold = (value: string): string => foldAccents(value).toLowerCase()
+  const names = fold(label.replace(/\s*\(.*?\)\s*$/, '')).split(/\s+/).filter((name) => name.length >= 3)
+  const text = fold(cleanHeadline(headline))
+  const office = fold(description)
+  return OFFICE_TITLES.some((title) => office.includes(title)
+    && names.some((name) => new RegExp(`\\b${title}\\s+${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(text)))
+}
+
+/** Newspapers, magazines and broadcasters: names in headlines that are usually the source, not the story. */
+export const MEDIA_OUTLET_CLASSES = new Set(['Q11032', 'Q1002697', 'Q41298', 'Q1110794', 'Q1153191'])
+
+/**
+ * The outlet is the story ("Novaya Gazeta says it will shut down", "… newspaper raided"): its full
+ * name is in the headline alongside what happens to it, not as an attribution ("Sputnik interview with…").
+ */
+export function outletIsSubject(label: string, headline: string): boolean {
+  const name = label.replace(/\s*\(.*?\)\s*$/, '')
+  const fold = (value: string): string => foldAccents(value).toLowerCase()
+  if (name.split(/\s+/).length < 2 && name.length < 6) return false
+  if (!` ${fold(cleanHeadline(headline))} `.includes(` ${fold(name)} `)) return false
+  return /\b(shut(?:s|ting)? down|clos(?:e|es|ed|ing|ure)|banned?|bans|block(?:s|ed)?|raid(?:s|ed)?|fined?|sued?|sues|suspend\w*|licen[cs]e|sold|sells?|bought|buys|acquir\w*|takeover|launch\w*|relaunch\w*|stops? (?:printing|publishing)|ceases?|editor|journalists?|staff|newsroom|anniversary|award\w*|prize)\b/i.test(headline)
 }
 
 /** Potential locations after an explicit place preposition. Callers must verify these

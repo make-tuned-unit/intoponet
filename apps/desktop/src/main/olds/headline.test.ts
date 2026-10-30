@@ -344,3 +344,45 @@ describe('country-specific headline subjects', () => {
     expect(scopedSubjectMatches('President of Germany', 'The President of the National Assembly receives a German visitor')).toBe(false)
   })
 })
+
+describe('subjects that word overlap alone misses (live sample, 30 Oct 2026)', () => {
+  it('matches an accident article to a crash headline, and rejects storms named like people', async () => {
+    const { eventKindMatches, eventKindConflicts } = await import('./headline')
+    expect(eventKindMatches('2026 Toledo train collision', 'Traffic Control Errors Caused Spain’s Deadly Train Crash, Official Says')).toBe(true)
+    expect(eventKindMatches('2026 Adamuz rail disaster', 'Train derails near Córdoba')).toBe(true)
+    expect(eventKindMatches('2026 Toledo train collision', 'Spain unveils new train timetable')).toBe(false)
+    expect(eventKindConflicts('Hurricane Isaias (2026)', 'Sputnik Africa interview with President Isaias')).toBe(true)
+    expect(eventKindConflicts('Hurricane Isaias (2026)', 'Hurricane Isaias makes landfall in Mexico')).toBe(false)
+  })
+
+  it('recognises a person named by their office only when their description holds it', async () => {
+    const { officeHolderNamed } = await import('./headline')
+    expect(officeHolderNamed('Isaias Afwerki', 'president of Eritrea since 1993', 'Sputnik Africa interview with President Isaias')).toBe(true)
+    expect(officeHolderNamed('Isaías Medina Angarita', 'Venezuelan general and politician', 'Sputnik Africa interview with President Isaias')).toBe(false)
+    expect(officeHolderNamed('Mark Carney', 'Prime Minister of Canada since 2025', 'Prime Minister Carney meets premiers')).toBe(true)
+    expect(officeHolderNamed('Isaias Afwerki', null, 'President Isaias speaks')).toBe(false)
+  })
+
+  it('treats a newspaper as the story only when the headline is about the paper', async () => {
+    const { outletIsSubject } = await import('./headline')
+    expect(outletIsSubject('Novaya Gazeta', 'Russian independent newspaper Novaya Gazeta says it will shut down following pressure from Kremlin')).toBe(true)
+    expect(outletIsSubject('Novaya Gazeta', 'Novaya Gazeta reports troop movements near Kharkiv')).toBe(false)
+    expect(outletIsSubject('Sputnik (news agency)', 'Sputnik Africa interview with President Isaias')).toBe(false)
+    expect(outletIsSubject('The Guardian', 'Guardian journalists strike over sale')).toBe(false)
+  })
+})
+
+describe('events and editions the headline does not point to (live sample 2, 30 Oct 2026)', () => {
+  it('needs the headline to point to the kind of event a title names', async () => {
+    const { eventKindNamed, eventKindMatches } = await import('./headline')
+    expect(eventKindNamed('2027 Palestinian presidential election')).toBe(true)
+    expect(eventKindMatches('2027 Palestinian presidential election', '‘Error rate’ in Palestinian visa refusals may point to wrongful denials, court told')).toBe(false)
+    expect(eventKindNamed('Binance')).toBe(false)
+  })
+  it('finds numbered editions the headline never mentions', async () => {
+    const { unmentionedEditions } = await import('./headline')
+    expect(unmentionedEditions('Third plenary session of the 11th Central Committee of the Chinese Communist Party', 'CPC Central Committee holds press conference on plenary session')).toEqual(['third', '11th'])
+    expect(unmentionedEditions('Fourth plenary session of the 20th Central Committee', 'Fourth plenary session of 20th CPC Central Committee opens')).toEqual([])
+    expect(unmentionedEditions('Central Committee of the Chinese Communist Party', 'CPC Central Committee holds press conference')).toEqual([])
+  })
+})

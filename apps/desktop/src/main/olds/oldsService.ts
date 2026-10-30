@@ -20,11 +20,11 @@ import { chronologyFromWikitext } from './chronology'
 import { historicalArticles, historicalSeriesArticles, linkedHistoricalSeriesEditions, olderContext } from './historicalContext'
 import { otherCountries, relatedQueries, subjectTerms } from './relatedTopics'
 import { dayPages, isTitleCase, matchHeadline, parseDayPage, shortlist, threadItems, type CurrentEventItem } from './currentEvents'
-import { countryPlace, placesNamedIn } from '../../shared/places/places'
+import { countryPlace, placeNames, placesNamedIn } from '../../shared/places/places'
 import { COUNTRY_ROWS } from '../../shared/places/placeData'
 import { figuresIn, withoutCitations } from '../knowledge/claims'
 import type { OldsChronicleEntry, OldsRelatedTopic } from '@intoponet/browser-api'
-import { cleanHeadline, foreignNamesIn, isRelevantCandidate, mentions, properPhrases, personNameAtStart, explicitPlacePhrases, fullPersonNameMentioned, entityNameAtStart, personActivityConflicts, NOT_A_TOPIC, PATH_PROPERTIES, foldAccents, scoreCandidate, searchQueries, localLegislativeSubject, scopedSubjectMatches, titleContentWords, titleWordsIn, topicAge, eventNameConflicts, eventKindConflicts, eventKindMatches, namedEvents } from './headline'
+import { cleanHeadline, foreignNamesIn, isRelevantCandidate, mentions, properPhrases, personNameAtStart, explicitPlacePhrases, fullPersonNameMentioned, officeHolderNamed, outletIsSubject, MEDIA_OUTLET_CLASSES, entityNameAtStart, personActivityConflicts, NOT_A_TOPIC, PATH_PROPERTIES, foldAccents, scoreCandidate, searchQueries, localLegislativeSubject, scopedSubjectMatches, titleContentWords, titleWordsIn, topicAge, eventNameConflicts, eventKindConflicts, eventKindMatches, eventKindNamed, unmentionedEditions, namedEvents } from './headline'
 
 const USER_AGENT = 'Intoponet/0.1 (+https://github.com/make-tuned-unit/intoponet; The Olds)'
 const TIMEOUT_MS = 15_000
@@ -877,8 +877,13 @@ export class OldsService {
     const scored = ranked.flatMap((title, rank) => {
       const item = items.get(title)
       const entity = item ? entities.get(item.qid) : undefined
-      if (!item || !entity || ids(entity, 'P31').some((id) => NOT_A_TOPIC.has(id))) return []
+      if (!item || !entity) return []
       const node = nodeFromEntity(entity, 'en')
+      // Newspapers are usually the source, not the story, unless the headline is about the paper itself.
+      const classes = ids(entity, 'P31')
+      const outletStory = !!node && lang === 'en' && classes.some((id) => MEDIA_OUTLET_CLASSES.has(id))
+        && classes.every((id) => !NOT_A_TOPIC.has(id) || MEDIA_OUTLET_CLASSES.has(id)) && outletIsSubject(node.label, text)
+      if (classes.some((id) => NOT_A_TOPIC.has(id)) && !outletStory) return []
       // No English name yet (the label is just "Q140393129"): nothing a reader could follow.
       if (!node || isQid(node.label)) return []
       // Untranslated headlines are matched against the title in their own language's Wikipedia; the thread is still shown in English.
@@ -900,6 +905,15 @@ export class OldsService {
       const death = (entity.claims?.['P570'] ?? []).find((claim) => claim.rank !== 'deprecated')?.mainsnak?.datavalue?.value as { time?: string } | undefined
       const deathYear = death?.time?.match(/^\+?(\d{4})-/)?.[1]
       if (person && !filedThread && lang === 'en' && personActivityConflicts(node.label, text, deathYear ? Number(deathYear) : null, currentYear)) return []
+      // The person the story is about: named at the start, in full ("'Star Trek' star Patrick Stewart dies"),
+      // or by office ("President Isaias", when their description holds that office).
+      // A historical figure the story mentions ("… comment about Mao Zedong") is context, not its subject.
+      const diedBefore = !!deathYear && Number(deathYear) < currentYear
+      const namedPerson = person && (subjectPerson(node.label)
+        || (lang === 'en' && !diedBefore && (fullPersonNameMentioned(node.label, text) || officeHolderNamed(node.label, node.description, text))))
+      // "… dies age 86": a person who died this year is the story, not an article about their works.
+      const diedNow = namedPerson && !!deathYear && Number(deathYear) >= currentYear
+        && /\b(dies|died|dead|death|passes away|passed away|obituary|tributes?|mourn\w*)\b/i.test(text)
       if (person && surnameOnly && countries.length && storyQids.length && !storyQids.some((qid) => countries.includes(qid)) && !famous.has(item.qid)) return []
       // Partial native-language name overlap is not enough to identify a foreign namesake
       // when translation was unavailable (Wilson Neves in Angola ≠ Wilson das Neves in Brazil).
@@ -921,25 +935,25 @@ export class OldsService {
       const foreign = !filedThread && !isEventLike(entity) && storyQids.length > 0 && countries.length > 0 && countries.length <= 2
         && !storyQids.some((qid) => countries.includes(qid)) && titleWordsIn(matchTitle, headlineNames) === 0
         // The person the headline opens with is named, though first words are left out of its names ("Mbappe apologises…").
-        && !(person && subjectPerson(node.label))
+        && !namedPerson
       if (foreign) return []
       // A foreign topic that brings in a name the story never mentions ("Mickey's Halloween Party" for a party in Bermuda).
       const elsewhere = !filedThread && storyQids.length > 0 && countries.length > 0 && countries.length <= 2 && !storyQids.some((qid) => countries.includes(qid))
-      if (elsewhere && foreignNamesIn(matchTitle, text) > 0 && !(person && subjectPerson(node.label))) return []
+      if (elsewhere && foreignNamesIn(matchTitle, text) > 0 && !namedPerson) return []
       const kindScore = native ? 0 : eventKindMatches(node.label, text) ? 1.5 : eventKindConflicts(node.label, text) ? -3 : 0
-      const score = filedBonus + (person && subjectPerson(node.label) ? 2 : 0) + (countryOnly ? -5 : 0) + kindScore + scoreCandidate({
+      const score = filedBonus + (namedPerson ? 2 : 0) + (diedNow ? 4 : 0) + (countryOnly ? -5 : 0) + kindScore + scoreCandidate({
         ageYears,
         rank,
         eventLike: isEventLike(entity),
         // Only for topics in one or two countries: an epidemic stated for many countries is not "in" each of them.
         inCountry: countries.length <= 2 && storyQids.some((qid) => countries.includes(qid) || ids(entity, 'P276').includes(qid)),
         // A person is a weak start for a history, unless the headline is about them ("Mbappe apologises…").
-        isPerson: ids(entity, 'P31').includes('Q5') && !subjectPerson(node.label),
+        isPerson: person && !namedPerson,
         isCountry: item.qid === countryQid || ids(entity, 'P31').some((id) => ['Q6256', 'Q3624078', 'Q7275', 'Q3024240', 'Q1763527', 'Q417175'].includes(id)),
         isDisambiguation: item.disambiguation,
         titleWordsInHeadline: titleWordsIn(matchTitle, text),
         // A recognised surname does not need the person’s given name repeated in the headline.
-        foreignNames: person && subjectPerson(node.label) ? 0 : foreignNamesIn(matchTitle, text),
+        foreignNames: namedPerson ? 0 : foreignNamesIn(matchTitle, text),
         otherCountry: storyQids.length > 0 && countries.length > 0 && countries.length <= 2 && !storyQids.some((qid) => countries.includes(qid)),
       })
       if (!Number.isFinite(score)) return []
@@ -951,12 +965,24 @@ export class OldsService {
       const general = !isEventLike(entity) && ids(entity, 'P17').length === 0 && !ids(entity, 'P31').includes('Q5')
       // Without translation, one shared word is too weak ("ONU" → "EJ Onu"), unless the title is that one word.
       // The person the headline opens with is its subject ("Mbappe apologises…" → Kylian Mbappé).
-      const words = filedThread || (ids(entity, 'P31').includes('Q5') && subjectPerson(node.label) && titleWordsIn(node.label, text) > 0)
+      // A current event in the story's country, of the kind the headline describes, sharing a word with it
+      // ("2026 Toledo train collision" for "Spain's deadly train crash"), even when the other words differ.
+      const currentLocalEvent = !native && isEventLike(entity) && ageYears === 0 && eventKindMatches(node.label, text)
+        && titleWordsIn(node.label, text) >= 1 && storyQids.some((qid) => countries.includes(qid) || ids(entity, 'P276').includes(qid))
+      const words = filedThread || currentLocalEvent || outletStory || (namedPerson && titleWordsIn(node.label, text) > 0)
         || (!ids(entity, 'P31').includes('Q5') && subjectEntity(node.label) && !general) || (native
         ? isRelevantCandidate(matchTitle, text, undefined, currentYear) && titleWordsIn(matchTitle, text) >= Math.min(2, titleContentWords(matchTitle).length)
         : isRelevantCandidate(node.label, text, countryLabel ?? undefined, currentYear))
       // A general concept ("Government", "Military parade") needs two words in common, not one.
-      const conceptOk = (!general || filedThread || titleWordsIn(matchTitle, text) >= 2)
+      // An event of a kind the headline never points to, sharing one word ("2027 Palestinian presidential election"
+      // for a story about visa refusals), is not this story.
+      const unrelatedEvent = !filedThread && !native && isEventLike(entity) && eventKindNamed(node.label)
+        && !eventKindMatches(node.label, text) && titleWordsIn(node.label, text) <= 1
+      // An old numbered edition the headline never names ("Third plenary session of the 11th Central Committee", 1978,
+      // for this year's plenary session) is history, not the news.
+      const editions = !filedThread && !native ? unmentionedEditions(node.label, text) : []
+      const oldEdition = editions.length >= 2 || (editions.length > 0 && (ageYears ?? 0) > 5)
+      const conceptOk = !unrelatedEvent && !oldEdition && (!general || filedThread || titleWordsIn(matchTitle, text) >= 2)
         // A different kind of event or body from the one the headline names (a football team for a school awards story).
         && (filedThread || native || (!eventKindConflicts(node.label, text) && !eventNameConflicts(node.label, text, countryLabel)))
       return [{ id: item.qid, node, score, entity,
@@ -1522,8 +1548,10 @@ function focusStems(text: string, topicLabel: string): string[] {
 /** The headline without the countries it names (and their adjectives: "South African", "German"). */
 export function withoutCountryNames(text: string, extra?: string | null): string {
   // Expand "US", "UK" first, as matching does, so they are removed too.
-  const plain = cleanHeadline(text).replace(/[’']s\b/g, '')
-  const names = [...placesNamedIn(plain, 6).filter((place) => place.kind === 'country').map((place) => place.name), ...(extra ? [extra] : [])]
+  // Accents folded: a country is removed under any of its names ("Côte d’Ivoire" as well as "Ivory Coast").
+  const plain = foldAccents(cleanHeadline(text).replace(/[’']s\b/g, ''))
+  const countries = placesNamedIn(plain, 6).filter((place) => place.kind === 'country')
+  const names = [...countries.flatMap((place) => [place.name, ...placeNames(place.id)]), ...(extra ? [extra] : [])].map((name) => foldAccents(name))
   const stems = [...new Set(names.flatMap((name) => name.split(/\s+/)).filter((word) => word.length >= 4).map((word) => word.slice(0, Math.min(5, word.length - 1))))]
   if (!stems.length) return plain
   // "Russia-Ukraine ceasefire" → "ceasefire", not " - ceasefire" (which would read as an outlet suffix).
@@ -1602,7 +1630,10 @@ export function countriesByAdjective(text: string): string[] {
     if (!/^\p{Lu}/u.test(word)) continue
     const stem = word.replace(/(?<=i)s$/, '').replace(/(ian|ean|an|ese|ish|i)$/, '') // "Israelis" → "Israel"
     if (stem.length < 4 || stem === word) continue
+    // A one-word name or alias ("Palestinian" → "Palestine", an alias of the Palestinian Territory).
+    const lower = stem.toLowerCase()
     const row = COUNTRY_ROWS.find((country) => country[1] !== word && country[1].startsWith(stem) && country[1].split(' ').length === 1)
+      ?? COUNTRY_ROWS.find((country) => placeNames(`country:${country[0]}`).some((name) => !name.includes(' ') && name.startsWith(lower) && name !== word.toLowerCase()))
     if (row && !out.includes(row[0])) out.push(row[0])
   }
   return out

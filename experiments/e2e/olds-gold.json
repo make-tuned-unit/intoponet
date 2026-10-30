@@ -475,6 +475,48 @@
    "countryCode": "EG",
    "lang": "en",
    "accept": "Merz|German government|Germany"
+  },
+  {
+   "title": "Traffic Control Errors Caused Spain’s Deadly Train Crash, Official Says",
+   "countryCode": "GH",
+   "lang": "en",
+   "accept": "Toledo train collision"
+  },
+  {
+   "title": "'Star Trek' star Patrick Stewart dies age 86",
+   "countryCode": "BD",
+   "lang": "en",
+   "accept": "^Patrick Stewart$"
+  },
+  {
+   "title": "Ghana, Côte d’Ivoire to embark on maritime security exercise",
+   "countryCode": "CI",
+   "lang": "en",
+   "accept": "^(Ivory Coast|Ghana)$|Ghana–Ivory Coast|Ivory Coast–Ghana|Gulf of Guinea"
+  },
+  {
+   "title": "Russian independent newspaper Novaya Gazeta says it will shut down following pressure from Kremlin",
+   "countryCode": "CU",
+   "lang": "en",
+   "accept": "Novaya Gazeta"
+  },
+  {
+   "title": "Sputnik Africa interview with President Isaias",
+   "countryCode": "ER",
+   "lang": "en",
+   "accept": "Isaias Afwerki"
+  },
+  {
+   "title": "‘Error rate’ in Palestinian visa refusals may point to significant number of wrongful denials, court told",
+   "countryCode": "IE",
+   "lang": "en",
+   "accept": "^(Ireland|State of Palestine|Palestine|Palestinians)$|visa|asylum|immigration"
+  },
+  {
+   "title": "CPC Central Committee holds press conference on plenary session",
+   "countryCode": "CN",
+   "lang": "en",
+   "accept": "20th Central Committee|^Central Committee of the Chinese Communist Party$|2026"
   }
  ]
 }

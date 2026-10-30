@@ -226,6 +226,13 @@ const TITLE_STOP_PLACES = new Set([
   'wikipedia', 'news', 'history', 'live', 'media', 'university', 'world', 'national', 'republic', 'city', 'about', 'many', 'best',
 ])
 
+/** Every name a place is known by (its name and aliases), normalised as matching sees them. */
+export function placeNames(id: string): string[] {
+  index ??= buildIndex()
+  const entry = index.find((item) => item.place.id === id)
+  return entry ? [entry.name, ...entry.aliases] : []
+}
+
 /**
  * Places named in a page's title or address, for suggesting where to pin it.
  * Only capitalised names (or words from the URL path) count, matched whole

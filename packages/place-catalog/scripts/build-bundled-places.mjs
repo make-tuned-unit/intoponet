@@ -25,6 +25,7 @@ const ALIASES = {
   'country:KR': ['Korea'],
   'country:CZ': ['Czech Republic'],
   'country:CI': ["Cote d'Ivoire"],
+  'country:PS': ['Palestine', 'State of Palestine'],
   'country:MM': ['Burma'],
   'country:CD': ['DR Congo', 'DRC', 'Congo-Kinshasa'],
   'country:CG': ['Congo-Brazzaville'],

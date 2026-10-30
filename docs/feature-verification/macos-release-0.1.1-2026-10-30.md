@@ -22,5 +22,4 @@ uploaded, so `/download/mac` returned 404 until the upload finished. The update 
 0.1.0 during that window, so installed apps were unaffected. For future releases, upload to Blob
 before deploying the site.
 
-Not yet verified: an end-to-end in-app update from an installed 0.1.0 (Settings › Check and
-download) against the live feed.
+Verified later the same day: an end-to-end in-app update from 0.1.0 to 0.1.1 (see olds-live-sample-2026-10-30.md).
