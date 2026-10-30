@@ -57,3 +57,13 @@ test('reports the reason Resend gives when a send is rejected', async () => {
   assert.match(result.reason, /^resend-403 validation_error: You can only send testing emails/)
   assert.doesNotMatch(result.reason, /re_test|owner@example/)
 })
+
+test('tolerates spaces and quotes in the recipient setting, and rejects malformed ones locally', async () => {
+  const { sendNotification } = await import('./_download-notify.js')
+  const sent = []
+  const ok = await sendNotification({ RESEND_API_KEY: ' re_test\n', DOWNLOAD_NOTIFY_TO: ' "owner@example.org" , second@example.org\n' }, { subject: 's', text: 't' }, async (url, init) => { sent.push(JSON.parse(init.body)); return new Response('{}') })
+  assert.equal(ok.sent, true)
+  assert.deepEqual(sent[0].to, ['owner@example.org', 'second@example.org'])
+  const bad = await sendNotification({ RESEND_API_KEY: 're_test', DOWNLOAD_NOTIFY_TO: 'not an address' }, { subject: 's', text: 't' }, async () => { throw new Error('should not send') })
+  assert.deepEqual(bad, { sent: false, reason: 'invalid-recipient' })
+})

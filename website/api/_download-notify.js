@@ -28,12 +28,15 @@ export function composeEmail({ version, when, country, timeZone }) {
 }
 
 export async function sendNotification(env, message, fetchImpl = fetch) {
-  const key = env.RESEND_API_KEY, to = env.DOWNLOAD_NOTIFY_TO
-  if (!key || !to) return { sent: false, reason: 'not-configured' }
+  const key = env.RESEND_API_KEY?.trim()
+  // One or more addresses, tolerating stray whitespace or quotes from how the setting was entered.
+  const to = (env.DOWNLOAD_NOTIFY_TO ?? '').split(',').map((address) => address.trim().replace(/^["']+|["']+$/g, '').trim()).filter(Boolean)
+  if (!key || !to.length) return { sent: false, reason: 'not-configured' }
+  if (to.some((address) => !/^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/.test(address))) return { sent: false, reason: 'invalid-recipient' }
   const response = await fetchImpl('https://api.resend.com/emails', {
     method: 'POST',
     headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
-    body: JSON.stringify({ from: env.DOWNLOAD_NOTIFY_FROM || 'Intoponet <onboarding@resend.dev>', to: [to], subject: message.subject, text: message.text }),
+    body: JSON.stringify({ from: env.DOWNLOAD_NOTIFY_FROM?.trim().replace(/^["']+|["']+$/g, '') || 'Intoponet <onboarding@resend.dev>', to, subject: message.subject, text: message.text }),
     signal: AbortSignal.timeout(8_000),
   })
   if (!response.ok) {
