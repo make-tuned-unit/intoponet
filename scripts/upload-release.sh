@@ -14,13 +14,35 @@ zip="${release_dir}/Intoponet-${version}-arm64-mac.zip"
 # The token lives only in this temporary file and is removed on exit.
 env_file="$(mktemp -t intoponet-blob)"
 trap 'rm -f "$env_file"' EXIT
-vercel env pull "$env_file" --environment production --yes >/dev/null
-token="$(grep '^BLOB_READ_WRITE_TOKEN=' "$env_file" | head -1 | cut -d= -f2- | tr -d '"')"
-[[ -n "$token" ]] || { echo "no BLOB_READ_WRITE_TOKEN: connect the intoponet-releases store to intoponet-preview first" >&2; exit 1; }
-# A leftover OIDC token in .env.local makes the CLI refuse an explicit rw token.
+token=""
+# The store may be connected to only some environments; any of them carries its token.
+for environment in production preview development; do
+  vercel env pull "$env_file" --environment "$environment" --yes >/dev/null 2>&1 || continue
+  token="$(grep '^BLOB_READ_WRITE_TOKEN=' "$env_file" | head -1 | cut -d= -f2- | tr -d '"' || true)"
+  [[ -n "$token" && "$token" != "[SENSITIVE]" ]] && break
+  token=""
+done
 unset VERCEL_OIDC_TOKEN BLOB_STORE_ID
-
-blob() { vercel blob "$@" --rw-token "$token"; }
+if [[ -n "$token" ]]; then
+  blob() { vercel blob "$@" --rw-token "$token"; }
+else
+  # Stores connected with OIDC have no read-write token: use the project's OIDC token
+  # (refreshed into .env.local by `vercel link`) with the Atlas Atlantic store's id.
+  # Take the token from an environment the store is connected to (it carries BLOB_STORE_ID).
+  read_var() { grep "^$1=" "$env_file" | head -1 | cut -d= -f2- | tr -d '"' || true; }
+  oidc=""
+  store_id=""
+  for environment in production preview; do
+    vercel env pull "$env_file" --environment "$environment" --yes >/dev/null 2>&1 || continue
+    store_id="$(read_var BLOB_STORE_ID)"
+    oidc="$(read_var VERCEL_OIDC_TOKEN)"
+    [[ -n "$store_id" && -n "$oidc" ]] && break
+    oidc=""
+  done
+  [[ -n "$oidc" ]] || { echo "no Blob credentials: connect the intoponet-releases store to intoponet-preview" >&2; exit 1; }
+  echo "Using store ${store_id} (${environment} environment)"
+  blob() { vercel blob "$@" --oidc-token "$oidc" --store-id "$store_id"; }
+fi
 
 echo "Uploading ${version}…"
 blob put "$dmg" --pathname "releases/${version}/Intoponet-${version}-arm64.dmg" --access public --allow-overwrite true
