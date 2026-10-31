@@ -187,6 +187,9 @@ import type { BeaconDraft } from '@intoponet/browser-api'
 import type { SitePermissionMap, SitePermissionRequest } from '@intoponet/browser-api'
 import { autoTranslatePlan, headlinePrefKey, readAppSettings, writeAppSettings, type AppSettings } from './settings/appSettings'
 import { readPrivacySettings, writePrivacySettings, type PrivacySettings } from './privacy/privacySettings'
+import { StartPage } from './StartPage'
+import { startBookmarks, startNews, startRecents } from './startPageModel'
+import { inferLauncherIntent } from '@intoponet/browser-api'
 
 const bookmarkPaneOpenKey = 'intoponet.bookmark-pane.open.v1'
 const globePrefsKey = 'intoponet.globe.v2'
@@ -426,12 +429,10 @@ export function App() {
   const [error, setError] = useState('')
   const [libraryReadError, setLibraryReadError] = useState('')
   const panelBody = useRef<HTMLDivElement>(null)
-  const shortcutHandlers = useRef({ focusAddress: () => {}, toggleBookmarksPane: () => {}, capture: () => {}, togglePrivate: () => {}, absorbSelection: () => {} })
+  const shortcutHandlers = useRef({ newTab: () => {}, focusAddress: () => {}, toggleBookmarksPane: () => {}, capture: () => {}, togglePrivate: () => {}, absorbSelection: () => {} })
   const tabStrip = useRef<HTMLDivElement>(null)
   const [tabEdges, setTabEdges] = useState({ overflow: false, atStart: true, atEnd: true })
   const input = useRef<HTMLInputElement>(null)
-  /** The tab rail's + was pressed: the launcher is where the new tab starts, so it says so until it loses focus. */
-  const [newTabDraft, setNewTabDraft] = useState(false)
   const findInput = useRef<HTMLInputElement>(null)
   const pinBrowserClose = useRef<Promise<void> | null>(null)
   const activeTabId = useRef<string | null>(null)
@@ -587,6 +588,7 @@ export function App() {
     [bookmarks, panel.url],
   )
   const isSecureOrigin = panel.url.startsWith('https:')
+  const onStartPage = panel.isVisible && panel.isStartPage === true
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)')
     const onChange = (): void => setReduceMotion(media.matches)
@@ -609,7 +611,8 @@ export function App() {
         return
       }
       if (event.type === 'shortcut') {
-        if (event.action === 'focus-launcher') shortcutHandlers.current.focusAddress()
+        if (event.action === 'new-tab') shortcutHandlers.current.newTab()
+        else if (event.action === 'focus-launcher') shortcutHandlers.current.focusAddress()
         else if (event.action === 'capture') shortcutHandlers.current.capture()
         else if (event.action === 'toggle-private') shortcutHandlers.current.togglePrivate()
         else if (event.action === 'absorb-selection') shortcutHandlers.current.absorbSelection()
@@ -953,6 +956,11 @@ export function App() {
         event.preventDefault()
         focusAddress()
       }
+      if (meta && !event.shiftKey && key === 't') {
+        event.preventDefault()
+        shortcutHandlers.current.newTab()
+        return
+      }
       if (meta && event.shiftKey && key === 'b') {
         event.preventDefault()
         toggleBookmarksPane()
@@ -1138,7 +1146,6 @@ export function App() {
 
   const submit = (event: FormEvent): void => {
     event.preventDefault()
-    setNewTabDraft(false)
     const place = placeActive >= 0 ? placeMatch.places[placeActive] : undefined
     if (place) {
       flyToPlace(place)
@@ -1157,6 +1164,29 @@ export function App() {
   }
 
   const toggleBookmarksPane = (): void => setBookmarksOpen(!bookmarksOpen)
+
+  /** + in the tab rail and ⌘T: a new tab on the start page, made active at once. */
+  const openNewTab = (): void => {
+    setError('')
+    void window.intoponet.browserHost.newTab().catch(() => setError('A new tab could not be opened.'))
+  }
+
+  /** From a start page: a search or address opens in that same tab. */
+  const submitFromStartPage = (value: string): Promise<void> => {
+    setError('')
+    let intent: ReturnType<typeof inferLauncherIntent>
+    try {
+      intent = inferLauncherIntent(value, 'search')
+    } catch (reason) {
+      setError('Could not understand that search or address.')
+      return Promise.reject(reason)
+    }
+    if (intent.kind === 'search') setResearchTopic(intent.value)
+    return window.intoponet.browserHost.open(intent).catch((reason: unknown) => {
+      setError(reason instanceof Error ? reason.message : 'Navigation failed.')
+      throw reason
+    })
+  }
 
   /** ⌘L: the dock search in full screen, otherwise the field launcher. */
   const focusAddress = (): void => {
@@ -1291,7 +1321,7 @@ export function App() {
     })
   }
 
-  shortcutHandlers.current = { focusAddress, toggleBookmarksPane, capture: () => void startCapture('image'), togglePrivate: () => setPrivateMode(!(privacyState?.privateMode ?? false)), absorbSelection: () => startAbsorb('selection') }
+  shortcutHandlers.current = { newTab: openNewTab, focusAddress, toggleBookmarksPane, capture: () => void startCapture('image'), togglePrivate: () => setPrivateMode(!(privacyState?.privateMode ?? false)), absorbSelection: () => startAbsorb('selection') }
 
   const saveCurrentToGroup = (groupId: string): void => {
     if (!panel.url) return
@@ -2140,6 +2170,10 @@ export function App() {
   useEffect(refreshKnowledge, [])
 
   const startAbsorb = (scope: AbsorbScope = 'article'): void => {
+    if (panel.isStartPage) {
+      setNotice('Open a page to absorb it')
+      return
+    }
     setAbsorb({ status: 'loading', scope })
     void window.intoponet.captures.setPageHidden(true)
     window.intoponet.knowledge.preview(scope).then((result) => {
@@ -2277,6 +2311,9 @@ export function App() {
   }
 
   const railVisible = panel.isVisible && !fullWidth && tabs.length > 0 && !fieldLabOpen
+  const startPageBookmarks = useMemo(() => startBookmarks(bookmarks, recents), [bookmarks, recents])
+  const startPageRecents = useMemo(() => startRecents(recents, { isPrivate: panel.isPrivate === true }), [recents, panel.isPrivate])
+  const startPageNews = useMemo(() => startNews(newsDigest), [newsDigest])
 
   const setBrowserFullWidth = (enabled: boolean): void => {
     setFullWidth(enabled)
@@ -2352,12 +2389,7 @@ export function App() {
         pinned={railPinned}
         onExpandedChange={setRailExpanded}
         onPinnedChange={setRailPinned}
-        onNewTab={() => {
-          setQuery('')
-          setPlacesDismissed(false)
-          setNewTabDraft(true)
-          input.current?.focus()
-        }}
+        onNewTab={openNewTab}
       />
       <BookmarkPane
         open={bookmarksOpen && !fieldLabOpen}
@@ -3331,7 +3363,7 @@ export function App() {
                 )}
               </button>
             </div>
-            <button
+            {!onStartPage && <button
               type="button"
               className={`origin-badge ${isSecureOrigin ? '' : 'insecure'}`}
               title={panel.url}
@@ -3345,8 +3377,10 @@ export function App() {
               {isSecureOrigin ? <LockKeyhole size={13} /> : <ShieldAlert size={13} />}
               {!isSecureOrigin && <strong>Not secure</strong>}
               <span>{originLabel(panel.url)}</span>
-            </button>
+            </button>}
+            {onStartPage && <span className="origin-badge start-origin" aria-label="New tab"><Globe2 size={13} /><span>New tab</span></span>}
             <div className="browser-actions">
+              {!onStartPage && <>
               <div className="shield-control">
                 <button
                   type="button"
@@ -3464,6 +3498,7 @@ export function App() {
                   <Ellipsis size={16} />
                 </button>
               </div>
+              </>}
               <button
                 type="button"
                 className={bookmarksOpen ? 'selected' : ''}
@@ -3622,7 +3657,20 @@ export function App() {
               </span>
             </div>
           )}
-          <div ref={panelBody} className="browser-body" />
+          <div ref={panelBody} className="browser-body">
+            {onStartPage && (
+              <StartPage
+                tabId={tabs.find((tab) => tab.active)?.id ?? ''}
+                bookmarks={startPageBookmarks}
+                recents={startPageRecents}
+                news={startPageNews}
+                newsLoaded={newsDigest !== null}
+                isPrivate={panel.isPrivate === true}
+                onSubmit={submitFromStartPage}
+                onOpen={(url) => void submitFromStartPage(url).catch(() => undefined)}
+              />
+            )}
+          </div>
         </section>
       )}
 
@@ -3684,9 +3732,7 @@ export function App() {
             )}
           </div>
         )}
-        <form className={`command-launcher unified-launcher${newTabDraft ? ' is-new-tab' : ''}`} onSubmit={submit} onBlur={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setNewTabDraft(false)
-        }}>
+        <form className="command-launcher unified-launcher" onSubmit={submit}>
           <PlaceSuggestions
             places={placeMatch.places}
             active={placeActive}
@@ -3713,7 +3759,7 @@ export function App() {
                   setPlacesDismissed(true)
                 }
               }}
-              placeholder={newTabDraft ? 'New tab: search or enter a web address' : 'Search, fly to a place, or enter a web address'}
+              placeholder="Search, fly to a place, or enter a web address"
               autoComplete="off"
               spellCheck
               role="combobox"

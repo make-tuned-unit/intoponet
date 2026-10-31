@@ -129,6 +129,8 @@ type OpenTab = {
   title: string
   favicon: string
   view: WebContentsView
+  /** A new tab that has not loaded a page: its view stays hidden and the shell draws the start page. */
+  start?: boolean
 }
 
 type PersistentBrowserState = {
@@ -164,8 +166,8 @@ function persistentState(): PersistentBrowserState {
     url: safeHttpUrl(currentUrl ?? '') ? currentUrl! : lastKnownUrl,
     bounds: lastBounds,
     wasVisible: pageAttached,
-    // Private tabs are never saved or restored.
-    tabs: tabSnapshots().filter((tab) => !tab.isPrivate).map((tab) => ({
+    // Private tabs are never saved or restored; nor are empty new tabs.
+    tabs: tabSnapshots().filter((tab) => !tab.isPrivate && !tab.isStartPage).map((tab) => ({
       id: tab.id,
       url: tab.url,
       title: tab.title,
@@ -243,6 +245,18 @@ async function loadPersistentState(): Promise<PersistentBrowserState | null> {
 function panelState(): BrowserPanelSnapshot {
   if (!pageView) return defaultPanelState()
   const contents = pageView.webContents
+  if (isStartView(pageView)) {
+    return {
+      url: '',
+      title: 'New tab',
+      canGoBack: false,
+      canGoForward: false,
+      isLoading: false,
+      isVisible: pageAttached,
+      isPrivate: privateViews.has(pageView),
+      isStartPage: true,
+    }
+  }
   return {
     url: contents.getURL(),
     title: contents.getTitle(),
@@ -393,7 +407,8 @@ function wireProtectionSession(partition = 'persist:intoponet-default'): void {
 function attachPageView(): void {
   if (!window || !pageView || pageAttached) return
   window.contentView.addChildView(pageView)
-  pageView.setVisible(true)
+  // A start-page tab keeps its (blank) view hidden so the shell's start page shows and takes input.
+  pageView.setVisible(!isStartView(pageView))
   applyPageViewBounds()
   pageAttached = true
   updateWindowButtons()
@@ -565,12 +580,37 @@ function safeFavicon(value: string): string {
 function tabSnapshots(): PageTabSnapshot[] {
   return openTabs.map((tab) => ({
     id: tab.id,
-    url: safeHttpUrl(tab.view.webContents.getURL()) ? tab.view.webContents.getURL() : tab.url,
-    title: tab.view.webContents.getTitle() || tab.title || tab.url,
+    url: tab.start ? '' : safeHttpUrl(tab.view.webContents.getURL()) ? tab.view.webContents.getURL() : tab.url,
+    title: tab.start ? 'New tab' : tab.view.webContents.getTitle() || tab.title || tab.url,
     favicon: tab.favicon,
     active: tab.id === activeTabId,
     isPrivate: privateViews.has(tab.view),
+    ...(tab.start ? { isStartPage: true } : {}),
   }))
+}
+
+function isStartView(view: WebContentsView): boolean {
+  return openTabs.some((tab) => tab.view === view && tab.start === true)
+}
+
+/** A new tab on the start page, made active at once (same privacy as the browsing mode). */
+function createStartTab(): void {
+  makeRoomForTab()
+  const view = buildView(privateMode)
+  const tab: OpenTab = { id: randomUUID(), url: '', title: '', favicon: '', view, start: true }
+  openTabs.push(tab)
+  showTab(tab.id)
+  emitPanelState()
+}
+
+/** The tab is about to load a page: stop drawing the start page and show the view. */
+function leaveStartPage(view: WebContentsView): void {
+  const tab = openTabs.find((item) => item.view === view)
+  if (!tab?.start) return
+  tab.start = false
+  if (pageView === view && pageAttached) view.setVisible(true)
+  emitTabs()
+  if (pageView === view) emitPanelState()
 }
 
 function emitTabs(): void {
@@ -811,6 +851,7 @@ function buildView(isPrivate = privateMode): WebContentsView {
   })
   view.webContents.on('did-start-navigation', (_event, _url, inPlace, mainFrame) => {
     if (!mainFrame || inPlace) return
+    leaveStartPage(view)
     translateService?.forgetPage(view.webContents.id)
     frequencyNavigation += 1
     frequencyLoadSucceeded = false
@@ -1048,6 +1089,14 @@ async function handleBrowserCommand(
   switch (command.type) {
     case 'open': {
       const url = resolveNavigationIntent(command.intent)
+      // From a new tab's start page, the page opens in that same tab.
+      if (pageView && pageAttached && isStartView(pageView)) {
+        const view = pageView
+        leaveStartPage(view)
+        lastKnownUrl = url
+        await view.webContents.loadURL(url)
+        break
+      }
       // Reuse an open tab only when it matches the current mode (private tabs and normal tabs never mix).
       const existing = openTabs.find((tab) => privateViews.has(tab.view) === privateMode && samePage(tab.view.webContents.getURL() || tab.url, url))
       if (existing) {
@@ -1058,6 +1107,9 @@ async function handleBrowserCommand(
       if (view) await view.webContents.loadURL(url)
       break
     }
+    case 'new-tab':
+      createStartTab()
+      break
     case 'close':
       detachActive()
       schedulePersistentStateSave()
@@ -1087,6 +1139,7 @@ async function handleBrowserCommand(
       const target = safeHttpUrl(command.url)
       if (!target) throw new Error('Only HTTP and HTTPS destinations are supported.')
       const view = createPageView()
+      leaveStartPage(view)
       const tab = openTabs.find((item) => item.view === view)
       if (tab) crashRecovery.manualRetry(tab.id)
       attachPageView()

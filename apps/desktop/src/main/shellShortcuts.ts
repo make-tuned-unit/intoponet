@@ -9,6 +9,7 @@ export function shellShortcutForInput(input: KeyInput): ShellShortcut | null {
   if (!command) return null
   const key = input.key.toLowerCase()
   if (key === 'l' && !input.shift) return 'focus-launcher'
+  if (key === 't' && !input.shift) return 'new-tab'
   if (key === 'b' && input.shift) return 'toggle-bookmarks'
   if (key === 's' && input.shift) return 'capture'
   if (key === 'n' && input.shift) return 'toggle-private'

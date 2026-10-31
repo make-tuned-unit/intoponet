@@ -42,6 +42,9 @@ const browserHost: BrowserHostApi = {
   open: async (intent) => {
     await invoke({ type: 'open', intent })
   },
+  newTab: async () => {
+    await invoke({ type: 'new-tab' })
+  },
   close: async () => {
     await invoke({ type: 'close' })
   },

@@ -14,6 +14,8 @@ export type BrowserPanelSnapshot = {
   isVisible: boolean
   /** The page is in a private tab: nothing about it is recorded. */
   isPrivate?: boolean
+  /** The active tab is a new tab that has not loaded a page yet: the shell draws its start page. */
+  isStartPage?: boolean
 }
 
 export type NavigationIntent =
@@ -74,6 +76,8 @@ export type PageTabSnapshot = {
   favicon: string
   active: boolean
   isPrivate?: boolean
+  /** A new tab still showing the start page. */
+  isStartPage?: boolean
 }
 
 export type NetworkPrivacySnapshot = {
@@ -123,7 +127,7 @@ export type BrowserHostEvent =
   /** Validated per-country local news digest (JSON). */
   | { type: 'news-digest'; payload: string }
 
-export type ShellShortcut = 'focus-launcher' | 'toggle-bookmarks' | 'capture' | 'toggle-private' | 'absorb-selection'
+export type ShellShortcut = 'new-tab' | 'focus-launcher' | 'toggle-bookmarks' | 'capture' | 'toggle-private' | 'absorb-selection'
 
 export type PublicFieldStatus = {
   mode: 'local' | 'shared'
@@ -150,6 +154,8 @@ export type PublicSourceHealth = {
 
 export interface BrowserHostApi {
   open(intent: NavigationIntent): Promise<void>
+  /** Open a new tab on the start page and switch to it. */
+  newTab(): Promise<void>
   close(): Promise<void>
   restore(): Promise<void>
   navigate(url: string): Promise<void>
@@ -195,6 +201,7 @@ export const browserHostChannels = {
 
 export type BrowserHostCommand =
   | { type: 'open'; intent: NavigationIntent }
+  | { type: 'new-tab' }
   | { type: 'close' }
   | { type: 'restore' }
   | { type: 'navigate'; url: string }
@@ -230,6 +237,7 @@ export type BrowserHostCommand =
 
 const commandTypes = new Set<BrowserHostCommand['type']>([
   'open',
+  'new-tab',
   'close',
   'restore',
   'navigate',
@@ -394,6 +402,7 @@ export function parseBrowserHostCommand(value: unknown): BrowserHostCommand {
     case 'get-field-snapshot':
     case 'get-public-field-status':
     case 'get-news-digest':
+    case 'new-tab':
     case 'close':
     case 'restore':
     case 'back':

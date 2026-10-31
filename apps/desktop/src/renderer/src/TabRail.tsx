@@ -145,7 +145,7 @@ export function TabRail({ tabs, visible, expanded, pinned, onExpandedChange, onP
               </AnimatePresence>
             </div>
             <div className="tab-rail-footer">
-              <button type="button" className="tab-rail-action" aria-label="New tab: search or enter an address" title="New tab (⌘L)" onClick={onNewTab}>
+              <button type="button" className="tab-rail-action" aria-label="New tab" title="New tab (⌘T)" onClick={onNewTab}>
                 <Plus size={15} />
                 <span className="tab-rail-title" aria-hidden={!open}>New tab</span>
               </button>

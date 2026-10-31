@@ -15,6 +15,11 @@ describe('shell shortcuts forwarded from the page view', () => {
     expect(shellShortcutForInput(key('s'))).toBeNull()
   })
 
+  it('maps ⌘T to a new tab, but not ⇧⌘T', () => {
+    expect(shellShortcutForInput(key('t'))).toBe('new-tab')
+    expect(shellShortcutForInput(key('T', { shift: true }))).toBeNull()
+  })
+
   it('leaves everything else to the page', () => {
     expect(shellShortcutForInput(key('b'))).toBeNull()
     expect(shellShortcutForInput(key('l', { shift: true }))).toBeNull()
