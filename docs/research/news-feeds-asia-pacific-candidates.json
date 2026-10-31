@@ -1,0 +1,4318 @@
+{
+ "region": "East Asia, Southeast Asia and Oceania (regions and cities)",
+ "note": "Prefectural/provincial/state and city outlets for JP, KR, CN, HK, MO, TW, MN, PH, ID, MY, TH, VN, MM, TL, AU, NZ and Pacific islands; countries without gazetteer regions are placed local on cities.",
+ "candidates": [
+  {
+   "sourceId": "jp-hokkaido-np",
+   "countryCode": "JP",
+   "publisherName": "Hokkaido Shimbun",
+   "publisherType": "newspaper",
+   "url": "https://www.hokkaido-np.co.jp/output/7/free/index.ad.xml",
+   "geographicScope": "local",
+   "regionName": "Hokkaido",
+   "cityName": "Sapporo",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "hokkaido-shimbun"
+  },
+  {
+   "sourceId": "jp-toonippo",
+   "countryCode": "JP",
+   "publisherName": "To-o Nippo",
+   "publisherType": "newspaper",
+   "url": "https://www.toonippo.co.jp/list/feed/rss",
+   "geographicScope": "local",
+   "regionName": "Aomori",
+   "cityName": "Aomori",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "toonippo"
+  },
+  {
+   "sourceId": "jp-kahoku",
+   "countryCode": "JP",
+   "publisherName": "Kahoku Shimpo",
+   "publisherType": "newspaper",
+   "url": "https://kahoku.news/rss/index.xml",
+   "geographicScope": "local",
+   "regionName": "Miyagi",
+   "cityName": "Sendai",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "kahoku-shimpo"
+  },
+  {
+   "sourceId": "jp-sakigake",
+   "countryCode": "JP",
+   "publisherName": "Akita Sakigake Shimpo",
+   "publisherType": "newspaper",
+   "url": "https://feeds.feedburner.com/akita_news",
+   "geographicScope": "local",
+   "regionName": "Akita",
+   "cityName": "Akita",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "sakigake"
+  },
+  {
+   "sourceId": "jp-yamagata-np",
+   "countryCode": "JP",
+   "publisherName": "Yamagata Shimbun",
+   "publisherType": "newspaper",
+   "url": "https://www.yamagata-np.jp/news/rss/index.xml",
+   "geographicScope": "local",
+   "regionName": "Yamagata",
+   "cityName": "Yamagata",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "yamagata-shimbun"
+  },
+  {
+   "sourceId": "jp-shimotsuke",
+   "countryCode": "JP",
+   "publisherName": "Shimotsuke Shimbun",
+   "publisherType": "newspaper",
+   "url": "https://www.shimotsuke.co.jp/list/feed/rss",
+   "geographicScope": "local",
+   "regionName": "Tochigi",
+   "cityName": "Utsunomiya",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "shimotsuke"
+  },
+  {
+   "sourceId": "jp-chibanippo",
+   "countryCode": "JP",
+   "publisherName": "Chiba Nippo",
+   "publisherType": "newspaper",
+   "url": "https://www.chibanippo.co.jp/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Chiba",
+   "cityName": "Chiba",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "chiba-nippo"
+  },
+  {
+   "sourceId": "jp-kanaloco",
+   "countryCode": "JP",
+   "publisherName": "Kanagawa Shimbun (Kanaloco)",
+   "publisherType": "newspaper",
+   "url": "https://www.kanaloco.jp/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Kanagawa",
+   "cityName": "Yokohama",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "kanagawa-shimbun"
+  },
+  {
+   "sourceId": "jp-hokkoku",
+   "countryCode": "JP",
+   "publisherName": "Hokkoku Shimbun",
+   "publisherType": "newspaper",
+   "url": "https://www.hokkoku.co.jp/list/feed/rss",
+   "geographicScope": "local",
+   "regionName": "Ishikawa",
+   "cityName": "Kanazawa",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "hokkoku"
+  },
+  {
+   "sourceId": "jp-fukuishimbun",
+   "countryCode": "JP",
+   "publisherName": "Fukui Shimbun",
+   "publisherType": "newspaper",
+   "url": "https://www.fukuishimbun.co.jp/list/feed/rss",
+   "geographicScope": "local",
+   "regionName": "Fukui",
+   "cityName": "Fukui-shi",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "fukui-shimbun"
+  },
+  {
+   "sourceId": "jp-isenp",
+   "countryCode": "JP",
+   "publisherName": "Ise Shimbun",
+   "publisherType": "newspaper",
+   "url": "https://www.isenp.co.jp/feed",
+   "geographicScope": "local",
+   "regionName": "Mie",
+   "cityName": "Tsu",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "ise-shimbun"
+  },
+  {
+   "sourceId": "jp-kyoto-np",
+   "countryCode": "JP",
+   "publisherName": "Kyoto Shimbun",
+   "publisherType": "newspaper",
+   "url": "https://www.kyoto-np.co.jp/list/feed/rss",
+   "geographicScope": "local",
+   "regionName": "Kyoto",
+   "cityName": "Kyoto",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "kyoto-shimbun"
+  },
+  {
+   "sourceId": "jp-agara",
+   "countryCode": "JP",
+   "publisherName": "Kii Minpo (AGARA)",
+   "publisherType": "newspaper",
+   "url": "https://www.agara.co.jp/output/rss",
+   "geographicScope": "local",
+   "regionName": "Wakayama",
+   "cityName": "Wakayama",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "kii-minpo"
+  },
+  {
+   "sourceId": "jp-topics",
+   "countryCode": "JP",
+   "publisherName": "Tokushima Shimbun",
+   "publisherType": "newspaper",
+   "url": "https://www.topics.or.jp/list/feed/rss",
+   "geographicScope": "local",
+   "regionName": "Tokushima",
+   "cityName": "Tokushima",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "tokushima-shimbun"
+  },
+  {
+   "sourceId": "jp-nishinippon",
+   "countryCode": "JP",
+   "publisherName": "Nishinippon Shimbun",
+   "publisherType": "newspaper",
+   "url": "https://www.nishinippon.co.jp/feed/",
+   "geographicScope": "local",
+   "regionName": "Fukuoka",
+   "cityName": "Fukuoka",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "nishinippon"
+  },
+  {
+   "sourceId": "jp-saga-s",
+   "countryCode": "JP",
+   "publisherName": "Saga Shimbun",
+   "publisherType": "newspaper",
+   "url": "https://www.saga-s.co.jp/list/feed/rss",
+   "geographicScope": "local",
+   "regionName": "Saga",
+   "cityName": "Saga",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "saga-shimbun"
+  },
+  {
+   "sourceId": "jp-kumanichi",
+   "countryCode": "JP",
+   "publisherName": "Kumamoto Nichinichi Shimbun",
+   "publisherType": "newspaper",
+   "url": "https://kumanichi.com/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Kumamoto",
+   "cityName": "Kumamoto",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "kumanichi"
+  },
+  {
+   "sourceId": "jp-miyanichi",
+   "countryCode": "JP",
+   "publisherName": "Miyazaki Nichinichi Shimbun",
+   "publisherType": "newspaper",
+   "url": "https://www.the-miyanichi.co.jp/feed",
+   "geographicScope": "local",
+   "regionName": "Miyazaki",
+   "cityName": "Miyazaki",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "miyanichi"
+  },
+  {
+   "sourceId": "jp-okinawatimes",
+   "countryCode": "JP",
+   "publisherName": "Okinawa Times",
+   "publisherType": "newspaper",
+   "url": "https://www.okinawatimes.co.jp/list/feed/rss",
+   "geographicScope": "local",
+   "regionName": "Okinawa",
+   "cityName": "Naha",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "okinawa-times"
+  },
+  {
+   "sourceId": "jp-fnn-uhb",
+   "countryCode": "JP",
+   "publisherName": "Hokkaido Cultural Broadcasting (UHB)",
+   "publisherType": "broadcaster",
+   "url": "https://www.fnn.jp/list/feed/rss?station=UHB",
+   "geographicScope": "local",
+   "regionName": "Hokkaido",
+   "cityName": "Sapporo",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "fnn-uhb"
+  },
+  {
+   "sourceId": "jp-fnn-mit",
+   "countryCode": "JP",
+   "publisherName": "Iwate Menkoi Television",
+   "publisherType": "broadcaster",
+   "url": "https://www.fnn.jp/list/feed/rss?station=MIT",
+   "geographicScope": "local",
+   "regionName": "Iwate",
+   "cityName": "Morioka",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "fnn-mit"
+  },
+  {
+   "sourceId": "jp-fnn-ox",
+   "countryCode": "JP",
+   "publisherName": "Sendai Television (OX)",
+   "publisherType": "broadcaster",
+   "url": "https://www.fnn.jp/list/feed/rss?station=OX",
+   "geographicScope": "local",
+   "regionName": "Miyagi",
+   "cityName": "Sendai",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "fnn-ox"
+  },
+  {
+   "sourceId": "jp-fnn-akt",
+   "countryCode": "JP",
+   "publisherName": "Akita Television",
+   "publisherType": "broadcaster",
+   "url": "https://www.fnn.jp/list/feed/rss?station=AKT",
+   "geographicScope": "local",
+   "regionName": "Akita",
+   "cityName": "Akita",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "fnn-akt"
+  },
+  {
+   "sourceId": "jp-fnn-say",
+   "countryCode": "JP",
+   "publisherName": "Sakuranbo Television",
+   "publisherType": "broadcaster",
+   "url": "https://www.fnn.jp/list/feed/rss?station=SAY",
+   "geographicScope": "local",
+   "regionName": "Yamagata",
+   "cityName": "Yamagata",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "fnn-say"
+  },
+  {
+   "sourceId": "jp-fnn-ftv",
+   "countryCode": "JP",
+   "publisherName": "Fukushima Television",
+   "publisherType": "broadcaster",
+   "url": "https://www.fnn.jp/list/feed/rss?station=FTV",
+   "geographicScope": "local",
+   "regionName": "Fukushima",
+   "cityName": "Fukushima",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "fnn-ftv"
+  },
+  {
+   "sourceId": "jp-fnn-fujitv",
+   "countryCode": "JP",
+   "publisherName": "Fuji Television",
+   "publisherType": "broadcaster",
+   "url": "https://www.fnn.jp/list/feed/rss?station=FujiTV",
+   "geographicScope": "local",
+   "regionName": "Tokyo",
+   "cityName": "Tokyo",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "fnn-fujitv"
+  },
+  {
+   "sourceId": "jp-fnn-nst",
+   "countryCode": "JP",
+   "publisherName": "NST Niigata Sogo Television",
+   "publisherType": "broadcaster",
+   "url": "https://www.fnn.jp/list/feed/rss?station=NST",
+   "geographicScope": "local",
+   "regionName": "Niigata",
+   "cityName": "Niigata",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "fnn-nst"
+  },
+  {
+   "sourceId": "jp-fnn-bbt",
+   "countryCode": "JP",
+   "publisherName": "BBT Toyama Television",
+   "publisherType": "broadcaster",
+   "url": "https://www.fnn.jp/list/feed/rss?station=BBT",
+   "geographicScope": "local",
+   "regionName": "Toyama",
+   "cityName": "Toyama",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "fnn-bbt"
+  },
+  {
+   "sourceId": "jp-fnn-itc",
+   "countryCode": "JP",
+   "publisherName": "Ishikawa Television",
+   "publisherType": "broadcaster",
+   "url": "https://www.fnn.jp/list/feed/rss?station=ITC",
+   "geographicScope": "local",
+   "regionName": "Ishikawa",
+   "cityName": "Kanazawa",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "fnn-itc"
+  },
+  {
+   "sourceId": "jp-fnn-ftb",
+   "countryCode": "JP",
+   "publisherName": "Fukui Television",
+   "publisherType": "broadcaster",
+   "url": "https://www.fnn.jp/list/feed/rss?station=FTB",
+   "geographicScope": "local",
+   "regionName": "Fukui",
+   "cityName": "Fukui-shi",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "fnn-ftb"
+  },
+  {
+   "sourceId": "jp-fnn-nbs",
+   "countryCode": "JP",
+   "publisherName": "Nagano Broadcasting Systems",
+   "publisherType": "broadcaster",
+   "url": "https://www.fnn.jp/list/feed/rss?station=NBS",
+   "geographicScope": "local",
+   "regionName": "Nagano",
+   "cityName": "Nagano",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "fnn-nbs"
+  },
+  {
+   "sourceId": "jp-fnn-sut",
+   "countryCode": "JP",
+   "publisherName": "TV Shizuoka",
+   "publisherType": "broadcaster",
+   "url": "https://www.fnn.jp/list/feed/rss?station=SUT",
+   "geographicScope": "local",
+   "regionName": "Shizuoka",
+   "cityName": "Shizuoka",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "fnn-sut"
+  },
+  {
+   "sourceId": "jp-fnn-thk",
+   "countryCode": "JP",
+   "publisherName": "Tokai Television",
+   "publisherType": "broadcaster",
+   "url": "https://www.fnn.jp/list/feed/rss?station=THK",
+   "geographicScope": "local",
+   "regionName": "Aichi",
+   "cityName": "Nagoya",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "fnn-thk"
+  },
+  {
+   "sourceId": "jp-fnn-ktv",
+   "countryCode": "JP",
+   "publisherName": "Kansai Television",
+   "publisherType": "broadcaster",
+   "url": "https://www.fnn.jp/list/feed/rss?station=KTV",
+   "geographicScope": "local",
+   "regionName": "Osaka",
+   "cityName": "Osaka",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "fnn-ktv"
+  },
+  {
+   "sourceId": "jp-fnn-ohk",
+   "countryCode": "JP",
+   "publisherName": "Okayama Broadcasting (OHK)",
+   "publisherType": "broadcaster",
+   "url": "https://www.fnn.jp/list/feed/rss?station=OHK",
+   "geographicScope": "local",
+   "regionName": "Okayama",
+   "cityName": "Okayama",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "fnn-ohk"
+  },
+  {
+   "sourceId": "jp-fnn-tsk",
+   "countryCode": "JP",
+   "publisherName": "San-in Chuo Television (TSK)",
+   "publisherType": "broadcaster",
+   "url": "https://www.fnn.jp/list/feed/rss?station=TSK",
+   "geographicScope": "local",
+   "regionName": "Shimane",
+   "cityName": "Matsue",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "fnn-tsk"
+  },
+  {
+   "sourceId": "jp-fnn-tss",
+   "countryCode": "JP",
+   "publisherName": "TSS TV Shin-Hiroshima",
+   "publisherType": "broadcaster",
+   "url": "https://www.fnn.jp/list/feed/rss?station=TSS",
+   "geographicScope": "local",
+   "regionName": "Hiroshima",
+   "cityName": "Hiroshima",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "fnn-tss"
+  },
+  {
+   "sourceId": "jp-fnn-ebc",
+   "countryCode": "JP",
+   "publisherName": "Ehime Broadcasting (EBC)",
+   "publisherType": "broadcaster",
+   "url": "https://www.fnn.jp/list/feed/rss?station=EBC",
+   "geographicScope": "local",
+   "regionName": "Ehime",
+   "cityName": "Matsuyama",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "fnn-ebc"
+  },
+  {
+   "sourceId": "jp-fnn-kss",
+   "countryCode": "JP",
+   "publisherName": "Kochi Sun Sun Broadcasting",
+   "publisherType": "broadcaster",
+   "url": "https://www.fnn.jp/list/feed/rss?station=KSS",
+   "geographicScope": "local",
+   "regionName": "Kochi",
+   "cityName": "Kochi",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "fnn-kss"
+  },
+  {
+   "sourceId": "jp-fnn-tnc",
+   "countryCode": "JP",
+   "publisherName": "TV Nishinippon (TNC)",
+   "publisherType": "broadcaster",
+   "url": "https://www.fnn.jp/list/feed/rss?station=TNC",
+   "geographicScope": "local",
+   "regionName": "Fukuoka",
+   "cityName": "Fukuoka",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "fnn-tnc"
+  },
+  {
+   "sourceId": "jp-fnn-sts",
+   "countryCode": "JP",
+   "publisherName": "Saga Television (STS)",
+   "publisherType": "broadcaster",
+   "url": "https://www.fnn.jp/list/feed/rss?station=STS",
+   "geographicScope": "local",
+   "regionName": "Saga",
+   "cityName": "Saga",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "fnn-sts"
+  },
+  {
+   "sourceId": "jp-fnn-ktn",
+   "countryCode": "JP",
+   "publisherName": "KTN Television Nagasaki",
+   "publisherType": "broadcaster",
+   "url": "https://www.fnn.jp/list/feed/rss?station=KTN",
+   "geographicScope": "local",
+   "regionName": "Nagasaki",
+   "cityName": "Nagasaki",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "fnn-ktn"
+  },
+  {
+   "sourceId": "jp-fnn-tku",
+   "countryCode": "JP",
+   "publisherName": "TV Kumamoto (TKU)",
+   "publisherType": "broadcaster",
+   "url": "https://www.fnn.jp/list/feed/rss?station=TKU",
+   "geographicScope": "local",
+   "regionName": "Kumamoto",
+   "cityName": "Kumamoto",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "fnn-tku"
+  },
+  {
+   "sourceId": "jp-fnn-tos",
+   "countryCode": "JP",
+   "publisherName": "TV Oita (TOS)",
+   "publisherType": "broadcaster",
+   "url": "https://www.fnn.jp/list/feed/rss?station=TOS",
+   "geographicScope": "local",
+   "regionName": "Oita",
+   "cityName": "Ōita",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "fnn-tos"
+  },
+  {
+   "sourceId": "jp-fnn-umk",
+   "countryCode": "JP",
+   "publisherName": "UMK TV Miyazaki",
+   "publisherType": "broadcaster",
+   "url": "https://www.fnn.jp/list/feed/rss?station=UMK",
+   "geographicScope": "local",
+   "regionName": "Miyazaki",
+   "cityName": "Miyazaki",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "fnn-umk"
+  },
+  {
+   "sourceId": "jp-fnn-kts",
+   "countryCode": "JP",
+   "publisherName": "Kagoshima Television (KTS)",
+   "publisherType": "broadcaster",
+   "url": "https://www.fnn.jp/list/feed/rss?station=KTS",
+   "geographicScope": "local",
+   "regionName": "Kagoshima",
+   "cityName": "Kagoshima",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "fnn-kts"
+  },
+  {
+   "sourceId": "jp-fnn-otv",
+   "countryCode": "JP",
+   "publisherName": "Okinawa Television (OTV)",
+   "publisherType": "broadcaster",
+   "url": "https://www.fnn.jp/list/feed/rss?station=OTV",
+   "geographicScope": "local",
+   "regionName": "Okinawa",
+   "cityName": "Naha",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "fnn-otv"
+  },
+  {
+   "sourceId": "jp-keizai-ikebukuro",
+   "countryCode": "JP",
+   "publisherName": "Ikebukuro Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://ikebukuro.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Tokyo",
+   "cityName": "Tokyo",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-shinjuku",
+   "countryCode": "JP",
+   "publisherName": "Shinjuku Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://shinjuku.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Tokyo",
+   "cityName": "Shinjuku",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-hachioji",
+   "countryCode": "JP",
+   "publisherName": "Hachioji Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://hachioji.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Tokyo",
+   "cityName": "Hachiōji",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-machida",
+   "countryCode": "JP",
+   "publisherName": "Machida Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://machida.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Tokyo",
+   "cityName": "Machida",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-umeda",
+   "countryCode": "JP",
+   "publisherName": "Umeda Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://umeda.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Osaka",
+   "cityName": "Osaka",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-namba",
+   "countryCode": "JP",
+   "publisherName": "Namba Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://namba.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Osaka",
+   "cityName": "Osaka",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-kobe",
+   "countryCode": "JP",
+   "publisherName": "Kobe Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://kobe.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Hyōgo",
+   "cityName": "Kobe",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-himeji",
+   "countryCode": "JP",
+   "publisherName": "Himeji Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://himeji.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Hyōgo",
+   "cityName": "Himeji",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-sakae",
+   "countryCode": "JP",
+   "publisherName": "Sakae Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://sakae.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Aichi",
+   "cityName": "Nagoya",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-tenjin",
+   "countryCode": "JP",
+   "publisherName": "Tenjin Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://tenjin.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Fukuoka",
+   "cityName": "Fukuoka",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-kokura",
+   "countryCode": "JP",
+   "publisherName": "Kokura Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://kokura.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Fukuoka",
+   "cityName": "Kitakyushu",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-sapporo",
+   "countryCode": "JP",
+   "publisherName": "Sapporo Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://sapporo.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Hokkaido",
+   "cityName": "Sapporo",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-asahikawa",
+   "countryCode": "JP",
+   "publisherName": "Asahikawa Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://asahikawa.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Hokkaido",
+   "cityName": "Asahikawa",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-sendai",
+   "countryCode": "JP",
+   "publisherName": "Sendai Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://sendai.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Miyagi",
+   "cityName": "Sendai",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-chiba",
+   "countryCode": "JP",
+   "publisherName": "Chiba Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://chiba.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Chiba",
+   "cityName": "Chiba",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-ichikawa",
+   "countryCode": "JP",
+   "publisherName": "Ichikawa Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://ichikawa.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Chiba",
+   "cityName": "Ichikawa",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-matsudo",
+   "countryCode": "JP",
+   "publisherName": "Matsudo Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://matsudo.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Chiba",
+   "cityName": "Matsudo",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-utsunomiya",
+   "countryCode": "JP",
+   "publisherName": "Utsunomiya Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://utsunomiya.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Tochigi",
+   "cityName": "Utsunomiya",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-mito",
+   "countryCode": "JP",
+   "publisherName": "Mito Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://mito.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Ibaraki",
+   "cityName": "Mito",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-takasaki",
+   "countryCode": "JP",
+   "publisherName": "Takasaki Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://takasaki.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Gunma",
+   "cityName": "Takasaki",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-omiya",
+   "countryCode": "JP",
+   "publisherName": "Omiya Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://omiya.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Saitama",
+   "cityName": "Saitama",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-urawa",
+   "countryCode": "JP",
+   "publisherName": "Urawa Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://urawa.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Saitama",
+   "cityName": "Saitama",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-kawagoe",
+   "countryCode": "JP",
+   "publisherName": "Kawagoe Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://kawagoe.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Saitama",
+   "cityName": "Kawagoe",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-kawaguchi",
+   "countryCode": "JP",
+   "publisherName": "Kawaguchi Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://kawaguchi.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Saitama",
+   "cityName": "Kawaguchi",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-kofu",
+   "countryCode": "JP",
+   "publisherName": "Kofu Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://kofu.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Yamanashi",
+   "cityName": "Kofu",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-hamamatsu",
+   "countryCode": "JP",
+   "publisherName": "Hamamatsu Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://hamamatsu.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Shizuoka",
+   "cityName": "Hamamatsu",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-matsumoto",
+   "countryCode": "JP",
+   "publisherName": "Matsumoto Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://matsumoto.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Nagano",
+   "cityName": "Matsumoto",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-hikone",
+   "countryCode": "JP",
+   "publisherName": "Hikone Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://hikone.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Shiga",
+   "cityName": "Hikone",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-wakayama",
+   "countryCode": "JP",
+   "publisherName": "Wakayama Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://wakayama.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Wakayama",
+   "cityName": "Wakayama",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-tottori",
+   "countryCode": "JP",
+   "publisherName": "Tottori Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://tottori.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Tottori",
+   "cityName": "Tottori-shi",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-okayama",
+   "countryCode": "JP",
+   "publisherName": "Okayama Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://okayama.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Okayama",
+   "cityName": "Okayama",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-hiroshima",
+   "countryCode": "JP",
+   "publisherName": "Hiroshima Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://hiroshima.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Hiroshima",
+   "cityName": "Hiroshima",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-yamaguchi",
+   "countryCode": "JP",
+   "publisherName": "Yamaguchi Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://yamaguchi.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Yamaguchi",
+   "cityName": "Yamaguchi",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-takamatsu",
+   "countryCode": "JP",
+   "publisherName": "Takamatsu Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://takamatsu.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Kagawa",
+   "cityName": "Takamatsu",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-kumamoto",
+   "countryCode": "JP",
+   "publisherName": "Kumamoto Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://kumamoto.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Kumamoto",
+   "cityName": "Kumamoto",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-kanazawa",
+   "countryCode": "JP",
+   "publisherName": "Kanazawa Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://kanazawa.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Ishikawa",
+   "cityName": "Kanazawa",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-akita",
+   "countryCode": "JP",
+   "publisherName": "Akita Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://akita.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Akita",
+   "cityName": "Akita",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-morioka",
+   "countryCode": "JP",
+   "publisherName": "Morioka Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://morioka.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Iwate",
+   "cityName": "Morioka",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-hachinohe",
+   "countryCode": "JP",
+   "publisherName": "Hachinohe Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://hachinohe.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Aomori",
+   "cityName": "Hachinohe",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-saga",
+   "countryCode": "JP",
+   "publisherName": "Saga Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://saga.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Saga",
+   "cityName": "Saga",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-nagasaki",
+   "countryCode": "JP",
+   "publisherName": "Nagasaki Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://nagasaki.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Nagasaki",
+   "cityName": "Nagasaki",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-miyazaki",
+   "countryCode": "JP",
+   "publisherName": "Miyazaki Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://miyazaki.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Miyazaki",
+   "cityName": "Miyazaki",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-fukui",
+   "countryCode": "JP",
+   "publisherName": "Fukui Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://fukui.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Fukui",
+   "cityName": "Fukui-shi",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "jp-keizai-fukushima",
+   "countryCode": "JP",
+   "publisherName": "Fukushima Keizai Shimbun",
+   "publisherType": "digital-native",
+   "url": "https://fukushima.keizai.biz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Fukushima",
+   "cityName": "Fukushima",
+   "languageTags": [
+    "ja-JP"
+   ],
+   "group": "minna-no-keizai-shimbun"
+  },
+  {
+   "sourceId": "kr-kookje",
+   "countryCode": "KR",
+   "publisherName": "Kookje Shinmun",
+   "publisherType": "newspaper",
+   "url": "https://www.kookje.co.kr/news2011/rss/newslist.xml",
+   "geographicScope": "local",
+   "regionName": "Busan",
+   "cityName": "Busan",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "kookje"
+  },
+  {
+   "sourceId": "kr-seoulshinmun-society",
+   "countryCode": "KR",
+   "publisherName": "Seoul Shinmun",
+   "publisherType": "newspaper",
+   "url": "https://www.seoul.co.kr/xml/rss/rss_society.xml",
+   "geographicScope": "local",
+   "regionName": "Seoul",
+   "cityName": "Seoul",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "seoulshinmun"
+  },
+  {
+   "sourceId": "kr-incheonilbo",
+   "countryCode": "KR",
+   "publisherName": "Incheon Ilbo",
+   "publisherType": "newspaper",
+   "url": "https://www.incheonilbo.com/rss/allArticle.xml",
+   "geographicScope": "local",
+   "regionName": "Incheon",
+   "cityName": "Incheon",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "incheonilbo"
+  },
+  {
+   "sourceId": "kr-incheonin",
+   "countryCode": "KR",
+   "publisherName": "Incheon In",
+   "publisherType": "newspaper",
+   "url": "https://www.incheonin.com/rss/allArticle.xml",
+   "geographicScope": "local",
+   "regionName": "Incheon",
+   "cityName": "Incheon",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "incheonin"
+  },
+  {
+   "sourceId": "kr-idaegu",
+   "countryCode": "KR",
+   "publisherName": "Daegu Ilbo",
+   "publisherType": "newspaper",
+   "url": "https://www.idaegu.com/rss/allArticle.xml",
+   "geographicScope": "local",
+   "regionName": "Daegu",
+   "cityName": "Daegu",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "idaegu"
+  },
+  {
+   "sourceId": "kr-imaeil-society",
+   "countryCode": "KR",
+   "publisherName": "Maeil Shinmun",
+   "publisherType": "newspaper",
+   "url": "https://www.imaeil.com/rss?cate=society",
+   "geographicScope": "local",
+   "regionName": "Daegu",
+   "cityName": "Daegu",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "imaeil"
+  },
+  {
+   "sourceId": "kr-daejonilbo",
+   "countryCode": "KR",
+   "publisherName": "Daejon Ilbo",
+   "publisherType": "newspaper",
+   "url": "https://www.daejonilbo.com/rss/allArticle.xml",
+   "geographicScope": "local",
+   "regionName": "Daejeon",
+   "cityName": "Daejeon",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "daejonilbo"
+  },
+  {
+   "sourceId": "kr-joongdo",
+   "countryCode": "KR",
+   "publisherName": "Joongdo Ilbo",
+   "publisherType": "newspaper",
+   "url": "https://www.joongdo.co.kr/main/webdata/rss/ALL.xml",
+   "geographicScope": "local",
+   "regionName": "Daejeon",
+   "cityName": "Daejeon",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "joongdo"
+  },
+  {
+   "sourceId": "kr-cctoday",
+   "countryCode": "KR",
+   "publisherName": "Chungcheong Today",
+   "publisherType": "newspaper",
+   "url": "https://www.cctoday.co.kr/rss/allArticle.xml",
+   "geographicScope": "local",
+   "regionName": "Daejeon",
+   "cityName": "Daejeon",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "cctoday"
+  },
+  {
+   "sourceId": "kr-namdonews",
+   "countryCode": "KR",
+   "publisherName": "Namdo Ilbo",
+   "publisherType": "newspaper",
+   "url": "https://www.namdonews.com/rss/allArticle.xml",
+   "geographicScope": "local",
+   "regionName": "Gwangju",
+   "cityName": "Gwangju",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "namdonews"
+  },
+  {
+   "sourceId": "kr-jnilbo",
+   "countryCode": "KR",
+   "publisherName": "Jeonnam Ilbo",
+   "publisherType": "newspaper",
+   "url": "https://www.jnilbo.com/rss/allArticle.xml",
+   "geographicScope": "local",
+   "regionName": "Gwangju",
+   "cityName": "Gwangju",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "jnilbo"
+  },
+  {
+   "sourceId": "kr-gjdream",
+   "countryCode": "KR",
+   "publisherName": "Gwangju Dream",
+   "publisherType": "newspaper",
+   "url": "https://www.gjdream.com/rss/allArticle.xml",
+   "geographicScope": "local",
+   "regionName": "Gwangju",
+   "cityName": "Gwangju",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "gjdream"
+  },
+  {
+   "sourceId": "kr-ksilbo",
+   "countryCode": "KR",
+   "publisherName": "Kyongsang Ilbo",
+   "publisherType": "newspaper",
+   "url": "https://www.ksilbo.co.kr/rss/allArticle.xml",
+   "geographicScope": "local",
+   "regionName": "Ulsan",
+   "cityName": "Ulsan",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "ksilbo"
+  },
+  {
+   "sourceId": "kr-iusm",
+   "countryCode": "KR",
+   "publisherName": "Ulsan Maeil",
+   "publisherType": "newspaper",
+   "url": "https://www.iusm.co.kr/rss/allArticle.xml",
+   "geographicScope": "local",
+   "regionName": "Ulsan",
+   "cityName": "Ulsan",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "iusm"
+  },
+  {
+   "sourceId": "kr-ulsanpress",
+   "countryCode": "KR",
+   "publisherName": "Ulsan Press",
+   "publisherType": "newspaper",
+   "url": "https://www.ulsanpress.net/rss/allArticle.xml",
+   "geographicScope": "local",
+   "regionName": "Ulsan",
+   "cityName": "Ulsan",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "ulsanpress"
+  },
+  {
+   "sourceId": "kr-suwonilbo",
+   "countryCode": "KR",
+   "publisherName": "Suwon Ilbo",
+   "publisherType": "newspaper",
+   "url": "https://www.suwonilbo.kr/rss/allArticle.xml",
+   "geographicScope": "local",
+   "regionName": "Gyeonggi-do",
+   "cityName": "Suwon",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "suwonilbo"
+  },
+  {
+   "sourceId": "kr-joongboo",
+   "countryCode": "KR",
+   "publisherName": "Joongboo Ilbo",
+   "publisherType": "newspaper",
+   "url": "https://www.joongboo.com/rss/allArticle.xml",
+   "geographicScope": "local",
+   "regionName": "Gyeonggi-do",
+   "cityName": "Suwon",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "joongboo"
+  },
+  {
+   "sourceId": "kr-kgnews",
+   "countryCode": "KR",
+   "publisherName": "Kyeonggi Shinmun",
+   "publisherType": "newspaper",
+   "url": "https://www.kgnews.co.kr/data/rss/news.xml",
+   "geographicScope": "local",
+   "regionName": "Gyeonggi-do",
+   "cityName": "Suwon",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "kgnews"
+  },
+  {
+   "sourceId": "kr-goyang1",
+   "countryCode": "KR",
+   "publisherName": "Goyang Shinmun",
+   "publisherType": "newspaper",
+   "url": "https://www.goyang1.com/rss/allArticle.xml",
+   "geographicScope": "local",
+   "regionName": "Gyeonggi-do",
+   "cityName": "Goyang-si",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "goyang1"
+  },
+  {
+   "sourceId": "kr-idomin",
+   "countryCode": "KR",
+   "publisherName": "Gyeongnam Domin Ilbo",
+   "publisherType": "newspaper",
+   "url": "https://www.idomin.com/rss/allArticle.xml",
+   "geographicScope": "local",
+   "regionName": "Gyeongsangnam-do",
+   "cityName": "Changwon",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "idomin"
+  },
+  {
+   "sourceId": "kr-gnnews",
+   "countryCode": "KR",
+   "publisherName": "Gyeongnam Ilbo",
+   "publisherType": "newspaper",
+   "url": "https://www.gnnews.co.kr/rss/allArticle.xml",
+   "geographicScope": "local",
+   "regionName": "Gyeongsangnam-do",
+   "cityName": "Chinju",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "gnnews"
+  },
+  {
+   "sourceId": "kr-gimhaenews",
+   "countryCode": "KR",
+   "publisherName": "Gimhae News",
+   "publisherType": "newspaper",
+   "url": "https://www.gimhaenews.co.kr/rss/allArticle.xml",
+   "geographicScope": "local",
+   "regionName": "Gyeongsangnam-do",
+   "cityName": "Kimhae",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "gimhaenews"
+  },
+  {
+   "sourceId": "kr-jbnews",
+   "countryCode": "KR",
+   "publisherName": "Jungbu Maeil",
+   "publisherType": "newspaper",
+   "url": "https://www.jbnews.com/rss/allArticle.xml",
+   "geographicScope": "local",
+   "regionName": "North Chungcheong",
+   "cityName": "Cheongju-si",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "jbnews"
+  },
+  {
+   "sourceId": "kr-inews365",
+   "countryCode": "KR",
+   "publisherName": "Chungbuk Ilbo",
+   "publisherType": "newspaper",
+   "url": "https://www.inews365.com/data/rss/news.xml",
+   "geographicScope": "local",
+   "regionName": "North Chungcheong",
+   "cityName": "Cheongju-si",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "inews365"
+  },
+  {
+   "sourceId": "kr-dynews",
+   "countryCode": "KR",
+   "publisherName": "Dongyang Ilbo",
+   "publisherType": "newspaper",
+   "url": "https://www.dynews.co.kr/rss/allArticle.xml",
+   "geographicScope": "local",
+   "regionName": "North Chungcheong",
+   "cityName": "Cheongju-si",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "dynews"
+  },
+  {
+   "sourceId": "kr-chungnamilbo",
+   "countryCode": "KR",
+   "publisherName": "Chungnam Ilbo",
+   "publisherType": "newspaper",
+   "url": "https://www.chungnamilbo.co.kr/rss/allArticle.xml",
+   "geographicScope": "local",
+   "regionName": "Chungcheongnam-do",
+   "cityName": "Cheonan",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "chungnamilbo"
+  },
+  {
+   "sourceId": "kr-domin",
+   "countryCode": "KR",
+   "publisherName": "Jeonbuk Domin Ilbo",
+   "publisherType": "newspaper",
+   "url": "https://www.domin.co.kr/rss/allArticle.xml",
+   "geographicScope": "local",
+   "regionName": "Jeollabuk-do",
+   "cityName": "Jeonju",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "domin"
+  },
+  {
+   "sourceId": "kr-jjan-local",
+   "countryCode": "KR",
+   "publisherName": "Jeonbuk Ilbo",
+   "publisherType": "newspaper",
+   "url": "https://www.jjan.kr/news/rssLocal",
+   "geographicScope": "local",
+   "regionName": "Jeollabuk-do",
+   "cityName": "Jeonju",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "jjan"
+  },
+  {
+   "sourceId": "kr-jeollailbo",
+   "countryCode": "KR",
+   "publisherName": "Jeolla Ilbo",
+   "publisherType": "newspaper",
+   "url": "https://www.jeollailbo.com/rss/allArticle.xml",
+   "geographicScope": "local",
+   "regionName": "Jeollabuk-do",
+   "cityName": "Jeonju",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "jeollailbo"
+  },
+  {
+   "sourceId": "kr-hidomin",
+   "countryCode": "KR",
+   "publisherName": "Gyeongbuk Domin Ilbo",
+   "publisherType": "newspaper",
+   "url": "https://www.hidomin.com/rss/allArticle.xml",
+   "geographicScope": "local",
+   "regionName": "Gyeongsangbuk-do",
+   "cityName": "Pohang",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "hidomin"
+  },
+  {
+   "sourceId": "kr-kyongbuk",
+   "countryCode": "KR",
+   "publisherName": "Kyongbuk Ilbo",
+   "publisherType": "newspaper",
+   "url": "https://www.kyongbuk.co.kr/rss/allArticle.xml",
+   "geographicScope": "local",
+   "regionName": "Gyeongsangbuk-do",
+   "cityName": "Pohang",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "kyongbuk"
+  },
+  {
+   "sourceId": "kr-kado",
+   "countryCode": "KR",
+   "publisherName": "Kangwon Domin Ilbo",
+   "publisherType": "newspaper",
+   "url": "https://www.kado.net/rss/allArticle.xml",
+   "geographicScope": "local",
+   "regionName": "Gangwon-do",
+   "cityName": "Chuncheon",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "kado"
+  },
+  {
+   "sourceId": "kr-wonjutoday",
+   "countryCode": "KR",
+   "publisherName": "Wonju Today",
+   "publisherType": "newspaper",
+   "url": "https://www.wonjutoday.co.kr/rss/allArticle.xml",
+   "geographicScope": "local",
+   "regionName": "Gangwon-do",
+   "cityName": "Wŏnju",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "wonjutoday"
+  },
+  {
+   "sourceId": "kr-jejunews",
+   "countryCode": "KR",
+   "publisherName": "Jeju Ilbo",
+   "publisherType": "newspaper",
+   "url": "https://www.jejunews.com/rss/allArticle.xml",
+   "geographicScope": "local",
+   "regionName": "Jeju-do",
+   "cityName": "Jeju City",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "jejunews"
+  },
+  {
+   "sourceId": "kr-jemin",
+   "countryCode": "KR",
+   "publisherName": "Jemin Ilbo",
+   "publisherType": "newspaper",
+   "url": "https://www.jemin.com/rss/allArticle.xml",
+   "geographicScope": "local",
+   "regionName": "Jeju-do",
+   "cityName": "Jeju City",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "jemin"
+  },
+  {
+   "sourceId": "kr-jejusori",
+   "countryCode": "KR",
+   "publisherName": "Jeju Sori",
+   "publisherType": "digital-native",
+   "url": "https://www.jejusori.net/rss/allArticle.xml",
+   "geographicScope": "local",
+   "regionName": "Jeju-do",
+   "cityName": "Jeju City",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "jejusori"
+  },
+  {
+   "sourceId": "kr-sjsori",
+   "countryCode": "KR",
+   "publisherName": "Sejong Sori",
+   "publisherType": "digital-native",
+   "url": "https://www.sjsori.com/rss/allArticle.xml",
+   "geographicScope": "local",
+   "regionName": "Sejong-si",
+   "cityName": "Sejong",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "sjsori"
+  },
+  {
+   "sourceId": "kr-gjfocus",
+   "countryCode": "KR",
+   "publisherName": "Gyeongju Focus",
+   "publisherType": "newspaper",
+   "url": "https://www.gjfocus.co.kr/rss/allArticle.xml",
+   "geographicScope": "local",
+   "regionName": "Gyeongsangbuk-do",
+   "cityName": "Gyeongju",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "gjfocus"
+  },
+  {
+   "sourceId": "kr-hsnews",
+   "countryCode": "KR",
+   "publisherName": "Hongseong Shinmun",
+   "publisherType": "newspaper",
+   "url": "https://www.hsnews.co.kr/rss/allArticle.xml",
+   "geographicScope": "local",
+   "regionName": "Chungcheongnam-do",
+   "cityName": "Hongseong",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "hsnews"
+  },
+  {
+   "sourceId": "kr-cctimes",
+   "countryCode": "KR",
+   "publisherName": "Chungcheong Times",
+   "publisherType": "newspaper",
+   "url": "https://www.cctimes.kr/rss/allArticle.xml",
+   "geographicScope": "local",
+   "regionName": "North Chungcheong",
+   "cityName": "Cheongju-si",
+   "languageTags": [
+    "ko-KR"
+   ],
+   "group": "cctimes"
+  },
+  {
+   "sourceId": "tw-cdns",
+   "countryCode": "TW",
+   "publisherName": "China Daily News (Chung Hwa Daily News)",
+   "publisherType": "newspaper",
+   "url": "https://www.cdns.com.tw/feed",
+   "geographicScope": "local",
+   "regionName": "Taiwan",
+   "cityName": "Tainan",
+   "languageTags": [
+    "zh-TW"
+   ],
+   "group": "cdns"
+  },
+  {
+   "sourceId": "hk-scmp-hongkong",
+   "countryCode": "HK",
+   "publisherName": "South China Morning Post",
+   "publisherType": "newspaper",
+   "url": "https://www.scmp.com/rss/2/feed",
+   "geographicScope": "local",
+   "regionName": null,
+   "cityName": "Hong Kong",
+   "languageTags": [
+    "en-HK"
+   ],
+   "group": "scmp"
+  },
+  {
+   "sourceId": "hk-singtao",
+   "countryCode": "HK",
+   "publisherName": "Sing Tao Daily",
+   "publisherType": "newspaper",
+   "url": "https://www.stheadline.com/rss",
+   "geographicScope": "local",
+   "regionName": null,
+   "cityName": "Hong Kong",
+   "languageTags": [
+    "zh-HK"
+   ],
+   "group": "singtao"
+  },
+  {
+   "sourceId": "hk-inmedia",
+   "countryCode": "HK",
+   "publisherName": "InMedia HK",
+   "publisherType": "digital-native",
+   "url": "https://www.inmediahk.net/rss.xml",
+   "geographicScope": "local",
+   "regionName": null,
+   "cityName": "Hong Kong",
+   "languageTags": [
+    "zh-HK"
+   ],
+   "group": "inmedia"
+  },
+  {
+   "sourceId": "hk-thewitness",
+   "countryCode": "HK",
+   "publisherName": "The Witness",
+   "publisherType": "digital-native",
+   "url": "https://thewitnesshk.com/feed/",
+   "geographicScope": "local",
+   "regionName": null,
+   "cityName": "Hong Kong",
+   "languageTags": [
+    "zh-HK"
+   ],
+   "group": "thewitness"
+  },
+  {
+   "sourceId": "hk-thecollective",
+   "countryCode": "HK",
+   "publisherName": "The Collective HK",
+   "publisherType": "digital-native",
+   "url": "https://thecollectivehk.com/feed/",
+   "geographicScope": "local",
+   "regionName": null,
+   "cityName": "Hong Kong",
+   "languageTags": [
+    "zh-HK"
+   ],
+   "group": "thecollective"
+  },
+  {
+   "sourceId": "hk-dimsumdaily",
+   "countryCode": "HK",
+   "publisherName": "Dimsum Daily",
+   "publisherType": "digital-native",
+   "url": "https://www.dimsumdaily.hk/feed/",
+   "geographicScope": "local",
+   "regionName": null,
+   "cityName": "Hong Kong",
+   "languageTags": [
+    "en-HK"
+   ],
+   "group": "dimsumdaily"
+  },
+  {
+   "sourceId": "mo-pontofinal",
+   "countryCode": "MO",
+   "publisherName": "Ponto Final",
+   "publisherType": "newspaper",
+   "url": "https://pontofinal-macau.com/feed/",
+   "geographicScope": "local",
+   "regionName": null,
+   "cityName": "Macau",
+   "languageTags": [
+    "pt-MO"
+   ],
+   "group": "pontofinal"
+  },
+  {
+   "sourceId": "mn-bolod",
+   "countryCode": "MN",
+   "publisherName": "Bolod.mn",
+   "publisherType": "digital-native",
+   "url": "https://bolod.mn/engine/rss.php",
+   "geographicScope": "local",
+   "regionName": "Ulaanbaatar",
+   "cityName": "Ulan Bator",
+   "languageTags": [
+    "mn-MN"
+   ],
+   "group": "bolod"
+  },
+  {
+   "sourceId": "cn-gokunming",
+   "countryCode": "CN",
+   "publisherName": "GoKunming",
+   "publisherType": "digital-native",
+   "url": "https://www.gokunming.com/en/rss",
+   "geographicScope": "local",
+   "regionName": "Yunnan",
+   "cityName": "Kunming",
+   "languageTags": [
+    "en"
+   ],
+   "group": "gokunming"
+  },
+  {
+   "sourceId": "id-antara-jatim",
+   "countryCode": "ID",
+   "publisherName": "ANTARA East Java",
+   "publisherType": "news-agency",
+   "url": "https://jatim.antaranews.com/rss/terkini.xml",
+   "geographicScope": "local",
+   "regionName": "East Java",
+   "cityName": "Surabaya",
+   "languageTags": [
+    "id-ID"
+   ],
+   "group": "antara"
+  },
+  {
+   "sourceId": "id-antara-jabar",
+   "countryCode": "ID",
+   "publisherName": "ANTARA West Java",
+   "publisherType": "news-agency",
+   "url": "https://jabar.antaranews.com/rss/terkini.xml",
+   "geographicScope": "local",
+   "regionName": "West Java",
+   "cityName": "Bandung",
+   "languageTags": [
+    "id-ID"
+   ],
+   "group": "antara"
+  },
+  {
+   "sourceId": "id-antara-jateng",
+   "countryCode": "ID",
+   "publisherName": "ANTARA Central Java",
+   "publisherType": "news-agency",
+   "url": "https://jateng.antaranews.com/rss/terkini.xml",
+   "geographicScope": "local",
+   "regionName": "Central Java",
+   "cityName": "Semarang",
+   "languageTags": [
+    "id-ID"
+   ],
+   "group": "antara"
+  },
+  {
+   "sourceId": "id-antara-sumut",
+   "countryCode": "ID",
+   "publisherName": "ANTARA North Sumatra",
+   "publisherType": "news-agency",
+   "url": "https://sumut.antaranews.com/rss/terkini.xml",
+   "geographicScope": "local",
+   "regionName": "North Sumatra",
+   "cityName": "Medan",
+   "languageTags": [
+    "id-ID"
+   ],
+   "group": "antara"
+  },
+  {
+   "sourceId": "id-antara-bali",
+   "countryCode": "ID",
+   "publisherName": "ANTARA Bali",
+   "publisherType": "news-agency",
+   "url": "https://bali.antaranews.com/rss/terkini.xml",
+   "geographicScope": "local",
+   "regionName": "Bali",
+   "cityName": "Denpasar",
+   "languageTags": [
+    "id-ID"
+   ],
+   "group": "antara"
+  },
+  {
+   "sourceId": "id-antara-jogja",
+   "countryCode": "ID",
+   "publisherName": "ANTARA Yogyakarta",
+   "publisherType": "news-agency",
+   "url": "https://jogja.antaranews.com/rss/terkini.xml",
+   "geographicScope": "local",
+   "regionName": "Yogyakarta",
+   "cityName": "Yogyakarta",
+   "languageTags": [
+    "id-ID"
+   ],
+   "group": "antara"
+  },
+  {
+   "sourceId": "id-antara-kaltim",
+   "countryCode": "ID",
+   "publisherName": "ANTARA East Kalimantan",
+   "publisherType": "news-agency",
+   "url": "https://kaltim.antaranews.com/rss/terkini.xml",
+   "geographicScope": "local",
+   "regionName": "East Kalimantan",
+   "cityName": "Samarinda",
+   "languageTags": [
+    "id-ID"
+   ],
+   "group": "antara"
+  },
+  {
+   "sourceId": "id-antara-sumsel",
+   "countryCode": "ID",
+   "publisherName": "ANTARA South Sumatra",
+   "publisherType": "news-agency",
+   "url": "https://sumsel.antaranews.com/rss/terkini.xml",
+   "geographicScope": "local",
+   "regionName": "South Sumatra",
+   "cityName": "Palembang",
+   "languageTags": [
+    "id-ID"
+   ],
+   "group": "antara"
+  },
+  {
+   "sourceId": "id-antara-kalsel",
+   "countryCode": "ID",
+   "publisherName": "ANTARA South Kalimantan",
+   "publisherType": "news-agency",
+   "url": "https://kalsel.antaranews.com/rss/terkini.xml",
+   "geographicScope": "local",
+   "regionName": "South Kalimantan",
+   "cityName": "Banjarmasin",
+   "languageTags": [
+    "id-ID"
+   ],
+   "group": "antara"
+  },
+  {
+   "sourceId": "id-antara-kalbar",
+   "countryCode": "ID",
+   "publisherName": "ANTARA West Kalimantan",
+   "publisherType": "news-agency",
+   "url": "https://kalbar.antaranews.com/rss/terkini.xml",
+   "geographicScope": "local",
+   "regionName": "West Kalimantan",
+   "cityName": "Pontianak",
+   "languageTags": [
+    "id-ID"
+   ],
+   "group": "antara"
+  },
+  {
+   "sourceId": "id-antara-riau",
+   "countryCode": "ID",
+   "publisherName": "ANTARA Riau",
+   "publisherType": "news-agency",
+   "url": "https://riau.antaranews.com/rss/terkini.xml",
+   "geographicScope": "local",
+   "regionName": "Riau",
+   "cityName": "Pekanbaru",
+   "languageTags": [
+    "id-ID"
+   ],
+   "group": "antara"
+  },
+  {
+   "sourceId": "id-antara-aceh",
+   "countryCode": "ID",
+   "publisherName": "ANTARA Aceh",
+   "publisherType": "news-agency",
+   "url": "https://aceh.antaranews.com/rss/terkini.xml",
+   "geographicScope": "local",
+   "regionName": "Aceh",
+   "cityName": "Banda Aceh",
+   "languageTags": [
+    "id-ID"
+   ],
+   "group": "antara"
+  },
+  {
+   "sourceId": "id-antara-kepri",
+   "countryCode": "ID",
+   "publisherName": "ANTARA Riau Islands",
+   "publisherType": "news-agency",
+   "url": "https://kepri.antaranews.com/rss/terkini.xml",
+   "geographicScope": "local",
+   "regionName": "Riau Islands",
+   "cityName": "Batam",
+   "languageTags": [
+    "id-ID"
+   ],
+   "group": "antara"
+  },
+  {
+   "sourceId": "id-antara-sumbar",
+   "countryCode": "ID",
+   "publisherName": "ANTARA West Sumatra",
+   "publisherType": "news-agency",
+   "url": "https://sumbar.antaranews.com/rss/terkini.xml",
+   "geographicScope": "local",
+   "regionName": "West Sumatra",
+   "cityName": "Padang",
+   "languageTags": [
+    "id-ID"
+   ],
+   "group": "antara"
+  },
+  {
+   "sourceId": "id-antara-lampung",
+   "countryCode": "ID",
+   "publisherName": "ANTARA Lampung",
+   "publisherType": "news-agency",
+   "url": "https://lampung.antaranews.com/rss/terkini.xml",
+   "geographicScope": "local",
+   "regionName": "Lampung",
+   "cityName": "Bandar Lampung",
+   "languageTags": [
+    "id-ID"
+   ],
+   "group": "antara"
+  },
+  {
+   "sourceId": "id-antara-papua",
+   "countryCode": "ID",
+   "publisherName": "ANTARA Papua",
+   "publisherType": "news-agency",
+   "url": "https://papua.antaranews.com/rss/terkini.xml",
+   "geographicScope": "local",
+   "regionName": "Papua",
+   "cityName": "Jayapura",
+   "languageTags": [
+    "id-ID"
+   ],
+   "group": "antara"
+  },
+  {
+   "sourceId": "id-antara-jambi",
+   "countryCode": "ID",
+   "publisherName": "ANTARA Jambi",
+   "publisherType": "news-agency",
+   "url": "https://jambi.antaranews.com/rss/terkini.xml",
+   "geographicScope": "local",
+   "regionName": "Jambi",
+   "cityName": "Jambi City",
+   "languageTags": [
+    "id-ID"
+   ],
+   "group": "antara"
+  },
+  {
+   "sourceId": "id-antara-bengkulu",
+   "countryCode": "ID",
+   "publisherName": "ANTARA Bengkulu",
+   "publisherType": "news-agency",
+   "url": "https://bengkulu.antaranews.com/rss/terkini.xml",
+   "geographicScope": "local",
+   "regionName": "Bengkulu",
+   "cityName": "Bengkulu",
+   "languageTags": [
+    "id-ID"
+   ],
+   "group": "antara"
+  },
+  {
+   "sourceId": "id-antara-megapolitan",
+   "countryCode": "ID",
+   "publisherName": "ANTARA Jakarta",
+   "publisherType": "news-agency",
+   "url": "https://megapolitan.antaranews.com/rss/terkini.xml",
+   "geographicScope": "local",
+   "regionName": "Jakarta",
+   "cityName": "Jakarta",
+   "languageTags": [
+    "id-ID"
+   ],
+   "group": "antara"
+  },
+  {
+   "sourceId": "id-antara-banten",
+   "countryCode": "ID",
+   "publisherName": "ANTARA Banten",
+   "publisherType": "news-agency",
+   "url": "https://banten.antaranews.com/rss/terkini.xml",
+   "geographicScope": "local",
+   "regionName": "Banten",
+   "cityName": "Serang",
+   "languageTags": [
+    "id-ID"
+   ],
+   "group": "antara"
+  },
+  {
+   "sourceId": "id-antara-sulteng",
+   "countryCode": "ID",
+   "publisherName": "ANTARA Central Sulawesi",
+   "publisherType": "news-agency",
+   "url": "https://sulteng.antaranews.com/rss/terkini.xml",
+   "geographicScope": "local",
+   "regionName": "Central Sulawesi",
+   "cityName": "Palu",
+   "languageTags": [
+    "id-ID"
+   ],
+   "group": "antara"
+  },
+  {
+   "sourceId": "id-antara-gorontalo",
+   "countryCode": "ID",
+   "publisherName": "ANTARA Gorontalo",
+   "publisherType": "news-agency",
+   "url": "https://gorontalo.antaranews.com/rss/terkini.xml",
+   "geographicScope": "local",
+   "regionName": "Gorontalo",
+   "cityName": "Gorontalo",
+   "languageTags": [
+    "id-ID"
+   ],
+   "group": "antara"
+  },
+  {
+   "sourceId": "id-antara-mataram",
+   "countryCode": "ID",
+   "publisherName": "ANTARA West Nusa Tenggara",
+   "publisherType": "news-agency",
+   "url": "https://mataram.antaranews.com/rss/terkini.xml",
+   "geographicScope": "local",
+   "regionName": "West Nusa Tenggara",
+   "cityName": "Mataram",
+   "languageTags": [
+    "id-ID"
+   ],
+   "group": "antara"
+  },
+  {
+   "sourceId": "id-antara-makassar",
+   "countryCode": "ID",
+   "publisherName": "ANTARA South Sulawesi",
+   "publisherType": "news-agency",
+   "url": "https://makassar.antaranews.com/rss/terkini.xml",
+   "geographicScope": "local",
+   "regionName": "South Sulawesi",
+   "cityName": "Makassar",
+   "languageTags": [
+    "id-ID"
+   ],
+   "group": "antara"
+  },
+  {
+   "sourceId": "id-antara-ambon",
+   "countryCode": "ID",
+   "publisherName": "ANTARA Maluku",
+   "publisherType": "news-agency",
+   "url": "https://ambon.antaranews.com/rss/terkini.xml",
+   "geographicScope": "local",
+   "regionName": "Maluku",
+   "cityName": "Ambon",
+   "languageTags": [
+    "id-ID"
+   ],
+   "group": "antara"
+  },
+  {
+   "sourceId": "id-antara-kupang",
+   "countryCode": "ID",
+   "publisherName": "ANTARA East Nusa Tenggara",
+   "publisherType": "news-agency",
+   "url": "https://kupang.antaranews.com/rss/terkini.xml",
+   "geographicScope": "local",
+   "regionName": "East Nusa Tenggara",
+   "cityName": "Kupang",
+   "languageTags": [
+    "id-ID"
+   ],
+   "group": "antara"
+  },
+  {
+   "sourceId": "id-antara-babel",
+   "countryCode": "ID",
+   "publisherName": "ANTARA Bangka–Belitung Islands",
+   "publisherType": "news-agency",
+   "url": "https://babel.antaranews.com/rss/terkini.xml",
+   "geographicScope": "local",
+   "regionName": "Bangka–Belitung Islands",
+   "cityName": "Pangkalpinang",
+   "languageTags": [
+    "id-ID"
+   ],
+   "group": "antara"
+  },
+  {
+   "sourceId": "id-antara-kalteng",
+   "countryCode": "ID",
+   "publisherName": "ANTARA Central Kalimantan",
+   "publisherType": "news-agency",
+   "url": "https://kalteng.antaranews.com/rss/terkini.xml",
+   "geographicScope": "local",
+   "regionName": "Central Kalimantan",
+   "cityName": "Palangkaraya",
+   "languageTags": [
+    "id-ID"
+   ],
+   "group": "antara"
+  },
+  {
+   "sourceId": "id-antara-manado",
+   "countryCode": "ID",
+   "publisherName": "ANTARA North Sulawesi",
+   "publisherType": "news-agency",
+   "url": "https://manado.antaranews.com/rss/terkini.xml",
+   "geographicScope": "local",
+   "regionName": "North Sulawesi",
+   "cityName": "Manado",
+   "languageTags": [
+    "id-ID"
+   ],
+   "group": "antara"
+  },
+  {
+   "sourceId": "id-antara-kaltara",
+   "countryCode": "ID",
+   "publisherName": "ANTARA North Kalimantan",
+   "publisherType": "news-agency",
+   "url": "https://kaltara.antaranews.com/rss/terkini.xml",
+   "geographicScope": "local",
+   "regionName": "North Kalimantan",
+   "cityName": "Tarakan",
+   "languageTags": [
+    "id-ID"
+   ],
+   "group": "antara"
+  },
+  {
+   "sourceId": "id-antara-papuatengah",
+   "countryCode": "ID",
+   "publisherName": "ANTARA Central Papua",
+   "publisherType": "news-agency",
+   "url": "https://papuatengah.antaranews.com/rss/terkini.xml",
+   "geographicScope": "local",
+   "regionName": "Central Papua",
+   "cityName": "Timika",
+   "languageTags": [
+    "id-ID"
+   ],
+   "group": "antara"
+  },
+  {
+   "sourceId": "id-suarasurabaya",
+   "countryCode": "ID",
+   "publisherName": "Suara Surabaya",
+   "publisherType": "broadcaster",
+   "url": "https://www.suarasurabaya.net/feed/",
+   "geographicScope": "local",
+   "regionName": "East Java",
+   "cityName": "Surabaya",
+   "languageTags": [
+    "id-ID"
+   ],
+   "group": "suara-surabaya"
+  },
+  {
+   "sourceId": "id-beritajatim",
+   "countryCode": "ID",
+   "publisherName": "Beritajatim",
+   "publisherType": "digital-native",
+   "url": "https://beritajatim.com/feed",
+   "geographicScope": "local",
+   "regionName": "East Java",
+   "cityName": "Surabaya",
+   "languageTags": [
+    "id-ID"
+   ],
+   "group": "beritajatim"
+  },
+  {
+   "sourceId": "id-harianjogja",
+   "countryCode": "ID",
+   "publisherName": "Harian Jogja",
+   "publisherType": "newspaper",
+   "url": "https://www.harianjogja.com/rss",
+   "geographicScope": "local",
+   "regionName": "Yogyakarta",
+   "cityName": "Yogyakarta",
+   "languageTags": [
+    "id-ID"
+   ],
+   "group": "solopos"
+  },
+  {
+   "sourceId": "id-riaupos",
+   "countryCode": "ID",
+   "publisherName": "Riau Pos",
+   "publisherType": "newspaper",
+   "url": "https://riaupos.co/feed/",
+   "geographicScope": "local",
+   "regionName": "Riau",
+   "cityName": "Pekanbaru",
+   "languageTags": [
+    "id-ID"
+   ],
+   "group": "jawapos"
+  },
+  {
+   "sourceId": "ph-sunstar-cebu",
+   "countryCode": "PH",
+   "publisherName": "SunStar Cebu",
+   "publisherType": "newspaper",
+   "url": "https://www.sunstar.com.ph/api/v1/collections/local-news-cebu.rss",
+   "geographicScope": "local",
+   "regionName": "Central Visayas",
+   "cityName": "Cebu City",
+   "languageTags": [
+    "en-PH"
+   ],
+   "group": "sunstar"
+  },
+  {
+   "sourceId": "ph-sunstar-davao",
+   "countryCode": "PH",
+   "publisherName": "SunStar Davao",
+   "publisherType": "newspaper",
+   "url": "https://www.sunstar.com.ph/api/v1/collections/local-news-davao.rss",
+   "geographicScope": "local",
+   "regionName": "Davao Region",
+   "cityName": "Davao",
+   "languageTags": [
+    "en-PH"
+   ],
+   "group": "sunstar"
+  },
+  {
+   "sourceId": "ph-sunstar-pampanga",
+   "countryCode": "PH",
+   "publisherName": "SunStar Pampanga",
+   "publisherType": "newspaper",
+   "url": "https://www.sunstar.com.ph/api/v1/collections/local-news-pampanga.rss",
+   "geographicScope": "local",
+   "regionName": "Central Luzon",
+   "cityName": "Angeles City",
+   "languageTags": [
+    "en-PH"
+   ],
+   "group": "sunstar"
+  },
+  {
+   "sourceId": "ph-cebudailynews",
+   "countryCode": "PH",
+   "publisherName": "Cebu Daily News",
+   "publisherType": "newspaper",
+   "url": "https://cebudailynews.inquirer.net/feed",
+   "geographicScope": "local",
+   "regionName": "Central Visayas",
+   "cityName": "Cebu City",
+   "languageTags": [
+    "en-PH"
+   ],
+   "group": "inquirer"
+  },
+  {
+   "sourceId": "ph-freeman",
+   "countryCode": "PH",
+   "publisherName": "The Freeman",
+   "publisherType": "newspaper",
+   "url": "https://www.philstar.com/rss/the-freeman",
+   "geographicScope": "local",
+   "regionName": "Central Visayas",
+   "cityName": "Cebu City",
+   "languageTags": [
+    "en-PH"
+   ],
+   "group": "philstar"
+  },
+  {
+   "sourceId": "ph-rappler-visayas",
+   "countryCode": "PH",
+   "publisherName": "Rappler Visayas",
+   "publisherType": "digital-native",
+   "url": "https://www.rappler.com/philippines/visayas/feed/",
+   "geographicScope": "local",
+   "regionName": "Central Visayas",
+   "cityName": "Cebu City",
+   "languageTags": [
+    "en-PH"
+   ],
+   "group": "rappler"
+  },
+  {
+   "sourceId": "ph-edgedavao",
+   "countryCode": "PH",
+   "publisherName": "Edge Davao",
+   "publisherType": "newspaper",
+   "url": "https://edgedavao.net/feed/",
+   "geographicScope": "local",
+   "regionName": "Davao Region",
+   "cityName": "Davao",
+   "languageTags": [
+    "en-PH"
+   ],
+   "group": "edge-davao"
+  },
+  {
+   "sourceId": "ph-mindanaotimes",
+   "countryCode": "PH",
+   "publisherName": "Mindanao Times",
+   "publisherType": "newspaper",
+   "url": "https://www.mindanaotimes.com.ph/feed/",
+   "geographicScope": "local",
+   "regionName": "Davao Region",
+   "cityName": "Davao",
+   "languageTags": [
+    "en-PH"
+   ],
+   "group": "mindanao-times"
+  },
+  {
+   "sourceId": "ph-rappler-mindanao",
+   "countryCode": "PH",
+   "publisherName": "Rappler Mindanao",
+   "publisherType": "digital-native",
+   "url": "https://www.rappler.com/philippines/mindanao/feed/",
+   "geographicScope": "local",
+   "regionName": "Davao Region",
+   "cityName": "Davao",
+   "languageTags": [
+    "en-PH"
+   ],
+   "group": "rappler"
+  },
+  {
+   "sourceId": "ph-bombo-davao",
+   "countryCode": "PH",
+   "publisherName": "Bombo Radyo Davao",
+   "publisherType": "broadcaster",
+   "url": "https://davao.bomboradyo.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Davao Region",
+   "cityName": "Davao",
+   "languageTags": [
+    "ceb-PH"
+   ],
+   "group": "bombo-radyo"
+  },
+  {
+   "sourceId": "ph-bombo-cotabato",
+   "countryCode": "PH",
+   "publisherName": "Bombo Radyo Cotabato",
+   "publisherType": "broadcaster",
+   "url": "https://cotabato.bomboradyo.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Autonomous Region in Muslim Mindanao",
+   "cityName": "Cotabato",
+   "languageTags": [
+    "fil-PH"
+   ],
+   "group": "bombo-radyo"
+  },
+  {
+   "sourceId": "ph-newsline",
+   "countryCode": "PH",
+   "publisherName": "Newsline.ph",
+   "publisherType": "digital-native",
+   "url": "https://newsline.ph/feed/",
+   "geographicScope": "local",
+   "regionName": "Autonomous Region in Muslim Mindanao",
+   "cityName": "Cotabato",
+   "languageTags": [
+    "en-PH"
+   ],
+   "group": "newsline"
+  },
+  {
+   "sourceId": "ph-panaynews",
+   "countryCode": "PH",
+   "publisherName": "Panay News",
+   "publisherType": "newspaper",
+   "url": "https://www.panaynews.net/feed/",
+   "geographicScope": "local",
+   "regionName": "Western Visayas",
+   "cityName": "Iloilo",
+   "languageTags": [
+    "en-PH"
+   ],
+   "group": "panay-news"
+  },
+  {
+   "sourceId": "ph-iloilotoday",
+   "countryCode": "PH",
+   "publisherName": "Iloilo Today",
+   "publisherType": "digital-native",
+   "url": "https://www.iloilotoday.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Western Visayas",
+   "cityName": "Iloilo",
+   "languageTags": [
+    "en-PH"
+   ],
+   "group": "iloilo-today"
+  },
+  {
+   "sourceId": "ph-visayandailystar",
+   "countryCode": "PH",
+   "publisherName": "Visayan Daily Star",
+   "publisherType": "newspaper",
+   "url": "https://visayandailystar.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Western Visayas",
+   "cityName": "Bacolod City",
+   "languageTags": [
+    "en-PH"
+   ],
+   "group": "visayan-daily-star"
+  },
+  {
+   "sourceId": "ph-negrosdailybulletin",
+   "countryCode": "PH",
+   "publisherName": "Negros Daily Bulletin",
+   "publisherType": "newspaper",
+   "url": "https://www.negrosdailybulletin.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Western Visayas",
+   "cityName": "Bacolod City",
+   "languageTags": [
+    "en-PH"
+   ],
+   "group": "negros-daily-bulletin"
+  },
+  {
+   "sourceId": "ph-digicastnegros",
+   "countryCode": "PH",
+   "publisherName": "DigiCast Negros",
+   "publisherType": "digital-native",
+   "url": "https://digicastnegros.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Western Visayas",
+   "cityName": "Bacolod City",
+   "languageTags": [
+    "hil-PH"
+   ],
+   "group": "digicast-negros"
+  },
+  {
+   "sourceId": "ph-punto",
+   "countryCode": "PH",
+   "publisherName": "Punto! Central Luzon",
+   "publisherType": "newspaper",
+   "url": "https://punto.com.ph/feed/",
+   "geographicScope": "local",
+   "regionName": "Central Luzon",
+   "cityName": "Angeles City",
+   "languageTags": [
+    "en-PH"
+   ],
+   "group": "punto"
+  },
+  {
+   "sourceId": "ph-rappler-metromanila",
+   "countryCode": "PH",
+   "publisherName": "Rappler Metro Manila",
+   "publisherType": "digital-native",
+   "url": "https://www.rappler.com/philippines/metro-manila/feed/",
+   "geographicScope": "local",
+   "regionName": "National Capital Region",
+   "cityName": "Manila",
+   "languageTags": [
+    "en-PH"
+   ],
+   "group": "rappler"
+  },
+  {
+   "sourceId": "ph-inquirer-metro",
+   "countryCode": "PH",
+   "publisherName": "Inquirer Metro",
+   "publisherType": "newspaper",
+   "url": "https://newsinfo.inquirer.net/category/inquirer-headlines/metro/feed",
+   "geographicScope": "local",
+   "regionName": "National Capital Region",
+   "cityName": "Manila",
+   "languageTags": [
+    "en-PH"
+   ],
+   "group": "inquirer"
+  },
+  {
+   "sourceId": "ph-manilatimes-metro",
+   "countryCode": "PH",
+   "publisherName": "The Manila Times Metro",
+   "publisherType": "newspaper",
+   "url": "https://www.manilatimes.net/news/metro/feed",
+   "geographicScope": "local",
+   "regionName": "National Capital Region",
+   "cityName": "Manila",
+   "languageTags": [
+    "en-PH"
+   ],
+   "group": "manila-times"
+  },
+  {
+   "sourceId": "my-sinarharian-utara",
+   "countryCode": "MY",
+   "publisherName": "Sinar Harian Utara",
+   "publisherType": "newspaper",
+   "url": "https://www.sinarharian.com.my/rssFeed/212/57",
+   "geographicScope": "local",
+   "regionName": "Penang",
+   "cityName": "George Town",
+   "languageTags": [
+    "ms-MY"
+   ],
+   "group": "karangkraf"
+  },
+  {
+   "sourceId": "my-sinarharian-perak",
+   "countryCode": "MY",
+   "publisherName": "Sinar Harian Perak",
+   "publisherType": "newspaper",
+   "url": "https://www.sinarharian.com.my/rssFeed/212/58",
+   "geographicScope": "local",
+   "regionName": "Perak",
+   "cityName": "Ipoh",
+   "languageTags": [
+    "ms-MY"
+   ],
+   "group": "karangkraf"
+  },
+  {
+   "sourceId": "my-sinarharian-kelantan",
+   "countryCode": "MY",
+   "publisherName": "Sinar Harian Kelantan",
+   "publisherType": "newspaper",
+   "url": "https://www.sinarharian.com.my/rssFeed/212/59",
+   "geographicScope": "local",
+   "regionName": "Kelantan",
+   "cityName": "Kota Bharu",
+   "languageTags": [
+    "ms-MY"
+   ],
+   "group": "karangkraf"
+  },
+  {
+   "sourceId": "my-sinarharian-terengganu",
+   "countryCode": "MY",
+   "publisherName": "Sinar Harian Terengganu",
+   "publisherType": "newspaper",
+   "url": "https://www.sinarharian.com.my/rssFeed/212/60",
+   "geographicScope": "local",
+   "regionName": "Terengganu",
+   "cityName": "Kuala Terengganu",
+   "languageTags": [
+    "ms-MY"
+   ],
+   "group": "karangkraf"
+  },
+  {
+   "sourceId": "my-sinarharian-pahang",
+   "countryCode": "MY",
+   "publisherName": "Sinar Harian Pahang",
+   "publisherType": "newspaper",
+   "url": "https://www.sinarharian.com.my/rssFeed/212/61",
+   "geographicScope": "local",
+   "regionName": "Pahang",
+   "cityName": "Kuantan",
+   "languageTags": [
+    "ms-MY"
+   ],
+   "group": "karangkraf"
+  },
+  {
+   "sourceId": "my-sinarharian-selangor-kl",
+   "countryCode": "MY",
+   "publisherName": "Sinar Harian Selangor & KL",
+   "publisherType": "newspaper",
+   "url": "https://www.sinarharian.com.my/rssFeed/212/62",
+   "geographicScope": "local",
+   "regionName": "Selangor",
+   "cityName": "Shah Alam",
+   "languageTags": [
+    "ms-MY"
+   ],
+   "group": "karangkraf"
+  },
+  {
+   "sourceId": "my-sinarharian-melaka-ns",
+   "countryCode": "MY",
+   "publisherName": "Sinar Harian Melaka & Negeri Sembilan",
+   "publisherType": "newspaper",
+   "url": "https://www.sinarharian.com.my/rssFeed/212/63",
+   "geographicScope": "local",
+   "regionName": "Melaka",
+   "cityName": "Malacca",
+   "languageTags": [
+    "ms-MY"
+   ],
+   "group": "karangkraf"
+  },
+  {
+   "sourceId": "my-sinarharian-johor",
+   "countryCode": "MY",
+   "publisherName": "Sinar Harian Johor",
+   "publisherType": "newspaper",
+   "url": "https://www.sinarharian.com.my/rssFeed/212/64",
+   "geographicScope": "local",
+   "regionName": "Johor",
+   "cityName": "Johor Bahru",
+   "languageTags": [
+    "ms-MY"
+   ],
+   "group": "karangkraf"
+  },
+  {
+   "sourceId": "my-sinarharian-sabah-sarawak",
+   "countryCode": "MY",
+   "publisherName": "Sinar Harian Sabah & Sarawak",
+   "publisherType": "newspaper",
+   "url": "https://www.sinarharian.com.my/rssFeed/212/65",
+   "geographicScope": "local",
+   "regionName": "Sabah",
+   "cityName": "Kota Kinabalu",
+   "languageTags": [
+    "ms-MY"
+   ],
+   "group": "karangkraf"
+  },
+  {
+   "sourceId": "my-dayakdaily",
+   "countryCode": "MY",
+   "publisherName": "DayakDaily",
+   "publisherType": "digital-native",
+   "url": "https://dayakdaily.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Sarawak",
+   "cityName": "Kuching",
+   "languageTags": [
+    "en-MY"
+   ],
+   "group": "dayakdaily"
+  },
+  {
+   "sourceId": "th-thepattayanews",
+   "countryCode": "TH",
+   "publisherName": "The Pattaya News",
+   "publisherType": "digital-native",
+   "url": "https://thepattayanews.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Chon Buri",
+   "cityName": "Pattaya",
+   "languageTags": [
+    "en-TH"
+   ],
+   "group": "pattaya-news"
+  },
+  {
+   "sourceId": "th-phuketnews",
+   "countryCode": "TH",
+   "publisherName": "The Phuket News",
+   "publisherType": "newspaper",
+   "url": "https://www.thephuketnews.com/rss-xml/news.xml",
+   "geographicScope": "local",
+   "regionName": "Phuket",
+   "cityName": "Phuket",
+   "languageTags": [
+    "en-TH"
+   ],
+   "group": "phuket-news"
+  },
+  {
+   "sourceId": "th-phuketexpress",
+   "countryCode": "TH",
+   "publisherName": "The Phuket Express",
+   "publisherType": "digital-native",
+   "url": "https://thephuketexpress.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Phuket",
+   "cityName": "Phuket",
+   "languageTags": [
+    "en-TH"
+   ],
+   "group": "phuket-express"
+  },
+  {
+   "sourceId": "th-chiangmainews",
+   "countryCode": "TH",
+   "publisherName": "Chiang Mai News",
+   "publisherType": "newspaper",
+   "url": "https://www.chiangmainews.co.th/feed/",
+   "geographicScope": "local",
+   "regionName": "Chiang Mai",
+   "cityName": "Chiang Mai",
+   "languageTags": [
+    "th-TH"
+   ],
+   "group": "chiangmai-news"
+  },
+  {
+   "sourceId": "th-lannernews",
+   "countryCode": "TH",
+   "publisherName": "Lanner",
+   "publisherType": "digital-native",
+   "url": "https://lannernews.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Chiang Mai",
+   "cityName": "Chiang Mai",
+   "languageTags": [
+    "th-TH"
+   ],
+   "group": "lanner"
+  },
+  {
+   "sourceId": "th-huahintoday",
+   "countryCode": "TH",
+   "publisherName": "Hua Hin Today",
+   "publisherType": "newspaper",
+   "url": "https://huahintoday.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Prachuap Khiri Khan",
+   "cityName": "Hua Hin",
+   "languageTags": [
+    "en-TH"
+   ],
+   "group": "hua-hin-today"
+  },
+  {
+   "sourceId": "th-khonkaenlink",
+   "countryCode": "TH",
+   "publisherName": "Khon Kaen Link",
+   "publisherType": "digital-native",
+   "url": "https://www.khonkaenlink.info/feed/",
+   "geographicScope": "local",
+   "regionName": "Khon Kaen",
+   "cityName": "Khon Kaen",
+   "languageTags": [
+    "th-TH"
+   ],
+   "group": "khonkaenlink"
+  },
+  {
+   "sourceId": "th-isaanrecord",
+   "countryCode": "TH",
+   "publisherName": "The Isaan Record",
+   "publisherType": "digital-native",
+   "url": "https://theisaanrecord.co/feed/",
+   "geographicScope": "local",
+   "regionName": "Khon Kaen",
+   "cityName": "Khon Kaen",
+   "languageTags": [
+    "th-TH"
+   ],
+   "group": "isaan-record"
+  },
+  {
+   "sourceId": "th-hatyaifocus",
+   "countryCode": "TH",
+   "publisherName": "Hat Yai Focus",
+   "publisherType": "digital-native",
+   "url": "https://www.hatyaifocus.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Songkhla",
+   "cityName": "Hat Yai",
+   "languageTags": [
+    "th-TH"
+   ],
+   "group": "hatyaifocus"
+  },
+  {
+   "sourceId": "vn-hanoionline",
+   "countryCode": "VN",
+   "publisherName": "Hanoi Online (Hanoi Radio Television)",
+   "publisherType": "public-broadcaster",
+   "url": "https://hanoionline.vn/rss/home.rss",
+   "geographicScope": "local",
+   "regionName": "Hanoi",
+   "cityName": "Hanoi",
+   "languageTags": [
+    "vi-VN"
+   ],
+   "group": "hanoi-rtv"
+  },
+  {
+   "sourceId": "vn-baothanhhoa",
+   "countryCode": "VN",
+   "publisherName": "Báo Thanh Hóa",
+   "publisherType": "newspaper",
+   "url": "https://baothanhhoa.vn/feed",
+   "geographicScope": "local",
+   "regionName": "Thanh Hóa Province",
+   "cityName": "Thanh Hóa",
+   "languageTags": [
+    "vi-VN"
+   ],
+   "group": "baothanhhoa"
+  },
+  {
+   "sourceId": "vn-baolamdong",
+   "countryCode": "VN",
+   "publisherName": "Báo Lâm Đồng",
+   "publisherType": "newspaper",
+   "url": "https://baolamdong.vn/rss/trang-chu",
+   "geographicScope": "local",
+   "regionName": "Lam Dong",
+   "cityName": "Ðà Lạt",
+   "languageTags": [
+    "vi-VN"
+   ],
+   "group": "baolamdong"
+  },
+  {
+   "sourceId": "vn-baophutho",
+   "countryCode": "VN",
+   "publisherName": "Báo Phú Thọ",
+   "publisherType": "newspaper",
+   "url": "https://baophutho.vn/feed",
+   "geographicScope": "local",
+   "regionName": "Phu Tho",
+   "cityName": "Việt Trì",
+   "languageTags": [
+    "vi-VN"
+   ],
+   "group": "baophutho"
+  },
+  {
+   "sourceId": "vn-baothainguyen",
+   "countryCode": "VN",
+   "publisherName": "Báo Thái Nguyên",
+   "publisherType": "newspaper",
+   "url": "https://baothainguyen.vn/rss/tieu-diem.xml",
+   "geographicScope": "local",
+   "regionName": "Thai Nguyen",
+   "cityName": "Thái Nguyên",
+   "languageTags": [
+    "vi-VN"
+   ],
+   "group": "baothainguyen"
+  },
+  {
+   "sourceId": "mm-shannews",
+   "countryCode": "MM",
+   "publisherName": "Shan News",
+   "publisherType": "digital-native",
+   "url": "https://shannews.org/feed",
+   "geographicScope": "local",
+   "regionName": "Shan State",
+   "cityName": "Taunggyi",
+   "languageTags": [
+    "shn-MM"
+   ],
+   "group": "shan-news"
+  },
+  {
+   "sourceId": "mm-karennews",
+   "countryCode": "MM",
+   "publisherName": "Karen News",
+   "publisherType": "digital-native",
+   "url": "https://karennews.org/feed/",
+   "geographicScope": "local",
+   "regionName": "Kayin State",
+   "cityName": "Hpa-An",
+   "languageTags": [
+    "en-MM"
+   ],
+   "group": "karen-news"
+  },
+  {
+   "sourceId": "tl-diliweekly",
+   "countryCode": "TL",
+   "publisherName": "The Dili Weekly",
+   "publisherType": "newspaper",
+   "url": "https://thediliweekly.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Dili Municipality",
+   "cityName": "Dili",
+   "languageTags": [
+    "tet-TL"
+   ],
+   "group": "dili-weekly"
+  },
+  {
+   "sourceId": "au-abc-nsw",
+   "countryCode": "AU",
+   "publisherName": "ABC News NSW",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.abc.net.au/news/feed/6016412/rss.xml",
+   "geographicScope": "regional",
+   "regionName": "New South Wales",
+   "cityName": null,
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "abc"
+  },
+  {
+   "sourceId": "au-abc-vic",
+   "countryCode": "AU",
+   "publisherName": "ABC News VIC",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.abc.net.au/news/feed/6026116/rss.xml",
+   "geographicScope": "regional",
+   "regionName": "Victoria",
+   "cityName": null,
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "abc"
+  },
+  {
+   "sourceId": "au-abc-qld",
+   "countryCode": "AU",
+   "publisherName": "ABC News QLD",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.abc.net.au/news/feed/6025998/rss.xml",
+   "geographicScope": "regional",
+   "regionName": "Queensland",
+   "cityName": null,
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "abc"
+  },
+  {
+   "sourceId": "au-abc-wa",
+   "countryCode": "AU",
+   "publisherName": "ABC News WA",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.abc.net.au/news/feed/6026148/rss.xml",
+   "geographicScope": "regional",
+   "regionName": "Western Australia",
+   "cityName": null,
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "abc"
+  },
+  {
+   "sourceId": "au-abc-sa",
+   "countryCode": "AU",
+   "publisherName": "ABC News SA",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.abc.net.au/news/feed/6026078/rss.xml",
+   "geographicScope": "regional",
+   "regionName": "South Australia",
+   "cityName": null,
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "abc"
+  },
+  {
+   "sourceId": "au-abc-tas",
+   "countryCode": "AU",
+   "publisherName": "ABC News TAS",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.abc.net.au/news/feed/6017548/rss.xml",
+   "geographicScope": "regional",
+   "regionName": "Tasmania",
+   "cityName": null,
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "abc"
+  },
+  {
+   "sourceId": "au-abc-nt",
+   "countryCode": "AU",
+   "publisherName": "ABC News NT",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.abc.net.au/news/feed/6019288/rss.xml",
+   "geographicScope": "regional",
+   "regionName": "Northern Territory",
+   "cityName": null,
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "abc"
+  },
+  {
+   "sourceId": "au-abc-act",
+   "countryCode": "AU",
+   "publisherName": "ABC News ACT",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.abc.net.au/news/feed/6015076/rss.xml",
+   "geographicScope": "regional",
+   "regionName": "Australian Capital Territory",
+   "cityName": null,
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "abc"
+  },
+  {
+   "sourceId": "au-abc-local-sydney",
+   "countryCode": "AU",
+   "publisherName": "ABC Sydney",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.abc.net.au/news/feed/13769688/rss.xml",
+   "geographicScope": "local",
+   "regionName": "New South Wales",
+   "cityName": "Sydney",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "abc"
+  },
+  {
+   "sourceId": "au-abc-local-melbourne",
+   "countryCode": "AU",
+   "publisherName": "ABC Melbourne",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.abc.net.au/news/feed/13787282/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Victoria",
+   "cityName": "Melbourne",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "abc"
+  },
+  {
+   "sourceId": "au-abc-local-brisbane",
+   "countryCode": "AU",
+   "publisherName": "ABC Brisbane",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.abc.net.au/news/feed/13787262/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Queensland",
+   "cityName": "Brisbane",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "abc"
+  },
+  {
+   "sourceId": "au-abc-local-perth",
+   "countryCode": "AU",
+   "publisherName": "ABC Perth",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.abc.net.au/news/feed/13787290/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Western Australia",
+   "cityName": "Perth",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "abc"
+  },
+  {
+   "sourceId": "au-abc-local-adelaide",
+   "countryCode": "AU",
+   "publisherName": "ABC Adelaide",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.abc.net.au/news/feed/13787250/rss.xml",
+   "geographicScope": "local",
+   "regionName": "South Australia",
+   "cityName": "Adelaide",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "abc"
+  },
+  {
+   "sourceId": "au-abc-local-hobart",
+   "countryCode": "AU",
+   "publisherName": "ABC Hobart",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.abc.net.au/news/feed/13787276/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Tasmania",
+   "cityName": "Hobart",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "abc"
+  },
+  {
+   "sourceId": "au-abc-local-darwin",
+   "countryCode": "AU",
+   "publisherName": "ABC Darwin",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.abc.net.au/news/feed/13787272/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Northern Territory",
+   "cityName": "Darwin",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "abc"
+  },
+  {
+   "sourceId": "au-abc-local-canberra",
+   "countryCode": "AU",
+   "publisherName": "ABC Canberra",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.abc.net.au/news/feed/13787266/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Australian Capital Territory",
+   "cityName": "Canberra",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "abc"
+  },
+  {
+   "sourceId": "au-abc-local-newcastle",
+   "countryCode": "AU",
+   "publisherName": "ABC Newcastle",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.abc.net.au/news/feed/13789140/rss.xml",
+   "geographicScope": "local",
+   "regionName": "New South Wales",
+   "cityName": "Newcastle",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "abc"
+  },
+  {
+   "sourceId": "au-abc-local-goldcoast",
+   "countryCode": "AU",
+   "publisherName": "ABC Gold Coast",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.abc.net.au/news/feed/13789096/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Queensland",
+   "cityName": "Gold Coast",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "abc"
+  },
+  {
+   "sourceId": "au-abc-local-sunshinecoast",
+   "countryCode": "AU",
+   "publisherName": "ABC Sunshine Coast",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.abc.net.au/news/feed/13789244/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Queensland",
+   "cityName": "Sunshine Coast",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "abc"
+  },
+  {
+   "sourceId": "au-abc-local-centralcoast",
+   "countryCode": "AU",
+   "publisherName": "ABC Central Coast",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.abc.net.au/news/feed/13789060/rss.xml",
+   "geographicScope": "local",
+   "regionName": "New South Wales",
+   "cityName": "Central Coast",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "abc"
+  },
+  {
+   "sourceId": "au-abc-local-illawarra",
+   "countryCode": "AU",
+   "publisherName": "ABC Wollongong",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.abc.net.au/news/feed/13789114/rss.xml",
+   "geographicScope": "local",
+   "regionName": "New South Wales",
+   "cityName": "Wollongong",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "abc"
+  },
+  {
+   "sourceId": "au-abc-local-ballarat",
+   "countryCode": "AU",
+   "publisherName": "ABC Ballarat",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.abc.net.au/news/feed/13789042/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Victoria",
+   "cityName": "Ballarat",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "abc"
+  },
+  {
+   "sourceId": "au-abc-local-centralvic",
+   "countryCode": "AU",
+   "publisherName": "ABC Bendigo",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.abc.net.au/news/feed/13789066/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Victoria",
+   "cityName": "Bendigo",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "abc"
+  },
+  {
+   "sourceId": "au-abc-local-southqld",
+   "countryCode": "AU",
+   "publisherName": "ABC Toowoomba",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.abc.net.au/news/feed/13789220/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Queensland",
+   "cityName": "Toowoomba",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "abc"
+  },
+  {
+   "sourceId": "au-abc-local-northtas",
+   "countryCode": "AU",
+   "publisherName": "ABC Launceston",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.abc.net.au/news/feed/13789158/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Tasmania",
+   "cityName": "Launceston",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "abc"
+  },
+  {
+   "sourceId": "au-abc-local-tropic",
+   "countryCode": "AU",
+   "publisherName": "ABC Mackay",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.abc.net.au/news/feed/13789260/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Queensland",
+   "cityName": "Mackay",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "abc"
+  },
+  {
+   "sourceId": "au-abc-local-capricornia",
+   "countryCode": "AU",
+   "publisherName": "ABC Rockhampton",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.abc.net.au/news/feed/13789052/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Queensland",
+   "cityName": "Rockhampton",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "abc"
+  },
+  {
+   "sourceId": "au-abc-local-coffscoast",
+   "countryCode": "AU",
+   "publisherName": "ABC Coffs Harbour",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.abc.net.au/news/feed/13789074/rss.xml",
+   "geographicScope": "local",
+   "regionName": "New South Wales",
+   "cityName": "Coffs Harbour",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "abc"
+  },
+  {
+   "sourceId": "au-abc-local-southwestwa",
+   "countryCode": "AU",
+   "publisherName": "ABC Bunbury",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.abc.net.au/news/feed/13789232/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Western Australia",
+   "cityName": "Bunbury",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "abc"
+  },
+  {
+   "sourceId": "au-abc-local-widebay",
+   "countryCode": "AU",
+   "publisherName": "ABC Bundaberg",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.abc.net.au/news/feed/13789298/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Queensland",
+   "cityName": "Bundaberg",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "abc"
+  },
+  {
+   "sourceId": "au-abc-local-midnorthcoast",
+   "countryCode": "AU",
+   "publisherName": "ABC Port Macquarie",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.abc.net.au/news/feed/13789132/rss.xml",
+   "geographicScope": "local",
+   "regionName": "New South Wales",
+   "cityName": "Port Macquarie",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "abc"
+  },
+  {
+   "sourceId": "au-abc-local-farnorth",
+   "countryCode": "AU",
+   "publisherName": "ABC Cairns",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.abc.net.au/news/feed/13789086/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Queensland",
+   "cityName": "Cairns",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "abc"
+  },
+  {
+   "sourceId": "au-abc-local-northqld",
+   "countryCode": "AU",
+   "publisherName": "ABC Townsville",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.abc.net.au/news/feed/13789154/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Queensland",
+   "cityName": "Townsville",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "abc"
+  },
+  {
+   "sourceId": "au-theage-victoria",
+   "countryCode": "AU",
+   "publisherName": "The Age",
+   "publisherType": "newspaper",
+   "url": "https://www.theage.com.au/rss/national/victoria.xml",
+   "geographicScope": "regional",
+   "regionName": "Victoria",
+   "cityName": null,
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "nine"
+  },
+  {
+   "sourceId": "au-brisbanetimes-qld",
+   "countryCode": "AU",
+   "publisherName": "Brisbane Times",
+   "publisherType": "newspaper",
+   "url": "https://www.brisbanetimes.com.au/rss/national/queensland.xml",
+   "geographicScope": "local",
+   "regionName": "Queensland",
+   "cityName": "Brisbane",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "nine"
+  },
+  {
+   "sourceId": "au-watoday-wa",
+   "countryCode": "AU",
+   "publisherName": "WAtoday",
+   "publisherType": "newspaper",
+   "url": "https://www.watoday.com.au/rss/national/western-australia.xml",
+   "geographicScope": "local",
+   "regionName": "Western Australia",
+   "cityName": "Perth",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "nine"
+  },
+  {
+   "sourceId": "au-thewest-wa",
+   "countryCode": "AU",
+   "publisherName": "The West Australian",
+   "publisherType": "newspaper",
+   "url": "https://thewest.com.au/news/wa/rss",
+   "geographicScope": "regional",
+   "regionName": "Western Australia",
+   "cityName": null,
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "seven-west"
+  },
+  {
+   "sourceId": "au-thewest-regional",
+   "countryCode": "AU",
+   "publisherName": "The West Australian (regional WA)",
+   "publisherType": "newspaper",
+   "url": "https://thewest.com.au/news/regional/rss",
+   "geographicScope": "regional",
+   "regionName": "Western Australia",
+   "cityName": null,
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "seven-west"
+  },
+  {
+   "sourceId": "au-7news-sydney",
+   "countryCode": "AU",
+   "publisherName": "7NEWS Sydney",
+   "publisherType": "broadcaster",
+   "url": "https://7news.com.au/news/sydney/rss",
+   "geographicScope": "local",
+   "regionName": "New South Wales",
+   "cityName": "Sydney",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "seven-west"
+  },
+  {
+   "sourceId": "au-7news-melbourne",
+   "countryCode": "AU",
+   "publisherName": "7NEWS Melbourne",
+   "publisherType": "broadcaster",
+   "url": "https://7news.com.au/news/melbourne/rss",
+   "geographicScope": "local",
+   "regionName": "Victoria",
+   "cityName": "Melbourne",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "seven-west"
+  },
+  {
+   "sourceId": "au-7news-brisbane",
+   "countryCode": "AU",
+   "publisherName": "7NEWS Brisbane",
+   "publisherType": "broadcaster",
+   "url": "https://7news.com.au/news/brisbane/rss",
+   "geographicScope": "local",
+   "regionName": "Queensland",
+   "cityName": "Brisbane",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "seven-west"
+  },
+  {
+   "sourceId": "au-7news-adelaide",
+   "countryCode": "AU",
+   "publisherName": "7NEWS Adelaide",
+   "publisherType": "broadcaster",
+   "url": "https://7news.com.au/news/adelaide/rss",
+   "geographicScope": "local",
+   "regionName": "South Australia",
+   "cityName": "Adelaide",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "seven-west"
+  },
+  {
+   "sourceId": "au-7news-gold-coast",
+   "countryCode": "AU",
+   "publisherName": "7NEWS Gold Coast",
+   "publisherType": "broadcaster",
+   "url": "https://7news.com.au/news/gold-coast/rss",
+   "geographicScope": "local",
+   "regionName": "Queensland",
+   "cityName": "Gold Coast",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "seven-west"
+  },
+  {
+   "sourceId": "au-7news-townsville",
+   "countryCode": "AU",
+   "publisherName": "7NEWS Townsville",
+   "publisherType": "broadcaster",
+   "url": "https://7news.com.au/news/townsville/rss",
+   "geographicScope": "local",
+   "regionName": "Queensland",
+   "cityName": "Townsville",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "seven-west"
+  },
+  {
+   "sourceId": "au-7news-toowoomba",
+   "countryCode": "AU",
+   "publisherName": "7NEWS Toowoomba",
+   "publisherType": "broadcaster",
+   "url": "https://7news.com.au/news/toowoomba/rss",
+   "geographicScope": "local",
+   "regionName": "Queensland",
+   "cityName": "Toowoomba",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "seven-west"
+  },
+  {
+   "sourceId": "au-7news-tas",
+   "countryCode": "AU",
+   "publisherName": "7NEWS Tasmania",
+   "publisherType": "broadcaster",
+   "url": "https://7news.com.au/news/tas/rss",
+   "geographicScope": "regional",
+   "regionName": "Tasmania",
+   "cityName": null,
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "seven-west"
+  },
+  {
+   "sourceId": "au-7news-nt",
+   "countryCode": "AU",
+   "publisherName": "7NEWS Northern Territory",
+   "publisherType": "broadcaster",
+   "url": "https://7news.com.au/news/nt/rss",
+   "geographicScope": "regional",
+   "regionName": "Northern Territory",
+   "cityName": null,
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "seven-west"
+  },
+  {
+   "sourceId": "au-canberratimes",
+   "countryCode": "AU",
+   "publisherName": "The Canberra Times",
+   "publisherType": "newspaper",
+   "url": "https://www.canberratimes.com.au/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Australian Capital Territory",
+   "cityName": "Canberra",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "acm"
+  },
+  {
+   "sourceId": "au-newcastleherald",
+   "countryCode": "AU",
+   "publisherName": "Newcastle Herald",
+   "publisherType": "newspaper",
+   "url": "https://www.newcastleherald.com.au/rss.xml",
+   "geographicScope": "local",
+   "regionName": "New South Wales",
+   "cityName": "Newcastle",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "acm"
+  },
+  {
+   "sourceId": "au-illawarramercury",
+   "countryCode": "AU",
+   "publisherName": "Illawarra Mercury",
+   "publisherType": "newspaper",
+   "url": "https://www.illawarramercury.com.au/rss.xml",
+   "geographicScope": "local",
+   "regionName": "New South Wales",
+   "cityName": "Wollongong",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "acm"
+  },
+  {
+   "sourceId": "au-bendigoadvertiser",
+   "countryCode": "AU",
+   "publisherName": "Bendigo Advertiser",
+   "publisherType": "newspaper",
+   "url": "https://www.bendigoadvertiser.com.au/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Victoria",
+   "cityName": "Bendigo",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "acm"
+  },
+  {
+   "sourceId": "au-thecourier",
+   "countryCode": "AU",
+   "publisherName": "The Courier",
+   "publisherType": "newspaper",
+   "url": "https://www.thecourier.com.au/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Victoria",
+   "cityName": "Ballarat",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "acm"
+  },
+  {
+   "sourceId": "au-examiner",
+   "countryCode": "AU",
+   "publisherName": "The Examiner",
+   "publisherType": "newspaper",
+   "url": "https://www.examiner.com.au/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Tasmania",
+   "cityName": "Launceston",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "acm"
+  },
+  {
+   "sourceId": "au-maitlandmercury",
+   "countryCode": "AU",
+   "publisherName": "Maitland Mercury",
+   "publisherType": "newspaper",
+   "url": "https://www.maitlandmercury.com.au/rss.xml",
+   "geographicScope": "local",
+   "regionName": "New South Wales",
+   "cityName": "Maitland",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "acm"
+  },
+  {
+   "sourceId": "au-portnews",
+   "countryCode": "AU",
+   "publisherName": "Port Macquarie News",
+   "publisherType": "newspaper",
+   "url": "https://www.portnews.com.au/rss.xml",
+   "geographicScope": "local",
+   "regionName": "New South Wales",
+   "cityName": "Port Macquarie",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "acm"
+  },
+  {
+   "sourceId": "au-bunburymail",
+   "countryCode": "AU",
+   "publisherName": "Bunbury Mail",
+   "publisherType": "newspaper",
+   "url": "https://www.bunburymail.com.au/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Western Australia",
+   "cityName": "Bunbury",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "acm"
+  },
+  {
+   "sourceId": "au-mandurahmail",
+   "countryCode": "AU",
+   "publisherName": "Mandurah Mail",
+   "publisherType": "newspaper",
+   "url": "https://www.mandurahmail.com.au/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Western Australia",
+   "cityName": "Mandurah",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "acm"
+  },
+  {
+   "sourceId": "au-bluemountainsgazette",
+   "countryCode": "AU",
+   "publisherName": "Blue Mountains Gazette",
+   "publisherType": "newspaper",
+   "url": "https://www.bluemountainsgazette.com.au/rss.xml",
+   "geographicScope": "local",
+   "regionName": "New South Wales",
+   "cityName": "Blue Mountains",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "acm"
+  },
+  {
+   "sourceId": "au-theadvocate-tas",
+   "countryCode": "AU",
+   "publisherName": "The Advocate",
+   "publisherType": "newspaper",
+   "url": "https://www.theadvocate.com.au/rss.xml",
+   "geographicScope": "regional",
+   "regionName": "Tasmania",
+   "cityName": null,
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "acm"
+  },
+  {
+   "sourceId": "au-dailyadvertiser",
+   "countryCode": "AU",
+   "publisherName": "The Daily Advertiser",
+   "publisherType": "newspaper",
+   "url": "https://www.dailyadvertiser.com.au/rss.xml",
+   "geographicScope": "regional",
+   "regionName": "New South Wales",
+   "cityName": null,
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "acm"
+  },
+  {
+   "sourceId": "au-northerndailyleader",
+   "countryCode": "AU",
+   "publisherName": "Northern Daily Leader",
+   "publisherType": "newspaper",
+   "url": "https://www.northerndailyleader.com.au/rss.xml",
+   "geographicScope": "regional",
+   "regionName": "New South Wales",
+   "cityName": null,
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "acm"
+  },
+  {
+   "sourceId": "au-standard-warrnambool",
+   "countryCode": "AU",
+   "publisherName": "The Standard",
+   "publisherType": "newspaper",
+   "url": "https://www.standard.net.au/rss.xml",
+   "geographicScope": "regional",
+   "regionName": "Victoria",
+   "cityName": null,
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "acm"
+  },
+  {
+   "sourceId": "au-region-canberra",
+   "countryCode": "AU",
+   "publisherName": "Region Canberra",
+   "publisherType": "digital-native",
+   "url": "https://region.com.au/feed/",
+   "geographicScope": "local",
+   "regionName": "Australian Capital Territory",
+   "cityName": "Canberra",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "region-media"
+  },
+  {
+   "sourceId": "au-pulsetasmania",
+   "countryCode": "AU",
+   "publisherName": "Pulse Tasmania",
+   "publisherType": "digital-native",
+   "url": "https://pulsetasmania.com.au/feed/",
+   "geographicScope": "local",
+   "regionName": "Tasmania",
+   "cityName": "Hobart",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "pulse-tasmania"
+  },
+  {
+   "sourceId": "au-tasmaniantimes",
+   "countryCode": "AU",
+   "publisherName": "Tasmanian Times",
+   "publisherType": "digital-native",
+   "url": "https://tasmaniantimes.com/feed/",
+   "geographicScope": "regional",
+   "regionName": "Tasmania",
+   "cityName": null,
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "tasmanian-times"
+  },
+  {
+   "sourceId": "au-ntindependent",
+   "countryCode": "AU",
+   "publisherName": "NT Independent",
+   "publisherType": "digital-native",
+   "url": "https://ntindependent.com.au/feed/",
+   "geographicScope": "local",
+   "regionName": "Northern Territory",
+   "cityName": "Darwin",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "nt-independent"
+  },
+  {
+   "sourceId": "au-glamadelaide",
+   "countryCode": "AU",
+   "publisherName": "Glam Adelaide",
+   "publisherType": "digital-native",
+   "url": "https://glamadelaide.com.au/feed/",
+   "geographicScope": "local",
+   "regionName": "South Australia",
+   "cityName": "Adelaide",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "glam-adelaide"
+  },
+  {
+   "sourceId": "au-geelongindy",
+   "countryCode": "AU",
+   "publisherName": "Geelong Independent",
+   "publisherType": "newspaper",
+   "url": "https://geelongindy.com.au/feed/",
+   "geographicScope": "local",
+   "regionName": "Victoria",
+   "cityName": "Geelong",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "star-news-group"
+  },
+  {
+   "sourceId": "au-bundabergnow",
+   "countryCode": "AU",
+   "publisherName": "Bundaberg Now",
+   "publisherType": "digital-native",
+   "url": "https://bundabergnow.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Queensland",
+   "cityName": "Bundaberg",
+   "languageTags": [
+    "en-AU"
+   ],
+   "group": "bundaberg-now"
+  },
+  {
+   "sourceId": "nz-herald-auckland",
+   "countryCode": "NZ",
+   "publisherName": "NZ Herald",
+   "publisherType": "newspaper",
+   "url": "https://www.nzherald.co.nz/arc/outboundfeeds/rss/section/nz/auckland/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "Auckland",
+   "cityName": "Auckland",
+   "languageTags": [
+    "en-NZ"
+   ],
+   "group": "nzme"
+  },
+  {
+   "sourceId": "nz-herald-wellington",
+   "countryCode": "NZ",
+   "publisherName": "NZ Herald",
+   "publisherType": "newspaper",
+   "url": "https://www.nzherald.co.nz/arc/outboundfeeds/rss/section/nz/wellington/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "Wellington Region",
+   "cityName": "Wellington",
+   "languageTags": [
+    "en-NZ"
+   ],
+   "group": "nzme"
+  },
+  {
+   "sourceId": "nz-herald-christchurch",
+   "countryCode": "NZ",
+   "publisherName": "NZ Herald",
+   "publisherType": "newspaper",
+   "url": "https://www.nzherald.co.nz/arc/outboundfeeds/rss/section/nz/christchurch/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "Canterbury",
+   "cityName": "Christchurch",
+   "languageTags": [
+    "en-NZ"
+   ],
+   "group": "nzme"
+  },
+  {
+   "sourceId": "nz-thepost",
+   "countryCode": "NZ",
+   "publisherName": "The Post",
+   "publisherType": "newspaper",
+   "url": "https://www.thepost.co.nz/rss",
+   "geographicScope": "local",
+   "regionName": "Wellington Region",
+   "cityName": "Wellington",
+   "languageTags": [
+    "en-NZ"
+   ],
+   "group": "stuff"
+  },
+  {
+   "sourceId": "nz-thepress",
+   "countryCode": "NZ",
+   "publisherName": "The Press",
+   "publisherType": "newspaper",
+   "url": "https://www.thepress.co.nz/rss",
+   "geographicScope": "local",
+   "regionName": "Canterbury",
+   "cityName": "Christchurch",
+   "languageTags": [
+    "en-NZ"
+   ],
+   "group": "stuff"
+  },
+  {
+   "sourceId": "nz-waikatotimes",
+   "countryCode": "NZ",
+   "publisherName": "Waikato Times",
+   "publisherType": "newspaper",
+   "url": "https://www.waikatotimes.co.nz/rss",
+   "geographicScope": "local",
+   "regionName": "Waikato Region",
+   "cityName": "Hamilton",
+   "languageTags": [
+    "en-NZ"
+   ],
+   "group": "stuff"
+  },
+  {
+   "sourceId": "nz-odt",
+   "countryCode": "NZ",
+   "publisherName": "Otago Daily Times",
+   "publisherType": "newspaper",
+   "url": "https://www.odt.co.nz/sitemaps/odt/rss",
+   "geographicScope": "local",
+   "regionName": "Otago",
+   "cityName": "Dunedin",
+   "languageTags": [
+    "en-NZ"
+   ],
+   "group": "allied-press"
+  },
+  {
+   "sourceId": "nz-localmatters",
+   "countryCode": "NZ",
+   "publisherName": "Local Matters",
+   "publisherType": "newspaper",
+   "url": "https://www.localmatters.co.nz/feed/",
+   "geographicScope": "local",
+   "regionName": "Auckland",
+   "cityName": "North Shore",
+   "languageTags": [
+    "en-NZ"
+   ],
+   "group": "local-matters"
+  },
+  {
+   "sourceId": "fj-fijionenews",
+   "countryCode": "FJ",
+   "publisherName": "Fiji One News",
+   "publisherType": "broadcaster",
+   "url": "https://fijionenews.com.fj/feed/",
+   "geographicScope": "local",
+   "regionName": "Central",
+   "cityName": "Suva",
+   "languageTags": [
+    "en-FJ"
+   ],
+   "group": "fiji-one"
+  },
+  {
+   "sourceId": "sb-solomontimes",
+   "countryCode": "SB",
+   "publisherName": "Solomon Times",
+   "publisherType": "digital-native",
+   "url": "https://www.solomontimes.com/rss/latest-news.xml",
+   "geographicScope": "local",
+   "regionName": "Honiara",
+   "cityName": "Honiara",
+   "languageTags": [
+    "en-SB"
+   ],
+   "group": "solomon-times"
+  },
+  {
+   "sourceId": "to-matangitonga",
+   "countryCode": "TO",
+   "publisherName": "Matangi Tonga",
+   "publisherType": "magazine",
+   "url": "https://matangitonga.to/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Tongatapu",
+   "cityName": "Nuku‘alofa",
+   "languageTags": [
+    "en-TO"
+   ],
+   "group": "matangi-tonga"
+  },
+  {
+   "sourceId": "ck-cookislandsnews",
+   "countryCode": "CK",
+   "publisherName": "Cook Islands News",
+   "publisherType": "newspaper",
+   "url": "https://www.cookislandsnews.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Rarotonga",
+   "cityName": "Avarua",
+   "languageTags": [
+    "en-CK"
+   ],
+   "group": "cook-islands-news"
+  },
+  {
+   "sourceId": "pw-islandtimes",
+   "countryCode": "PW",
+   "publisherName": "Island Times",
+   "publisherType": "newspaper",
+   "url": "https://islandtimes.org/feed/",
+   "geographicScope": "local",
+   "regionName": "Melekeok",
+   "cityName": "Ngerulmud",
+   "languageTags": [
+    "en-PW"
+   ],
+   "group": "island-times"
+  },
+  {
+   "sourceId": "mh-marshallislandsjournal",
+   "countryCode": "MH",
+   "publisherName": "Marshall Islands Journal",
+   "publisherType": "newspaper",
+   "url": "https://marshallislandsjournal.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Majuro Atoll",
+   "cityName": "Majuro",
+   "languageTags": [
+    "en-MH"
+   ],
+   "group": "mij"
+  },
+  {
+   "sourceId": "as-talanei",
+   "countryCode": "AS",
+   "publisherName": "Talanei",
+   "publisherType": "digital-native",
+   "url": "https://www.talanei.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Eastern District",
+   "cityName": "Pago Pago",
+   "languageTags": [
+    "en-AS"
+   ],
+   "group": "talanei"
+  }
+ ]
+}

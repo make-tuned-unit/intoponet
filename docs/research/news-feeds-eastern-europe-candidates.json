@@ -1,0 +1,4808 @@
+{
+ "region": "Central and Eastern Europe, Russia, Turkey, the Caucasus and Central Asia (regions and cities)",
+ "note": "Regional and city outlets for PL, RO, UA, TR, RU (by voivodeship/county/oblast/province/federal subject and top cities) plus capital/second-city outlets across CEE, the Baltics, the Balkans, the Caucasus and Kazakhstan. Only RU has regions in the gazetteer, so elsewhere regional outlets are placed on their main city as local.",
+ "candidates": [
+  {
+   "sourceId": "pl-wyborcza-warszawa",
+   "countryCode": "PL",
+   "publisherName": "Gazeta Wyborcza Warszawa",
+   "publisherType": "newspaper",
+   "url": "https://warszawa.wyborcza.pl/pub/rss/warszawa.xml",
+   "geographicScope": "local",
+   "regionName": "Mazovia",
+   "cityName": "Warsaw",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "agora"
+  },
+  {
+   "sourceId": "pl-tvnwarszawa",
+   "countryCode": "PL",
+   "publisherName": "TVN Warszawa",
+   "publisherType": "broadcaster",
+   "url": "https://tvn24.pl/tvnwarszawa/najnowsze.xml",
+   "geographicScope": "local",
+   "regionName": "Mazovia",
+   "cityName": "Warsaw",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "tvn"
+  },
+  {
+   "sourceId": "pl-zyciewarszawy",
+   "countryCode": "PL",
+   "publisherName": "Życie Warszawy",
+   "publisherType": "newspaper",
+   "url": "https://zyciewarszawy.pl/rss_main",
+   "geographicScope": "local",
+   "regionName": "Mazovia",
+   "cityName": "Warsaw",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "gremi"
+  },
+  {
+   "sourceId": "pl-wyborcza-krakow",
+   "countryCode": "PL",
+   "publisherName": "Gazeta Wyborcza Kraków",
+   "publisherType": "newspaper",
+   "url": "https://krakow.wyborcza.pl/pub/rss/krakow.xml",
+   "geographicScope": "local",
+   "regionName": "Lesser Poland",
+   "cityName": "Kraków",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "agora"
+  },
+  {
+   "sourceId": "pl-radiokrakow",
+   "countryCode": "PL",
+   "publisherName": "Radio Kraków",
+   "publisherType": "public-broadcaster",
+   "url": "https://radiokrakow.pl/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Lesser Poland",
+   "cityName": "Kraków",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "radio-krakow"
+  },
+  {
+   "sourceId": "pl-lovekrakow",
+   "countryCode": "PL",
+   "publisherName": "LoveKraków",
+   "publisherType": "digital-native",
+   "url": "https://www.lovekrakow.pl/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Lesser Poland",
+   "cityName": "Kraków",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "lovekrakow"
+  },
+  {
+   "sourceId": "pl-gazetakrakowska",
+   "countryCode": "PL",
+   "publisherName": "Gazeta Krakowska",
+   "publisherType": "newspaper",
+   "url": "https://gazetakrakowska.pl/rss/",
+   "geographicScope": "local",
+   "regionName": "Lesser Poland",
+   "cityName": "Kraków",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "polska-press"
+  },
+  {
+   "sourceId": "pl-wyborcza-wroclaw",
+   "countryCode": "PL",
+   "publisherName": "Gazeta Wyborcza Wrocław",
+   "publisherType": "newspaper",
+   "url": "https://wroclaw.wyborcza.pl/pub/rss/wroclaw.xml",
+   "geographicScope": "local",
+   "regionName": "Lower Silesia",
+   "cityName": "Wrocław",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "agora"
+  },
+  {
+   "sourceId": "pl-gazetawroclawska",
+   "countryCode": "PL",
+   "publisherName": "Gazeta Wrocławska",
+   "publisherType": "newspaper",
+   "url": "https://gazetawroclawska.pl/rss/",
+   "geographicScope": "local",
+   "regionName": "Lower Silesia",
+   "cityName": "Wrocław",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "polska-press"
+  },
+  {
+   "sourceId": "pl-wyborcza-lodz",
+   "countryCode": "PL",
+   "publisherName": "Gazeta Wyborcza Łódź",
+   "publisherType": "newspaper",
+   "url": "https://lodz.wyborcza.pl/pub/rss/lodz.xml",
+   "geographicScope": "local",
+   "regionName": "Łódź Voivodeship",
+   "cityName": "Łódź",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "agora"
+  },
+  {
+   "sourceId": "pl-radiolodz",
+   "countryCode": "PL",
+   "publisherName": "Radio Łódź",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.radiolodz.pl/rss",
+   "geographicScope": "local",
+   "regionName": "Łódź Voivodeship",
+   "cityName": "Łódź",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "radio-lodz"
+  },
+  {
+   "sourceId": "pl-wyborcza-poznan",
+   "countryCode": "PL",
+   "publisherName": "Gazeta Wyborcza Poznań",
+   "publisherType": "newspaper",
+   "url": "https://poznan.wyborcza.pl/pub/rss/poznan.xml",
+   "geographicScope": "local",
+   "regionName": "Greater Poland",
+   "cityName": "Poznań",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "agora"
+  },
+  {
+   "sourceId": "pl-epoznan",
+   "countryCode": "PL",
+   "publisherName": "epoznan.pl",
+   "publisherType": "digital-native",
+   "url": "https://epoznan.pl/rss",
+   "geographicScope": "local",
+   "regionName": "Greater Poland",
+   "cityName": "Poznań",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "epoznan"
+  },
+  {
+   "sourceId": "pl-gloswielkopolski",
+   "countryCode": "PL",
+   "publisherName": "Głos Wielkopolski",
+   "publisherType": "newspaper",
+   "url": "https://gloswielkopolski.pl/rss/",
+   "geographicScope": "local",
+   "regionName": "Greater Poland",
+   "cityName": "Poznań",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "polska-press"
+  },
+  {
+   "sourceId": "pl-wyborcza-trojmiasto",
+   "countryCode": "PL",
+   "publisherName": "Gazeta Wyborcza Trójmiasto",
+   "publisherType": "newspaper",
+   "url": "https://trojmiasto.wyborcza.pl/pub/rss/trojmiasto.xml",
+   "geographicScope": "local",
+   "regionName": "Pomerania",
+   "cityName": "Gdańsk",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "agora"
+  },
+  {
+   "sourceId": "pl-radiogdansk",
+   "countryCode": "PL",
+   "publisherName": "Radio Gdańsk",
+   "publisherType": "public-broadcaster",
+   "url": "https://radiogdansk.pl/feed",
+   "geographicScope": "local",
+   "regionName": "Pomerania",
+   "cityName": "Gdańsk",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "radio-gdansk"
+  },
+  {
+   "sourceId": "pl-zawszepomorze",
+   "countryCode": "PL",
+   "publisherName": "Zawsze Pomorze",
+   "publisherType": "digital-native",
+   "url": "https://www.zawszepomorze.pl/rss/articles/pl",
+   "geographicScope": "local",
+   "regionName": "Pomerania",
+   "cityName": "Gdańsk",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "zawszepomorze"
+  },
+  {
+   "sourceId": "pl-wyborcza-szczecin",
+   "countryCode": "PL",
+   "publisherName": "Gazeta Wyborcza Szczecin",
+   "publisherType": "newspaper",
+   "url": "https://szczecin.wyborcza.pl/pub/rss/szczecin.xml",
+   "geographicScope": "local",
+   "regionName": "West Pomerania",
+   "cityName": "Szczecin",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "agora"
+  },
+  {
+   "sourceId": "pl-radioszczecin",
+   "countryCode": "PL",
+   "publisherName": "Radio Szczecin",
+   "publisherType": "public-broadcaster",
+   "url": "https://radioszczecin.pl/rss.php",
+   "geographicScope": "local",
+   "regionName": "West Pomerania",
+   "cityName": "Szczecin",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "radio-szczecin"
+  },
+  {
+   "sourceId": "pl-wszczecinie",
+   "countryCode": "PL",
+   "publisherName": "wSzczecinie.pl",
+   "publisherType": "digital-native",
+   "url": "https://wszczecinie.pl/rss/news.xml",
+   "geographicScope": "local",
+   "regionName": "West Pomerania",
+   "cityName": "Szczecin",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "wszczecinie"
+  },
+  {
+   "sourceId": "pl-wyborcza-lublin",
+   "countryCode": "PL",
+   "publisherName": "Gazeta Wyborcza Lublin",
+   "publisherType": "newspaper",
+   "url": "https://lublin.wyborcza.pl/pub/rss/lublin.xml",
+   "geographicScope": "local",
+   "regionName": "Lublin",
+   "cityName": "Lublin",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "agora"
+  },
+  {
+   "sourceId": "pl-radiolublin",
+   "countryCode": "PL",
+   "publisherName": "Radio Lublin",
+   "publisherType": "public-broadcaster",
+   "url": "https://radio.lublin.pl/feed/",
+   "geographicScope": "local",
+   "regionName": "Lublin",
+   "cityName": "Lublin",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "radio-lublin"
+  },
+  {
+   "sourceId": "pl-dziennikwschodni",
+   "countryCode": "PL",
+   "publisherName": "Dziennik Wschodni",
+   "publisherType": "newspaper",
+   "url": "https://www.dziennikwschodni.pl/rss/articles/pl",
+   "geographicScope": "local",
+   "regionName": "Lublin",
+   "cityName": "Lublin",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "dziennik-wschodni"
+  },
+  {
+   "sourceId": "pl-wyborcza-bydgoszcz",
+   "countryCode": "PL",
+   "publisherName": "Gazeta Wyborcza Bydgoszcz",
+   "publisherType": "newspaper",
+   "url": "https://bydgoszcz.wyborcza.pl/pub/rss/bydgoszcz.xml",
+   "geographicScope": "local",
+   "regionName": "Kujawsko-Pomorskie",
+   "cityName": "Bydgoszcz",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "agora"
+  },
+  {
+   "sourceId": "pl-radiopik",
+   "countryCode": "PL",
+   "publisherName": "Polskie Radio PiK",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.radiopik.pl/rss.php",
+   "geographicScope": "local",
+   "regionName": "Kujawsko-Pomorskie",
+   "cityName": "Bydgoszcz",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "radio-pik"
+  },
+  {
+   "sourceId": "pl-wyborcza-torun",
+   "countryCode": "PL",
+   "publisherName": "Gazeta Wyborcza Toruń",
+   "publisherType": "newspaper",
+   "url": "https://torun.wyborcza.pl/pub/rss/torun.xml",
+   "geographicScope": "local",
+   "regionName": "Kujawsko-Pomorskie",
+   "cityName": "Toruń",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "agora"
+  },
+  {
+   "sourceId": "pl-wyborcza-bialystok",
+   "countryCode": "PL",
+   "publisherName": "Gazeta Wyborcza Białystok",
+   "publisherType": "newspaper",
+   "url": "https://bialystok.wyborcza.pl/pub/rss/bialystok.xml",
+   "geographicScope": "local",
+   "regionName": "Podlasie",
+   "cityName": "Białystok",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "agora"
+  },
+  {
+   "sourceId": "pl-radiobialystok",
+   "countryCode": "PL",
+   "publisherName": "Polskie Radio Białystok",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.radio.bialystok.pl/rss",
+   "geographicScope": "local",
+   "regionName": "Podlasie",
+   "cityName": "Białystok",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "radio-bialystok"
+  },
+  {
+   "sourceId": "pl-poranny",
+   "countryCode": "PL",
+   "publisherName": "Kurier Poranny",
+   "publisherType": "newspaper",
+   "url": "https://poranny.pl/rss/",
+   "geographicScope": "local",
+   "regionName": "Podlasie",
+   "cityName": "Białystok",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "polska-press"
+  },
+  {
+   "sourceId": "pl-wyborcza-katowice",
+   "countryCode": "PL",
+   "publisherName": "Gazeta Wyborcza Katowice",
+   "publisherType": "newspaper",
+   "url": "https://katowice.wyborcza.pl/pub/rss/katowice.xml",
+   "geographicScope": "local",
+   "regionName": "Silesia",
+   "cityName": "Katowice",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "agora"
+  },
+  {
+   "sourceId": "pl-dziennikzachodni",
+   "countryCode": "PL",
+   "publisherName": "Dziennik Zachodni",
+   "publisherType": "newspaper",
+   "url": "https://dziennikzachodni.pl/rss/",
+   "geographicScope": "local",
+   "regionName": "Silesia",
+   "cityName": "Katowice",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "polska-press"
+  },
+  {
+   "sourceId": "pl-silesion",
+   "countryCode": "PL",
+   "publisherName": "Silesion.pl",
+   "publisherType": "digital-native",
+   "url": "https://silesion.pl/feed/",
+   "geographicScope": "local",
+   "regionName": "Silesia",
+   "cityName": "Katowice",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "silesion"
+  },
+  {
+   "sourceId": "pl-slazag",
+   "countryCode": "PL",
+   "publisherName": "ŚlązAg",
+   "publisherType": "digital-native",
+   "url": "https://www.slazag.pl/najnowsze.xml",
+   "geographicScope": "local",
+   "regionName": "Silesia",
+   "cityName": "Sosnowiec",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "slazag"
+  },
+  {
+   "sourceId": "pl-wyborcza-czestochowa",
+   "countryCode": "PL",
+   "publisherName": "Gazeta Wyborcza Częstochowa",
+   "publisherType": "newspaper",
+   "url": "https://czestochowa.wyborcza.pl/pub/rss/czestochowa.xml",
+   "geographicScope": "local",
+   "regionName": "Silesia",
+   "cityName": "Częstochowa",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "agora"
+  },
+  {
+   "sourceId": "pl-wyborcza-bielsko",
+   "countryCode": "PL",
+   "publisherName": "Gazeta Wyborcza Bielsko-Biała",
+   "publisherType": "newspaper",
+   "url": "https://bielskobiala.wyborcza.pl/pub/rss/bielskobiala.xml",
+   "geographicScope": "local",
+   "regionName": "Silesia",
+   "cityName": "Bielsko-Biala",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "agora"
+  },
+  {
+   "sourceId": "pl-bielskiedrogi",
+   "countryCode": "PL",
+   "publisherName": "Bielskie Drogi",
+   "publisherType": "digital-native",
+   "url": "https://bielskiedrogi.pl/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Silesia",
+   "cityName": "Bielsko-Biala",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "bielskiedrogi"
+  },
+  {
+   "sourceId": "pl-tychyinfo",
+   "countryCode": "PL",
+   "publisherName": "Tychy.info",
+   "publisherType": "digital-native",
+   "url": "https://tychy.info/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Silesia",
+   "cityName": "Tychy",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "tychyinfo"
+  },
+  {
+   "sourceId": "pl-wyborcza-rzeszow",
+   "countryCode": "PL",
+   "publisherName": "Gazeta Wyborcza Rzeszów",
+   "publisherType": "newspaper",
+   "url": "https://rzeszow.wyborcza.pl/pub/rss/rzeszow.xml",
+   "geographicScope": "local",
+   "regionName": "Subcarpathia",
+   "cityName": "Rzeszów",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "agora"
+  },
+  {
+   "sourceId": "pl-rzeszownews",
+   "countryCode": "PL",
+   "publisherName": "Rzeszów News",
+   "publisherType": "digital-native",
+   "url": "https://rzeszow-news.pl/feed/",
+   "geographicScope": "local",
+   "regionName": "Subcarpathia",
+   "cityName": "Rzeszów",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "rzeszow-news"
+  },
+  {
+   "sourceId": "pl-nowiny24",
+   "countryCode": "PL",
+   "publisherName": "Nowiny",
+   "publisherType": "newspaper",
+   "url": "https://nowiny24.pl/rss/",
+   "geographicScope": "local",
+   "regionName": "Subcarpathia",
+   "cityName": "Rzeszów",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "polska-press"
+  },
+  {
+   "sourceId": "pl-wyborcza-kielce",
+   "countryCode": "PL",
+   "publisherName": "Gazeta Wyborcza Kielce",
+   "publisherType": "newspaper",
+   "url": "https://kielce.wyborcza.pl/pub/rss/kielce.xml",
+   "geographicScope": "local",
+   "regionName": "Świętokrzyskie",
+   "cityName": "Kielce",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "agora"
+  },
+  {
+   "sourceId": "pl-radiokielce",
+   "countryCode": "PL",
+   "publisherName": "Radio Kielce",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.radiokielce.pl/rss",
+   "geographicScope": "local",
+   "regionName": "Świętokrzyskie",
+   "cityName": "Kielce",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "radio-kielce"
+  },
+  {
+   "sourceId": "pl-wyborcza-olsztyn",
+   "countryCode": "PL",
+   "publisherName": "Gazeta Wyborcza Olsztyn",
+   "publisherType": "newspaper",
+   "url": "https://olsztyn.wyborcza.pl/pub/rss/olsztyn.xml",
+   "geographicScope": "local",
+   "regionName": "Warmia-Masuria",
+   "cityName": "Olsztyn",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "agora"
+  },
+  {
+   "sourceId": "pl-radioolsztyn",
+   "countryCode": "PL",
+   "publisherName": "Radio Olsztyn",
+   "publisherType": "public-broadcaster",
+   "url": "https://radioolsztyn.pl/feed",
+   "geographicScope": "local",
+   "regionName": "Warmia-Masuria",
+   "cityName": "Olsztyn",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "radio-olsztyn"
+  },
+  {
+   "sourceId": "pl-olsztyncompl",
+   "countryCode": "PL",
+   "publisherName": "Olsztyn.com.pl",
+   "publisherType": "digital-native",
+   "url": "https://www.olsztyn.com.pl/rss.html",
+   "geographicScope": "local",
+   "regionName": "Warmia-Masuria",
+   "cityName": "Olsztyn",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "olsztyn-com-pl"
+  },
+  {
+   "sourceId": "pl-wyborcza-opole",
+   "countryCode": "PL",
+   "publisherName": "Gazeta Wyborcza Opole",
+   "publisherType": "newspaper",
+   "url": "https://opole.wyborcza.pl/pub/rss/opole.xml",
+   "geographicScope": "local",
+   "regionName": "Opole Voivodeship",
+   "cityName": "Opole",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "agora"
+  },
+  {
+   "sourceId": "pl-nto",
+   "countryCode": "PL",
+   "publisherName": "Nowa Trybuna Opolska",
+   "publisherType": "newspaper",
+   "url": "https://nto.pl/rss/",
+   "geographicScope": "local",
+   "regionName": "Opole Voivodeship",
+   "cityName": "Opole",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "polska-press"
+  },
+  {
+   "sourceId": "pl-radiozachod",
+   "countryCode": "PL",
+   "publisherName": "Radio Zachód",
+   "publisherType": "public-broadcaster",
+   "url": "https://zachod.pl/feed/",
+   "geographicScope": "local",
+   "regionName": "Lubusz",
+   "cityName": "Zielona Góra",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "radio-zachod"
+  },
+  {
+   "sourceId": "pl-gazetalubuska",
+   "countryCode": "PL",
+   "publisherName": "Gazeta Lubuska",
+   "publisherType": "newspaper",
+   "url": "https://gazetalubuska.pl/rss/",
+   "geographicScope": "local",
+   "regionName": "Lubusz",
+   "cityName": "Zielona Góra",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "polska-press"
+  },
+  {
+   "sourceId": "pl-wyborcza-gorzow",
+   "countryCode": "PL",
+   "publisherName": "Gazeta Wyborcza Gorzów",
+   "publisherType": "newspaper",
+   "url": "https://gorzow.wyborcza.pl/pub/rss/gorzow.xml",
+   "geographicScope": "local",
+   "regionName": "Lubusz",
+   "cityName": "Gorzów Wielkopolski",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "agora"
+  },
+  {
+   "sourceId": "pl-wyborcza-radom",
+   "countryCode": "PL",
+   "publisherName": "Gazeta Wyborcza Radom",
+   "publisherType": "newspaper",
+   "url": "https://radom.wyborcza.pl/pub/rss/radom.xml",
+   "geographicScope": "local",
+   "regionName": "Mazovia",
+   "cityName": "Radom",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "agora"
+  },
+  {
+   "sourceId": "pl-wyborcza-plock",
+   "countryCode": "PL",
+   "publisherName": "Gazeta Wyborcza Płock",
+   "publisherType": "newspaper",
+   "url": "https://plock.wyborcza.pl/pub/rss/plock.xml",
+   "geographicScope": "local",
+   "regionName": "Mazovia",
+   "cityName": "Płock",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "agora"
+  },
+  {
+   "sourceId": "pl-gs24",
+   "countryCode": "PL",
+   "publisherName": "Głos Szczeciński",
+   "publisherType": "newspaper",
+   "url": "https://gs24.pl/rss/",
+   "geographicScope": "local",
+   "regionName": "West Pomerania",
+   "cityName": "Szczecin",
+   "languageTags": [
+    "pl-PL"
+   ],
+   "group": "polska-press"
+  },
+  {
+   "sourceId": "ro-buletin-bucuresti",
+   "countryCode": "RO",
+   "publisherName": "Buletin de București",
+   "publisherType": "digital-native",
+   "url": "https://www.buletin.de/bucuresti/feed/",
+   "geographicScope": "local",
+   "regionName": "Bucharest",
+   "cityName": "Bucharest",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "buletin-de"
+  },
+  {
+   "sourceId": "ro-b365",
+   "countryCode": "RO",
+   "publisherName": "B365.ro",
+   "publisherType": "digital-native",
+   "url": "https://www.b365.ro/feed/",
+   "geographicScope": "local",
+   "regionName": "Bucharest",
+   "cityName": "Bucharest",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "b365"
+  },
+  {
+   "sourceId": "ro-bzi",
+   "countryCode": "RO",
+   "publisherName": "BZI",
+   "publisherType": "newspaper",
+   "url": "https://www.bzi.ro/rss",
+   "geographicScope": "local",
+   "regionName": "Iași County",
+   "cityName": "Iaşi",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "bzi"
+  },
+  {
+   "sourceId": "ro-radioiasi",
+   "countryCode": "RO",
+   "publisherName": "Radio Iași",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.radioiasi.ro/feed/",
+   "geographicScope": "local",
+   "regionName": "Iași County",
+   "cityName": "Iaşi",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "srr"
+  },
+  {
+   "sourceId": "ro-adevarul-iasi",
+   "countryCode": "RO",
+   "publisherName": "Adevărul Iași",
+   "publisherType": "newspaper",
+   "url": "https://www.adevarul.ro/rss/locale/iasi",
+   "geographicScope": "local",
+   "regionName": "Iași County",
+   "cityName": "Iaşi",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "adevarul"
+  },
+  {
+   "sourceId": "ro-monitorulcj",
+   "countryCode": "RO",
+   "publisherName": "Monitorul de Cluj",
+   "publisherType": "newspaper",
+   "url": "https://www.monitorulcj.ro/rss",
+   "geographicScope": "local",
+   "regionName": "Cluj County",
+   "cityName": "Cluj-Napoca",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "monitorulcj"
+  },
+  {
+   "sourceId": "ro-ziuadecj",
+   "countryCode": "RO",
+   "publisherName": "Ziua de Cluj",
+   "publisherType": "newspaper",
+   "url": "https://www.ziuadecj.ro/feed",
+   "geographicScope": "local",
+   "regionName": "Cluj County",
+   "cityName": "Cluj-Napoca",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "ziuadecj"
+  },
+  {
+   "sourceId": "ro-radiocluj",
+   "countryCode": "RO",
+   "publisherName": "Radio Cluj",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.radiocluj.ro/feed/",
+   "geographicScope": "local",
+   "regionName": "Cluj County",
+   "cityName": "Cluj-Napoca",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "srr"
+  },
+  {
+   "sourceId": "ro-clujust",
+   "countryCode": "RO",
+   "publisherName": "Clujust",
+   "publisherType": "digital-native",
+   "url": "https://www.clujust.ro/feed/",
+   "geographicScope": "local",
+   "regionName": "Cluj County",
+   "cityName": "Cluj-Napoca",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "clujust"
+  },
+  {
+   "sourceId": "ro-ziuaconstanta",
+   "countryCode": "RO",
+   "publisherName": "Ziua de Constanța",
+   "publisherType": "newspaper",
+   "url": "https://www.ziuaconstanta.ro/rss/toate-stirile.html",
+   "geographicScope": "local",
+   "regionName": "Constanța County",
+   "cityName": "Constanţa",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "ziuaconstanta"
+  },
+  {
+   "sourceId": "ro-radioconstanta",
+   "countryCode": "RO",
+   "publisherName": "Radio Constanța",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.radioconstanta.ro/feed/",
+   "geographicScope": "local",
+   "regionName": "Constanța County",
+   "cityName": "Constanţa",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "srr"
+  },
+  {
+   "sourceId": "ro-monitorulexpres",
+   "countryCode": "RO",
+   "publisherName": "Monitorul Expres",
+   "publisherType": "newspaper",
+   "url": "https://www.monitorulexpres.ro/feed/",
+   "geographicScope": "local",
+   "regionName": "Brașov County",
+   "cityName": "Braşov",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "monitorulexpres"
+  },
+  {
+   "sourceId": "ro-newsbv",
+   "countryCode": "RO",
+   "publisherName": "NewsBV",
+   "publisherType": "digital-native",
+   "url": "https://www.newsbv.ro/feed/",
+   "geographicScope": "local",
+   "regionName": "Brașov County",
+   "cityName": "Braşov",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "newsbv"
+  },
+  {
+   "sourceId": "ro-opiniatimisoarei",
+   "countryCode": "RO",
+   "publisherName": "Opinia Timișoarei",
+   "publisherType": "newspaper",
+   "url": "https://www.opiniatimisoarei.ro/feed",
+   "geographicScope": "local",
+   "regionName": "Timiș County",
+   "cityName": "Timişoara",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "opiniatimisoarei"
+  },
+  {
+   "sourceId": "ro-tion",
+   "countryCode": "RO",
+   "publisherName": "Tion.ro",
+   "publisherType": "digital-native",
+   "url": "https://www.tion.ro/feed/",
+   "geographicScope": "local",
+   "regionName": "Timiș County",
+   "cityName": "Timişoara",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "tion"
+  },
+  {
+   "sourceId": "ro-radiotimisoara",
+   "countryCode": "RO",
+   "publisherName": "Radio Timișoara",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.radiotimisoara.ro/feed/",
+   "geographicScope": "local",
+   "regionName": "Timiș County",
+   "cityName": "Timişoara",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "srr"
+  },
+  {
+   "sourceId": "ro-pressalert",
+   "countryCode": "RO",
+   "publisherName": "Pressalert",
+   "publisherType": "digital-native",
+   "url": "https://www.pressalert.ro/feed/",
+   "geographicScope": "local",
+   "regionName": "Timiș County",
+   "cityName": "Timişoara",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "pressalert"
+  },
+  {
+   "sourceId": "ro-banatulmeu",
+   "countryCode": "RO",
+   "publisherName": "Banatul Meu",
+   "publisherType": "digital-native",
+   "url": "https://www.banatulmeu.ro/feed/",
+   "geographicScope": "local",
+   "regionName": "Timiș County",
+   "cityName": "Timişoara",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "banatulmeu"
+  },
+  {
+   "sourceId": "ro-gds",
+   "countryCode": "RO",
+   "publisherName": "Gazeta de Sud",
+   "publisherType": "newspaper",
+   "url": "https://www.gds.ro/rss",
+   "geographicScope": "local",
+   "regionName": "Dolj",
+   "cityName": "Craiova",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "gds"
+  },
+  {
+   "sourceId": "ro-adevarul-craiova",
+   "countryCode": "RO",
+   "publisherName": "Adevărul Craiova",
+   "publisherType": "newspaper",
+   "url": "https://www.adevarul.ro/rss/locale/craiova",
+   "geographicScope": "local",
+   "regionName": "Dolj",
+   "cityName": "Craiova",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "adevarul"
+  },
+  {
+   "sourceId": "ro-zi-de-zi",
+   "countryCode": "RO",
+   "publisherName": "Zi de Zi",
+   "publisherType": "newspaper",
+   "url": "https://www.zi-de-zi.ro/feed/",
+   "geographicScope": "local",
+   "regionName": "Mureș County",
+   "cityName": "Târgu Mureş",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "zi-de-zi"
+  },
+  {
+   "sourceId": "ro-ebihoreanul",
+   "countryCode": "RO",
+   "publisherName": "Bihoreanul",
+   "publisherType": "newspaper",
+   "url": "https://www.ebihoreanul.ro/rss",
+   "geographicScope": "local",
+   "regionName": "Bihor County",
+   "cityName": "Oradea",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "ebihoreanul"
+  },
+  {
+   "sourceId": "ro-adevarul-oradea",
+   "countryCode": "RO",
+   "publisherName": "Adevărul Oradea",
+   "publisherType": "newspaper",
+   "url": "https://www.adevarul.ro/rss/locale/oradea",
+   "geographicScope": "local",
+   "regionName": "Bihor County",
+   "cityName": "Oradea",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "adevarul"
+  },
+  {
+   "sourceId": "ro-observatorulph",
+   "countryCode": "RO",
+   "publisherName": "Observatorul Prahovean",
+   "publisherType": "newspaper",
+   "url": "https://www.observatorulph.ro/feed/",
+   "geographicScope": "local",
+   "regionName": "Prahova",
+   "cityName": "Ploieşti",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "observatorulph"
+  },
+  {
+   "sourceId": "ro-aradon",
+   "countryCode": "RO",
+   "publisherName": "Aradon",
+   "publisherType": "digital-native",
+   "url": "https://www.aradon.ro/feed/",
+   "geographicScope": "local",
+   "regionName": "Arad County",
+   "cityName": "Arad",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "aradon"
+  },
+  {
+   "sourceId": "ro-adevarul-arad",
+   "countryCode": "RO",
+   "publisherName": "Adevărul Arad",
+   "publisherType": "newspaper",
+   "url": "https://www.adevarul.ro/rss/locale/arad",
+   "geographicScope": "local",
+   "regionName": "Arad County",
+   "cityName": "Arad",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "adevarul"
+  },
+  {
+   "sourceId": "ro-obiectivbr",
+   "countryCode": "RO",
+   "publisherName": "Obiectiv Brăila",
+   "publisherType": "newspaper",
+   "url": "https://www.obiectivbr.ro/feed",
+   "geographicScope": "local",
+   "regionName": "Brăila County",
+   "cityName": "Brăila",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "obiectivbr"
+  },
+  {
+   "sourceId": "ro-jurnaluldearges",
+   "countryCode": "RO",
+   "publisherName": "Jurnalul de Argeș",
+   "publisherType": "newspaper",
+   "url": "https://jurnaluldearges.ro/feed/",
+   "geographicScope": "local",
+   "regionName": "Arges",
+   "cityName": "Piteşti",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "jurnaluldearges"
+  },
+  {
+   "sourceId": "ro-desteptarea",
+   "countryCode": "RO",
+   "publisherName": "Deșteptarea",
+   "publisherType": "newspaper",
+   "url": "https://www.desteptarea.ro/feed/",
+   "geographicScope": "local",
+   "regionName": "Bacău County",
+   "cityName": "Bacău",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "desteptarea"
+  },
+  {
+   "sourceId": "ro-tribuna",
+   "countryCode": "RO",
+   "publisherName": "Tribuna",
+   "publisherType": "newspaper",
+   "url": "https://www.tribuna.ro/rss",
+   "geographicScope": "local",
+   "regionName": "Sibiu County",
+   "cityName": "Sibiu",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "tribuna"
+  },
+  {
+   "sourceId": "ro-turnulsfatului",
+   "countryCode": "RO",
+   "publisherName": "Turnul Sfatului",
+   "publisherType": "newspaper",
+   "url": "https://www.turnulsfatului.ro/feed",
+   "geographicScope": "local",
+   "regionName": "Sibiu County",
+   "cityName": "Sibiu",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "turnulsfatului"
+  },
+  {
+   "sourceId": "ro-gazetanordvest",
+   "countryCode": "RO",
+   "publisherName": "Gazeta de Nord-Vest",
+   "publisherType": "newspaper",
+   "url": "https://www.gazetanord-vest.ro/feed/",
+   "geographicScope": "local",
+   "regionName": "Satu Mare County",
+   "cityName": "Satu Mare",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "gazetanord-vest"
+  },
+  {
+   "sourceId": "ro-emaramures",
+   "countryCode": "RO",
+   "publisherName": "eMaramureș",
+   "publisherType": "digital-native",
+   "url": "https://www.emaramures.ro/rss",
+   "geographicScope": "local",
+   "regionName": "Maramureş",
+   "cityName": "Baia Mare",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "emaramures"
+  },
+  {
+   "sourceId": "ro-opiniabuzau",
+   "countryCode": "RO",
+   "publisherName": "Opinia Buzău",
+   "publisherType": "newspaper",
+   "url": "https://www.opiniabuzau.ro/feed/",
+   "geographicScope": "local",
+   "regionName": "Buzău County",
+   "cityName": "Buzău",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "opiniabuzau"
+  },
+  {
+   "sourceId": "ro-mesagerulneamt",
+   "countryCode": "RO",
+   "publisherName": "Mesagerul de Neamț",
+   "publisherType": "newspaper",
+   "url": "https://www.mesagerulneamt.ro/feed/",
+   "geographicScope": "local",
+   "regionName": "Neamț County",
+   "cityName": "Piatra Neamţ",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "mesagerulneamt"
+  },
+  {
+   "sourceId": "ro-monitorulbt",
+   "countryCode": "RO",
+   "publisherName": "Monitorul de Botoșani",
+   "publisherType": "newspaper",
+   "url": "https://www.monitorulbt.ro/feed/",
+   "geographicScope": "local",
+   "regionName": "Botoșani County",
+   "cityName": "Botoşani",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "monitorul-media"
+  },
+  {
+   "sourceId": "ro-svnews",
+   "countryCode": "RO",
+   "publisherName": "SV News",
+   "publisherType": "digital-native",
+   "url": "https://www.svnews.ro/feed/",
+   "geographicScope": "local",
+   "regionName": "Suceava",
+   "cityName": "Suceava",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "svnews"
+  },
+  {
+   "sourceId": "ro-gazetadebistrita",
+   "countryCode": "RO",
+   "publisherName": "Gazeta de Bistrița",
+   "publisherType": "newspaper",
+   "url": "https://www.gazetadebistrita.ro/feed/",
+   "geographicScope": "local",
+   "regionName": "Bistrița-Năsăud County",
+   "cityName": "Bistriţa",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "gazetadebistrita"
+  },
+  {
+   "sourceId": "ro-vremeanoua",
+   "countryCode": "RO",
+   "publisherName": "Vremea Nouă",
+   "publisherType": "newspaper",
+   "url": "https://www.vremeanoua.ro/feed/",
+   "geographicScope": "local",
+   "regionName": "Vaslui County",
+   "cityName": "Vaslui",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "vremeanoua"
+  },
+  {
+   "sourceId": "ro-ziarulunirea",
+   "countryCode": "RO",
+   "publisherName": "Ziarul Unirea",
+   "publisherType": "newspaper",
+   "url": "https://www.ziarulunirea.ro/feed/",
+   "geographicScope": "local",
+   "regionName": "Alba County",
+   "cityName": "Alba Iulia",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "ziarulunirea"
+  },
+  {
+   "sourceId": "ro-mytex",
+   "countryCode": "RO",
+   "publisherName": "Mytex",
+   "publisherType": "digital-native",
+   "url": "https://www.mytex.ro/rss",
+   "geographicScope": "local",
+   "regionName": "Brașov County",
+   "cityName": "Braşov",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "mytex"
+  },
+  {
+   "sourceId": "ro-adevarul-zalau",
+   "countryCode": "RO",
+   "publisherName": "Adevărul Zalău",
+   "publisherType": "newspaper",
+   "url": "https://www.adevarul.ro/rss/locale/zalau",
+   "geographicScope": "local",
+   "regionName": "Sălaj County",
+   "cityName": "Zalău",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "adevarul"
+  },
+  {
+   "sourceId": "ro-adevarul-slatina",
+   "countryCode": "RO",
+   "publisherName": "Adevărul Slatina",
+   "publisherType": "newspaper",
+   "url": "https://www.adevarul.ro/rss/locale/slatina",
+   "geographicScope": "local",
+   "regionName": "Olt",
+   "cityName": "Slatina",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "adevarul"
+  },
+  {
+   "sourceId": "ro-adevarul-targujiu",
+   "countryCode": "RO",
+   "publisherName": "Adevărul Târgu Jiu",
+   "publisherType": "newspaper",
+   "url": "https://www.adevarul.ro/rss/locale/targu-jiu",
+   "geographicScope": "local",
+   "regionName": "Gorj County",
+   "cityName": "Târgu Jiu",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "adevarul"
+  },
+  {
+   "sourceId": "ro-adevarul-resita",
+   "countryCode": "RO",
+   "publisherName": "Adevărul Reșița",
+   "publisherType": "newspaper",
+   "url": "https://www.adevarul.ro/rss/locale/resita",
+   "geographicScope": "local",
+   "regionName": "Caraș-Severin County",
+   "cityName": "Reşiţa",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "adevarul"
+  },
+  {
+   "sourceId": "ro-adevarul-alexandria",
+   "countryCode": "RO",
+   "publisherName": "Adevărul Alexandria",
+   "publisherType": "newspaper",
+   "url": "https://www.adevarul.ro/rss/locale/alexandria",
+   "geographicScope": "local",
+   "regionName": "Teleorman County",
+   "cityName": "Alexandria",
+   "languageTags": [
+    "ro-RO"
+   ],
+   "group": "adevarul"
+  },
+  {
+   "sourceId": "ua-kyivvlada",
+   "countryCode": "UA",
+   "publisherName": "Kyiv Vlada",
+   "publisherType": "digital-native",
+   "url": "https://kyivvlada.com.ua/feed/",
+   "geographicScope": "local",
+   "regionName": "Kyiv City",
+   "cityName": "Kyiv",
+   "languageTags": [
+    "uk-UA"
+   ],
+   "group": "kyivvlada"
+  },
+  {
+   "sourceId": "ua-hmarochos",
+   "countryCode": "UA",
+   "publisherName": "Hmarochos",
+   "publisherType": "digital-native",
+   "url": "https://hmarochos.kiev.ua/feed/",
+   "geographicScope": "local",
+   "regionName": "Kyiv City",
+   "cityName": "Kyiv",
+   "languageTags": [
+    "uk-UA"
+   ],
+   "group": "hmarochos"
+  },
+  {
+   "sourceId": "ua-057",
+   "countryCode": "UA",
+   "publisherName": "057.ua",
+   "publisherType": "digital-native",
+   "url": "https://www.057.ua/rss",
+   "geographicScope": "local",
+   "regionName": "Kharkiv",
+   "cityName": "Kharkiv",
+   "languageTags": [
+    "uk-UA"
+   ],
+   "group": "ria-city-sites"
+  },
+  {
+   "sourceId": "ua-objectiv",
+   "countryCode": "UA",
+   "publisherName": "Objectiv",
+   "publisherType": "broadcaster",
+   "url": "https://www.objectiv.tv/feed/",
+   "geographicScope": "local",
+   "regionName": "Kharkiv",
+   "cityName": "Kharkiv",
+   "languageTags": [
+    "uk-UA"
+   ],
+   "group": "objectiv"
+  },
+  {
+   "sourceId": "ua-mykharkov",
+   "countryCode": "UA",
+   "publisherName": "MyKharkov.info",
+   "publisherType": "digital-native",
+   "url": "https://mykharkov.info/feed",
+   "geographicScope": "local",
+   "regionName": "Kharkiv",
+   "cityName": "Kharkiv",
+   "languageTags": [
+    "uk-UA"
+   ],
+   "group": "mykharkov"
+  },
+  {
+   "sourceId": "ua-048",
+   "countryCode": "UA",
+   "publisherName": "048.ua",
+   "publisherType": "digital-native",
+   "url": "https://www.048.ua/rss",
+   "geographicScope": "local",
+   "regionName": "Odesa",
+   "cityName": "Odesa",
+   "languageTags": [
+    "uk-UA"
+   ],
+   "group": "ria-city-sites"
+  },
+  {
+   "sourceId": "ua-odessalife",
+   "countryCode": "UA",
+   "publisherName": "Odessa-Life",
+   "publisherType": "digital-native",
+   "url": "https://odessa-life.od.ua/feed",
+   "geographicScope": "local",
+   "regionName": "Odesa",
+   "cityName": "Odesa",
+   "languageTags": [
+    "uk-UA"
+   ],
+   "group": "odessa-life"
+  },
+  {
+   "sourceId": "ua-056",
+   "countryCode": "UA",
+   "publisherName": "056.ua",
+   "publisherType": "digital-native",
+   "url": "https://www.056.ua/rss",
+   "geographicScope": "local",
+   "regionName": "Dnipropetrovsk",
+   "cityName": "Dnipro",
+   "languageTags": [
+    "uk-UA"
+   ],
+   "group": "ria-city-sites"
+  },
+  {
+   "sourceId": "ua-nashemisto",
+   "countryCode": "UA",
+   "publisherName": "Nashe Misto",
+   "publisherType": "newspaper",
+   "url": "https://nashemisto.dp.ua/feed/",
+   "geographicScope": "local",
+   "regionName": "Dnipropetrovsk",
+   "cityName": "Dnipro",
+   "languageTags": [
+    "uk-UA"
+   ],
+   "group": "nashemisto"
+  },
+  {
+   "sourceId": "ua-0564",
+   "countryCode": "UA",
+   "publisherName": "0564.ua",
+   "publisherType": "digital-native",
+   "url": "https://www.0564.ua/rss",
+   "geographicScope": "local",
+   "regionName": "Dnipropetrovsk",
+   "cityName": "Kryvyy Rih",
+   "languageTags": [
+    "uk-UA"
+   ],
+   "group": "ria-city-sites"
+  },
+  {
+   "sourceId": "ua-032",
+   "countryCode": "UA",
+   "publisherName": "032.ua",
+   "publisherType": "digital-native",
+   "url": "https://www.032.ua/rss",
+   "geographicScope": "local",
+   "regionName": "Lviv",
+   "cityName": "Lviv",
+   "languageTags": [
+    "uk-UA"
+   ],
+   "group": "ria-city-sites"
+  },
+  {
+   "sourceId": "ua-zaxid",
+   "countryCode": "UA",
+   "publisherName": "Zaxid.net",
+   "publisherType": "digital-native",
+   "url": "https://zaxid.net/rss/all.xml",
+   "geographicScope": "local",
+   "regionName": "Lviv",
+   "cityName": "Lviv",
+   "languageTags": [
+    "uk-UA"
+   ],
+   "group": "zaxid"
+  },
+  {
+   "sourceId": "ua-tvoemisto",
+   "countryCode": "UA",
+   "publisherName": "Tvoe Misto",
+   "publisherType": "digital-native",
+   "url": "https://tvoemisto.tv/rss/lviv",
+   "geographicScope": "local",
+   "regionName": "Lviv",
+   "cityName": "Lviv",
+   "languageTags": [
+    "uk-UA"
+   ],
+   "group": "tvoemisto"
+  },
+  {
+   "sourceId": "ua-061",
+   "countryCode": "UA",
+   "publisherName": "061.ua",
+   "publisherType": "digital-native",
+   "url": "https://www.061.ua/rss",
+   "geographicScope": "local",
+   "regionName": "Zaporizhzhia",
+   "cityName": "Zaporizhzhya",
+   "languageTags": [
+    "uk-UA"
+   ],
+   "group": "ria-city-sites"
+  },
+  {
+   "sourceId": "ua-industrialka",
+   "countryCode": "UA",
+   "publisherName": "Industrialnoe Zaporozhye",
+   "publisherType": "newspaper",
+   "url": "https://iz.com.ua/feed/",
+   "geographicScope": "local",
+   "regionName": "Zaporizhzhia",
+   "cityName": "Zaporizhzhya",
+   "languageTags": [
+    "uk-UA"
+   ],
+   "group": "industrialka"
+  },
+  {
+   "sourceId": "ua-0512",
+   "countryCode": "UA",
+   "publisherName": "0512.com.ua",
+   "publisherType": "digital-native",
+   "url": "https://www.0512.com.ua/rss",
+   "geographicScope": "local",
+   "regionName": "Mykolaiv",
+   "cityName": "Mykolayiv",
+   "languageTags": [
+    "uk-UA"
+   ],
+   "group": "ria-city-sites"
+  },
+  {
+   "sourceId": "ua-20minut",
+   "countryCode": "UA",
+   "publisherName": "20 Khvylyn",
+   "publisherType": "digital-native",
+   "url": "https://www.20minut.ua/rss",
+   "geographicScope": "local",
+   "regionName": "Vinnytsia",
+   "cityName": "Vinnytsya",
+   "languageTags": [
+    "uk-UA"
+   ],
+   "group": "20minut"
+  },
+  {
+   "sourceId": "ua-0462",
+   "countryCode": "UA",
+   "publisherName": "0462.ua",
+   "publisherType": "digital-native",
+   "url": "https://www.0462.ua/rss",
+   "geographicScope": "local",
+   "regionName": "Chernihiv Oblast",
+   "cityName": "Chernihiv",
+   "languageTags": [
+    "uk-UA"
+   ],
+   "group": "ria-city-sites"
+  },
+  {
+   "sourceId": "ua-0532",
+   "countryCode": "UA",
+   "publisherName": "0532.ua",
+   "publisherType": "digital-native",
+   "url": "https://www.0532.ua/rss",
+   "geographicScope": "local",
+   "regionName": "Poltava",
+   "cityName": "Poltava",
+   "languageTags": [
+    "uk-UA"
+   ],
+   "group": "ria-city-sites"
+  },
+  {
+   "sourceId": "ua-0382",
+   "countryCode": "UA",
+   "publisherName": "0382.ua",
+   "publisherType": "digital-native",
+   "url": "https://www.0382.ua/rss",
+   "geographicScope": "local",
+   "regionName": "Khmelnytskyi",
+   "cityName": "Khmelnytskyi",
+   "languageTags": [
+    "uk-UA"
+   ],
+   "group": "ria-city-sites"
+  },
+  {
+   "sourceId": "ua-0472",
+   "countryCode": "UA",
+   "publisherName": "0472.ua",
+   "publisherType": "digital-native",
+   "url": "https://www.0472.ua/rss",
+   "geographicScope": "local",
+   "regionName": "Cherkasy",
+   "cityName": "Cherkasy",
+   "languageTags": [
+    "uk-UA"
+   ],
+   "group": "ria-city-sites"
+  },
+  {
+   "sourceId": "ua-0372",
+   "countryCode": "UA",
+   "publisherName": "0372.ua",
+   "publisherType": "digital-native",
+   "url": "https://www.0372.ua/rss",
+   "geographicScope": "local",
+   "regionName": "Chernivtsi",
+   "cityName": "Chernivtsi",
+   "languageTags": [
+    "uk-UA"
+   ],
+   "group": "ria-city-sites"
+  },
+  {
+   "sourceId": "ua-0412",
+   "countryCode": "UA",
+   "publisherName": "0412.ua",
+   "publisherType": "digital-native",
+   "url": "https://www.0412.ua/rss",
+   "geographicScope": "local",
+   "regionName": "Zhytomyr Oblast",
+   "cityName": "Zhytomyr",
+   "languageTags": [
+    "uk-UA"
+   ],
+   "group": "ria-city-sites"
+  },
+  {
+   "sourceId": "ua-0542",
+   "countryCode": "UA",
+   "publisherName": "0542.ua",
+   "publisherType": "digital-native",
+   "url": "https://www.0542.ua/rss",
+   "geographicScope": "local",
+   "regionName": "Sumy",
+   "cityName": "Sumy",
+   "languageTags": [
+    "uk-UA"
+   ],
+   "group": "ria-city-sites"
+  },
+  {
+   "sourceId": "ua-0362",
+   "countryCode": "UA",
+   "publisherName": "0362.ua",
+   "publisherType": "digital-native",
+   "url": "https://www.0362.ua/rss",
+   "geographicScope": "local",
+   "regionName": "Rivne Oblast",
+   "cityName": "Rivne",
+   "languageTags": [
+    "uk-UA"
+   ],
+   "group": "ria-city-sites"
+  },
+  {
+   "sourceId": "ua-0342",
+   "countryCode": "UA",
+   "publisherName": "0342.ua",
+   "publisherType": "digital-native",
+   "url": "https://www.0342.ua/rss",
+   "geographicScope": "local",
+   "regionName": "Ivano-Frankivsk",
+   "cityName": "Ivano-Frankivsk",
+   "languageTags": [
+    "uk-UA"
+   ],
+   "group": "ria-city-sites"
+  },
+  {
+   "sourceId": "ua-0352",
+   "countryCode": "UA",
+   "publisherName": "0352.ua",
+   "publisherType": "digital-native",
+   "url": "https://www.0352.ua/rss",
+   "geographicScope": "local",
+   "regionName": "Ternopil",
+   "cityName": "Ternopil",
+   "languageTags": [
+    "uk-UA"
+   ],
+   "group": "ria-city-sites"
+  },
+  {
+   "sourceId": "ua-0522",
+   "countryCode": "UA",
+   "publisherName": "0522.ua",
+   "publisherType": "digital-native",
+   "url": "https://www.0522.ua/rss",
+   "geographicScope": "local",
+   "regionName": "Kirovohrad",
+   "cityName": "Kropyvnytskyi",
+   "languageTags": [
+    "uk-UA"
+   ],
+   "group": "ria-city-sites"
+  },
+  {
+   "sourceId": "ua-0332",
+   "countryCode": "UA",
+   "publisherName": "0332.ua",
+   "publisherType": "digital-native",
+   "url": "https://www.0332.ua/rss",
+   "geographicScope": "local",
+   "regionName": "Volyn",
+   "cityName": "Lutsk",
+   "languageTags": [
+    "uk-UA"
+   ],
+   "group": "ria-city-sites"
+  },
+  {
+   "sourceId": "ua-0312",
+   "countryCode": "UA",
+   "publisherName": "0312.ua",
+   "publisherType": "digital-native",
+   "url": "https://www.0312.ua/rss",
+   "geographicScope": "local",
+   "regionName": "Zakarpattia",
+   "cityName": "Uzhhorod",
+   "languageTags": [
+    "uk-UA"
+   ],
+   "group": "ria-city-sites"
+  },
+  {
+   "sourceId": "ua-0552",
+   "countryCode": "UA",
+   "publisherName": "0552.ua",
+   "publisherType": "digital-native",
+   "url": "https://www.0552.ua/rss",
+   "geographicScope": "local",
+   "regionName": "Kherson",
+   "cityName": "Kherson",
+   "languageTags": [
+    "uk-UA"
+   ],
+   "group": "ria-city-sites"
+  },
+  {
+   "sourceId": "ua-most-ks",
+   "countryCode": "UA",
+   "publisherName": "MOST",
+   "publisherType": "digital-native",
+   "url": "https://most.ks.ua/rss/",
+   "geographicScope": "local",
+   "regionName": "Kherson",
+   "cityName": "Kherson",
+   "languageTags": [
+    "uk-UA"
+   ],
+   "group": "most-ks"
+  },
+  {
+   "sourceId": "ua-0629",
+   "countryCode": "UA",
+   "publisherName": "0629.com.ua",
+   "publisherType": "digital-native",
+   "url": "https://www.0629.com.ua/rss",
+   "geographicScope": "local",
+   "regionName": "Donetsk",
+   "cityName": "Mariupol",
+   "languageTags": [
+    "uk-UA"
+   ],
+   "group": "ria-city-sites"
+  },
+  {
+   "sourceId": "tr-sabah-istanbul",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Istanbul)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/istanbul.xml",
+   "geographicScope": "local",
+   "regionName": "Istanbul",
+   "cityName": "Istanbul",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-ankara",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Ankara)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/ankara.xml",
+   "geographicScope": "local",
+   "regionName": "Ankara",
+   "cityName": "Ankara",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-izmir",
+   "countryCode": "TR",
+   "publisherName": "Sabah (İzmir)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/izmir.xml",
+   "geographicScope": "local",
+   "regionName": "İzmir Province",
+   "cityName": "İzmir",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-bursa",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Bursa)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/bursa.xml",
+   "geographicScope": "local",
+   "regionName": "Bursa Province",
+   "cityName": "Bursa",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-gaziantep",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Gaziantep)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/gaziantep.xml",
+   "geographicScope": "local",
+   "regionName": "Gaziantep",
+   "cityName": "Gaziantep",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-diyarbakir",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Diyarbakır)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/diyarbakir.xml",
+   "geographicScope": "local",
+   "regionName": "Diyarbakır Province",
+   "cityName": "Diyarbakır",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-adana",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Adana)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/adana.xml",
+   "geographicScope": "local",
+   "regionName": "Adana",
+   "cityName": "Adana",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-kayseri",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Kayseri)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/kayseri.xml",
+   "geographicScope": "local",
+   "regionName": "Kayseri",
+   "cityName": "Kayseri",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-antalya",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Antalya)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/antalya.xml",
+   "geographicScope": "local",
+   "regionName": "Antalya",
+   "cityName": "Antalya",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-eskisehir",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Eskişehir)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/eskisehir.xml",
+   "geographicScope": "local",
+   "regionName": "Eskişehir",
+   "cityName": "Eskişehir",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-erzurum",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Erzurum)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/erzurum.xml",
+   "geographicScope": "local",
+   "regionName": "Erzurum",
+   "cityName": "Erzurum",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-malatya",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Malatya)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/malatya.xml",
+   "geographicScope": "local",
+   "regionName": "Malatya",
+   "cityName": "Malatya",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-van",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Van)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/van.xml",
+   "geographicScope": "local",
+   "regionName": "Van",
+   "cityName": "Van",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-sanliurfa",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Şanlıurfa)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/sanliurfa.xml",
+   "geographicScope": "local",
+   "regionName": "Şanlıurfa",
+   "cityName": "Şanlıurfa",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-elazig",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Elazığ)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/elazig.xml",
+   "geographicScope": "local",
+   "regionName": "Elazığ",
+   "cityName": "Elazığ",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-hatay",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Antakya)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/hatay.xml",
+   "geographicScope": "local",
+   "regionName": "Hatay",
+   "cityName": "Antakya",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-samsun",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Samsun)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/samsun.xml",
+   "geographicScope": "local",
+   "regionName": "Samsun",
+   "cityName": "Samsun",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-kahramanmaras",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Kahramanmaraş)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/kahramanmaras.xml",
+   "geographicScope": "local",
+   "regionName": "Kahramanmaraş",
+   "cityName": "Kahramanmaraş",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-usak",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Uşak)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/usak.xml",
+   "geographicScope": "local",
+   "regionName": "Uşak",
+   "cityName": "Uşak",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-aksaray",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Aksaray)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/aksaray.xml",
+   "geographicScope": "local",
+   "regionName": "Aksaray",
+   "cityName": "Aksaray",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-sakarya",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Adapazarı)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/sakarya.xml",
+   "geographicScope": "local",
+   "regionName": "Sakarya",
+   "cityName": "Adapazarı",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-kocaeli",
+   "countryCode": "TR",
+   "publisherName": "Sabah (İzmit)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/kocaeli.xml",
+   "geographicScope": "local",
+   "regionName": "Kocaeli",
+   "cityName": "İzmit",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-corum",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Çorum)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/corum.xml",
+   "geographicScope": "local",
+   "regionName": "Çorum",
+   "cityName": "Çorum",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-trabzon",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Trabzon)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/trabzon.xml",
+   "geographicScope": "local",
+   "regionName": "Trabzon",
+   "cityName": "Trabzon",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-manisa",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Manisa)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/manisa.xml",
+   "geographicScope": "local",
+   "regionName": "Manisa",
+   "cityName": "Manisa",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-balikesir",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Balıkesir)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/balikesir.xml",
+   "geographicScope": "local",
+   "regionName": "Balıkesir",
+   "cityName": "Balıkesir",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-ordu",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Ordu)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/ordu.xml",
+   "geographicScope": "local",
+   "regionName": "Ordu",
+   "cityName": "Ordu",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-osmaniye",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Osmaniye)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/osmaniye.xml",
+   "geographicScope": "local",
+   "regionName": "Osmaniye",
+   "cityName": "Osmaniye",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-tekirdag",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Tekirdağ)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/tekirdag.xml",
+   "geographicScope": "local",
+   "regionName": "Tekirdağ",
+   "cityName": "Tekirdağ",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-duzce",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Düzce)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/duzce.xml",
+   "geographicScope": "local",
+   "regionName": "Düzce",
+   "cityName": "Düzce",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-kutahya",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Kütahya)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/kutahya.xml",
+   "geographicScope": "local",
+   "regionName": "Kütahya",
+   "cityName": "Kütahya",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-bolu",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Bolu)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/bolu.xml",
+   "geographicScope": "local",
+   "regionName": "Bolu",
+   "cityName": "Bolu",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-edirne",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Edirne)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/edirne.xml",
+   "geographicScope": "local",
+   "regionName": "Edirne",
+   "cityName": "Edirne",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-mardin",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Mardin)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/mardin.xml",
+   "geographicScope": "local",
+   "regionName": "Mardin",
+   "cityName": "Mardin",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-canakkale",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Çanakkale)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/canakkale.xml",
+   "geographicScope": "local",
+   "regionName": "Canakkale",
+   "cityName": "Çanakkale",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-tokat",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Tokat)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/tokat.xml",
+   "geographicScope": "local",
+   "regionName": "Tokat Province",
+   "cityName": "Tokat",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-giresun",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Giresun)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/giresun.xml",
+   "geographicScope": "local",
+   "regionName": "Giresun",
+   "cityName": "Giresun",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-rize",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Rize)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/rize.xml",
+   "geographicScope": "local",
+   "regionName": "Rize Province",
+   "cityName": "Rize",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-zonguldak",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Zonguldak)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/zonguldak.xml",
+   "geographicScope": "local",
+   "regionName": "Zonguldak Province",
+   "cityName": "Zonguldak",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-adiyaman",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Adıyaman)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/adiyaman.xml",
+   "geographicScope": "local",
+   "regionName": "Adıyaman Province",
+   "cityName": "Adıyaman",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-sabah-afyonkarahisar",
+   "countryCode": "TR",
+   "publisherName": "Sabah (Afyonkarahisar)",
+   "publisherType": "newspaper",
+   "url": "https://www.sabah.com.tr/rss/afyonkarahisar.xml",
+   "geographicScope": "local",
+   "regionName": "Afyonkarahisar Province",
+   "cityName": "Afyonkarahisar",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-yeniasir-izmir",
+   "countryCode": "TR",
+   "publisherName": "Yeni Asır",
+   "publisherType": "newspaper",
+   "url": "https://www.yeniasir.com.tr/rss/izmir.xml",
+   "geographicScope": "local",
+   "regionName": "İzmir Province",
+   "cityName": "İzmir",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "turkuvaz"
+  },
+  {
+   "sourceId": "tr-egedesonsoz",
+   "countryCode": "TR",
+   "publisherName": "Ege'de Son Söz",
+   "publisherType": "newspaper",
+   "url": "https://www.egedesonsoz.com/rss",
+   "geographicScope": "local",
+   "regionName": "İzmir Province",
+   "cityName": "İzmir",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "egedesonsoz"
+  },
+  {
+   "sourceId": "tr-olay-bursa",
+   "countryCode": "TR",
+   "publisherName": "Olay",
+   "publisherType": "newspaper",
+   "url": "https://www.olay.com.tr/rss",
+   "geographicScope": "local",
+   "regionName": "Bursa Province",
+   "cityName": "Bursa",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "olay"
+  },
+  {
+   "sourceId": "tr-bursahakimiyet",
+   "countryCode": "TR",
+   "publisherName": "Bursa Hakimiyet",
+   "publisherType": "newspaper",
+   "url": "https://www.bursahakimiyet.com.tr/rss",
+   "geographicScope": "local",
+   "regionName": "Bursa Province",
+   "cityName": "Bursa",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "bursahakimiyet"
+  },
+  {
+   "sourceId": "tr-antalyakorfez",
+   "countryCode": "TR",
+   "publisherName": "Antalya Körfez",
+   "publisherType": "newspaper",
+   "url": "https://www.antalyakorfez.com/rss",
+   "geographicScope": "local",
+   "regionName": "Antalya",
+   "cityName": "Antalya",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "antalyakorfez"
+  },
+  {
+   "sourceId": "tr-diyarbakirsoz",
+   "countryCode": "TR",
+   "publisherName": "Diyarbakır Söz",
+   "publisherType": "newspaper",
+   "url": "https://www.diyarbakirsoz.com/rss/rss",
+   "geographicScope": "local",
+   "regionName": "Diyarbakır Province",
+   "cityName": "Diyarbakır",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "diyarbakirsoz"
+  },
+  {
+   "sourceId": "tr-eskisehirhaber",
+   "countryCode": "TR",
+   "publisherName": "Eskişehir Haber",
+   "publisherType": "digital-native",
+   "url": "https://www.eskisehirhaber.com/rss",
+   "geographicScope": "local",
+   "regionName": "Eskişehir",
+   "cityName": "Eskişehir",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "eskisehirhaber"
+  },
+  {
+   "sourceId": "tr-haberankara",
+   "countryCode": "TR",
+   "publisherName": "Haber Ankara",
+   "publisherType": "digital-native",
+   "url": "https://www.haberankara.com/rss",
+   "geographicScope": "local",
+   "regionName": "Ankara",
+   "cityName": "Ankara",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "haberankara"
+  },
+  {
+   "sourceId": "tr-mersinim",
+   "countryCode": "TR",
+   "publisherName": "Mersinim",
+   "publisherType": "digital-native",
+   "url": "https://www.mersinim.net/rss",
+   "geographicScope": "local",
+   "regionName": "Mersin",
+   "cityName": "Mersin",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "mersinim"
+  },
+  {
+   "sourceId": "tr-haber61",
+   "countryCode": "TR",
+   "publisherName": "Haber61",
+   "publisherType": "digital-native",
+   "url": "https://www.haber61.net/rss",
+   "geographicScope": "local",
+   "regionName": "Trabzon",
+   "cityName": "Trabzon",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "haber61"
+  },
+  {
+   "sourceId": "tr-samsungazetesi",
+   "countryCode": "TR",
+   "publisherName": "Samsun Gazetesi",
+   "publisherType": "newspaper",
+   "url": "https://www.samsungazetesi.com.tr/rss",
+   "geographicScope": "local",
+   "regionName": "Samsun",
+   "cityName": "Samsun",
+   "languageTags": [
+    "tr-TR"
+   ],
+   "group": "samsungazetesi"
+  },
+  {
+   "sourceId": "ru-msk1",
+   "countryCode": "RU",
+   "publisherName": "MSK1.ru",
+   "publisherType": "digital-native",
+   "url": "https://msk1.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Moscow",
+   "cityName": "Moscow",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-ngs",
+   "countryCode": "RU",
+   "publisherName": "NGS.ru",
+   "publisherType": "digital-native",
+   "url": "https://ngs.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Novosibirsk Oblast",
+   "cityName": "Novosibirsk",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-e1",
+   "countryCode": "RU",
+   "publisherName": "E1.ru",
+   "publisherType": "digital-native",
+   "url": "https://www.e1.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Sverdlovsk Oblast",
+   "cityName": "Yekaterinburg",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-nn",
+   "countryCode": "RU",
+   "publisherName": "NN.ru",
+   "publisherType": "digital-native",
+   "url": "https://www.nn.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Nizhny Novgorod Oblast",
+   "cityName": "Nizhniy Novgorod",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-116",
+   "countryCode": "RU",
+   "publisherName": "116.ru",
+   "publisherType": "digital-native",
+   "url": "https://116.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Tatarstan Republic",
+   "cityName": "Kazan",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-74",
+   "countryCode": "RU",
+   "publisherName": "74.ru",
+   "publisherType": "digital-native",
+   "url": "https://74.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Chelyabinsk",
+   "cityName": "Chelyabinsk",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-ngs55",
+   "countryCode": "RU",
+   "publisherName": "NGS55.ru",
+   "publisherType": "digital-native",
+   "url": "https://ngs55.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Omsk Oblast",
+   "cityName": "Omsk",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-63",
+   "countryCode": "RU",
+   "publisherName": "63.ru",
+   "publisherType": "digital-native",
+   "url": "https://63.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Samara Oblast",
+   "cityName": "Samara",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-161",
+   "countryCode": "RU",
+   "publisherName": "161.ru",
+   "publisherType": "digital-native",
+   "url": "https://161.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Rostov",
+   "cityName": "Rostov-on-Don",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-ufa1",
+   "countryCode": "RU",
+   "publisherName": "UFA1.ru",
+   "publisherType": "digital-native",
+   "url": "https://ufa1.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Bashkortostan Republic",
+   "cityName": "Ufa",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-ngs24",
+   "countryCode": "RU",
+   "publisherName": "NGS24.ru",
+   "publisherType": "digital-native",
+   "url": "https://ngs24.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Krasnoyarsk Krai",
+   "cityName": "Krasnoyarsk",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-v1",
+   "countryCode": "RU",
+   "publisherName": "V1.ru",
+   "publisherType": "digital-native",
+   "url": "https://v1.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Volgograd Oblast",
+   "cityName": "Volgograd",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-59",
+   "countryCode": "RU",
+   "publisherName": "59.ru",
+   "publisherType": "digital-native",
+   "url": "https://59.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Perm Krai",
+   "cityName": "Perm",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-93",
+   "countryCode": "RU",
+   "publisherName": "93.ru",
+   "publisherType": "digital-native",
+   "url": "https://93.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Krasnodar Krai",
+   "cityName": "Krasnodar",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-164",
+   "countryCode": "RU",
+   "publisherName": "164.ru",
+   "publisherType": "digital-native",
+   "url": "https://164.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Saratov Oblast",
+   "cityName": "Saratov",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-72",
+   "countryCode": "RU",
+   "publisherName": "72.ru",
+   "publisherType": "digital-native",
+   "url": "https://72.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Tyumen Oblast",
+   "cityName": "Tyumen",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-173",
+   "countryCode": "RU",
+   "publisherName": "173.ru",
+   "publisherType": "digital-native",
+   "url": "https://173.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Ulyanovsk",
+   "cityName": "Ulyanovsk",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-ircity",
+   "countryCode": "RU",
+   "publisherName": "IRCITY.ru",
+   "publisherType": "digital-native",
+   "url": "https://ircity.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Irkutsk Oblast",
+   "cityName": "Irkutsk",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-76",
+   "countryCode": "RU",
+   "publisherName": "76.ru",
+   "publisherType": "digital-native",
+   "url": "https://76.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Yaroslavl Oblast",
+   "cityName": "Yaroslavl",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-ngs42",
+   "countryCode": "RU",
+   "publisherName": "NGS42.ru",
+   "publisherType": "digital-native",
+   "url": "https://ngs42.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Kuzbass",
+   "cityName": "Kemerovo",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-56",
+   "countryCode": "RU",
+   "publisherName": "56.ru",
+   "publisherType": "digital-native",
+   "url": "https://56.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Orenburg Oblast",
+   "cityName": "Orenburg",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-62",
+   "countryCode": "RU",
+   "publisherName": "62.ru",
+   "publisherType": "digital-native",
+   "url": "https://62.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Ryazan Oblast",
+   "cityName": "Ryazan’",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-48",
+   "countryCode": "RU",
+   "publisherName": "48.ru",
+   "publisherType": "digital-native",
+   "url": "https://48.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Lipetsk Oblast",
+   "cityName": "Lipetsk",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-43",
+   "countryCode": "RU",
+   "publisherName": "43.ru",
+   "publisherType": "digital-native",
+   "url": "https://43.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Kirov Oblast",
+   "cityName": "Kirov",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-sochi1",
+   "countryCode": "RU",
+   "publisherName": "Sochi1.ru",
+   "publisherType": "digital-native",
+   "url": "https://sochi1.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Krasnodar Krai",
+   "cityName": "Sochi",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-29",
+   "countryCode": "RU",
+   "publisherName": "29.ru",
+   "publisherType": "digital-native",
+   "url": "https://29.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Arkhangelskaya",
+   "cityName": "Arkhangel’sk",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-14",
+   "countryCode": "RU",
+   "publisherName": "14.ru",
+   "publisherType": "digital-native",
+   "url": "https://14.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Sakha",
+   "cityName": "Yakutsk",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-26",
+   "countryCode": "RU",
+   "publisherName": "26.ru",
+   "publisherType": "digital-native",
+   "url": "https://26.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Stavropol Kray",
+   "cityName": "Stavropol",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-35",
+   "countryCode": "RU",
+   "publisherName": "35.ru",
+   "publisherType": "digital-native",
+   "url": "https://35.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Vologda Oblast",
+   "cityName": "Vologda",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-51",
+   "countryCode": "RU",
+   "publisherName": "51.ru",
+   "publisherType": "digital-native",
+   "url": "https://51.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Murmansk",
+   "cityName": "Murmansk",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-53",
+   "countryCode": "RU",
+   "publisherName": "53.ru",
+   "publisherType": "digital-native",
+   "url": "https://53.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Novgorod Oblast",
+   "cityName": "Velikiy Novgorod",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-60",
+   "countryCode": "RU",
+   "publisherName": "60.ru",
+   "publisherType": "digital-native",
+   "url": "https://60.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Pskov Oblast",
+   "cityName": "Pskov",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-68",
+   "countryCode": "RU",
+   "publisherName": "68.ru",
+   "publisherType": "digital-native",
+   "url": "https://68.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Tambov Oblast",
+   "cityName": "Tambov",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-45",
+   "countryCode": "RU",
+   "publisherName": "45.ru",
+   "publisherType": "digital-native",
+   "url": "https://45.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Kurgan Oblast",
+   "cityName": "Kurgan",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-86",
+   "countryCode": "RU",
+   "publisherName": "86.ru",
+   "publisherType": "digital-native",
+   "url": "https://86.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Khanty-Mansia",
+   "cityName": "Khanty-Mansiysk",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-89",
+   "countryCode": "RU",
+   "publisherName": "89.ru",
+   "publisherType": "digital-native",
+   "url": "https://89.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Yamalo-Nenets",
+   "cityName": "Salekhard",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-chita",
+   "countryCode": "RU",
+   "publisherName": "Chita.ru",
+   "publisherType": "digital-native",
+   "url": "https://www.chita.ru/rss-feeds/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Zabaykalskiy (Transbaikal) Kray",
+   "cityName": "Chita",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "hearst-shkulev"
+  },
+  {
+   "sourceId": "ru-kommersant-piter",
+   "countryCode": "RU",
+   "publisherName": "Kommersant (St. Petersburg)",
+   "publisherType": "newspaper",
+   "url": "https://www.kommersant.ru/rss/regions/piter_all.xml",
+   "geographicScope": "regional",
+   "regionName": "St. Petersburg",
+   "cityName": null,
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "kommersant"
+  },
+  {
+   "sourceId": "ru-kommersant-ekaterinburg",
+   "countryCode": "RU",
+   "publisherName": "Kommersant (Sverdlovsk Oblast)",
+   "publisherType": "newspaper",
+   "url": "https://www.kommersant.ru/rss/regions/ekaterinburg_all.xml",
+   "geographicScope": "regional",
+   "regionName": "Sverdlovsk Oblast",
+   "cityName": null,
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "kommersant"
+  },
+  {
+   "sourceId": "ru-kommersant-nnov",
+   "countryCode": "RU",
+   "publisherName": "Kommersant (Nizhny Novgorod Oblast)",
+   "publisherType": "newspaper",
+   "url": "https://www.kommersant.ru/rss/regions/nnov_all.xml",
+   "geographicScope": "regional",
+   "regionName": "Nizhny Novgorod Oblast",
+   "cityName": null,
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "kommersant"
+  },
+  {
+   "sourceId": "ru-kommersant-kazan",
+   "countryCode": "RU",
+   "publisherName": "Kommersant (Tatarstan Republic)",
+   "publisherType": "newspaper",
+   "url": "https://www.kommersant.ru/rss/regions/kazan_all.xml",
+   "geographicScope": "regional",
+   "regionName": "Tatarstan Republic",
+   "cityName": null,
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "kommersant"
+  },
+  {
+   "sourceId": "ru-kommersant-chelyabinsk",
+   "countryCode": "RU",
+   "publisherName": "Kommersant (Chelyabinsk)",
+   "publisherType": "newspaper",
+   "url": "https://www.kommersant.ru/rss/regions/chelyabinsk_all.xml",
+   "geographicScope": "regional",
+   "regionName": "Chelyabinsk",
+   "cityName": null,
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "kommersant"
+  },
+  {
+   "sourceId": "ru-kommersant-samara",
+   "countryCode": "RU",
+   "publisherName": "Kommersant (Samara Oblast)",
+   "publisherType": "newspaper",
+   "url": "https://www.kommersant.ru/rss/regions/samara_all.xml",
+   "geographicScope": "regional",
+   "regionName": "Samara Oblast",
+   "cityName": null,
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "kommersant"
+  },
+  {
+   "sourceId": "ru-kommersant-rostov",
+   "countryCode": "RU",
+   "publisherName": "Kommersant (Rostov)",
+   "publisherType": "newspaper",
+   "url": "https://www.kommersant.ru/rss/regions/rostov_all.xml",
+   "geographicScope": "regional",
+   "regionName": "Rostov",
+   "cityName": null,
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "kommersant"
+  },
+  {
+   "sourceId": "ru-kommersant-ufa",
+   "countryCode": "RU",
+   "publisherName": "Kommersant (Bashkortostan Republic)",
+   "publisherType": "newspaper",
+   "url": "https://www.kommersant.ru/rss/regions/ufa_all.xml",
+   "geographicScope": "regional",
+   "regionName": "Bashkortostan Republic",
+   "cityName": null,
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "kommersant"
+  },
+  {
+   "sourceId": "ru-kommersant-perm",
+   "countryCode": "RU",
+   "publisherName": "Kommersant (Perm Krai)",
+   "publisherType": "newspaper",
+   "url": "https://www.kommersant.ru/rss/regions/perm_all.xml",
+   "geographicScope": "regional",
+   "regionName": "Perm Krai",
+   "cityName": null,
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "kommersant"
+  },
+  {
+   "sourceId": "ru-kommersant-krasnodar",
+   "countryCode": "RU",
+   "publisherName": "Kommersant (Krasnodar Krai)",
+   "publisherType": "newspaper",
+   "url": "https://www.kommersant.ru/rss/regions/krasnodar_all.xml",
+   "geographicScope": "regional",
+   "regionName": "Krasnodar Krai",
+   "cityName": null,
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "kommersant"
+  },
+  {
+   "sourceId": "ru-kommersant-saratov",
+   "countryCode": "RU",
+   "publisherName": "Kommersant (Saratov Oblast)",
+   "publisherType": "newspaper",
+   "url": "https://www.kommersant.ru/rss/regions/saratov_all.xml",
+   "geographicScope": "regional",
+   "regionName": "Saratov Oblast",
+   "cityName": null,
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "kommersant"
+  },
+  {
+   "sourceId": "ru-kommersant-vrn",
+   "countryCode": "RU",
+   "publisherName": "Kommersant (Voronezh Oblast)",
+   "publisherType": "newspaper",
+   "url": "https://www.kommersant.ru/rss/regions/vrn_all.xml",
+   "geographicScope": "regional",
+   "regionName": "Voronezh Oblast",
+   "cityName": null,
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "kommersant"
+  },
+  {
+   "sourceId": "ru-kommersant-novosibirsk",
+   "countryCode": "RU",
+   "publisherName": "Kommersant (Novosibirsk Oblast)",
+   "publisherType": "newspaper",
+   "url": "https://www.kommersant.ru/rss/regions/novosibirsk_all.xml",
+   "geographicScope": "regional",
+   "regionName": "Novosibirsk Oblast",
+   "cityName": null,
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "kommersant"
+  },
+  {
+   "sourceId": "ru-kommersant-yaroslavl",
+   "countryCode": "RU",
+   "publisherName": "Kommersant (Yaroslavl Oblast)",
+   "publisherType": "newspaper",
+   "url": "https://www.kommersant.ru/rss/regions/yaroslavl_all.xml",
+   "geographicScope": "regional",
+   "regionName": "Yaroslavl Oblast",
+   "cityName": null,
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "kommersant"
+  },
+  {
+   "sourceId": "ru-kommersant-izhevsk",
+   "countryCode": "RU",
+   "publisherName": "Kommersant (Udmurtiya Republic)",
+   "publisherType": "newspaper",
+   "url": "https://www.kommersant.ru/rss/regions/izhevsk_all.xml",
+   "geographicScope": "regional",
+   "regionName": "Udmurtiya Republic",
+   "cityName": null,
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "kommersant"
+  },
+  {
+   "sourceId": "ru-kommersant-novorossiysk",
+   "countryCode": "RU",
+   "publisherName": "Kommersant (Novorossiysk)",
+   "publisherType": "newspaper",
+   "url": "https://www.kommersant.ru/rss/regions/novorossiysk_all.xml",
+   "geographicScope": "local",
+   "regionName": "Krasnodar Krai",
+   "cityName": "Novorossiysk",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "kommersant"
+  },
+  {
+   "sourceId": "ru-kommersant-sochi",
+   "countryCode": "RU",
+   "publisherName": "Kommersant (Sochi)",
+   "publisherType": "newspaper",
+   "url": "https://www.kommersant.ru/rss/regions/sochi_all.xml",
+   "geographicScope": "local",
+   "regionName": "Krasnodar Krai",
+   "cityName": "Sochi",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "kommersant"
+  },
+  {
+   "sourceId": "ru-moskvichmag",
+   "countryCode": "RU",
+   "publisherName": "Moskvich Mag",
+   "publisherType": "magazine",
+   "url": "https://moskvichmag.ru/feed/",
+   "geographicScope": "local",
+   "regionName": "Moscow",
+   "cityName": "Moscow",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "moskvichmag"
+  },
+  {
+   "sourceId": "ru-bumaga",
+   "countryCode": "RU",
+   "publisherName": "Bumaga",
+   "publisherType": "digital-native",
+   "url": "https://paperpaper.io/feed/",
+   "geographicScope": "local",
+   "regionName": "St. Petersburg",
+   "cityName": "Saint Petersburg",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "bumaga"
+  },
+  {
+   "sourceId": "ru-business-gazeta",
+   "countryCode": "RU",
+   "publisherName": "Business Online",
+   "publisherType": "newspaper",
+   "url": "https://www.business-gazeta.ru/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Tatarstan Republic",
+   "cityName": "Kazan",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "business-gazeta"
+  },
+  {
+   "sourceId": "ru-itsmycity",
+   "countryCode": "RU",
+   "publisherName": "It's My City",
+   "publisherType": "digital-native",
+   "url": "https://itsmycity.ru/rss",
+   "geographicScope": "local",
+   "regionName": "Sverdlovsk Oblast",
+   "cityName": "Yekaterinburg",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "itsmycity"
+  },
+  {
+   "sourceId": "ru-newdaynews",
+   "countryCode": "RU",
+   "publisherName": "Novy Den",
+   "publisherType": "digital-native",
+   "url": "https://newdaynews.ru/rss/",
+   "geographicScope": "local",
+   "regionName": "Sverdlovsk Oblast",
+   "cityName": "Yekaterinburg",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "newdaynews"
+  },
+  {
+   "sourceId": "ru-moe-online",
+   "countryCode": "RU",
+   "publisherName": "Moyo! Online",
+   "publisherType": "newspaper",
+   "url": "https://moe-online.ru/rss",
+   "geographicScope": "local",
+   "regionName": "Voronezh Oblast",
+   "cityName": "Voronezh",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "moe"
+  },
+  {
+   "sourceId": "ru-altapress",
+   "countryCode": "RU",
+   "publisherName": "Altapress",
+   "publisherType": "newspaper",
+   "url": "https://altapress.ru/rss",
+   "geographicScope": "local",
+   "regionName": "Altai Krai",
+   "cityName": "Barnaul",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "altapress"
+  },
+  {
+   "sourceId": "ru-amic",
+   "countryCode": "RU",
+   "publisherName": "Amic.ru",
+   "publisherType": "digital-native",
+   "url": "https://www.amic.ru/rss",
+   "geographicScope": "local",
+   "regionName": "Altai Krai",
+   "cityName": "Barnaul",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "amic"
+  },
+  {
+   "sourceId": "ru-v-kurse",
+   "countryCode": "RU",
+   "publisherName": "V Kurse",
+   "publisherType": "digital-native",
+   "url": "https://v-kurse.ru/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Perm Krai",
+   "cityName": "Perm",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "v-kurse"
+  },
+  {
+   "sourceId": "ru-tlt",
+   "countryCode": "RU",
+   "publisherName": "TLT.ru",
+   "publisherType": "digital-native",
+   "url": "https://tlt.ru/feed/rss/",
+   "geographicScope": "local",
+   "regionName": "Samara Oblast",
+   "cityName": "Tolyatti",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "tlt"
+  },
+  {
+   "sourceId": "ru-primpress",
+   "countryCode": "RU",
+   "publisherName": "PrimPress",
+   "publisherType": "digital-native",
+   "url": "https://primpress.ru/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Primorye",
+   "cityName": "Vladivostok",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "primpress"
+  },
+  {
+   "sourceId": "ru-dvnovosti",
+   "countryCode": "RU",
+   "publisherName": "Dalnevostochnye Novosti",
+   "publisherType": "digital-native",
+   "url": "https://www.dvnovosti.ru/rss/",
+   "geographicScope": "local",
+   "regionName": "Khabarovsk",
+   "cityName": "Khabarovsk",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "dvnovosti"
+  },
+  {
+   "sourceId": "ru-tomskru",
+   "countryCode": "RU",
+   "publisherName": "Tomsk.ru",
+   "publisherType": "digital-native",
+   "url": "https://www.tomsk.ru/rss",
+   "geographicScope": "local",
+   "regionName": "Tomsk Oblast",
+   "cityName": "Tomsk",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "tomsk-ru"
+  },
+  {
+   "sourceId": "ru-newkaliningrad",
+   "countryCode": "RU",
+   "publisherName": "Novy Kaliningrad",
+   "publisherType": "digital-native",
+   "url": "https://www.newkaliningrad.ru/news/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Kaliningrad Oblast",
+   "cityName": "Kaliningrad",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "newkaliningrad"
+  },
+  {
+   "sourceId": "ru-omskinform",
+   "countryCode": "RU",
+   "publisherName": "Omskinform",
+   "publisherType": "digital-native",
+   "url": "https://www.omskinform.ru/rss",
+   "geographicScope": "local",
+   "regionName": "Omsk Oblast",
+   "cityName": "Omsk",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "omskinform"
+  },
+  {
+   "sourceId": "ru-kp40",
+   "countryCode": "RU",
+   "publisherName": "KP40",
+   "publisherType": "digital-native",
+   "url": "https://kp40.ru/kp40.ru_news.rss",
+   "geographicScope": "local",
+   "regionName": "Kaluga Oblast",
+   "cityName": "Kaluga",
+   "languageTags": [
+    "ru-RU"
+   ],
+   "group": "kp40"
+  },
+  {
+   "sourceId": "cz-idnes-prahah",
+   "countryCode": "CZ",
+   "publisherName": "iDNES.cz (Prague)",
+   "publisherType": "digital-native",
+   "url": "https://servis.idnes.cz/rss.aspx?c=prahah",
+   "geographicScope": "local",
+   "regionName": "Prague",
+   "cityName": "Prague",
+   "languageTags": [
+    "cs-CZ"
+   ],
+   "group": "mafra"
+  },
+  {
+   "sourceId": "cz-idnes-ostrava",
+   "countryCode": "CZ",
+   "publisherName": "iDNES.cz (Ostrava)",
+   "publisherType": "digital-native",
+   "url": "https://servis.idnes.cz/rss.aspx?c=ostrava",
+   "geographicScope": "local",
+   "regionName": "Moravian-Silesian Region",
+   "cityName": "Ostrava",
+   "languageTags": [
+    "cs-CZ"
+   ],
+   "group": "mafra"
+  },
+  {
+   "sourceId": "cz-idnes-plzen",
+   "countryCode": "CZ",
+   "publisherName": "iDNES.cz (Pilsen)",
+   "publisherType": "digital-native",
+   "url": "https://servis.idnes.cz/rss.aspx?c=plzen",
+   "geographicScope": "local",
+   "regionName": "Plzeň Region",
+   "cityName": "Pilsen",
+   "languageTags": [
+    "cs-CZ"
+   ],
+   "group": "mafra"
+  },
+  {
+   "sourceId": "cz-idnes-liberec",
+   "countryCode": "CZ",
+   "publisherName": "iDNES.cz (Liberec)",
+   "publisherType": "digital-native",
+   "url": "https://servis.idnes.cz/rss.aspx?c=liberec",
+   "geographicScope": "local",
+   "regionName": "Liberec Region",
+   "cityName": "Liberec",
+   "languageTags": [
+    "cs-CZ"
+   ],
+   "group": "mafra"
+  },
+  {
+   "sourceId": "cz-idnes-olomouc",
+   "countryCode": "CZ",
+   "publisherName": "iDNES.cz (Olomouc)",
+   "publisherType": "digital-native",
+   "url": "https://servis.idnes.cz/rss.aspx?c=olomouc",
+   "geographicScope": "local",
+   "regionName": "Olomouc Region",
+   "cityName": "Olomouc",
+   "languageTags": [
+    "cs-CZ"
+   ],
+   "group": "mafra"
+  },
+  {
+   "sourceId": "cz-idnes-budejovice",
+   "countryCode": "CZ",
+   "publisherName": "iDNES.cz (České Budějovice)",
+   "publisherType": "digital-native",
+   "url": "https://servis.idnes.cz/rss.aspx?c=budejovice",
+   "geographicScope": "local",
+   "regionName": "South Bohemian Region",
+   "cityName": "České Budějovice",
+   "languageTags": [
+    "cs-CZ"
+   ],
+   "group": "mafra"
+  },
+  {
+   "sourceId": "cz-idnes-hradec",
+   "countryCode": "CZ",
+   "publisherName": "iDNES.cz (Hradec Králové)",
+   "publisherType": "digital-native",
+   "url": "https://servis.idnes.cz/rss.aspx?c=hradec",
+   "geographicScope": "local",
+   "regionName": "Hradec Králové Region",
+   "cityName": "Hradec Králové",
+   "languageTags": [
+    "cs-CZ"
+   ],
+   "group": "mafra"
+  },
+  {
+   "sourceId": "cz-idnes-usti",
+   "countryCode": "CZ",
+   "publisherName": "iDNES.cz (Ústí nad Labem)",
+   "publisherType": "digital-native",
+   "url": "https://servis.idnes.cz/rss.aspx?c=usti",
+   "geographicScope": "local",
+   "regionName": "Ústí nad Labem Region",
+   "cityName": "Ústí nad Labem",
+   "languageTags": [
+    "cs-CZ"
+   ],
+   "group": "mafra"
+  },
+  {
+   "sourceId": "cz-idnes-pardubice",
+   "countryCode": "CZ",
+   "publisherName": "iDNES.cz (Pardubice)",
+   "publisherType": "digital-native",
+   "url": "https://servis.idnes.cz/rss.aspx?c=pardubice",
+   "geographicScope": "local",
+   "regionName": "Pardubice Region",
+   "cityName": "Pardubice",
+   "languageTags": [
+    "cs-CZ"
+   ],
+   "group": "mafra"
+  },
+  {
+   "sourceId": "cz-idnes-zlin",
+   "countryCode": "CZ",
+   "publisherName": "iDNES.cz (Zlín)",
+   "publisherType": "digital-native",
+   "url": "https://servis.idnes.cz/rss.aspx?c=zlin",
+   "geographicScope": "local",
+   "regionName": "Zlín",
+   "cityName": "Zlín",
+   "languageTags": [
+    "cs-CZ"
+   ],
+   "group": "mafra"
+  },
+  {
+   "sourceId": "cz-denik-prazsky",
+   "countryCode": "CZ",
+   "publisherName": "Deník (Prague)",
+   "publisherType": "newspaper",
+   "url": "https://prazsky.denik.cz/rss/vse.xml",
+   "geographicScope": "local",
+   "regionName": "Prague",
+   "cityName": "Prague",
+   "languageTags": [
+    "cs-CZ"
+   ],
+   "group": "vltava-labe-media"
+  },
+  {
+   "sourceId": "cz-denik-brnensky",
+   "countryCode": "CZ",
+   "publisherName": "Deník (Brno)",
+   "publisherType": "newspaper",
+   "url": "https://brnensky.denik.cz/rss/vse.xml",
+   "geographicScope": "local",
+   "regionName": "South Moravian",
+   "cityName": "Brno",
+   "languageTags": [
+    "cs-CZ"
+   ],
+   "group": "vltava-labe-media"
+  },
+  {
+   "sourceId": "cz-denik-moravskoslezsky",
+   "countryCode": "CZ",
+   "publisherName": "Deník (Ostrava)",
+   "publisherType": "newspaper",
+   "url": "https://moravskoslezsky.denik.cz/rss/vse.xml",
+   "geographicScope": "local",
+   "regionName": "Moravian-Silesian Region",
+   "cityName": "Ostrava",
+   "languageTags": [
+    "cs-CZ"
+   ],
+   "group": "vltava-labe-media"
+  },
+  {
+   "sourceId": "cz-denik-plzensky",
+   "countryCode": "CZ",
+   "publisherName": "Deník (Pilsen)",
+   "publisherType": "newspaper",
+   "url": "https://plzensky.denik.cz/rss/vse.xml",
+   "geographicScope": "local",
+   "regionName": "Plzeň Region",
+   "cityName": "Pilsen",
+   "languageTags": [
+    "cs-CZ"
+   ],
+   "group": "vltava-labe-media"
+  },
+  {
+   "sourceId": "cz-denik-liberecky",
+   "countryCode": "CZ",
+   "publisherName": "Deník (Liberec)",
+   "publisherType": "newspaper",
+   "url": "https://liberecky.denik.cz/rss/vse.xml",
+   "geographicScope": "local",
+   "regionName": "Liberec Region",
+   "cityName": "Liberec",
+   "languageTags": [
+    "cs-CZ"
+   ],
+   "group": "vltava-labe-media"
+  },
+  {
+   "sourceId": "cz-denik-olomoucky",
+   "countryCode": "CZ",
+   "publisherName": "Deník (Olomouc)",
+   "publisherType": "newspaper",
+   "url": "https://olomoucky.denik.cz/rss/vse.xml",
+   "geographicScope": "local",
+   "regionName": "Olomouc Region",
+   "cityName": "Olomouc",
+   "languageTags": [
+    "cs-CZ"
+   ],
+   "group": "vltava-labe-media"
+  },
+  {
+   "sourceId": "cz-denik-hradecky",
+   "countryCode": "CZ",
+   "publisherName": "Deník (Hradec Králové)",
+   "publisherType": "newspaper",
+   "url": "https://hradecky.denik.cz/rss/vse.xml",
+   "geographicScope": "local",
+   "regionName": "Hradec Králové Region",
+   "cityName": "Hradec Králové",
+   "languageTags": [
+    "cs-CZ"
+   ],
+   "group": "vltava-labe-media"
+  },
+  {
+   "sourceId": "cz-denik-ustecky",
+   "countryCode": "CZ",
+   "publisherName": "Deník (Ústí nad Labem)",
+   "publisherType": "newspaper",
+   "url": "https://ustecky.denik.cz/rss/vse.xml",
+   "geographicScope": "local",
+   "regionName": "Ústí nad Labem Region",
+   "cityName": "Ústí nad Labem",
+   "languageTags": [
+    "cs-CZ"
+   ],
+   "group": "vltava-labe-media"
+  },
+  {
+   "sourceId": "cz-denik-pardubicky",
+   "countryCode": "CZ",
+   "publisherName": "Deník (Pardubice)",
+   "publisherType": "newspaper",
+   "url": "https://pardubicky.denik.cz/rss/vse.xml",
+   "geographicScope": "local",
+   "regionName": "Pardubice Region",
+   "cityName": "Pardubice",
+   "languageTags": [
+    "cs-CZ"
+   ],
+   "group": "vltava-labe-media"
+  },
+  {
+   "sourceId": "cz-denik-zlinsky",
+   "countryCode": "CZ",
+   "publisherName": "Deník (Zlín)",
+   "publisherType": "newspaper",
+   "url": "https://zlinsky.denik.cz/rss/vse.xml",
+   "geographicScope": "local",
+   "regionName": "Zlín",
+   "cityName": "Zlín",
+   "languageTags": [
+    "cs-CZ"
+   ],
+   "group": "vltava-labe-media"
+  },
+  {
+   "sourceId": "sk-sme-bratislava",
+   "countryCode": "SK",
+   "publisherName": "SME Bratislava",
+   "publisherType": "newspaper",
+   "url": "https://bratislava.sme.sk/rss",
+   "geographicScope": "local",
+   "regionName": "Bratislava Region",
+   "cityName": "Bratislava",
+   "languageTags": [
+    "sk-SK"
+   ],
+   "group": "petit-press"
+  },
+  {
+   "sourceId": "sk-korzar-kosice",
+   "countryCode": "SK",
+   "publisherName": "Korzár Košice",
+   "publisherType": "newspaper",
+   "url": "https://kosice.korzar.sme.sk/rss",
+   "geographicScope": "local",
+   "regionName": "Košice Region",
+   "cityName": "Košice",
+   "languageTags": [
+    "sk-SK"
+   ],
+   "group": "petit-press"
+  },
+  {
+   "sourceId": "sk-kosicednes",
+   "countryCode": "SK",
+   "publisherName": "Košice:dnes",
+   "publisherType": "digital-native",
+   "url": "https://kosicednes.sk/feed/",
+   "geographicScope": "local",
+   "regionName": "Košice Region",
+   "cityName": "Košice",
+   "languageTags": [
+    "sk-SK"
+   ],
+   "group": "kosicednes"
+  },
+  {
+   "sourceId": "sk-korzar-presov",
+   "countryCode": "SK",
+   "publisherName": "Korzár Prešov",
+   "publisherType": "newspaper",
+   "url": "https://presov.korzar.sme.sk/rss",
+   "geographicScope": "local",
+   "regionName": "Prešov Region",
+   "cityName": "Prešov",
+   "languageTags": [
+    "sk-SK"
+   ],
+   "group": "petit-press"
+  },
+  {
+   "sourceId": "sk-myzilina",
+   "countryCode": "SK",
+   "publisherName": "MY Žilina",
+   "publisherType": "newspaper",
+   "url": "https://myzilina.sme.sk/rss",
+   "geographicScope": "local",
+   "regionName": "Žilina Region",
+   "cityName": "Žilina",
+   "languageTags": [
+    "sk-SK"
+   ],
+   "group": "petit-press"
+  },
+  {
+   "sourceId": "sk-mynitra",
+   "countryCode": "SK",
+   "publisherName": "MY Nitra",
+   "publisherType": "newspaper",
+   "url": "https://mynitra.sme.sk/rss",
+   "geographicScope": "local",
+   "regionName": "Nitra Region",
+   "cityName": "Nitra",
+   "languageTags": [
+    "sk-SK"
+   ],
+   "group": "petit-press"
+  },
+  {
+   "sourceId": "sk-mytrnava",
+   "countryCode": "SK",
+   "publisherName": "MY Trnava",
+   "publisherType": "newspaper",
+   "url": "https://mytrnava.sme.sk/rss",
+   "geographicScope": "local",
+   "regionName": "Trnava Region",
+   "cityName": "Trnava",
+   "languageTags": [
+    "sk-SK"
+   ],
+   "group": "petit-press"
+  },
+  {
+   "sourceId": "sk-mytrencin",
+   "countryCode": "SK",
+   "publisherName": "MY Trenčín",
+   "publisherType": "newspaper",
+   "url": "https://mytrencin.sme.sk/rss",
+   "geographicScope": "local",
+   "regionName": "Trenčín Region",
+   "cityName": "Trenčín",
+   "languageTags": [
+    "sk-SK"
+   ],
+   "group": "petit-press"
+  },
+  {
+   "sourceId": "sk-mybystrica",
+   "countryCode": "SK",
+   "publisherName": "MY Banská Bystrica",
+   "publisherType": "newspaper",
+   "url": "https://mybystrica.sme.sk/rss",
+   "geographicScope": "local",
+   "regionName": "Banská Bystrica Region",
+   "cityName": "Banská Bystrica",
+   "languageTags": [
+    "sk-SK"
+   ],
+   "group": "petit-press"
+  },
+  {
+   "sourceId": "hu-pestbuda",
+   "countryCode": "HU",
+   "publisherName": "PestBuda",
+   "publisherType": "digital-native",
+   "url": "https://pestbuda.hu/rss",
+   "geographicScope": "local",
+   "regionName": "Budapest",
+   "cityName": "Budapest",
+   "languageTags": [
+    "hu-HU"
+   ],
+   "group": "pestbuda"
+  },
+  {
+   "sourceId": "hu-debreciner",
+   "countryCode": "HU",
+   "publisherName": "Debreciner",
+   "publisherType": "digital-native",
+   "url": "https://www.debreciner.hu/rss",
+   "geographicScope": "local",
+   "regionName": "Hajdú-Bihar",
+   "cityName": "Debrecen",
+   "languageTags": [
+    "hu-HU"
+   ],
+   "group": "debreciner"
+  },
+  {
+   "sourceId": "hu-szegedma",
+   "countryCode": "HU",
+   "publisherName": "SZEGEDma",
+   "publisherType": "digital-native",
+   "url": "https://szegedma.hu/publicapi/hu/rss/szegedma/articles",
+   "geographicScope": "local",
+   "regionName": "Csongrád",
+   "cityName": "Szeged",
+   "languageTags": [
+    "hu-HU"
+   ],
+   "group": "szegedma"
+  },
+  {
+   "sourceId": "hu-minap",
+   "countryCode": "HU",
+   "publisherName": "Minap",
+   "publisherType": "digital-native",
+   "url": "https://www.minap.hu/rss",
+   "geographicScope": "local",
+   "regionName": "Borsod-Abaúj-Zemplén",
+   "cityName": "Miskolc",
+   "languageTags": [
+    "hu-HU"
+   ],
+   "group": "minap"
+  },
+  {
+   "sourceId": "hu-pecsma",
+   "countryCode": "HU",
+   "publisherName": "PécsMa",
+   "publisherType": "digital-native",
+   "url": "https://www.pecsma.hu/feed",
+   "geographicScope": "local",
+   "regionName": "Baranya",
+   "cityName": "Pécs",
+   "languageTags": [
+    "hu-HU"
+   ],
+   "group": "pecsma"
+  },
+  {
+   "sourceId": "bg-sofia24",
+   "countryCode": "BG",
+   "publisherName": "Sofia24",
+   "publisherType": "digital-native",
+   "url": "https://www.sofia24.bg/rss",
+   "geographicScope": "local",
+   "regionName": "Sofia-Capital",
+   "cityName": "Sofia",
+   "languageTags": [
+    "bg-BG"
+   ],
+   "group": "bg-24-network"
+  },
+  {
+   "sourceId": "bg-podtepeto",
+   "countryCode": "BG",
+   "publisherName": "Pod Tepeto",
+   "publisherType": "digital-native",
+   "url": "https://www.podtepeto.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Plovdiv",
+   "cityName": "Plovdiv",
+   "languageTags": [
+    "bg-BG"
+   ],
+   "group": "podtepeto"
+  },
+  {
+   "sourceId": "bg-varna24",
+   "countryCode": "BG",
+   "publisherName": "Varna24",
+   "publisherType": "digital-native",
+   "url": "https://varna24.bg/rss",
+   "geographicScope": "local",
+   "regionName": "Varna",
+   "cityName": "Varna",
+   "languageTags": [
+    "bg-BG"
+   ],
+   "group": "bg-24-network"
+  },
+  {
+   "sourceId": "bg-moreto",
+   "countryCode": "BG",
+   "publisherName": "Moreto.net",
+   "publisherType": "digital-native",
+   "url": "http://www.moreto.net/rss/lastnews-varna.xml",
+   "geographicScope": "local",
+   "regionName": "Varna",
+   "cityName": "Varna",
+   "languageTags": [
+    "bg-BG"
+   ],
+   "group": "moreto"
+  },
+  {
+   "sourceId": "bg-burgas24",
+   "countryCode": "BG",
+   "publisherName": "Burgas24",
+   "publisherType": "digital-native",
+   "url": "https://www.burgas24.bg/rss",
+   "geographicScope": "local",
+   "regionName": "Burgas",
+   "cityName": "Burgas",
+   "languageTags": [
+    "bg-BG"
+   ],
+   "group": "bg-24-network"
+  },
+  {
+   "sourceId": "bg-ruse24",
+   "countryCode": "BG",
+   "publisherName": "Ruse24",
+   "publisherType": "digital-native",
+   "url": "https://www.ruse24.bg/rss",
+   "geographicScope": "local",
+   "regionName": "Ruse",
+   "cityName": "Ruse",
+   "languageTags": [
+    "bg-BG"
+   ],
+   "group": "bg-24-network"
+  },
+  {
+   "sourceId": "gr-voria",
+   "countryCode": "GR",
+   "publisherName": "Voria.gr",
+   "publisherType": "digital-native",
+   "url": "https://www.voria.gr/rss-feed",
+   "geographicScope": "local",
+   "regionName": "Central Macedonia",
+   "cityName": "Thessaloníki",
+   "languageTags": [
+    "el-GR"
+   ],
+   "group": "voria"
+  },
+  {
+   "sourceId": "gr-makthes",
+   "countryCode": "GR",
+   "publisherName": "Makedonia",
+   "publisherType": "newspaper",
+   "url": "https://www.makthes.gr/feed",
+   "geographicScope": "local",
+   "regionName": "Central Macedonia",
+   "cityName": "Thessaloníki",
+   "languageTags": [
+    "el-GR"
+   ],
+   "group": "makthes"
+  },
+  {
+   "sourceId": "gr-pelop",
+   "countryCode": "GR",
+   "publisherName": "Peloponnisos",
+   "publisherType": "newspaper",
+   "url": "https://www.pelop.gr/feed/",
+   "geographicScope": "local",
+   "regionName": "West Greece",
+   "cityName": "Pátra",
+   "languageTags": [
+    "el-GR"
+   ],
+   "group": "pelop"
+  },
+  {
+   "sourceId": "gr-neakriti",
+   "countryCode": "GR",
+   "publisherName": "Nea Kriti",
+   "publisherType": "newspaper",
+   "url": "https://www.neakriti.gr/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Crete",
+   "cityName": "Irákleion",
+   "languageTags": [
+    "el-GR"
+   ],
+   "group": "neakriti"
+  },
+  {
+   "sourceId": "gr-larissanet",
+   "countryCode": "GR",
+   "publisherName": "LarissaNet",
+   "publisherType": "digital-native",
+   "url": "https://www.larissanet.gr/feed/",
+   "geographicScope": "local",
+   "regionName": "Thessaly",
+   "cityName": "Lárisa",
+   "languageTags": [
+    "el-GR"
+   ],
+   "group": "larissanet"
+  },
+  {
+   "sourceId": "cy-limassoltoday",
+   "countryCode": "CY",
+   "publisherName": "Limassol Today",
+   "publisherType": "digital-native",
+   "url": "https://limassoltoday.com.cy/feed/",
+   "geographicScope": "local",
+   "regionName": "Limassol",
+   "cityName": "Limassol",
+   "languageTags": [
+    "el-CY"
+   ],
+   "group": "limassoltoday"
+  },
+  {
+   "sourceId": "cy-larnakaonline",
+   "countryCode": "CY",
+   "publisherName": "Larnaka Online",
+   "publisherType": "digital-native",
+   "url": "https://www.larnakaonline.com.cy/feed/",
+   "geographicScope": "local",
+   "regionName": "Larnaka",
+   "cityName": "Larnaca",
+   "languageTags": [
+    "el-CY"
+   ],
+   "group": "larnakaonline"
+  },
+  {
+   "sourceId": "si-vecer",
+   "countryCode": "SI",
+   "publisherName": "Večer",
+   "publisherType": "newspaper",
+   "url": "https://www.vecer.com/rss",
+   "geographicScope": "local",
+   "regionName": "Urban Municipality of Maribor",
+   "cityName": "Maribor",
+   "languageTags": [
+    "sl-SI"
+   ],
+   "group": "vecer"
+  },
+  {
+   "sourceId": "si-gorenjskiglas",
+   "countryCode": "SI",
+   "publisherName": "Gorenjski glas",
+   "publisherType": "newspaper",
+   "url": "https://www.gorenjskiglas.si/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Urban Municipality of Kranj",
+   "cityName": "Kranj",
+   "languageTags": [
+    "sl-SI"
+   ],
+   "group": "gorenjskiglas"
+  },
+  {
+   "sourceId": "hr-index-zagreb",
+   "countryCode": "HR",
+   "publisherName": "Index.hr Zagreb",
+   "publisherType": "digital-native",
+   "url": "https://www.index.hr/rss/vijesti-zagreb",
+   "geographicScope": "local",
+   "regionName": "Zagreb",
+   "cityName": "Zagreb",
+   "languageTags": [
+    "hr-HR"
+   ],
+   "group": "index"
+  },
+  {
+   "sourceId": "hr-vecernji-zagreb",
+   "countryCode": "HR",
+   "publisherName": "Večernji list Zagreb",
+   "publisherType": "newspaper",
+   "url": "https://www.vecernji.hr/feeds/section/zagreb",
+   "geographicScope": "local",
+   "regionName": "Zagreb",
+   "cityName": "Zagreb",
+   "languageTags": [
+    "hr-HR"
+   ],
+   "group": "styria"
+  },
+  {
+   "sourceId": "hr-slobodnadalmacija",
+   "countryCode": "HR",
+   "publisherName": "Slobodna Dalmacija",
+   "publisherType": "newspaper",
+   "url": "https://slobodnadalmacija.hr/feed",
+   "geographicScope": "local",
+   "regionName": "Split-Dalmatia",
+   "cityName": "Split",
+   "languageTags": [
+    "hr-HR"
+   ],
+   "group": "hanza-media"
+  },
+  {
+   "sourceId": "hr-dalmacijadanas",
+   "countryCode": "HR",
+   "publisherName": "Dalmacija Danas",
+   "publisherType": "digital-native",
+   "url": "https://www.dalmacijadanas.hr/feed/",
+   "geographicScope": "local",
+   "regionName": "Split-Dalmatia",
+   "cityName": "Split",
+   "languageTags": [
+    "hr-HR"
+   ],
+   "group": "dalmacijadanas"
+  },
+  {
+   "sourceId": "hr-novilist",
+   "countryCode": "HR",
+   "publisherName": "Novi list",
+   "publisherType": "newspaper",
+   "url": "https://www.novilist.hr/feed/",
+   "geographicScope": "local",
+   "regionName": "Primorje-Gorski Kotar",
+   "cityName": "Rijeka",
+   "languageTags": [
+    "hr-HR"
+   ],
+   "group": "novilist"
+  },
+  {
+   "sourceId": "hr-glas-slavonije",
+   "countryCode": "HR",
+   "publisherName": "Glas Slavonije",
+   "publisherType": "newspaper",
+   "url": "https://www.glas-slavonije.hr/rss.xml",
+   "geographicScope": "local",
+   "regionName": "County of Osijek-Baranja",
+   "cityName": "Osijek",
+   "languageTags": [
+    "hr-HR"
+   ],
+   "group": "glas-slavonije"
+  },
+  {
+   "sourceId": "hr-zadarski",
+   "countryCode": "HR",
+   "publisherName": "Zadarski list",
+   "publisherType": "newspaper",
+   "url": "https://www.zadarski.hr/feed",
+   "geographicScope": "local",
+   "regionName": "Zadar",
+   "cityName": "Zadar",
+   "languageTags": [
+    "hr-HR"
+   ],
+   "group": "hanza-media"
+  },
+  {
+   "sourceId": "hr-glasistre",
+   "countryCode": "HR",
+   "publisherName": "Glas Istre",
+   "publisherType": "newspaper",
+   "url": "https://www.glasistre.hr/rss",
+   "geographicScope": "local",
+   "regionName": "Istria",
+   "cityName": "Pula",
+   "languageTags": [
+    "hr-HR"
+   ],
+   "group": "glasistre"
+  },
+  {
+   "sourceId": "hr-dubrovacki",
+   "countryCode": "HR",
+   "publisherName": "Dubrovački vjesnik",
+   "publisherType": "newspaper",
+   "url": "https://dubrovacki.slobodnadalmacija.hr/feed",
+   "geographicScope": "local",
+   "regionName": "Dubrovnik-Neretva",
+   "cityName": "Dubrovnik",
+   "languageTags": [
+    "hr-HR"
+   ],
+   "group": "hanza-media"
+  },
+  {
+   "sourceId": "ba-radiosarajevo",
+   "countryCode": "BA",
+   "publisherName": "Radio Sarajevo",
+   "publisherType": "broadcaster",
+   "url": "https://www.radiosarajevo.ba/rss",
+   "geographicScope": "local",
+   "regionName": "Federation of B&H",
+   "cityName": "Sarajevo",
+   "languageTags": [
+    "bs-BA"
+   ],
+   "group": "radiosarajevo"
+  },
+  {
+   "sourceId": "ba-banjalukanet",
+   "countryCode": "BA",
+   "publisherName": "BanjaLuka.net",
+   "publisherType": "digital-native",
+   "url": "https://www.banjaluka.net/feed/",
+   "geographicScope": "local",
+   "regionName": "Srpska",
+   "cityName": "Banja Luka",
+   "languageTags": [
+    "sr-BA"
+   ],
+   "group": "banjalukanet"
+  },
+  {
+   "sourceId": "ba-tuzlanski",
+   "countryCode": "BA",
+   "publisherName": "Tuzlanski.ba",
+   "publisherType": "digital-native",
+   "url": "https://www.tuzlanski.ba/rss",
+   "geographicScope": "local",
+   "regionName": "Federation of B&H",
+   "cityName": "Tuzla",
+   "languageTags": [
+    "bs-BA"
+   ],
+   "group": "tuzlanski"
+  },
+  {
+   "sourceId": "rs-blic-beograd",
+   "countryCode": "RS",
+   "publisherName": "Blic Beograd",
+   "publisherType": "newspaper",
+   "url": "https://www.blic.rs/rss/Vesti/Beograd",
+   "geographicScope": "local",
+   "regionName": "Central Serbia",
+   "cityName": "Belgrade",
+   "languageTags": [
+    "sr-RS"
+   ],
+   "group": "ringier"
+  },
+  {
+   "sourceId": "rs-danas-beograd",
+   "countryCode": "RS",
+   "publisherName": "Danas Beograd",
+   "publisherType": "newspaper",
+   "url": "https://www.danas.rs/rubrika/vesti/beograd/feed/",
+   "geographicScope": "local",
+   "regionName": "Central Serbia",
+   "cityName": "Belgrade",
+   "languageTags": [
+    "sr-RS"
+   ],
+   "group": "danas"
+  },
+  {
+   "sourceId": "rs-021",
+   "countryCode": "RS",
+   "publisherName": "021.rs",
+   "publisherType": "digital-native",
+   "url": "https://www.021.rs/rss/all",
+   "geographicScope": "local",
+   "regionName": "Vojvodina",
+   "cityName": "Novi Sad",
+   "languageTags": [
+    "sr-RS"
+   ],
+   "group": "021"
+  },
+  {
+   "sourceId": "rs-dnevnik",
+   "countryCode": "RS",
+   "publisherName": "Dnevnik",
+   "publisherType": "newspaper",
+   "url": "https://www.dnevnik.rs/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Vojvodina",
+   "cityName": "Novi Sad",
+   "languageTags": [
+    "sr-RS"
+   ],
+   "group": "dnevnik-rs"
+  },
+  {
+   "sourceId": "me-rtnk",
+   "countryCode": "ME",
+   "publisherName": "RTV Nikšić",
+   "publisherType": "broadcaster",
+   "url": "https://www.rtnk.me/feed/",
+   "geographicScope": "local",
+   "regionName": "Opština Nikšić",
+   "cityName": "Nikšić",
+   "languageTags": [
+    "sr-ME"
+   ],
+   "group": "rtnk"
+  },
+  {
+   "sourceId": "me-pvportal",
+   "countryCode": "ME",
+   "publisherName": "PV Portal",
+   "publisherType": "digital-native",
+   "url": "https://www.pvportal.me/feed/",
+   "geographicScope": "local",
+   "regionName": "Pljevlja",
+   "cityName": "Pljevlja",
+   "languageTags": [
+    "sr-ME"
+   ],
+   "group": "pvportal"
+  },
+  {
+   "sourceId": "mk-skopjeinfo",
+   "countryCode": "MK",
+   "publisherName": "Skopje Info",
+   "publisherType": "digital-native",
+   "url": "https://skopjeinfo.mk/feed/",
+   "geographicScope": "local",
+   "regionName": "Grad Skopje",
+   "cityName": "Skopje",
+   "languageTags": [
+    "mk-MK"
+   ],
+   "group": "skopjeinfo"
+  },
+  {
+   "sourceId": "mk-bitolanews",
+   "countryCode": "MK",
+   "publisherName": "Bitola News",
+   "publisherType": "digital-native",
+   "url": "https://bitolanews.mk/feed/",
+   "geographicScope": "local",
+   "regionName": "Bitola",
+   "cityName": "Bitola",
+   "languageTags": [
+    "mk-MK"
+   ],
+   "group": "bitolanews"
+  },
+  {
+   "sourceId": "al-shkodrazone",
+   "countryCode": "AL",
+   "publisherName": "Shkodra Zone",
+   "publisherType": "digital-native",
+   "url": "https://www.shkodrazone.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Shkodër County",
+   "cityName": "Shkodër",
+   "languageTags": [
+    "sq-AL"
+   ],
+   "group": "shkodrazone"
+  },
+  {
+   "sourceId": "xk-prishtinainsight",
+   "countryCode": "XK",
+   "publisherName": "Prishtina Insight",
+   "publisherType": "digital-native",
+   "url": "https://www.prishtinainsight.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Pristina",
+   "cityName": "Pristina",
+   "languageTags": [
+    "en"
+   ],
+   "group": "birn"
+  },
+  {
+   "sourceId": "ee-tartu-postimees",
+   "countryCode": "EE",
+   "publisherName": "Tartu Postimees",
+   "publisherType": "newspaper",
+   "url": "https://tartu.postimees.ee/rss",
+   "geographicScope": "local",
+   "regionName": "Tartu",
+   "cityName": "Tartu",
+   "languageTags": [
+    "et-EE"
+   ],
+   "group": "postimees"
+  },
+  {
+   "sourceId": "ee-parnu-postimees",
+   "countryCode": "EE",
+   "publisherName": "Pärnu Postimees",
+   "publisherType": "newspaper",
+   "url": "https://parnu.postimees.ee/rss",
+   "geographicScope": "local",
+   "regionName": "Pärnumaa",
+   "cityName": "Pärnu",
+   "languageTags": [
+    "et-EE"
+   ],
+   "group": "postimees"
+  },
+  {
+   "sourceId": "lv-gorod",
+   "countryCode": "LV",
+   "publisherName": "Gorod.lv",
+   "publisherType": "digital-native",
+   "url": "https://www.gorod.lv/rss",
+   "geographicScope": "local",
+   "regionName": "Daugavpils",
+   "cityName": "Daugavpils",
+   "languageTags": [
+    "ru-LV"
+   ],
+   "group": "gorod-lv"
+  },
+  {
+   "sourceId": "lv-rekurzeme",
+   "countryCode": "LV",
+   "publisherName": "ReKurzeme",
+   "publisherType": "digital-native",
+   "url": "https://rekurzeme.lv/feed/",
+   "geographicScope": "local",
+   "regionName": "Liepaja",
+   "cityName": "Liepāja",
+   "languageTags": [
+    "lv-LV"
+   ],
+   "group": "rekurzeme"
+  },
+  {
+   "sourceId": "lt-lrt-vilnius",
+   "countryCode": "LT",
+   "publisherName": "LRT (Vilnius)",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.lrt.lt/tema/vilnius?rss",
+   "geographicScope": "local",
+   "regionName": "Vilnius",
+   "cityName": "Vilnius",
+   "languageTags": [
+    "lt-LT"
+   ],
+   "group": "lrt"
+  },
+  {
+   "sourceId": "lt-lrt-kaunas",
+   "countryCode": "LT",
+   "publisherName": "LRT (Kaunas)",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.lrt.lt/tema/kaunas?rss",
+   "geographicScope": "local",
+   "regionName": "Kaunas",
+   "cityName": "Kaunas",
+   "languageTags": [
+    "lt-LT"
+   ],
+   "group": "lrt"
+  },
+  {
+   "sourceId": "lt-lrt-klaipeda",
+   "countryCode": "LT",
+   "publisherName": "LRT (Klaipėda)",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.lrt.lt/tema/klaipeda?rss",
+   "geographicScope": "local",
+   "regionName": "Klaipėda County",
+   "cityName": "Klaipėda",
+   "languageTags": [
+    "lt-LT"
+   ],
+   "group": "lrt"
+  },
+  {
+   "sourceId": "lt-lrt-siauliai",
+   "countryCode": "LT",
+   "publisherName": "LRT (Šiauliai)",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.lrt.lt/tema/siauliai?rss",
+   "geographicScope": "local",
+   "regionName": "Siauliai",
+   "cityName": "Šiauliai",
+   "languageTags": [
+    "lt-LT"
+   ],
+   "group": "lrt"
+  },
+  {
+   "sourceId": "lt-skrastas",
+   "countryCode": "LT",
+   "publisherName": "Šiaulių kraštas",
+   "publisherType": "newspaper",
+   "url": "https://www.skrastas.lt/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Siauliai",
+   "cityName": "Šiauliai",
+   "languageTags": [
+    "lt-LT"
+   ],
+   "group": "skrastas"
+  },
+  {
+   "sourceId": "lt-lrt-panevezys",
+   "countryCode": "LT",
+   "publisherName": "LRT (Panevėžys)",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.lrt.lt/tema/panevezys?rss",
+   "geographicScope": "local",
+   "regionName": "Panevėžys",
+   "cityName": "Panevėžys",
+   "languageTags": [
+    "lt-LT"
+   ],
+   "group": "lrt"
+  },
+  {
+   "sourceId": "lt-sekunde",
+   "countryCode": "LT",
+   "publisherName": "Sekundė",
+   "publisherType": "newspaper",
+   "url": "https://sekunde.lt/feed/",
+   "geographicScope": "local",
+   "regionName": "Panevėžys",
+   "cityName": "Panevėžys",
+   "languageTags": [
+    "lt-LT"
+   ],
+   "group": "sekunde"
+  },
+  {
+   "sourceId": "by-hrodnalife",
+   "countryCode": "BY",
+   "publisherName": "Hrodna.life",
+   "publisherType": "digital-native",
+   "url": "https://hrodna.life/feed/",
+   "geographicScope": "local",
+   "regionName": "Grodnenskaya",
+   "cityName": "Hrodna",
+   "languageTags": [
+    "be-BY"
+   ],
+   "group": "hrodnalife"
+  },
+  {
+   "sourceId": "md-diez",
+   "countryCode": "MD",
+   "publisherName": "Diez",
+   "publisherType": "digital-native",
+   "url": "https://www.diez.md/feed/",
+   "geographicScope": "local",
+   "regionName": "Chișinău Municipality",
+   "cityName": "Chisinau",
+   "languageTags": [
+    "ro-MD"
+   ],
+   "group": "diez"
+  },
+  {
+   "sourceId": "md-nordnews",
+   "countryCode": "MD",
+   "publisherName": "NordNews",
+   "publisherType": "digital-native",
+   "url": "https://www.nordnews.md/feed/",
+   "geographicScope": "local",
+   "regionName": "Bălţi",
+   "cityName": "Bălţi",
+   "languageTags": [
+    "ro-MD"
+   ],
+   "group": "nordnews"
+  },
+  {
+   "sourceId": "ge-batumelebi",
+   "countryCode": "GE",
+   "publisherName": "Batumelebi",
+   "publisherType": "newspaper",
+   "url": "https://batumelebi.netgazeti.ge/feed/",
+   "geographicScope": "local",
+   "regionName": "Adjara",
+   "cityName": "Batumi",
+   "languageTags": [
+    "ka-GE"
+   ],
+   "group": "netgazeti"
+  },
+  {
+   "sourceId": "am-asparez",
+   "countryCode": "AM",
+   "publisherName": "Asparez",
+   "publisherType": "digital-native",
+   "url": "https://asparez.am/feed/",
+   "geographicScope": "local",
+   "regionName": "Shirak",
+   "cityName": "Gyumri",
+   "languageTags": [
+    "hy-AM"
+   ],
+   "group": "asparez"
+  },
+  {
+   "sourceId": "kz-uralskweek",
+   "countryCode": "KZ",
+   "publisherName": "Uralskaya Nedelya",
+   "publisherType": "newspaper",
+   "url": "https://www.uralskweek.kz/feed/",
+   "geographicScope": "local",
+   "regionName": "West Kazakhstan",
+   "cityName": "Oral",
+   "languageTags": [
+    "ru-KZ"
+   ],
+   "group": "uralskweek"
+  },
+  {
+   "sourceId": "kz-kstnews",
+   "countryCode": "KZ",
+   "publisherName": "KSTnews",
+   "publisherType": "digital-native",
+   "url": "https://www.kstnews.kz/rss",
+   "geographicScope": "local",
+   "regionName": "Kostanay",
+   "cityName": "Kostanay",
+   "languageTags": [
+    "ru-KZ"
+   ],
+   "group": "kstnews"
+  }
+ ]
+}

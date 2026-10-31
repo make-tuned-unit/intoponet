@@ -1,5 +1,6 @@
 import { headlineLanguage } from '../translate/detect'
 import type { GlobalStory } from './globalStories'
+import type { SpreadHeadline, SpreadingStory, SpreadPlace } from './spreadingStories'
 import { countryPlace, normalizePlaceText, placesInCountry, type Place } from '../places/places'
 import { COUNTRY_ROWS } from '../places/placeData'
 
@@ -105,6 +106,8 @@ export type NewsDigest = {
   rising: RisingTerm[]
   /** Stories covered by outlets in many countries at once (see globalStories.ts). */
   global?: GlobalStory[]
+  /** Local stories picked up by outlets in other places, with where they started (see spreadingStories.ts). */
+  spreading?: SpreadingStory[]
   /** Wikipedia's editor-curated "In the news". */
   inTheNews?: WikiNewsItem[]
 }
@@ -238,7 +241,7 @@ export function placeNamedIn(title: string, countryCode: string): Place | null {
   return best?.place ?? null
 }
 
-function declaredPlace(source: NewsSourceMeta): Place | null {
+export function declaredPlace(source: NewsSourceMeta): Place | null {
   if (source.scope === 'national') return null
   const wanted = normalizePlaceText(source.cityName ?? source.regionName ?? '')
   if (!wanted) return null
@@ -659,6 +662,7 @@ export function parseNewsDigest(raw: string | null): NewsDigest | null {
     quietCountryCodes: Array.isArray(value['quietCountryCodes']) ? value['quietCountryCodes'].filter((code): code is string => text(code, 3)) : [],
     rising: parseRising(value['rising']),
     ...(Array.isArray(value['global']) ? { global: parseGlobal(value['global']) } : {}),
+    ...(Array.isArray(value['spreading']) ? { spreading: parseSpreading(value['spreading']) } : {}),
     ...(Array.isArray(value['inTheNews']) ? { inTheNews: parseInTheNews(value['inTheNews']) } : {}),
   }
 }
@@ -685,6 +689,32 @@ function parseGlobal(value: unknown): GlobalStory[] {
       headlines,
     }]
   }).slice(0, 30)
+}
+
+function parseSpreadPlace(row: unknown): SpreadPlace | null {
+  if (!isRecord(row) || !text(row['id'], 80) || !text(row['name'], 120) || !text(row['countryCode'], 3) || !finite(row['lat']) || !finite(row['lon']) ||
+    Math.abs(row['lat']) > 90 || Math.abs(row['lon']) > 180 || !finite(row['radiusKm']) || !text(row['firstAt'], 40) || !finite(row['outlets'])) return null
+  return { id: row['id'], name: row['name'], countryCode: row['countryCode'], lat: row['lat'], lon: row['lon'], radiusKm: row['radiusKm'], firstAt: row['firstAt'], outlets: row['outlets'] }
+}
+
+function parseSpreading(value: unknown): SpreadingStory[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((row): SpreadingStory[] => {
+    if (!isRecord(row) || !text(row['id'], 160) || !text(row['title'], 400) || !httpsOrHttp(row['url']) || !text(row['publisher'], 200) ||
+      !finite(row['outletCount']) || !finite(row['nationalOutlets']) || !text(row['firstAt'], 40) || !text(row['latestAt'], 40)) return []
+    const origin = parseSpreadPlace(row['origin'])
+    const pickups = Array.isArray(row['pickups']) ? row['pickups'].map(parseSpreadPlace).filter((place): place is SpreadPlace => !!place).slice(0, 24) : []
+    if (!origin || !pickups.length) return []
+    const headlines = Array.isArray(row['headlines']) ? row['headlines'].flatMap((item): SpreadHeadline[] => {
+      if (!isRecord(item) || !text(item['title'], 400) || !httpsOrHttp(item['url']) || !text(item['publisher'], 200) || !text(item['publishedAt'], 40)) return []
+      return [{ title: item['title'], url: item['url'], publisher: item['publisher'], publishedAt: item['publishedAt'], placeName: text(item['placeName'], 120) ? item['placeName'] : null, ...(typeof item['lang'] === 'string' && /^[A-Za-z]{2,3}(-[A-Za-z0-9]{1,8}){0,3}$/.test(item['lang']) ? { lang: item['lang'] } : {}) }]
+    }).slice(0, 12) : []
+    return [{
+      id: row['id'], title: row['title'], url: row['url'], publisher: row['publisher'],
+      terms: Array.isArray(row['terms']) ? row['terms'].filter((term): term is string => text(term, 60)).slice(0, 6) : [],
+      origin, pickups, outletCount: row['outletCount'], nationalOutlets: row['nationalOutlets'], firstAt: row['firstAt'], latestAt: row['latestAt'], headlines,
+    }]
+  }).slice(0, 20)
 }
 
 function parseInTheNews(value: unknown): WikiNewsItem[] {

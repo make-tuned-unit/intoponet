@@ -8,6 +8,7 @@ import type { FeedFetchResult } from '../feed-service'
 import newsFeeds from './newsFeeds.json'
 import internationalFeeds from './internationalFeeds.json'
 import { buildGlobalStories } from '../../shared/news/globalStories'
+import { buildSpreadingStories } from '../../shared/news/spreadingStories'
 import { fetchInTheNews } from './inTheNews'
 import { localPlaceNames } from './placeNames'
 import type { WikiNewsItem } from '../../shared/news/newsDigest'
@@ -194,6 +195,7 @@ export function startNewsService(options: { userData: string; emit: (payload: st
       coverageSchemaVersion: COVERAGE_SCHEMA_VERSION,
       ...buildNewsDigest({ sources: meta, items: all, health, now, coverage }),
       global: buildGlobalStories({ sources: meta, items: all, now }),
+      spreading: buildSpreadingStories({ sources: meta, items: all, now }),
       inTheNews,
     })
     options.emit(latest)
@@ -203,6 +205,7 @@ export function startNewsService(options: { userData: string; emit: (payload: st
         coverageSchemaVersion: COVERAGE_SCHEMA_VERSION,
         ...buildNewsDigest({ sources: meta, items: stored, health, now, coverage }),
         global: buildGlobalStories({ sources: meta, items: stored, now }),
+        spreading: buildSpreadingStories({ sources: meta, items: stored, now }),
         inTheNews,
       }), { encoding: 'utf8', mode: 0o644 })
       writeFileSync(coveragePath, JSON.stringify({ schemaVersion: COVERAGE_SCHEMA_VERSION, sources: coverage }), { encoding: 'utf8', mode: 0o644 })

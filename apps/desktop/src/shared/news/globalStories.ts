@@ -96,42 +96,6 @@ export function buildGlobalStories(input: { sources: NewsSourceMeta[]; items: Ne
   }
   if (entries.length < 10) return []
 
-  // Words that look like names: capitalised mid-sentence most of the time.
-  const caps = new Map<string, { cap: number; lower: number }>()
-  for (const entry of entries) {
-    for (const [word, capital] of capitalEvidence(entry.title)) {
-      const key = fold(word)
-      const tally = caps.get(key) ?? { cap: 0, lower: 0 }
-      if (capital) tally.cap += 1
-      else tally.lower += 1
-      caps.set(key, tally)
-    }
-  }
-  const isName = (token: string): boolean => {
-    const tally = caps.get(token)
-    return !!tally && tally.cap >= 2 && tally.cap / (tally.cap + tally.lower) >= 0.7
-  }
-
-  // Very common words define nothing; keep each headline's distinctive tokens.
-  const df = new Map<string, number>()
-  for (const entry of entries) for (const token of entry.tokens) df.set(token, (df.get(token) ?? 0) + 1)
-  const ceiling = Math.max(25, entries.length * 0.04)
-  for (const entry of entries) entry.tokens = entry.tokens.filter((token) => (df.get(token) ?? 0) <= ceiling && (df.get(token) ?? 0) >= 2).slice(0, 10)
-
-  // Pairs of tokens (at least one a name) and the headlines that share them.
-  const pairs = new Map<string, number[]>()
-  for (const entry of entries) {
-    const tokens = [...entry.tokens].sort()
-    for (let i = 0; i < tokens.length; i += 1) {
-      for (let j = i + 1; j < tokens.length; j += 1) {
-        if (!isName(tokens[i]!) && !isName(tokens[j]!)) continue
-        const key = `${tokens[i]} ${tokens[j]}`
-        const list = pairs.get(key) ?? []
-        list.push(entry.index)
-        pairs.set(key, list)
-      }
-    }
-  }
   // Breadth: countries of local outlets, plus international desks (each desk counts once, like a country).
   const breadth = (indices: Iterable<number>): { countries: Set<string>; desks: Set<string>; groups: Set<string>; reach: number } => {
     const countries = new Set<string>()
@@ -145,45 +109,10 @@ export function buildGlobalStories(input: { sources: NewsSourceMeta[]; items: Ne
     }
     return { countries, desks, groups, reach: countries.size + desks.size }
   }
-  const candidates = [...pairs.entries()]
-    .map(([key, indices]) => ({ key, indices, ...breadth(indices) }))
-    .filter((pair) => pair.reach >= GLOBAL_STORY_LIMITS.minCountries && pair.groups.size >= GLOBAL_STORY_LIMITS.minOutlets)
-    .sort((a, b) => b.reach - a.reach || b.groups.size - a.groups.size)
-
-  // Merge pairs that describe the same story (they share most of their headlines).
-  type Cluster = { terms: Map<string, number>; indices: Set<number> }
-  const clusters: Cluster[] = []
-  for (const pair of candidates) {
-    const set = new Set(pair.indices)
-    const home = clusters.find((cluster) => {
-      let shared = 0
-      for (const index of set) if (cluster.indices.has(index)) shared += 1
-      return shared / set.size >= 0.5 || shared / cluster.indices.size >= 0.5
-    })
-    const [a, b] = pair.key.split(' ') as [string, string]
-    if (home) {
-      for (const index of set) home.indices.add(index)
-      home.terms.set(a, (home.terms.get(a) ?? 0) + set.size)
-      home.terms.set(b, (home.terms.get(b) ?? 0) + set.size)
-    } else {
-      clusters.push({ terms: new Map([[a, set.size], [b, set.size]]), indices: set })
-    }
-    if (clusters.length >= GLOBAL_STORY_LIMITS.stories * 3) break
-  }
-
-  // Second pass: clusters led by the same name are one story told several ways ("lula bolsonaro", "lula silva").
-  const top2 = (cluster: Cluster): string[] => [...cluster.terms.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2).map(([term]) => term)
-  for (let i = 0; i < clusters.length; i += 1) {
-    for (let j = clusters.length - 1; j > i; j -= 1) {
-      const a = clusters[i]!
-      const b = clusters[j]!
-      const shared = top2(a).filter((term) => top2(b).includes(term) && isName(term))
-      if (!shared.length) continue
-      for (const index of b.indices) a.indices.add(index)
-      for (const [term, weight] of b.terms) a.terms.set(term, (a.terms.get(term) ?? 0) + weight)
-      clusters.splice(j, 1)
-    }
-  }
+  const clusters = clusterHeadlines(entries, (indices) => {
+    const reach = breadth(indices)
+    return reach.reach >= GLOBAL_STORY_LIMITS.minCountries && reach.groups.size >= GLOBAL_STORY_LIMITS.minOutlets ? reach.reach * 1000 + reach.groups.size : null
+  }, GLOBAL_STORY_LIMITS.stories * 3)
 
   const stories = clusters.map((cluster): GlobalStory & { score: number } => {
     const members = [...cluster.indices].map((index) => entries[index]!)
@@ -231,4 +160,90 @@ export function buildGlobalStories(input: { sources: NewsSourceMeta[]; items: Ne
     .sort((a, b) => b.score - a.score)
     .slice(0, input.limit ?? GLOBAL_STORY_LIMITS.stories)
     .map(({ score: _score, ...story }) => story)
+}
+
+export type HeadlineCluster = { terms: Map<string, number>; indices: Set<number> }
+
+/**
+ * Group headlines that tell the same story: pairs of distinctive tokens (at least
+ * one a name) shared across headlines, kept when `score` accepts the headlines that
+ * share them (higher scores merge first), then merged when they share most headlines.
+ * Mutates each entry's tokens down to its distinctive ones.
+ */
+export function clusterHeadlines(entries: Array<{ title: string; tokens: string[] }>, score: (indices: number[]) => number | null, maxClusters: number): HeadlineCluster[] {
+  // Words that look like names: capitalised mid-sentence most of the time.
+  const caps = new Map<string, { cap: number; lower: number }>()
+  for (const entry of entries) {
+    for (const [word, capital] of capitalEvidence(entry.title)) {
+      const key = fold(word)
+      const tally = caps.get(key) ?? { cap: 0, lower: 0 }
+      if (capital) tally.cap += 1
+      else tally.lower += 1
+      caps.set(key, tally)
+    }
+  }
+  const isName = (token: string): boolean => {
+    const tally = caps.get(token)
+    return !!tally && tally.cap >= 2 && tally.cap / (tally.cap + tally.lower) >= 0.7
+  }
+
+  // Very common words define nothing; keep each headline's distinctive tokens.
+  const df = new Map<string, number>()
+  for (const entry of entries) for (const token of entry.tokens) df.set(token, (df.get(token) ?? 0) + 1)
+  const ceiling = Math.max(25, entries.length * 0.04)
+  for (const entry of entries) entry.tokens = entry.tokens.filter((token) => (df.get(token) ?? 0) <= ceiling && (df.get(token) ?? 0) >= 2).slice(0, 10)
+
+  // Pairs of tokens (at least one a name) and the headlines that share them.
+  const pairs = new Map<string, number[]>()
+  entries.forEach((entry, index) => {
+    const tokens = [...entry.tokens].sort()
+    for (let i = 0; i < tokens.length; i += 1) {
+      for (let j = i + 1; j < tokens.length; j += 1) {
+        if (!isName(tokens[i]!) && !isName(tokens[j]!)) continue
+        const key = `${tokens[i]} ${tokens[j]}`
+        const list = pairs.get(key) ?? []
+        list.push(index)
+        pairs.set(key, list)
+      }
+    }
+  })
+  const candidates = [...pairs.entries()]
+    .flatMap(([key, indices]) => { const rank = score(indices); return rank === null ? [] : [{ key, indices, rank }] })
+    .sort((a, b) => b.rank - a.rank)
+
+  // Merge pairs that describe the same story (they share most of their headlines).
+  const clusters: HeadlineCluster[] = []
+  for (const pair of candidates) {
+    const set = new Set(pair.indices)
+    const home = clusters.find((cluster) => {
+      let shared = 0
+      for (const index of set) if (cluster.indices.has(index)) shared += 1
+      return shared / set.size >= 0.5 || shared / cluster.indices.size >= 0.5
+    })
+    const [a, b] = pair.key.split(' ') as [string, string]
+    if (home) {
+      for (const index of set) home.indices.add(index)
+      home.terms.set(a, (home.terms.get(a) ?? 0) + set.size)
+      home.terms.set(b, (home.terms.get(b) ?? 0) + set.size)
+    } else {
+      clusters.push({ terms: new Map([[a, set.size], [b, set.size]]), indices: set })
+    }
+    if (clusters.length >= maxClusters) break
+  }
+
+  // Second pass: clusters led by the same name are one story told several ways ("lula bolsonaro", "lula silva").
+  const top2 = (cluster: HeadlineCluster): string[] => [...cluster.terms.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2).map(([term]) => term)
+  for (let i = 0; i < clusters.length; i += 1) {
+    for (let j = clusters.length - 1; j > i; j -= 1) {
+      const a = clusters[i]!
+      const b = clusters[j]!
+      const shared = top2(a).filter((term) => top2(b).includes(term) && isName(term))
+      if (!shared.length) continue
+      for (const index of b.indices) a.indices.add(index)
+      for (const [term, weight] of b.terms) a.terms.set(term, (a.terms.get(term) ?? 0) + weight)
+      clusters.splice(j, 1)
+    }
+  }
+
+  return clusters
 }

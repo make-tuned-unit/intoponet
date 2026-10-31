@@ -1,0 +1,3688 @@
+{
+ "region": "North America ex-US: Canada, Mexico, Central America and the Caribbean (provinces, states and cities)",
+ "note": "Regional and city outlets: Radio-Canada, Global News, Postmedia, Glacier, Black Press and Village Media for Canadian provinces and cities; OEM El Sol papers, Quadratín state editions and independents for Mexican states and cities; capital (and where available second-city) outlets for Central America and the Caribbean.",
+ "candidates": [
+  {
+   "sourceId": "ca-radio-canada-montreal",
+   "countryCode": "CA",
+   "publisherName": "Radio-Canada Grand Montréal",
+   "publisherType": "public-broadcaster",
+   "url": "https://ici.radio-canada.ca/info/rss/grandmontreal/en-continu",
+   "geographicScope": "local",
+   "regionName": "Quebec",
+   "cityName": "Montréal",
+   "languageTags": [
+    "fr-CA"
+   ],
+   "group": "cbc-radio-canada"
+  },
+  {
+   "sourceId": "ca-radio-canada-quebec",
+   "countryCode": "CA",
+   "publisherName": "Radio-Canada Québec",
+   "publisherType": "public-broadcaster",
+   "url": "https://ici.radio-canada.ca/info/rss/quebec/en-continu",
+   "geographicScope": "local",
+   "regionName": "Quebec",
+   "cityName": "Québec",
+   "languageTags": [
+    "fr-CA"
+   ],
+   "group": "cbc-radio-canada"
+  },
+  {
+   "sourceId": "ca-radio-canada-gatineau",
+   "countryCode": "CA",
+   "publisherName": "Radio-Canada Ottawa-Gatineau",
+   "publisherType": "public-broadcaster",
+   "url": "https://ici.radio-canada.ca/info/rss/ottawa-gatineau/en-continu",
+   "geographicScope": "local",
+   "regionName": "Quebec",
+   "cityName": "Gatineau",
+   "languageTags": [
+    "fr-CA"
+   ],
+   "group": "cbc-radio-canada"
+  },
+  {
+   "sourceId": "ca-radio-canada-toronto",
+   "countryCode": "CA",
+   "publisherName": "Radio-Canada Toronto",
+   "publisherType": "public-broadcaster",
+   "url": "https://ici.radio-canada.ca/info/rss/ontario/toronto/en-continu",
+   "geographicScope": "local",
+   "regionName": "Ontario",
+   "cityName": "Toronto",
+   "languageTags": [
+    "fr-CA"
+   ],
+   "group": "cbc-radio-canada"
+  },
+  {
+   "sourceId": "ca-radio-canada-windsor",
+   "countryCode": "CA",
+   "publisherName": "Radio-Canada Windsor",
+   "publisherType": "public-broadcaster",
+   "url": "https://ici.radio-canada.ca/info/rss/ontario/windsor/en-continu",
+   "geographicScope": "local",
+   "regionName": "Ontario",
+   "cityName": "Windsor",
+   "languageTags": [
+    "fr-CA"
+   ],
+   "group": "cbc-radio-canada"
+  },
+  {
+   "sourceId": "ca-radio-canada-nord-ontario",
+   "countryCode": "CA",
+   "publisherName": "Radio-Canada Nord de l’Ontario",
+   "publisherType": "public-broadcaster",
+   "url": "https://ici.radio-canada.ca/info/rss/ontario/nord-de-l-ontario/en-continu",
+   "geographicScope": "regional",
+   "regionName": "Ontario",
+   "cityName": null,
+   "languageTags": [
+    "fr-CA"
+   ],
+   "group": "cbc-radio-canada"
+  },
+  {
+   "sourceId": "ca-radio-canada-manitoba",
+   "countryCode": "CA",
+   "publisherName": "Radio-Canada Manitoba",
+   "publisherType": "public-broadcaster",
+   "url": "https://ici.radio-canada.ca/info/rss/manitoba/en-continu",
+   "geographicScope": "regional",
+   "regionName": "Manitoba",
+   "cityName": null,
+   "languageTags": [
+    "fr-CA"
+   ],
+   "group": "cbc-radio-canada"
+  },
+  {
+   "sourceId": "ca-radio-canada-saskatchewan",
+   "countryCode": "CA",
+   "publisherName": "Radio-Canada Saskatchewan",
+   "publisherType": "public-broadcaster",
+   "url": "https://ici.radio-canada.ca/info/rss/saskatchewan/en-continu",
+   "geographicScope": "regional",
+   "regionName": "Saskatchewan",
+   "cityName": null,
+   "languageTags": [
+    "fr-CA"
+   ],
+   "group": "cbc-radio-canada"
+  },
+  {
+   "sourceId": "ca-radio-canada-alberta",
+   "countryCode": "CA",
+   "publisherName": "Radio-Canada Alberta",
+   "publisherType": "public-broadcaster",
+   "url": "https://ici.radio-canada.ca/info/rss/alberta/en-continu",
+   "geographicScope": "regional",
+   "regionName": "Alberta",
+   "cityName": null,
+   "languageTags": [
+    "fr-CA"
+   ],
+   "group": "cbc-radio-canada"
+  },
+  {
+   "sourceId": "ca-radio-canada-cb",
+   "countryCode": "CA",
+   "publisherName": "Radio-Canada Colombie-Britannique",
+   "publisherType": "public-broadcaster",
+   "url": "https://ici.radio-canada.ca/info/rss/colombie-britannique/en-continu",
+   "geographicScope": "regional",
+   "regionName": "British Columbia",
+   "cityName": null,
+   "languageTags": [
+    "fr-CA"
+   ],
+   "group": "cbc-radio-canada"
+  },
+  {
+   "sourceId": "ca-radio-canada-nb",
+   "countryCode": "CA",
+   "publisherName": "Radio-Canada Nouveau-Brunswick",
+   "publisherType": "public-broadcaster",
+   "url": "https://ici.radio-canada.ca/info/rss/acadie/nouveau-brunswick/en-continu",
+   "geographicScope": "regional",
+   "regionName": "New Brunswick",
+   "cityName": null,
+   "languageTags": [
+    "fr-CA"
+   ],
+   "group": "cbc-radio-canada"
+  },
+  {
+   "sourceId": "ca-radio-canada-ne",
+   "countryCode": "CA",
+   "publisherName": "Radio-Canada Nouvelle-Écosse",
+   "publisherType": "public-broadcaster",
+   "url": "https://ici.radio-canada.ca/info/rss/acadie/nouvelle-ecosse/en-continu",
+   "geographicScope": "regional",
+   "regionName": "Nova Scotia",
+   "cityName": null,
+   "languageTags": [
+    "fr-CA"
+   ],
+   "group": "cbc-radio-canada"
+  },
+  {
+   "sourceId": "ca-radio-canada-ipe",
+   "countryCode": "CA",
+   "publisherName": "Radio-Canada Île-du-Prince-Édouard",
+   "publisherType": "public-broadcaster",
+   "url": "https://ici.radio-canada.ca/info/rss/acadie/ile-du-prince-edouard/en-continu",
+   "geographicScope": "regional",
+   "regionName": "Prince Edward Island",
+   "cityName": null,
+   "languageTags": [
+    "fr-CA"
+   ],
+   "group": "cbc-radio-canada"
+  },
+  {
+   "sourceId": "ca-radio-canada-tnl",
+   "countryCode": "CA",
+   "publisherName": "Radio-Canada Terre-Neuve-et-Labrador",
+   "publisherType": "public-broadcaster",
+   "url": "https://ici.radio-canada.ca/info/rss/acadie/terre-neuve-et-labrador/en-continu",
+   "geographicScope": "regional",
+   "regionName": "Newfoundland and Labrador",
+   "cityName": null,
+   "languageTags": [
+    "fr-CA"
+   ],
+   "group": "cbc-radio-canada"
+  },
+  {
+   "sourceId": "ca-radio-canada-estrie",
+   "countryCode": "CA",
+   "publisherName": "Radio-Canada Estrie",
+   "publisherType": "public-broadcaster",
+   "url": "https://ici.radio-canada.ca/info/rss/estrie/en-continu",
+   "geographicScope": "local",
+   "regionName": "Quebec",
+   "cityName": "Sherbrooke",
+   "languageTags": [
+    "fr-CA"
+   ],
+   "group": "cbc-radio-canada"
+  },
+  {
+   "sourceId": "ca-radio-canada-mauricie",
+   "countryCode": "CA",
+   "publisherName": "Radio-Canada Mauricie",
+   "publisherType": "public-broadcaster",
+   "url": "https://ici.radio-canada.ca/info/rss/mauricie/en-continu",
+   "geographicScope": "local",
+   "regionName": "Quebec",
+   "cityName": "Trois-Rivières",
+   "languageTags": [
+    "fr-CA"
+   ],
+   "group": "cbc-radio-canada"
+  },
+  {
+   "sourceId": "ca-radio-canada-saguenay",
+   "countryCode": "CA",
+   "publisherName": "Radio-Canada Saguenay–Lac-Saint-Jean",
+   "publisherType": "public-broadcaster",
+   "url": "https://ici.radio-canada.ca/info/rss/saguenay-lac-saint-jean/en-continu",
+   "geographicScope": "local",
+   "regionName": "Quebec",
+   "cityName": "Saguenay",
+   "languageTags": [
+    "fr-CA"
+   ],
+   "group": "cbc-radio-canada"
+  },
+  {
+   "sourceId": "ca-radio-canada-bas-saint-laurent",
+   "countryCode": "CA",
+   "publisherName": "Radio-Canada Bas-Saint-Laurent",
+   "publisherType": "public-broadcaster",
+   "url": "https://ici.radio-canada.ca/info/rss/bas-saint-laurent/en-continu",
+   "geographicScope": "regional",
+   "regionName": "Quebec",
+   "cityName": null,
+   "languageTags": [
+    "fr-CA"
+   ],
+   "group": "cbc-radio-canada"
+  },
+  {
+   "sourceId": "ca-global-news-toronto",
+   "countryCode": "CA",
+   "publisherName": "Global News Toronto",
+   "publisherType": "broadcaster",
+   "url": "https://globalnews.ca/toronto/feed/",
+   "geographicScope": "local",
+   "regionName": "Ontario",
+   "cityName": "Toronto",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "corus-global"
+  },
+  {
+   "sourceId": "ca-global-news-montreal",
+   "countryCode": "CA",
+   "publisherName": "Global News Montréal",
+   "publisherType": "broadcaster",
+   "url": "https://globalnews.ca/montreal/feed/",
+   "geographicScope": "local",
+   "regionName": "Quebec",
+   "cityName": "Montréal",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "corus-global"
+  },
+  {
+   "sourceId": "ca-global-news-calgary",
+   "countryCode": "CA",
+   "publisherName": "Global News Calgary",
+   "publisherType": "broadcaster",
+   "url": "https://globalnews.ca/calgary/feed/",
+   "geographicScope": "local",
+   "regionName": "Alberta",
+   "cityName": "Calgary",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "corus-global"
+  },
+  {
+   "sourceId": "ca-global-news-edmonton",
+   "countryCode": "CA",
+   "publisherName": "Global News Edmonton",
+   "publisherType": "broadcaster",
+   "url": "https://globalnews.ca/edmonton/feed/",
+   "geographicScope": "local",
+   "regionName": "Alberta",
+   "cityName": "Edmonton",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "corus-global"
+  },
+  {
+   "sourceId": "ca-global-news-winnipeg",
+   "countryCode": "CA",
+   "publisherName": "Global News Winnipeg",
+   "publisherType": "broadcaster",
+   "url": "https://globalnews.ca/winnipeg/feed/",
+   "geographicScope": "local",
+   "regionName": "Manitoba",
+   "cityName": "Winnipeg",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "corus-global"
+  },
+  {
+   "sourceId": "ca-global-news-halifax",
+   "countryCode": "CA",
+   "publisherName": "Global News Halifax",
+   "publisherType": "broadcaster",
+   "url": "https://globalnews.ca/halifax/feed/",
+   "geographicScope": "local",
+   "regionName": "Nova Scotia",
+   "cityName": "Halifax",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "corus-global"
+  },
+  {
+   "sourceId": "ca-global-news-saskatoon",
+   "countryCode": "CA",
+   "publisherName": "Global News Saskatoon",
+   "publisherType": "broadcaster",
+   "url": "https://globalnews.ca/saskatoon/feed/",
+   "geographicScope": "local",
+   "regionName": "Saskatchewan",
+   "cityName": "Saskatoon",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "corus-global"
+  },
+  {
+   "sourceId": "ca-global-news-regina",
+   "countryCode": "CA",
+   "publisherName": "Global News Regina",
+   "publisherType": "broadcaster",
+   "url": "https://globalnews.ca/regina/feed/",
+   "geographicScope": "local",
+   "regionName": "Saskatchewan",
+   "cityName": "Regina",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "corus-global"
+  },
+  {
+   "sourceId": "ca-global-news-ottawa",
+   "countryCode": "CA",
+   "publisherName": "Global News Ottawa",
+   "publisherType": "broadcaster",
+   "url": "https://globalnews.ca/ottawa/feed/",
+   "geographicScope": "local",
+   "regionName": "Ontario",
+   "cityName": "Ottawa",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "corus-global"
+  },
+  {
+   "sourceId": "ca-global-news-london",
+   "countryCode": "CA",
+   "publisherName": "Global News London",
+   "publisherType": "broadcaster",
+   "url": "https://globalnews.ca/london/feed/",
+   "geographicScope": "local",
+   "regionName": "Ontario",
+   "cityName": "London",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "corus-global"
+  },
+  {
+   "sourceId": "ca-global-news-bc",
+   "countryCode": "CA",
+   "publisherName": "Global News BC",
+   "publisherType": "broadcaster",
+   "url": "https://globalnews.ca/bc/feed/",
+   "geographicScope": "regional",
+   "regionName": "British Columbia",
+   "cityName": null,
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "corus-global"
+  },
+  {
+   "sourceId": "ca-global-news-nb",
+   "countryCode": "CA",
+   "publisherName": "Global News New Brunswick",
+   "publisherType": "broadcaster",
+   "url": "https://globalnews.ca/new-brunswick/feed/",
+   "geographicScope": "regional",
+   "regionName": "New Brunswick",
+   "cityName": null,
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "corus-global"
+  },
+  {
+   "sourceId": "ca-toronto-sun",
+   "countryCode": "CA",
+   "publisherName": "Toronto Sun",
+   "publisherType": "newspaper",
+   "url": "https://torontosun.com/category/news/local-news/feed",
+   "geographicScope": "local",
+   "regionName": "Ontario",
+   "cityName": "Toronto",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "postmedia"
+  },
+  {
+   "sourceId": "ca-ottawa-citizen",
+   "countryCode": "CA",
+   "publisherName": "Ottawa Citizen",
+   "publisherType": "newspaper",
+   "url": "https://ottawacitizen.com/category/news/local-news/feed",
+   "geographicScope": "local",
+   "regionName": "Ontario",
+   "cityName": "Ottawa",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "postmedia"
+  },
+  {
+   "sourceId": "ca-calgary-herald",
+   "countryCode": "CA",
+   "publisherName": "Calgary Herald",
+   "publisherType": "newspaper",
+   "url": "https://calgaryherald.com/category/news/local-news/feed",
+   "geographicScope": "local",
+   "regionName": "Alberta",
+   "cityName": "Calgary",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "postmedia"
+  },
+  {
+   "sourceId": "ca-calgary-sun",
+   "countryCode": "CA",
+   "publisherName": "Calgary Sun",
+   "publisherType": "newspaper",
+   "url": "https://calgarysun.com/category/news/local-news/feed",
+   "geographicScope": "local",
+   "regionName": "Alberta",
+   "cityName": "Calgary",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "postmedia"
+  },
+  {
+   "sourceId": "ca-edmonton-journal",
+   "countryCode": "CA",
+   "publisherName": "Edmonton Journal",
+   "publisherType": "newspaper",
+   "url": "https://edmontonjournal.com/category/news/local-news/feed",
+   "geographicScope": "local",
+   "regionName": "Alberta",
+   "cityName": "Edmonton",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "postmedia"
+  },
+  {
+   "sourceId": "ca-winnipeg-free-press",
+   "countryCode": "CA",
+   "publisherName": "Winnipeg Free Press",
+   "publisherType": "newspaper",
+   "url": "https://www.winnipegfreepress.com/rss/?path=%2Flocal",
+   "geographicScope": "local",
+   "regionName": "Manitoba",
+   "cityName": "Winnipeg",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "winnipeg-free-press"
+  },
+  {
+   "sourceId": "ca-lethbridge-herald",
+   "countryCode": "CA",
+   "publisherName": "Lethbridge Herald",
+   "publisherType": "newspaper",
+   "url": "https://www.lethbridgeherald.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Alberta",
+   "cityName": "Lethbridge",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "lethbridge-herald"
+  },
+  {
+   "sourceId": "ca-times-colonist",
+   "countryCode": "CA",
+   "publisherName": "Times Colonist",
+   "publisherType": "newspaper",
+   "url": "https://www.timescolonist.com/rss",
+   "geographicScope": "local",
+   "regionName": "British Columbia",
+   "cityName": "Victoria",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "glacier-media"
+  },
+  {
+   "sourceId": "ca-richmond-news",
+   "countryCode": "CA",
+   "publisherName": "Richmond News",
+   "publisherType": "newspaper",
+   "url": "https://www.richmond-news.com/rss",
+   "geographicScope": "local",
+   "regionName": "British Columbia",
+   "cityName": "Richmond",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "glacier-media"
+  },
+  {
+   "sourceId": "ca-vancouver-is-awesome",
+   "countryCode": "CA",
+   "publisherName": "Vancouver Is Awesome",
+   "publisherType": "newspaper",
+   "url": "https://www.vancouverisawesome.com/rss",
+   "geographicScope": "local",
+   "regionName": "British Columbia",
+   "cityName": "Vancouver",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "glacier-media"
+  },
+  {
+   "sourceId": "ca-north-shore-news",
+   "countryCode": "CA",
+   "publisherName": "North Shore News",
+   "publisherType": "newspaper",
+   "url": "https://www.nsnews.com/rss",
+   "geographicScope": "local",
+   "regionName": "British Columbia",
+   "cityName": "North Vancouver",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "glacier-media"
+  },
+  {
+   "sourceId": "ca-delta-optimist",
+   "countryCode": "CA",
+   "publisherName": "Delta Optimist",
+   "publisherType": "newspaper",
+   "url": "https://www.delta-optimist.com/rss",
+   "geographicScope": "local",
+   "regionName": "British Columbia",
+   "cityName": "Delta",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "glacier-media"
+  },
+  {
+   "sourceId": "ca-prince-george-citizen",
+   "countryCode": "CA",
+   "publisherName": "Prince George Citizen",
+   "publisherType": "newspaper",
+   "url": "https://www.princegeorgecitizen.com/rss",
+   "geographicScope": "local",
+   "regionName": "British Columbia",
+   "cityName": "Prince George",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "glacier-media"
+  },
+  {
+   "sourceId": "ca-st-albert-gazette",
+   "countryCode": "CA",
+   "publisherName": "St. Albert Gazette",
+   "publisherType": "newspaper",
+   "url": "https://www.stalbertgazette.com/rss",
+   "geographicScope": "local",
+   "regionName": "Alberta",
+   "cityName": "St. Albert",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "glacier-media"
+  },
+  {
+   "sourceId": "ca-surrey-now-leader",
+   "countryCode": "CA",
+   "publisherName": "Surrey Now-Leader",
+   "publisherType": "newspaper",
+   "url": "https://www.surreynowleader.com/feed/",
+   "geographicScope": "local",
+   "regionName": "British Columbia",
+   "cityName": "Surrey",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "black-press"
+  },
+  {
+   "sourceId": "ca-victoria-news",
+   "countryCode": "CA",
+   "publisherName": "Victoria News",
+   "publisherType": "newspaper",
+   "url": "https://www.vicnews.com/feed/",
+   "geographicScope": "local",
+   "regionName": "British Columbia",
+   "cityName": "Victoria",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "black-press"
+  },
+  {
+   "sourceId": "ca-abbotsford-news",
+   "countryCode": "CA",
+   "publisherName": "Abbotsford News",
+   "publisherType": "newspaper",
+   "url": "https://www.abbynews.com/feed/",
+   "geographicScope": "local",
+   "regionName": "British Columbia",
+   "cityName": "Abbotsford",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "black-press"
+  },
+  {
+   "sourceId": "ca-langley-advance-times",
+   "countryCode": "CA",
+   "publisherName": "Langley Advance Times",
+   "publisherType": "newspaper",
+   "url": "https://www.langleyadvancetimes.com/feed/",
+   "geographicScope": "local",
+   "regionName": "British Columbia",
+   "cityName": "Langley",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "black-press"
+  },
+  {
+   "sourceId": "ca-nanaimo-bulletin",
+   "countryCode": "CA",
+   "publisherName": "Nanaimo News Bulletin",
+   "publisherType": "newspaper",
+   "url": "https://www.nanaimobulletin.com/feed/",
+   "geographicScope": "local",
+   "regionName": "British Columbia",
+   "cityName": "Nanaimo",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "black-press"
+  },
+  {
+   "sourceId": "ca-red-deer-advocate",
+   "countryCode": "CA",
+   "publisherName": "Red Deer Advocate",
+   "publisherType": "newspaper",
+   "url": "https://www.reddeeradvocate.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Alberta",
+   "cityName": "Red Deer",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "black-press"
+  },
+  {
+   "sourceId": "ca-yukon-news",
+   "countryCode": "CA",
+   "publisherName": "Yukon News",
+   "publisherType": "newspaper",
+   "url": "https://www.yukon-news.com/feed/",
+   "geographicScope": "regional",
+   "regionName": "Yukon",
+   "cityName": null,
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "black-press"
+  },
+  {
+   "sourceId": "ca-sootoday",
+   "countryCode": "CA",
+   "publisherName": "SooToday",
+   "publisherType": "digital-native",
+   "url": "https://www.sootoday.com/rss",
+   "geographicScope": "local",
+   "regionName": "Ontario",
+   "cityName": "Sault Ste. Marie",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "village-media"
+  },
+  {
+   "sourceId": "ca-baytoday",
+   "countryCode": "CA",
+   "publisherName": "BayToday",
+   "publisherType": "digital-native",
+   "url": "https://www.baytoday.ca/rss",
+   "geographicScope": "local",
+   "regionName": "Ontario",
+   "cityName": "North Bay",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "village-media"
+  },
+  {
+   "sourceId": "ca-guelphtoday",
+   "countryCode": "CA",
+   "publisherName": "GuelphToday",
+   "publisherType": "digital-native",
+   "url": "https://www.guelphtoday.com/rss",
+   "geographicScope": "local",
+   "regionName": "Ontario",
+   "cityName": "Guelph",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "village-media"
+  },
+  {
+   "sourceId": "ca-barrietoday",
+   "countryCode": "CA",
+   "publisherName": "BarrieToday",
+   "publisherType": "digital-native",
+   "url": "https://www.barrietoday.com/rss",
+   "geographicScope": "local",
+   "regionName": "Ontario",
+   "cityName": "Barrie",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "village-media"
+  },
+  {
+   "sourceId": "ca-sudbury-com",
+   "countryCode": "CA",
+   "publisherName": "Sudbury.com",
+   "publisherType": "digital-native",
+   "url": "https://www.sudbury.com/rss",
+   "geographicScope": "local",
+   "regionName": "Ontario",
+   "cityName": "Greater Sudbury",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "village-media"
+  },
+  {
+   "sourceId": "ca-tbnewswatch",
+   "countryCode": "CA",
+   "publisherName": "TBNewsWatch",
+   "publisherType": "digital-native",
+   "url": "https://www.tbnewswatch.com/rss",
+   "geographicScope": "local",
+   "regionName": "Ontario",
+   "cityName": "Thunder Bay",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "village-media"
+  },
+  {
+   "sourceId": "ca-cambridgetoday",
+   "countryCode": "CA",
+   "publisherName": "CambridgeToday",
+   "publisherType": "digital-native",
+   "url": "https://www.cambridgetoday.ca/rss",
+   "geographicScope": "local",
+   "regionName": "Ontario",
+   "cityName": "Cambridge",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "village-media"
+  },
+  {
+   "sourceId": "ca-newmarkettoday",
+   "countryCode": "CA",
+   "publisherName": "NewmarketToday",
+   "publisherType": "digital-native",
+   "url": "https://www.newmarkettoday.ca/rss",
+   "geographicScope": "local",
+   "regionName": "Ontario",
+   "cityName": "Newmarket",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "village-media"
+  },
+  {
+   "sourceId": "ca-sasktoday",
+   "countryCode": "CA",
+   "publisherName": "SaskToday",
+   "publisherType": "digital-native",
+   "url": "https://www.sasktoday.ca/rss",
+   "geographicScope": "regional",
+   "regionName": "Saskatchewan",
+   "cityName": null,
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "village-media"
+  },
+  {
+   "sourceId": "ca-insauga",
+   "countryCode": "CA",
+   "publisherName": "insauga",
+   "publisherType": "digital-native",
+   "url": "https://www.insauga.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Ontario",
+   "cityName": "Mississauga",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "insauga"
+  },
+  {
+   "sourceId": "ca-inthehammer",
+   "countryCode": "CA",
+   "publisherName": "inthehammer",
+   "publisherType": "digital-native",
+   "url": "https://www.inthehammer.com/feed",
+   "geographicScope": "local",
+   "regionName": "Ontario",
+   "cityName": "Hamilton",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "insauga"
+  },
+  {
+   "sourceId": "ca-bay-observer",
+   "countryCode": "CA",
+   "publisherName": "Bay Observer",
+   "publisherType": "newspaper",
+   "url": "https://www.bayobserver.ca/feed",
+   "geographicScope": "local",
+   "regionName": "Ontario",
+   "cityName": "Hamilton",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "bay-observer"
+  },
+  {
+   "sourceId": "ca-public-record",
+   "countryCode": "CA",
+   "publisherName": "The Public Record",
+   "publisherType": "digital-native",
+   "url": "https://www.thepublicrecord.ca/feed/",
+   "geographicScope": "local",
+   "regionName": "Ontario",
+   "cityName": "Ottawa",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "public-record"
+  },
+  {
+   "sourceId": "ca-markham-review",
+   "countryCode": "CA",
+   "publisherName": "Markham Review",
+   "publisherType": "digital-native",
+   "url": "https://www.markhamreview.com/feed",
+   "geographicScope": "local",
+   "regionName": "Ontario",
+   "cityName": "Markham",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "markham-review"
+  },
+  {
+   "sourceId": "ca-durham-radio-news",
+   "countryCode": "CA",
+   "publisherName": "Durham Radio News",
+   "publisherType": "broadcaster",
+   "url": "https://www.durhamradionews.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Ontario",
+   "cityName": "Oshawa",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "durham-radio"
+  },
+  {
+   "sourceId": "ca-blackburn-windsor",
+   "countryCode": "CA",
+   "publisherName": "Blackburn News Windsor",
+   "publisherType": "broadcaster",
+   "url": "https://www.blackburnnews.com/windsor/feed/",
+   "geographicScope": "local",
+   "regionName": "Ontario",
+   "cityName": "Windsor",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "blackburn-media"
+  },
+  {
+   "sourceId": "ca-halifax-examiner",
+   "countryCode": "CA",
+   "publisherName": "Halifax Examiner",
+   "publisherType": "digital-native",
+   "url": "https://www.halifaxexaminer.ca/feed/",
+   "geographicScope": "local",
+   "regionName": "Nova Scotia",
+   "cityName": "Halifax",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "halifax-examiner"
+  },
+  {
+   "sourceId": "ca-the-coast",
+   "countryCode": "CA",
+   "publisherName": "The Coast",
+   "publisherType": "newspaper",
+   "url": "https://www.thecoast.ca/feed",
+   "geographicScope": "local",
+   "regionName": "Nova Scotia",
+   "cityName": "Halifax",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "the-coast"
+  },
+  {
+   "sourceId": "ca-saltwire-ns",
+   "countryCode": "CA",
+   "publisherName": "SaltWire Nova Scotia",
+   "publisherType": "newspaper",
+   "url": "https://www.saltwire.com/category/nova-scotia/feed/",
+   "geographicScope": "regional",
+   "regionName": "Nova Scotia",
+   "cityName": null,
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "saltwire"
+  },
+  {
+   "sourceId": "ca-saltwire-pei",
+   "countryCode": "CA",
+   "publisherName": "SaltWire Prince Edward Island",
+   "publisherType": "newspaper",
+   "url": "https://www.saltwire.com/category/prince-edward-island/feed/",
+   "geographicScope": "regional",
+   "regionName": "Prince Edward Island",
+   "cityName": null,
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "saltwire"
+  },
+  {
+   "sourceId": "ca-saltwire-nl",
+   "countryCode": "CA",
+   "publisherName": "SaltWire Newfoundland and Labrador",
+   "publisherType": "newspaper",
+   "url": "https://www.saltwire.com/category/newfoundland-labrador/feed/",
+   "geographicScope": "regional",
+   "regionName": "Newfoundland and Labrador",
+   "cityName": null,
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "saltwire"
+  },
+  {
+   "sourceId": "ca-vocm",
+   "countryCode": "CA",
+   "publisherName": "VOCM",
+   "publisherType": "broadcaster",
+   "url": "https://vocm.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Newfoundland and Labrador",
+   "cityName": "St. John's",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "stingray"
+  },
+  {
+   "sourceId": "ca-acadie-nouvelle",
+   "countryCode": "CA",
+   "publisherName": "Acadie Nouvelle",
+   "publisherType": "newspaper",
+   "url": "https://www.acadienouvelle.com/feed/",
+   "geographicScope": "regional",
+   "regionName": "New Brunswick",
+   "cityName": null,
+   "languageTags": [
+    "fr-CA"
+   ],
+   "group": "acadie-nouvelle"
+  },
+  {
+   "sourceId": "ca-telegraph-journal",
+   "countryCode": "CA",
+   "publisherName": "Telegraph-Journal",
+   "publisherType": "newspaper",
+   "url": "https://tj.news/feed",
+   "geographicScope": "regional",
+   "regionName": "New Brunswick",
+   "cityName": null,
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "brunswick-news"
+  },
+  {
+   "sourceId": "ca-cabin-radio",
+   "countryCode": "CA",
+   "publisherName": "Cabin Radio",
+   "publisherType": "broadcaster",
+   "url": "https://www.cabinradio.ca/feed/",
+   "geographicScope": "local",
+   "regionName": "Northwest Territories",
+   "cityName": "Yellowknife",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "cabin-radio"
+  },
+  {
+   "sourceId": "ca-nnsl",
+   "countryCode": "CA",
+   "publisherName": "NNSL Media",
+   "publisherType": "newspaper",
+   "url": "https://www.nnsl.com/feed/",
+   "geographicScope": "regional",
+   "regionName": "Northwest Territories",
+   "cityName": null,
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "nnsl"
+  },
+  {
+   "sourceId": "ca-the-tyee",
+   "countryCode": "CA",
+   "publisherName": "The Tyee",
+   "publisherType": "digital-native",
+   "url": "https://www.thetyee.ca/rss2.xml",
+   "geographicScope": "regional",
+   "regionName": "British Columbia",
+   "cityName": null,
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "the-tyee"
+  },
+  {
+   "sourceId": "ca-chek-news",
+   "countryCode": "CA",
+   "publisherName": "CHEK News",
+   "publisherType": "broadcaster",
+   "url": "https://www.cheknews.ca/feed/",
+   "geographicScope": "local",
+   "regionName": "British Columbia",
+   "cityName": "Victoria",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "chek"
+  },
+  {
+   "sourceId": "ca-daily-hive-vancouver",
+   "countryCode": "CA",
+   "publisherName": "Daily Hive Vancouver",
+   "publisherType": "digital-native",
+   "url": "https://www.dailyhive.com/feed/vancouver",
+   "geographicScope": "local",
+   "regionName": "British Columbia",
+   "cityName": "Vancouver",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "daily-hive"
+  },
+  {
+   "sourceId": "ca-daily-hive-toronto",
+   "countryCode": "CA",
+   "publisherName": "Daily Hive Toronto",
+   "publisherType": "digital-native",
+   "url": "https://dailyhive.com/feed/toronto",
+   "geographicScope": "local",
+   "regionName": "Ontario",
+   "cityName": "Toronto",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "daily-hive"
+  },
+  {
+   "sourceId": "ca-castanet",
+   "countryCode": "CA",
+   "publisherName": "Castanet",
+   "publisherType": "digital-native",
+   "url": "https://www.castanet.net/rss/topheadlines.xml",
+   "geographicScope": "local",
+   "regionName": "British Columbia",
+   "cityName": "Kelowna",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "castanet"
+  },
+  {
+   "sourceId": "ca-nanaimo-news-now",
+   "countryCode": "CA",
+   "publisherName": "NanaimoNewsNOW",
+   "publisherType": "broadcaster",
+   "url": "https://www.nanaimonewsnow.com/feed",
+   "geographicScope": "local",
+   "regionName": "British Columbia",
+   "cityName": "Nanaimo",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "pattison"
+  },
+  {
+   "sourceId": "ca-livewire-calgary",
+   "countryCode": "CA",
+   "publisherName": "LiveWire Calgary",
+   "publisherType": "digital-native",
+   "url": "https://www.livewirecalgary.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Alberta",
+   "cityName": "Calgary",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "livewire-calgary"
+  },
+  {
+   "sourceId": "ca-mbc-radio",
+   "countryCode": "CA",
+   "publisherName": "MBC Radio",
+   "publisherType": "broadcaster",
+   "url": "https://www.mbcradio.com/feed/",
+   "geographicScope": "regional",
+   "regionName": "Saskatchewan",
+   "cityName": null,
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "mbc-radio"
+  },
+  {
+   "sourceId": "ca-lapresse-grand-montreal",
+   "countryCode": "CA",
+   "publisherName": "La Presse (Grand Montréal)",
+   "publisherType": "newspaper",
+   "url": "https://www.lapresse.ca/actualites/grand-montreal/rss",
+   "geographicScope": "local",
+   "regionName": "Quebec",
+   "cityName": "Montréal",
+   "languageTags": [
+    "fr-CA"
+   ],
+   "group": "la-presse"
+  },
+  {
+   "sourceId": "ca-journal-de-montreal",
+   "countryCode": "CA",
+   "publisherName": "Le Journal de Montréal",
+   "publisherType": "newspaper",
+   "url": "https://www.journaldemontreal.com/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Quebec",
+   "cityName": "Montréal",
+   "languageTags": [
+    "fr-CA"
+   ],
+   "group": "quebecor"
+  },
+  {
+   "sourceId": "ca-journal-metro",
+   "countryCode": "CA",
+   "publisherName": "Métro",
+   "publisherType": "newspaper",
+   "url": "https://www.journalmetro.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Quebec",
+   "cityName": "Montréal",
+   "languageTags": [
+    "fr-CA"
+   ],
+   "group": "metro-media"
+  },
+  {
+   "sourceId": "ca-monquartier",
+   "countryCode": "CA",
+   "publisherName": "Monquartier",
+   "publisherType": "digital-native",
+   "url": "https://www.monquartier.quebec/feed/",
+   "geographicScope": "local",
+   "regionName": "Quebec",
+   "cityName": "Québec",
+   "languageTags": [
+    "fr-CA"
+   ],
+   "group": "monquartier"
+  },
+  {
+   "sourceId": "ca-courrier-laval",
+   "countryCode": "CA",
+   "publisherName": "Courrier Laval",
+   "publisherType": "newspaper",
+   "url": "https://www.courrierlaval.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Quebec",
+   "cityName": "Laval",
+   "languageTags": [
+    "fr-CA"
+   ],
+   "group": "groupe-lexis"
+  },
+  {
+   "sourceId": "ca-laval-news",
+   "countryCode": "CA",
+   "publisherName": "The Laval News",
+   "publisherType": "newspaper",
+   "url": "https://www.lavalnews.ca/feed/",
+   "geographicScope": "local",
+   "regionName": "Quebec",
+   "cityName": "Laval",
+   "languageTags": [
+    "en-CA"
+   ],
+   "group": "laval-news"
+  },
+  {
+   "sourceId": "ca-courrier-du-sud",
+   "countryCode": "CA",
+   "publisherName": "Le Courrier du Sud",
+   "publisherType": "newspaper",
+   "url": "https://www.lecourrierdusud.ca/feed/",
+   "geographicScope": "local",
+   "regionName": "Quebec",
+   "cityName": "Longueuil",
+   "languageTags": [
+    "fr-CA"
+   ],
+   "group": "groupe-lexis"
+  },
+  {
+   "sourceId": "ca-tva-nouvelles",
+   "countryCode": "CA",
+   "publisherName": "TVA Nouvelles",
+   "publisherType": "broadcaster",
+   "url": "https://www.tvanouvelles.ca/rss.xml",
+   "geographicScope": "regional",
+   "regionName": "Quebec",
+   "cityName": null,
+   "languageTags": [
+    "fr-CA"
+   ],
+   "group": "quebecor"
+  },
+  {
+   "sourceId": "mx-quadratin-jalisco",
+   "countryCode": "MX",
+   "publisherName": "Quadratín Jalisco",
+   "publisherType": "digital-native",
+   "url": "https://jalisco.quadratin.com.mx/feed/",
+   "geographicScope": "regional",
+   "regionName": "Jalisco",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "quadratin"
+  },
+  {
+   "sourceId": "mx-quadratin-queretaro",
+   "countryCode": "MX",
+   "publisherName": "Quadratín Querétaro",
+   "publisherType": "digital-native",
+   "url": "https://queretaro.quadratin.com.mx/feed/",
+   "geographicScope": "regional",
+   "regionName": "Querétaro",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "quadratin"
+  },
+  {
+   "sourceId": "mx-quadratin-edomex",
+   "countryCode": "MX",
+   "publisherName": "Quadratín México",
+   "publisherType": "digital-native",
+   "url": "https://edomex.quadratin.com.mx/feed/",
+   "geographicScope": "regional",
+   "regionName": "México",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "quadratin"
+  },
+  {
+   "sourceId": "mx-quadratin-hidalgo",
+   "countryCode": "MX",
+   "publisherName": "Quadratín Hidalgo",
+   "publisherType": "digital-native",
+   "url": "https://hidalgo.quadratin.com.mx/feed/",
+   "geographicScope": "regional",
+   "regionName": "Hidalgo",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "quadratin"
+  },
+  {
+   "sourceId": "mx-quadratin-yucatan",
+   "countryCode": "MX",
+   "publisherName": "Quadratín Yucatán",
+   "publisherType": "digital-native",
+   "url": "https://yucatan.quadratin.com.mx/feed/",
+   "geographicScope": "regional",
+   "regionName": "Yucatán",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "quadratin"
+  },
+  {
+   "sourceId": "mx-quadratin-chiapas",
+   "countryCode": "MX",
+   "publisherName": "Quadratín Chiapas",
+   "publisherType": "digital-native",
+   "url": "https://chiapas.quadratin.com.mx/feed/",
+   "geographicScope": "regional",
+   "regionName": "Chiapas",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "quadratin"
+  },
+  {
+   "sourceId": "mx-quadratin-veracruz",
+   "countryCode": "MX",
+   "publisherName": "Quadratín Veracruz",
+   "publisherType": "digital-native",
+   "url": "https://veracruz.quadratin.com.mx/feed/",
+   "geographicScope": "regional",
+   "regionName": "Veracruz",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "quadratin"
+  },
+  {
+   "sourceId": "mx-quadratin-tabasco",
+   "countryCode": "MX",
+   "publisherName": "Quadratín Tabasco",
+   "publisherType": "digital-native",
+   "url": "https://tabasco.quadratin.com.mx/feed/",
+   "geographicScope": "regional",
+   "regionName": "Tabasco",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "quadratin"
+  },
+  {
+   "sourceId": "mx-quadratin-morelos",
+   "countryCode": "MX",
+   "publisherName": "Quadratín Morelos",
+   "publisherType": "digital-native",
+   "url": "https://morelos.quadratin.com.mx/feed/",
+   "geographicScope": "regional",
+   "regionName": "Morelos",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "quadratin"
+  },
+  {
+   "sourceId": "mx-quadratin-puebla",
+   "countryCode": "MX",
+   "publisherName": "Quadratín Puebla",
+   "publisherType": "digital-native",
+   "url": "https://puebla.quadratin.com.mx/feed/",
+   "geographicScope": "regional",
+   "regionName": "Puebla",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "quadratin"
+  },
+  {
+   "sourceId": "mx-quadratin-nuevoleon",
+   "countryCode": "MX",
+   "publisherName": "Quadratín Nuevo León",
+   "publisherType": "digital-native",
+   "url": "https://nuevoleon.quadratin.com.mx/feed/",
+   "geographicScope": "regional",
+   "regionName": "Nuevo León",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "quadratin"
+  },
+  {
+   "sourceId": "mx-quadratin-tlaxcala",
+   "countryCode": "MX",
+   "publisherName": "Quadratín Tlaxcala",
+   "publisherType": "digital-native",
+   "url": "https://tlaxcala.quadratin.com.mx/feed/",
+   "geographicScope": "regional",
+   "regionName": "Tlaxcala",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "quadratin"
+  },
+  {
+   "sourceId": "mx-quadratin-quintanaroo",
+   "countryCode": "MX",
+   "publisherName": "Quadratín Quintana Roo",
+   "publisherType": "digital-native",
+   "url": "https://quintanaroo.quadratin.com.mx/feed/",
+   "geographicScope": "regional",
+   "regionName": "Quintana Roo",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "quadratin"
+  },
+  {
+   "sourceId": "mx-quadratin-sinaloa",
+   "countryCode": "MX",
+   "publisherName": "Quadratín Sinaloa",
+   "publisherType": "digital-native",
+   "url": "https://sinaloa.quadratin.com.mx/feed/",
+   "geographicScope": "regional",
+   "regionName": "Sinaloa",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "quadratin"
+  },
+  {
+   "sourceId": "mx-quadratin-guerrero",
+   "countryCode": "MX",
+   "publisherName": "Quadratín Guerrero",
+   "publisherType": "digital-native",
+   "url": "https://guerrero.quadratin.com.mx/feed/",
+   "geographicScope": "regional",
+   "regionName": "Guerrero",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "quadratin"
+  },
+  {
+   "sourceId": "mx-quadratin-oaxaca",
+   "countryCode": "MX",
+   "publisherName": "Quadratín Oaxaca",
+   "publisherType": "digital-native",
+   "url": "https://oaxaca.quadratin.com.mx/feed/",
+   "geographicScope": "regional",
+   "regionName": "Oaxaca",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "quadratin"
+  },
+  {
+   "sourceId": "mx-quadratin-michoacan",
+   "countryCode": "MX",
+   "publisherName": "Quadratín Michoacán",
+   "publisherType": "digital-native",
+   "url": "https://www.quadratin.com.mx/feed/",
+   "geographicScope": "regional",
+   "regionName": "Michoacán",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "quadratin"
+  },
+  {
+   "sourceId": "mx-sol-de-toluca",
+   "countryCode": "MX",
+   "publisherName": "El Sol de Toluca",
+   "publisherType": "newspaper",
+   "url": "https://www.elsoldetoluca.com.mx/rss",
+   "geographicScope": "local",
+   "regionName": "México",
+   "cityName": "Toluca",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "oem"
+  },
+  {
+   "sourceId": "mx-sol-de-puebla",
+   "countryCode": "MX",
+   "publisherName": "El Sol de Puebla",
+   "publisherType": "newspaper",
+   "url": "https://www.elsoldepuebla.com.mx/rss",
+   "geographicScope": "local",
+   "regionName": "Puebla",
+   "cityName": "Puebla",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "oem"
+  },
+  {
+   "sourceId": "mx-sol-de-leon",
+   "countryCode": "MX",
+   "publisherName": "El Sol de León",
+   "publisherType": "newspaper",
+   "url": "https://www.elsoldeleon.com.mx/rss",
+   "geographicScope": "local",
+   "regionName": "Guanajuato",
+   "cityName": "León de los Aldama",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "oem"
+  },
+  {
+   "sourceId": "mx-sol-de-irapuato",
+   "countryCode": "MX",
+   "publisherName": "El Sol de Irapuato",
+   "publisherType": "newspaper",
+   "url": "https://www.elsoldeirapuato.com.mx/rss",
+   "geographicScope": "local",
+   "regionName": "Guanajuato",
+   "cityName": "Irapuato",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "oem"
+  },
+  {
+   "sourceId": "mx-sol-de-salamanca",
+   "countryCode": "MX",
+   "publisherName": "El Sol de Salamanca",
+   "publisherType": "newspaper",
+   "url": "https://www.elsoldesalamanca.com.mx/rss",
+   "geographicScope": "local",
+   "regionName": "Guanajuato",
+   "cityName": "Salamanca",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "oem"
+  },
+  {
+   "sourceId": "mx-diario-de-queretaro",
+   "countryCode": "MX",
+   "publisherName": "Diario de Querétaro",
+   "publisherType": "newspaper",
+   "url": "https://www.diariodequeretaro.com.mx/rss",
+   "geographicScope": "local",
+   "regionName": "Querétaro",
+   "cityName": "Santiago de Querétaro",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "oem"
+  },
+  {
+   "sourceId": "mx-sol-de-hidalgo",
+   "countryCode": "MX",
+   "publisherName": "El Sol de Hidalgo",
+   "publisherType": "newspaper",
+   "url": "https://www.elsoldehidalgo.com.mx/rss",
+   "geographicScope": "local",
+   "regionName": "Hidalgo",
+   "cityName": "Pachuca de Soto",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "oem"
+  },
+  {
+   "sourceId": "mx-sol-de-tulancingo",
+   "countryCode": "MX",
+   "publisherName": "El Sol de Tulancingo",
+   "publisherType": "newspaper",
+   "url": "https://www.elsoldetulancingo.com.mx/rss",
+   "geographicScope": "local",
+   "regionName": "Hidalgo",
+   "cityName": "Tulancingo",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "oem"
+  },
+  {
+   "sourceId": "mx-sol-de-tlaxcala",
+   "countryCode": "MX",
+   "publisherName": "El Sol de Tlaxcala",
+   "publisherType": "newspaper",
+   "url": "https://www.elsoldetlaxcala.com.mx/rss",
+   "geographicScope": "local",
+   "regionName": "Tlaxcala",
+   "cityName": "Tlaxcala",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "oem"
+  },
+  {
+   "sourceId": "mx-sol-de-cuernavaca",
+   "countryCode": "MX",
+   "publisherName": "El Sol de Cuernavaca",
+   "publisherType": "newspaper",
+   "url": "https://www.elsoldecuernavaca.com.mx/rss",
+   "geographicScope": "local",
+   "regionName": "Morelos",
+   "cityName": "Cuernavaca",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "oem"
+  },
+  {
+   "sourceId": "mx-sol-de-cuautla",
+   "countryCode": "MX",
+   "publisherName": "El Sol de Cuautla",
+   "publisherType": "newspaper",
+   "url": "https://www.elsoldecuautla.com.mx/rss",
+   "geographicScope": "local",
+   "regionName": "Morelos",
+   "cityName": "Cuautla",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "oem"
+  },
+  {
+   "sourceId": "mx-sol-de-san-luis",
+   "countryCode": "MX",
+   "publisherName": "El Sol de San Luis",
+   "publisherType": "newspaper",
+   "url": "https://www.elsoldesanluis.com.mx/rss",
+   "geographicScope": "local",
+   "regionName": "San Luis Potosí",
+   "cityName": "San Luis Potosí",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "oem"
+  },
+  {
+   "sourceId": "mx-sol-de-zacatecas",
+   "countryCode": "MX",
+   "publisherName": "El Sol de Zacatecas",
+   "publisherType": "newspaper",
+   "url": "https://www.elsoldezacatecas.com.mx/rss",
+   "geographicScope": "local",
+   "regionName": "Zacatecas",
+   "cityName": "Zacatecas",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "oem"
+  },
+  {
+   "sourceId": "mx-sol-de-durango",
+   "countryCode": "MX",
+   "publisherName": "El Sol de Durango",
+   "publisherType": "newspaper",
+   "url": "https://www.elsoldedurango.com.mx/rss",
+   "geographicScope": "local",
+   "regionName": "Durango",
+   "cityName": "Victoria de Durango",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "oem"
+  },
+  {
+   "sourceId": "mx-heraldo-de-chihuahua",
+   "countryCode": "MX",
+   "publisherName": "El Heraldo de Chihuahua",
+   "publisherType": "newspaper",
+   "url": "https://www.elheraldodechihuahua.com.mx/rss",
+   "geographicScope": "local",
+   "regionName": "Chihuahua",
+   "cityName": "Chihuahua",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "oem"
+  },
+  {
+   "sourceId": "mx-sol-de-parral",
+   "countryCode": "MX",
+   "publisherName": "El Sol de Parral",
+   "publisherType": "newspaper",
+   "url": "https://www.elsoldeparral.com.mx/rss",
+   "geographicScope": "local",
+   "regionName": "Chihuahua",
+   "cityName": "Hidalgo del Parral",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "oem"
+  },
+  {
+   "sourceId": "mx-sol-de-tampico",
+   "countryCode": "MX",
+   "publisherName": "El Sol de Tampico",
+   "publisherType": "newspaper",
+   "url": "https://www.elsoldetampico.com.mx/rss",
+   "geographicScope": "local",
+   "regionName": "Tamaulipas",
+   "cityName": "Tampico",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "oem"
+  },
+  {
+   "sourceId": "mx-sol-de-sinaloa",
+   "countryCode": "MX",
+   "publisherName": "El Sol de Sinaloa",
+   "publisherType": "newspaper",
+   "url": "https://www.elsoldesinaloa.com.mx/rss",
+   "geographicScope": "local",
+   "regionName": "Sinaloa",
+   "cityName": "Culiacán",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "oem"
+  },
+  {
+   "sourceId": "mx-sol-de-mazatlan",
+   "countryCode": "MX",
+   "publisherName": "El Sol de Mazatlán",
+   "publisherType": "newspaper",
+   "url": "https://www.elsoldemazatlan.com.mx/rss",
+   "geographicScope": "local",
+   "regionName": "Sinaloa",
+   "cityName": "Mazatlán",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "oem"
+  },
+  {
+   "sourceId": "mx-sol-de-hermosillo",
+   "countryCode": "MX",
+   "publisherName": "El Sol de Hermosillo",
+   "publisherType": "newspaper",
+   "url": "https://www.elsoldehermosillo.com.mx/rss",
+   "geographicScope": "local",
+   "regionName": "Sonora",
+   "cityName": "Hermosillo",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "oem"
+  },
+  {
+   "sourceId": "mx-voz-de-la-frontera",
+   "countryCode": "MX",
+   "publisherName": "La Voz de la Frontera",
+   "publisherType": "newspaper",
+   "url": "https://www.lavozdelafrontera.com.mx/rss",
+   "geographicScope": "local",
+   "regionName": "Baja California",
+   "cityName": "Mexicali",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "oem"
+  },
+  {
+   "sourceId": "mx-sol-de-tijuana",
+   "countryCode": "MX",
+   "publisherName": "El Sol de Tijuana",
+   "publisherType": "newspaper",
+   "url": "https://www.elsoldetijuana.com.mx/rss",
+   "geographicScope": "local",
+   "regionName": "Baja California",
+   "cityName": "Tijuana",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "oem"
+  },
+  {
+   "sourceId": "mx-sudcaliforniano",
+   "countryCode": "MX",
+   "publisherName": "El Sudcaliforniano",
+   "publisherType": "newspaper",
+   "url": "https://www.elsudcaliforniano.com.mx/rss",
+   "geographicScope": "local",
+   "regionName": "Baja California Sur",
+   "cityName": "La Paz",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "oem"
+  },
+  {
+   "sourceId": "mx-sol-de-acapulco",
+   "countryCode": "MX",
+   "publisherName": "El Sol de Acapulco",
+   "publisherType": "newspaper",
+   "url": "https://www.elsoldeacapulco.com.mx/rss",
+   "geographicScope": "local",
+   "regionName": "Guerrero",
+   "cityName": "Acapulco de Juárez",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "oem"
+  },
+  {
+   "sourceId": "mx-heraldo-de-chiapas",
+   "countryCode": "MX",
+   "publisherName": "El Heraldo de Chiapas",
+   "publisherType": "newspaper",
+   "url": "https://www.elheraldodechiapas.com.mx/rss",
+   "geographicScope": "local",
+   "regionName": "Chiapas",
+   "cityName": "Tuxtla",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "oem"
+  },
+  {
+   "sourceId": "mx-diario-del-sur",
+   "countryCode": "MX",
+   "publisherName": "Diario del Sur",
+   "publisherType": "newspaper",
+   "url": "https://www.diariodelsur.com.mx/rss",
+   "geographicScope": "local",
+   "regionName": "Chiapas",
+   "cityName": "Tapachula de Córdova y Ordóñez",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "oem"
+  },
+  {
+   "sourceId": "mx-diario-de-xalapa",
+   "countryCode": "MX",
+   "publisherName": "Diario de Xalapa",
+   "publisherType": "newspaper",
+   "url": "https://www.diariodexalapa.com.mx/rss",
+   "geographicScope": "local",
+   "regionName": "Veracruz",
+   "cityName": "Xalapa de Enríquez",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "oem"
+  },
+  {
+   "sourceId": "mx-sol-de-orizaba",
+   "countryCode": "MX",
+   "publisherName": "El Sol de Orizaba",
+   "publisherType": "newspaper",
+   "url": "https://www.elsoldeorizaba.com.mx/rss",
+   "geographicScope": "local",
+   "regionName": "Veracruz",
+   "cityName": "Orizaba",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "oem"
+  },
+  {
+   "sourceId": "mx-sol-de-cordoba",
+   "countryCode": "MX",
+   "publisherName": "El Sol de Córdoba",
+   "publisherType": "newspaper",
+   "url": "https://www.elsoldecordoba.com.mx/rss",
+   "geographicScope": "local",
+   "regionName": "Veracruz",
+   "cityName": "Córdoba",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "oem"
+  },
+  {
+   "sourceId": "mx-sol-del-centro",
+   "countryCode": "MX",
+   "publisherName": "El Sol del Centro",
+   "publisherType": "newspaper",
+   "url": "https://www.elsoldelcentro.com.mx/rss",
+   "geographicScope": "local",
+   "regionName": "Aguascalientes",
+   "cityName": "Aguascalientes",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "oem"
+  },
+  {
+   "sourceId": "mx-sol-de-morelia",
+   "countryCode": "MX",
+   "publisherName": "El Sol de Morelia",
+   "publisherType": "newspaper",
+   "url": "https://www.elsoldemorelia.com.mx/rss",
+   "geographicScope": "local",
+   "regionName": "Michoacán",
+   "cityName": "Morelia",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "oem"
+  },
+  {
+   "sourceId": "mx-occidental",
+   "countryCode": "MX",
+   "publisherName": "El Occidental",
+   "publisherType": "newspaper",
+   "url": "https://www.eloccidental.com.mx/rss",
+   "geographicScope": "local",
+   "regionName": "Jalisco",
+   "cityName": "Guadalajara",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "oem"
+  },
+  {
+   "sourceId": "mx-heraldo-de-tabasco",
+   "countryCode": "MX",
+   "publisherName": "El Heraldo de Tabasco",
+   "publisherType": "newspaper",
+   "url": "https://www.elheraldodetabasco.com.mx/rss",
+   "geographicScope": "local",
+   "regionName": "Tabasco",
+   "cityName": "Villahermosa",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "oem"
+  },
+  {
+   "sourceId": "mx-jornada-capital",
+   "countryCode": "MX",
+   "publisherName": "La Jornada (Capital)",
+   "publisherType": "newspaper",
+   "url": "https://www.jornada.com.mx/rss/capital.xml",
+   "geographicScope": "local",
+   "regionName": "Mexico City",
+   "cityName": "Mexico City",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "la-jornada"
+  },
+  {
+   "sourceId": "mx-el-universal-metropoli",
+   "countryCode": "MX",
+   "publisherName": "El Universal (Metrópoli)",
+   "publisherType": "newspaper",
+   "url": "https://www.eluniversal.com.mx/arc/outboundfeeds/rss/category/metropoli/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "Mexico City",
+   "cityName": "Mexico City",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "el-universal-mx"
+  },
+  {
+   "sourceId": "mx-reforma-ciudad",
+   "countryCode": "MX",
+   "publisherName": "Reforma (Ciudad)",
+   "publisherType": "newspaper",
+   "url": "https://www.reforma.com/rss/ciudad.xml",
+   "geographicScope": "local",
+   "regionName": "Mexico City",
+   "cityName": "Mexico City",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "grupo-reforma"
+  },
+  {
+   "sourceId": "mx-chilango",
+   "countryCode": "MX",
+   "publisherName": "Chilango",
+   "publisherType": "magazine",
+   "url": "https://www.chilango.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Mexico City",
+   "cityName": "Mexico City",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "chilango"
+  },
+  {
+   "sourceId": "mx-capital-cdmx",
+   "countryCode": "MX",
+   "publisherName": "Capital CDMX",
+   "publisherType": "digital-native",
+   "url": "https://www.capital-cdmx.org/feed",
+   "geographicScope": "local",
+   "regionName": "Mexico City",
+   "cityName": "Mexico City",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "capital-cdmx"
+  },
+  {
+   "sourceId": "mx-ad-noticias",
+   "countryCode": "MX",
+   "publisherName": "AD Noticias",
+   "publisherType": "digital-native",
+   "url": "https://adnoticias.mx/feed/",
+   "geographicScope": "regional",
+   "regionName": "México",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "ad-noticias"
+  },
+  {
+   "sourceId": "mx-mural",
+   "countryCode": "MX",
+   "publisherName": "Mural",
+   "publisherType": "newspaper",
+   "url": "https://www.mural.com.mx/rss/portada.xml",
+   "geographicScope": "local",
+   "regionName": "Jalisco",
+   "cityName": "Guadalajara",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "grupo-reforma"
+  },
+  {
+   "sourceId": "mx-zona-docs",
+   "countryCode": "MX",
+   "publisherName": "ZonaDocs",
+   "publisherType": "digital-native",
+   "url": "https://www.zonadocs.mx/feed/",
+   "geographicScope": "regional",
+   "regionName": "Jalisco",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "zonadocs"
+  },
+  {
+   "sourceId": "mx-udgtv",
+   "countryCode": "MX",
+   "publisherName": "UDGTV",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.udgtv.com/feed/",
+   "geographicScope": "regional",
+   "regionName": "Jalisco",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "udg"
+  },
+  {
+   "sourceId": "mx-el-norte-local",
+   "countryCode": "MX",
+   "publisherName": "El Norte (Local)",
+   "publisherType": "newspaper",
+   "url": "https://www.elnorte.com/rss/local.xml",
+   "geographicScope": "local",
+   "regionName": "Nuevo León",
+   "cityName": "Monterrey",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "grupo-reforma"
+  },
+  {
+   "sourceId": "mx-zeta-tijuana",
+   "countryCode": "MX",
+   "publisherName": "Zeta Tijuana",
+   "publisherType": "magazine",
+   "url": "https://zetatijuana.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Baja California",
+   "cityName": "Tijuana",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "zeta"
+  },
+  {
+   "sourceId": "mx-diario-tijuana",
+   "countryCode": "MX",
+   "publisherName": "Diario Tijuana",
+   "publisherType": "digital-native",
+   "url": "https://www.diariotijuana.info/feed",
+   "geographicScope": "local",
+   "regionName": "Baja California",
+   "cityName": "Tijuana",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "diario-tijuana"
+  },
+  {
+   "sourceId": "mx-el-corredor",
+   "countryCode": "MX",
+   "publisherName": "El Corredor",
+   "publisherType": "digital-native",
+   "url": "https://www.elcorredor.com.mx/feed",
+   "geographicScope": "regional",
+   "regionName": "Baja California",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "el-corredor"
+  },
+  {
+   "sourceId": "mx-periodico-correo",
+   "countryCode": "MX",
+   "publisherName": "Periódico Correo",
+   "publisherType": "newspaper",
+   "url": "https://periodicocorreo.com.mx/rss/feed.xml",
+   "geographicScope": "regional",
+   "regionName": "Guanajuato",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "correo"
+  },
+  {
+   "sourceId": "mx-am-leon",
+   "countryCode": "MX",
+   "publisherName": "am (León)",
+   "publisherType": "newspaper",
+   "url": "https://www.am.com.mx/leon/feed",
+   "geographicScope": "local",
+   "regionName": "Guanajuato",
+   "cityName": "León de los Aldama",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "grupo-am"
+  },
+  {
+   "sourceId": "mx-jornada-de-oriente",
+   "countryCode": "MX",
+   "publisherName": "La Jornada de Oriente",
+   "publisherType": "newspaper",
+   "url": "https://www.lajornadadeoriente.com.mx/feed/",
+   "geographicScope": "regional",
+   "regionName": "Puebla",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "jornada-de-oriente"
+  },
+  {
+   "sourceId": "mx-sintesis",
+   "countryCode": "MX",
+   "publisherName": "Síntesis",
+   "publisherType": "newspaper",
+   "url": "https://sintesis.mx/feed/",
+   "geographicScope": "regional",
+   "regionName": "Puebla",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "sintesis"
+  },
+  {
+   "sourceId": "mx-poblanerias",
+   "countryCode": "MX",
+   "publisherName": "Poblanerías",
+   "publisherType": "digital-native",
+   "url": "https://www.poblanerias.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Puebla",
+   "cityName": "Puebla",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "poblanerias"
+  },
+  {
+   "sourceId": "mx-lado-b",
+   "countryCode": "MX",
+   "publisherName": "Lado B",
+   "publisherType": "digital-native",
+   "url": "https://www.ladobe.com.mx/feed/",
+   "geographicScope": "local",
+   "regionName": "Puebla",
+   "cityName": "Puebla",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "lado-b"
+  },
+  {
+   "sourceId": "mx-plumas-libres",
+   "countryCode": "MX",
+   "publisherName": "Plumas Libres",
+   "publisherType": "digital-native",
+   "url": "https://www.plumaslibres.com.mx/feed/",
+   "geographicScope": "regional",
+   "regionName": "Veracruz",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "plumas-libres"
+  },
+  {
+   "sourceId": "mx-diario-de-juarez",
+   "countryCode": "MX",
+   "publisherName": "El Diario de Juárez",
+   "publisherType": "newspaper",
+   "url": "https://diario.mx/rss/feed.xml",
+   "geographicScope": "local",
+   "regionName": "Chihuahua",
+   "cityName": "Ciudad Juárez",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "el-diario"
+  },
+  {
+   "sourceId": "mx-norte-digital",
+   "countryCode": "MX",
+   "publisherName": "Norte Digital",
+   "publisherType": "newspaper",
+   "url": "https://www.nortedigital.mx/feed/",
+   "geographicScope": "local",
+   "regionName": "Chihuahua",
+   "cityName": "Ciudad Juárez",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "norte-digital"
+  },
+  {
+   "sourceId": "mx-verdad-juarez",
+   "countryCode": "MX",
+   "publisherName": "La Verdad Juárez",
+   "publisherType": "digital-native",
+   "url": "https://laverdadjuarez.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Chihuahua",
+   "cityName": "Ciudad Juárez",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "la-verdad"
+  },
+  {
+   "sourceId": "mx-diario-de-chihuahua",
+   "countryCode": "MX",
+   "publisherName": "El Diario de Chihuahua",
+   "publisherType": "newspaper",
+   "url": "https://www.eldiariodechihuahua.mx/rss/feed.xml",
+   "geographicScope": "local",
+   "regionName": "Chihuahua",
+   "cityName": "Chihuahua",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "el-diario"
+  },
+  {
+   "sourceId": "mx-entrelineas",
+   "countryCode": "MX",
+   "publisherName": "Entrelíneas",
+   "publisherType": "digital-native",
+   "url": "https://www.entrelineas.com.mx/feed/",
+   "geographicScope": "local",
+   "regionName": "Chihuahua",
+   "cityName": "Chihuahua",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "entrelineas"
+  },
+  {
+   "sourceId": "mx-expreso-tamaulipas",
+   "countryCode": "MX",
+   "publisherName": "Expreso",
+   "publisherType": "newspaper",
+   "url": "https://www.expreso.com.mx/feed/noticias.xml",
+   "geographicScope": "regional",
+   "regionName": "Tamaulipas",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "expreso-tamaulipas"
+  },
+  {
+   "sourceId": "mx-voz-de-tamaulipas",
+   "countryCode": "MX",
+   "publisherName": "La Voz de Tamaulipas",
+   "publisherType": "digital-native",
+   "url": "https://www.lavozdetamaulipas.com/feed",
+   "geographicScope": "regional",
+   "regionName": "Tamaulipas",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "voz-de-tamaulipas"
+  },
+  {
+   "sourceId": "mx-vanguardia-coahuila",
+   "countryCode": "MX",
+   "publisherName": "Vanguardia (Coahuila)",
+   "publisherType": "newspaper",
+   "url": "https://www.vanguardia.com.mx/rss/coahuila",
+   "geographicScope": "regional",
+   "regionName": "Coahuila",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "vanguardia"
+  },
+  {
+   "sourceId": "mx-heraldo-de-saltillo",
+   "countryCode": "MX",
+   "publisherName": "El Heraldo de Saltillo",
+   "publisherType": "newspaper",
+   "url": "https://www.elheraldodesaltillo.mx/feed/",
+   "geographicScope": "local",
+   "regionName": "Coahuila",
+   "cityName": "Saltillo",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "heraldo-de-saltillo"
+  },
+  {
+   "sourceId": "mx-siglo-de-torreon",
+   "countryCode": "MX",
+   "publisherName": "El Siglo de Torreón",
+   "publisherType": "newspaper",
+   "url": "https://www.elsiglodetorreon.com.mx/index.xml",
+   "geographicScope": "local",
+   "regionName": "Coahuila",
+   "cityName": "Torreón",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "siglo-de-torreon"
+  },
+  {
+   "sourceId": "mx-changoonga",
+   "countryCode": "MX",
+   "publisherName": "Changoonga",
+   "publisherType": "digital-native",
+   "url": "https://www.changoonga.com/feed/",
+   "geographicScope": "regional",
+   "regionName": "Michoacán",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "changoonga"
+  },
+  {
+   "sourceId": "mx-voz-de-michoacan",
+   "countryCode": "MX",
+   "publisherName": "La Voz de Michoacán",
+   "publisherType": "newspaper",
+   "url": "https://www.lavozdemichoacan.com.mx/feed/",
+   "geographicScope": "regional",
+   "regionName": "Michoacán",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "voz-de-michoacan"
+  },
+  {
+   "sourceId": "mx-acueducto-online",
+   "countryCode": "MX",
+   "publisherName": "Acueducto Online",
+   "publisherType": "digital-native",
+   "url": "https://www.acueductoonline.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Michoacán",
+   "cityName": "Morelia",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "acueducto"
+  },
+  {
+   "sourceId": "mx-el-imparcial",
+   "countryCode": "MX",
+   "publisherName": "El Imparcial",
+   "publisherType": "newspaper",
+   "url": "https://www.elimparcial.com/rss/feed.xml",
+   "geographicScope": "regional",
+   "regionName": "Sonora",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "el-imparcial"
+  },
+  {
+   "sourceId": "mx-proyecto-puente",
+   "countryCode": "MX",
+   "publisherName": "Proyecto Puente",
+   "publisherType": "digital-native",
+   "url": "https://proyectopuente.com.mx/feed/",
+   "geographicScope": "regional",
+   "regionName": "Sonora",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "proyecto-puente"
+  },
+  {
+   "sourceId": "mx-expreso-sonora",
+   "countryCode": "MX",
+   "publisherName": "Expreso (Sonora)",
+   "publisherType": "newspaper",
+   "url": "https://www.expreso.press/feed",
+   "geographicScope": "local",
+   "regionName": "Sonora",
+   "cityName": "Hermosillo",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "expreso-sonora"
+  },
+  {
+   "sourceId": "mx-chiapas-paralelo",
+   "countryCode": "MX",
+   "publisherName": "Chiapas Paralelo",
+   "publisherType": "digital-native",
+   "url": "https://www.chiapasparalelo.com/feed/",
+   "geographicScope": "regional",
+   "regionName": "Chiapas",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "chiapas-paralelo"
+  },
+  {
+   "sourceId": "mx-alerta-chiapas",
+   "countryCode": "MX",
+   "publisherName": "Alerta Chiapas",
+   "publisherType": "digital-native",
+   "url": "https://www.alertachiapas.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Chiapas",
+   "cityName": "Tuxtla",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "alerta-chiapas"
+  },
+  {
+   "sourceId": "mx-codice-informativo",
+   "countryCode": "MX",
+   "publisherName": "Códice Informativo",
+   "publisherType": "digital-native",
+   "url": "https://codiceinformativo.com/feed/",
+   "geographicScope": "regional",
+   "regionName": "Querétaro",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "codice"
+  },
+  {
+   "sourceId": "mx-plaza-de-armas",
+   "countryCode": "MX",
+   "publisherName": "Plaza de Armas",
+   "publisherType": "newspaper",
+   "url": "https://www.plazadearmas.com.mx/feed/",
+   "geographicScope": "local",
+   "regionName": "Querétaro",
+   "cityName": "Santiago de Querétaro",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "plaza-de-armas"
+  },
+  {
+   "sourceId": "mx-linea-directa",
+   "countryCode": "MX",
+   "publisherName": "Línea Directa",
+   "publisherType": "digital-native",
+   "url": "https://lineadirectaportal.com/feed/",
+   "geographicScope": "regional",
+   "regionName": "Sinaloa",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "linea-directa"
+  },
+  {
+   "sourceId": "mx-revista-espejo",
+   "countryCode": "MX",
+   "publisherName": "Revista Espejo",
+   "publisherType": "magazine",
+   "url": "https://www.revistaespejo.com/feed/",
+   "geographicScope": "regional",
+   "regionName": "Sinaloa",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "revista-espejo"
+  },
+  {
+   "sourceId": "mx-los-noticieristas",
+   "countryCode": "MX",
+   "publisherName": "Los Noticieristas",
+   "publisherType": "digital-native",
+   "url": "https://www.losnoticieristas.com/feed",
+   "geographicScope": "local",
+   "regionName": "Sinaloa",
+   "cityName": "Culiacán",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "los-noticieristas"
+  },
+  {
+   "sourceId": "mx-diario-de-yucatan",
+   "countryCode": "MX",
+   "publisherName": "Diario de Yucatán",
+   "publisherType": "newspaper",
+   "url": "https://www.yucatan.com.mx/feed",
+   "geographicScope": "regional",
+   "regionName": "Yucatán",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "diario-de-yucatan"
+  },
+  {
+   "sourceId": "mx-diario-de-yucatan-merida",
+   "countryCode": "MX",
+   "publisherName": "Diario de Yucatán (Mérida)",
+   "publisherType": "newspaper",
+   "url": "https://www.yucatan.com.mx/merida/feed",
+   "geographicScope": "local",
+   "regionName": "Yucatán",
+   "cityName": "Mérida",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "diario-de-yucatan"
+  },
+  {
+   "sourceId": "mx-diario-de-yucatan-qroo",
+   "countryCode": "MX",
+   "publisherName": "Diario de Yucatán (Quintana Roo)",
+   "publisherType": "newspaper",
+   "url": "https://www.yucatan.com.mx/quintana-roo/feed",
+   "geographicScope": "regional",
+   "regionName": "Quintana Roo",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "diario-de-yucatan"
+  },
+  {
+   "sourceId": "mx-noticaribe",
+   "countryCode": "MX",
+   "publisherName": "Noticaribe",
+   "publisherType": "digital-native",
+   "url": "https://noticaribe.com.mx/feed/",
+   "geographicScope": "regional",
+   "regionName": "Quintana Roo",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "noticaribe"
+  },
+  {
+   "sourceId": "mx-cancun-mio",
+   "countryCode": "MX",
+   "publisherName": "Cancún Mío",
+   "publisherType": "digital-native",
+   "url": "https://www.cancunmio.com/feed",
+   "geographicScope": "local",
+   "regionName": "Quintana Roo",
+   "cityName": "Cancún",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "cancun-mio"
+  },
+  {
+   "sourceId": "mx-astrolabio",
+   "countryCode": "MX",
+   "publisherName": "Astrolabio",
+   "publisherType": "digital-native",
+   "url": "https://astrolabio.com.mx/feed/",
+   "geographicScope": "regional",
+   "regionName": "San Luis Potosí",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "astrolabio"
+  },
+  {
+   "sourceId": "mx-jornada-san-luis",
+   "countryCode": "MX",
+   "publisherName": "La Jornada San Luis",
+   "publisherType": "newspaper",
+   "url": "https://www.lajornadasanluis.com.mx/feed/",
+   "geographicScope": "regional",
+   "regionName": "San Luis Potosí",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "jornada-san-luis"
+  },
+  {
+   "sourceId": "mx-acapulco-press",
+   "countryCode": "MX",
+   "publisherName": "Acapulco Press",
+   "publisherType": "digital-native",
+   "url": "https://www.acapulcopress.com/index.php/feed/",
+   "geographicScope": "local",
+   "regionName": "Guerrero",
+   "cityName": "Acapulco de Juárez",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "acapulco-press"
+  },
+  {
+   "sourceId": "mx-jornada-morelos",
+   "countryCode": "MX",
+   "publisherName": "La Jornada Morelos",
+   "publisherType": "newspaper",
+   "url": "https://www.lajornadamorelos.mx/feed/",
+   "geographicScope": "regional",
+   "regionName": "Morelos",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "jornada-morelos"
+  },
+  {
+   "sourceId": "mx-diario-de-morelos",
+   "countryCode": "MX",
+   "publisherName": "Diario de Morelos",
+   "publisherType": "newspaper",
+   "url": "https://www.diariodemorelos.com/uploads/feeds/feed_diario-de-morelos_es.xml",
+   "geographicScope": "regional",
+   "regionName": "Morelos",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "diario-de-morelos"
+  },
+  {
+   "sourceId": "mx-nvi-noticias",
+   "countryCode": "MX",
+   "publisherName": "NVI Noticias",
+   "publisherType": "newspaper",
+   "url": "https://www.nvinoticias.com/rss.xml",
+   "geographicScope": "regional",
+   "regionName": "Oaxaca",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "nvi"
+  },
+  {
+   "sourceId": "mx-imparcial-oaxaca",
+   "countryCode": "MX",
+   "publisherName": "El Imparcial de Oaxaca",
+   "publisherType": "newspaper",
+   "url": "https://imparcialoaxaca.mx/feed/",
+   "geographicScope": "local",
+   "regionName": "Oaxaca",
+   "cityName": "Oaxaca",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "imparcial-oaxaca"
+  },
+  {
+   "sourceId": "mx-contacto-hoy",
+   "countryCode": "MX",
+   "publisherName": "Contacto Hoy",
+   "publisherType": "digital-native",
+   "url": "https://www.contactohoy.com.mx/feed/",
+   "geographicScope": "regional",
+   "regionName": "Durango",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "contacto-hoy"
+  },
+  {
+   "sourceId": "mx-lja",
+   "countryCode": "MX",
+   "publisherName": "LJA.mx",
+   "publisherType": "newspaper",
+   "url": "https://www.lja.mx/feed/",
+   "geographicScope": "regional",
+   "regionName": "Aguascalientes",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "lja"
+  },
+  {
+   "sourceId": "mx-hidrocalido",
+   "countryCode": "MX",
+   "publisherName": "Hidrocálido",
+   "publisherType": "newspaper",
+   "url": "https://www.hidrocalidodigital.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Aguascalientes",
+   "cityName": "Aguascalientes",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "hidrocalido"
+  },
+  {
+   "sourceId": "mx-tabasco-hoy",
+   "countryCode": "MX",
+   "publisherName": "Tabasco Hoy",
+   "publisherType": "newspaper",
+   "url": "https://www.tabascohoy.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Tabasco",
+   "cityName": "Villahermosa",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "tabasco-hoy"
+  },
+  {
+   "sourceId": "mx-bcs-noticias",
+   "countryCode": "MX",
+   "publisherName": "BCS Noticias",
+   "publisherType": "digital-native",
+   "url": "https://www.bcsnoticias.mx/feed/",
+   "geographicScope": "regional",
+   "regionName": "Baja California Sur",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "bcs-noticias"
+  },
+  {
+   "sourceId": "mx-diario-el-independiente",
+   "countryCode": "MX",
+   "publisherName": "Diario El Independiente",
+   "publisherType": "newspaper",
+   "url": "https://www.diarioelindependiente.mx/feed",
+   "geographicScope": "regional",
+   "regionName": "Baja California Sur",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "el-independiente-bcs"
+  },
+  {
+   "sourceId": "mx-zacatecas-online",
+   "countryCode": "MX",
+   "publisherName": "Zacatecas Online",
+   "publisherType": "digital-native",
+   "url": "https://www.zacatecasonline.com.mx/feed",
+   "geographicScope": "regional",
+   "regionName": "Zacatecas",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "zacatecas-online"
+  },
+  {
+   "sourceId": "mx-meridiano-nayarit",
+   "countryCode": "MX",
+   "publisherName": "Meridiano de Nayarit",
+   "publisherType": "newspaper",
+   "url": "https://www.meridiano.mx/rss",
+   "geographicScope": "regional",
+   "regionName": "Nayarit",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "meridiano"
+  },
+  {
+   "sourceId": "mx-af-medios",
+   "countryCode": "MX",
+   "publisherName": "AF Medios",
+   "publisherType": "digital-native",
+   "url": "https://www.afmedios.com/feed/",
+   "geographicScope": "regional",
+   "regionName": "Colima",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "af-medios"
+  },
+  {
+   "sourceId": "mx-colima-noticias",
+   "countryCode": "MX",
+   "publisherName": "Colima Noticias",
+   "publisherType": "digital-native",
+   "url": "https://www.colimanoticias.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Colima",
+   "cityName": "Colima",
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "colima-noticias"
+  },
+  {
+   "sourceId": "mx-tribuna-campeche",
+   "countryCode": "MX",
+   "publisherName": "Tribuna Campeche",
+   "publisherType": "newspaper",
+   "url": "https://tribunacampeche.com/feed/",
+   "geographicScope": "regional",
+   "regionName": "Campeche",
+   "cityName": null,
+   "languageTags": [
+    "es-MX"
+   ],
+   "group": "tribuna-campeche"
+  },
+  {
+   "sourceId": "gt-republica",
+   "countryCode": "GT",
+   "publisherName": "República",
+   "publisherType": "digital-native",
+   "url": "https://republica.gt/feed",
+   "geographicScope": "local",
+   "regionName": "Guatemala",
+   "cityName": "Guatemala City",
+   "languageTags": [
+    "es-GT"
+   ],
+   "group": "republica-gt"
+  },
+  {
+   "sourceId": "gt-plaza-publica",
+   "countryCode": "GT",
+   "publisherName": "Plaza Pública",
+   "publisherType": "digital-native",
+   "url": "https://plazapublica.com.gt/feed/",
+   "geographicScope": "local",
+   "regionName": "Guatemala",
+   "cityName": "Guatemala City",
+   "languageTags": [
+    "es-GT"
+   ],
+   "group": "plaza-publica"
+  },
+  {
+   "sourceId": "gt-chapin-tv",
+   "countryCode": "GT",
+   "publisherName": "Chapín TV",
+   "publisherType": "broadcaster",
+   "url": "https://www.chapintv.com/feed",
+   "geographicScope": "local",
+   "regionName": "Guatemala",
+   "cityName": "Guatemala City",
+   "languageTags": [
+    "es-GT"
+   ],
+   "group": "chapin-tv"
+  },
+  {
+   "sourceId": "gt-stereo-100",
+   "countryCode": "GT",
+   "publisherName": "Stereo 100",
+   "publisherType": "broadcaster",
+   "url": "https://stereo100.com.gt/feed/",
+   "geographicScope": "local",
+   "regionName": "Quetzaltenango",
+   "cityName": "Quetzaltenango",
+   "languageTags": [
+    "es-GT"
+   ],
+   "group": "stereo-100"
+  },
+  {
+   "sourceId": "hn-el-heraldo-tegucigalpa",
+   "countryCode": "HN",
+   "publisherName": "El Heraldo (Tegucigalpa)",
+   "publisherType": "newspaper",
+   "url": "https://www.elheraldo.hn/rss/tegucigalpa",
+   "geographicScope": "local",
+   "regionName": "Francisco Morazán Department",
+   "cityName": "Tegucigalpa",
+   "languageTags": [
+    "es-HN"
+   ],
+   "group": "opsa"
+  },
+  {
+   "sourceId": "hn-hondudiario",
+   "countryCode": "HN",
+   "publisherName": "Hondudiario",
+   "publisherType": "digital-native",
+   "url": "https://hondudiario.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Francisco Morazán Department",
+   "cityName": "Tegucigalpa",
+   "languageTags": [
+    "es-HN"
+   ],
+   "group": "hondudiario"
+  },
+  {
+   "sourceId": "hn-contracorriente",
+   "countryCode": "HN",
+   "publisherName": "Contracorriente",
+   "publisherType": "digital-native",
+   "url": "https://contracorriente.red/feed/",
+   "geographicScope": "local",
+   "regionName": "Francisco Morazán Department",
+   "cityName": "Tegucigalpa",
+   "languageTags": [
+    "es-HN"
+   ],
+   "group": "contracorriente"
+  },
+  {
+   "sourceId": "hn-la-prensa",
+   "countryCode": "HN",
+   "publisherName": "La Prensa",
+   "publisherType": "newspaper",
+   "url": "https://www.laprensa.hn/rss/honduras",
+   "geographicScope": "local",
+   "regionName": "Cortés Department",
+   "cityName": "San Pedro Sula",
+   "languageTags": [
+    "es-HN"
+   ],
+   "group": "opsa"
+  },
+  {
+   "sourceId": "hn-el-pais",
+   "countryCode": "HN",
+   "publisherName": "El País",
+   "publisherType": "newspaper",
+   "url": "https://www.elpais.hn/feed/",
+   "geographicScope": "local",
+   "regionName": "Cortés Department",
+   "cityName": "San Pedro Sula",
+   "languageTags": [
+    "es-HN"
+   ],
+   "group": "el-pais-hn"
+  },
+  {
+   "sourceId": "sv-la-pagina",
+   "countryCode": "SV",
+   "publisherName": "La Página",
+   "publisherType": "digital-native",
+   "url": "https://www.lapagina.com.sv/feed/",
+   "geographicScope": "local",
+   "regionName": "San Salvador Department",
+   "cityName": "San Salvador",
+   "languageTags": [
+    "es-SV"
+   ],
+   "group": "la-pagina"
+  },
+  {
+   "sourceId": "sv-gato-encerrado",
+   "countryCode": "SV",
+   "publisherName": "Gato Encerrado",
+   "publisherType": "digital-native",
+   "url": "https://gatoencerrado.news/feed/",
+   "geographicScope": "local",
+   "regionName": "San Salvador Department",
+   "cityName": "San Salvador",
+   "languageTags": [
+    "es-SV"
+   ],
+   "group": "gato-encerrado"
+  },
+  {
+   "sourceId": "sv-el-salvador-times",
+   "countryCode": "SV",
+   "publisherName": "El Salvador Times",
+   "publisherType": "digital-native",
+   "url": "https://www.elsalvadortimes.com/rss/",
+   "geographicScope": "local",
+   "regionName": "San Salvador Department",
+   "cityName": "San Salvador",
+   "languageTags": [
+    "es-SV"
+   ],
+   "group": "el-salvador-times"
+  },
+  {
+   "sourceId": "sv-factum",
+   "countryCode": "SV",
+   "publisherName": "Revista Factum",
+   "publisherType": "magazine",
+   "url": "https://www.revistafactum.com/feed/",
+   "geographicScope": "local",
+   "regionName": "San Salvador Department",
+   "cityName": "San Salvador",
+   "languageTags": [
+    "es-SV"
+   ],
+   "group": "factum"
+  },
+  {
+   "sourceId": "ni-divergentes",
+   "countryCode": "NI",
+   "publisherName": "Divergentes",
+   "publisherType": "digital-native",
+   "url": "https://www.divergentes.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Managua Department",
+   "cityName": "Managua",
+   "languageTags": [
+    "es-NI"
+   ],
+   "group": "divergentes"
+  },
+  {
+   "sourceId": "ni-la-jornada-net",
+   "countryCode": "NI",
+   "publisherName": "La Jornada (Nicaragua)",
+   "publisherType": "digital-native",
+   "url": "https://www.lajornadanet.com/feed",
+   "geographicScope": "local",
+   "regionName": "Managua Department",
+   "cityName": "Managua",
+   "languageTags": [
+    "es-NI"
+   ],
+   "group": "la-jornada-ni"
+  },
+  {
+   "sourceId": "cr-el-mundo",
+   "countryCode": "CR",
+   "publisherName": "El Mundo CR",
+   "publisherType": "digital-native",
+   "url": "https://www.elmundo.cr/feed/",
+   "geographicScope": "local",
+   "regionName": "San José",
+   "cityName": "San José",
+   "languageTags": [
+    "es-CR"
+   ],
+   "group": "el-mundo-cr"
+  },
+  {
+   "sourceId": "cr-monumental",
+   "countryCode": "CR",
+   "publisherName": "Radio Monumental",
+   "publisherType": "broadcaster",
+   "url": "https://www.monumental.co.cr/feed/",
+   "geographicScope": "local",
+   "regionName": "San José",
+   "cityName": "San José",
+   "languageTags": [
+    "es-CR"
+   ],
+   "group": "grupo-centro"
+  },
+  {
+   "sourceId": "cr-la-republica",
+   "countryCode": "CR",
+   "publisherName": "La República",
+   "publisherType": "newspaper",
+   "url": "https://www.larepublica.net/feeds/feed.rss",
+   "geographicScope": "local",
+   "regionName": "San José",
+   "cityName": "San José",
+   "languageTags": [
+    "es-CR"
+   ],
+   "group": "la-republica-cr"
+  },
+  {
+   "sourceId": "cr-tico-times",
+   "countryCode": "CR",
+   "publisherName": "The Tico Times",
+   "publisherType": "newspaper",
+   "url": "https://www.ticotimes.net/feed",
+   "geographicScope": "local",
+   "regionName": "San José",
+   "cityName": "San José",
+   "languageTags": [
+    "en-CR"
+   ],
+   "group": "tico-times"
+  },
+  {
+   "sourceId": "pa-critica",
+   "countryCode": "PA",
+   "publisherName": "Crítica",
+   "publisherType": "newspaper",
+   "url": "https://www.critica.com.pa/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Panamá",
+   "cityName": "Panama City",
+   "languageTags": [
+    "es-PA"
+   ],
+   "group": "epasa"
+  },
+  {
+   "sourceId": "pa-panama-america",
+   "countryCode": "PA",
+   "publisherName": "Panamá América",
+   "publisherType": "newspaper",
+   "url": "https://www.panamaamerica.com.pa/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Panamá",
+   "cityName": "Panama City",
+   "languageTags": [
+    "es-PA"
+   ],
+   "group": "epasa"
+  },
+  {
+   "sourceId": "pa-chiriqui-noticias",
+   "countryCode": "PA",
+   "publisherName": "Chiriquí Noticias",
+   "publisherType": "digital-native",
+   "url": "https://www.chiriquinoticias.com/feed",
+   "geographicScope": "local",
+   "regionName": "Chiriquí Province",
+   "cityName": "David",
+   "languageTags": [
+    "es-PA"
+   ],
+   "group": "chiriqui-noticias"
+  },
+  {
+   "sourceId": "cu-diario-de-cuba",
+   "countryCode": "CU",
+   "publisherName": "Diario de Cuba",
+   "publisherType": "digital-native",
+   "url": "https://www.diariodecuba.com/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Havana",
+   "cityName": "Havana",
+   "languageTags": [
+    "es-CU"
+   ],
+   "group": "diario-de-cuba"
+  },
+  {
+   "sourceId": "cu-cibercuba",
+   "countryCode": "CU",
+   "publisherName": "CiberCuba",
+   "publisherType": "digital-native",
+   "url": "https://www.cibercuba.com/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Havana",
+   "cityName": "Havana",
+   "languageTags": [
+    "es-CU"
+   ],
+   "group": "cibercuba"
+  },
+  {
+   "sourceId": "cu-el-toque",
+   "countryCode": "CU",
+   "publisherName": "elTOQUE",
+   "publisherType": "digital-native",
+   "url": "https://eltoque.com/feed",
+   "geographicScope": "local",
+   "regionName": "Havana",
+   "cityName": "Havana",
+   "languageTags": [
+    "es-CU"
+   ],
+   "group": "el-toque"
+  },
+  {
+   "sourceId": "cu-periodico-cubano",
+   "countryCode": "CU",
+   "publisherName": "Periódico Cubano",
+   "publisherType": "digital-native",
+   "url": "https://www.periodicocubano.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Havana",
+   "cityName": "Havana",
+   "languageTags": [
+    "es-CU"
+   ],
+   "group": "periodico-cubano"
+  },
+  {
+   "sourceId": "do-hoy",
+   "countryCode": "DO",
+   "publisherName": "Hoy",
+   "publisherType": "newspaper",
+   "url": "https://hoy.com.do/rss",
+   "geographicScope": "local",
+   "regionName": "Nacional",
+   "cityName": "Santo Domingo",
+   "languageTags": [
+    "es-DO"
+   ],
+   "group": "hoy-do"
+  },
+  {
+   "sourceId": "do-el-nacional",
+   "countryCode": "DO",
+   "publisherName": "El Nacional",
+   "publisherType": "newspaper",
+   "url": "https://elnacional.com.do/feed/",
+   "geographicScope": "local",
+   "regionName": "Nacional",
+   "cityName": "Santo Domingo",
+   "languageTags": [
+    "es-DO"
+   ],
+   "group": "el-nacional-do"
+  },
+  {
+   "sourceId": "do-el-nuevo-diario",
+   "countryCode": "DO",
+   "publisherName": "El Nuevo Diario",
+   "publisherType": "newspaper",
+   "url": "https://www.elnuevodiario.com.do/feed/",
+   "geographicScope": "local",
+   "regionName": "Nacional",
+   "cityName": "Santo Domingo",
+   "languageTags": [
+    "es-DO"
+   ],
+   "group": "el-nuevo-diario-do"
+  },
+  {
+   "sourceId": "do-noticias-sin",
+   "countryCode": "DO",
+   "publisherName": "Noticias SIN",
+   "publisherType": "broadcaster",
+   "url": "https://noticiassin.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Nacional",
+   "cityName": "Santo Domingo",
+   "languageTags": [
+    "es-DO"
+   ],
+   "group": "grupo-sin"
+  },
+  {
+   "sourceId": "do-el-dia",
+   "countryCode": "DO",
+   "publisherName": "El Día",
+   "publisherType": "newspaper",
+   "url": "https://www.eldia.com.do/feed/",
+   "geographicScope": "local",
+   "regionName": "Nacional",
+   "cityName": "Santo Domingo",
+   "languageTags": [
+    "es-DO"
+   ],
+   "group": "el-dia-do"
+  },
+  {
+   "sourceId": "do-cibao-al-dia",
+   "countryCode": "DO",
+   "publisherName": "Cibao al Día",
+   "publisherType": "digital-native",
+   "url": "https://www.cibaoaldia.com/feed",
+   "geographicScope": "local",
+   "regionName": "Santiago Province",
+   "cityName": "Santiago de los Caballeros",
+   "languageTags": [
+    "es-DO"
+   ],
+   "group": "cibao-al-dia"
+  },
+  {
+   "sourceId": "ht-le-nouvelliste",
+   "countryCode": "HT",
+   "publisherName": "Le Nouvelliste",
+   "publisherType": "newspaper",
+   "url": "https://lenouvelliste.com/feed",
+   "geographicScope": "local",
+   "regionName": "Ouest",
+   "cityName": "Port-au-Prince",
+   "languageTags": [
+    "fr-HT"
+   ],
+   "group": "le-nouvelliste"
+  },
+  {
+   "sourceId": "ht-juno7",
+   "countryCode": "HT",
+   "publisherName": "Juno7",
+   "publisherType": "digital-native",
+   "url": "https://www.juno7.ht/feed/",
+   "geographicScope": "local",
+   "regionName": "Ouest",
+   "cityName": "Port-au-Prince",
+   "languageTags": [
+    "fr-HT"
+   ],
+   "group": "juno7"
+  },
+  {
+   "sourceId": "ht-rezo-nodwes",
+   "countryCode": "HT",
+   "publisherName": "Rezo Nòdwès",
+   "publisherType": "digital-native",
+   "url": "https://www.rezonodwes.com/?feed=rss2",
+   "geographicScope": "local",
+   "regionName": "Ouest",
+   "cityName": "Port-au-Prince",
+   "languageTags": [
+    "fr-HT"
+   ],
+   "group": "rezo-nodwes"
+  },
+  {
+   "sourceId": "ht-vant-bef-info",
+   "countryCode": "HT",
+   "publisherName": "Vant Bèf Info",
+   "publisherType": "digital-native",
+   "url": "https://www.vantbefinfo.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Ouest",
+   "cityName": "Port-au-Prince",
+   "languageTags": [
+    "fr-HT"
+   ],
+   "group": "vant-bef"
+  },
+  {
+   "sourceId": "ht-radio-tele-caraibes",
+   "countryCode": "HT",
+   "publisherName": "Radio Télé Caraïbes",
+   "publisherType": "broadcaster",
+   "url": "https://www.radiotelevisioncaraibes.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Ouest",
+   "cityName": "Port-au-Prince",
+   "languageTags": [
+    "fr-HT"
+   ],
+   "group": "caraibes"
+  },
+  {
+   "sourceId": "jm-irie-fm",
+   "countryCode": "JM",
+   "publisherName": "Irie FM",
+   "publisherType": "broadcaster",
+   "url": "https://www.irieFM.net/feed",
+   "geographicScope": "local",
+   "regionName": "Kingston",
+   "cityName": "Kingston",
+   "languageTags": [
+    "en-JM"
+   ],
+   "group": "irie-fm"
+  },
+  {
+   "sourceId": "pr-primera-hora",
+   "countryCode": "PR",
+   "publisherName": "Primera Hora",
+   "publisherType": "newspaper",
+   "url": "https://www.primerahora.com/arc/outboundfeeds/rss/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "San Juan",
+   "cityName": "San Juan",
+   "languageTags": [
+    "es-PR"
+   ],
+   "group": "gfr-media"
+  },
+  {
+   "sourceId": "pr-metro-pr",
+   "countryCode": "PR",
+   "publisherName": "Metro Puerto Rico",
+   "publisherType": "newspaper",
+   "url": "https://www.metro.pr/arc/outboundfeeds/rss/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "San Juan",
+   "cityName": "San Juan",
+   "languageTags": [
+    "es-PR"
+   ],
+   "group": "metro-pr"
+  },
+  {
+   "sourceId": "pr-la-perla-del-sur",
+   "countryCode": "PR",
+   "publisherName": "La Perla del Sur",
+   "publisherType": "newspaper",
+   "url": "https://www.periodicolaperla.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Ponce",
+   "cityName": "Ponce",
+   "languageTags": [
+    "es-PR"
+   ],
+   "group": "la-perla"
+  },
+  {
+   "sourceId": "bs-zns",
+   "countryCode": "BS",
+   "publisherName": "ZNS Bahamas",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.znsbahamas.com/feed/",
+   "geographicScope": "local",
+   "regionName": "New Providence",
+   "cityName": "Nassau",
+   "languageTags": [
+    "en-BS"
+   ],
+   "group": "zns"
+  },
+  {
+   "sourceId": "bs-bahamas-press",
+   "countryCode": "BS",
+   "publisherName": "Bahamas Press",
+   "publisherType": "digital-native",
+   "url": "https://www.bahamaspress.com/feed/",
+   "geographicScope": "local",
+   "regionName": "New Providence",
+   "cityName": "Nassau",
+   "languageTags": [
+    "en-BS"
+   ],
+   "group": "bahamas-press"
+  },
+  {
+   "sourceId": "bz-7-news",
+   "countryCode": "BZ",
+   "publisherName": "7 News Belize",
+   "publisherType": "broadcaster",
+   "url": "https://www.7newsbelize.com/rss.php",
+   "geographicScope": "local",
+   "regionName": "Belize District",
+   "cityName": "Belize City",
+   "languageTags": [
+    "en-BZ"
+   ],
+   "group": "7-news-belize"
+  },
+  {
+   "sourceId": "bb-cbc",
+   "countryCode": "BB",
+   "publisherName": "CBC Barbados",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.cbc.bb/feed/",
+   "geographicScope": "local",
+   "regionName": "Saint Michael",
+   "cityName": "Bridgetown",
+   "languageTags": [
+    "en-BB"
+   ],
+   "group": "cbc-barbados"
+  },
+  {
+   "sourceId": "lc-st-lucia-star",
+   "countryCode": "LC",
+   "publisherName": "St. Lucia Star",
+   "publisherType": "newspaper",
+   "url": "https://www.stluciastar.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Castries",
+   "cityName": "Castries",
+   "languageTags": [
+    "en-LC"
+   ],
+   "group": "st-lucia-star"
+  },
+  {
+   "sourceId": "kn-observer",
+   "countryCode": "KN",
+   "publisherName": "The St Kitts Nevis Observer",
+   "publisherType": "newspaper",
+   "url": "https://www.thestkittsnevisobserver.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Saint George Basseterre",
+   "cityName": "Basseterre",
+   "languageTags": [
+    "en-KN"
+   ],
+   "group": "skn-observer"
+  },
+  {
+   "sourceId": "kn-skn-pulse",
+   "countryCode": "KN",
+   "publisherName": "SKN Pulse",
+   "publisherType": "digital-native",
+   "url": "https://www.sknpulse.com/feed",
+   "geographicScope": "local",
+   "regionName": "Saint George Basseterre",
+   "cityName": "Basseterre",
+   "languageTags": [
+    "en-KN"
+   ],
+   "group": "skn-pulse"
+  },
+  {
+   "sourceId": "dm-emo-news",
+   "countryCode": "DM",
+   "publisherName": "Emo News",
+   "publisherType": "digital-native",
+   "url": "https://emonewsdm.com/feed.xml",
+   "geographicScope": "local",
+   "regionName": "Saint George Parish",
+   "cityName": "Roseau",
+   "languageTags": [
+    "en-DM"
+   ],
+   "group": "emo-news"
+  },
+  {
+   "sourceId": "vg-bvi-news",
+   "countryCode": "VG",
+   "publisherName": "BVI News",
+   "publisherType": "digital-native",
+   "url": "https://bvinews.com/feed/",
+   "geographicScope": "local",
+   "regionName": null,
+   "cityName": "Road Town",
+   "languageTags": [
+    "en-VG"
+   ],
+   "group": "bvi-news"
+  },
+  {
+   "sourceId": "tc-magnetic-media",
+   "countryCode": "TC",
+   "publisherName": "Magnetic Media",
+   "publisherType": "broadcaster",
+   "url": "https://www.magneticmediatv.com/feed/",
+   "geographicScope": "local",
+   "regionName": null,
+   "cityName": "Cockburn Town",
+   "languageTags": [
+    "en-TC"
+   ],
+   "group": "magnetic-media"
+  },
+  {
+   "sourceId": "ai-anguilla-focus",
+   "countryCode": "AI",
+   "publisherName": "Anguilla Focus",
+   "publisherType": "digital-native",
+   "url": "https://www.anguillafocus.com/feed",
+   "geographicScope": "local",
+   "regionName": "The Valley",
+   "cityName": "The Valley",
+   "languageTags": [
+    "en-AI"
+   ],
+   "group": "anguilla-focus"
+  },
+  {
+   "sourceId": "bq-bonaire-nu",
+   "countryCode": "BQ",
+   "publisherName": "Bonaire.nu",
+   "publisherType": "digital-native",
+   "url": "https://www.bonaire.nu/rss",
+   "geographicScope": "local",
+   "regionName": "Bonaire",
+   "cityName": "Kralendijk",
+   "languageTags": [
+    "nl-BQ"
+   ],
+   "group": "bonaire-nu"
+  },
+  {
+   "sourceId": "mf-fax-info",
+   "countryCode": "MF",
+   "publisherName": "Fax Info",
+   "publisherType": "digital-native",
+   "url": "https://www.faxinfo.fr/feed/",
+   "geographicScope": "local",
+   "regionName": null,
+   "cityName": "Marigot",
+   "languageTags": [
+    "fr-MF"
+   ],
+   "group": "fax-info"
+  }
+ ]
+}

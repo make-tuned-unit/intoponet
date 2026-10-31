@@ -1,0 +1,4136 @@
+{
+ "region": "South Asia (states, provinces, divisions and cities)",
+ "note": "Local and regional outlets for India (states, UTs, major cities), Pakistan, Bangladesh, Sri Lanka and Nepal, plus a few national outlets for smaller registries. Where the gazetteer has no regions (PK, BD, LK, NP), province or division feeds sit on that province’s capital or main city as local.",
+ "candidates": [
+  {
+   "sourceId": "in-toi-mumbai",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/-2128838597.cms",
+   "geographicScope": "local",
+   "regionName": "Maharashtra",
+   "cityName": "Mumbai",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-delhi",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/-2128839596.cms",
+   "geographicScope": "local",
+   "regionName": "Delhi",
+   "cityName": "Delhi",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-bengaluru",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/-2128833038.cms",
+   "geographicScope": "local",
+   "regionName": "Karnataka",
+   "cityName": "Bengaluru",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-hyderabad",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/-2128816011.cms",
+   "geographicScope": "local",
+   "regionName": "Telangana",
+   "cityName": "Hyderabad",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-chennai",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/2950623.cms",
+   "geographicScope": "local",
+   "regionName": "Tamil Nadu",
+   "cityName": "Chennai",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-ahmedabad",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/-2128821153.cms",
+   "geographicScope": "local",
+   "regionName": "Gujarat",
+   "cityName": "Ahmedabad",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-prayagraj",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/3947060.cms",
+   "geographicScope": "local",
+   "regionName": "Uttar Pradesh",
+   "cityName": "Prayagraj",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-bhubaneswar",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/4118235.cms",
+   "geographicScope": "local",
+   "regionName": "Odisha",
+   "cityName": "Bhubaneswar",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-chandigarh",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/-2128816762.cms",
+   "geographicScope": "local",
+   "regionName": "Chandigarh",
+   "cityName": "Chandigarh",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-coimbatore",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/7503091.cms",
+   "geographicScope": "local",
+   "regionName": "Tamil Nadu",
+   "cityName": "Coimbatore",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-gurugram",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/6547154.cms",
+   "geographicScope": "local",
+   "regionName": "Haryana",
+   "cityName": "Gurugram",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-guwahati",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/4118215.cms",
+   "geographicScope": "local",
+   "regionName": "Assam",
+   "cityName": "Guwahati",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-hubballi",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/3942695.cms",
+   "geographicScope": "local",
+   "regionName": "Karnataka",
+   "cityName": "Hubballi",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-jaipur",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/3012544.cms",
+   "geographicScope": "local",
+   "regionName": "Rajasthan",
+   "cityName": "Jaipur",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-kanpur",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/3947067.cms",
+   "geographicScope": "local",
+   "regionName": "Uttar Pradesh",
+   "cityName": "Kanpur",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-kolkata",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/-2128830821.cms",
+   "geographicScope": "local",
+   "regionName": "West Bengal",
+   "cityName": "Kolkata",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-lucknow",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/-2128819658.cms",
+   "geographicScope": "local",
+   "regionName": "Uttar Pradesh",
+   "cityName": "Lucknow",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-ludhiana",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/3947051.cms",
+   "geographicScope": "local",
+   "regionName": "Punjab",
+   "cityName": "Ludhiana",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-mangaluru",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/3942690.cms",
+   "geographicScope": "local",
+   "regionName": "Karnataka",
+   "cityName": "Mangaluru",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-mysuru",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/3942693.cms",
+   "geographicScope": "local",
+   "regionName": "Karnataka",
+   "cityName": "Mysuru",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-nagpur",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/442002.cms",
+   "geographicScope": "local",
+   "regionName": "Maharashtra",
+   "cityName": "Nagpur",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-noida",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/8021716.cms",
+   "geographicScope": "local",
+   "regionName": "Uttar Pradesh",
+   "cityName": "Noida",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-patna",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/-2128817995.cms",
+   "geographicScope": "local",
+   "regionName": "Bihar",
+   "cityName": "Patna",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-pune",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/-2128821991.cms",
+   "geographicScope": "local",
+   "regionName": "Maharashtra",
+   "cityName": "Pune",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-rajkot",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/3942663.cms",
+   "geographicScope": "local",
+   "regionName": "Gujarat",
+   "cityName": "Rājkot",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-ranchi",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/4118245.cms",
+   "geographicScope": "local",
+   "regionName": "Jharkhand",
+   "cityName": "Ranchi",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-surat",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/3942660.cms",
+   "geographicScope": "local",
+   "regionName": "Gujarat",
+   "cityName": "Surat",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-thane",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/3831863.cms",
+   "geographicScope": "local",
+   "regionName": "Maharashtra",
+   "cityName": "Thāne",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-thiruvananthapuram",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/878156304.cms",
+   "geographicScope": "local",
+   "regionName": "Kerala",
+   "cityName": "Thiruvananthapuram",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-vadodara",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/3942666.cms",
+   "geographicScope": "local",
+   "regionName": "Gujarat",
+   "cityName": "Vadodara",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-varanasi",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/3947071.cms",
+   "geographicScope": "local",
+   "regionName": "Uttar Pradesh",
+   "cityName": "Varanasi",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-indore",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/9644624.cms",
+   "geographicScope": "local",
+   "regionName": "Madhya Pradesh",
+   "cityName": "Indore",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-bhopal",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/10744190.cms",
+   "geographicScope": "local",
+   "regionName": "Madhya Pradesh",
+   "cityName": "Bhopal",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-madurai",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/9632514.cms",
+   "geographicScope": "local",
+   "regionName": "Tamil Nadu",
+   "cityName": "Madurai",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-visakhapatnam",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/17388704.cms",
+   "geographicScope": "local",
+   "regionName": "Andhra Pradesh",
+   "cityName": "Visakhapatnam",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-agra",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/36768514.cms",
+   "geographicScope": "local",
+   "regionName": "Uttar Pradesh",
+   "cityName": "Agra",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-meerut",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/36768500.cms",
+   "geographicScope": "local",
+   "regionName": "Uttar Pradesh",
+   "cityName": "Meerut",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-nashik",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/11459502.cms",
+   "geographicScope": "local",
+   "regionName": "Maharashtra",
+   "cityName": "Nashik",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-aurangabad",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/17388722.cms",
+   "geographicScope": "local",
+   "regionName": "Maharashtra",
+   "cityName": "Aurangabad",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-kochi",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/9710057.cms",
+   "geographicScope": "local",
+   "regionName": "Kerala",
+   "cityName": "Kochi",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-amritsar",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/48264748.cms",
+   "geographicScope": "local",
+   "regionName": "Punjab",
+   "cityName": "Amritsar",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-dehradun",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/36768551.cms",
+   "geographicScope": "local",
+   "regionName": "Uttarakhand",
+   "cityName": "Dehradun",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-raipur",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/17388717.cms",
+   "geographicScope": "local",
+   "regionName": "Chhattisgarh",
+   "cityName": "Raipur",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-jodhpur",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/52286637.cms",
+   "geographicScope": "local",
+   "regionName": "Rajasthan",
+   "cityName": "Jodhpur",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-vijayawada",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/47293740.cms",
+   "geographicScope": "local",
+   "regionName": "Andhra Pradesh",
+   "cityName": "Vijayawada",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-srinagar",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/48264138.cms",
+   "geographicScope": "local",
+   "regionName": "Jammu and Kashmir",
+   "cityName": "Srinagar",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-jamshedpur",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/48264388.cms",
+   "geographicScope": "local",
+   "regionName": "Jharkhand",
+   "cityName": "Jamshedpur",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-tiruchirappalli",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/22778270.cms",
+   "geographicScope": "local",
+   "regionName": "Tamil Nadu",
+   "cityName": "Tiruchirappalli",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-ghaziabad",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/52040722.cms",
+   "geographicScope": "local",
+   "regionName": "Uttar Pradesh",
+   "cityName": "Ghāziābād",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-faridabad",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/48264319.cms",
+   "geographicScope": "local",
+   "regionName": "Haryana",
+   "cityName": "Faridabad",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-navi-mumbai",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/22126655.cms",
+   "geographicScope": "local",
+   "regionName": "Maharashtra",
+   "cityName": "Navi Mumbai",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-bareilly",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/36768532.cms",
+   "geographicScope": "local",
+   "regionName": "Uttar Pradesh",
+   "cityName": "Bareilly",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-shillong",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/48264067.cms",
+   "geographicScope": "local",
+   "regionName": "Meghalaya",
+   "cityName": "Shillong",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-puducherry",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/22777916.cms",
+   "geographicScope": "local",
+   "regionName": "Puducherry",
+   "cityName": "Puducherry",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-kozhikode",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/9710567.cms",
+   "geographicScope": "local",
+   "regionName": "Kerala",
+   "cityName": "Kozhikode",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-salem",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/48263967.cms",
+   "geographicScope": "local",
+   "regionName": "Tamil Nadu",
+   "cityName": "Salem",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-amaravati",
+   "countryCode": "IN",
+   "publisherName": "The Times of India",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/54933186.cms",
+   "geographicScope": "local",
+   "regionName": "Andhra Pradesh",
+   "cityName": "Amaravati",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-toi-goa",
+   "countryCode": "IN",
+   "publisherName": "The Times of India (Goa)",
+   "publisherType": "newspaper",
+   "url": "https://timesofindia.indiatimes.com/rssfeeds/3012535.cms",
+   "geographicScope": "regional",
+   "regionName": "Goa",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-thehindu-andhra-pradesh",
+   "countryCode": "IN",
+   "publisherName": "The Hindu",
+   "publisherType": "newspaper",
+   "url": "https://www.thehindu.com/news/national/andhra-pradesh/feeder/default.rss",
+   "geographicScope": "regional",
+   "regionName": "Andhra Pradesh",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "the-hindu-group"
+  },
+  {
+   "sourceId": "in-thehindu-karnataka",
+   "countryCode": "IN",
+   "publisherName": "The Hindu",
+   "publisherType": "newspaper",
+   "url": "https://www.thehindu.com/news/national/karnataka/feeder/default.rss",
+   "geographicScope": "regional",
+   "regionName": "Karnataka",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "the-hindu-group"
+  },
+  {
+   "sourceId": "in-thehindu-kerala",
+   "countryCode": "IN",
+   "publisherName": "The Hindu",
+   "publisherType": "newspaper",
+   "url": "https://www.thehindu.com/news/national/kerala/feeder/default.rss",
+   "geographicScope": "regional",
+   "regionName": "Kerala",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "the-hindu-group"
+  },
+  {
+   "sourceId": "in-thehindu-tamil-nadu",
+   "countryCode": "IN",
+   "publisherName": "The Hindu",
+   "publisherType": "newspaper",
+   "url": "https://www.thehindu.com/news/national/tamil-nadu/feeder/default.rss",
+   "geographicScope": "regional",
+   "regionName": "Tamil Nadu",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "the-hindu-group"
+  },
+  {
+   "sourceId": "in-thehindu-telangana",
+   "countryCode": "IN",
+   "publisherName": "The Hindu",
+   "publisherType": "newspaper",
+   "url": "https://www.thehindu.com/news/national/telangana/feeder/default.rss",
+   "geographicScope": "regional",
+   "regionName": "Telangana",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "the-hindu-group"
+  },
+  {
+   "sourceId": "in-thehindu-chennai",
+   "countryCode": "IN",
+   "publisherName": "The Hindu",
+   "publisherType": "newspaper",
+   "url": "https://www.thehindu.com/news/cities/chennai/feeder/default.rss",
+   "geographicScope": "local",
+   "regionName": "Tamil Nadu",
+   "cityName": "Chennai",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "the-hindu-group"
+  },
+  {
+   "sourceId": "in-thehindu-bengaluru",
+   "countryCode": "IN",
+   "publisherName": "The Hindu",
+   "publisherType": "newspaper",
+   "url": "https://www.thehindu.com/news/cities/bangalore/feeder/default.rss",
+   "geographicScope": "local",
+   "regionName": "Karnataka",
+   "cityName": "Bengaluru",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "the-hindu-group"
+  },
+  {
+   "sourceId": "in-thehindu-hyderabad",
+   "countryCode": "IN",
+   "publisherName": "The Hindu",
+   "publisherType": "newspaper",
+   "url": "https://www.thehindu.com/news/cities/Hyderabad/feeder/default.rss",
+   "geographicScope": "local",
+   "regionName": "Telangana",
+   "cityName": "Hyderabad",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "the-hindu-group"
+  },
+  {
+   "sourceId": "in-thehindu-delhi",
+   "countryCode": "IN",
+   "publisherName": "The Hindu",
+   "publisherType": "newspaper",
+   "url": "https://www.thehindu.com/news/cities/Delhi/feeder/default.rss",
+   "geographicScope": "local",
+   "regionName": "Delhi",
+   "cityName": "Delhi",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "the-hindu-group"
+  },
+  {
+   "sourceId": "in-thehindu-kolkata",
+   "countryCode": "IN",
+   "publisherName": "The Hindu",
+   "publisherType": "newspaper",
+   "url": "https://www.thehindu.com/news/cities/kolkata/feeder/default.rss",
+   "geographicScope": "local",
+   "regionName": "West Bengal",
+   "cityName": "Kolkata",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "the-hindu-group"
+  },
+  {
+   "sourceId": "in-thehindu-mumbai",
+   "countryCode": "IN",
+   "publisherName": "The Hindu",
+   "publisherType": "newspaper",
+   "url": "https://www.thehindu.com/news/cities/mumbai/feeder/default.rss",
+   "geographicScope": "local",
+   "regionName": "Maharashtra",
+   "cityName": "Mumbai",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "the-hindu-group"
+  },
+  {
+   "sourceId": "in-thehindu-kochi",
+   "countryCode": "IN",
+   "publisherName": "The Hindu",
+   "publisherType": "newspaper",
+   "url": "https://www.thehindu.com/news/cities/Kochi/feeder/default.rss",
+   "geographicScope": "local",
+   "regionName": "Kerala",
+   "cityName": "Kochi",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "the-hindu-group"
+  },
+  {
+   "sourceId": "in-thehindu-madurai",
+   "countryCode": "IN",
+   "publisherName": "The Hindu",
+   "publisherType": "newspaper",
+   "url": "https://www.thehindu.com/news/cities/Madurai/feeder/default.rss",
+   "geographicScope": "local",
+   "regionName": "Tamil Nadu",
+   "cityName": "Madurai",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "the-hindu-group"
+  },
+  {
+   "sourceId": "in-thehindu-mangaluru",
+   "countryCode": "IN",
+   "publisherName": "The Hindu",
+   "publisherType": "newspaper",
+   "url": "https://www.thehindu.com/news/cities/Mangalore/feeder/default.rss",
+   "geographicScope": "local",
+   "regionName": "Karnataka",
+   "cityName": "Mangaluru",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "the-hindu-group"
+  },
+  {
+   "sourceId": "in-thehindu-puducherry",
+   "countryCode": "IN",
+   "publisherName": "The Hindu",
+   "publisherType": "newspaper",
+   "url": "https://www.thehindu.com/news/cities/puducherry/feeder/default.rss",
+   "geographicScope": "local",
+   "regionName": "Puducherry",
+   "cityName": "Puducherry",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "the-hindu-group"
+  },
+  {
+   "sourceId": "in-thehindu-thiruvananthapuram",
+   "countryCode": "IN",
+   "publisherName": "The Hindu",
+   "publisherType": "newspaper",
+   "url": "https://www.thehindu.com/news/cities/Thiruvananthapuram/feeder/default.rss",
+   "geographicScope": "local",
+   "regionName": "Kerala",
+   "cityName": "Thiruvananthapuram",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "the-hindu-group"
+  },
+  {
+   "sourceId": "in-thehindu-tiruchirappalli",
+   "countryCode": "IN",
+   "publisherName": "The Hindu",
+   "publisherType": "newspaper",
+   "url": "https://www.thehindu.com/news/cities/Tiruchirapalli/feeder/default.rss",
+   "geographicScope": "local",
+   "regionName": "Tamil Nadu",
+   "cityName": "Tiruchirappalli",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "the-hindu-group"
+  },
+  {
+   "sourceId": "in-thehindu-vijayawada",
+   "countryCode": "IN",
+   "publisherName": "The Hindu",
+   "publisherType": "newspaper",
+   "url": "https://www.thehindu.com/news/cities/Vijayawada/feeder/default.rss",
+   "geographicScope": "local",
+   "regionName": "Andhra Pradesh",
+   "cityName": "Vijayawada",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "the-hindu-group"
+  },
+  {
+   "sourceId": "in-thehindu-visakhapatnam",
+   "countryCode": "IN",
+   "publisherName": "The Hindu",
+   "publisherType": "newspaper",
+   "url": "https://www.thehindu.com/news/cities/Visakhapatnam/feeder/default.rss",
+   "geographicScope": "local",
+   "regionName": "Andhra Pradesh",
+   "cityName": "Visakhapatnam",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "the-hindu-group"
+  },
+  {
+   "sourceId": "in-thehindu-coimbatore",
+   "countryCode": "IN",
+   "publisherName": "The Hindu",
+   "publisherType": "newspaper",
+   "url": "https://www.thehindu.com/news/cities/Coimbatore/feeder/default.rss",
+   "geographicScope": "local",
+   "regionName": "Tamil Nadu",
+   "cityName": "Coimbatore",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "the-hindu-group"
+  },
+  {
+   "sourceId": "in-thehindu-kozhikode",
+   "countryCode": "IN",
+   "publisherName": "The Hindu",
+   "publisherType": "newspaper",
+   "url": "https://www.thehindu.com/news/cities/kozhikode/feeder/default.rss",
+   "geographicScope": "local",
+   "regionName": "Kerala",
+   "cityName": "Kozhikode",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "the-hindu-group"
+  },
+  {
+   "sourceId": "in-hindutamil-tamil-nadu",
+   "countryCode": "IN",
+   "publisherName": "Hindu Tamil Thisai",
+   "publisherType": "newspaper",
+   "url": "https://www.hindutamil.in/stories.rss",
+   "geographicScope": "regional",
+   "regionName": "Tamil Nadu",
+   "cityName": null,
+   "languageTags": [
+    "ta-IN"
+   ],
+   "group": "the-hindu-group"
+  },
+  {
+   "sourceId": "in-ht-mumbai",
+   "countryCode": "IN",
+   "publisherName": "Hindustan Times",
+   "publisherType": "newspaper",
+   "url": "https://www.hindustantimes.com/feeds/rss/cities/mumbai-news/rssfeed.xml",
+   "geographicScope": "local",
+   "regionName": "Maharashtra",
+   "cityName": "Mumbai",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "ht-media"
+  },
+  {
+   "sourceId": "in-ht-delhi",
+   "countryCode": "IN",
+   "publisherName": "Hindustan Times",
+   "publisherType": "newspaper",
+   "url": "https://www.hindustantimes.com/feeds/rss/cities/delhi-news/rssfeed.xml",
+   "geographicScope": "local",
+   "regionName": "Delhi",
+   "cityName": "Delhi",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "ht-media"
+  },
+  {
+   "sourceId": "in-ht-kolkata",
+   "countryCode": "IN",
+   "publisherName": "Hindustan Times",
+   "publisherType": "newspaper",
+   "url": "https://www.hindustantimes.com/feeds/rss/cities/kolkata-news/rssfeed.xml",
+   "geographicScope": "local",
+   "regionName": "West Bengal",
+   "cityName": "Kolkata",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "ht-media"
+  },
+  {
+   "sourceId": "in-ht-chandigarh",
+   "countryCode": "IN",
+   "publisherName": "Hindustan Times",
+   "publisherType": "newspaper",
+   "url": "https://www.hindustantimes.com/feeds/rss/cities/chandigarh-news/rssfeed.xml",
+   "geographicScope": "local",
+   "regionName": "Chandigarh",
+   "cityName": "Chandigarh",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "ht-media"
+  },
+  {
+   "sourceId": "in-ht-gurugram",
+   "countryCode": "IN",
+   "publisherName": "Hindustan Times",
+   "publisherType": "newspaper",
+   "url": "https://www.hindustantimes.com/feeds/rss/cities/gurugram-news/rssfeed.xml",
+   "geographicScope": "local",
+   "regionName": "Haryana",
+   "cityName": "Gurugram",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "ht-media"
+  },
+  {
+   "sourceId": "in-ht-pune",
+   "countryCode": "IN",
+   "publisherName": "Hindustan Times",
+   "publisherType": "newspaper",
+   "url": "https://www.hindustantimes.com/feeds/rss/cities/pune-news/rssfeed.xml",
+   "geographicScope": "local",
+   "regionName": "Maharashtra",
+   "cityName": "Pune",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "ht-media"
+  },
+  {
+   "sourceId": "in-ht-lucknow",
+   "countryCode": "IN",
+   "publisherName": "Hindustan Times",
+   "publisherType": "newspaper",
+   "url": "https://www.hindustantimes.com/feeds/rss/cities/lucknow-news/rssfeed.xml",
+   "geographicScope": "local",
+   "regionName": "Uttar Pradesh",
+   "cityName": "Lucknow",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "ht-media"
+  },
+  {
+   "sourceId": "in-ht-noida",
+   "countryCode": "IN",
+   "publisherName": "Hindustan Times",
+   "publisherType": "newspaper",
+   "url": "https://www.hindustantimes.com/feeds/rss/cities/noida-news/rssfeed.xml",
+   "geographicScope": "local",
+   "regionName": "Uttar Pradesh",
+   "cityName": "Noida",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "ht-media"
+  },
+  {
+   "sourceId": "in-indianexpress-delhi",
+   "countryCode": "IN",
+   "publisherName": "The Indian Express",
+   "publisherType": "newspaper",
+   "url": "https://indianexpress.com/section/cities/delhi/feed/",
+   "geographicScope": "local",
+   "regionName": "Delhi",
+   "cityName": "Delhi",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "indian-express-group"
+  },
+  {
+   "sourceId": "in-indianexpress-pune",
+   "countryCode": "IN",
+   "publisherName": "The Indian Express",
+   "publisherType": "newspaper",
+   "url": "https://indianexpress.com/section/cities/pune/feed/",
+   "geographicScope": "local",
+   "regionName": "Maharashtra",
+   "cityName": "Pune",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "indian-express-group"
+  },
+  {
+   "sourceId": "in-indianexpress-ahmedabad",
+   "countryCode": "IN",
+   "publisherName": "The Indian Express",
+   "publisherType": "newspaper",
+   "url": "https://indianexpress.com/section/cities/ahmedabad/feed/",
+   "geographicScope": "local",
+   "regionName": "Gujarat",
+   "cityName": "Ahmedabad",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "indian-express-group"
+  },
+  {
+   "sourceId": "in-indianexpress-lucknow",
+   "countryCode": "IN",
+   "publisherName": "The Indian Express",
+   "publisherType": "newspaper",
+   "url": "https://indianexpress.com/section/cities/lucknow/feed/",
+   "geographicScope": "local",
+   "regionName": "Uttar Pradesh",
+   "cityName": "Lucknow",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "indian-express-group"
+  },
+  {
+   "sourceId": "in-indianexpress-bengaluru",
+   "countryCode": "IN",
+   "publisherName": "The Indian Express",
+   "publisherType": "newspaper",
+   "url": "https://indianexpress.com/section/cities/bangalore/feed/",
+   "geographicScope": "local",
+   "regionName": "Karnataka",
+   "cityName": "Bengaluru",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "indian-express-group"
+  },
+  {
+   "sourceId": "in-indianexpress-kolkata",
+   "countryCode": "IN",
+   "publisherName": "The Indian Express",
+   "publisherType": "newspaper",
+   "url": "https://indianexpress.com/section/cities/kolkata/feed/",
+   "geographicScope": "local",
+   "regionName": "West Bengal",
+   "cityName": "Kolkata",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "indian-express-group"
+  },
+  {
+   "sourceId": "in-indianexpress-hyderabad",
+   "countryCode": "IN",
+   "publisherName": "The Indian Express",
+   "publisherType": "newspaper",
+   "url": "https://indianexpress.com/section/cities/hyderabad/feed/",
+   "geographicScope": "local",
+   "regionName": "Telangana",
+   "cityName": "Hyderabad",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "indian-express-group"
+  },
+  {
+   "sourceId": "in-indianexpress-patna",
+   "countryCode": "IN",
+   "publisherName": "The Indian Express",
+   "publisherType": "newspaper",
+   "url": "https://indianexpress.com/section/cities/patna/feed/",
+   "geographicScope": "local",
+   "regionName": "Bihar",
+   "cityName": "Patna",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "indian-express-group"
+  },
+  {
+   "sourceId": "in-indianexpress-chennai",
+   "countryCode": "IN",
+   "publisherName": "The Indian Express",
+   "publisherType": "newspaper",
+   "url": "https://indianexpress.com/section/cities/chennai/feed/",
+   "geographicScope": "local",
+   "regionName": "Tamil Nadu",
+   "cityName": "Chennai",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "indian-express-group"
+  },
+  {
+   "sourceId": "in-indianexpress-thiruvananthapuram",
+   "countryCode": "IN",
+   "publisherName": "The Indian Express",
+   "publisherType": "newspaper",
+   "url": "https://indianexpress.com/section/cities/thiruvananthapuram/feed/",
+   "geographicScope": "local",
+   "regionName": "Kerala",
+   "cityName": "Thiruvananthapuram",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "indian-express-group"
+  },
+  {
+   "sourceId": "in-indianexpress-chandigarh",
+   "countryCode": "IN",
+   "publisherName": "The Indian Express",
+   "publisherType": "newspaper",
+   "url": "https://indianexpress.com/section/cities/chandigarh/feed/",
+   "geographicScope": "local",
+   "regionName": "Chandigarh",
+   "cityName": "Chandigarh",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "indian-express-group"
+  },
+  {
+   "sourceId": "in-tribune-haryana",
+   "countryCode": "IN",
+   "publisherName": "The Tribune",
+   "publisherType": "newspaper",
+   "url": "https://publish.tribuneindia.com/state/haryana/feed/",
+   "geographicScope": "regional",
+   "regionName": "Haryana",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "tribune-trust"
+  },
+  {
+   "sourceId": "in-tribune-himachal-pradesh",
+   "countryCode": "IN",
+   "publisherName": "The Tribune",
+   "publisherType": "newspaper",
+   "url": "https://publish.tribuneindia.com/state/himachal/feed/",
+   "geographicScope": "regional",
+   "regionName": "Himachal Pradesh",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "tribune-trust"
+  },
+  {
+   "sourceId": "in-tribune-jammu-and-kashmir",
+   "countryCode": "IN",
+   "publisherName": "The Tribune",
+   "publisherType": "newspaper",
+   "url": "https://publish.tribuneindia.com/state/j-k/feed/",
+   "geographicScope": "regional",
+   "regionName": "Jammu and Kashmir",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "tribune-trust"
+  },
+  {
+   "sourceId": "in-tribune-punjab",
+   "countryCode": "IN",
+   "publisherName": "The Tribune",
+   "publisherType": "newspaper",
+   "url": "https://publish.tribuneindia.com/state/punjab/feed/",
+   "geographicScope": "regional",
+   "regionName": "Punjab",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "tribune-trust"
+  },
+  {
+   "sourceId": "in-tribune-uttar-pradesh",
+   "countryCode": "IN",
+   "publisherName": "The Tribune",
+   "publisherType": "newspaper",
+   "url": "https://publish.tribuneindia.com/state/uttar-pradesh/feed/",
+   "geographicScope": "regional",
+   "regionName": "Uttar Pradesh",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "tribune-trust"
+  },
+  {
+   "sourceId": "in-tribune-uttarakhand",
+   "countryCode": "IN",
+   "publisherName": "The Tribune",
+   "publisherType": "newspaper",
+   "url": "https://publish.tribuneindia.com/state/uttarakhand/feed/",
+   "geographicScope": "regional",
+   "regionName": "Uttarakhand",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "tribune-trust"
+  },
+  {
+   "sourceId": "in-tribune-madhya-pradesh",
+   "countryCode": "IN",
+   "publisherName": "The Tribune",
+   "publisherType": "newspaper",
+   "url": "https://publish.tribuneindia.com/state/madhya-pradesh/feed/",
+   "geographicScope": "regional",
+   "regionName": "Madhya Pradesh",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "tribune-trust"
+  },
+  {
+   "sourceId": "in-tribune-rajasthan",
+   "countryCode": "IN",
+   "publisherName": "The Tribune",
+   "publisherType": "newspaper",
+   "url": "https://publish.tribuneindia.com/state/rajasthan/feed/",
+   "geographicScope": "regional",
+   "regionName": "Rajasthan",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "tribune-trust"
+  },
+  {
+   "sourceId": "in-tribune-delhi",
+   "countryCode": "IN",
+   "publisherName": "The Tribune",
+   "publisherType": "newspaper",
+   "url": "https://publish.tribuneindia.com/city/delhi/feed/",
+   "geographicScope": "local",
+   "regionName": "Delhi",
+   "cityName": "Delhi",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "tribune-trust"
+  },
+  {
+   "sourceId": "in-tribune-amritsar",
+   "countryCode": "IN",
+   "publisherName": "The Tribune",
+   "publisherType": "newspaper",
+   "url": "https://publish.tribuneindia.com/city/amritsar/feed/",
+   "geographicScope": "local",
+   "regionName": "Punjab",
+   "cityName": "Amritsar",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "tribune-trust"
+  },
+  {
+   "sourceId": "in-tribune-jalandhar",
+   "countryCode": "IN",
+   "publisherName": "The Tribune",
+   "publisherType": "newspaper",
+   "url": "https://publish.tribuneindia.com/city/jalandhar/feed/",
+   "geographicScope": "local",
+   "regionName": "Punjab",
+   "cityName": "Jalandhar",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "tribune-trust"
+  },
+  {
+   "sourceId": "in-tribune-ludhiana",
+   "countryCode": "IN",
+   "publisherName": "The Tribune",
+   "publisherType": "newspaper",
+   "url": "https://publish.tribuneindia.com/city/ludhiana/feed/",
+   "geographicScope": "local",
+   "regionName": "Punjab",
+   "cityName": "Ludhiana",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "tribune-trust"
+  },
+  {
+   "sourceId": "in-tribune-chandigarh",
+   "countryCode": "IN",
+   "publisherName": "The Tribune",
+   "publisherType": "newspaper",
+   "url": "https://publish.tribuneindia.com/city/chandigarh/feed/",
+   "geographicScope": "local",
+   "regionName": "Chandigarh",
+   "cityName": "Chandigarh",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "tribune-trust"
+  },
+  {
+   "sourceId": "in-tribune-bathinda",
+   "countryCode": "IN",
+   "publisherName": "The Tribune",
+   "publisherType": "newspaper",
+   "url": "https://publish.tribuneindia.com/city/bathinda/feed/",
+   "geographicScope": "local",
+   "regionName": "Punjab",
+   "cityName": "Bathinda",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "tribune-trust"
+  },
+  {
+   "sourceId": "in-amarujala-uttar-pradesh",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/uttar-pradesh.xml",
+   "geographicScope": "regional",
+   "regionName": "Uttar Pradesh",
+   "cityName": null,
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-uttarakhand",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/uttarakhand.xml",
+   "geographicScope": "regional",
+   "regionName": "Uttarakhand",
+   "cityName": null,
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-himachal-pradesh",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/himachal-pradesh.xml",
+   "geographicScope": "regional",
+   "regionName": "Himachal Pradesh",
+   "cityName": null,
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-punjab",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/punjab.xml",
+   "geographicScope": "regional",
+   "regionName": "Punjab",
+   "cityName": null,
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-bihar",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/bihar.xml",
+   "geographicScope": "regional",
+   "regionName": "Bihar",
+   "cityName": null,
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-chhattisgarh",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/chhattisgarh.xml",
+   "geographicScope": "regional",
+   "regionName": "Chhattisgarh",
+   "cityName": null,
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-rajasthan",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/rajasthan.xml",
+   "geographicScope": "regional",
+   "regionName": "Rajasthan",
+   "cityName": null,
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-haryana",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/haryana.xml",
+   "geographicScope": "regional",
+   "regionName": "Haryana",
+   "cityName": null,
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-jharkhand",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/jharkhand.xml",
+   "geographicScope": "regional",
+   "regionName": "Jharkhand",
+   "cityName": null,
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-madhya-pradesh",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/madhya-pradesh.xml",
+   "geographicScope": "regional",
+   "regionName": "Madhya Pradesh",
+   "cityName": null,
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-maharashtra",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/maharashtra.xml",
+   "geographicScope": "regional",
+   "regionName": "Maharashtra",
+   "cityName": null,
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-jammu-and-kashmir",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/jammu-and-kashmir.xml",
+   "geographicScope": "regional",
+   "regionName": "Jammu and Kashmir",
+   "cityName": null,
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-agra",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/agra.xml",
+   "geographicScope": "local",
+   "regionName": "Uttar Pradesh",
+   "cityName": "Agra",
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-faridabad",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/faridabad.xml",
+   "geographicScope": "local",
+   "regionName": "Haryana",
+   "cityName": "Faridabad",
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-hisar",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/hisar.xml",
+   "geographicScope": "local",
+   "regionName": "Haryana",
+   "cityName": "Hisar",
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-kanpur",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/kanpur.xml",
+   "geographicScope": "local",
+   "regionName": "Uttar Pradesh",
+   "cityName": "Kanpur",
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-meerut",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/meerut.xml",
+   "geographicScope": "local",
+   "regionName": "Uttar Pradesh",
+   "cityName": "Meerut",
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-varanasi",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/varanasi.xml",
+   "geographicScope": "local",
+   "regionName": "Uttar Pradesh",
+   "cityName": "Varanasi",
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-bareilly",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/bareilly.xml",
+   "geographicScope": "local",
+   "regionName": "Uttar Pradesh",
+   "cityName": "Bareilly",
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-gorakhpur",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/gorakhpur.xml",
+   "geographicScope": "local",
+   "regionName": "Uttar Pradesh",
+   "cityName": "Gorakhpur",
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-jammu",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/jammu.xml",
+   "geographicScope": "local",
+   "regionName": "Jammu and Kashmir",
+   "cityName": "Jammu",
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-lucknow",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/lucknow.xml",
+   "geographicScope": "local",
+   "regionName": "Uttar Pradesh",
+   "cityName": "Lucknow",
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-ludhiana",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/ludhiana.xml",
+   "geographicScope": "local",
+   "regionName": "Punjab",
+   "cityName": "Ludhiana",
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-panipat",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/panipat.xml",
+   "geographicScope": "local",
+   "regionName": "Haryana",
+   "cityName": "Panipat",
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-rohtak",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/rohtak.xml",
+   "geographicScope": "local",
+   "regionName": "Haryana",
+   "cityName": "Rohtak",
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-prayagraj",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/allahabad.xml",
+   "geographicScope": "local",
+   "regionName": "Uttar Pradesh",
+   "cityName": "Prayagraj",
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-ghaziabad",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/ghaziabad.xml",
+   "geographicScope": "local",
+   "regionName": "Uttar Pradesh",
+   "cityName": "Ghāziābād",
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-srinagar",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/srinagar.xml",
+   "geographicScope": "local",
+   "regionName": "Jammu and Kashmir",
+   "cityName": "Srinagar",
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-amritsar",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/amritsar.xml",
+   "geographicScope": "local",
+   "regionName": "Punjab",
+   "cityName": "Amritsar",
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-indore",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/indore.xml",
+   "geographicScope": "local",
+   "regionName": "Madhya Pradesh",
+   "cityName": "Indore",
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-haridwar",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/haridwar.xml",
+   "geographicScope": "local",
+   "regionName": "Uttarakhand",
+   "cityName": "Haridwar",
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-jalandhar",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/jalandhar.xml",
+   "geographicScope": "local",
+   "regionName": "Punjab",
+   "cityName": "Jalandhar",
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-udaipur",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/udaipur.xml",
+   "geographicScope": "local",
+   "regionName": "Rajasthan",
+   "cityName": "Udaipur",
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-delhi",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/delhi.xml",
+   "geographicScope": "local",
+   "regionName": "Delhi",
+   "cityName": "Delhi",
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-gaya",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/gaya.xml",
+   "geographicScope": "local",
+   "regionName": "Bihar",
+   "cityName": "Gaya",
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-gurugram",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/gurgaon.xml",
+   "geographicScope": "local",
+   "regionName": "Haryana",
+   "cityName": "Gurugram",
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-muzaffarpur",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/muzaffarpur.xml",
+   "geographicScope": "local",
+   "regionName": "Bihar",
+   "cityName": "Muzaffarpur",
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-noida",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/noida.xml",
+   "geographicScope": "local",
+   "regionName": "Uttar Pradesh",
+   "cityName": "Noida",
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-raipur",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/raipur.xml",
+   "geographicScope": "local",
+   "regionName": "Chhattisgarh",
+   "cityName": "Raipur",
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-gwalior",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/gwalior.xml",
+   "geographicScope": "local",
+   "regionName": "Madhya Pradesh",
+   "cityName": "Gwalior",
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-jabalpur",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/jabalpur.xml",
+   "geographicScope": "local",
+   "regionName": "Madhya Pradesh",
+   "cityName": "Jabalpur",
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-ujjain",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/ujjain.xml",
+   "geographicScope": "local",
+   "regionName": "Madhya Pradesh",
+   "cityName": "Ujjain",
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-ajmer",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/ajmer.xml",
+   "geographicScope": "local",
+   "regionName": "Rajasthan",
+   "cityName": "Ajmer",
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-amarujala-patna",
+   "countryCode": "IN",
+   "publisherName": "Amar Ujala",
+   "publisherType": "newspaper",
+   "url": "https://www.amarujala.com/rss/patna.xml",
+   "geographicScope": "local",
+   "regionName": "Bihar",
+   "cityName": "Patna",
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "amar-ujala"
+  },
+  {
+   "sourceId": "in-bhaskar-madhya-pradesh",
+   "countryCode": "IN",
+   "publisherName": "Dainik Bhaskar",
+   "publisherType": "newspaper",
+   "url": "https://www.bhaskar.com/rss-v1--category-1739.xml",
+   "geographicScope": "regional",
+   "regionName": "Madhya Pradesh",
+   "cityName": null,
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "dainik-bhaskar"
+  },
+  {
+   "sourceId": "in-bhaskar-rajasthan",
+   "countryCode": "IN",
+   "publisherName": "Dainik Bhaskar",
+   "publisherType": "newspaper",
+   "url": "https://www.bhaskar.com/rss-v1--category-1740.xml",
+   "geographicScope": "regional",
+   "regionName": "Rajasthan",
+   "cityName": null,
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "dainik-bhaskar"
+  },
+  {
+   "sourceId": "in-bhaskar-chhattisgarh",
+   "countryCode": "IN",
+   "publisherName": "Dainik Bhaskar",
+   "publisherType": "newspaper",
+   "url": "https://www.bhaskar.com/rss-v1--category-1741.xml",
+   "geographicScope": "regional",
+   "regionName": "Chhattisgarh",
+   "cityName": null,
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "dainik-bhaskar"
+  },
+  {
+   "sourceId": "in-bhaskar-haryana",
+   "countryCode": "IN",
+   "publisherName": "Dainik Bhaskar",
+   "publisherType": "newspaper",
+   "url": "https://www.bhaskar.com/rss-v1--category-1742.xml",
+   "geographicScope": "regional",
+   "regionName": "Haryana",
+   "cityName": null,
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "dainik-bhaskar"
+  },
+  {
+   "sourceId": "in-bhaskar-punjab",
+   "countryCode": "IN",
+   "publisherName": "Dainik Bhaskar",
+   "publisherType": "newspaper",
+   "url": "https://www.bhaskar.com/rss-v1--category-1743.xml",
+   "geographicScope": "regional",
+   "regionName": "Punjab",
+   "cityName": null,
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "dainik-bhaskar"
+  },
+  {
+   "sourceId": "in-bhaskar-uttar-pradesh",
+   "countryCode": "IN",
+   "publisherName": "Dainik Bhaskar",
+   "publisherType": "newspaper",
+   "url": "https://www.bhaskar.com/rss-v1--category-2052.xml",
+   "geographicScope": "regional",
+   "regionName": "Uttar Pradesh",
+   "cityName": null,
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "dainik-bhaskar"
+  },
+  {
+   "sourceId": "in-bhaskar-bihar",
+   "countryCode": "IN",
+   "publisherName": "Dainik Bhaskar",
+   "publisherType": "newspaper",
+   "url": "https://www.bhaskar.com/rss-v1--category-3679.xml",
+   "geographicScope": "regional",
+   "regionName": "Bihar",
+   "cityName": null,
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "dainik-bhaskar"
+  },
+  {
+   "sourceId": "in-bhaskar-jharkhand",
+   "countryCode": "IN",
+   "publisherName": "Dainik Bhaskar",
+   "publisherType": "newspaper",
+   "url": "https://www.bhaskar.com/rss-v1--category-3682.xml",
+   "geographicScope": "regional",
+   "regionName": "Jharkhand",
+   "cityName": null,
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "dainik-bhaskar"
+  },
+  {
+   "sourceId": "in-bhaskar-himachal-pradesh",
+   "countryCode": "IN",
+   "publisherName": "Dainik Bhaskar",
+   "publisherType": "newspaper",
+   "url": "https://www.bhaskar.com/rss-v1--category-12084.xml",
+   "geographicScope": "regional",
+   "regionName": "Himachal Pradesh",
+   "cityName": null,
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "dainik-bhaskar"
+  },
+  {
+   "sourceId": "in-bhaskar-maharashtra",
+   "countryCode": "IN",
+   "publisherName": "Dainik Bhaskar",
+   "publisherType": "newspaper",
+   "url": "https://www.bhaskar.com/rss-v1--category-2318.xml",
+   "geographicScope": "regional",
+   "regionName": "Maharashtra",
+   "cityName": null,
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "dainik-bhaskar"
+  },
+  {
+   "sourceId": "in-bhaskar-gujarat",
+   "countryCode": "IN",
+   "publisherName": "Dainik Bhaskar",
+   "publisherType": "newspaper",
+   "url": "https://www.bhaskar.com/rss-v1--category-2314.xml",
+   "geographicScope": "regional",
+   "regionName": "Gujarat",
+   "cityName": null,
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "dainik-bhaskar"
+  },
+  {
+   "sourceId": "in-bhaskar-chandigarh",
+   "countryCode": "IN",
+   "publisherName": "Dainik Bhaskar",
+   "publisherType": "newspaper",
+   "url": "https://www.bhaskar.com/rss-v1--category-11649.xml",
+   "geographicScope": "local",
+   "regionName": "Chandigarh",
+   "cityName": "Chandigarh",
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "dainik-bhaskar"
+  },
+  {
+   "sourceId": "in-divyabhaskar-gujarat",
+   "countryCode": "IN",
+   "publisherName": "Divya Bhaskar",
+   "publisherType": "newspaper",
+   "url": "https://www.divyabhaskar.co.in/rss-v1--category-1035.xml",
+   "geographicScope": "regional",
+   "regionName": "Gujarat",
+   "cityName": null,
+   "languageTags": [
+    "gu-IN"
+   ],
+   "group": "dainik-bhaskar"
+  },
+  {
+   "sourceId": "in-vijaykarnataka-karnataka",
+   "countryCode": "IN",
+   "publisherName": "Vijay Karnataka",
+   "publisherType": "newspaper",
+   "url": "https://vijaykarnataka.com/news/karnataka/rssfeed/10765233.xml",
+   "geographicScope": "regional",
+   "regionName": "Karnataka",
+   "cityName": null,
+   "languageTags": [
+    "kn-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-vijaykarnataka-bengaluru",
+   "countryCode": "IN",
+   "publisherName": "Vijay Karnataka",
+   "publisherType": "newspaper",
+   "url": "https://vijaykarnataka.com/news/bengaluru-city/rssfeed/11182323.xml",
+   "geographicScope": "local",
+   "regionName": "Karnataka",
+   "cityName": "Bengaluru",
+   "languageTags": [
+    "kn-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-vijaykarnataka-mysuru",
+   "countryCode": "IN",
+   "publisherName": "Vijay Karnataka",
+   "publisherType": "newspaper",
+   "url": "https://vijaykarnataka.com/news/mysuru/rssfeed/11182191.xml",
+   "geographicScope": "local",
+   "regionName": "Karnataka",
+   "cityName": "Mysuru",
+   "languageTags": [
+    "kn-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-vijaykarnataka-mangaluru",
+   "countryCode": "IN",
+   "publisherName": "Vijay Karnataka",
+   "publisherType": "newspaper",
+   "url": "https://vijaykarnataka.com/news/mangaluru/rssfeed/11182260.xml",
+   "geographicScope": "local",
+   "regionName": "Karnataka",
+   "cityName": "Mangaluru",
+   "languageTags": [
+    "kn-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-vijaykarnataka-hubballi",
+   "countryCode": "IN",
+   "publisherName": "Vijay Karnataka",
+   "publisherType": "newspaper",
+   "url": "https://vijaykarnataka.com/news/dharawada/rssfeed/11182251.xml",
+   "geographicScope": "local",
+   "regionName": "Karnataka",
+   "cityName": "Hubballi",
+   "languageTags": [
+    "kn-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-maharashtratimes-pune",
+   "countryCode": "IN",
+   "publisherName": "Maharashtra Times",
+   "publisherType": "newspaper",
+   "url": "https://maharashtratimes.com/maharashtra/pune-news/rssfeed/2429654.xml",
+   "geographicScope": "local",
+   "regionName": "Maharashtra",
+   "cityName": "Pune",
+   "languageTags": [
+    "mr-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-maharashtratimes-navi-mumbai",
+   "countryCode": "IN",
+   "publisherName": "Maharashtra Times",
+   "publisherType": "newspaper",
+   "url": "https://maharashtratimes.com/maharashtra/navi-mumbai/rssfeed/47583234.xml",
+   "geographicScope": "local",
+   "regionName": "Maharashtra",
+   "cityName": "Navi Mumbai",
+   "languageTags": [
+    "mr-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-maharashtratimes-sholapur",
+   "countryCode": "IN",
+   "publisherName": "Maharashtra Times",
+   "publisherType": "newspaper",
+   "url": "https://maharashtratimes.com/maharashtra/solapur/rssfeed/47583286.xml",
+   "geographicScope": "local",
+   "regionName": "Maharashtra",
+   "cityName": "Sholapur",
+   "languageTags": [
+    "mr-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-maharashtratimes-thane",
+   "countryCode": "IN",
+   "publisherName": "Maharashtra Times",
+   "publisherType": "newspaper",
+   "url": "https://maharashtratimes.com/maharashtra/thane/rssfeed/51327489.xml",
+   "geographicScope": "local",
+   "regionName": "Maharashtra",
+   "cityName": "Thāne",
+   "languageTags": [
+    "mr-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-maharashtratimes-nashik",
+   "countryCode": "IN",
+   "publisherName": "Maharashtra Times",
+   "publisherType": "newspaper",
+   "url": "https://maharashtratimes.com/maharashtra/nashik/rssfeed/51327870.xml",
+   "geographicScope": "local",
+   "regionName": "Maharashtra",
+   "cityName": "Nashik",
+   "languageTags": [
+    "mr-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-maharashtratimes-nagpur",
+   "countryCode": "IN",
+   "publisherName": "Maharashtra Times",
+   "publisherType": "newspaper",
+   "url": "https://maharashtratimes.com/maharashtra/nagpur/rssfeed/51327950.xml",
+   "geographicScope": "local",
+   "regionName": "Maharashtra",
+   "cityName": "Nagpur",
+   "languageTags": [
+    "mr-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-maharashtratimes-aurangabad",
+   "countryCode": "IN",
+   "publisherName": "Maharashtra Times",
+   "publisherType": "newspaper",
+   "url": "https://maharashtratimes.com/maharashtra/aurangabad/rssfeed/51327968.xml",
+   "geographicScope": "local",
+   "regionName": "Maharashtra",
+   "cityName": "Aurangabad",
+   "languageTags": [
+    "mr-IN"
+   ],
+   "group": "times-group"
+  },
+  {
+   "sourceId": "in-lokmat-maharashtra",
+   "countryCode": "IN",
+   "publisherName": "Lokmat",
+   "publisherType": "newspaper",
+   "url": "https://www.lokmat.com/rss/maharashtra.xml",
+   "geographicScope": "regional",
+   "regionName": "Maharashtra",
+   "cityName": null,
+   "languageTags": [
+    "mr-IN"
+   ],
+   "group": "lokmat"
+  },
+  {
+   "sourceId": "in-lokmat-mumbai",
+   "countryCode": "IN",
+   "publisherName": "Lokmat",
+   "publisherType": "newspaper",
+   "url": "https://www.lokmat.com/rss/mumbai.xml",
+   "geographicScope": "local",
+   "regionName": "Maharashtra",
+   "cityName": "Mumbai",
+   "languageTags": [
+    "mr-IN"
+   ],
+   "group": "lokmat"
+  },
+  {
+   "sourceId": "in-lokmat-pune",
+   "countryCode": "IN",
+   "publisherName": "Lokmat",
+   "publisherType": "newspaper",
+   "url": "https://www.lokmat.com/rss/pune.xml",
+   "geographicScope": "local",
+   "regionName": "Maharashtra",
+   "cityName": "Pune",
+   "languageTags": [
+    "mr-IN"
+   ],
+   "group": "lokmat"
+  },
+  {
+   "sourceId": "in-lokmat-nagpur",
+   "countryCode": "IN",
+   "publisherName": "Lokmat",
+   "publisherType": "newspaper",
+   "url": "https://www.lokmat.com/rss/nagpur.xml",
+   "geographicScope": "local",
+   "regionName": "Maharashtra",
+   "cityName": "Nagpur",
+   "languageTags": [
+    "mr-IN"
+   ],
+   "group": "lokmat"
+  },
+  {
+   "sourceId": "in-lokmat-nashik",
+   "countryCode": "IN",
+   "publisherName": "Lokmat",
+   "publisherType": "newspaper",
+   "url": "https://www.lokmat.com/rss/nashik.xml",
+   "geographicScope": "local",
+   "regionName": "Maharashtra",
+   "cityName": "Nashik",
+   "languageTags": [
+    "mr-IN"
+   ],
+   "group": "lokmat"
+  },
+  {
+   "sourceId": "in-midday-mumbai",
+   "countryCode": "IN",
+   "publisherName": "Mid-day",
+   "publisherType": "newspaper",
+   "url": "https://www.mid-day.com/Resources/midday/rss/mumbai-news.xml",
+   "geographicScope": "local",
+   "regionName": "Maharashtra",
+   "cityName": "Mumbai",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "mid-day"
+  },
+  {
+   "sourceId": "in-punemirror-pune",
+   "countryCode": "IN",
+   "publisherName": "Pune Mirror",
+   "publisherType": "newspaper",
+   "url": "https://punemirror.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Maharashtra",
+   "cityName": "Pune",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "pune-mirror"
+  },
+  {
+   "sourceId": "in-nagpurtoday-nagpur",
+   "countryCode": "IN",
+   "publisherName": "Nagpur Today",
+   "publisherType": "digital-native",
+   "url": "https://www.nagpurtoday.in/feed/",
+   "geographicScope": "local",
+   "regionName": "Maharashtra",
+   "cityName": "Nagpur",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "nagpur-today"
+  },
+  {
+   "sourceId": "in-mathrubhumi-english-kerala",
+   "countryCode": "IN",
+   "publisherName": "Mathrubhumi English",
+   "publisherType": "newspaper",
+   "url": "https://english.mathrubhumi.com/rss",
+   "geographicScope": "regional",
+   "regionName": "Kerala",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "mathrubhumi"
+  },
+  {
+   "sourceId": "in-mathrubhumi-kerala",
+   "countryCode": "IN",
+   "publisherName": "Mathrubhumi",
+   "publisherType": "newspaper",
+   "url": "https://www.mathrubhumi.com/rss",
+   "geographicScope": "regional",
+   "regionName": "Kerala",
+   "cityName": null,
+   "languageTags": [
+    "ml-IN"
+   ],
+   "group": "mathrubhumi"
+  },
+  {
+   "sourceId": "in-onmanorama-kerala",
+   "countryCode": "IN",
+   "publisherName": "Onmanorama",
+   "publisherType": "newspaper",
+   "url": "https://www.onmanorama.com/kerala.feeds.onmrss.xml",
+   "geographicScope": "regional",
+   "regionName": "Kerala",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "malayala-manorama"
+  },
+  {
+   "sourceId": "in-dinamani-tamil-nadu",
+   "countryCode": "IN",
+   "publisherName": "Dinamani",
+   "publisherType": "newspaper",
+   "url": "https://www.dinamani.com/stories.rss",
+   "geographicScope": "regional",
+   "regionName": "Tamil Nadu",
+   "cityName": null,
+   "languageTags": [
+    "ta-IN"
+   ],
+   "group": "express-publications-madurai"
+  },
+  {
+   "sourceId": "in-prajavani-karnataka",
+   "countryCode": "IN",
+   "publisherName": "Prajavani",
+   "publisherType": "newspaper",
+   "url": "https://www.prajavani.net/stories.rss",
+   "geographicScope": "regional",
+   "regionName": "Karnataka",
+   "cityName": null,
+   "languageTags": [
+    "kn-IN"
+   ],
+   "group": "printers-mysore"
+  },
+  {
+   "sourceId": "in-starofmysore-mysuru",
+   "countryCode": "IN",
+   "publisherName": "Star of Mysore",
+   "publisherType": "newspaper",
+   "url": "https://starofmysore.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Karnataka",
+   "cityName": "Mysuru",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "star-of-mysore"
+  },
+  {
+   "sourceId": "in-sakshi-andhra-pradesh",
+   "countryCode": "IN",
+   "publisherName": "Sakshi",
+   "publisherType": "newspaper",
+   "url": "https://www.sakshi.com/rss.xml",
+   "geographicScope": "regional",
+   "regionName": "Andhra Pradesh",
+   "cityName": null,
+   "languageTags": [
+    "te-IN"
+   ],
+   "group": "sakshi"
+  },
+  {
+   "sourceId": "in-ntnews-telangana",
+   "countryCode": "IN",
+   "publisherName": "Namasthe Telangana",
+   "publisherType": "newspaper",
+   "url": "https://www.ntnews.com/feed",
+   "geographicScope": "regional",
+   "regionName": "Telangana",
+   "cityName": null,
+   "languageTags": [
+    "te-IN"
+   ],
+   "group": "telangana-publications"
+  },
+  {
+   "sourceId": "in-telanganatoday-telangana",
+   "countryCode": "IN",
+   "publisherName": "Telangana Today",
+   "publisherType": "newspaper",
+   "url": "https://telanganatoday.com/feed",
+   "geographicScope": "regional",
+   "regionName": "Telangana",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "telangana-publications"
+  },
+  {
+   "sourceId": "in-sangbadpratidin-west-bengal",
+   "countryCode": "IN",
+   "publisherName": "Sangbad Pratidin",
+   "publisherType": "newspaper",
+   "url": "https://www.sangbadpratidin.in/feed/",
+   "geographicScope": "regional",
+   "regionName": "West Bengal",
+   "cityName": null,
+   "languageTags": [
+    "bn-IN"
+   ],
+   "group": "sangbad-pratidin"
+  },
+  {
+   "sourceId": "in-abpananda-west-bengal",
+   "countryCode": "IN",
+   "publisherName": "ABP Ananda (districts)",
+   "publisherType": "broadcaster",
+   "url": "https://bengali.abplive.com/news/district/feed",
+   "geographicScope": "regional",
+   "regionName": "West Bengal",
+   "cityName": null,
+   "languageTags": [
+    "bn-IN"
+   ],
+   "group": "abp-group"
+  },
+  {
+   "sourceId": "in-odishatv-odisha",
+   "countryCode": "IN",
+   "publisherName": "OdishaTV",
+   "publisherType": "broadcaster",
+   "url": "https://odishatv.in/rss",
+   "geographicScope": "regional",
+   "regionName": "Odisha",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "odishatv"
+  },
+  {
+   "sourceId": "in-odishabytes-odisha",
+   "countryCode": "IN",
+   "publisherName": "Odisha Bytes",
+   "publisherType": "digital-native",
+   "url": "https://odishabytes.com/feed/",
+   "geographicScope": "regional",
+   "regionName": "Odisha",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "odisha-bytes"
+  },
+  {
+   "sourceId": "in-dharitri-odisha",
+   "countryCode": "IN",
+   "publisherName": "Dharitri",
+   "publisherType": "newspaper",
+   "url": "https://www.dharitri.com/feed/",
+   "geographicScope": "regional",
+   "regionName": "Odisha",
+   "cityName": null,
+   "languageTags": [
+    "or-IN"
+   ],
+   "group": "dharitri"
+  },
+  {
+   "sourceId": "in-prameya-odisha",
+   "countryCode": "IN",
+   "publisherName": "Prameya News",
+   "publisherType": "newspaper",
+   "url": "https://www.prameyanews.com/feed",
+   "geographicScope": "regional",
+   "regionName": "Odisha",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "prameya"
+  },
+  {
+   "sourceId": "in-sambadenglish-odisha",
+   "countryCode": "IN",
+   "publisherName": "Sambad English",
+   "publisherType": "newspaper",
+   "url": "https://sambadenglish.com/rss",
+   "geographicScope": "regional",
+   "regionName": "Odisha",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "eastern-media-sambad"
+  },
+  {
+   "sourceId": "in-lagatar-jharkhand",
+   "countryCode": "IN",
+   "publisherName": "Lagatar",
+   "publisherType": "digital-native",
+   "url": "https://lagatar.in/feeds/common/rssfeed.xml",
+   "geographicScope": "regional",
+   "regionName": "Jharkhand",
+   "cityName": null,
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "lagatar"
+  },
+  {
+   "sourceId": "in-avenuemail-jamshedpur",
+   "countryCode": "IN",
+   "publisherName": "Avenue Mail",
+   "publisherType": "newspaper",
+   "url": "https://avenuemail.in/feed/",
+   "geographicScope": "local",
+   "regionName": "Jharkhand",
+   "cityName": "Jamshedpur",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "avenue-mail"
+  },
+  {
+   "sourceId": "in-ibc24-chhattisgarh",
+   "countryCode": "IN",
+   "publisherName": "IBC24",
+   "publisherType": "broadcaster",
+   "url": "https://www.ibc24.in/feed",
+   "geographicScope": "regional",
+   "regionName": "Chhattisgarh",
+   "cityName": null,
+   "languageTags": [
+    "hi-IN"
+   ],
+   "group": "ibc24"
+  },
+  {
+   "sourceId": "in-assamtribune-assam",
+   "countryCode": "IN",
+   "publisherName": "The Assam Tribune",
+   "publisherType": "newspaper",
+   "url": "https://assamtribune.com/feed",
+   "geographicScope": "regional",
+   "regionName": "Assam",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "assam-tribune"
+  },
+  {
+   "sourceId": "in-nenow-assam",
+   "countryCode": "IN",
+   "publisherName": "Northeast Now",
+   "publisherType": "digital-native",
+   "url": "https://nenow.in/feed",
+   "geographicScope": "regional",
+   "regionName": "Assam",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "northeast-now"
+  },
+  {
+   "sourceId": "in-guwahatiplus-guwahati",
+   "countryCode": "IN",
+   "publisherName": "GPlus",
+   "publisherType": "digital-native",
+   "url": "https://www.guwahatiplus.com/feed",
+   "geographicScope": "local",
+   "regionName": "Assam",
+   "cityName": "Guwahati",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "guwahati-plus"
+  },
+  {
+   "sourceId": "in-eastmojo-assam",
+   "countryCode": "IN",
+   "publisherName": "EastMojo",
+   "publisherType": "digital-native",
+   "url": "https://eastmojo.com/assam/feed/",
+   "geographicScope": "regional",
+   "regionName": "Assam",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "eastmojo"
+  },
+  {
+   "sourceId": "in-eastmojo-mizoram",
+   "countryCode": "IN",
+   "publisherName": "EastMojo",
+   "publisherType": "digital-native",
+   "url": "https://eastmojo.com/mizoram/feed/",
+   "geographicScope": "regional",
+   "regionName": "Mizoram",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "eastmojo"
+  },
+  {
+   "sourceId": "in-eastmojo-sikkim",
+   "countryCode": "IN",
+   "publisherName": "EastMojo",
+   "publisherType": "digital-native",
+   "url": "https://eastmojo.com/sikkim/feed/",
+   "geographicScope": "regional",
+   "regionName": "Sikkim",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "eastmojo"
+  },
+  {
+   "sourceId": "in-eastmojo-arunachal-pradesh",
+   "countryCode": "IN",
+   "publisherName": "EastMojo",
+   "publisherType": "digital-native",
+   "url": "https://eastmojo.com/arunachal-pradesh/feed/",
+   "geographicScope": "regional",
+   "regionName": "Arunachal Pradesh",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "eastmojo"
+  },
+  {
+   "sourceId": "in-eastmojo-nagaland",
+   "countryCode": "IN",
+   "publisherName": "EastMojo",
+   "publisherType": "digital-native",
+   "url": "https://eastmojo.com/nagaland/feed/",
+   "geographicScope": "regional",
+   "regionName": "Nagaland",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "eastmojo"
+  },
+  {
+   "sourceId": "in-eastmojo-meghalaya",
+   "countryCode": "IN",
+   "publisherName": "EastMojo",
+   "publisherType": "digital-native",
+   "url": "https://eastmojo.com/meghalaya/feed/",
+   "geographicScope": "regional",
+   "regionName": "Meghalaya",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "eastmojo"
+  },
+  {
+   "sourceId": "in-eastmojo-manipur",
+   "countryCode": "IN",
+   "publisherName": "EastMojo",
+   "publisherType": "digital-native",
+   "url": "https://eastmojo.com/manipur/feed/",
+   "geographicScope": "regional",
+   "regionName": "Manipur",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "eastmojo"
+  },
+  {
+   "sourceId": "in-arunachal24-arunachal-pradesh",
+   "countryCode": "IN",
+   "publisherName": "Arunachal24",
+   "publisherType": "digital-native",
+   "url": "https://arunachal24.in/feed/",
+   "geographicScope": "regional",
+   "regionName": "Arunachal Pradesh",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "arunachal24"
+  },
+  {
+   "sourceId": "in-arunachalobserver-arunachal-pradesh",
+   "countryCode": "IN",
+   "publisherName": "Arunachal Observer",
+   "publisherType": "newspaper",
+   "url": "https://arunachalobserver.org/feed/",
+   "geographicScope": "regional",
+   "regionName": "Arunachal Pradesh",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "arunachal-observer"
+  },
+  {
+   "sourceId": "in-voiceofsikkim-gangtok",
+   "countryCode": "IN",
+   "publisherName": "Voice of Sikkim",
+   "publisherType": "digital-native",
+   "url": "https://www.voiceofsikkim.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Sikkim",
+   "cityName": "Gangtok",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "voice-of-sikkim"
+  },
+  {
+   "sourceId": "in-nagalandpost-nagaland",
+   "countryCode": "IN",
+   "publisherName": "Nagaland Post",
+   "publisherType": "newspaper",
+   "url": "https://nagalandpost.com/feed/",
+   "geographicScope": "regional",
+   "regionName": "Nagaland",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "nagaland-post"
+  },
+  {
+   "sourceId": "in-morungexpress-nagaland",
+   "countryCode": "IN",
+   "publisherName": "The Morung Express",
+   "publisherType": "newspaper",
+   "url": "https://morungexpress.com/feed",
+   "geographicScope": "regional",
+   "regionName": "Nagaland",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "morung-express"
+  },
+  {
+   "sourceId": "in-nagalandtribune-kohima",
+   "countryCode": "IN",
+   "publisherName": "Nagaland Tribune",
+   "publisherType": "digital-native",
+   "url": "https://nagalandtribune.in/feed/",
+   "geographicScope": "local",
+   "regionName": "Nagaland",
+   "cityName": "Kohima",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "nagaland-tribune"
+  },
+  {
+   "sourceId": "in-shillongtimes-shillong",
+   "countryCode": "IN",
+   "publisherName": "The Shillong Times",
+   "publisherType": "newspaper",
+   "url": "https://theshillongtimes.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Meghalaya",
+   "cityName": "Shillong",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "shillong-times"
+  },
+  {
+   "sourceId": "in-highlandpost-meghalaya",
+   "countryCode": "IN",
+   "publisherName": "Highland Post",
+   "publisherType": "newspaper",
+   "url": "https://highlandpost.com/feed/",
+   "geographicScope": "regional",
+   "regionName": "Meghalaya",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "highland-post"
+  },
+  {
+   "sourceId": "in-imphaltimes-imphal",
+   "countryCode": "IN",
+   "publisherName": "Imphal Times",
+   "publisherType": "newspaper",
+   "url": "https://www.imphaltimes.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Manipur",
+   "cityName": "Imphal",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "imphal-times"
+  },
+  {
+   "sourceId": "in-tripurachronicle-tripura",
+   "countryCode": "IN",
+   "publisherName": "Tripura Chronicle",
+   "publisherType": "digital-native",
+   "url": "https://tripurachronicle.in/feed/",
+   "geographicScope": "regional",
+   "regionName": "Tripura",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "tripura-chronicle"
+  },
+  {
+   "sourceId": "in-kashmirobserver-srinagar",
+   "countryCode": "IN",
+   "publisherName": "Kashmir Observer",
+   "publisherType": "newspaper",
+   "url": "https://kashmirobserver.net/feed/",
+   "geographicScope": "local",
+   "regionName": "Jammu and Kashmir",
+   "cityName": "Srinagar",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "kashmir-observer"
+  },
+  {
+   "sourceId": "in-greaterkashmir-srinagar",
+   "countryCode": "IN",
+   "publisherName": "Greater Kashmir",
+   "publisherType": "newspaper",
+   "url": "https://www.greaterkashmir.com/rss",
+   "geographicScope": "local",
+   "regionName": "Jammu and Kashmir",
+   "cityName": "Srinagar",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "greater-kashmir"
+  },
+  {
+   "sourceId": "in-risingkashmir-srinagar",
+   "countryCode": "IN",
+   "publisherName": "Rising Kashmir",
+   "publisherType": "newspaper",
+   "url": "https://risingkashmir.com/rss",
+   "geographicScope": "local",
+   "regionName": "Jammu and Kashmir",
+   "cityName": "Srinagar",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "rising-kashmir"
+  },
+  {
+   "sourceId": "in-dailyexcelsior-jammu",
+   "countryCode": "IN",
+   "publisherName": "Daily Excelsior",
+   "publisherType": "newspaper",
+   "url": "https://www.dailyexcelsior.com/feeds.xml",
+   "geographicScope": "local",
+   "regionName": "Jammu and Kashmir",
+   "cityName": "Jammu",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "daily-excelsior"
+  },
+  {
+   "sourceId": "in-jammulinks-jammu",
+   "countryCode": "IN",
+   "publisherName": "Jammu Links News",
+   "publisherType": "digital-native",
+   "url": "https://www.jammulinksnews.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Jammu and Kashmir",
+   "cityName": "Jammu",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "jammu-links"
+  },
+  {
+   "sourceId": "in-heraldgoa-goa",
+   "countryCode": "IN",
+   "publisherName": "Herald Goa",
+   "publisherType": "newspaper",
+   "url": "https://www.heraldgoa.in/feed/",
+   "geographicScope": "regional",
+   "regionName": "Goa",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "herald-goa"
+  },
+  {
+   "sourceId": "in-navhindtimes-goa",
+   "countryCode": "IN",
+   "publisherName": "The Navhind Times",
+   "publisherType": "newspaper",
+   "url": "https://navhindtimes.in/feed/",
+   "geographicScope": "regional",
+   "regionName": "Goa",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "navhind-times"
+  },
+  {
+   "sourceId": "in-goachronicle-goa",
+   "countryCode": "IN",
+   "publisherName": "Goa Chronicle",
+   "publisherType": "digital-native",
+   "url": "https://goachronicle.com/feed/",
+   "geographicScope": "regional",
+   "regionName": "Goa",
+   "cityName": null,
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "goa-chronicle"
+  },
+  {
+   "sourceId": "in-garhwalpost-dehradun",
+   "countryCode": "IN",
+   "publisherName": "Garhwal Post",
+   "publisherType": "newspaper",
+   "url": "https://garhwalpost.in/feed/",
+   "geographicScope": "local",
+   "regionName": "Uttarakhand",
+   "cityName": "Dehradun",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "garhwal-post"
+  },
+  {
+   "sourceId": "in-andamansheekha-port-blair",
+   "countryCode": "IN",
+   "publisherName": "Andaman Sheekha",
+   "publisherType": "newspaper",
+   "url": "https://andamansheekha.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Andaman and Nicobar",
+   "cityName": "Port Blair",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "andaman-sheekha"
+  },
+  {
+   "sourceId": "in-andamanchronicle-port-blair",
+   "countryCode": "IN",
+   "publisherName": "Andaman Chronicle",
+   "publisherType": "newspaper",
+   "url": "https://andamanchronicle.net/feed/",
+   "geographicScope": "local",
+   "regionName": "Andaman and Nicobar",
+   "cityName": "Port Blair",
+   "languageTags": [
+    "en-IN"
+   ],
+   "group": "andaman-chronicle"
+  },
+  {
+   "sourceId": "pk-tribune-lahore",
+   "countryCode": "PK",
+   "publisherName": "The Express Tribune (Punjab)",
+   "publisherType": "newspaper",
+   "url": "https://tribune.com.pk/feed/punjab",
+   "geographicScope": "local",
+   "regionName": "Punjab",
+   "cityName": "Lahore",
+   "languageTags": [
+    "en-PK"
+   ],
+   "group": "lakson-group-express-media"
+  },
+  {
+   "sourceId": "pk-tribune-karachi",
+   "countryCode": "PK",
+   "publisherName": "The Express Tribune (Sindh)",
+   "publisherType": "newspaper",
+   "url": "https://tribune.com.pk/feed/sindh",
+   "geographicScope": "local",
+   "regionName": "Sindh",
+   "cityName": "Karachi",
+   "languageTags": [
+    "en-PK"
+   ],
+   "group": "lakson-group-express-media"
+  },
+  {
+   "sourceId": "pk-tribune-peshawar",
+   "countryCode": "PK",
+   "publisherName": "The Express Tribune (Khyber Pakhtunkhwa)",
+   "publisherType": "newspaper",
+   "url": "https://tribune.com.pk/feed/khyber-pakhtunkhwa",
+   "geographicScope": "local",
+   "regionName": "Khyber Pakhtunkhwa",
+   "cityName": "Peshawar",
+   "languageTags": [
+    "en-PK"
+   ],
+   "group": "lakson-group-express-media"
+  },
+  {
+   "sourceId": "pk-tribune-quetta",
+   "countryCode": "PK",
+   "publisherName": "The Express Tribune (Balochistan)",
+   "publisherType": "newspaper",
+   "url": "https://tribune.com.pk/feed/balochistan",
+   "geographicScope": "local",
+   "regionName": "Balochistan",
+   "cityName": "Quetta",
+   "languageTags": [
+    "en-PK"
+   ],
+   "group": "lakson-group-express-media"
+  },
+  {
+   "sourceId": "pk-nation-lahore",
+   "countryCode": "PK",
+   "publisherName": "The Nation",
+   "publisherType": "newspaper",
+   "url": "https://www.nation.com.pk/rss/lahore",
+   "geographicScope": "local",
+   "regionName": "Punjab",
+   "cityName": "Lahore",
+   "languageTags": [
+    "en-PK"
+   ],
+   "group": "nawa-i-waqt-group"
+  },
+  {
+   "sourceId": "pk-nation-karachi",
+   "countryCode": "PK",
+   "publisherName": "The Nation",
+   "publisherType": "newspaper",
+   "url": "https://www.nation.com.pk/rss/karachi",
+   "geographicScope": "local",
+   "regionName": "Sindh",
+   "cityName": "Karachi",
+   "languageTags": [
+    "en-PK"
+   ],
+   "group": "nawa-i-waqt-group"
+  },
+  {
+   "sourceId": "pk-nation-islamabad",
+   "countryCode": "PK",
+   "publisherName": "The Nation",
+   "publisherType": "newspaper",
+   "url": "https://www.nation.com.pk/rss/islamabad",
+   "geographicScope": "local",
+   "regionName": "Islamabad",
+   "cityName": "Islamabad",
+   "languageTags": [
+    "en-PK"
+   ],
+   "group": "nawa-i-waqt-group"
+  },
+  {
+   "sourceId": "pk-balochistanpost-quetta",
+   "countryCode": "PK",
+   "publisherName": "The Balochistan Post",
+   "publisherType": "digital-native",
+   "url": "https://thebalochistanpost.net/feed/",
+   "geographicScope": "local",
+   "regionName": "Balochistan",
+   "cityName": "Quetta",
+   "languageTags": [
+    "en-PK"
+   ],
+   "group": "balochistan-post"
+  },
+  {
+   "sourceId": "pk-qudrat-quetta",
+   "countryCode": "PK",
+   "publisherName": "Daily Qudrat",
+   "publisherType": "newspaper",
+   "url": "https://dailyqudrat.pk/feed/",
+   "geographicScope": "local",
+   "regionName": "Balochistan",
+   "cityName": "Quetta",
+   "languageTags": [
+    "ur-PK"
+   ],
+   "group": "daily-qudrat"
+  },
+  {
+   "sourceId": "pk-intekhab-quetta",
+   "countryCode": "PK",
+   "publisherName": "Daily Intekhab",
+   "publisherType": "newspaper",
+   "url": "https://dailyintekhab.pk/feed",
+   "geographicScope": "local",
+   "regionName": "Balochistan",
+   "cityName": "Quetta",
+   "languageTags": [
+    "ur-PK"
+   ],
+   "group": "daily-intekhab"
+  },
+  {
+   "sourceId": "pk-pamirtimes-gilgit",
+   "countryCode": "PK",
+   "publisherName": "Pamir Times",
+   "publisherType": "digital-native",
+   "url": "https://pamirtimes.net/feed/",
+   "geographicScope": "local",
+   "regionName": "Gilgit-Baltistan",
+   "cityName": "Gilgit",
+   "languageTags": [
+    "en-PK"
+   ],
+   "group": "pamir-times"
+  },
+  {
+   "sourceId": "pk-khybernews-peshawar",
+   "countryCode": "PK",
+   "publisherName": "Khyber News",
+   "publisherType": "broadcaster",
+   "url": "https://khybernews.tv/feed/",
+   "geographicScope": "local",
+   "regionName": "Khyber Pakhtunkhwa",
+   "cityName": "Peshawar",
+   "languageTags": [
+    "ur-PK"
+   ],
+   "group": "khyber-news"
+  },
+  {
+   "sourceId": "pk-awamiawaz-hyderabad",
+   "countryCode": "PK",
+   "publisherName": "Awami Awaz",
+   "publisherType": "newspaper",
+   "url": "https://awamiawaz.pk/feed",
+   "geographicScope": "local",
+   "regionName": "Sindh",
+   "cityName": "Hyderabad",
+   "languageTags": [
+    "sd-PK"
+   ],
+   "group": "awami-awaz"
+  },
+  {
+   "sourceId": "pk-geo-latest",
+   "countryCode": "PK",
+   "publisherName": "Geo News",
+   "publisherType": "broadcaster",
+   "url": "https://www.geo.tv/rss/1/1",
+   "geographicScope": "national",
+   "regionName": null,
+   "cityName": null,
+   "languageTags": [
+    "en-PK"
+   ],
+   "group": "jang-group"
+  },
+  {
+   "sourceId": "pk-express-urdu",
+   "countryCode": "PK",
+   "publisherName": "Daily Express (Urdu)",
+   "publisherType": "newspaper",
+   "url": "https://www.express.pk/feed",
+   "geographicScope": "national",
+   "regionName": null,
+   "cityName": null,
+   "languageTags": [
+    "ur-PK"
+   ],
+   "group": "lakson-group-express-media"
+  },
+  {
+   "sourceId": "pk-dailytimes",
+   "countryCode": "PK",
+   "publisherName": "Daily Times",
+   "publisherType": "newspaper",
+   "url": "https://dailytimes.com.pk/feed/",
+   "geographicScope": "national",
+   "regionName": null,
+   "cityName": null,
+   "languageTags": [
+    "en-PK"
+   ],
+   "group": "daily-times"
+  },
+  {
+   "sourceId": "bd-azadi-chattogram",
+   "countryCode": "BD",
+   "publisherName": "Dainik Azadi",
+   "publisherType": "newspaper",
+   "url": "https://dainikazadi.net/feed/",
+   "geographicScope": "local",
+   "regionName": "Chittagong",
+   "cityName": "Chattogram",
+   "languageTags": [
+    "bn-BD"
+   ],
+   "group": "dainik-azadi"
+  },
+  {
+   "sourceId": "bd-purbokone-chattogram",
+   "countryCode": "BD",
+   "publisherName": "Dainik Purbokone",
+   "publisherType": "newspaper",
+   "url": "https://dainikpurbokone.net/feed/",
+   "geographicScope": "local",
+   "regionName": "Chittagong",
+   "cityName": "Chattogram",
+   "languageTags": [
+    "bn-BD"
+   ],
+   "group": "purbokone"
+  },
+  {
+   "sourceId": "bd-suprobhat-chattogram",
+   "countryCode": "BD",
+   "publisherName": "Suprobhat Bangladesh",
+   "publisherType": "newspaper",
+   "url": "https://suprobhat.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Chittagong",
+   "cityName": "Chattogram",
+   "languageTags": [
+    "bn-BD"
+   ],
+   "group": "suprobhat"
+  },
+  {
+   "sourceId": "bd-coxsbazarnews-cox-s-bazar",
+   "countryCode": "BD",
+   "publisherName": "Cox's Bazar News",
+   "publisherType": "digital-native",
+   "url": "https://www.coxsbazarnews.com/feed",
+   "geographicScope": "local",
+   "regionName": "Chittagong",
+   "cityName": "Cox’s Bāzār",
+   "languageTags": [
+    "bn-BD"
+   ],
+   "group": "coxsbazar-news"
+  },
+  {
+   "sourceId": "bd-sonalisangbad-rajshahi",
+   "countryCode": "BD",
+   "publisherName": "Sonali Sangbad",
+   "publisherType": "newspaper",
+   "url": "https://sonalisangbad.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Rajshahi Division",
+   "cityName": "Rajshahi",
+   "languageTags": [
+    "bn-BD"
+   ],
+   "group": "sonali-sangbad"
+  },
+  {
+   "sourceId": "bd-purbanchal-khulna",
+   "countryCode": "BD",
+   "publisherName": "Dainik Purbanchal",
+   "publisherType": "newspaper",
+   "url": "https://purbanchal.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Khulna Division",
+   "cityName": "Khulna",
+   "languageTags": [
+    "bn-BD"
+   ],
+   "group": "purbanchal"
+  },
+  {
+   "sourceId": "bd-khulnagazette-khulna",
+   "countryCode": "BD",
+   "publisherName": "Khulna Gazette",
+   "publisherType": "digital-native",
+   "url": "https://khulnagazette.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Khulna Division",
+   "cityName": "Khulna",
+   "languageTags": [
+    "bn-BD"
+   ],
+   "group": "khulna-gazette"
+  },
+  {
+   "sourceId": "bd-jahan-mymensingh",
+   "countryCode": "BD",
+   "publisherName": "Dainik Jahan",
+   "publisherType": "newspaper",
+   "url": "https://www.dainikjahan.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Mymensingh Division",
+   "cityName": "Mymensingh",
+   "languageTags": [
+    "bn-BD"
+   ],
+   "group": "dainik-jahan"
+  },
+  {
+   "sourceId": "bd-sylhetmirror-sylhet",
+   "countryCode": "BD",
+   "publisherName": "Sylhet Mirror",
+   "publisherType": "newspaper",
+   "url": "https://sylhetmirror.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Sylhet Division",
+   "cityName": "Sylhet",
+   "languageTags": [
+    "bn-BD"
+   ],
+   "group": "sylhet-mirror"
+  },
+  {
+   "sourceId": "bd-jalalabad-sylhet",
+   "countryCode": "BD",
+   "publisherName": "Daily Jalalabad",
+   "publisherType": "newspaper",
+   "url": "https://dailyjalalabad.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Sylhet Division",
+   "cityName": "Sylhet",
+   "languageTags": [
+    "bn-BD"
+   ],
+   "group": "daily-jalalabad"
+  },
+  {
+   "sourceId": "bd-sylhetexpress-sylhet",
+   "countryCode": "BD",
+   "publisherName": "Sylhet Express",
+   "publisherType": "digital-native",
+   "url": "https://sylhetexpress.net/feed/",
+   "geographicScope": "local",
+   "regionName": "Sylhet Division",
+   "cityName": "Sylhet",
+   "languageTags": [
+    "bn-BD"
+   ],
+   "group": "sylhet-express"
+  },
+  {
+   "sourceId": "bd-dhakatribune",
+   "countryCode": "BD",
+   "publisherName": "Dhaka Tribune",
+   "publisherType": "newspaper",
+   "url": "https://www.dhakatribune.com/feed/",
+   "geographicScope": "national",
+   "regionName": null,
+   "cityName": null,
+   "languageTags": [
+    "en-BD"
+   ],
+   "group": "dhaka-tribune"
+  },
+  {
+   "sourceId": "bd-tbsnews",
+   "countryCode": "BD",
+   "publisherName": "The Business Standard (Bangladesh)",
+   "publisherType": "newspaper",
+   "url": "https://www.tbsnews.net/bangladesh/rss.xml",
+   "geographicScope": "national",
+   "regionName": null,
+   "cityName": null,
+   "languageTags": [
+    "en-BD"
+   ],
+   "group": "tbs"
+  },
+  {
+   "sourceId": "bd-ittefaq",
+   "countryCode": "BD",
+   "publisherName": "The Daily Ittefaq",
+   "publisherType": "newspaper",
+   "url": "https://www.ittefaq.com.bd/feed/",
+   "geographicScope": "national",
+   "regionName": null,
+   "cityName": null,
+   "languageTags": [
+    "bn-BD"
+   ],
+   "group": "ittefaq"
+  },
+  {
+   "sourceId": "bd-jagonews24",
+   "countryCode": "BD",
+   "publisherName": "Jago News 24",
+   "publisherType": "digital-native",
+   "url": "https://www.jagonews24.com/rss/rss.xml",
+   "geographicScope": "national",
+   "regionName": null,
+   "cityName": null,
+   "languageTags": [
+    "bn-BD"
+   ],
+   "group": "jagonews24"
+  },
+  {
+   "sourceId": "bd-banglatribune",
+   "countryCode": "BD",
+   "publisherName": "Bangla Tribune",
+   "publisherType": "digital-native",
+   "url": "https://www.banglatribune.com/feed/",
+   "geographicScope": "national",
+   "regionName": null,
+   "cityName": null,
+   "languageTags": [
+    "bn-BD"
+   ],
+   "group": "kaler-kantho-bashundhara"
+  },
+  {
+   "sourceId": "bd-ajkerpatrika",
+   "countryCode": "BD",
+   "publisherName": "Ajker Patrika",
+   "publisherType": "newspaper",
+   "url": "https://www.ajkerpatrika.com/feed",
+   "geographicScope": "national",
+   "regionName": null,
+   "cityName": null,
+   "languageTags": [
+    "bn-BD"
+   ],
+   "group": "ajker-patrika"
+  },
+  {
+   "sourceId": "lk-battinews-batticaloa",
+   "countryCode": "LK",
+   "publisherName": "Batti News",
+   "publisherType": "digital-native",
+   "url": "https://www.battinews.com/feeds/posts/default",
+   "geographicScope": "local",
+   "regionName": "Eastern Province",
+   "cityName": "Batticaloa",
+   "languageTags": [
+    "ta-LK"
+   ],
+   "group": "batti-news"
+  },
+  {
+   "sourceId": "lk-jaffnamonitor-jaffna",
+   "countryCode": "LK",
+   "publisherName": "Jaffna Monitor",
+   "publisherType": "digital-native",
+   "url": "https://www.jaffnamonitor.com/rss/",
+   "geographicScope": "local",
+   "regionName": "Northern Province",
+   "cityName": "Jaffna",
+   "languageTags": [
+    "en-LK"
+   ],
+   "group": "jaffna-monitor"
+  },
+  {
+   "sourceId": "lk-island",
+   "countryCode": "LK",
+   "publisherName": "The Island",
+   "publisherType": "newspaper",
+   "url": "https://island.lk/feed/",
+   "geographicScope": "national",
+   "regionName": null,
+   "cityName": null,
+   "languageTags": [
+    "en-LK"
+   ],
+   "group": "upali-newspapers"
+  },
+  {
+   "sourceId": "lk-divaina",
+   "countryCode": "LK",
+   "publisherName": "Divaina",
+   "publisherType": "newspaper",
+   "url": "https://www.divaina.lk/feed",
+   "geographicScope": "national",
+   "regionName": null,
+   "cityName": null,
+   "languageTags": [
+    "si-LK"
+   ],
+   "group": "upali-newspapers"
+  },
+  {
+   "sourceId": "lk-lankadeepa",
+   "countryCode": "LK",
+   "publisherName": "Lankadeepa",
+   "publisherType": "newspaper",
+   "url": "https://www.lankadeepa.lk/rss/latest_news/1",
+   "geographicScope": "national",
+   "regionName": null,
+   "cityName": null,
+   "languageTags": [
+    "si-LK"
+   ],
+   "group": "wijeya-newspapers"
+  },
+  {
+   "sourceId": "lk-newswire",
+   "countryCode": "LK",
+   "publisherName": "Newswire",
+   "publisherType": "digital-native",
+   "url": "https://www.newswire.lk/feed/",
+   "geographicScope": "national",
+   "regionName": null,
+   "cityName": null,
+   "languageTags": [
+    "en-LK"
+   ],
+   "group": "newswire"
+  },
+  {
+   "sourceId": "np-onlinekhabar-biratnagar",
+   "countryCode": "NP",
+   "publisherName": "Onlinekhabar (Koshi)",
+   "publisherType": "digital-native",
+   "url": "https://www.onlinekhabar.com/content/desh-samachar/pradesh1/feed",
+   "geographicScope": "local",
+   "regionName": "Koshi",
+   "cityName": "Biratnagar",
+   "languageTags": [
+    "ne-NP"
+   ],
+   "group": "onlinekhabar"
+  },
+  {
+   "sourceId": "np-onlinekhabar-janakpur",
+   "countryCode": "NP",
+   "publisherName": "Onlinekhabar (Madhesh)",
+   "publisherType": "digital-native",
+   "url": "https://www.onlinekhabar.com/content/desh-samachar/pradesh2/feed",
+   "geographicScope": "local",
+   "regionName": "Madhesh",
+   "cityName": "Janakpur",
+   "languageTags": [
+    "ne-NP"
+   ],
+   "group": "onlinekhabar"
+  },
+  {
+   "sourceId": "np-onlinekhabar-kathmandu",
+   "countryCode": "NP",
+   "publisherName": "Onlinekhabar (Bagmati Province)",
+   "publisherType": "digital-native",
+   "url": "https://www.onlinekhabar.com/content/desh-samachar/pradesh3/feed",
+   "geographicScope": "local",
+   "regionName": "Bagmati Province",
+   "cityName": "Kathmandu",
+   "languageTags": [
+    "ne-NP"
+   ],
+   "group": "onlinekhabar"
+  },
+  {
+   "sourceId": "np-onlinekhabar-pokhara",
+   "countryCode": "NP",
+   "publisherName": "Onlinekhabar (Gandaki Pradesh)",
+   "publisherType": "digital-native",
+   "url": "https://www.onlinekhabar.com/content/desh-samachar/pradesh4/feed",
+   "geographicScope": "local",
+   "regionName": "Gandaki Pradesh",
+   "cityName": "Pokhara",
+   "languageTags": [
+    "ne-NP"
+   ],
+   "group": "onlinekhabar"
+  },
+  {
+   "sourceId": "np-onlinekhabar-butwal",
+   "countryCode": "NP",
+   "publisherName": "Onlinekhabar (Lumbini Province)",
+   "publisherType": "digital-native",
+   "url": "https://www.onlinekhabar.com/content/desh-samachar/pradesh5/feed",
+   "geographicScope": "local",
+   "regionName": "Lumbini Province",
+   "cityName": "Butwāl",
+   "languageTags": [
+    "ne-NP"
+   ],
+   "group": "onlinekhabar"
+  },
+  {
+   "sourceId": "np-onlinekhabar-birendranagar",
+   "countryCode": "NP",
+   "publisherName": "Onlinekhabar (Karnali Pradesh)",
+   "publisherType": "digital-native",
+   "url": "https://www.onlinekhabar.com/content/desh-samachar/pradesh6/feed",
+   "geographicScope": "local",
+   "regionName": "Karnali Pradesh",
+   "cityName": "Birendranagar",
+   "languageTags": [
+    "ne-NP"
+   ],
+   "group": "onlinekhabar"
+  },
+  {
+   "sourceId": "np-onlinekhabar-dhangadhi",
+   "countryCode": "NP",
+   "publisherName": "Onlinekhabar (Sudurpashchim Pradesh)",
+   "publisherType": "digital-native",
+   "url": "https://www.onlinekhabar.com/content/desh-samachar/pradesh7/feed",
+   "geographicScope": "local",
+   "regionName": "Sudurpashchim Pradesh",
+   "cityName": "Dhangadhi",
+   "languageTags": [
+    "ne-NP"
+   ],
+   "group": "onlinekhabar"
+  },
+  {
+   "sourceId": "np-ratopati",
+   "countryCode": "NP",
+   "publisherName": "Ratopati",
+   "publisherType": "digital-native",
+   "url": "https://www.ratopati.com/feed",
+   "geographicScope": "national",
+   "regionName": null,
+   "cityName": null,
+   "languageTags": [
+    "ne-NP"
+   ],
+   "group": "ratopati"
+  },
+  {
+   "sourceId": "np-himalayantimes",
+   "countryCode": "NP",
+   "publisherName": "The Himalayan Times",
+   "publisherType": "newspaper",
+   "url": "https://thehimalayantimes.com/rssFeed/15",
+   "geographicScope": "national",
+   "regionName": null,
+   "cityName": null,
+   "languageTags": [
+    "en-NP"
+   ],
+   "group": "international-media-network-nepal"
+  },
+  {
+   "sourceId": "np-republica",
+   "countryCode": "NP",
+   "publisherName": "Republica",
+   "publisherType": "newspaper",
+   "url": "https://myrepublica.nagariknetwork.com/feeds",
+   "geographicScope": "national",
+   "regionName": null,
+   "cityName": null,
+   "languageTags": [
+    "en-NP"
+   ],
+   "group": "nepal-republic-media"
+  },
+  {
+   "sourceId": "np-nagarik",
+   "countryCode": "NP",
+   "publisherName": "Nagarik",
+   "publisherType": "newspaper",
+   "url": "https://nagariknews.nagariknetwork.com/feed",
+   "geographicScope": "national",
+   "regionName": null,
+   "cityName": null,
+   "languageTags": [
+    "ne-NP"
+   ],
+   "group": "nepal-republic-media"
+  },
+  {
+   "sourceId": "np-onlinekhabar-english",
+   "countryCode": "NP",
+   "publisherName": "Onlinekhabar English",
+   "publisherType": "digital-native",
+   "url": "https://english.onlinekhabar.com/feed",
+   "geographicScope": "national",
+   "regionName": null,
+   "cityName": null,
+   "languageTags": [
+    "en-NP"
+   ],
+   "group": "onlinekhabar"
+  },
+  {
+   "sourceId": "np-nepalpress",
+   "countryCode": "NP",
+   "publisherName": "Nepal Press",
+   "publisherType": "digital-native",
+   "url": "https://www.nepalpress.com/feed/",
+   "geographicScope": "national",
+   "regionName": null,
+   "cityName": null,
+   "languageTags": [
+    "ne-NP"
+   ],
+   "group": "nepal-press"
+  },
+  {
+   "sourceId": "np-ujyaalo",
+   "countryCode": "NP",
+   "publisherName": "Ujyaalo Online",
+   "publisherType": "digital-native",
+   "url": "https://www.ujyaaloonline.com/feed",
+   "geographicScope": "national",
+   "regionName": null,
+   "cityName": null,
+   "languageTags": [
+    "ne-NP"
+   ],
+   "group": "ujyaalo"
+  },
+  {
+   "sourceId": "af-kabulnow",
+   "countryCode": "AF",
+   "publisherName": "KabulNow",
+   "publisherType": "digital-native",
+   "url": "https://kabulnow.com/feed/",
+   "geographicScope": "national",
+   "regionName": null,
+   "cityName": null,
+   "languageTags": [
+    "en-AF"
+   ],
+   "group": "kabulnow"
+  },
+  {
+   "sourceId": "af-khaama",
+   "countryCode": "AF",
+   "publisherName": "Khaama Press",
+   "publisherType": "digital-native",
+   "url": "https://www.khaama.com/feed/",
+   "geographicScope": "national",
+   "regionName": null,
+   "cityName": null,
+   "languageTags": [
+    "en-AF"
+   ],
+   "group": "khaama"
+  }
+ ]
+}

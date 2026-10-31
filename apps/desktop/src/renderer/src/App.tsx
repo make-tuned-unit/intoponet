@@ -159,6 +159,9 @@ import {
   layerCounts,
   newsGlobeSignals,
   membraneSignals,
+  MEMBRANE_MAX_SIGNALS,
+  spreadGlobeSignals,
+  spreadRidgeSignals,
   nearbySignals,
   PIN_COLOR,
   relativeTime,
@@ -500,7 +503,11 @@ export function App() {
         ? 'No eligible public source measurements are available.'
         : 'No session visits have been recorded yet.'
   const allGlobeSignals = useMemo(
-    () => [...newsGlobeSignals(newsDigest), ...globeSignalsFromSnapshot(eligiblePublicSnapshot)],
+    () => [
+      // Stories spreading between places rank among the news peaks, not after them.
+      ...[...spreadGlobeSignals(newsDigest, Date.now()), ...newsGlobeSignals(newsDigest)].sort((a, b) => b.intensity - a.intensity),
+      ...globeSignalsFromSnapshot(eligiblePublicSnapshot),
+    ],
     [newsDigest, eligiblePublicSnapshot],
   )
   const globeLayerSet = useMemo(() => new Set(globePrefs.layers), [globePrefs.layers])
@@ -522,8 +529,10 @@ export function App() {
     }
     if (fieldView === 'personal') return personalVisitSignals(personalActivity, new Date().toISOString())
     if (!eligiblePublicSnapshot) return []
-    return membraneSignals(visibleGlobeSignals, eligiblePublicSnapshot.createdAt)
-  }, [designPreview, previewTopic, previewIntensity, previewRadiusScale, fieldView, personalActivity, eligiblePublicSnapshot, visibleGlobeSignals])
+    // Ridges from where a story started to the places that picked it up share the field's budget.
+    const ridges = globeLayerSet.has('news') ? spreadRidgeSignals(newsDigest?.spreading ?? [], selectedSignalId, eligiblePublicSnapshot.createdAt) : []
+    return [...membraneSignals(visibleGlobeSignals, eligiblePublicSnapshot.createdAt, MEMBRANE_MAX_SIGNALS - ridges.length), ...ridges]
+  }, [designPreview, previewTopic, previewIntensity, previewRadiusScale, fieldView, personalActivity, eligiblePublicSnapshot, visibleGlobeSignals, newsDigest, selectedSignalId, globeLayerSet])
   const topicLocationOptions = useMemo<TopicLocationOption[]>(() => {
     const seen = new Set<string>()
     const sourceAnchors = (eligiblePublicSnapshot?.sources ?? []).filter((source) => {

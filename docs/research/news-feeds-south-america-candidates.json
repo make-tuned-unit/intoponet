@@ -1,0 +1,3716 @@
+{
+ "region": "South America (states, provinces, regions and cities)",
+ "note": "Brazil: g1 feeds for all 27 states plus metro/regional g1 feeds and city papers; Argentina: provincial capitals and major cities; CO/CL/PE and smaller countries placed on cities (no regions in the gazetteer).",
+ "candidates": [
+  {
+   "sourceId": "br-g1-acre",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/ac/acre/",
+   "geographicScope": "regional",
+   "regionName": "Acre",
+   "cityName": null,
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-alagoas",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/al/alagoas/",
+   "geographicScope": "regional",
+   "regionName": "Alagoas",
+   "cityName": null,
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-amapa",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/ap/amapa/",
+   "geographicScope": "regional",
+   "regionName": "Amapá",
+   "cityName": null,
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-amazonas",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/am/amazonas/",
+   "geographicScope": "regional",
+   "regionName": "Amazonas",
+   "cityName": null,
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-bahia",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/ba/bahia/",
+   "geographicScope": "regional",
+   "regionName": "Bahia",
+   "cityName": null,
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-ceara",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/ce/ceara/",
+   "geographicScope": "regional",
+   "regionName": "Ceará",
+   "cityName": null,
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-distrito-federal",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/df/distrito-federal/",
+   "geographicScope": "regional",
+   "regionName": "Federal District",
+   "cityName": null,
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-espirito-santo",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/es/espirito-santo/",
+   "geographicScope": "regional",
+   "regionName": "Espírito Santo",
+   "cityName": null,
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-goias",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/go/goias/",
+   "geographicScope": "regional",
+   "regionName": "Goiás",
+   "cityName": null,
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-maranhao",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/ma/maranhao/",
+   "geographicScope": "regional",
+   "regionName": "Maranhão",
+   "cityName": null,
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-mato-grosso",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/mt/mato-grosso/",
+   "geographicScope": "regional",
+   "regionName": "Mato Grosso",
+   "cityName": null,
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-mato-grosso-do-sul",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/ms/mato-grosso-do-sul/",
+   "geographicScope": "regional",
+   "regionName": "Mato Grosso do Sul",
+   "cityName": null,
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-minas-gerais",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/mg/",
+   "geographicScope": "regional",
+   "regionName": "Minas Gerais",
+   "cityName": null,
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-para",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/pa/para/",
+   "geographicScope": "regional",
+   "regionName": "Pará",
+   "cityName": null,
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-paraiba",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/pb/paraiba/",
+   "geographicScope": "regional",
+   "regionName": "Paraíba",
+   "cityName": null,
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-parana",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/pr/parana/",
+   "geographicScope": "regional",
+   "regionName": "Paraná",
+   "cityName": null,
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-pernambuco",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/pe/pernambuco/",
+   "geographicScope": "regional",
+   "regionName": "Pernambuco",
+   "cityName": null,
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-piaui",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/pi/piaui/",
+   "geographicScope": "regional",
+   "regionName": "Piauí",
+   "cityName": null,
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-rio-de-janeiro",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/rj/",
+   "geographicScope": "regional",
+   "regionName": "Rio de Janeiro",
+   "cityName": null,
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-rio-grande-do-norte",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/rn/rio-grande-do-norte/",
+   "geographicScope": "regional",
+   "regionName": "Rio Grande do Norte",
+   "cityName": null,
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-rio-grande-do-sul",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/rs/rio-grande-do-sul/",
+   "geographicScope": "regional",
+   "regionName": "Rio Grande do Sul",
+   "cityName": null,
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-rondonia",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/ro/rondonia/",
+   "geographicScope": "regional",
+   "regionName": "Rondônia",
+   "cityName": null,
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-roraima",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/rr/roraima/",
+   "geographicScope": "regional",
+   "regionName": "Roraima",
+   "cityName": null,
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-santa-catarina",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/sc/santa-catarina/",
+   "geographicScope": "regional",
+   "regionName": "Santa Catarina",
+   "cityName": null,
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-sao-paulo",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/sp/",
+   "geographicScope": "regional",
+   "regionName": "São Paulo",
+   "cityName": null,
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-sergipe",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/se/sergipe/",
+   "geographicScope": "regional",
+   "regionName": "Sergipe",
+   "cityName": null,
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-tocantins",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/to/tocantins/",
+   "geographicScope": "regional",
+   "regionName": "Tocantins",
+   "cityName": null,
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-sao-paulo-capital",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/sp/sao-paulo/",
+   "geographicScope": "local",
+   "regionName": "São Paulo",
+   "cityName": "São Paulo",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-rio-capital",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/rj/rio-de-janeiro/",
+   "geographicScope": "local",
+   "regionName": "Rio de Janeiro",
+   "cityName": "Rio de Janeiro",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-grande-bh",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/mg/minas-gerais/",
+   "geographicScope": "local",
+   "regionName": "Minas Gerais",
+   "cityName": "Belo Horizonte",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-campinas",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/sp/campinas-regiao/",
+   "geographicScope": "local",
+   "regionName": "São Paulo",
+   "cityName": "Campinas",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-sorocaba",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/sp/sorocaba-jundiai/",
+   "geographicScope": "local",
+   "regionName": "São Paulo",
+   "cityName": "Sorocaba",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-vale-do-paraiba",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/sp/vale-do-paraiba-regiao/",
+   "geographicScope": "local",
+   "regionName": "São Paulo",
+   "cityName": "São José dos Campos",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-ribeirao-preto",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/sp/ribeirao-preto-franca/",
+   "geographicScope": "local",
+   "regionName": "São Paulo",
+   "cityName": "Ribeirão Preto",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-santos",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/sp/santos-regiao/",
+   "geographicScope": "local",
+   "regionName": "São Paulo",
+   "cityName": "Santos",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-triangulo-mineiro",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/mg/triangulo-mineiro/",
+   "geographicScope": "local",
+   "regionName": "Minas Gerais",
+   "cityName": "Uberlândia",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-zona-da-mata",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/mg/zona-da-mata/",
+   "geographicScope": "local",
+   "regionName": "Minas Gerais",
+   "cityName": "Juiz de Fora",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-caruaru",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/pe/caruaru-regiao/",
+   "geographicScope": "local",
+   "regionName": "Pernambuco",
+   "cityName": "Caruaru",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-feira-de-santana",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/ba/feira-de-santana/",
+   "geographicScope": "local",
+   "regionName": "Bahia",
+   "cityName": "Feira de Santana",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-regiao-serrana",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/rj/regiao-serrana/",
+   "geographicScope": "local",
+   "regionName": "Rio de Janeiro",
+   "cityName": "Petrópolis",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-bauru-marilia",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/sp/bauru-marilia/",
+   "geographicScope": "local",
+   "regionName": "São Paulo",
+   "cityName": "Bauru",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-rio-preto",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/sp/sao-jose-do-rio-preto-aracatuba/",
+   "geographicScope": "local",
+   "regionName": "São Paulo",
+   "cityName": "São José do Rio Preto",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-piracicaba",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/sp/piracicaba-regiao/",
+   "geographicScope": "local",
+   "regionName": "São Paulo",
+   "cityName": "Piracicaba",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-mogi-das-cruzes",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/sp/mogi-das-cruzes-suzano/",
+   "geographicScope": "local",
+   "regionName": "São Paulo",
+   "cityName": "Mogi das Cruzes",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-grande-minas",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/mg/grande-minas/",
+   "geographicScope": "local",
+   "regionName": "Minas Gerais",
+   "cityName": "Montes Claros",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-vales-mg",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/mg/vales-mg/",
+   "geographicScope": "local",
+   "regionName": "Minas Gerais",
+   "cityName": "Governador Valadares",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-norte-fluminense",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/rj/norte-fluminense/",
+   "geographicScope": "local",
+   "regionName": "Rio de Janeiro",
+   "cityName": "Campos dos Goytacazes",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-sul-do-rio",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/rj/sul-do-rio-costa-verde/",
+   "geographicScope": "local",
+   "regionName": "Rio de Janeiro",
+   "cityName": "Volta Redonda",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-petrolina",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/pe/petrolina-regiao/",
+   "geographicScope": "local",
+   "regionName": "Pernambuco",
+   "cityName": "Petrolina",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-g1-sao-carlos",
+   "countryCode": "BR",
+   "publisherName": "g1",
+   "publisherType": "broadcaster",
+   "url": "https://g1.globo.com/rss/g1/sp/sao-carlos-regiao/",
+   "geographicScope": "local",
+   "regionName": "São Paulo",
+   "cityName": "São Carlos",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-estadao-sao-paulo",
+   "countryCode": "BR",
+   "publisherName": "Estadão",
+   "publisherType": "newspaper",
+   "url": "https://www.estadao.com.br/arc/outboundfeeds/feeds/rss/sections/sao-paulo/",
+   "geographicScope": "local",
+   "regionName": "São Paulo",
+   "cityName": "São Paulo",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "estadao"
+  },
+  {
+   "sourceId": "br-oglobo-rio",
+   "countryCode": "BR",
+   "publisherName": "O Globo",
+   "publisherType": "newspaper",
+   "url": "https://oglobo.globo.com/rss/oglobo/rio",
+   "geographicScope": "local",
+   "regionName": "Rio de Janeiro",
+   "cityName": "Rio de Janeiro",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-odia",
+   "countryCode": "BR",
+   "publisherName": "O Dia",
+   "publisherType": "newspaper",
+   "url": "https://odia.ig.com.br/_conteudo/ultimas-noticias/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Rio de Janeiro",
+   "cityName": "Rio de Janeiro",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "odia"
+  },
+  {
+   "sourceId": "br-extra",
+   "countryCode": "BR",
+   "publisherName": "Extra",
+   "publisherType": "newspaper",
+   "url": "https://extra.globo.com/rss/extra",
+   "geographicScope": "local",
+   "regionName": "Rio de Janeiro",
+   "cityName": "Rio de Janeiro",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "globo"
+  },
+  {
+   "sourceId": "br-diariodorio",
+   "countryCode": "BR",
+   "publisherName": "Diário do Rio",
+   "publisherType": "digital-native",
+   "url": "https://diariodorio.com/feed",
+   "geographicScope": "local",
+   "regionName": "Rio de Janeiro",
+   "cityName": "Rio de Janeiro",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "diariodorio"
+  },
+  {
+   "sourceId": "br-estado-de-minas",
+   "countryCode": "BR",
+   "publisherName": "Estado de Minas",
+   "publisherType": "newspaper",
+   "url": "https://em.com.br/feed/",
+   "geographicScope": "local",
+   "regionName": "Minas Gerais",
+   "cityName": "Belo Horizonte",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "diarios-associados"
+  },
+  {
+   "sourceId": "br-atarde",
+   "countryCode": "BR",
+   "publisherName": "A Tarde",
+   "publisherType": "newspaper",
+   "url": "https://atarde.com.br/bahia/rss",
+   "geographicScope": "local",
+   "regionName": "Bahia",
+   "cityName": "Salvador",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "atarde"
+  },
+  {
+   "sourceId": "br-metro1",
+   "countryCode": "BR",
+   "publisherName": "Metro1",
+   "publisherType": "digital-native",
+   "url": "https://metro1.com.br/rss",
+   "geographicScope": "local",
+   "regionName": "Bahia",
+   "cityName": "Salvador",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "metro1"
+  },
+  {
+   "sourceId": "br-bahia-noticias",
+   "countryCode": "BR",
+   "publisherName": "Bahia Notícias",
+   "publisherType": "digital-native",
+   "url": "https://www.bahianoticias.com.br/rss.xml",
+   "geographicScope": "regional",
+   "regionName": "Bahia",
+   "cityName": null,
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "bahia-noticias"
+  },
+  {
+   "sourceId": "br-jangadeiro",
+   "countryCode": "BR",
+   "publisherName": "Jangadeiro",
+   "publisherType": "broadcaster",
+   "url": "https://www.jangadeiro.com.br/feed/",
+   "geographicScope": "local",
+   "regionName": "Ceará",
+   "cityName": "Fortaleza",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "jangadeiro"
+  },
+  {
+   "sourceId": "br-diario-do-ceara",
+   "countryCode": "BR",
+   "publisherName": "Diário do Ceará",
+   "publisherType": "digital-native",
+   "url": "https://diariodoceara.com.br/feed/",
+   "geographicScope": "local",
+   "regionName": "Ceará",
+   "cityName": "Fortaleza",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "diario-do-ceara"
+  },
+  {
+   "sourceId": "br-acritica",
+   "countryCode": "BR",
+   "publisherName": "A Crítica",
+   "publisherType": "newspaper",
+   "url": "https://acritica.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Amazonas",
+   "cityName": "Manaus",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "acritica"
+  },
+  {
+   "sourceId": "br-emtempo",
+   "countryCode": "BR",
+   "publisherName": "Em Tempo",
+   "publisherType": "newspaper",
+   "url": "https://emtempo.com.br/feed/",
+   "geographicScope": "local",
+   "regionName": "Amazonas",
+   "cityName": "Manaus",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "emtempo"
+  },
+  {
+   "sourceId": "br-metropoles-df",
+   "countryCode": "BR",
+   "publisherName": "Metrópoles",
+   "publisherType": "digital-native",
+   "url": "https://www.metropoles.com/distrito-federal/feed",
+   "geographicScope": "local",
+   "regionName": "Federal District",
+   "cityName": "Brasília",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "metropoles"
+  },
+  {
+   "sourceId": "br-jornal-de-brasilia",
+   "countryCode": "BR",
+   "publisherName": "Jornal de Brasília",
+   "publisherType": "newspaper",
+   "url": "https://jornaldebrasilia.com.br/feed/",
+   "geographicScope": "local",
+   "regionName": "Federal District",
+   "cityName": "Brasília",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "jornal-de-brasilia"
+  },
+  {
+   "sourceId": "br-gazeta-do-povo-curitiba",
+   "countryCode": "BR",
+   "publisherName": "Gazeta do Povo",
+   "publisherType": "newspaper",
+   "url": "https://www.gazetadopovo.com.br/feed/rss/curitiba.xml",
+   "geographicScope": "local",
+   "regionName": "Paraná",
+   "cityName": "Curitiba",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "gazeta-do-povo"
+  },
+  {
+   "sourceId": "br-gazeta-do-povo-parana",
+   "countryCode": "BR",
+   "publisherName": "Gazeta do Povo",
+   "publisherType": "newspaper",
+   "url": "https://www.gazetadopovo.com.br/feed/rss/parana.xml",
+   "geographicScope": "regional",
+   "regionName": "Paraná",
+   "cityName": null,
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "gazeta-do-povo"
+  },
+  {
+   "sourceId": "br-banda-b",
+   "countryCode": "BR",
+   "publisherName": "Banda B",
+   "publisherType": "broadcaster",
+   "url": "https://www.bandab.com.br/feed/",
+   "geographicScope": "local",
+   "regionName": "Paraná",
+   "cityName": "Curitiba",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "banda-b"
+  },
+  {
+   "sourceId": "br-tribuna-pr",
+   "countryCode": "BR",
+   "publisherName": "Tribuna do Paraná",
+   "publisherType": "newspaper",
+   "url": "https://www.tribunapr.com.br/feed/",
+   "geographicScope": "local",
+   "regionName": "Paraná",
+   "cityName": "Curitiba",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "tribuna-pr"
+  },
+  {
+   "sourceId": "br-jc-recife",
+   "countryCode": "BR",
+   "publisherName": "Jornal do Commercio",
+   "publisherType": "newspaper",
+   "url": "https://jc.uol.com.br/ultimas/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Pernambuco",
+   "cityName": "Recife",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "jc"
+  },
+  {
+   "sourceId": "br-a-redacao",
+   "countryCode": "BR",
+   "publisherName": "A Redação",
+   "publisherType": "digital-native",
+   "url": "https://www.aredacao.com.br/rss",
+   "geographicScope": "local",
+   "regionName": "Goiás",
+   "cityName": "Goiânia",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "a-redacao"
+  },
+  {
+   "sourceId": "br-portal6",
+   "countryCode": "BR",
+   "publisherName": "Portal 6",
+   "publisherType": "digital-native",
+   "url": "https://www.portal6.com.br/feed/",
+   "geographicScope": "local",
+   "regionName": "Goiás",
+   "cityName": "Anápolis",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "portal6"
+  },
+  {
+   "sourceId": "br-diario-do-para",
+   "countryCode": "BR",
+   "publisherName": "Diário do Pará",
+   "publisherType": "newspaper",
+   "url": "https://diarioonline.com.br/feed/",
+   "geographicScope": "local",
+   "regionName": "Pará",
+   "cityName": "Belém",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "rba"
+  },
+  {
+   "sourceId": "br-ver-o-fato",
+   "countryCode": "BR",
+   "publisherName": "Ver-o-Fato",
+   "publisherType": "digital-native",
+   "url": "https://ver-o-fato.com.br/feed/",
+   "geographicScope": "local",
+   "regionName": "Pará",
+   "cityName": "Belém",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "ver-o-fato"
+  },
+  {
+   "sourceId": "br-correio-de-carajas",
+   "countryCode": "BR",
+   "publisherName": "Correio de Carajás",
+   "publisherType": "newspaper",
+   "url": "https://www.correiodecarajas.com.br/feed/",
+   "geographicScope": "local",
+   "regionName": "Pará",
+   "cityName": "Marabá",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "correio-de-carajas"
+  },
+  {
+   "sourceId": "br-sul21",
+   "countryCode": "BR",
+   "publisherName": "Sul21",
+   "publisherType": "digital-native",
+   "url": "https://sul21.com.br/feed/",
+   "geographicScope": "local",
+   "regionName": "Rio Grande do Sul",
+   "cityName": "Porto Alegre",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "sul21"
+  },
+  {
+   "sourceId": "br-o-sul",
+   "countryCode": "BR",
+   "publisherName": "O Sul",
+   "publisherType": "newspaper",
+   "url": "https://osul.com.br/feed/",
+   "geographicScope": "local",
+   "regionName": "Rio Grande do Sul",
+   "cityName": "Porto Alegre",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "o-sul"
+  },
+  {
+   "sourceId": "br-guarulhos-hoje",
+   "countryCode": "BR",
+   "publisherName": "Guarulhos Hoje",
+   "publisherType": "newspaper",
+   "url": "https://www.guarulhoshoje.com.br/feed/",
+   "geographicScope": "local",
+   "regionName": "São Paulo",
+   "cityName": "Guarulhos",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "guarulhos-hoje"
+  },
+  {
+   "sourceId": "br-gazeta-de-alagoas",
+   "countryCode": "BR",
+   "publisherName": "Gazeta de Alagoas",
+   "publisherType": "newspaper",
+   "url": "https://gazetaweb.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Alagoas",
+   "cityName": "Maceió",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "gazeta-de-alagoas"
+  },
+  {
+   "sourceId": "br-tnh1",
+   "countryCode": "BR",
+   "publisherName": "TNH1",
+   "publisherType": "broadcaster",
+   "url": "https://www.tnh1.com.br/feed/",
+   "geographicScope": "local",
+   "regionName": "Alagoas",
+   "cityName": "Maceió",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "tnh1"
+  },
+  {
+   "sourceId": "br-cadaminuto",
+   "countryCode": "BR",
+   "publisherName": "Cada Minuto",
+   "publisherType": "digital-native",
+   "url": "https://www.cadaminuto.com.br/feed.xml",
+   "geographicScope": "regional",
+   "regionName": "Alagoas",
+   "cityName": null,
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "cadaminuto"
+  },
+  {
+   "sourceId": "br-imirante",
+   "countryCode": "BR",
+   "publisherName": "Imirante",
+   "publisherType": "digital-native",
+   "url": "https://imirante.com/rss",
+   "geographicScope": "local",
+   "regionName": "Maranhão",
+   "cityName": "São Luís",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "mirante"
+  },
+  {
+   "sourceId": "br-o-imparcial",
+   "countryCode": "BR",
+   "publisherName": "O Imparcial",
+   "publisherType": "newspaper",
+   "url": "https://oimparcial.com.br/feed/",
+   "geographicScope": "local",
+   "regionName": "Maranhão",
+   "cityName": "São Luís",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "o-imparcial"
+  },
+  {
+   "sourceId": "br-campo-grande-news",
+   "countryCode": "BR",
+   "publisherName": "Campo Grande News",
+   "publisherType": "digital-native",
+   "url": "https://www.campograndenews.com.br/rss/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Mato Grosso do Sul",
+   "cityName": "Campo Grande",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "campo-grande-news"
+  },
+  {
+   "sourceId": "br-tribuna-do-norte",
+   "countryCode": "BR",
+   "publisherName": "Tribuna do Norte",
+   "publisherType": "newspaper",
+   "url": "https://tribunadonorte.com.br/feed/",
+   "geographicScope": "local",
+   "regionName": "Rio Grande do Norte",
+   "cityName": "Natal",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "tribuna-do-norte"
+  },
+  {
+   "sourceId": "br-agora-rn",
+   "countryCode": "BR",
+   "publisherName": "Agora RN",
+   "publisherType": "newspaper",
+   "url": "https://agorarn.com.br/feed/",
+   "geographicScope": "local",
+   "regionName": "Rio Grande do Norte",
+   "cityName": "Natal",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "agora-rn"
+  },
+  {
+   "sourceId": "br-cidade-verde",
+   "countryCode": "BR",
+   "publisherName": "Cidade Verde",
+   "publisherType": "broadcaster",
+   "url": "https://cidadeverde.com/rss",
+   "geographicScope": "local",
+   "regionName": "Piauí",
+   "cityName": "Teresina",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "cidade-verde"
+  },
+  {
+   "sourceId": "br-oitomeia",
+   "countryCode": "BR",
+   "publisherName": "OitoMeia",
+   "publisherType": "digital-native",
+   "url": "https://www.oitomeia.com.br/feed/",
+   "geographicScope": "local",
+   "regionName": "Piauí",
+   "cityName": "Teresina",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "oitomeia"
+  },
+  {
+   "sourceId": "br-portal-odia",
+   "countryCode": "BR",
+   "publisherName": "O Dia (Piauí)",
+   "publisherType": "newspaper",
+   "url": "https://www.portalodia.com/rss",
+   "geographicScope": "regional",
+   "regionName": "Piauí",
+   "cityName": null,
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "portal-odia"
+  },
+  {
+   "sourceId": "br-baixada-facil",
+   "countryCode": "BR",
+   "publisherName": "Baixada Fácil",
+   "publisherType": "digital-native",
+   "url": "https://baixadafacil.com.br/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Rio de Janeiro",
+   "cityName": "Nova Iguaçu",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "baixada-facil"
+  },
+  {
+   "sourceId": "br-osaogoncalo",
+   "countryCode": "BR",
+   "publisherName": "O São Gonçalo",
+   "publisherType": "newspaper",
+   "url": "https://www.osaogoncalo.com.br/feed",
+   "geographicScope": "local",
+   "regionName": "Rio de Janeiro",
+   "cityName": "São Gonçalo",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "osaogoncalo"
+  },
+  {
+   "sourceId": "br-dgabc",
+   "countryCode": "BR",
+   "publisherName": "Diário do Grande ABC",
+   "publisherType": "newspaper",
+   "url": "https://www.dgabc.com.br/rss",
+   "geographicScope": "local",
+   "regionName": "São Paulo",
+   "cityName": "Santo André",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "dgabc"
+  },
+  {
+   "sourceId": "br-jornal-da-paraiba",
+   "countryCode": "BR",
+   "publisherName": "Jornal da Paraíba",
+   "publisherType": "newspaper",
+   "url": "https://jornaldaparaiba.com.br/rss",
+   "geographicScope": "local",
+   "regionName": "Paraíba",
+   "cityName": "João Pessoa",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "jornal-da-paraiba"
+  },
+  {
+   "sourceId": "br-clickpb",
+   "countryCode": "BR",
+   "publisherName": "ClickPB",
+   "publisherType": "digital-native",
+   "url": "https://clickpb.com.br/feed/",
+   "geographicScope": "local",
+   "regionName": "Paraíba",
+   "cityName": "João Pessoa",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "clickpb"
+  },
+  {
+   "sourceId": "br-portal-correio",
+   "countryCode": "BR",
+   "publisherName": "Portal Correio",
+   "publisherType": "digital-native",
+   "url": "https://portalcorreio.com.br/feed/",
+   "geographicScope": "regional",
+   "regionName": "Paraíba",
+   "cityName": null,
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "portal-correio"
+  },
+  {
+   "sourceId": "br-paraibaonline",
+   "countryCode": "BR",
+   "publisherName": "Paraíba Online",
+   "publisherType": "digital-native",
+   "url": "https://paraibaonline.com.br/feed/",
+   "geographicScope": "local",
+   "regionName": "Paraíba",
+   "cityName": "Campina Grande",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "paraibaonline"
+  },
+  {
+   "sourceId": "br-diario-de-uberlandia",
+   "countryCode": "BR",
+   "publisherName": "Diário de Uberlândia",
+   "publisherType": "newspaper",
+   "url": "https://diariodeuberlandia.com.br/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Minas Gerais",
+   "cityName": "Uberlândia",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "diario-de-uberlandia"
+  },
+  {
+   "sourceId": "br-visao-oeste",
+   "countryCode": "BR",
+   "publisherName": "Visão Oeste",
+   "publisherType": "newspaper",
+   "url": "https://visaooeste.com.br/feed/",
+   "geographicScope": "local",
+   "regionName": "São Paulo",
+   "cityName": "Osasco",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "visao-oeste"
+  },
+  {
+   "sourceId": "br-osasco-noticias",
+   "countryCode": "BR",
+   "publisherName": "Osasco Notícias",
+   "publisherType": "digital-native",
+   "url": "https://www.osasconoticias.com.br/feed/",
+   "geographicScope": "local",
+   "regionName": "São Paulo",
+   "cityName": "Osasco",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "osasco-noticias"
+  },
+  {
+   "sourceId": "br-infonet",
+   "countryCode": "BR",
+   "publisherName": "Infonet",
+   "publisherType": "digital-native",
+   "url": "https://infonet.com.br/feed/",
+   "geographicScope": "local",
+   "regionName": "Sergipe",
+   "cityName": "Aracaju",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "infonet"
+  },
+  {
+   "sourceId": "br-jornal-de-joinville",
+   "countryCode": "BR",
+   "publisherName": "Jornal de Joinville",
+   "publisherType": "newspaper",
+   "url": "https://jornaldejoinville.com.br/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Santa Catarina",
+   "cityName": "Joinville",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "jornal-de-joinville"
+  },
+  {
+   "sourceId": "br-nsc-total",
+   "countryCode": "BR",
+   "publisherName": "NSC Total",
+   "publisherType": "broadcaster",
+   "url": "https://www.nsctotal.com.br/feed",
+   "geographicScope": "regional",
+   "regionName": "Santa Catarina",
+   "cityName": null,
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "nsc-total"
+  },
+  {
+   "sourceId": "br-nd-mais",
+   "countryCode": "BR",
+   "publisherName": "ND+",
+   "publisherType": "broadcaster",
+   "url": "https://ndmais.com.br/feed/",
+   "geographicScope": "local",
+   "regionName": "Santa Catarina",
+   "cityName": "Florianópolis",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "nd-mais"
+  },
+  {
+   "sourceId": "br-reporter-mt",
+   "countryCode": "BR",
+   "publisherName": "RepórterMT",
+   "publisherType": "digital-native",
+   "url": "https://www.reportermt.com/rss.php",
+   "geographicScope": "local",
+   "regionName": "Mato Grosso",
+   "cityName": "Cuiabá",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "reporter-mt"
+  },
+  {
+   "sourceId": "br-o-documento",
+   "countryCode": "BR",
+   "publisherName": "O Documento",
+   "publisherType": "digital-native",
+   "url": "https://odocumento.com.br/rss/",
+   "geographicScope": "local",
+   "regionName": "Mato Grosso",
+   "cityName": "Cuiabá",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "o-documento"
+  },
+  {
+   "sourceId": "br-acorda-cidade",
+   "countryCode": "BR",
+   "publisherName": "Acorda Cidade",
+   "publisherType": "digital-native",
+   "url": "https://www.acordacidade.com.br/feed/",
+   "geographicScope": "local",
+   "regionName": "Bahia",
+   "cityName": "Feira de Santana",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "acorda-cidade"
+  },
+  {
+   "sourceId": "br-folha-de-londrina",
+   "countryCode": "BR",
+   "publisherName": "Folha de Londrina",
+   "publisherType": "newspaper",
+   "url": "https://www.folhadelondrina.com.br/rss",
+   "geographicScope": "local",
+   "regionName": "Paraná",
+   "cityName": "Londrina",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "folha-de-londrina"
+  },
+  {
+   "sourceId": "br-bonde",
+   "countryCode": "BR",
+   "publisherName": "Bonde",
+   "publisherType": "digital-native",
+   "url": "https://www.bonde.com.br/rss",
+   "geographicScope": "local",
+   "regionName": "Paraná",
+   "cityName": "Londrina",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "bonde"
+  },
+  {
+   "sourceId": "br-news-rondonia",
+   "countryCode": "BR",
+   "publisherName": "News Rondônia",
+   "publisherType": "digital-native",
+   "url": "https://newsrondonia.com.br/feed/",
+   "geographicScope": "local",
+   "regionName": "Rondônia",
+   "cityName": "Porto Velho",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "news-rondonia"
+  },
+  {
+   "sourceId": "br-tribuna-de-minas",
+   "countryCode": "BR",
+   "publisherName": "Tribuna de Minas",
+   "publisherType": "newspaper",
+   "url": "https://tribunademinas.com.br/feed",
+   "geographicScope": "local",
+   "regionName": "Minas Gerais",
+   "cityName": "Juiz de Fora",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "tribuna-de-minas"
+  },
+  {
+   "sourceId": "br-a-gazeta-es",
+   "countryCode": "BR",
+   "publisherName": "A Gazeta",
+   "publisherType": "newspaper",
+   "url": "https://agazeta.com.br/rss",
+   "geographicScope": "local",
+   "regionName": "Espírito Santo",
+   "cityName": "Vitória",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "a-gazeta-es"
+  },
+  {
+   "sourceId": "br-seles-nafes",
+   "countryCode": "BR",
+   "publisherName": "SelesNafes.com",
+   "publisherType": "digital-native",
+   "url": "https://selesnafes.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Amapá",
+   "cityName": "Macapá",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "seles-nafes"
+  },
+  {
+   "sourceId": "br-diario-do-amapa",
+   "countryCode": "BR",
+   "publisherName": "Diário do Amapá",
+   "publisherType": "newspaper",
+   "url": "https://diariodoamapa.com.br/feed/",
+   "geographicScope": "local",
+   "regionName": "Amapá",
+   "cityName": "Macapá",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "diario-do-amapa"
+  },
+  {
+   "sourceId": "br-folha-bv",
+   "countryCode": "BR",
+   "publisherName": "Folha de Boa Vista",
+   "publisherType": "newspaper",
+   "url": "https://www.folhabv.com.br/feed/",
+   "geographicScope": "local",
+   "regionName": "Roraima",
+   "cityName": "Boa Vista",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "folha-bv"
+  },
+  {
+   "sourceId": "br-roraima1",
+   "countryCode": "BR",
+   "publisherName": "Roraima 1",
+   "publisherType": "digital-native",
+   "url": "https://www.roraima1.com.br/feed/",
+   "geographicScope": "local",
+   "regionName": "Roraima",
+   "cityName": "Boa Vista",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "roraima1"
+  },
+  {
+   "sourceId": "br-ac24horas",
+   "countryCode": "BR",
+   "publisherName": "ac24horas",
+   "publisherType": "digital-native",
+   "url": "https://ac24horas.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Acre",
+   "cityName": "Rio Branco",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "ac24horas"
+  },
+  {
+   "sourceId": "br-a-gazeta-do-acre",
+   "countryCode": "BR",
+   "publisherName": "A Gazeta do Acre",
+   "publisherType": "newspaper",
+   "url": "https://agazetadoacre.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Acre",
+   "cityName": "Rio Branco",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "a-gazeta-do-acre"
+  },
+  {
+   "sourceId": "br-gazeta-do-tocantins",
+   "countryCode": "BR",
+   "publisherName": "Gazeta do Tocantins",
+   "publisherType": "newspaper",
+   "url": "https://gazetadotocantins.com.br/feed/",
+   "geographicScope": "local",
+   "regionName": "Tocantins",
+   "cityName": "Palmas",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "gazeta-do-tocantins"
+  },
+  {
+   "sourceId": "br-diario-do-litoral",
+   "countryCode": "BR",
+   "publisherName": "Diário do Litoral",
+   "publisherType": "newspaper",
+   "url": "https://diariodolitoral.com.br/feed/",
+   "geographicScope": "local",
+   "regionName": "São Paulo",
+   "cityName": "Santos",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "diario-do-litoral"
+  },
+  {
+   "sourceId": "br-diario-da-regiao",
+   "countryCode": "BR",
+   "publisherName": "Diário da Região",
+   "publisherType": "newspaper",
+   "url": "https://diariodaregiao.com.br/rss.xml",
+   "geographicScope": "local",
+   "regionName": "São Paulo",
+   "cityName": "São José do Rio Preto",
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "diario-da-regiao"
+  },
+  {
+   "sourceId": "br-amazonas1",
+   "countryCode": "BR",
+   "publisherName": "Amazonas1",
+   "publisherType": "digital-native",
+   "url": "https://www.amazonas1.com.br/feed/",
+   "geographicScope": "regional",
+   "regionName": "Amazonas",
+   "cityName": null,
+   "languageTags": [
+    "pt-BR"
+   ],
+   "group": "amazonas1"
+  },
+  {
+   "sourceId": "ar-clarin-ciudades",
+   "countryCode": "AR",
+   "publisherName": "Clarín",
+   "publisherType": "newspaper",
+   "url": "https://www.clarin.com/rss/ciudades/",
+   "geographicScope": "local",
+   "regionName": "Buenos Aires F.D.",
+   "cityName": "Buenos Aires",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "clarin"
+  },
+  {
+   "sourceId": "ar-el-dia",
+   "countryCode": "AR",
+   "publisherName": "El Día",
+   "publisherType": "newspaper",
+   "url": "https://eldia.com/feed",
+   "geographicScope": "local",
+   "regionName": "Buenos Aires",
+   "cityName": "La Plata",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "el-dia"
+  },
+  {
+   "sourceId": "ar-0221",
+   "countryCode": "AR",
+   "publisherName": "0221",
+   "publisherType": "digital-native",
+   "url": "https://www.0221.com.ar/rss/pages/home.xml",
+   "geographicScope": "local",
+   "regionName": "Buenos Aires",
+   "cityName": "La Plata",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "0221"
+  },
+  {
+   "sourceId": "ar-0223",
+   "countryCode": "AR",
+   "publisherName": "0223",
+   "publisherType": "digital-native",
+   "url": "https://0223.com.ar/rss",
+   "geographicScope": "local",
+   "regionName": "Buenos Aires",
+   "cityName": "Mar del Plata",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "0223"
+  },
+  {
+   "sourceId": "ar-el-eco-tandil",
+   "countryCode": "AR",
+   "publisherName": "El Eco de Tandil",
+   "publisherType": "newspaper",
+   "url": "https://articapiv3.eleco.com.ar/feed-notes",
+   "geographicScope": "local",
+   "regionName": "Buenos Aires",
+   "cityName": "Tandil",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "el-eco-tandil"
+  },
+  {
+   "sourceId": "ar-la-brujula-24",
+   "countryCode": "AR",
+   "publisherName": "La Brújula 24",
+   "publisherType": "digital-native",
+   "url": "https://www.labrujula24.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Buenos Aires",
+   "cityName": "Bahía Blanca",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "la-brujula-24"
+  },
+  {
+   "sourceId": "ar-hoy-dia-cordoba",
+   "countryCode": "AR",
+   "publisherName": "Hoy Día Córdoba",
+   "publisherType": "newspaper",
+   "url": "https://www.hoydia.com.ar/feed/",
+   "geographicScope": "local",
+   "regionName": "Cordoba",
+   "cityName": "Córdoba",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "hoy-dia-cordoba"
+  },
+  {
+   "sourceId": "ar-cba24n",
+   "countryCode": "AR",
+   "publisherName": "Cba24n",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.cba24n.com.ar/rss",
+   "geographicScope": "local",
+   "regionName": "Cordoba",
+   "cityName": "Córdoba",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "cba24n"
+  },
+  {
+   "sourceId": "ar-puntal",
+   "countryCode": "AR",
+   "publisherName": "Puntal",
+   "publisherType": "newspaper",
+   "url": "https://www.puntal.com.ar/rss/pages/home.xml",
+   "geographicScope": "local",
+   "regionName": "Cordoba",
+   "cityName": "Río Cuarto",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "puntal"
+  },
+  {
+   "sourceId": "ar-la-capital-rosario",
+   "countryCode": "AR",
+   "publisherName": "La Capital",
+   "publisherType": "newspaper",
+   "url": "https://www.lacapital.com.ar/rss/home.xml",
+   "geographicScope": "local",
+   "regionName": "Santa Fe",
+   "cityName": "Rosario",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "la-capital-rosario"
+  },
+  {
+   "sourceId": "ar-aire-de-santa-fe",
+   "countryCode": "AR",
+   "publisherName": "Aire de Santa Fe",
+   "publisherType": "digital-native",
+   "url": "https://www.airedesantafe.com.ar/rss/pages/home.xml",
+   "geographicScope": "local",
+   "regionName": "Santa Fe",
+   "cityName": "Santa Fe",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "grupo-america"
+  },
+  {
+   "sourceId": "ar-uno-santa-fe",
+   "countryCode": "AR",
+   "publisherName": "Uno Santa Fe",
+   "publisherType": "newspaper",
+   "url": "https://www.unosantafe.com.ar/rss/pages/home.xml",
+   "geographicScope": "local",
+   "regionName": "Santa Fe",
+   "cityName": "Santa Fe",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "grupo-america"
+  },
+  {
+   "sourceId": "ar-los-andes",
+   "countryCode": "AR",
+   "publisherName": "Los Andes",
+   "publisherType": "newspaper",
+   "url": "https://www.losandes.com.ar/rss/pages/home.xml",
+   "geographicScope": "local",
+   "regionName": "Mendoza",
+   "cityName": "Mendoza",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "los-andes"
+  },
+  {
+   "sourceId": "ar-el-sol-mendoza",
+   "countryCode": "AR",
+   "publisherName": "El Sol",
+   "publisherType": "newspaper",
+   "url": "https://elsol.com.ar/feed/",
+   "geographicScope": "local",
+   "regionName": "Mendoza",
+   "cityName": "Mendoza",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "el-sol-mendoza"
+  },
+  {
+   "sourceId": "ar-diario-san-rafael",
+   "countryCode": "AR",
+   "publisherName": "Diario San Rafael",
+   "publisherType": "newspaper",
+   "url": "https://diariosanrafael.com.ar/feed/",
+   "geographicScope": "local",
+   "regionName": "Mendoza",
+   "cityName": "San Rafael",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "diario-san-rafael"
+  },
+  {
+   "sourceId": "ar-la-gaceta",
+   "countryCode": "AR",
+   "publisherName": "La Gaceta",
+   "publisherType": "newspaper",
+   "url": "https://feeds.feedburner.com/LaGacetaUltimoMomento?format=xml",
+   "geographicScope": "local",
+   "regionName": "Tucuman",
+   "cityName": "San Miguel de Tucumán",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "la-gaceta"
+  },
+  {
+   "sourceId": "ar-el-tucumano",
+   "countryCode": "AR",
+   "publisherName": "El Tucumano",
+   "publisherType": "digital-native",
+   "url": "https://eltucumano.com/rss",
+   "geographicScope": "local",
+   "regionName": "Tucuman",
+   "cityName": "San Miguel de Tucumán",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "el-tucumano"
+  },
+  {
+   "sourceId": "ar-el-tribuno-salta",
+   "countryCode": "AR",
+   "publisherName": "El Tribuno",
+   "publisherType": "newspaper",
+   "url": "https://eltribuno.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Salta",
+   "cityName": "Salta",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "el-tribuno-salta"
+  },
+  {
+   "sourceId": "ar-informate-salta",
+   "countryCode": "AR",
+   "publisherName": "Informate Salta",
+   "publisherType": "digital-native",
+   "url": "https://informatesalta.com.ar/rss",
+   "geographicScope": "local",
+   "regionName": "Salta",
+   "cityName": "Salta",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "informate-salta"
+  },
+  {
+   "sourceId": "ar-todo-jujuy",
+   "countryCode": "AR",
+   "publisherName": "Todo Jujuy",
+   "publisherType": "digital-native",
+   "url": "https://www.todojujuy.com/rss/pages/home.xml",
+   "geographicScope": "local",
+   "regionName": "Jujuy",
+   "cityName": "San Salvador de Jujuy",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "todo-jujuy"
+  },
+  {
+   "sourceId": "ar-diario-panorama",
+   "countryCode": "AR",
+   "publisherName": "Diario Panorama",
+   "publisherType": "newspaper",
+   "url": "https://www.diariopanorama.com/rss",
+   "geographicScope": "local",
+   "regionName": "Santiago del Estero",
+   "cityName": "Santiago del Estero",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "diario-panorama"
+  },
+  {
+   "sourceId": "ar-diario-norte",
+   "countryCode": "AR",
+   "publisherName": "Diario Norte",
+   "publisherType": "newspaper",
+   "url": "https://diarionorte.com/rss",
+   "geographicScope": "local",
+   "regionName": "Chaco",
+   "cityName": "Resistencia",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "diario-norte"
+  },
+  {
+   "sourceId": "ar-el-litoral-corrientes",
+   "countryCode": "AR",
+   "publisherName": "El Litoral",
+   "publisherType": "newspaper",
+   "url": "https://www.ellitoral.com.ar/rss/portada.xml",
+   "geographicScope": "local",
+   "regionName": "Corrientes",
+   "cityName": "Corrientes",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "el-litoral-corrientes"
+  },
+  {
+   "sourceId": "ar-misiones-online",
+   "countryCode": "AR",
+   "publisherName": "Misiones Online",
+   "publisherType": "digital-native",
+   "url": "https://misionesonline.net/feed/",
+   "geographicScope": "local",
+   "regionName": "Misiones",
+   "cityName": "Posadas",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "misiones-online"
+  },
+  {
+   "sourceId": "ar-primera-edicion",
+   "countryCode": "AR",
+   "publisherName": "Primera Edición",
+   "publisherType": "newspaper",
+   "url": "https://www.primeraedicion.com.ar/feed/",
+   "geographicScope": "local",
+   "regionName": "Misiones",
+   "cityName": "Posadas",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "primera-edicion"
+  },
+  {
+   "sourceId": "ar-el-diario-parana",
+   "countryCode": "AR",
+   "publisherName": "El Diario",
+   "publisherType": "newspaper",
+   "url": "https://www.eldiario.com.ar/feed/",
+   "geographicScope": "local",
+   "regionName": "Entre Rios",
+   "cityName": "Paraná",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "el-diario-parana"
+  },
+  {
+   "sourceId": "ar-uno-entre-rios",
+   "countryCode": "AR",
+   "publisherName": "Uno Entre Ríos",
+   "publisherType": "newspaper",
+   "url": "https://www.unoentrerios.com.ar/rss/pages/home.xml",
+   "geographicScope": "local",
+   "regionName": "Entre Rios",
+   "cityName": "Paraná",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "grupo-america"
+  },
+  {
+   "sourceId": "ar-el-dia-gualeguaychu",
+   "countryCode": "AR",
+   "publisherName": "El Día de Gualeguaychú",
+   "publisherType": "newspaper",
+   "url": "https://eldiaapiv3.eleco.com.ar/feed-notes",
+   "geographicScope": "local",
+   "regionName": "Entre Rios",
+   "cityName": "Gualeguaychú",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "el-dia-gualeguaychu"
+  },
+  {
+   "sourceId": "ar-el-heraldo-concordia",
+   "countryCode": "AR",
+   "publisherName": "El Heraldo",
+   "publisherType": "newspaper",
+   "url": "https://elheraldoapiv3.eleco.com.ar/feed-notes",
+   "geographicScope": "local",
+   "regionName": "Entre Rios",
+   "cityName": "Concordia",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "el-heraldo-concordia"
+  },
+  {
+   "sourceId": "ar-lm-neuquen",
+   "countryCode": "AR",
+   "publisherName": "LM Neuquén",
+   "publisherType": "newspaper",
+   "url": "https://www.lmneuquen.com/rss/home.xml",
+   "geographicScope": "local",
+   "regionName": "Neuquen",
+   "cityName": "Neuquén",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "grupo-america"
+  },
+  {
+   "sourceId": "ar-rio-negro",
+   "countryCode": "AR",
+   "publisherName": "Río Negro",
+   "publisherType": "newspaper",
+   "url": "https://www.rionegro.com.ar/feed/",
+   "geographicScope": "local",
+   "regionName": "Rio Negro",
+   "cityName": "General Roca",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "rio-negro"
+  },
+  {
+   "sourceId": "ar-bariloche-opina",
+   "countryCode": "AR",
+   "publisherName": "Bariloche Opina",
+   "publisherType": "digital-native",
+   "url": "https://www.barilocheopina.com/rss/noticias",
+   "geographicScope": "local",
+   "regionName": "Rio Negro",
+   "cityName": "San Carlos de Bariloche",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "bariloche-opina"
+  },
+  {
+   "sourceId": "ar-economicas-bariloche",
+   "countryCode": "AR",
+   "publisherName": "Económicas Bariloche",
+   "publisherType": "digital-native",
+   "url": "https://www.economicasbariloche.com.ar/rss/noticias",
+   "geographicScope": "local",
+   "regionName": "Rio Negro",
+   "cityName": "San Carlos de Bariloche",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "economicas-bariloche"
+  },
+  {
+   "sourceId": "ar-el-patagonico",
+   "countryCode": "AR",
+   "publisherName": "El Patagónico",
+   "publisherType": "newspaper",
+   "url": "https://www.elpatagonico.com/rss/home.xml",
+   "geographicScope": "local",
+   "regionName": "Chubut",
+   "cityName": "Comodoro Rivadavia",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "el-patagonico"
+  },
+  {
+   "sourceId": "ar-adnsur",
+   "countryCode": "AR",
+   "publisherName": "ADNSUR",
+   "publisherType": "digital-native",
+   "url": "https://adnsur.com.ar/rss",
+   "geographicScope": "local",
+   "regionName": "Chubut",
+   "cityName": "Comodoro Rivadavia",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "adnsur"
+  },
+  {
+   "sourceId": "ar-el-diario-de-madryn",
+   "countryCode": "AR",
+   "publisherName": "El Diario de Madryn",
+   "publisherType": "newspaper",
+   "url": "https://www.eldiariodemadryn.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Chubut",
+   "cityName": "Puerto Madryn",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "el-diario-de-madryn"
+  },
+  {
+   "sourceId": "ar-tiempo-sur",
+   "countryCode": "AR",
+   "publisherName": "TiempoSur",
+   "publisherType": "newspaper",
+   "url": "https://tiemposur.com.ar/feed/",
+   "geographicScope": "local",
+   "regionName": "Santa Cruz",
+   "cityName": "Río Gallegos",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "tiempo-sur"
+  },
+  {
+   "sourceId": "ar-el-sureno",
+   "countryCode": "AR",
+   "publisherName": "El Sureño",
+   "publisherType": "newspaper",
+   "url": "https://www.surenio.com.ar/feed/",
+   "geographicScope": "local",
+   "regionName": "Tierra del Fuego",
+   "cityName": "Río Grande",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "el-sureno"
+  },
+  {
+   "sourceId": "ar-la-arena",
+   "countryCode": "AR",
+   "publisherName": "La Arena",
+   "publisherType": "newspaper",
+   "url": "https://www.laarena.com.ar/rss/portada.xml",
+   "geographicScope": "local",
+   "regionName": "La Pampa",
+   "cityName": "Santa Rosa",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "la-arena"
+  },
+  {
+   "sourceId": "ar-el-diario-de-la-republica",
+   "countryCode": "AR",
+   "publisherName": "El Diario de la República",
+   "publisherType": "newspaper",
+   "url": "https://www.eldiariodelarepublica.com/rss/portada.xml",
+   "geographicScope": "local",
+   "regionName": "San Luis",
+   "cityName": "San Luis",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "el-diario-de-la-republica"
+  },
+  {
+   "sourceId": "ar-diario-de-cuyo",
+   "countryCode": "AR",
+   "publisherName": "Diario de Cuyo",
+   "publisherType": "newspaper",
+   "url": "https://www.diariodecuyo.com.ar/rss/pages/home.xml",
+   "geographicScope": "local",
+   "regionName": "San Juan",
+   "cityName": "San Juan",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "diario-de-cuyo"
+  },
+  {
+   "sourceId": "ar-tiempo-de-san-juan",
+   "countryCode": "AR",
+   "publisherName": "Tiempo de San Juan",
+   "publisherType": "newspaper",
+   "url": "https://tiempodesanjuan.com/feed/",
+   "geographicScope": "local",
+   "regionName": "San Juan",
+   "cityName": "San Juan",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "tiempo-de-san-juan"
+  },
+  {
+   "sourceId": "ar-medios-rioja",
+   "countryCode": "AR",
+   "publisherName": "Medios Rioja",
+   "publisherType": "digital-native",
+   "url": "https://www.mediosrioja.com.ar/feed/",
+   "geographicScope": "local",
+   "regionName": "La Rioja",
+   "cityName": "La Rioja",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "medios-rioja"
+  },
+  {
+   "sourceId": "ar-el-ancasti",
+   "countryCode": "AR",
+   "publisherName": "El Ancasti",
+   "publisherType": "newspaper",
+   "url": "https://www.elancasti.com.ar/rss/pages/home.xml",
+   "geographicScope": "local",
+   "regionName": "Catamarca",
+   "cityName": "Catamarca",
+   "languageTags": [
+    "es-AR"
+   ],
+   "group": "el-ancasti"
+  },
+  {
+   "sourceId": "co-eltiempo-bogota",
+   "countryCode": "CO",
+   "publisherName": "El Tiempo",
+   "publisherType": "newspaper",
+   "url": "https://www.eltiempo.com/rss/bogota.xml",
+   "geographicScope": "local",
+   "regionName": "Bogota D.C.",
+   "cityName": "Bogotá",
+   "languageTags": [
+    "es-CO"
+   ],
+   "group": "eltiempo"
+  },
+  {
+   "sourceId": "co-eltiempo-medellin",
+   "countryCode": "CO",
+   "publisherName": "El Tiempo",
+   "publisherType": "newspaper",
+   "url": "https://www.eltiempo.com/rss/colombia_medellin.xml",
+   "geographicScope": "local",
+   "regionName": "Antioquia",
+   "cityName": "Medellín",
+   "languageTags": [
+    "es-CO"
+   ],
+   "group": "eltiempo"
+  },
+  {
+   "sourceId": "co-eltiempo-cali",
+   "countryCode": "CO",
+   "publisherName": "El Tiempo",
+   "publisherType": "newspaper",
+   "url": "https://www.eltiempo.com/rss/colombia_cali.xml",
+   "geographicScope": "local",
+   "regionName": "Valle del Cauca Department",
+   "cityName": "Cali",
+   "languageTags": [
+    "es-CO"
+   ],
+   "group": "eltiempo"
+  },
+  {
+   "sourceId": "co-eltiempo-barranquilla",
+   "countryCode": "CO",
+   "publisherName": "El Tiempo",
+   "publisherType": "newspaper",
+   "url": "https://www.eltiempo.com/rss/colombia_barranquilla.xml",
+   "geographicScope": "local",
+   "regionName": "Atlántico",
+   "cityName": "Barranquilla",
+   "languageTags": [
+    "es-CO"
+   ],
+   "group": "eltiempo"
+  },
+  {
+   "sourceId": "co-minuto30",
+   "countryCode": "CO",
+   "publisherName": "Minuto30",
+   "publisherType": "digital-native",
+   "url": "https://minuto30.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Antioquia",
+   "cityName": "Medellín",
+   "languageTags": [
+    "es-CO"
+   ],
+   "group": "co-minuto30"
+  },
+  {
+   "sourceId": "co-telemedellin",
+   "countryCode": "CO",
+   "publisherName": "Telemedellín",
+   "publisherType": "public-broadcaster",
+   "url": "https://telemedellin.tv/feed/",
+   "geographicScope": "local",
+   "regionName": "Antioquia",
+   "cityName": "Medellín",
+   "languageTags": [
+    "es-CO"
+   ],
+   "group": "co-telemedellin"
+  },
+  {
+   "sourceId": "co-elpais-cali",
+   "countryCode": "CO",
+   "publisherName": "El País Cali",
+   "publisherType": "newspaper",
+   "url": "https://www.elpais.com.co/arc/outboundfeeds/rss/category/cali/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "Valle del Cauca Department",
+   "cityName": "Cali",
+   "languageTags": [
+    "es-CO"
+   ],
+   "group": "co-elpais-cali"
+  },
+  {
+   "sourceId": "co-90minutos",
+   "countryCode": "CO",
+   "publisherName": "90 Minutos",
+   "publisherType": "broadcaster",
+   "url": "https://90minutos.co/feed/",
+   "geographicScope": "local",
+   "regionName": "Valle del Cauca Department",
+   "cityName": "Cali",
+   "languageTags": [
+    "es-CO"
+   ],
+   "group": "co-90minutos"
+  },
+  {
+   "sourceId": "co-elheraldo",
+   "countryCode": "CO",
+   "publisherName": "El Heraldo",
+   "publisherType": "newspaper",
+   "url": "https://www.elheraldo.co/arc/outboundfeeds/rss/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "Atlántico",
+   "cityName": "Barranquilla",
+   "languageTags": [
+    "es-CO"
+   ],
+   "group": "co-elheraldo"
+  },
+  {
+   "sourceId": "co-eluniversal-cartagena",
+   "countryCode": "CO",
+   "publisherName": "El Universal",
+   "publisherType": "newspaper",
+   "url": "https://www.eluniversal.com.co/arc/outboundfeeds/rss/category/cartagena/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "Bolívar",
+   "cityName": "Cartagena",
+   "languageTags": [
+    "es-CO"
+   ],
+   "group": "co-eluniversal-cartagena"
+  },
+  {
+   "sourceId": "co-laopinion",
+   "countryCode": "CO",
+   "publisherName": "La Opinión",
+   "publisherType": "newspaper",
+   "url": "https://laopinion.com.co/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Norte de Santander Department",
+   "cityName": "Cúcuta",
+   "languageTags": [
+    "es-CO"
+   ],
+   "group": "co-laopinion"
+  },
+  {
+   "sourceId": "co-vanguardia",
+   "countryCode": "CO",
+   "publisherName": "Vanguardia",
+   "publisherType": "newspaper",
+   "url": "https://www.vanguardia.com/arc/outboundfeeds/rss/category/area-metropolitana/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "Santander Department",
+   "cityName": "Bucaramanga",
+   "languageTags": [
+    "es-CO"
+   ],
+   "group": "co-vanguardia"
+  },
+  {
+   "sourceId": "co-canaltro",
+   "countryCode": "CO",
+   "publisherName": "Canal TRO",
+   "publisherType": "broadcaster",
+   "url": "https://canaltro.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Santander Department",
+   "cityName": "Bucaramanga",
+   "languageTags": [
+    "es-CO"
+   ],
+   "group": "co-canaltro"
+  },
+  {
+   "sourceId": "co-ecosdelcombeima",
+   "countryCode": "CO",
+   "publisherName": "Ecos del Combeima",
+   "publisherType": "digital-native",
+   "url": "https://ecosdelcombeima.com/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Tolima Department",
+   "cityName": "Ibagué",
+   "languageTags": [
+    "es-CO"
+   ],
+   "group": "co-ecosdelcombeima"
+  },
+  {
+   "sourceId": "co-seguimiento",
+   "countryCode": "CO",
+   "publisherName": "Seguimiento",
+   "publisherType": "digital-native",
+   "url": "https://seguimiento.co/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Magdalena Department",
+   "cityName": "Santa Marta",
+   "languageTags": [
+    "es-CO"
+   ],
+   "group": "co-seguimiento"
+  },
+  {
+   "sourceId": "co-larazon",
+   "countryCode": "CO",
+   "publisherName": "La Razón",
+   "publisherType": "newspaper",
+   "url": "https://larazon.co/feed/",
+   "geographicScope": "local",
+   "regionName": "Córdoba",
+   "cityName": "Montería",
+   "languageTags": [
+    "es-CO"
+   ],
+   "group": "co-larazon"
+  },
+  {
+   "sourceId": "co-chicanoticias",
+   "countryCode": "CO",
+   "publisherName": "Chica Noticias",
+   "publisherType": "digital-native",
+   "url": "https://www.chicanoticias.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Córdoba",
+   "cityName": "Montería",
+   "languageTags": [
+    "es-CO"
+   ],
+   "group": "co-chicanoticias"
+  },
+  {
+   "sourceId": "co-eldiario-pereira",
+   "countryCode": "CO",
+   "publisherName": "El Diario",
+   "publisherType": "newspaper",
+   "url": "https://www.eldiario.com.co/feed/",
+   "geographicScope": "local",
+   "regionName": "Risaralda Department",
+   "cityName": "Pereira",
+   "languageTags": [
+    "es-CO"
+   ],
+   "group": "co-eldiario-pereira"
+  },
+  {
+   "sourceId": "co-lapatria",
+   "countryCode": "CO",
+   "publisherName": "La Patria",
+   "publisherType": "newspaper",
+   "url": "https://lapatria.com/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Caldas Department",
+   "cityName": "Manizales",
+   "languageTags": [
+    "es-CO"
+   ],
+   "group": "co-lapatria"
+  },
+  {
+   "sourceId": "co-diariodelhuila",
+   "countryCode": "CO",
+   "publisherName": "Diario del Huila",
+   "publisherType": "newspaper",
+   "url": "https://diariodelhuila.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Huila Department",
+   "cityName": "Neiva",
+   "languageTags": [
+    "es-CO"
+   ],
+   "group": "co-diariodelhuila"
+  },
+  {
+   "sourceId": "co-lanacion-neiva",
+   "countryCode": "CO",
+   "publisherName": "La Nación",
+   "publisherType": "newspaper",
+   "url": "https://www.lanacion.com.co/feed/",
+   "geographicScope": "local",
+   "regionName": "Huila Department",
+   "cityName": "Neiva",
+   "languageTags": [
+    "es-CO"
+   ],
+   "group": "co-lanacion-neiva"
+  },
+  {
+   "sourceId": "co-proclama",
+   "countryCode": "CO",
+   "publisherName": "Proclama del Cauca",
+   "publisherType": "newspaper",
+   "url": "https://proclamadelpacifico.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Cauca Department",
+   "cityName": "Popayán",
+   "languageTags": [
+    "es-CO"
+   ],
+   "group": "co-proclama"
+  },
+  {
+   "sourceId": "co-cronicadelquindio",
+   "countryCode": "CO",
+   "publisherName": "Crónica del Quindío",
+   "publisherType": "newspaper",
+   "url": "https://cronicadelquindio.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Quindío Department",
+   "cityName": "Armenia",
+   "languageTags": [
+    "es-CO"
+   ],
+   "group": "co-cronicadelquindio"
+  },
+  {
+   "sourceId": "co-diariodelnorte",
+   "countryCode": "CO",
+   "publisherName": "Diario del Norte",
+   "publisherType": "newspaper",
+   "url": "https://diariodelnorte.net/feed/",
+   "geographicScope": "local",
+   "regionName": "La Guajira Department",
+   "cityName": "Riohacha",
+   "languageTags": [
+    "es-CO"
+   ],
+   "group": "co-diariodelnorte"
+  },
+  {
+   "sourceId": "co-laguajirahoy",
+   "countryCode": "CO",
+   "publisherName": "La Guajira Hoy",
+   "publisherType": "digital-native",
+   "url": "https://laguajirahoy.com/feed",
+   "geographicScope": "local",
+   "regionName": "La Guajira Department",
+   "cityName": "Riohacha",
+   "languageTags": [
+    "es-CO"
+   ],
+   "group": "co-laguajirahoy"
+  },
+  {
+   "sourceId": "co-prensalibrecasanare",
+   "countryCode": "CO",
+   "publisherName": "Prensa Libre Casanare",
+   "publisherType": "digital-native",
+   "url": "https://prensalibrecasanare.com/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Casanare Department",
+   "cityName": "Yopal",
+   "languageTags": [
+    "es-CO"
+   ],
+   "group": "co-prensalibrecasanare"
+  },
+  {
+   "sourceId": "co-miputumayo",
+   "countryCode": "CO",
+   "publisherName": "Mi Putumayo",
+   "publisherType": "digital-native",
+   "url": "https://miputumayo.com.co/feed/",
+   "geographicScope": "local",
+   "regionName": "Putumayo Department",
+   "cityName": "Mocoa",
+   "languageTags": [
+    "es-CO"
+   ],
+   "group": "co-miputumayo"
+  },
+  {
+   "sourceId": "co-marandua",
+   "countryCode": "CO",
+   "publisherName": "Marandúa Estéreo",
+   "publisherType": "broadcaster",
+   "url": "https://marandua.com.co/feed/",
+   "geographicScope": "local",
+   "regionName": "Guaviare Department",
+   "cityName": "San José del Guaviare",
+   "languageTags": [
+    "es-CO"
+   ],
+   "group": "co-marandua"
+  },
+  {
+   "sourceId": "cl-diarioconcepcion",
+   "countryCode": "CL",
+   "publisherName": "Diario Concepción",
+   "publisherType": "newspaper",
+   "url": "https://diarioconcepcion.cl/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Biobio",
+   "cityName": "Concepción",
+   "languageTags": [
+    "es-CL"
+   ],
+   "group": "cl-diarioconcepcion"
+  },
+  {
+   "sourceId": "cl-elrancaguino",
+   "countryCode": "CL",
+   "publisherName": "El Rancagüino",
+   "publisherType": "newspaper",
+   "url": "https://www.elrancaguino.cl/feed/",
+   "geographicScope": "local",
+   "regionName": "O'Higgins Region",
+   "cityName": "Rancagua",
+   "languageTags": [
+    "es-CL"
+   ],
+   "group": "cl-elrancaguino"
+  },
+  {
+   "sourceId": "cl-diarioelcentro",
+   "countryCode": "CL",
+   "publisherName": "Diario El Centro",
+   "publisherType": "newspaper",
+   "url": "https://www.diarioelcentro.cl/feed/",
+   "geographicScope": "local",
+   "regionName": "Maule Region",
+   "cityName": "Talca",
+   "languageTags": [
+    "es-CL"
+   ],
+   "group": "cl-diarioelcentro"
+  },
+  {
+   "sourceId": "cl-diariotalca",
+   "countryCode": "CL",
+   "publisherName": "Diario Talca",
+   "publisherType": "digital-native",
+   "url": "https://diariotalca.cl/feed/",
+   "geographicScope": "local",
+   "regionName": "Maule Region",
+   "cityName": "Talca",
+   "languageTags": [
+    "es-CL"
+   ],
+   "group": "cl-diariotalca"
+  },
+  {
+   "sourceId": "cl-diariolaregion",
+   "countryCode": "CL",
+   "publisherName": "Diario La Región",
+   "publisherType": "newspaper",
+   "url": "https://www.diariolaregion.cl/feed/",
+   "geographicScope": "local",
+   "regionName": "Coquimbo Region",
+   "cityName": "Coquimbo",
+   "languageTags": [
+    "es-CL"
+   ],
+   "group": "cl-diariolaregion"
+  },
+  {
+   "sourceId": "cl-laprensaaustral",
+   "countryCode": "CL",
+   "publisherName": "La Prensa Austral",
+   "publisherType": "newspaper",
+   "url": "https://laprensaaustral.cl/feed/",
+   "geographicScope": "local",
+   "regionName": "Region of Magallanes",
+   "cityName": "Punta Arenas",
+   "languageTags": [
+    "es-CL"
+   ],
+   "group": "cl-laprensaaustral"
+  },
+  {
+   "sourceId": "cl-chanarcillo",
+   "countryCode": "CL",
+   "publisherName": "Diario Chañarcillo",
+   "publisherType": "newspaper",
+   "url": "https://www.chanarcillo.cl/feed/",
+   "geographicScope": "local",
+   "regionName": "Atacama",
+   "cityName": "Copiapó",
+   "languageTags": [
+    "es-CL"
+   ],
+   "group": "cl-chanarcillo"
+  },
+  {
+   "sourceId": "cl-ladiscusion",
+   "countryCode": "CL",
+   "publisherName": "La Discusión",
+   "publisherType": "newspaper",
+   "url": "https://ladiscusion.cl/feed/",
+   "geographicScope": "local",
+   "regionName": "Ñuble",
+   "cityName": "Chillán",
+   "languageTags": [
+    "es-CL"
+   ],
+   "group": "cl-ladiscusion"
+  },
+  {
+   "sourceId": "cl-latribuna",
+   "countryCode": "CL",
+   "publisherName": "La Tribuna",
+   "publisherType": "newspaper",
+   "url": "https://latribuna.cl/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Biobio",
+   "cityName": "Los Ángeles",
+   "languageTags": [
+    "es-CL"
+   ],
+   "group": "cl-latribuna"
+  },
+  {
+   "sourceId": "cl-diarioantofagasta",
+   "countryCode": "CL",
+   "publisherName": "Diario Antofagasta",
+   "publisherType": "digital-native",
+   "url": "https://www.diarioantofagasta.cl/feed/",
+   "geographicScope": "local",
+   "regionName": "Antofagasta",
+   "cityName": "Antofagasta",
+   "languageTags": [
+    "es-CL"
+   ],
+   "group": "cl-diarioantofagasta"
+  },
+  {
+   "sourceId": "cl-timeline",
+   "countryCode": "CL",
+   "publisherName": "Timeline",
+   "publisherType": "digital-native",
+   "url": "https://www.timeline.cl/feed/",
+   "geographicScope": "local",
+   "regionName": "Antofagasta",
+   "cityName": "Antofagasta",
+   "languageTags": [
+    "es-CL"
+   ],
+   "group": "cl-timeline"
+  },
+  {
+   "sourceId": "cl-radiosantamaria",
+   "countryCode": "CL",
+   "publisherName": "Radio Santa María",
+   "publisherType": "broadcaster",
+   "url": "https://www.radiosantamaria.cl/feed/",
+   "geographicScope": "local",
+   "regionName": "Aysén",
+   "cityName": "Coyhaique",
+   "languageTags": [
+    "es-CL"
+   ],
+   "group": "cl-radiosantamaria"
+  },
+  {
+   "sourceId": "cl-araucanianoticias",
+   "countryCode": "CL",
+   "publisherName": "Araucanía Noticias",
+   "publisherType": "digital-native",
+   "url": "https://araucanianoticias.cl/feed",
+   "geographicScope": "local",
+   "regionName": "Araucania",
+   "cityName": "Temuco",
+   "languageTags": [
+    "es-CL"
+   ],
+   "group": "cl-araucanianoticias"
+  },
+  {
+   "sourceId": "cl-edicioncero",
+   "countryCode": "CL",
+   "publisherName": "Edición Cero",
+   "publisherType": "digital-native",
+   "url": "https://www.edicioncero.cl/feed/",
+   "geographicScope": "local",
+   "regionName": "Tarapacá",
+   "cityName": "Iquique",
+   "languageTags": [
+    "es-CL"
+   ],
+   "group": "cl-edicioncero"
+  },
+  {
+   "sourceId": "cl-arica365",
+   "countryCode": "CL",
+   "publisherName": "Arica 365",
+   "publisherType": "digital-native",
+   "url": "https://www.arica365.cl/feed/",
+   "geographicScope": "local",
+   "regionName": "Arica y Parinacota Region",
+   "cityName": "Arica",
+   "languageTags": [
+    "es-CL"
+   ],
+   "group": "cl-arica365"
+  },
+  {
+   "sourceId": "cl-g5noticias",
+   "countryCode": "CL",
+   "publisherName": "G5 Noticias",
+   "publisherType": "digital-native",
+   "url": "https://www.g5noticias.cl/feed/",
+   "geographicScope": "local",
+   "regionName": "Valparaiso",
+   "cityName": "Valparaíso",
+   "languageTags": [
+    "es-CL"
+   ],
+   "group": "cl-g5noticias"
+  },
+  {
+   "sourceId": "cl-epicentrochile",
+   "countryCode": "CL",
+   "publisherName": "Epicentro Chile",
+   "publisherType": "digital-native",
+   "url": "https://www.epicentrochile.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Valparaiso",
+   "cityName": "Valparaíso",
+   "languageTags": [
+    "es-CL"
+   ],
+   "group": "cl-epicentrochile"
+  },
+  {
+   "sourceId": "pe-elcomercio-lima",
+   "countryCode": "PE",
+   "publisherName": "El Comercio",
+   "publisherType": "newspaper",
+   "url": "https://elcomercio.pe/arc/outboundfeeds/rss/category/lima/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "Lima Province",
+   "cityName": "Lima",
+   "languageTags": [
+    "es-PE"
+   ],
+   "group": "elcomercio-pe"
+  },
+  {
+   "sourceId": "pe-larepublica-sociedad",
+   "countryCode": "PE",
+   "publisherName": "La República",
+   "publisherType": "newspaper",
+   "url": "https://larepublica.pe/rss/sociedad.xml",
+   "geographicScope": "local",
+   "regionName": "Lima Province",
+   "cityName": "Lima",
+   "languageTags": [
+    "es-PE"
+   ],
+   "group": "pe-larepublica-sociedad"
+  },
+  {
+   "sourceId": "pe-elbuho",
+   "countryCode": "PE",
+   "publisherName": "El Búho",
+   "publisherType": "digital-native",
+   "url": "https://elbuho.pe/feed/",
+   "geographicScope": "local",
+   "regionName": "Arequipa",
+   "cityName": "Arequipa",
+   "languageTags": [
+    "es-PE"
+   ],
+   "group": "pe-elbuho"
+  },
+  {
+   "sourceId": "pe-radioyaravi",
+   "countryCode": "PE",
+   "publisherName": "Radio Yaraví",
+   "publisherType": "broadcaster",
+   "url": "https://radioyaravi.org.pe/feed/",
+   "geographicScope": "local",
+   "regionName": "Arequipa",
+   "cityName": "Arequipa",
+   "languageTags": [
+    "es-PE"
+   ],
+   "group": "pe-radioyaravi"
+  },
+  {
+   "sourceId": "pe-diarioelpueblo",
+   "countryCode": "PE",
+   "publisherName": "Diario El Pueblo",
+   "publisherType": "newspaper",
+   "url": "https://diarioelpueblo.com.pe/feed/",
+   "geographicScope": "local",
+   "regionName": "Arequipa",
+   "cityName": "Arequipa",
+   "languageTags": [
+    "es-PE"
+   ],
+   "group": "pe-diarioelpueblo"
+  },
+  {
+   "sourceId": "pe-diariosinfronteras",
+   "countryCode": "PE",
+   "publisherName": "Diario Sin Fronteras",
+   "publisherType": "newspaper",
+   "url": "https://diariosinfronteras.com.pe/feed/",
+   "geographicScope": "local",
+   "regionName": "Tacna",
+   "cityName": "Tacna",
+   "languageTags": [
+    "es-PE"
+   ],
+   "group": "pe-diariosinfronteras"
+  },
+  {
+   "sourceId": "pe-radiouno",
+   "countryCode": "PE",
+   "publisherName": "Radio Uno",
+   "publisherType": "broadcaster",
+   "url": "https://radiouno.pe/feed/",
+   "geographicScope": "local",
+   "regionName": "Tacna",
+   "cityName": "Tacna",
+   "languageTags": [
+    "es-PE"
+   ],
+   "group": "pe-radiouno"
+  },
+  {
+   "sourceId": "pe-eltiempo-piura",
+   "countryCode": "PE",
+   "publisherName": "El Tiempo",
+   "publisherType": "newspaper",
+   "url": "https://eltiempo.pe/feed/",
+   "geographicScope": "local",
+   "regionName": "Piura",
+   "cityName": "Piura",
+   "languageTags": [
+    "es-PE"
+   ],
+   "group": "pe-eltiempo-piura"
+  },
+  {
+   "sourceId": "pe-pachamamaradio",
+   "countryCode": "PE",
+   "publisherName": "Pachamama Radio",
+   "publisherType": "broadcaster",
+   "url": "https://pachamamaradio.org/feed/",
+   "geographicScope": "local",
+   "regionName": "Puno",
+   "cityName": "Puno",
+   "languageTags": [
+    "es-PE"
+   ],
+   "group": "pe-pachamamaradio"
+  },
+  {
+   "sourceId": "pe-radioondaazul",
+   "countryCode": "PE",
+   "publisherName": "Radio Onda Azul",
+   "publisherType": "broadcaster",
+   "url": "https://radioondaazul.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Puno",
+   "cityName": "Puno",
+   "languageTags": [
+    "es-PE"
+   ],
+   "group": "pe-radioondaazul"
+  },
+  {
+   "sourceId": "pe-noticiasresponsables",
+   "countryCode": "PE",
+   "publisherName": "Noticias Responsables",
+   "publisherType": "digital-native",
+   "url": "https://noticiasresponsables.com/feed/",
+   "geographicScope": "local",
+   "regionName": "La Libertad",
+   "cityName": "Trujillo",
+   "languageTags": [
+    "es-PE"
+   ],
+   "group": "pe-noticiasresponsables"
+  },
+  {
+   "sourceId": "pe-proycontra",
+   "countryCode": "PE",
+   "publisherName": "Pro & Contra",
+   "publisherType": "digital-native",
+   "url": "https://proycontra.com.pe/feed/",
+   "geographicScope": "local",
+   "regionName": "Loreto",
+   "cityName": "Iquitos",
+   "languageTags": [
+    "es-PE"
+   ],
+   "group": "pe-proycontra"
+  },
+  {
+   "sourceId": "pe-jornada",
+   "countryCode": "PE",
+   "publisherName": "Jornada",
+   "publisherType": "newspaper",
+   "url": "https://jornada.com.pe/feed/",
+   "geographicScope": "local",
+   "regionName": "Ayacucho",
+   "cityName": "Ayacucho",
+   "languageTags": [
+    "es-PE"
+   ],
+   "group": "pe-jornada"
+  },
+  {
+   "sourceId": "pe-huaraznoticias",
+   "countryCode": "PE",
+   "publisherName": "Huaraz Noticias",
+   "publisherType": "digital-native",
+   "url": "https://huaraznoticias.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Ancash",
+   "cityName": "Huaraz",
+   "languageTags": [
+    "es-PE"
+   ],
+   "group": "pe-huaraznoticias"
+  },
+  {
+   "sourceId": "pe-diariodechimbote",
+   "countryCode": "PE",
+   "publisherName": "Diario de Chimbote",
+   "publisherType": "newspaper",
+   "url": "https://diariodechimbote.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Ancash",
+   "cityName": "Chimbote",
+   "languageTags": [
+    "es-PE"
+   ],
+   "group": "pe-diariodechimbote"
+  },
+  {
+   "sourceId": "pe-radiorsd",
+   "countryCode": "PE",
+   "publisherName": "Radio RSD",
+   "publisherType": "broadcaster",
+   "url": "https://radiorsd.pe/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Ancash",
+   "cityName": "Chimbote",
+   "languageTags": [
+    "es-PE"
+   ],
+   "group": "pe-radiorsd"
+  },
+  {
+   "sourceId": "pe-diarioahora",
+   "countryCode": "PE",
+   "publisherName": "Diario Ahora",
+   "publisherType": "newspaper",
+   "url": "https://diarioahora.pe/feed/",
+   "geographicScope": "local",
+   "regionName": "Ucayali",
+   "cityName": "Pucallpa",
+   "languageTags": [
+    "es-PE"
+   ],
+   "group": "pe-diarioahora"
+  },
+  {
+   "sourceId": "pe-prensaregional",
+   "countryCode": "PE",
+   "publisherName": "Prensa Regional",
+   "publisherType": "newspaper",
+   "url": "https://prensaregional.pe/feed/",
+   "geographicScope": "local",
+   "regionName": "Moquegua Department",
+   "cityName": "Moquegua",
+   "languageTags": [
+    "es-PE"
+   ],
+   "group": "pe-prensaregional"
+  },
+  {
+   "sourceId": "pe-radiomaranon",
+   "countryCode": "PE",
+   "publisherName": "Radio Marañón",
+   "publisherType": "broadcaster",
+   "url": "https://radiomaranon.org.pe/feed/",
+   "geographicScope": "local",
+   "regionName": "Cajamarca Department",
+   "cityName": "Jaén",
+   "languageTags": [
+    "es-PE"
+   ],
+   "group": "pe-radiomaranon"
+  },
+  {
+   "sourceId": "ve-elpitazo-gran-caracas",
+   "countryCode": "VE",
+   "publisherName": "El Pitazo",
+   "publisherType": "digital-native",
+   "url": "https://elpitazo.net/category/gran-caracas/feed/",
+   "geographicScope": "local",
+   "regionName": "Distrito Federal",
+   "cityName": "Caracas",
+   "languageTags": [
+    "es-VE"
+   ],
+   "group": "elpitazo"
+  },
+  {
+   "sourceId": "ve-elpitazo-occidente",
+   "countryCode": "VE",
+   "publisherName": "El Pitazo",
+   "publisherType": "digital-native",
+   "url": "https://elpitazo.net/category/occidente/feed/",
+   "geographicScope": "local",
+   "regionName": "Zulia",
+   "cityName": "Maracaibo",
+   "languageTags": [
+    "es-VE"
+   ],
+   "group": "elpitazo"
+  },
+  {
+   "sourceId": "ve-laverdad",
+   "countryCode": "VE",
+   "publisherName": "La Verdad",
+   "publisherType": "newspaper",
+   "url": "https://laverdad.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Zulia",
+   "cityName": "Maracaibo",
+   "languageTags": [
+    "es-VE"
+   ],
+   "group": "ve-laverdad"
+  },
+  {
+   "sourceId": "ve-noticiaaldia",
+   "countryCode": "VE",
+   "publisherName": "Noticia al Día",
+   "publisherType": "newspaper",
+   "url": "https://noticiaaldia.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Zulia",
+   "cityName": "Maracaibo",
+   "languageTags": [
+    "es-VE"
+   ],
+   "group": "ve-noticiaaldia"
+  },
+  {
+   "sourceId": "ve-el-carabobeno",
+   "countryCode": "VE",
+   "publisherName": "El Carabobeño",
+   "publisherType": "newspaper",
+   "url": "https://www.el-carabobeno.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Carabobo",
+   "cityName": "Valencia",
+   "languageTags": [
+    "es-VE"
+   ],
+   "group": "ve-el-carabobeno"
+  },
+  {
+   "sourceId": "ve-laprensadelara",
+   "countryCode": "VE",
+   "publisherName": "La Prensa de Lara",
+   "publisherType": "newspaper",
+   "url": "https://laprensadelara.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Lara",
+   "cityName": "Barquisimeto",
+   "languageTags": [
+    "es-VE"
+   ],
+   "group": "ve-laprensadelara"
+  },
+  {
+   "sourceId": "ve-elimpulso",
+   "countryCode": "VE",
+   "publisherName": "El Impulso",
+   "publisherType": "newspaper",
+   "url": "https://www.elimpulso.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Lara",
+   "cityName": "Barquisimeto",
+   "languageTags": [
+    "es-VE"
+   ],
+   "group": "ve-elimpulso"
+  },
+  {
+   "sourceId": "ve-correodelcaroni",
+   "countryCode": "VE",
+   "publisherName": "Correo del Caroní",
+   "publisherType": "newspaper",
+   "url": "https://correodelcaroni.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Bolívar",
+   "cityName": "Ciudad Guayana",
+   "languageTags": [
+    "es-VE"
+   ],
+   "group": "ve-correodelcaroni"
+  },
+  {
+   "sourceId": "ve-primicia",
+   "countryCode": "VE",
+   "publisherName": "Primicia",
+   "publisherType": "newspaper",
+   "url": "https://primicia.com.ve/feed/",
+   "geographicScope": "local",
+   "regionName": "Bolívar",
+   "cityName": "Ciudad Guayana",
+   "languageTags": [
+    "es-VE"
+   ],
+   "group": "ve-primicia"
+  },
+  {
+   "sourceId": "ve-laprensademonagas",
+   "countryCode": "VE",
+   "publisherName": "La Prensa de Monagas",
+   "publisherType": "newspaper",
+   "url": "https://laprensademonagas.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Monagas",
+   "cityName": "Maturín",
+   "languageTags": [
+    "es-VE"
+   ],
+   "group": "ve-laprensademonagas"
+  },
+  {
+   "sourceId": "ve-elsiglo",
+   "countryCode": "VE",
+   "publisherName": "El Siglo",
+   "publisherType": "newspaper",
+   "url": "https://elsiglo.com.ve/feed/",
+   "geographicScope": "local",
+   "regionName": "Aragua",
+   "cityName": "Maracay",
+   "languageTags": [
+    "es-VE"
+   ],
+   "group": "ve-elsiglo"
+  },
+  {
+   "sourceId": "ve-lanacionweb",
+   "countryCode": "VE",
+   "publisherName": "La Nación",
+   "publisherType": "newspaper",
+   "url": "https://lanacionweb.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Táchira",
+   "cityName": "San Cristóbal",
+   "languageTags": [
+    "es-VE"
+   ],
+   "group": "ve-lanacionweb"
+  },
+  {
+   "sourceId": "ve-eltiempo-anzoategui",
+   "countryCode": "VE",
+   "publisherName": "El Tiempo",
+   "publisherType": "newspaper",
+   "url": "https://eltiempo.com.ve/feed/",
+   "geographicScope": "local",
+   "regionName": "Anzoátegui",
+   "cityName": "Puerto La Cruz",
+   "languageTags": [
+    "es-VE"
+   ],
+   "group": "ve-eltiempo-anzoategui"
+  },
+  {
+   "sourceId": "ec-ultimasnoticias",
+   "countryCode": "EC",
+   "publisherName": "Últimas Noticias",
+   "publisherType": "newspaper",
+   "url": "https://ultimasnoticias.ec/feed/",
+   "geographicScope": "local",
+   "regionName": "Pichincha",
+   "cityName": "Quito",
+   "languageTags": [
+    "es-EC"
+   ],
+   "group": "ec-ultimasnoticias"
+  },
+  {
+   "sourceId": "ec-extra-guayaquil",
+   "countryCode": "EC",
+   "publisherName": "Extra",
+   "publisherType": "newspaper",
+   "url": "https://www.extra.ec/rss/guayaquil.xml",
+   "geographicScope": "local",
+   "regionName": "Guayas",
+   "cityName": "Guayaquil",
+   "languageTags": [
+    "es-EC"
+   ],
+   "group": "granasa"
+  },
+  {
+   "sourceId": "ec-elmercurio-cuenca",
+   "countryCode": "EC",
+   "publisherName": "El Mercurio",
+   "publisherType": "newspaper",
+   "url": "https://elmercurio.com.ec/feed/",
+   "geographicScope": "local",
+   "regionName": "Azuay",
+   "cityName": "Cuenca",
+   "languageTags": [
+    "es-EC"
+   ],
+   "group": "ec-elmercurio-cuenca"
+  },
+  {
+   "sourceId": "ec-cronica-loja",
+   "countryCode": "EC",
+   "publisherName": "Crónica de la Tarde",
+   "publisherType": "newspaper",
+   "url": "https://cronica.com.ec/feed/",
+   "geographicScope": "local",
+   "regionName": "Loja",
+   "cityName": "Loja",
+   "languageTags": [
+    "es-EC"
+   ],
+   "group": "ec-cronica-loja"
+  },
+  {
+   "sourceId": "ec-eldiario-manabi",
+   "countryCode": "EC",
+   "publisherName": "El Diario",
+   "publisherType": "newspaper",
+   "url": "https://eldiario.ec/rss/global.xml",
+   "geographicScope": "local",
+   "regionName": "Manabí",
+   "cityName": "Portoviejo",
+   "languageTags": [
+    "es-EC"
+   ],
+   "group": "ec-eldiario-manabi"
+  },
+  {
+   "sourceId": "ec-laprensa-riobamba",
+   "countryCode": "EC",
+   "publisherName": "La Prensa",
+   "publisherType": "newspaper",
+   "url": "https://laprensa.com.ec/feed/",
+   "geographicScope": "local",
+   "regionName": "Chimborazo Province",
+   "cityName": "Riobamba",
+   "languageTags": [
+    "es-EC"
+   ],
+   "group": "ec-laprensa-riobamba"
+  },
+  {
+   "sourceId": "ec-elheraldo-ambato",
+   "countryCode": "EC",
+   "publisherName": "El Heraldo",
+   "publisherType": "newspaper",
+   "url": "https://www.elheraldo.com.ec/feed/",
+   "geographicScope": "local",
+   "regionName": "Tungurahua Province",
+   "cityName": "Ambato",
+   "languageTags": [
+    "es-EC"
+   ],
+   "group": "ec-elheraldo-ambato"
+  },
+  {
+   "sourceId": "bo-eldeber",
+   "countryCode": "BO",
+   "publisherName": "El Deber",
+   "publisherType": "newspaper",
+   "url": "https://eldeber.com.bo/feed/",
+   "geographicScope": "local",
+   "regionName": "Santa Cruz Department",
+   "cityName": "Santa Cruz de la Sierra",
+   "languageTags": [
+    "es-BO"
+   ],
+   "group": "bo-eldeber"
+  },
+  {
+   "sourceId": "bo-eldiario",
+   "countryCode": "BO",
+   "publisherName": "El Diario",
+   "publisherType": "newspaper",
+   "url": "https://www.eldiario.net/portal/feed/",
+   "geographicScope": "local",
+   "regionName": "La Paz Department",
+   "cityName": "La Paz",
+   "languageTags": [
+    "es-BO"
+   ],
+   "group": "bo-eldiario"
+  },
+  {
+   "sourceId": "bo-brujuladigital",
+   "countryCode": "BO",
+   "publisherName": "Brújula Digital",
+   "publisherType": "digital-native",
+   "url": "https://brujuladigital.net/rss.xml",
+   "geographicScope": "local",
+   "regionName": "La Paz Department",
+   "cityName": "La Paz",
+   "languageTags": [
+    "es-BO"
+   ],
+   "group": "bo-brujuladigital"
+  },
+  {
+   "sourceId": "bo-lapatria-oruro",
+   "countryCode": "BO",
+   "publisherName": "La Patria",
+   "publisherType": "newspaper",
+   "url": "https://www.lapatria.bo/feed",
+   "geographicScope": "local",
+   "regionName": "Oruro",
+   "cityName": "Oruro",
+   "languageTags": [
+    "es-BO"
+   ],
+   "group": "bo-lapatria-oruro"
+  },
+  {
+   "sourceId": "bo-lavozdetarija",
+   "countryCode": "BO",
+   "publisherName": "La Voz de Tarija",
+   "publisherType": "newspaper",
+   "url": "https://www.lavozdetarija.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Tarija Department",
+   "cityName": "Tarija",
+   "languageTags": [
+    "es-BO"
+   ],
+   "group": "bo-lavozdetarija"
+  },
+  {
+   "sourceId": "py-abc-este",
+   "countryCode": "PY",
+   "publisherName": "ABC Color",
+   "publisherType": "newspaper",
+   "url": "https://www.abc.com.py/arc/outboundfeeds/rss/category/este/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "Alto Paraná Department",
+   "cityName": "Ciudad del Este",
+   "languageTags": [
+    "es-PY"
+   ],
+   "group": "abc-py"
+  },
+  {
+   "sourceId": "py-laclave",
+   "countryCode": "PY",
+   "publisherName": "La Clave",
+   "publisherType": "newspaper",
+   "url": "https://laclave.com.py/feed/",
+   "geographicScope": "local",
+   "regionName": "Alto Paraná Department",
+   "cityName": "Ciudad del Este",
+   "languageTags": [
+    "es-PY"
+   ],
+   "group": "py-laclave"
+  },
+  {
+   "sourceId": "uy-subrayado",
+   "countryCode": "UY",
+   "publisherName": "Subrayado",
+   "publisherType": "broadcaster",
+   "url": "https://www.subrayado.com.uy/rss/pages/home.xml",
+   "geographicScope": "local",
+   "regionName": "Montevideo Department",
+   "cityName": "Montevideo",
+   "languageTags": [
+    "es-UY"
+   ],
+   "group": "uy-subrayado"
+  },
+  {
+   "sourceId": "uy-teledoce",
+   "countryCode": "UY",
+   "publisherName": "Teledoce",
+   "publisherType": "broadcaster",
+   "url": "https://www.teledoce.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Montevideo Department",
+   "cityName": "Montevideo",
+   "languageTags": [
+    "es-UY"
+   ],
+   "group": "uy-teledoce"
+  },
+  {
+   "sourceId": "uy-elpueblo-salto",
+   "countryCode": "UY",
+   "publisherName": "El Pueblo",
+   "publisherType": "newspaper",
+   "url": "https://elpueblodigital.uy/feed/",
+   "geographicScope": "local",
+   "regionName": "Salto Department",
+   "cityName": "Salto",
+   "languageTags": [
+    "es-UY"
+   ],
+   "group": "uy-elpueblo-salto"
+  },
+  {
+   "sourceId": "uy-eltelegrafo",
+   "countryCode": "UY",
+   "publisherName": "El Telégrafo",
+   "publisherType": "newspaper",
+   "url": "https://www.eltelegrafo.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Paysandú Department",
+   "cityName": "Paysandú",
+   "languageTags": [
+    "es-UY"
+   ],
+   "group": "uy-eltelegrafo"
+  },
+  {
+   "sourceId": "gy-kaieteur",
+   "countryCode": "GY",
+   "publisherName": "Kaieteur News",
+   "publisherType": "newspaper",
+   "url": "https://kaieteurnewsonline.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Demerara-Mahaica",
+   "cityName": "Georgetown",
+   "languageTags": [
+    "en-GY"
+   ],
+   "group": "gy-kaieteur"
+  },
+  {
+   "sourceId": "gy-inews",
+   "countryCode": "GY",
+   "publisherName": "iNews Guyana",
+   "publisherType": "digital-native",
+   "url": "https://inewsguyana.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Demerara-Mahaica",
+   "cityName": "Georgetown",
+   "languageTags": [
+    "en-GY"
+   ],
+   "group": "gy-inews"
+  },
+  {
+   "sourceId": "sr-dwtonline",
+   "countryCode": "SR",
+   "publisherName": "De Ware Tijd",
+   "publisherType": "newspaper",
+   "url": "https://dwtonline.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Paramaribo District",
+   "cityName": "Paramaribo",
+   "languageTags": [
+    "nl-SR"
+   ],
+   "group": "sr-dwtonline"
+  },
+  {
+   "sourceId": "sr-waterkant",
+   "countryCode": "SR",
+   "publisherName": "Waterkant",
+   "publisherType": "digital-native",
+   "url": "https://www.waterkant.net/feed/",
+   "geographicScope": "local",
+   "regionName": "Paramaribo District",
+   "cityName": "Paramaribo",
+   "languageTags": [
+    "nl-SR"
+   ],
+   "group": "sr-waterkant"
+  },
+  {
+   "sourceId": "sr-gfcnieuws",
+   "countryCode": "SR",
+   "publisherName": "GFC Nieuws",
+   "publisherType": "digital-native",
+   "url": "https://www.gfcnieuws.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Paramaribo District",
+   "cityName": "Paramaribo",
+   "languageTags": [
+    "nl-SR"
+   ],
+   "group": "sr-gfcnieuws"
+  }
+ ]
+}

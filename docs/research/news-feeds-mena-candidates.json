@@ -1,0 +1,2890 @@
+{
+ "region": "Middle East and North Africa (cities)",
+ "note": "Local city feeds for EG MA DZ TN LY SD IL PS JO LB SY IQ IR SA AE QA KW BH OM YE; the gazetteer has no regions here, so all are local on a city (regionName is that city’s governorate/province).",
+ "candidates": [
+  {
+   "sourceId": "ma-kech24",
+   "countryCode": "MA",
+   "publisherName": "Kech24",
+   "publisherType": "digital-native",
+   "url": "https://kech24.com/feed",
+   "geographicScope": "local",
+   "regionName": "Marrakesh-Safi",
+   "cityName": "Marrakesh",
+   "languageTags": [
+    "ar-MA"
+   ],
+   "group": "ma-kech24"
+  },
+  {
+   "sourceId": "ma-marrakech7",
+   "countryCode": "MA",
+   "publisherName": "Marrakech7",
+   "publisherType": "digital-native",
+   "url": "https://marrakech7.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Marrakesh-Safi",
+   "cityName": "Marrakesh",
+   "languageTags": [
+    "ar-MA"
+   ],
+   "group": "ma-marrakech7"
+  },
+  {
+   "sourceId": "ma-marrakechalaan",
+   "countryCode": "MA",
+   "publisherName": "Marrakech Alaan",
+   "publisherType": "digital-native",
+   "url": "https://www.marrakechalaan.com/feed",
+   "geographicScope": "local",
+   "regionName": "Marrakesh-Safi",
+   "cityName": "Marrakesh",
+   "languageTags": [
+    "ar-MA"
+   ],
+   "group": "ma-marrakechalaan"
+  },
+  {
+   "sourceId": "ma-agadir24",
+   "countryCode": "MA",
+   "publisherName": "Agadir24",
+   "publisherType": "digital-native",
+   "url": "https://agadir24.info/feed",
+   "geographicScope": "local",
+   "regionName": "Souss-Massa",
+   "cityName": "Agadir",
+   "languageTags": [
+    "ar-MA"
+   ],
+   "group": "ma-agadir24"
+  },
+  {
+   "sourceId": "ma-agadirtoday",
+   "countryCode": "MA",
+   "publisherName": "Agadir Today",
+   "publisherType": "digital-native",
+   "url": "https://agadirtoday.com/?feed=rss2&lang=ar",
+   "geographicScope": "local",
+   "regionName": "Souss-Massa",
+   "cityName": "Agadir",
+   "languageTags": [
+    "ar-MA"
+   ],
+   "group": "ma-agadirtoday"
+  },
+  {
+   "sourceId": "ma-agadirpress",
+   "countryCode": "MA",
+   "publisherName": "Agadir Press",
+   "publisherType": "digital-native",
+   "url": "https://www.agadirpress.com/feeds/posts/default?alt=rss",
+   "geographicScope": "local",
+   "regionName": "Souss-Massa",
+   "cityName": "Agadir",
+   "languageTags": [
+    "ar-MA"
+   ],
+   "group": "ma-agadirpress"
+  },
+  {
+   "sourceId": "ma-fesnews",
+   "countryCode": "MA",
+   "publisherName": "Fes News Media",
+   "publisherType": "digital-native",
+   "url": "https://fesnews.media/feed/",
+   "geographicScope": "local",
+   "regionName": "Fes-Meknes",
+   "cityName": "Fes",
+   "languageTags": [
+    "en-MA"
+   ],
+   "group": "ma-fesnews"
+  },
+  {
+   "sourceId": "ma-tanja7",
+   "countryCode": "MA",
+   "publisherName": "Tanja7",
+   "publisherType": "digital-native",
+   "url": "https://tanja7.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Tanger-Tetouan-Al Hoceima",
+   "cityName": "Tangier",
+   "languageTags": [
+    "ar-MA"
+   ],
+   "group": "ma-tanja7"
+  },
+  {
+   "sourceId": "ma-tanjanews",
+   "countryCode": "MA",
+   "publisherName": "Tanja News",
+   "publisherType": "digital-native",
+   "url": "https://tanjanews.com/feed",
+   "geographicScope": "local",
+   "regionName": "Tanger-Tetouan-Al Hoceima",
+   "cityName": "Tangier",
+   "languageTags": [
+    "ar-MA"
+   ],
+   "group": "ma-tanjanews"
+  },
+  {
+   "sourceId": "ma-nadorcity",
+   "countryCode": "MA",
+   "publisherName": "Nador City",
+   "publisherType": "digital-native",
+   "url": "https://www.nadorcity.com/xml/syndication.rss",
+   "geographicScope": "local",
+   "regionName": "Oriental",
+   "cityName": "Nador",
+   "languageTags": [
+    "ar-MA"
+   ],
+   "group": "ma-nadorcity"
+  },
+  {
+   "sourceId": "ma-dalilrif",
+   "countryCode": "MA",
+   "publisherName": "Dalil Rif",
+   "publisherType": "digital-native",
+   "url": "https://dalil-rif.com/feed/index.rss",
+   "geographicScope": "local",
+   "regionName": "Oriental",
+   "cityName": "Nador",
+   "languageTags": [
+    "ar-MA"
+   ],
+   "group": "ma-dalilrif"
+  },
+  {
+   "sourceId": "ma-oujdacity",
+   "countryCode": "MA",
+   "publisherName": "Oujda City",
+   "publisherType": "digital-native",
+   "url": "https://www.oujdacity.net/feed",
+   "geographicScope": "local",
+   "regionName": "Oriental",
+   "cityName": "Oujda",
+   "languageTags": [
+    "ar-MA"
+   ],
+   "group": "ma-oujdacity"
+  },
+  {
+   "sourceId": "ma-eljadidascoop",
+   "countryCode": "MA",
+   "publisherName": "El Jadida Scoop",
+   "publisherType": "digital-native",
+   "url": "https://eljadidascoop.com/?feed=rss2",
+   "geographicScope": "local",
+   "regionName": "Casablanca-Settat",
+   "cityName": "El Jadida",
+   "languageTags": [
+    "fr-MA"
+   ],
+   "group": "ma-eljadidascoop"
+  },
+  {
+   "sourceId": "ma-safinow",
+   "countryCode": "MA",
+   "publisherName": "Safi Now",
+   "publisherType": "digital-native",
+   "url": "https://www.safinow.com/?feed=rss2",
+   "geographicScope": "local",
+   "regionName": "Marrakesh-Safi",
+   "cityName": "Safi",
+   "languageTags": [
+    "ar-MA"
+   ],
+   "group": "ma-safinow"
+  },
+  {
+   "sourceId": "ma-larachenews",
+   "countryCode": "MA",
+   "publisherName": "Larache News",
+   "publisherType": "digital-native",
+   "url": "https://www.larachenews.com/feed",
+   "geographicScope": "local",
+   "regionName": "Tanger-Tetouan-Al Hoceima",
+   "cityName": "Larache",
+   "languageTags": [
+    "ar-MA"
+   ],
+   "group": "ma-larachenews"
+  },
+  {
+   "sourceId": "ma-tiznit24",
+   "countryCode": "MA",
+   "publisherName": "Tiznit24",
+   "publisherType": "digital-native",
+   "url": "https://tiznit24.com/?feed=rss2",
+   "geographicScope": "local",
+   "regionName": "Souss-Massa",
+   "cityName": "Tiznit",
+   "languageTags": [
+    "ar-MA"
+   ],
+   "group": "ma-tiznit24"
+  },
+  {
+   "sourceId": "ma-errachidia24",
+   "countryCode": "MA",
+   "publisherName": "Errachidia24",
+   "publisherType": "digital-native",
+   "url": "https://errachidia24.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Drâa-Tafilalet",
+   "cityName": "Errachidia",
+   "languageTags": [
+    "ar-MA"
+   ],
+   "group": "ma-errachidia24"
+  },
+  {
+   "sourceId": "ma-lesiteinfo-casablanca",
+   "countryCode": "MA",
+   "publisherName": "Le Site info",
+   "publisherType": "digital-native",
+   "url": "https://www.lesiteinfo.com/tag/casablanca/feed/",
+   "geographicScope": "local",
+   "regionName": "Casablanca-Settat",
+   "cityName": "Casablanca",
+   "languageTags": [
+    "fr-MA"
+   ],
+   "group": "lesiteinfo"
+  },
+  {
+   "sourceId": "ma-lesiteinfo-marrakech",
+   "countryCode": "MA",
+   "publisherName": "Le Site info",
+   "publisherType": "digital-native",
+   "url": "https://www.lesiteinfo.com/tag/marrakech/feed/",
+   "geographicScope": "local",
+   "regionName": "Marrakesh-Safi",
+   "cityName": "Marrakesh",
+   "languageTags": [
+    "fr-MA"
+   ],
+   "group": "lesiteinfo"
+  },
+  {
+   "sourceId": "ma-lesiteinfo-rabat",
+   "countryCode": "MA",
+   "publisherName": "Le Site info",
+   "publisherType": "digital-native",
+   "url": "https://www.lesiteinfo.com/tag/rabat/feed/",
+   "geographicScope": "local",
+   "regionName": "Rabat-Salé-Kénitra",
+   "cityName": "Rabat",
+   "languageTags": [
+    "fr-MA"
+   ],
+   "group": "lesiteinfo"
+  },
+  {
+   "sourceId": "ma-lesiteinfo-tanger",
+   "countryCode": "MA",
+   "publisherName": "Le Site info",
+   "publisherType": "digital-native",
+   "url": "https://www.lesiteinfo.com/tag/tanger/feed/",
+   "geographicScope": "local",
+   "regionName": "Tanger-Tetouan-Al Hoceima",
+   "cityName": "Tangier",
+   "languageTags": [
+    "fr-MA"
+   ],
+   "group": "lesiteinfo"
+  },
+  {
+   "sourceId": "ma-lesiteinfo-agadir",
+   "countryCode": "MA",
+   "publisherName": "Le Site info",
+   "publisherType": "digital-native",
+   "url": "https://www.lesiteinfo.com/tag/agadir/feed/",
+   "geographicScope": "local",
+   "regionName": "Souss-Massa",
+   "cityName": "Agadir",
+   "languageTags": [
+    "fr-MA"
+   ],
+   "group": "lesiteinfo"
+  },
+  {
+   "sourceId": "ma-lesiteinfo-kenitra",
+   "countryCode": "MA",
+   "publisherName": "Le Site info",
+   "publisherType": "digital-native",
+   "url": "https://www.lesiteinfo.com/tag/kenitra/feed/",
+   "geographicScope": "local",
+   "regionName": "Rabat-Salé-Kénitra",
+   "cityName": "Kenitra",
+   "languageTags": [
+    "fr-MA"
+   ],
+   "group": "lesiteinfo"
+  },
+  {
+   "sourceId": "ma-lesiteinfo-oujda",
+   "countryCode": "MA",
+   "publisherName": "Le Site info",
+   "publisherType": "digital-native",
+   "url": "https://www.lesiteinfo.com/tag/oujda/feed/",
+   "geographicScope": "local",
+   "regionName": "Oriental",
+   "cityName": "Oujda",
+   "languageTags": [
+    "fr-MA"
+   ],
+   "group": "lesiteinfo"
+  },
+  {
+   "sourceId": "ma-lesiteinfo-tetouan",
+   "countryCode": "MA",
+   "publisherName": "Le Site info",
+   "publisherType": "digital-native",
+   "url": "https://www.lesiteinfo.com/tag/tetouan/feed/",
+   "geographicScope": "local",
+   "regionName": "Tanger-Tetouan-Al Hoceima",
+   "cityName": "Tétouan",
+   "languageTags": [
+    "fr-MA"
+   ],
+   "group": "lesiteinfo"
+  },
+  {
+   "sourceId": "dz-reflexion",
+   "countryCode": "DZ",
+   "publisherName": "Réflexion",
+   "publisherType": "newspaper",
+   "url": "https://www.reflexiondz.net/feed/",
+   "geographicScope": "local",
+   "regionName": "Mostaganem",
+   "cityName": "Mostaganem",
+   "languageTags": [
+    "fr-DZ"
+   ],
+   "group": "dz-reflexion"
+  },
+  {
+   "sourceId": "dz-echorouk-algiers",
+   "countryCode": "DZ",
+   "publisherName": "Echorouk",
+   "publisherType": "newspaper",
+   "url": "https://www.echoroukonline.com/tag/%D8%A7%D9%84%D8%AC%D8%B2%D8%A7%D8%A6%D8%B1-%D8%A7%D9%84%D8%B9%D8%A7%D8%B5%D9%85%D8%A9/feed",
+   "geographicScope": "local",
+   "regionName": "Algiers",
+   "cityName": "Algiers",
+   "languageTags": [
+    "ar-DZ"
+   ],
+   "group": "echorouk"
+  },
+  {
+   "sourceId": "dz-echorouk-bejaia",
+   "countryCode": "DZ",
+   "publisherName": "Echorouk",
+   "publisherType": "newspaper",
+   "url": "https://www.echoroukonline.com/tag/%D8%A8%D8%AC%D8%A7%D9%8A%D8%A9/feed",
+   "geographicScope": "local",
+   "regionName": "Béjaïa",
+   "cityName": "Béjaïa",
+   "languageTags": [
+    "ar-DZ"
+   ],
+   "group": "echorouk"
+  },
+  {
+   "sourceId": "dz-echorouk-tlemcen",
+   "countryCode": "DZ",
+   "publisherName": "Echorouk",
+   "publisherType": "newspaper",
+   "url": "https://www.echoroukonline.com/tag/%D8%AA%D9%84%D9%85%D8%B3%D8%A7%D9%86/feed",
+   "geographicScope": "local",
+   "regionName": "Tlemcen",
+   "cityName": "Tlemcen",
+   "languageTags": [
+    "ar-DZ"
+   ],
+   "group": "echorouk"
+  },
+  {
+   "sourceId": "dz-echorouk-constantine",
+   "countryCode": "DZ",
+   "publisherName": "Echorouk",
+   "publisherType": "newspaper",
+   "url": "https://www.echoroukonline.com/tag/%D9%82%D8%B3%D9%86%D8%B7%D9%8A%D9%86%D8%A9/feed",
+   "geographicScope": "local",
+   "regionName": "Constantine",
+   "cityName": "Constantine",
+   "languageTags": [
+    "ar-DZ"
+   ],
+   "group": "echorouk"
+  },
+  {
+   "sourceId": "dz-echorouk-oran",
+   "countryCode": "DZ",
+   "publisherName": "Echorouk",
+   "publisherType": "newspaper",
+   "url": "https://www.echoroukonline.com/tag/%D9%88%D9%87%D8%B1%D8%A7%D9%86/feed",
+   "geographicScope": "local",
+   "regionName": "Oran",
+   "cityName": "Oran",
+   "languageTags": [
+    "ar-DZ"
+   ],
+   "group": "echorouk"
+  },
+  {
+   "sourceId": "tn-radio-sfax",
+   "countryCode": "TN",
+   "publisherName": "Radio Sfax",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.radiosfax.tn/articles/rss",
+   "geographicScope": "local",
+   "regionName": "Sfax Governorate",
+   "cityName": "Sfax",
+   "languageTags": [
+    "ar-TN"
+   ],
+   "group": "radiotunisienne"
+  },
+  {
+   "sourceId": "tn-radio-monastir",
+   "countryCode": "TN",
+   "publisherName": "Radio Monastir",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.radiomonastir.tn/articles/rss",
+   "geographicScope": "local",
+   "regionName": "Monastir Governorate",
+   "cityName": "Monastir",
+   "languageTags": [
+    "ar-TN"
+   ],
+   "group": "radiotunisienne"
+  },
+  {
+   "sourceId": "tn-radio-gafsa",
+   "countryCode": "TN",
+   "publisherName": "Radio Gafsa",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.radiogafsa.tn/articles/rss",
+   "geographicScope": "local",
+   "regionName": "Gafsa",
+   "cityName": "Gafsa",
+   "languageTags": [
+    "ar-TN"
+   ],
+   "group": "radiotunisienne"
+  },
+  {
+   "sourceId": "tn-radio-kef",
+   "countryCode": "TN",
+   "publisherName": "Radio Le Kef",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.radiokef.tn/articles/rss",
+   "geographicScope": "local",
+   "regionName": "Kef Governorate",
+   "cityName": "El Kef",
+   "languageTags": [
+    "ar-TN"
+   ],
+   "group": "radiotunisienne"
+  },
+  {
+   "sourceId": "tn-radio-tataouine",
+   "countryCode": "TN",
+   "publisherName": "Radio Tataouine",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.radiotataouine.tn/articles/rss",
+   "geographicScope": "local",
+   "regionName": "Tataouine",
+   "cityName": "Tataouine",
+   "languageTags": [
+    "ar-TN"
+   ],
+   "group": "radiotunisienne"
+  },
+  {
+   "sourceId": "tn-jawharafm",
+   "countryCode": "TN",
+   "publisherName": "Jawhara FM",
+   "publisherType": "broadcaster",
+   "url": "https://www.jawharafm.net/ar/rss/rssFeed/1",
+   "geographicScope": "local",
+   "regionName": "Sousse Governorate",
+   "cityName": "Sousse",
+   "languageTags": [
+    "ar-TN"
+   ],
+   "group": "tn-jawharafm"
+  },
+  {
+   "sourceId": "tn-kapitalis-tunis",
+   "countryCode": "TN",
+   "publisherName": "Kapitalis",
+   "publisherType": "digital-native",
+   "url": "https://kapitalis.com/tunisie/tag/tunis/feed/",
+   "geographicScope": "local",
+   "regionName": "Tunis Governorate",
+   "cityName": "Tunis",
+   "languageTags": [
+    "fr-TN"
+   ],
+   "group": "kapitalis"
+  },
+  {
+   "sourceId": "tn-kapitalis-sousse",
+   "countryCode": "TN",
+   "publisherName": "Kapitalis",
+   "publisherType": "digital-native",
+   "url": "https://kapitalis.com/tunisie/tag/sousse/feed/",
+   "geographicScope": "local",
+   "regionName": "Sousse Governorate",
+   "cityName": "Sousse",
+   "languageTags": [
+    "fr-TN"
+   ],
+   "group": "kapitalis"
+  },
+  {
+   "sourceId": "tn-kapitalis-sfax",
+   "countryCode": "TN",
+   "publisherName": "Kapitalis",
+   "publisherType": "digital-native",
+   "url": "https://kapitalis.com/tunisie/tag/sfax/feed/",
+   "geographicScope": "local",
+   "regionName": "Sfax Governorate",
+   "cityName": "Sfax",
+   "languageTags": [
+    "fr-TN"
+   ],
+   "group": "kapitalis"
+  },
+  {
+   "sourceId": "tn-kapitalis-monastir",
+   "countryCode": "TN",
+   "publisherName": "Kapitalis",
+   "publisherType": "digital-native",
+   "url": "https://kapitalis.com/tunisie/tag/monastir/feed/",
+   "geographicScope": "local",
+   "regionName": "Monastir Governorate",
+   "cityName": "Monastir",
+   "languageTags": [
+    "fr-TN"
+   ],
+   "group": "kapitalis"
+  },
+  {
+   "sourceId": "tn-kapitalis-jendouba",
+   "countryCode": "TN",
+   "publisherName": "Kapitalis",
+   "publisherType": "digital-native",
+   "url": "https://kapitalis.com/tunisie/tag/jendouba/feed/",
+   "geographicScope": "local",
+   "regionName": "Jendouba Governorate",
+   "cityName": "Jendouba",
+   "languageTags": [
+    "fr-TN"
+   ],
+   "group": "kapitalis"
+  },
+  {
+   "sourceId": "tn-kapitalis-djerba",
+   "countryCode": "TN",
+   "publisherName": "Kapitalis",
+   "publisherType": "digital-native",
+   "url": "https://kapitalis.com/tunisie/tag/djerba/feed/",
+   "geographicScope": "local",
+   "regionName": "Medenine Governorate",
+   "cityName": "Houmt Souk",
+   "languageTags": [
+    "fr-TN"
+   ],
+   "group": "kapitalis"
+  },
+  {
+   "sourceId": "tn-kapitalis-gabes",
+   "countryCode": "TN",
+   "publisherName": "Kapitalis",
+   "publisherType": "digital-native",
+   "url": "https://kapitalis.com/tunisie/tag/gabes/feed/",
+   "geographicScope": "local",
+   "regionName": "Gabès Governorate",
+   "cityName": "Gabès",
+   "languageTags": [
+    "fr-TN"
+   ],
+   "group": "kapitalis"
+  },
+  {
+   "sourceId": "tn-kapitalis-mahdia",
+   "countryCode": "TN",
+   "publisherName": "Kapitalis",
+   "publisherType": "digital-native",
+   "url": "https://kapitalis.com/tunisie/tag/mahdia/feed/",
+   "geographicScope": "local",
+   "regionName": "Mahdia Governorate",
+   "cityName": "Mahdia",
+   "languageTags": [
+    "fr-TN"
+   ],
+   "group": "kapitalis"
+  },
+  {
+   "sourceId": "tn-businessnews-bizerte",
+   "countryCode": "TN",
+   "publisherName": "Business News",
+   "publisherType": "digital-native",
+   "url": "https://businessnews.com.tn/tag/bizerte/feed/",
+   "geographicScope": "local",
+   "regionName": "Bizerte Governorate",
+   "cityName": "Bizerte",
+   "languageTags": [
+    "fr-TN"
+   ],
+   "group": "businessnews-tn"
+  },
+  {
+   "sourceId": "eg-elaosboa-alexandria",
+   "countryCode": "EG",
+   "publisherName": "Al Osboa",
+   "publisherType": "newspaper",
+   "url": "https://www.elaosboa.com/tag/%D8%A7%D9%84%D8%A5%D8%B3%D9%83%D9%86%D8%AF%D8%B1%D9%8A%D8%A9/feed/",
+   "geographicScope": "local",
+   "regionName": "Alexandria",
+   "cityName": "Alexandria",
+   "languageTags": [
+    "ar-EG"
+   ],
+   "group": "elaosboa"
+  },
+  {
+   "sourceId": "eg-elaosboa-giza",
+   "countryCode": "EG",
+   "publisherName": "Al Osboa",
+   "publisherType": "newspaper",
+   "url": "https://www.elaosboa.com/tag/%D8%A7%D9%84%D8%AC%D9%8A%D8%B2%D8%A9/feed/",
+   "geographicScope": "local",
+   "regionName": "Giza",
+   "cityName": "Giza",
+   "languageTags": [
+    "ar-EG"
+   ],
+   "group": "elaosboa"
+  },
+  {
+   "sourceId": "eg-elaosboa-port-said",
+   "countryCode": "EG",
+   "publisherName": "Al Osboa",
+   "publisherType": "newspaper",
+   "url": "https://www.elaosboa.com/tag/%D8%A8%D9%88%D8%B1%D8%B3%D8%B9%D9%8A%D8%AF/feed/",
+   "geographicScope": "local",
+   "regionName": "Port Said",
+   "cityName": "Port Said",
+   "languageTags": [
+    "ar-EG"
+   ],
+   "group": "elaosboa"
+  },
+  {
+   "sourceId": "eg-elaosboa-suez",
+   "countryCode": "EG",
+   "publisherName": "Al Osboa",
+   "publisherType": "newspaper",
+   "url": "https://www.elaosboa.com/tag/%D8%A7%D9%84%D8%B3%D9%88%D9%8A%D8%B3/feed/",
+   "geographicScope": "local",
+   "regionName": "Suez",
+   "cityName": "Suez",
+   "languageTags": [
+    "ar-EG"
+   ],
+   "group": "elaosboa"
+  },
+  {
+   "sourceId": "eg-elaosboa-ismailia",
+   "countryCode": "EG",
+   "publisherName": "Al Osboa",
+   "publisherType": "newspaper",
+   "url": "https://www.elaosboa.com/tag/%D8%A7%D9%84%D8%A5%D8%B3%D9%85%D8%A7%D8%B9%D9%8A%D9%84%D9%8A%D8%A9/feed/",
+   "geographicScope": "local",
+   "regionName": "Ismailia",
+   "cityName": "Ismailia",
+   "languageTags": [
+    "ar-EG"
+   ],
+   "group": "elaosboa"
+  },
+  {
+   "sourceId": "eg-elaosboa-luxor",
+   "countryCode": "EG",
+   "publisherName": "Al Osboa",
+   "publisherType": "newspaper",
+   "url": "https://www.elaosboa.com/tag/%D8%A7%D9%84%D8%A3%D9%82%D8%B5%D8%B1/feed/",
+   "geographicScope": "local",
+   "regionName": "Luxor",
+   "cityName": "Luxor",
+   "languageTags": [
+    "ar-EG"
+   ],
+   "group": "elaosboa"
+  },
+  {
+   "sourceId": "eg-elaosboa-aswan",
+   "countryCode": "EG",
+   "publisherName": "Al Osboa",
+   "publisherType": "newspaper",
+   "url": "https://www.elaosboa.com/tag/%D9%85%D8%AD%D8%A7%D9%81%D8%B8-%D8%A3%D8%B3%D9%88%D8%A7%D9%86/feed/",
+   "geographicScope": "local",
+   "regionName": "Aswan",
+   "cityName": "Aswān",
+   "languageTags": [
+    "ar-EG"
+   ],
+   "group": "elaosboa"
+  },
+  {
+   "sourceId": "eg-elaosboa-assiut",
+   "countryCode": "EG",
+   "publisherName": "Al Osboa",
+   "publisherType": "newspaper",
+   "url": "https://www.elaosboa.com/tag/%D8%A3%D8%B3%D9%8A%D9%88%D8%B7/feed/",
+   "geographicScope": "local",
+   "regionName": "Asyut",
+   "cityName": "Assiut",
+   "languageTags": [
+    "ar-EG"
+   ],
+   "group": "elaosboa"
+  },
+  {
+   "sourceId": "eg-elaosboa-al-fayyum",
+   "countryCode": "EG",
+   "publisherName": "Al Osboa",
+   "publisherType": "newspaper",
+   "url": "https://www.elaosboa.com/tag/%D8%A7%D9%84%D9%81%D9%8A%D9%88%D9%85/feed/",
+   "geographicScope": "local",
+   "regionName": "Faiyum",
+   "cityName": "Al Fayyum",
+   "languageTags": [
+    "ar-EG"
+   ],
+   "group": "elaosboa"
+  },
+  {
+   "sourceId": "eg-elaosboa-damanhur",
+   "countryCode": "EG",
+   "publisherName": "Al Osboa",
+   "publisherType": "newspaper",
+   "url": "https://www.elaosboa.com/tag/%D8%AF%D9%85%D9%86%D9%87%D9%88%D8%B1/feed/",
+   "geographicScope": "local",
+   "regionName": "Beheira",
+   "cityName": "Damanhur",
+   "languageTags": [
+    "ar-EG"
+   ],
+   "group": "elaosboa"
+  },
+  {
+   "sourceId": "eg-elaosboa-sohag",
+   "countryCode": "EG",
+   "publisherName": "Al Osboa",
+   "publisherType": "newspaper",
+   "url": "https://www.elaosboa.com/tag/%D8%B3%D9%88%D9%87%D8%A7%D8%AC/feed/",
+   "geographicScope": "local",
+   "regionName": "Sohag",
+   "cityName": "Sohag",
+   "languageTags": [
+    "ar-EG"
+   ],
+   "group": "elaosboa"
+  },
+  {
+   "sourceId": "eg-elaosboa-minya",
+   "countryCode": "EG",
+   "publisherName": "Al Osboa",
+   "publisherType": "newspaper",
+   "url": "https://www.elaosboa.com/tag/%D9%85%D8%AD%D8%A7%D9%81%D8%B8-%D8%A7%D9%84%D9%85%D9%86%D9%8A%D8%A7/feed/",
+   "geographicScope": "local",
+   "regionName": "Minya",
+   "cityName": "Minya",
+   "languageTags": [
+    "ar-EG"
+   ],
+   "group": "elaosboa"
+  },
+  {
+   "sourceId": "eg-elaosboa-qina",
+   "countryCode": "EG",
+   "publisherName": "Al Osboa",
+   "publisherType": "newspaper",
+   "url": "https://www.elaosboa.com/tag/%D9%82%D9%86%D8%A7/feed/",
+   "geographicScope": "local",
+   "regionName": "Qena",
+   "cityName": "Qina",
+   "languageTags": [
+    "ar-EG"
+   ],
+   "group": "elaosboa"
+  },
+  {
+   "sourceId": "eg-elaosboa-kafr-ash-shaykh",
+   "countryCode": "EG",
+   "publisherName": "Al Osboa",
+   "publisherType": "newspaper",
+   "url": "https://www.elaosboa.com/tag/%D9%83%D9%81%D8%B1-%D8%A7%D9%84%D8%B4%D9%8A%D8%AE/feed/",
+   "geographicScope": "local",
+   "regionName": "Kafr el-Sheikh",
+   "cityName": "Kafr ash Shaykh",
+   "languageTags": [
+    "ar-EG"
+   ],
+   "group": "elaosboa"
+  },
+  {
+   "sourceId": "eg-elaosboa-al-mansurah",
+   "countryCode": "EG",
+   "publisherName": "Al Osboa",
+   "publisherType": "newspaper",
+   "url": "https://www.elaosboa.com/tag/%D9%85%D8%AD%D8%A7%D9%81%D8%B8-%D8%A7%D9%84%D8%AF%D9%82%D9%87%D9%84%D9%8A%D8%A9/feed/",
+   "geographicScope": "local",
+   "regionName": "Dakahlia",
+   "cityName": "Al Mansurah",
+   "languageTags": [
+    "ar-EG"
+   ],
+   "group": "elaosboa"
+  },
+  {
+   "sourceId": "eg-elaosboa-cairo",
+   "countryCode": "EG",
+   "publisherName": "Al Osboa",
+   "publisherType": "newspaper",
+   "url": "https://www.elaosboa.com/tag/%D9%85%D8%AD%D8%A7%D9%81%D8%B8-%D8%A7%D9%84%D9%82%D8%A7%D9%87%D8%B1%D8%A9/feed/",
+   "geographicScope": "local",
+   "regionName": "Cairo",
+   "cityName": "Cairo",
+   "languageTags": [
+    "ar-EG"
+   ],
+   "group": "elaosboa"
+  },
+  {
+   "sourceId": "eg-cairo24",
+   "countryCode": "EG",
+   "publisherName": "Cairo 24",
+   "publisherType": "digital-native",
+   "url": "https://www.cairo24.com/rss.aspx",
+   "geographicScope": "local",
+   "regionName": "Cairo",
+   "cityName": "Cairo",
+   "languageTags": [
+    "ar-EG"
+   ],
+   "group": "eg-cairo24"
+  },
+  {
+   "sourceId": "ly-libyareview-tripoli",
+   "countryCode": "LY",
+   "publisherName": "Libya Review",
+   "publisherType": "digital-native",
+   "url": "https://libyareview.com/tag/tripoli/feed/",
+   "geographicScope": "local",
+   "regionName": "Tripoli",
+   "cityName": "Tripoli",
+   "languageTags": [
+    "en-LY"
+   ],
+   "group": "libyareview"
+  },
+  {
+   "sourceId": "ly-libyareview-benghazi",
+   "countryCode": "LY",
+   "publisherName": "Libya Review",
+   "publisherType": "digital-native",
+   "url": "https://libyareview.com/tag/benghazi/feed/",
+   "geographicScope": "local",
+   "regionName": "Banghazi",
+   "cityName": "Benghazi",
+   "languageTags": [
+    "en-LY"
+   ],
+   "group": "libyareview"
+  },
+  {
+   "sourceId": "ly-libyareview-misrata",
+   "countryCode": "LY",
+   "publisherName": "Libya Review",
+   "publisherType": "digital-native",
+   "url": "https://libyareview.com/tag/misrata/feed/",
+   "geographicScope": "local",
+   "regionName": "Misratah",
+   "cityName": "Misratah",
+   "languageTags": [
+    "en-LY"
+   ],
+   "group": "libyareview"
+  },
+  {
+   "sourceId": "sd-dabanga-en",
+   "countryCode": "SD",
+   "publisherName": "Radio Dabanga",
+   "publisherType": "broadcaster",
+   "url": "https://www.dabangasudan.org/en/all-news/feed",
+   "geographicScope": "local",
+   "regionName": "Northern Darfur",
+   "cityName": "El Fasher",
+   "languageTags": [
+    "en-SD"
+   ],
+   "group": "dabanga"
+  },
+  {
+   "sourceId": "il-ashdodonline",
+   "countryCode": "IL",
+   "publisherName": "Ashdod Online",
+   "publisherType": "digital-native",
+   "url": "https://www.ashdodonline.co.il/feed",
+   "geographicScope": "local",
+   "regionName": "Southern District",
+   "cityName": "Ashdod",
+   "languageTags": [
+    "he-IL"
+   ],
+   "group": "ashdodonline"
+  },
+  {
+   "sourceId": "il-ashkelonews",
+   "countryCode": "IL",
+   "publisherName": "Ashkelon News",
+   "publisherType": "digital-native",
+   "url": "https://ashkelonews.co.il/feed.xml",
+   "geographicScope": "local",
+   "regionName": "Southern District",
+   "cityName": "Ashkelon",
+   "languageTags": [
+    "he-IL"
+   ],
+   "group": "ashkelonews"
+  },
+  {
+   "sourceId": "il-ptnews",
+   "countryCode": "IL",
+   "publisherName": "Petah Tikva News",
+   "publisherType": "digital-native",
+   "url": "https://www.ptnews.co.il/feed",
+   "geographicScope": "local",
+   "regionName": "Central District",
+   "cityName": "Petaẖ Tiqva",
+   "languageTags": [
+    "he-IL"
+   ],
+   "group": "ptnews"
+  },
+  {
+   "sourceId": "il-raanana-news",
+   "countryCode": "IL",
+   "publisherName": "Raanana News",
+   "publisherType": "digital-native",
+   "url": "https://raanana.news/feed/",
+   "geographicScope": "local",
+   "regionName": "Central District",
+   "cityName": "Ra'anana",
+   "languageTags": [
+    "he-IL"
+   ],
+   "group": "raanana-news"
+  },
+  {
+   "sourceId": "il-hkn-haifa",
+   "countryCode": "IL",
+   "publisherName": "HKN Haifa-Krayot News",
+   "publisherType": "digital-native",
+   "url": "https://hkn.co.il/feed",
+   "geographicScope": "local",
+   "regionName": "Haifa",
+   "cityName": "Haifa",
+   "languageTags": [
+    "he-IL"
+   ],
+   "group": "hkn"
+  },
+  {
+   "sourceId": "ps-felesteen-gaza",
+   "countryCode": "PS",
+   "publisherName": "Felesteen",
+   "publisherType": "newspaper",
+   "url": "https://felesteen.news/rss/category/all",
+   "geographicScope": "local",
+   "regionName": "Gaza Strip",
+   "cityName": "Gaza",
+   "languageTags": [
+    "ar-PS"
+   ],
+   "group": "felesteen"
+  },
+  {
+   "sourceId": "ps-safa-gaza",
+   "countryCode": "PS",
+   "publisherName": "Safa News Agency",
+   "publisherType": "news-agency",
+   "url": "https://safa.ps/rss",
+   "geographicScope": "local",
+   "regionName": "Gaza Strip",
+   "cityName": "Gaza",
+   "languageTags": [
+    "ar-PS"
+   ],
+   "group": "safa"
+  },
+  {
+   "sourceId": "ps-amad-gaza",
+   "countryCode": "PS",
+   "publisherName": "Amad",
+   "publisherType": "digital-native",
+   "url": "https://www.amad.ps/ar/rss",
+   "geographicScope": "local",
+   "regionName": "Gaza Strip",
+   "cityName": "Gaza",
+   "languageTags": [
+    "ar-PS"
+   ],
+   "group": "amad"
+  },
+  {
+   "sourceId": "ps-alquds-jerusalem",
+   "countryCode": "PS",
+   "publisherName": "Al-Quds",
+   "publisherType": "newspaper",
+   "url": "https://alquds.com/ar/rss",
+   "geographicScope": "local",
+   "regionName": "West Bank",
+   "cityName": "East Jerusalem",
+   "languageTags": [
+    "ar-PS"
+   ],
+   "group": "alquds"
+  },
+  {
+   "sourceId": "jo-jo24-amman",
+   "countryCode": "JO",
+   "publisherName": "JO24",
+   "publisherType": "digital-native",
+   "url": "https://jo24.net/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Amman",
+   "cityName": "Amman",
+   "languageTags": [
+    "ar-JO"
+   ],
+   "group": "jo24"
+  },
+  {
+   "sourceId": "jo-alwakeel-amman",
+   "countryCode": "JO",
+   "publisherName": "Al Wakeel News",
+   "publisherType": "digital-native",
+   "url": "https://www.alwakeelnews.com/rss",
+   "geographicScope": "local",
+   "regionName": "Amman",
+   "cityName": "Amman",
+   "languageTags": [
+    "ar-JO"
+   ],
+   "group": "alwakeel"
+  },
+  {
+   "sourceId": "jo-jordannews-amman",
+   "countryCode": "JO",
+   "publisherName": "Jordan News",
+   "publisherType": "newspaper",
+   "url": "https://www.jordannews.jo/rss",
+   "geographicScope": "local",
+   "regionName": "Amman",
+   "cityName": "Amman",
+   "languageTags": [
+    "en-JO"
+   ],
+   "group": "alghad"
+  },
+  {
+   "sourceId": "jo-ajlounnews",
+   "countryCode": "JO",
+   "publisherName": "Ajloun News",
+   "publisherType": "digital-native",
+   "url": "https://www.ajlounnews.net/feed",
+   "geographicScope": "local",
+   "regionName": "Ajloun",
+   "cityName": "‘Ajlūn",
+   "languageTags": [
+    "ar-JO"
+   ],
+   "group": "ajlounnews"
+  },
+  {
+   "sourceId": "lb-lbci-beirut",
+   "countryCode": "LB",
+   "publisherName": "LBCI",
+   "publisherType": "broadcaster",
+   "url": "https://www.lbcgroup.tv/Rss/latest-news/ar",
+   "geographicScope": "local",
+   "regionName": "Beirut",
+   "cityName": "Beirut",
+   "languageTags": [
+    "ar-LB"
+   ],
+   "group": "lbci"
+  },
+  {
+   "sourceId": "lb-thisisbeirut",
+   "countryCode": "LB",
+   "publisherName": "This Is Beirut",
+   "publisherType": "digital-native",
+   "url": "https://thisisbeirut.com.lb/rss/news",
+   "geographicScope": "local",
+   "regionName": "Beirut",
+   "cityName": "Beirut",
+   "languageTags": [
+    "en-LB"
+   ],
+   "group": "thisisbeirut"
+  },
+  {
+   "sourceId": "lb-almodon-beirut",
+   "countryCode": "LB",
+   "publisherName": "Al Modon",
+   "publisherType": "digital-native",
+   "url": "https://www.almodon.com/rss",
+   "geographicScope": "local",
+   "regionName": "Beirut",
+   "cityName": "Beirut",
+   "languageTags": [
+    "ar-LB"
+   ],
+   "group": "almodon"
+  },
+  {
+   "sourceId": "lb-beirut-today",
+   "countryCode": "LB",
+   "publisherName": "Beirut Today",
+   "publisherType": "digital-native",
+   "url": "https://beirut-today.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Beirut",
+   "cityName": "Beirut",
+   "languageTags": [
+    "en-LB"
+   ],
+   "group": "beirut-today"
+  },
+  {
+   "sourceId": "lb-megaphone-beirut",
+   "countryCode": "LB",
+   "publisherName": "Megaphone",
+   "publisherType": "digital-native",
+   "url": "https://www.megaphone.news/rss",
+   "geographicScope": "local",
+   "regionName": "Beirut",
+   "cityName": "Beirut",
+   "languageTags": [
+    "ar-LB"
+   ],
+   "group": "megaphone"
+  },
+  {
+   "sourceId": "sy-alwatan-damascus",
+   "countryCode": "SY",
+   "publisherName": "Al-Watan",
+   "publisherType": "newspaper",
+   "url": "https://alwatan.sy/feed/",
+   "geographicScope": "local",
+   "regionName": "Damascus Governorate",
+   "cityName": "Damascus",
+   "languageTags": [
+    "ar-SY"
+   ],
+   "group": "alwatan-sy"
+  },
+  {
+   "sourceId": "sy-enabbaladi-damascus",
+   "countryCode": "SY",
+   "publisherName": "Enab Baladi",
+   "publisherType": "digital-native",
+   "url": "https://www.enabbaladi.net/feed/",
+   "geographicScope": "local",
+   "regionName": "Damascus Governorate",
+   "cityName": "Damascus",
+   "languageTags": [
+    "ar-SY"
+   ],
+   "group": "enabbaladi"
+  },
+  {
+   "sourceId": "sy-halabtoday-aleppo",
+   "countryCode": "SY",
+   "publisherName": "Halab Today TV",
+   "publisherType": "broadcaster",
+   "url": "https://halabtodaytv.net/feed",
+   "geographicScope": "local",
+   "regionName": "Aleppo",
+   "cityName": "Aleppo",
+   "languageTags": [
+    "ar-SY"
+   ],
+   "group": "halabtoday"
+  },
+  {
+   "sourceId": "sy-daraa24",
+   "countryCode": "SY",
+   "publisherName": "Daraa 24",
+   "publisherType": "digital-native",
+   "url": "https://daraa24.org/feed/",
+   "geographicScope": "local",
+   "regionName": "Daraa",
+   "cityName": "Dar‘ā",
+   "languageTags": [
+    "ar-SY"
+   ],
+   "group": "daraa24"
+  },
+  {
+   "sourceId": "sy-npasyria-qamishli",
+   "countryCode": "SY",
+   "publisherName": "North Press Agency",
+   "publisherType": "news-agency",
+   "url": "https://npasyria.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Al-Hasakah",
+   "cityName": "Al Qāmishlī",
+   "languageTags": [
+    "ar-SY"
+   ],
+   "group": "npasyria"
+  },
+  {
+   "sourceId": "sy-ronahi-qamishli",
+   "countryCode": "SY",
+   "publisherName": "Ronahi",
+   "publisherType": "newspaper",
+   "url": "https://ronahi.net/?feed=rss2",
+   "geographicScope": "local",
+   "regionName": "Al-Hasakah",
+   "cityName": "Al Qāmishlī",
+   "languageTags": [
+    "ar-SY"
+   ],
+   "group": "ronahi"
+  },
+  {
+   "sourceId": "sy-hawarnews-qamishli",
+   "countryCode": "SY",
+   "publisherName": "Hawar News Agency",
+   "publisherType": "news-agency",
+   "url": "https://hawarnews.com/ar/rss/latest-posts",
+   "geographicScope": "local",
+   "regionName": "Al-Hasakah",
+   "cityName": "Al Qāmishlī",
+   "languageTags": [
+    "ar-SY"
+   ],
+   "group": "hawarnews"
+  },
+  {
+   "sourceId": "iq-baghdadtoday",
+   "countryCode": "IQ",
+   "publisherName": "Baghdad Today",
+   "publisherType": "digital-native",
+   "url": "https://baghdadtoday.news/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Baghdad",
+   "cityName": "Baghdad",
+   "languageTags": [
+    "ar-IQ"
+   ],
+   "group": "baghdadtoday"
+  },
+  {
+   "sourceId": "iq-almada-baghdad",
+   "countryCode": "IQ",
+   "publisherName": "Al Mada",
+   "publisherType": "newspaper",
+   "url": "https://almadapaper.net/feed",
+   "geographicScope": "local",
+   "regionName": "Baghdad",
+   "cityName": "Baghdad",
+   "languageTags": [
+    "ar-IQ"
+   ],
+   "group": "almada"
+  },
+  {
+   "sourceId": "iq-kurdistan24-ckb-erbil",
+   "countryCode": "IQ",
+   "publisherName": "Kurdistan24",
+   "publisherType": "broadcaster",
+   "url": "https://www.kurdistan24.net/ckb/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Erbil",
+   "cityName": "Erbil",
+   "languageTags": [
+    "ckb-IQ"
+   ],
+   "group": "kurdistan24"
+  },
+  {
+   "sourceId": "iq-kurdistan24-en-erbil",
+   "countryCode": "IQ",
+   "publisherName": "Kurdistan24 English",
+   "publisherType": "broadcaster",
+   "url": "https://www.kurdistan24.net/en/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Erbil",
+   "cityName": "Erbil",
+   "languageTags": [
+    "en-IQ"
+   ],
+   "group": "kurdistan24"
+  },
+  {
+   "sourceId": "iq-ankawa-erbil",
+   "countryCode": "IQ",
+   "publisherName": "Ankawa.com",
+   "publisherType": "digital-native",
+   "url": "https://ar.ankawa.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Erbil",
+   "cityName": "Erbil",
+   "languageTags": [
+    "ar-IQ"
+   ],
+   "group": "ankawa"
+  },
+  {
+   "sourceId": "iq-lvinpress-sulaymaniyah",
+   "countryCode": "IQ",
+   "publisherName": "Lvin Press",
+   "publisherType": "magazine",
+   "url": "https://lvinpress.com/feed",
+   "geographicScope": "local",
+   "regionName": "Sulaymaniyah",
+   "cityName": "Sulaymaniyah",
+   "languageTags": [
+    "ckb-IQ"
+   ],
+   "group": "lvin"
+  },
+  {
+   "sourceId": "sy-sana-aleppo",
+   "countryCode": "SY",
+   "publisherName": "SANA",
+   "publisherType": "news-agency",
+   "url": "https://sana.sy/governorates/aleppo/feed/",
+   "geographicScope": "local",
+   "regionName": "Aleppo",
+   "cityName": "Aleppo",
+   "languageTags": [
+    "ar-SY"
+   ],
+   "group": "sana"
+  },
+  {
+   "sourceId": "sy-sana-alhassakeh",
+   "countryCode": "SY",
+   "publisherName": "SANA",
+   "publisherType": "news-agency",
+   "url": "https://sana.sy/governorates/alhassakeh/feed/",
+   "geographicScope": "local",
+   "regionName": "Al-Hasakah",
+   "cityName": "Al Ḩasakah",
+   "languageTags": [
+    "ar-SY"
+   ],
+   "group": "sana"
+  },
+  {
+   "sourceId": "sy-sana-alqunaytrah",
+   "countryCode": "SY",
+   "publisherName": "SANA",
+   "publisherType": "news-agency",
+   "url": "https://sana.sy/governorates/alqunaytrah/feed/",
+   "geographicScope": "local",
+   "regionName": "Quneitra",
+   "cityName": "Al Qunayţirah",
+   "languageTags": [
+    "ar-SY"
+   ],
+   "group": "sana"
+  },
+  {
+   "sourceId": "sy-sana-alrakkah",
+   "countryCode": "SY",
+   "publisherName": "SANA",
+   "publisherType": "news-agency",
+   "url": "https://sana.sy/governorates/alrakkah/feed/",
+   "geographicScope": "local",
+   "regionName": "Raqqa",
+   "cityName": "Ar Raqqah",
+   "languageTags": [
+    "ar-SY"
+   ],
+   "group": "sana"
+  },
+  {
+   "sourceId": "sy-sana-alsoaydaa",
+   "countryCode": "SY",
+   "publisherName": "SANA",
+   "publisherType": "news-agency",
+   "url": "https://sana.sy/governorates/alsoaydaa/feed/",
+   "geographicScope": "local",
+   "regionName": "Suwayda",
+   "cityName": "As-Suwayda",
+   "languageTags": [
+    "ar-SY"
+   ],
+   "group": "sana"
+  },
+  {
+   "sourceId": "sy-sana-damascus",
+   "countryCode": "SY",
+   "publisherName": "SANA",
+   "publisherType": "news-agency",
+   "url": "https://sana.sy/governorates/damascus/feed/",
+   "geographicScope": "local",
+   "regionName": "Damascus Governorate",
+   "cityName": "Damascus",
+   "languageTags": [
+    "ar-SY"
+   ],
+   "group": "sana"
+  },
+  {
+   "sourceId": "sy-sana-daraa",
+   "countryCode": "SY",
+   "publisherName": "SANA",
+   "publisherType": "news-agency",
+   "url": "https://sana.sy/governorates/daraa/feed/",
+   "geographicScope": "local",
+   "regionName": "Daraa",
+   "cityName": "Dar‘ā",
+   "languageTags": [
+    "ar-SY"
+   ],
+   "group": "sana"
+  },
+  {
+   "sourceId": "sy-sana-dayer-al-zoor",
+   "countryCode": "SY",
+   "publisherName": "SANA",
+   "publisherType": "news-agency",
+   "url": "https://sana.sy/governorates/dayer-al-zoor/feed/",
+   "geographicScope": "local",
+   "regionName": "Deir ez-Zor",
+   "cityName": "Deir ez-Zor",
+   "languageTags": [
+    "ar-SY"
+   ],
+   "group": "sana"
+  },
+  {
+   "sourceId": "sy-sana-edlib",
+   "countryCode": "SY",
+   "publisherName": "SANA",
+   "publisherType": "news-agency",
+   "url": "https://sana.sy/governorates/edlib/feed/",
+   "geographicScope": "local",
+   "regionName": "Idlib",
+   "cityName": "Idlib",
+   "languageTags": [
+    "ar-SY"
+   ],
+   "group": "sana"
+  },
+  {
+   "sourceId": "sy-sana-hama",
+   "countryCode": "SY",
+   "publisherName": "SANA",
+   "publisherType": "news-agency",
+   "url": "https://sana.sy/governorates/hama/feed/",
+   "geographicScope": "local",
+   "regionName": "Hama",
+   "cityName": "Ḩamāh",
+   "languageTags": [
+    "ar-SY"
+   ],
+   "group": "sana"
+  },
+  {
+   "sourceId": "sy-sana-homs",
+   "countryCode": "SY",
+   "publisherName": "SANA",
+   "publisherType": "news-agency",
+   "url": "https://sana.sy/governorates/homs/feed/",
+   "geographicScope": "local",
+   "regionName": "Homs",
+   "cityName": "Homs",
+   "languageTags": [
+    "ar-SY"
+   ],
+   "group": "sana"
+  },
+  {
+   "sourceId": "sy-sana-latakia",
+   "countryCode": "SY",
+   "publisherName": "SANA",
+   "publisherType": "news-agency",
+   "url": "https://sana.sy/governorates/latakia/feed/",
+   "geographicScope": "local",
+   "regionName": "Latakia",
+   "cityName": "Latakia",
+   "languageTags": [
+    "ar-SY"
+   ],
+   "group": "sana"
+  },
+  {
+   "sourceId": "sy-sana-reef-dimashak",
+   "countryCode": "SY",
+   "publisherName": "SANA",
+   "publisherType": "news-agency",
+   "url": "https://sana.sy/governorates/reef-dimashak/feed/",
+   "geographicScope": "local",
+   "regionName": "Rif-dimashq",
+   "cityName": "Dūmā",
+   "languageTags": [
+    "ar-SY"
+   ],
+   "group": "sana"
+  },
+  {
+   "sourceId": "sy-sana-tartus",
+   "countryCode": "SY",
+   "publisherName": "SANA",
+   "publisherType": "news-agency",
+   "url": "https://sana.sy/governorates/tartus/feed/",
+   "geographicScope": "local",
+   "regionName": "Tartus",
+   "cityName": "Ţarţūs",
+   "languageTags": [
+    "ar-SY"
+   ],
+   "group": "sana"
+  },
+  {
+   "sourceId": "ir-isna-tabriz",
+   "countryCode": "IR",
+   "publisherName": "ISNA (Tabriz)",
+   "publisherType": "news-agency",
+   "url": "https://www.isna.ir/rss/tp/260",
+   "geographicScope": "local",
+   "regionName": "East Azerbaijan",
+   "cityName": "Tabriz",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "isna"
+  },
+  {
+   "sourceId": "ir-isna-urmia",
+   "countryCode": "IR",
+   "publisherName": "ISNA (Orūmīyeh)",
+   "publisherType": "news-agency",
+   "url": "https://www.isna.ir/rss/tp/219",
+   "geographicScope": "local",
+   "regionName": "West Azerbaijan",
+   "cityName": "Orūmīyeh",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "isna"
+  },
+  {
+   "sourceId": "ir-isna-ardabil",
+   "countryCode": "IR",
+   "publisherName": "ISNA (Ardabīl)",
+   "publisherType": "news-agency",
+   "url": "https://www.isna.ir/rss/tp/212",
+   "geographicScope": "local",
+   "regionName": "Ardabil Province",
+   "cityName": "Ardabīl",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "isna"
+  },
+  {
+   "sourceId": "ir-isna-karaj",
+   "countryCode": "IR",
+   "publisherName": "ISNA (Karaj)",
+   "publisherType": "news-agency",
+   "url": "https://www.isna.ir/rss/tp/221",
+   "geographicScope": "local",
+   "regionName": "Alborz Province",
+   "cityName": "Karaj",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "isna"
+  },
+  {
+   "sourceId": "ir-isna-isfahan",
+   "countryCode": "IR",
+   "publisherName": "ISNA (Isfahan)",
+   "publisherType": "news-agency",
+   "url": "https://www.isna.ir/rss/tp/258",
+   "geographicScope": "local",
+   "regionName": "Isfahan",
+   "cityName": "Isfahan",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "isna"
+  },
+  {
+   "sourceId": "ir-isna-ilam",
+   "countryCode": "IR",
+   "publisherName": "ISNA (Īlām)",
+   "publisherType": "news-agency",
+   "url": "https://www.isna.ir/rss/tp/223",
+   "geographicScope": "local",
+   "regionName": "Ilam Province",
+   "cityName": "Īlām",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "isna"
+  },
+  {
+   "sourceId": "ir-isna-bushehr",
+   "countryCode": "IR",
+   "publisherName": "ISNA (Bushehr)",
+   "publisherType": "news-agency",
+   "url": "https://www.isna.ir/rss/tp/225",
+   "geographicScope": "local",
+   "regionName": "Bushehr",
+   "cityName": "Bushehr",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "isna"
+  },
+  {
+   "sourceId": "ir-isna-tehran",
+   "countryCode": "IR",
+   "publisherName": "ISNA (Tehran)",
+   "publisherType": "news-agency",
+   "url": "https://www.isna.ir/rss/tp/262",
+   "geographicScope": "local",
+   "regionName": "Tehran",
+   "cityName": "Tehran",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "isna"
+  },
+  {
+   "sourceId": "ir-isna-shahrekord",
+   "countryCode": "IR",
+   "publisherName": "ISNA (Shahr-e Kord)",
+   "publisherType": "news-agency",
+   "url": "https://www.isna.ir/rss/tp/264",
+   "geographicScope": "local",
+   "regionName": "Chaharmahal and Bakhtiari",
+   "cityName": "Shahr-e Kord",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "isna"
+  },
+  {
+   "sourceId": "ir-isna-bojnurd",
+   "countryCode": "IR",
+   "publisherName": "ISNA (Bojnūrd)",
+   "publisherType": "news-agency",
+   "url": "https://www.isna.ir/rss/tp/227",
+   "geographicScope": "local",
+   "regionName": "North Khorasan",
+   "cityName": "Bojnūrd",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "isna"
+  },
+  {
+   "sourceId": "ir-isna-birjand",
+   "countryCode": "IR",
+   "publisherName": "ISNA (Bīrjand)",
+   "publisherType": "news-agency",
+   "url": "https://www.isna.ir/rss/tp/296",
+   "geographicScope": "local",
+   "regionName": "South Khorasan Province",
+   "cityName": "Bīrjand",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "isna"
+  },
+  {
+   "sourceId": "ir-isna-mashhad",
+   "countryCode": "IR",
+   "publisherName": "ISNA (Mashhad)",
+   "publisherType": "news-agency",
+   "url": "https://www.isna.ir/rss/tp/266",
+   "geographicScope": "local",
+   "regionName": "Razavi Khorasan",
+   "cityName": "Mashhad",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "isna"
+  },
+  {
+   "sourceId": "ir-isna-ahvaz",
+   "countryCode": "IR",
+   "publisherName": "ISNA (Ahvaz)",
+   "publisherType": "news-agency",
+   "url": "https://www.isna.ir/rss/tp/307",
+   "geographicScope": "local",
+   "regionName": "Khuzestan",
+   "cityName": "Ahvaz",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "isna"
+  },
+  {
+   "sourceId": "ir-isna-zanjan",
+   "countryCode": "IR",
+   "publisherName": "ISNA (Zanjan)",
+   "publisherType": "news-agency",
+   "url": "https://www.isna.ir/rss/tp/268",
+   "geographicScope": "local",
+   "regionName": "Zanjan",
+   "cityName": "Zanjan",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "isna"
+  },
+  {
+   "sourceId": "ir-isna-shiraz",
+   "countryCode": "IR",
+   "publisherName": "ISNA (Shiraz)",
+   "publisherType": "news-agency",
+   "url": "https://www.isna.ir/rss/tp/274",
+   "geographicScope": "local",
+   "regionName": "Fars",
+   "cityName": "Shiraz",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "isna"
+  },
+  {
+   "sourceId": "ir-isna-qom",
+   "countryCode": "IR",
+   "publisherName": "ISNA (Qom)",
+   "publisherType": "news-agency",
+   "url": "https://www.isna.ir/rss/tp/276",
+   "geographicScope": "local",
+   "regionName": "Qom Province",
+   "cityName": "Qom",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "isna"
+  },
+  {
+   "sourceId": "ir-isna-qazvin",
+   "countryCode": "IR",
+   "publisherName": "ISNA (Qazvin)",
+   "publisherType": "news-agency",
+   "url": "https://www.isna.ir/rss/tp/231",
+   "geographicScope": "local",
+   "regionName": "Qazvin Province",
+   "cityName": "Qazvin",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "isna"
+  },
+  {
+   "sourceId": "ir-isna-semnan",
+   "countryCode": "IR",
+   "publisherName": "ISNA (Semnan)",
+   "publisherType": "news-agency",
+   "url": "https://www.isna.ir/rss/tp/270",
+   "geographicScope": "local",
+   "regionName": "Semnan",
+   "cityName": "Semnan",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "isna"
+  },
+  {
+   "sourceId": "ir-isna-zahedan",
+   "countryCode": "IR",
+   "publisherName": "ISNA (Zahedan)",
+   "publisherType": "news-agency",
+   "url": "https://www.isna.ir/rss/tp/272",
+   "geographicScope": "local",
+   "regionName": "Sistan and Baluchestan",
+   "cityName": "Zahedan",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "isna"
+  },
+  {
+   "sourceId": "ir-isna-sanandaj",
+   "countryCode": "IR",
+   "publisherName": "ISNA (Sanandaj)",
+   "publisherType": "news-agency",
+   "url": "https://www.isna.ir/rss/tp/229",
+   "geographicScope": "local",
+   "regionName": "Kurdistan Province",
+   "cityName": "Sanandaj",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "isna"
+  },
+  {
+   "sourceId": "ir-isna-kerman",
+   "countryCode": "IR",
+   "publisherName": "ISNA (Kerman)",
+   "publisherType": "news-agency",
+   "url": "https://www.isna.ir/rss/tp/278",
+   "geographicScope": "local",
+   "regionName": "Kerman",
+   "cityName": "Kerman",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "isna"
+  },
+  {
+   "sourceId": "ir-isna-kermanshah",
+   "countryCode": "IR",
+   "publisherName": "ISNA (Kermanshah)",
+   "publisherType": "news-agency",
+   "url": "https://www.isna.ir/rss/tp/305",
+   "geographicScope": "local",
+   "regionName": "Kermanshah Province",
+   "cityName": "Kermanshah",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "isna"
+  },
+  {
+   "sourceId": "ir-isna-yasuj",
+   "countryCode": "IR",
+   "publisherName": "ISNA (Yasuj)",
+   "publisherType": "news-agency",
+   "url": "https://www.isna.ir/rss/tp/280",
+   "geographicScope": "local",
+   "regionName": "Kohgiluyeh and Boyer-Ahmad",
+   "cityName": "Yasuj",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "isna"
+  },
+  {
+   "sourceId": "ir-isna-gorgan",
+   "countryCode": "IR",
+   "publisherName": "ISNA (Gorgān)",
+   "publisherType": "news-agency",
+   "url": "https://www.isna.ir/rss/tp/233",
+   "geographicScope": "local",
+   "regionName": "Golestan",
+   "cityName": "Gorgān",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "isna"
+  },
+  {
+   "sourceId": "ir-isna-rasht",
+   "countryCode": "IR",
+   "publisherName": "ISNA (Rasht)",
+   "publisherType": "news-agency",
+   "url": "https://www.isna.ir/rss/tp/282",
+   "geographicScope": "local",
+   "regionName": "Gilan Province",
+   "cityName": "Rasht",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "isna"
+  },
+  {
+   "sourceId": "ir-isna-khorramabad",
+   "countryCode": "IR",
+   "publisherName": "ISNA (Khorramabad)",
+   "publisherType": "news-agency",
+   "url": "https://www.isna.ir/rss/tp/284",
+   "geographicScope": "local",
+   "regionName": "Lorestan Province",
+   "cityName": "Khorramabad",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "isna"
+  },
+  {
+   "sourceId": "ir-isna-arak",
+   "countryCode": "IR",
+   "publisherName": "ISNA (Arāk)",
+   "publisherType": "news-agency",
+   "url": "https://www.isna.ir/rss/tp/288",
+   "geographicScope": "local",
+   "regionName": "Markazi",
+   "cityName": "Arāk",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "isna"
+  },
+  {
+   "sourceId": "ir-isna-sari",
+   "countryCode": "IR",
+   "publisherName": "ISNA (Sari)",
+   "publisherType": "news-agency",
+   "url": "https://www.isna.ir/rss/tp/286",
+   "geographicScope": "local",
+   "regionName": "Māzandarān",
+   "cityName": "Sari",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "isna"
+  },
+  {
+   "sourceId": "ir-isna-bandarabbas",
+   "countryCode": "IR",
+   "publisherName": "ISNA (Bandar Abbas)",
+   "publisherType": "news-agency",
+   "url": "https://www.isna.ir/rss/tp/290",
+   "geographicScope": "local",
+   "regionName": "Hormozgan",
+   "cityName": "Bandar Abbas",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "isna"
+  },
+  {
+   "sourceId": "ir-isna-hamadan",
+   "countryCode": "IR",
+   "publisherName": "ISNA (Hamadān)",
+   "publisherType": "news-agency",
+   "url": "https://www.isna.ir/rss/tp/292",
+   "geographicScope": "local",
+   "regionName": "Hamadan Province",
+   "cityName": "Hamadān",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "isna"
+  },
+  {
+   "sourceId": "ir-isna-yazd",
+   "countryCode": "IR",
+   "publisherName": "ISNA (Yazd)",
+   "publisherType": "news-agency",
+   "url": "https://www.isna.ir/rss/tp/294",
+   "geographicScope": "local",
+   "regionName": "Yazd Province",
+   "cityName": "Yazd",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "isna"
+  },
+  {
+   "sourceId": "ir-mehr-tabriz",
+   "countryCode": "IR",
+   "publisherName": "Mehr News Agency (Tabriz)",
+   "publisherType": "news-agency",
+   "url": "https://www.mehrnews.com/rss/tp/81",
+   "geographicScope": "local",
+   "regionName": "East Azerbaijan",
+   "cityName": "Tabriz",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "mehr"
+  },
+  {
+   "sourceId": "ir-mehr-urmia",
+   "countryCode": "IR",
+   "publisherName": "Mehr News Agency (Orūmīyeh)",
+   "publisherType": "news-agency",
+   "url": "https://www.mehrnews.com/rss/tp/85",
+   "geographicScope": "local",
+   "regionName": "West Azerbaijan",
+   "cityName": "Orūmīyeh",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "mehr"
+  },
+  {
+   "sourceId": "ir-mehr-isfahan",
+   "countryCode": "IR",
+   "publisherName": "Mehr News Agency (Isfahan)",
+   "publisherType": "news-agency",
+   "url": "https://www.mehrnews.com/rss/tp/82",
+   "geographicScope": "local",
+   "regionName": "Isfahan",
+   "cityName": "Isfahan",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "mehr"
+  },
+  {
+   "sourceId": "ir-mehr-ardabil",
+   "countryCode": "IR",
+   "publisherName": "Mehr News Agency (Ardabīl)",
+   "publisherType": "news-agency",
+   "url": "https://www.mehrnews.com/rss/tp/86",
+   "geographicScope": "local",
+   "regionName": "Ardabil Province",
+   "cityName": "Ardabīl",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "mehr"
+  },
+  {
+   "sourceId": "ir-mehr-karaj",
+   "countryCode": "IR",
+   "publisherName": "Mehr News Agency (Karaj)",
+   "publisherType": "news-agency",
+   "url": "https://www.mehrnews.com/rss/tp/106",
+   "geographicScope": "local",
+   "regionName": "Alborz Province",
+   "cityName": "Karaj",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "mehr"
+  },
+  {
+   "sourceId": "ir-mehr-ilam",
+   "countryCode": "IR",
+   "publisherName": "Mehr News Agency (Īlām)",
+   "publisherType": "news-agency",
+   "url": "https://www.mehrnews.com/rss/tp/84",
+   "geographicScope": "local",
+   "regionName": "Ilam Province",
+   "cityName": "Īlām",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "mehr"
+  },
+  {
+   "sourceId": "ir-mehr-bushehr",
+   "countryCode": "IR",
+   "publisherName": "Mehr News Agency (Bushehr)",
+   "publisherType": "news-agency",
+   "url": "https://www.mehrnews.com/rss/tp/90",
+   "geographicScope": "local",
+   "regionName": "Bushehr",
+   "cityName": "Bushehr",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "mehr"
+  },
+  {
+   "sourceId": "ir-mehr-tehran",
+   "countryCode": "IR",
+   "publisherName": "Mehr News Agency (Tehran)",
+   "publisherType": "news-agency",
+   "url": "https://www.mehrnews.com/rss/tp/107",
+   "geographicScope": "local",
+   "regionName": "Tehran",
+   "cityName": "Tehran",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "mehr"
+  },
+  {
+   "sourceId": "ir-mehr-shahrekord",
+   "countryCode": "IR",
+   "publisherName": "Mehr News Agency (Shahr-e Kord)",
+   "publisherType": "news-agency",
+   "url": "https://www.mehrnews.com/rss/tp/91",
+   "geographicScope": "local",
+   "regionName": "Chaharmahal and Bakhtiari",
+   "cityName": "Shahr-e Kord",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "mehr"
+  },
+  {
+   "sourceId": "ir-mehr-birjand",
+   "countryCode": "IR",
+   "publisherName": "Mehr News Agency (Bīrjand)",
+   "publisherType": "news-agency",
+   "url": "https://www.mehrnews.com/rss/tp/114",
+   "geographicScope": "local",
+   "regionName": "South Khorasan Province",
+   "cityName": "Bīrjand",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "mehr"
+  },
+  {
+   "sourceId": "ir-mehr-mashhad",
+   "countryCode": "IR",
+   "publisherName": "Mehr News Agency (Mashhad)",
+   "publisherType": "news-agency",
+   "url": "https://www.mehrnews.com/rss/tp/96",
+   "geographicScope": "local",
+   "regionName": "Razavi Khorasan",
+   "cityName": "Mashhad",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "mehr"
+  },
+  {
+   "sourceId": "ir-mehr-bojnurd",
+   "countryCode": "IR",
+   "publisherName": "Mehr News Agency (Bojnūrd)",
+   "publisherType": "news-agency",
+   "url": "https://www.mehrnews.com/rss/tp/83",
+   "geographicScope": "local",
+   "regionName": "North Khorasan",
+   "cityName": "Bojnūrd",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "mehr"
+  },
+  {
+   "sourceId": "ir-mehr-ahvaz",
+   "countryCode": "IR",
+   "publisherName": "Mehr News Agency (Ahvaz)",
+   "publisherType": "news-agency",
+   "url": "https://www.mehrnews.com/rss/tp/92",
+   "geographicScope": "local",
+   "regionName": "Khuzestan",
+   "cityName": "Ahvaz",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "mehr"
+  },
+  {
+   "sourceId": "ir-mehr-zanjan",
+   "countryCode": "IR",
+   "publisherName": "Mehr News Agency (Zanjan)",
+   "publisherType": "news-agency",
+   "url": "https://www.mehrnews.com/rss/tp/100",
+   "geographicScope": "local",
+   "regionName": "Zanjan",
+   "cityName": "Zanjan",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "mehr"
+  },
+  {
+   "sourceId": "ir-mehr-semnan",
+   "countryCode": "IR",
+   "publisherName": "Mehr News Agency (Semnan)",
+   "publisherType": "news-agency",
+   "url": "https://www.mehrnews.com/rss/tp/108",
+   "geographicScope": "local",
+   "regionName": "Semnan",
+   "cityName": "Semnan",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "mehr"
+  },
+  {
+   "sourceId": "ir-mehr-zahedan",
+   "countryCode": "IR",
+   "publisherName": "Mehr News Agency (Zahedan)",
+   "publisherType": "news-agency",
+   "url": "https://www.mehrnews.com/rss/tp/97",
+   "geographicScope": "local",
+   "regionName": "Sistan and Baluchestan",
+   "cityName": "Zahedan",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "mehr"
+  },
+  {
+   "sourceId": "ir-mehr-shiraz",
+   "countryCode": "IR",
+   "publisherName": "Mehr News Agency (Shiraz)",
+   "publisherType": "news-agency",
+   "url": "https://www.mehrnews.com/rss/tp/93",
+   "geographicScope": "local",
+   "regionName": "Fars",
+   "cityName": "Shiraz",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "mehr"
+  },
+  {
+   "sourceId": "ir-mehr-qazvin",
+   "countryCode": "IR",
+   "publisherName": "Mehr News Agency (Qazvin)",
+   "publisherType": "news-agency",
+   "url": "https://www.mehrnews.com/rss/tp/109",
+   "geographicScope": "local",
+   "regionName": "Qazvin Province",
+   "cityName": "Qazvin",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "mehr"
+  },
+  {
+   "sourceId": "ir-mehr-qom",
+   "countryCode": "IR",
+   "publisherName": "Mehr News Agency (Qom)",
+   "publisherType": "news-agency",
+   "url": "https://www.mehrnews.com/rss/tp/110",
+   "geographicScope": "local",
+   "regionName": "Qom Province",
+   "cityName": "Qom",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "mehr"
+  },
+  {
+   "sourceId": "ir-mehr-sanandaj",
+   "countryCode": "IR",
+   "publisherName": "Mehr News Agency (Sanandaj)",
+   "publisherType": "news-agency",
+   "url": "https://www.mehrnews.com/rss/tp/101",
+   "geographicScope": "local",
+   "regionName": "Kurdistan Province",
+   "cityName": "Sanandaj",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "mehr"
+  },
+  {
+   "sourceId": "ir-mehr-kerman",
+   "countryCode": "IR",
+   "publisherName": "Mehr News Agency (Kerman)",
+   "publisherType": "news-agency",
+   "url": "https://www.mehrnews.com/rss/tp/98",
+   "geographicScope": "local",
+   "regionName": "Kerman",
+   "cityName": "Kerman",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "mehr"
+  },
+  {
+   "sourceId": "ir-mehr-kermanshah",
+   "countryCode": "IR",
+   "publisherName": "Mehr News Agency (Kermanshah)",
+   "publisherType": "news-agency",
+   "url": "https://www.mehrnews.com/rss/tp/102",
+   "geographicScope": "local",
+   "regionName": "Kermanshah Province",
+   "cityName": "Kermanshah",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "mehr"
+  },
+  {
+   "sourceId": "ir-mehr-yasuj",
+   "countryCode": "IR",
+   "publisherName": "Mehr News Agency (Yasuj)",
+   "publisherType": "news-agency",
+   "url": "https://www.mehrnews.com/rss/tp/94",
+   "geographicScope": "local",
+   "regionName": "Kohgiluyeh and Boyer-Ahmad",
+   "cityName": "Yasuj",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "mehr"
+  },
+  {
+   "sourceId": "ir-mehr-gorgan",
+   "countryCode": "IR",
+   "publisherName": "Mehr News Agency (Gorgān)",
+   "publisherType": "news-agency",
+   "url": "https://www.mehrnews.com/rss/tp/87",
+   "geographicScope": "local",
+   "regionName": "Golestan",
+   "cityName": "Gorgān",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "mehr"
+  },
+  {
+   "sourceId": "ir-mehr-rasht",
+   "countryCode": "IR",
+   "publisherName": "Mehr News Agency (Rasht)",
+   "publisherType": "news-agency",
+   "url": "https://www.mehrnews.com/rss/tp/88",
+   "geographicScope": "local",
+   "regionName": "Gilan Province",
+   "cityName": "Rasht",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "mehr"
+  },
+  {
+   "sourceId": "ir-mehr-khorramabad",
+   "countryCode": "IR",
+   "publisherName": "Mehr News Agency (Khorramabad)",
+   "publisherType": "news-agency",
+   "url": "https://www.mehrnews.com/rss/tp/103",
+   "geographicScope": "local",
+   "regionName": "Lorestan Province",
+   "cityName": "Khorramabad",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "mehr"
+  },
+  {
+   "sourceId": "ir-mehr-sari",
+   "countryCode": "IR",
+   "publisherName": "Mehr News Agency (Sari)",
+   "publisherType": "news-agency",
+   "url": "https://www.mehrnews.com/rss/tp/89",
+   "geographicScope": "local",
+   "regionName": "Māzandarān",
+   "cityName": "Sari",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "mehr"
+  },
+  {
+   "sourceId": "ir-mehr-arak",
+   "countryCode": "IR",
+   "publisherName": "Mehr News Agency (Arāk)",
+   "publisherType": "news-agency",
+   "url": "https://www.mehrnews.com/rss/tp/111",
+   "geographicScope": "local",
+   "regionName": "Markazi",
+   "cityName": "Arāk",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "mehr"
+  },
+  {
+   "sourceId": "ir-mehr-bandarabbas",
+   "countryCode": "IR",
+   "publisherName": "Mehr News Agency (Bandar Abbas)",
+   "publisherType": "news-agency",
+   "url": "https://www.mehrnews.com/rss/tp/95",
+   "geographicScope": "local",
+   "regionName": "Hormozgan",
+   "cityName": "Bandar Abbas",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "mehr"
+  },
+  {
+   "sourceId": "ir-mehr-hamadan",
+   "countryCode": "IR",
+   "publisherName": "Mehr News Agency (Hamadān)",
+   "publisherType": "news-agency",
+   "url": "https://www.mehrnews.com/rss/tp/104",
+   "geographicScope": "local",
+   "regionName": "Hamadan Province",
+   "cityName": "Hamadān",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "mehr"
+  },
+  {
+   "sourceId": "ir-mehr-yazd",
+   "countryCode": "IR",
+   "publisherName": "Mehr News Agency (Yazd)",
+   "publisherType": "news-agency",
+   "url": "https://www.mehrnews.com/rss/tp/99",
+   "geographicScope": "local",
+   "regionName": "Yazd Province",
+   "cityName": "Yazd",
+   "languageTags": [
+    "fa-IR"
+   ],
+   "group": "mehr"
+  },
+  {
+   "sourceId": "sa-okaz-local",
+   "countryCode": "SA",
+   "publisherName": "Okaz",
+   "publisherType": "newspaper",
+   "url": "https://www.okaz.com.sa/rssFeed/0",
+   "geographicScope": "local",
+   "regionName": "Mecca Region",
+   "cityName": "Jeddah",
+   "languageTags": [
+    "ar-SA"
+   ],
+   "group": "okaz"
+  },
+  {
+   "sourceId": "sa-saudigazette",
+   "countryCode": "SA",
+   "publisherName": "Saudi Gazette",
+   "publisherType": "newspaper",
+   "url": "https://saudigazette.com.sa/rssFeed/0",
+   "geographicScope": "local",
+   "regionName": "Mecca Region",
+   "cityName": "Jeddah",
+   "languageTags": [
+    "en-SA"
+   ],
+   "group": "okaz"
+  },
+  {
+   "sourceId": "sa-albiladdaily",
+   "countryCode": "SA",
+   "publisherName": "Al Bilad",
+   "publisherType": "newspaper",
+   "url": "https://www.albiladdaily.com/feed",
+   "geographicScope": "local",
+   "regionName": "Mecca Region",
+   "cityName": "Jeddah",
+   "languageTags": [
+    "ar-SA"
+   ],
+   "group": "al-bilad-sa"
+  },
+  {
+   "sourceId": "sa-alwatan-regions",
+   "countryCode": "SA",
+   "publisherName": "Al Watan",
+   "publisherType": "newspaper",
+   "url": "https://www.alwatan.com.sa/rssFeed/41",
+   "geographicScope": "local",
+   "regionName": "'Asir Region",
+   "cityName": "Abha",
+   "languageTags": [
+    "ar-SA"
+   ],
+   "group": "alwatan-sa"
+  },
+  {
+   "sourceId": "sa-alyaum",
+   "countryCode": "SA",
+   "publisherName": "Al Yaum",
+   "publisherType": "newspaper",
+   "url": "https://www.alyaum.com/rssFeed/0",
+   "geographicScope": "local",
+   "regionName": "Eastern Province",
+   "cityName": "Dammam",
+   "languageTags": [
+    "ar-SA"
+   ],
+   "group": "dar-alyaum"
+  },
+  {
+   "sourceId": "sa-aljazirah-local",
+   "countryCode": "SA",
+   "publisherName": "Al Jazirah",
+   "publisherType": "newspaper",
+   "url": "https://www.al-jazirah.com/rss/ln.xml",
+   "geographicScope": "local",
+   "regionName": "Riyadh Region",
+   "cityName": "Riyadh",
+   "languageTags": [
+    "ar-SA"
+   ],
+   "group": "al-jazirah"
+  },
+  {
+   "sourceId": "sa-ajel",
+   "countryCode": "SA",
+   "publisherName": "Ajel",
+   "publisherType": "digital-native",
+   "url": "https://ajel.sa/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Riyadh Region",
+   "cityName": "Riyadh",
+   "languageTags": [
+    "ar-SA"
+   ],
+   "group": "ajel"
+  },
+  {
+   "sourceId": "sa-almowaten",
+   "countryCode": "SA",
+   "publisherName": "Al Mowaten",
+   "publisherType": "digital-native",
+   "url": "https://www.almowaten.net/feed",
+   "geographicScope": "local",
+   "regionName": "Riyadh Region",
+   "cityName": "Riyadh",
+   "languageTags": [
+    "ar-SA"
+   ],
+   "group": "almowaten"
+  },
+  {
+   "sourceId": "sa-akhbaar24",
+   "countryCode": "SA",
+   "publisherName": "Akhbaar24",
+   "publisherType": "digital-native",
+   "url": "https://www.akhbaar24.com/rss",
+   "geographicScope": "local",
+   "regionName": "Riyadh Region",
+   "cityName": "Riyadh",
+   "languageTags": [
+    "ar-SA"
+   ],
+   "group": "akhbaar24"
+  },
+  {
+   "sourceId": "ae-gulfnews-dubai",
+   "countryCode": "AE",
+   "publisherName": "Gulf News",
+   "publisherType": "newspaper",
+   "url": "https://gulfnews.com/api/v1/collections/dubai.rss",
+   "geographicScope": "local",
+   "regionName": "Dubai",
+   "cityName": "Dubai",
+   "languageTags": [
+    "en-AE"
+   ],
+   "group": "al-nisr-gulf-news"
+  },
+  {
+   "sourceId": "ae-gulfnews-abudhabi",
+   "countryCode": "AE",
+   "publisherName": "Gulf News",
+   "publisherType": "newspaper",
+   "url": "https://gulfnews.com/api/v1/collections/abu-dhabi.rss",
+   "geographicScope": "local",
+   "regionName": "Abu Dhabi",
+   "cityName": "Abu Dhabi",
+   "languageTags": [
+    "en-AE"
+   ],
+   "group": "al-nisr-gulf-news"
+  },
+  {
+   "sourceId": "ae-gulfnews-sharjah",
+   "countryCode": "AE",
+   "publisherName": "Gulf News",
+   "publisherType": "newspaper",
+   "url": "https://gulfnews.com/api/v1/collections/sharjah.rss",
+   "geographicScope": "local",
+   "regionName": "Sharjah",
+   "cityName": "Sharjah",
+   "languageTags": [
+    "en-AE"
+   ],
+   "group": "al-nisr-gulf-news"
+  },
+  {
+   "sourceId": "ae-gulfnews-ajman",
+   "countryCode": "AE",
+   "publisherName": "Gulf News",
+   "publisherType": "newspaper",
+   "url": "https://gulfnews.com/api/v1/collections/ajman.rss",
+   "geographicScope": "local",
+   "regionName": "Ajman",
+   "cityName": "Ajman",
+   "languageTags": [
+    "en-AE"
+   ],
+   "group": "al-nisr-gulf-news"
+  },
+  {
+   "sourceId": "ae-gulfnews-fujairah",
+   "countryCode": "AE",
+   "publisherName": "Gulf News",
+   "publisherType": "newspaper",
+   "url": "https://gulfnews.com/api/v1/collections/fujairah.rss",
+   "geographicScope": "local",
+   "regionName": "Fujairah",
+   "cityName": "Fujairah",
+   "languageTags": [
+    "en-AE"
+   ],
+   "group": "al-nisr-gulf-news"
+  },
+  {
+   "sourceId": "ae-gulfnews-ummalquwain",
+   "countryCode": "AE",
+   "publisherName": "Gulf News",
+   "publisherType": "newspaper",
+   "url": "https://gulfnews.com/api/v1/collections/umm-al-quwain.rss",
+   "geographicScope": "local",
+   "regionName": "Umm Al Quwain",
+   "cityName": "Umm Al Quwain City",
+   "languageTags": [
+    "en-AE"
+   ],
+   "group": "al-nisr-gulf-news"
+  },
+  {
+   "sourceId": "qa-alwatan-local",
+   "countryCode": "QA",
+   "publisherName": "Al Watan",
+   "publisherType": "newspaper",
+   "url": "https://www.al-watan.com/rssFeed/48",
+   "geographicScope": "local",
+   "regionName": "Baladiyat ad Dawhah",
+   "cityName": "Doha",
+   "languageTags": [
+    "ar-QA"
+   ],
+   "group": "al-watan-qa"
+  },
+  {
+   "sourceId": "ae-emaratalyoum-local",
+   "countryCode": "AE",
+   "publisherName": "Emarat Al Youm",
+   "publisherType": "newspaper",
+   "url": "https://www.emaratalyoum.com/1.533091?ot=ot.AjaxPageLayout",
+   "geographicScope": "local",
+   "regionName": "Dubai",
+   "cityName": "Dubai",
+   "languageTags": [
+    "ar-AE"
+   ],
+   "group": "dubai-media"
+  },
+  {
+   "sourceId": "qa-dohanews",
+   "countryCode": "QA",
+   "publisherName": "Doha News",
+   "publisherType": "digital-native",
+   "url": "https://dohanews.co/feed/",
+   "geographicScope": "local",
+   "regionName": "Baladiyat ad Dawhah",
+   "cityName": "Doha",
+   "languageTags": [
+    "en-QA"
+   ],
+   "group": "doha-news"
+  },
+  {
+   "sourceId": "qa-qatartribune-nation",
+   "countryCode": "QA",
+   "publisherName": "Qatar Tribune",
+   "publisherType": "newspaper",
+   "url": "https://www.qatar-tribune.com/rssFeed/63",
+   "geographicScope": "local",
+   "regionName": "Baladiyat ad Dawhah",
+   "cityName": "Doha",
+   "languageTags": [
+    "en-QA"
+   ],
+   "group": "qatar-tribune"
+  },
+  {
+   "sourceId": "qa-gulftimes-local",
+   "countryCode": "QA",
+   "publisherName": "Gulf Times",
+   "publisherType": "newspaper",
+   "url": "https://www.gulf-times.com/rssFeed/8",
+   "geographicScope": "local",
+   "regionName": "Baladiyat ad Dawhah",
+   "cityName": "Doha",
+   "languageTags": [
+    "en-QA"
+   ],
+   "group": "gulf-times"
+  },
+  {
+   "sourceId": "qa-alsharq",
+   "countryCode": "QA",
+   "publisherName": "Al Sharq",
+   "publisherType": "newspaper",
+   "url": "https://al-sharq.com/rss/latestNews",
+   "geographicScope": "local",
+   "regionName": "Baladiyat ad Dawhah",
+   "cityName": "Doha",
+   "languageTags": [
+    "ar-QA"
+   ],
+   "group": "dar-al-sharq"
+  },
+  {
+   "sourceId": "kw-kuwaittimes-kuwait",
+   "countryCode": "KW",
+   "publisherName": "Kuwait Times",
+   "publisherType": "newspaper",
+   "url": "https://www.kuwaittimes.com/rssFeed/14",
+   "geographicScope": "local",
+   "regionName": "Al Asimah",
+   "cityName": "Kuwait City",
+   "languageTags": [
+    "en-KW"
+   ],
+   "group": "kuwait-times"
+  },
+  {
+   "sourceId": "kw-arabtimes",
+   "countryCode": "KW",
+   "publisherName": "Arab Times",
+   "publisherType": "newspaper",
+   "url": "https://www.arabtimesonline.com/rssFeed/1",
+   "geographicScope": "local",
+   "regionName": "Al Asimah",
+   "cityName": "Kuwait City",
+   "languageTags": [
+    "en-KW"
+   ],
+   "group": "al-seyassah"
+  },
+  {
+   "sourceId": "om-omandaily-local",
+   "countryCode": "OM",
+   "publisherName": "Oman Daily",
+   "publisherType": "newspaper",
+   "url": "https://www.omandaily.om/rssFeed/38",
+   "geographicScope": "local",
+   "regionName": "Muscat",
+   "cityName": "Muscat",
+   "languageTags": [
+    "ar-OM"
+   ],
+   "group": "oman-establishment-press"
+  },
+  {
+   "sourceId": "om-alroya",
+   "countryCode": "OM",
+   "publisherName": "Al Roya",
+   "publisherType": "newspaper",
+   "url": "https://www.alroya.om/rss",
+   "geographicScope": "local",
+   "regionName": "Muscat",
+   "cityName": "Muscat",
+   "languageTags": [
+    "ar-OM"
+   ],
+   "group": "alroya-om"
+  },
+  {
+   "sourceId": "om-alwatan",
+   "countryCode": "OM",
+   "publisherName": "Al Watan",
+   "publisherType": "newspaper",
+   "url": "https://www.alwatan.com/rssFeed/1",
+   "geographicScope": "local",
+   "regionName": "Muscat",
+   "cityName": "Muscat",
+   "languageTags": [
+    "ar-OM"
+   ],
+   "group": "alwatan-om"
+  },
+  {
+   "sourceId": "om-atheer",
+   "countryCode": "OM",
+   "publisherName": "Atheer",
+   "publisherType": "digital-native",
+   "url": "https://www.atheer.om/arc/outboundfeeds/rss/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "Muscat",
+   "cityName": "Muscat",
+   "languageTags": [
+    "ar-OM"
+   ],
+   "group": "atheer"
+  },
+  {
+   "sourceId": "ye-adentime",
+   "countryCode": "YE",
+   "publisherName": "Aden Time",
+   "publisherType": "digital-native",
+   "url": "https://www.aden-tm.net/feed",
+   "geographicScope": "local",
+   "regionName": "Aden",
+   "cityName": "Aden",
+   "languageTags": [
+    "ar-YE"
+   ],
+   "group": "aden-time"
+  },
+  {
+   "sourceId": "ye-aden24",
+   "countryCode": "YE",
+   "publisherName": "Aden 24",
+   "publisherType": "digital-native",
+   "url": "https://www.aden24.net/feed",
+   "geographicScope": "local",
+   "regionName": "Aden",
+   "cityName": "Aden",
+   "languageTags": [
+    "ar-YE"
+   ],
+   "group": "aden24"
+  },
+  {
+   "sourceId": "ye-4may",
+   "countryCode": "YE",
+   "publisherName": "4 May",
+   "publisherType": "newspaper",
+   "url": "https://www.4may.net/feed",
+   "geographicScope": "local",
+   "regionName": "Aden",
+   "cityName": "Aden",
+   "languageTags": [
+    "ar-YE"
+   ],
+   "group": "4may"
+  },
+  {
+   "sourceId": "ye-taiz24",
+   "countryCode": "YE",
+   "publisherName": "Taiz 24",
+   "publisherType": "digital-native",
+   "url": "https://www.taiz24.net/feed",
+   "geographicScope": "local",
+   "regionName": "Ta‘izz",
+   "cityName": "Taiz",
+   "languageTags": [
+    "ar-YE"
+   ],
+   "group": "taiz24"
+  },
+  {
+   "sourceId": "ye-khabaragency",
+   "countryCode": "YE",
+   "publisherName": "Khabar News Agency",
+   "publisherType": "news-agency",
+   "url": "https://www.khabaragency.net/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Amanat Alasimah",
+   "cityName": "Sanaa",
+   "languageTags": [
+    "ar-YE"
+   ],
+   "group": "khabar-agency"
+  }
+ ]
+}

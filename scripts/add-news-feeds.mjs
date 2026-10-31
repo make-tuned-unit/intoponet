@@ -41,8 +41,15 @@ async function check(url) {
 const seenIds = new Set(evidence.feeds.map((feed) => feed.sourceId))
 const seenUrls = new Set(evidence.feeds.map((feed) => feed.url))
 const added = [], rejected = []
-const results = await Promise.all(research.candidates.map(async (candidate) => {
-  try { return { candidate, result: await check(candidate.url) } } catch (error) { return { candidate, error: String(error?.cause?.code ?? error?.name ?? error).slice(0, 60) } }
+// A few at a time: hundreds of simultaneous connections time out on slow hosts.
+const results = new Array(research.candidates.length)
+let next = 0
+await Promise.all(Array.from({ length: 16 }, async () => {
+  while (next < research.candidates.length) {
+    const index = next++
+    const candidate = research.candidates[index]
+    try { results[index] = { candidate, result: await check(candidate.url) } } catch (error) { results[index] = { candidate, error: String(error?.cause?.code ?? error?.name ?? error).slice(0, 60) } }
+  }
 }))
 for (const { candidate, result, error } of results) {
   const reason = error ?? (result.status !== 200 ? `HTTP ${result.status}`

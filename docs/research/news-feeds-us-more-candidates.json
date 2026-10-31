@@ -1,0 +1,2834 @@
+{
+ "region": "United States (more states and cities)",
+ "note": "Fills US gaps: a regional outlet for every state and DC, and local outlets for the top ~80 gazetteer cities (2+ for the 15 biggest metros).",
+ "candidates": [
+  {
+   "sourceId": "us-capitol-news-illinois",
+   "countryCode": "US",
+   "publisherName": "Capitol News Illinois",
+   "publisherType": "digital-native",
+   "url": "https://capitolnewsillinois.com/feed/",
+   "geographicScope": "regional",
+   "regionName": "Illinois",
+   "cityName": null,
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-capitol-news-illinois"
+  },
+  {
+   "sourceId": "us-commonwealth-beacon",
+   "countryCode": "US",
+   "publisherName": "CommonWealth Beacon",
+   "publisherType": "digital-native",
+   "url": "https://commonwealthbeacon.org/feed/",
+   "geographicScope": "regional",
+   "regionName": "Massachusetts",
+   "cityName": null,
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-commonwealth-beacon"
+  },
+  {
+   "sourceId": "us-ny-focus",
+   "countryCode": "US",
+   "publisherName": "New York Focus",
+   "publisherType": "digital-native",
+   "url": "https://nysfocus.com/feed/",
+   "geographicScope": "regional",
+   "regionName": "New York",
+   "cityName": null,
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-ny-focus"
+  },
+  {
+   "sourceId": "us-city-and-state-ny",
+   "countryCode": "US",
+   "publisherName": "City & State New York",
+   "publisherType": "magazine",
+   "url": "https://www.cityandstateny.com/rss/all/",
+   "geographicScope": "regional",
+   "regionName": "New York",
+   "cityName": null,
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-city-and-state-ny"
+  },
+  {
+   "sourceId": "us-wamu",
+   "countryCode": "US",
+   "publisherName": "WAMU",
+   "publisherType": "public-broadcaster",
+   "url": "https://wamu.org/feed/",
+   "geographicScope": "regional",
+   "regionName": "District of Columbia",
+   "cityName": null,
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-wamu"
+  },
+  {
+   "sourceId": "us-texas-standard",
+   "countryCode": "US",
+   "publisherName": "Texas Standard",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.texasstandard.org/feed/",
+   "geographicScope": "regional",
+   "regionName": "Texas",
+   "cityName": null,
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-texas-standard"
+  },
+  {
+   "sourceId": "us-wunc",
+   "countryCode": "US",
+   "publisherName": "WUNC",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.wunc.org/news.rss",
+   "geographicScope": "regional",
+   "regionName": "North Carolina",
+   "cityName": null,
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-wunc"
+  },
+  {
+   "sourceId": "us-nevada-independent",
+   "countryCode": "US",
+   "publisherName": "The Nevada Independent",
+   "publisherType": "digital-native",
+   "url": "https://thenevadaindependent.com/feed",
+   "geographicScope": "regional",
+   "regionName": "Nevada",
+   "cityName": null,
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-nevada-independent"
+  },
+  {
+   "sourceId": "us-nj-spotlight",
+   "countryCode": "US",
+   "publisherName": "NJ Spotlight News",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.njspotlightnews.org/feed/",
+   "geographicScope": "regional",
+   "regionName": "New Jersey",
+   "cityName": null,
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-nj-spotlight"
+  },
+  {
+   "sourceId": "us-oklahoma-watch",
+   "countryCode": "US",
+   "publisherName": "Oklahoma Watch",
+   "publisherType": "digital-native",
+   "url": "https://oklahomawatch.org/feed/",
+   "geographicScope": "regional",
+   "regionName": "Oklahoma",
+   "cityName": null,
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-oklahoma-watch"
+  },
+  {
+   "sourceId": "us-flatwater-free-press",
+   "countryCode": "US",
+   "publisherName": "Flatwater Free Press",
+   "publisherType": "digital-native",
+   "url": "https://flatwaterfreepress.org/feed/",
+   "geographicScope": "regional",
+   "regionName": "Nebraska",
+   "cityName": null,
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-flatwater-free-press"
+  },
+  {
+   "sourceId": "us-wpr",
+   "countryCode": "US",
+   "publisherName": "Wisconsin Public Radio",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.wpr.org/feed",
+   "geographicScope": "regional",
+   "regionName": "Wisconsin",
+   "cityName": null,
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-wpr"
+  },
+  {
+   "sourceId": "us-bridge-michigan",
+   "countryCode": "US",
+   "publisherName": "Bridge Michigan",
+   "publisherType": "digital-native",
+   "url": "https://www.bridgemi.com/rss.xml",
+   "geographicScope": "regional",
+   "regionName": "Michigan",
+   "cityName": null,
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-bridge-michigan"
+  },
+  {
+   "sourceId": "us-mpr-news",
+   "countryCode": "US",
+   "publisherName": "MPR News",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.mprnews.org/feed/homepage",
+   "geographicScope": "regional",
+   "regionName": "Minnesota",
+   "cityName": null,
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-mpr-news"
+  },
+  {
+   "sourceId": "us-amny",
+   "countryCode": "US",
+   "publisherName": "amNY",
+   "publisherType": "newspaper",
+   "url": "https://www.amny.com/feed/",
+   "geographicScope": "local",
+   "regionName": "New York",
+   "cityName": "New York City",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "schneps"
+  },
+  {
+   "sourceId": "us-brooklyn-paper",
+   "countryCode": "US",
+   "publisherName": "Brooklyn Paper",
+   "publisherType": "newspaper",
+   "url": "https://www.brooklynpaper.com/feed/",
+   "geographicScope": "local",
+   "regionName": "New York",
+   "cityName": "Brooklyn",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "schneps"
+  },
+  {
+   "sourceId": "us-qns",
+   "countryCode": "US",
+   "publisherName": "QNS",
+   "publisherType": "newspaper",
+   "url": "https://qns.com/feed/",
+   "geographicScope": "local",
+   "regionName": "New York",
+   "cityName": "Queens",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "schneps"
+  },
+  {
+   "sourceId": "us-bronx-times",
+   "countryCode": "US",
+   "publisherName": "Bronx Times",
+   "publisherType": "newspaper",
+   "url": "https://www.bxtimes.com/feed/",
+   "geographicScope": "local",
+   "regionName": "New York",
+   "cityName": "The Bronx",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "schneps"
+  },
+  {
+   "sourceId": "us-silive",
+   "countryCode": "US",
+   "publisherName": "Staten Island Advance",
+   "publisherType": "newspaper",
+   "url": "https://www.silive.com/arc/outboundfeeds/rss/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "New York",
+   "cityName": "Staten Island",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "advance"
+  },
+  {
+   "sourceId": "us-west-side-rag",
+   "countryCode": "US",
+   "publisherName": "West Side Rag",
+   "publisherType": "digital-native",
+   "url": "https://www.westsiderag.com/feed",
+   "geographicScope": "local",
+   "regionName": "New York",
+   "cityName": "Manhattan",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-west-side-rag"
+  },
+  {
+   "sourceId": "us-la-taco",
+   "countryCode": "US",
+   "publisherName": "L.A. Taco",
+   "publisherType": "digital-native",
+   "url": "https://lataco.com/feed/",
+   "geographicScope": "local",
+   "regionName": "California",
+   "cityName": "Los Angeles",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-la-taco"
+  },
+  {
+   "sourceId": "us-knock-la",
+   "countryCode": "US",
+   "publisherName": "Knock LA",
+   "publisherType": "digital-native",
+   "url": "https://knock-la.com/feed",
+   "geographicScope": "local",
+   "regionName": "California",
+   "cityName": "Los Angeles",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-knock-la"
+  },
+  {
+   "sourceId": "us-wbez",
+   "countryCode": "US",
+   "publisherName": "WBEZ Chicago",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.wbez.org/rss/index.xml",
+   "geographicScope": "local",
+   "regionName": "Illinois",
+   "cityName": "Chicago",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-wbez"
+  },
+  {
+   "sourceId": "us-kjzz",
+   "countryCode": "US",
+   "publisherName": "KJZZ",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.kjzz.org/news.rss",
+   "geographicScope": "local",
+   "regionName": "Arizona",
+   "cityName": "Phoenix",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-kjzz"
+  },
+  {
+   "sourceId": "us-phoenix-new-times",
+   "countryCode": "US",
+   "publisherName": "Phoenix New Times",
+   "publisherType": "newspaper",
+   "url": "https://www.phoenixnewtimes.com/phoenix/Rss.xml",
+   "geographicScope": "local",
+   "regionName": "Arizona",
+   "cityName": "Phoenix",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-phoenix-new-times"
+  },
+  {
+   "sourceId": "us-inquirer",
+   "countryCode": "US",
+   "publisherName": "The Philadelphia Inquirer",
+   "publisherType": "newspaper",
+   "url": "https://www.inquirer.com/arc/outboundfeeds/rss/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "Pennsylvania",
+   "cityName": "Philadelphia",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-inquirer"
+  },
+  {
+   "sourceId": "us-billy-penn",
+   "countryCode": "US",
+   "publisherName": "Billy Penn",
+   "publisherType": "digital-native",
+   "url": "https://billypenn.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Pennsylvania",
+   "cityName": "Philadelphia",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "whyy"
+  },
+  {
+   "sourceId": "us-san-antonio-report",
+   "countryCode": "US",
+   "publisherName": "San Antonio Report",
+   "publisherType": "digital-native",
+   "url": "https://sanantonioreport.org/feed/",
+   "geographicScope": "local",
+   "regionName": "Texas",
+   "cityName": "San Antonio",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-san-antonio-report"
+  },
+  {
+   "sourceId": "us-kpbs",
+   "countryCode": "US",
+   "publisherName": "KPBS",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.kpbs.org/index.rss",
+   "geographicScope": "local",
+   "regionName": "California",
+   "cityName": "San Diego",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-kpbs"
+  },
+  {
+   "sourceId": "us-dallas-observer",
+   "countryCode": "US",
+   "publisherName": "Dallas Observer",
+   "publisherType": "newspaper",
+   "url": "https://www.dallasobserver.com/dallas/Rss.xml",
+   "geographicScope": "local",
+   "regionName": "Texas",
+   "cityName": "Dallas",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-dallas-observer"
+  },
+  {
+   "sourceId": "us-fort-worth-report",
+   "countryCode": "US",
+   "publisherName": "Fort Worth Report",
+   "publisherType": "digital-native",
+   "url": "https://fortworthreport.org/feed/",
+   "geographicScope": "local",
+   "regionName": "Texas",
+   "cityName": "Fort Worth",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-fort-worth-report"
+  },
+  {
+   "sourceId": "us-jacksonville-today",
+   "countryCode": "US",
+   "publisherName": "Jacksonville Today",
+   "publisherType": "digital-native",
+   "url": "https://jaxtoday.org/feed/",
+   "geographicScope": "local",
+   "regionName": "Florida",
+   "cityName": "Jacksonville",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "wjct"
+  },
+  {
+   "sourceId": "us-kut",
+   "countryCode": "US",
+   "publisherName": "KUT News",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.kut.org/austin.rss",
+   "geographicScope": "local",
+   "regionName": "Texas",
+   "cityName": "Austin",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-kut"
+  },
+  {
+   "sourceId": "us-wosu",
+   "countryCode": "US",
+   "publisherName": "WOSU News",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.wosu.org/news.rss",
+   "geographicScope": "local",
+   "regionName": "Ohio",
+   "cityName": "Columbus",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-wosu"
+  },
+  {
+   "sourceId": "us-wfae",
+   "countryCode": "US",
+   "publisherName": "WFAE",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.wfae.org/news.rss",
+   "geographicScope": "local",
+   "regionName": "North Carolina",
+   "cityName": "Charlotte",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-wfae"
+  },
+  {
+   "sourceId": "us-mirror-indy",
+   "countryCode": "US",
+   "publisherName": "Mirror Indy",
+   "publisherType": "digital-native",
+   "url": "https://mirrorindy.org/feed/",
+   "geographicScope": "local",
+   "regionName": "Indiana",
+   "cityName": "Indianapolis",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-mirror-indy"
+  },
+  {
+   "sourceId": "us-sentinel-colorado",
+   "countryCode": "US",
+   "publisherName": "Sentinel Colorado",
+   "publisherType": "newspaper",
+   "url": "https://sentinelcolorado.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Colorado",
+   "cityName": "Aurora",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-sentinel-colorado"
+  },
+  {
+   "sourceId": "us-washington-informer",
+   "countryCode": "US",
+   "publisherName": "The Washington Informer",
+   "publisherType": "newspaper",
+   "url": "https://www.washingtoninformer.com/feed/",
+   "geographicScope": "local",
+   "regionName": "District of Columbia",
+   "cityName": "Washington",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-washington-informer"
+  },
+  {
+   "sourceId": "us-washington-blade",
+   "countryCode": "US",
+   "publisherName": "Washington Blade",
+   "publisherType": "newspaper",
+   "url": "https://www.washingtonblade.com/feed/",
+   "geographicScope": "local",
+   "regionName": "District of Columbia",
+   "cityName": "Washington",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-washington-blade"
+  },
+  {
+   "sourceId": "us-wpln",
+   "countryCode": "US",
+   "publisherName": "WPLN News",
+   "publisherType": "public-broadcaster",
+   "url": "https://wpln.org/feed/",
+   "geographicScope": "local",
+   "regionName": "Tennessee",
+   "cityName": "Nashville",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-wpln"
+  },
+  {
+   "sourceId": "us-kosu",
+   "countryCode": "US",
+   "publisherName": "KOSU",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.kosu.org/news.rss",
+   "geographicScope": "local",
+   "regionName": "Oklahoma",
+   "cityName": "Oklahoma City",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-kosu"
+  },
+  {
+   "sourceId": "us-el-paso-matters",
+   "countryCode": "US",
+   "publisherName": "El Paso Matters",
+   "publisherType": "digital-native",
+   "url": "https://elpasomatters.org/feed/",
+   "geographicScope": "local",
+   "regionName": "Texas",
+   "cityName": "El Paso",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-el-paso-matters"
+  },
+  {
+   "sourceId": "us-universal-hub",
+   "countryCode": "US",
+   "publisherName": "Universal Hub",
+   "publisherType": "digital-native",
+   "url": "https://www.universalhub.com/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Massachusetts",
+   "cityName": "Boston",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-universal-hub"
+  },
+  {
+   "sourceId": "us-boston-com",
+   "countryCode": "US",
+   "publisherName": "Boston.com",
+   "publisherType": "digital-native",
+   "url": "https://www.boston.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Massachusetts",
+   "cityName": "Boston",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "boston-globe"
+  },
+  {
+   "sourceId": "us-oregonlive",
+   "countryCode": "US",
+   "publisherName": "The Oregonian/OregonLive",
+   "publisherType": "newspaper",
+   "url": "https://www.oregonlive.com/arc/outboundfeeds/rss/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "Oregon",
+   "cityName": "Portland",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "advance"
+  },
+  {
+   "sourceId": "us-wdet",
+   "countryCode": "US",
+   "publisherName": "WDET",
+   "publisherType": "public-broadcaster",
+   "url": "https://wdet.org/feed/",
+   "geographicScope": "local",
+   "regionName": "Michigan",
+   "cityName": "Detroit",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-wdet"
+  },
+  {
+   "sourceId": "us-planet-detroit",
+   "countryCode": "US",
+   "publisherName": "Planet Detroit",
+   "publisherType": "digital-native",
+   "url": "https://planetdetroit.org/feed/",
+   "geographicScope": "local",
+   "regionName": "Michigan",
+   "cityName": "Detroit",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-planet-detroit"
+  },
+  {
+   "sourceId": "us-outlier-detroit",
+   "countryCode": "US",
+   "publisherName": "Outlier Media",
+   "publisherType": "digital-native",
+   "url": "https://outliermedia.org/feed/",
+   "geographicScope": "local",
+   "regionName": "Michigan",
+   "cityName": "Detroit",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-outlier-detroit"
+  },
+  {
+   "sourceId": "us-las-vegas-sun",
+   "countryCode": "US",
+   "publisherName": "Las Vegas Sun",
+   "publisherType": "newspaper",
+   "url": "https://lasvegassun.com/feeds/headlines/news/",
+   "geographicScope": "local",
+   "regionName": "Nevada",
+   "cityName": "Las Vegas",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-las-vegas-sun"
+  },
+  {
+   "sourceId": "us-this-is-reno",
+   "countryCode": "US",
+   "publisherName": "This Is Reno",
+   "publisherType": "digital-native",
+   "url": "https://thisisreno.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Nevada",
+   "cityName": "Reno",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-this-is-reno"
+  },
+  {
+   "sourceId": "us-kunr",
+   "countryCode": "US",
+   "publisherName": "KUNR",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.kunr.org/news.rss",
+   "geographicScope": "local",
+   "regionName": "Nevada",
+   "cityName": "Reno",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-kunr"
+  },
+  {
+   "sourceId": "us-mlk50",
+   "countryCode": "US",
+   "publisherName": "MLK50",
+   "publisherType": "digital-native",
+   "url": "https://mlk50.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Tennessee",
+   "cityName": "Memphis",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-mlk50"
+  },
+  {
+   "sourceId": "us-memphis-flyer",
+   "countryCode": "US",
+   "publisherName": "Memphis Flyer",
+   "publisherType": "newspaper",
+   "url": "https://www.memphisflyer.com/feed",
+   "geographicScope": "local",
+   "regionName": "Tennessee",
+   "cityName": "Memphis",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-memphis-flyer"
+  },
+  {
+   "sourceId": "us-lpm",
+   "countryCode": "US",
+   "publisherName": "Louisville Public Media",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.lpm.org/news.rss",
+   "geographicScope": "local",
+   "regionName": "Kentucky",
+   "cityName": "Louisville",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-lpm"
+  },
+  {
+   "sourceId": "us-baltimore-banner",
+   "countryCode": "US",
+   "publisherName": "The Baltimore Banner",
+   "publisherType": "digital-native",
+   "url": "https://www.thebanner.com/arc/outboundfeeds/rss/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "Maryland",
+   "cityName": "Baltimore",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-baltimore-banner"
+  },
+  {
+   "sourceId": "us-baltimore-fishbowl",
+   "countryCode": "US",
+   "publisherName": "Baltimore Fishbowl",
+   "publisherType": "digital-native",
+   "url": "https://baltimorefishbowl.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Maryland",
+   "cityName": "Baltimore",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-baltimore-fishbowl"
+  },
+  {
+   "sourceId": "us-wypr",
+   "countryCode": "US",
+   "publisherName": "WYPR",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.wypr.org/news.rss",
+   "geographicScope": "local",
+   "regionName": "Maryland",
+   "cityName": "Baltimore",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-wypr"
+  },
+  {
+   "sourceId": "us-kunm",
+   "countryCode": "US",
+   "publisherName": "KUNM",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.kunm.org/news.rss",
+   "geographicScope": "local",
+   "regionName": "New Mexico",
+   "cityName": "Albuquerque",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-kunm"
+  },
+  {
+   "sourceId": "us-urban-milwaukee",
+   "countryCode": "US",
+   "publisherName": "Urban Milwaukee",
+   "publisherType": "digital-native",
+   "url": "https://urbanmilwaukee.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Wisconsin",
+   "cityName": "Milwaukee",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-urban-milwaukee"
+  },
+  {
+   "sourceId": "us-milwaukee-nns",
+   "countryCode": "US",
+   "publisherName": "Milwaukee Neighborhood News Service",
+   "publisherType": "digital-native",
+   "url": "https://milwaukeenns.org/feed/",
+   "geographicScope": "local",
+   "regionName": "Wisconsin",
+   "cityName": "Milwaukee",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-milwaukee-nns"
+  },
+  {
+   "sourceId": "us-arizona-daily-star",
+   "countryCode": "US",
+   "publisherName": "Arizona Daily Star",
+   "publisherType": "newspaper",
+   "url": "https://tucson.com/search/?f=rss&t=article&l=50&s=start_time&sd=desc",
+   "geographicScope": "local",
+   "regionName": "Arizona",
+   "cityName": "Tucson",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "lee"
+  },
+  {
+   "sourceId": "us-fresnoland",
+   "countryCode": "US",
+   "publisherName": "Fresnoland",
+   "publisherType": "digital-native",
+   "url": "https://fresnoland.org/feed/",
+   "geographicScope": "local",
+   "regionName": "California",
+   "cityName": "Fresno",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-fresnoland"
+  },
+  {
+   "sourceId": "us-kvpr",
+   "countryCode": "US",
+   "publisherName": "KVPR",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.kvpr.org/news.rss",
+   "geographicScope": "local",
+   "regionName": "California",
+   "cityName": "Fresno",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-kvpr"
+  },
+  {
+   "sourceId": "us-stocktonia",
+   "countryCode": "US",
+   "publisherName": "Stocktonia",
+   "publisherType": "digital-native",
+   "url": "https://stocktonia.org/feed/",
+   "geographicScope": "local",
+   "regionName": "California",
+   "cityName": "Stockton",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-stocktonia"
+  },
+  {
+   "sourceId": "us-kcra",
+   "countryCode": "US",
+   "publisherName": "KCRA 3",
+   "publisherType": "broadcaster",
+   "url": "https://www.kcra.com/local-news-rss",
+   "geographicScope": "local",
+   "regionName": "California",
+   "cityName": "Sacramento",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "hearst-tv"
+  },
+  {
+   "sourceId": "us-rough-draft-atlanta",
+   "countryCode": "US",
+   "publisherName": "Rough Draft Atlanta",
+   "publisherType": "digital-native",
+   "url": "https://roughdraftatlanta.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Georgia",
+   "cityName": "Atlanta",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-rough-draft-atlanta"
+  },
+  {
+   "sourceId": "us-capital-b-atlanta",
+   "countryCode": "US",
+   "publisherName": "Capital B Atlanta",
+   "publisherType": "digital-native",
+   "url": "https://atlanta.capitalbnews.org/feed/",
+   "geographicScope": "local",
+   "regionName": "Georgia",
+   "cityName": "Atlanta",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "capital-b"
+  },
+  {
+   "sourceId": "us-wlrn",
+   "countryCode": "US",
+   "publisherName": "WLRN",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.wlrn.org/south-florida.rss",
+   "geographicScope": "local",
+   "regionName": "Florida",
+   "cityName": "Miami",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-wlrn"
+  },
+  {
+   "sourceId": "us-miami-today",
+   "countryCode": "US",
+   "publisherName": "Miami Today",
+   "publisherType": "newspaper",
+   "url": "https://www.miamitodaynews.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Florida",
+   "cityName": "Miami",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-miami-today"
+  },
+  {
+   "sourceId": "us-local10",
+   "countryCode": "US",
+   "publisherName": "WPLG Local 10",
+   "publisherType": "broadcaster",
+   "url": "https://www.local10.com/arc/outboundfeeds/rss/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "Florida",
+   "cityName": "Miami",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "graham"
+  },
+  {
+   "sourceId": "us-miami-new-times",
+   "countryCode": "US",
+   "publisherName": "Miami New Times",
+   "publisherType": "newspaper",
+   "url": "https://www.miaminewtimes.com/miami/Rss.xml",
+   "geographicScope": "local",
+   "regionName": "Florida",
+   "cityName": "Miami",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-miami-new-times"
+  },
+  {
+   "sourceId": "us-omaha-world-herald",
+   "countryCode": "US",
+   "publisherName": "Omaha World-Herald",
+   "publisherType": "newspaper",
+   "url": "https://omaha.com/search/?f=rss&t=article&l=50&s=start_time&sd=desc",
+   "geographicScope": "local",
+   "regionName": "Nebraska",
+   "cityName": "Omaha",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "lee"
+  },
+  {
+   "sourceId": "us-indy-week",
+   "countryCode": "US",
+   "publisherName": "INDY Week",
+   "publisherType": "newspaper",
+   "url": "https://indyweek.com/feed/",
+   "geographicScope": "local",
+   "regionName": "North Carolina",
+   "cityName": "Raleigh",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-indy-week"
+  },
+  {
+   "sourceId": "us-raleigh-wral",
+   "countryCode": "US",
+   "publisherName": "WRAL",
+   "publisherType": "broadcaster",
+   "url": "https://www.wral.com/news/rss/48/",
+   "geographicScope": "local",
+   "regionName": "North Carolina",
+   "cityName": "Raleigh",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-raleigh-wral"
+  },
+  {
+   "sourceId": "us-durham-herald-sun",
+   "countryCode": "US",
+   "publisherName": "The 9th Street Journal",
+   "publisherType": "digital-native",
+   "url": "https://9thstreetjournal.org/feed/",
+   "geographicScope": "local",
+   "regionName": "North Carolina",
+   "cityName": "Durham",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-durham-herald-sun"
+  },
+  {
+   "sourceId": "us-triad-city-beat",
+   "countryCode": "US",
+   "publisherName": "Triad City Beat",
+   "publisherType": "digital-native",
+   "url": "https://triad-city-beat.com/feed/",
+   "geographicScope": "local",
+   "regionName": "North Carolina",
+   "cityName": "Greensboro",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-triad-city-beat"
+  },
+  {
+   "sourceId": "us-rhino-times",
+   "countryCode": "US",
+   "publisherName": "Rhino Times",
+   "publisherType": "newspaper",
+   "url": "https://www.rhinotimes.com/feed/",
+   "geographicScope": "local",
+   "regionName": "North Carolina",
+   "cityName": "Greensboro",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-rhino-times"
+  },
+  {
+   "sourceId": "us-flatland-kc",
+   "countryCode": "US",
+   "publisherName": "Flatland KC",
+   "publisherType": "public-broadcaster",
+   "url": "https://flatlandkc.org/feed/",
+   "geographicScope": "local",
+   "regionName": "Missouri",
+   "cityName": "Kansas City",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-flatland-kc"
+  },
+  {
+   "sourceId": "us-kc-beacon",
+   "countryCode": "US",
+   "publisherName": "The Beacon (Kansas City)",
+   "publisherType": "digital-native",
+   "url": "https://thebeaconnews.org/feed/",
+   "geographicScope": "local",
+   "regionName": "Missouri",
+   "cityName": "Kansas City",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-kc-beacon"
+  },
+  {
+   "sourceId": "us-kmuw",
+   "countryCode": "US",
+   "publisherName": "KMUW",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.kmuw.org/news.rss",
+   "geographicScope": "local",
+   "regionName": "Kansas",
+   "cityName": "Wichita",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-kmuw"
+  },
+  {
+   "sourceId": "us-whro",
+   "countryCode": "US",
+   "publisherName": "WHRO",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.whro.org/news.rss",
+   "geographicScope": "local",
+   "regionName": "Virginia",
+   "cityName": "Norfolk",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-whro"
+  },
+  {
+   "sourceId": "us-tampa-bay-times",
+   "countryCode": "US",
+   "publisherName": "Tampa Bay Times",
+   "publisherType": "newspaper",
+   "url": "https://www.tampabay.com/arc/outboundfeeds/rss/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "Florida",
+   "cityName": "Tampa",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-tampa-bay-times"
+  },
+  {
+   "sourceId": "us-wusf",
+   "countryCode": "US",
+   "publisherName": "WUSF",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.wusf.org/news.rss",
+   "geographicScope": "local",
+   "regionName": "Florida",
+   "cityName": "Tampa",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-wusf"
+  },
+  {
+   "sourceId": "us-st-pete-catalyst",
+   "countryCode": "US",
+   "publisherName": "St. Pete Catalyst",
+   "publisherType": "digital-native",
+   "url": "https://stpetecatalyst.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Florida",
+   "cityName": "St. Petersburg",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-st-pete-catalyst"
+  },
+  {
+   "sourceId": "us-orlando-weekly",
+   "countryCode": "US",
+   "publisherName": "Orlando Weekly",
+   "publisherType": "newspaper",
+   "url": "https://www.orlandoweekly.com/orlando/Rss.xml",
+   "geographicScope": "local",
+   "regionName": "Florida",
+   "cityName": "Orlando",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-orlando-weekly"
+  },
+  {
+   "sourceId": "us-minnpost",
+   "countryCode": "US",
+   "publisherName": "MinnPost",
+   "publisherType": "digital-native",
+   "url": "https://www.minnpost.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Minnesota",
+   "cityName": "Minneapolis",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-minnpost"
+  },
+  {
+   "sourceId": "us-star-tribune",
+   "countryCode": "US",
+   "publisherName": "Star Tribune",
+   "publisherType": "newspaper",
+   "url": "https://www.startribune.com/local/index.rss2",
+   "geographicScope": "local",
+   "regionName": "Minnesota",
+   "cityName": "Minneapolis",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-star-tribune"
+  },
+  {
+   "sourceId": "us-cleveland-com",
+   "countryCode": "US",
+   "publisherName": "Cleveland.com",
+   "publisherType": "newspaper",
+   "url": "https://www.cleveland.com/arc/outboundfeeds/rss/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "Ohio",
+   "cityName": "Cleveland",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "advance"
+  },
+  {
+   "sourceId": "us-wvxu",
+   "countryCode": "US",
+   "publisherName": "WVXU",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.wvxu.org/news.rss",
+   "geographicScope": "local",
+   "regionName": "Ohio",
+   "cityName": "Cincinnati",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-wvxu"
+  },
+  {
+   "sourceId": "us-toledo-blade",
+   "countryCode": "US",
+   "publisherName": "The Blade",
+   "publisherType": "newspaper",
+   "url": "https://www.toledoblade.com/rss/",
+   "geographicScope": "local",
+   "regionName": "Ohio",
+   "cityName": "Toledo",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "block"
+  },
+  {
+   "sourceId": "us-verite-news",
+   "countryCode": "US",
+   "publisherName": "Verite News",
+   "publisherType": "digital-native",
+   "url": "https://veritenews.org/feed/",
+   "geographicScope": "local",
+   "regionName": "Louisiana",
+   "cityName": "New Orleans",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-verite-news"
+  },
+  {
+   "sourceId": "us-star-advertiser",
+   "countryCode": "US",
+   "publisherName": "Honolulu Star-Advertiser",
+   "publisherType": "newspaper",
+   "url": "https://www.staradvertiser.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Hawaii",
+   "cityName": "Honolulu",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-star-advertiser"
+  },
+  {
+   "sourceId": "us-hpr",
+   "countryCode": "US",
+   "publisherName": "Hawaii Public Radio",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.hawaiipublicradio.org/local-news.rss",
+   "geographicScope": "local",
+   "regionName": "Hawaii",
+   "cityName": "Honolulu",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-hpr"
+  },
+  {
+   "sourceId": "us-voice-of-oc",
+   "countryCode": "US",
+   "publisherName": "Voice of OC",
+   "publisherType": "digital-native",
+   "url": "https://voiceofoc.org/feed/",
+   "geographicScope": "local",
+   "regionName": "California",
+   "cityName": "Santa Ana",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-voice-of-oc"
+  },
+  {
+   "sourceId": "us-ie-community-news",
+   "countryCode": "US",
+   "publisherName": "Inland Empire Community News",
+   "publisherType": "newspaper",
+   "url": "https://iecn.com/feed/",
+   "geographicScope": "local",
+   "regionName": "California",
+   "cityName": "Riverside",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-ie-community-news"
+  },
+  {
+   "sourceId": "us-adn",
+   "countryCode": "US",
+   "publisherName": "Anchorage Daily News",
+   "publisherType": "newspaper",
+   "url": "https://www.adn.com/arc/outboundfeeds/rss/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "Alaska",
+   "cityName": "Anchorage",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-adn"
+  },
+  {
+   "sourceId": "us-nj-com",
+   "countryCode": "US",
+   "publisherName": "NJ.com",
+   "publisherType": "newspaper",
+   "url": "https://www.nj.com/arc/outboundfeeds/rss/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "New Jersey",
+   "cityName": "Newark",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "advance"
+  },
+  {
+   "sourceId": "us-jersey-city-times",
+   "countryCode": "US",
+   "publisherName": "Jersey City Times",
+   "publisherType": "digital-native",
+   "url": "https://jcitytimes.com/feed/",
+   "geographicScope": "local",
+   "regionName": "New Jersey",
+   "cityName": "Jersey City",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-jersey-city-times"
+  },
+  {
+   "sourceId": "us-investigative-post",
+   "countryCode": "US",
+   "publisherName": "Investigative Post",
+   "publisherType": "digital-native",
+   "url": "https://www.investigativepost.org/feed/",
+   "geographicScope": "local",
+   "regionName": "New York",
+   "cityName": "Buffalo",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-investigative-post"
+  },
+  {
+   "sourceId": "us-wbfo",
+   "countryCode": "US",
+   "publisherName": "WBFO",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.wbfo.org/local.rss",
+   "geographicScope": "local",
+   "regionName": "New York",
+   "cityName": "Buffalo",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-wbfo"
+  },
+  {
+   "sourceId": "us-wboi",
+   "countryCode": "US",
+   "publisherName": "WBOI",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.wboi.org/news.rss",
+   "geographicScope": "local",
+   "regionName": "Indiana",
+   "cityName": "Fort Wayne",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-wboi"
+  },
+  {
+   "sourceId": "us-lubbock-ktxt",
+   "countryCode": "US",
+   "publisherName": "Everything Lubbock",
+   "publisherType": "broadcaster",
+   "url": "https://www.everythinglubbock.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Texas",
+   "cityName": "Lubbock",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "nexstar"
+  },
+  {
+   "sourceId": "us-nbc-new-york",
+   "countryCode": "US",
+   "publisherName": "NBC New York",
+   "publisherType": "broadcaster",
+   "url": "https://www.nbcnewyork.com/?rss=y",
+   "geographicScope": "local",
+   "regionName": "New York",
+   "cityName": "New York City",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "nbcuniversal"
+  },
+  {
+   "sourceId": "us-fox5-ny",
+   "countryCode": "US",
+   "publisherName": "FOX 5 New York",
+   "publisherType": "broadcaster",
+   "url": "https://www.fox5ny.com/rss/category/local-news",
+   "geographicScope": "local",
+   "regionName": "New York",
+   "cityName": "New York City",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "fox-tv"
+  },
+  {
+   "sourceId": "us-pix11",
+   "countryCode": "US",
+   "publisherName": "PIX11",
+   "publisherType": "broadcaster",
+   "url": "https://pix11.com/feed/",
+   "geographicScope": "local",
+   "regionName": "New York",
+   "cityName": "New York City",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "nexstar"
+  },
+  {
+   "sourceId": "us-nbc-los-angeles",
+   "countryCode": "US",
+   "publisherName": "NBC Los Angeles",
+   "publisherType": "broadcaster",
+   "url": "https://www.nbclosangeles.com/?rss=y",
+   "geographicScope": "local",
+   "regionName": "California",
+   "cityName": "Los Angeles",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "nbcuniversal"
+  },
+  {
+   "sourceId": "us-ktla",
+   "countryCode": "US",
+   "publisherName": "KTLA",
+   "publisherType": "broadcaster",
+   "url": "https://ktla.com/feed/",
+   "geographicScope": "local",
+   "regionName": "California",
+   "cityName": "Los Angeles",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "nexstar"
+  },
+  {
+   "sourceId": "us-lb-business-journal",
+   "countryCode": "US",
+   "publisherName": "Long Beach Business Journal",
+   "publisherType": "newspaper",
+   "url": "https://lbbusinessjournal.com/feed/",
+   "geographicScope": "local",
+   "regionName": "California",
+   "cityName": "Long Beach",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-lb-business-journal"
+  },
+  {
+   "sourceId": "us-nbc-chicago",
+   "countryCode": "US",
+   "publisherName": "NBC Chicago",
+   "publisherType": "broadcaster",
+   "url": "https://www.nbcchicago.com/?rss=y",
+   "geographicScope": "local",
+   "regionName": "Illinois",
+   "cityName": "Chicago",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "nbcuniversal"
+  },
+  {
+   "sourceId": "us-wgn-tv",
+   "countryCode": "US",
+   "publisherName": "WGN-TV",
+   "publisherType": "broadcaster",
+   "url": "https://wgntv.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Illinois",
+   "cityName": "Chicago",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "nexstar"
+  },
+  {
+   "sourceId": "us-khou",
+   "countryCode": "US",
+   "publisherName": "KHOU 11",
+   "publisherType": "broadcaster",
+   "url": "https://www.khou.com/feeds/syndication/rss/news/local",
+   "geographicScope": "local",
+   "regionName": "Texas",
+   "cityName": "Houston",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "tegna"
+  },
+  {
+   "sourceId": "us-click2houston",
+   "countryCode": "US",
+   "publisherName": "KPRC 2",
+   "publisherType": "broadcaster",
+   "url": "https://www.click2houston.com/arc/outboundfeeds/rss/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "Texas",
+   "cityName": "Houston",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "graham"
+  },
+  {
+   "sourceId": "us-12news",
+   "countryCode": "US",
+   "publisherName": "12News",
+   "publisherType": "broadcaster",
+   "url": "https://www.12news.com/feeds/syndication/rss/news/local",
+   "geographicScope": "local",
+   "regionName": "Arizona",
+   "cityName": "Phoenix",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "tegna"
+  },
+  {
+   "sourceId": "us-fox10-phoenix",
+   "countryCode": "US",
+   "publisherName": "FOX 10 Phoenix",
+   "publisherType": "broadcaster",
+   "url": "https://www.fox10phoenix.com/rss/category/local-news",
+   "geographicScope": "local",
+   "regionName": "Arizona",
+   "cityName": "Phoenix",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "fox-tv"
+  },
+  {
+   "sourceId": "us-abc15-southeast-valley",
+   "countryCode": "US",
+   "publisherName": "ABC15 Southeast Valley",
+   "publisherType": "broadcaster",
+   "url": "https://www.abc15.com/news/region-southeast-valley.rss",
+   "geographicScope": "local",
+   "regionName": "Arizona",
+   "cityName": "Mesa",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "scripps"
+  },
+  {
+   "sourceId": "us-nbc10-philadelphia",
+   "countryCode": "US",
+   "publisherName": "NBC10 Philadelphia",
+   "publisherType": "broadcaster",
+   "url": "https://www.nbcphiladelphia.com/?rss=y",
+   "geographicScope": "local",
+   "regionName": "Pennsylvania",
+   "cityName": "Philadelphia",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "nbcuniversal"
+  },
+  {
+   "sourceId": "us-fox29",
+   "countryCode": "US",
+   "publisherName": "FOX 29 Philadelphia",
+   "publisherType": "broadcaster",
+   "url": "https://www.fox29.com/rss/category/local-news",
+   "geographicScope": "local",
+   "regionName": "Pennsylvania",
+   "cityName": "Philadelphia",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "fox-tv"
+  },
+  {
+   "sourceId": "us-ksat",
+   "countryCode": "US",
+   "publisherName": "KSAT 12",
+   "publisherType": "broadcaster",
+   "url": "https://www.ksat.com/arc/outboundfeeds/rss/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "Texas",
+   "cityName": "San Antonio",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "graham"
+  },
+  {
+   "sourceId": "us-kens5",
+   "countryCode": "US",
+   "publisherName": "KENS 5",
+   "publisherType": "broadcaster",
+   "url": "https://www.kens5.com/feeds/syndication/rss/news/local",
+   "geographicScope": "local",
+   "regionName": "Texas",
+   "cityName": "San Antonio",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "tegna"
+  },
+  {
+   "sourceId": "us-nbc-san-diego",
+   "countryCode": "US",
+   "publisherName": "NBC 7 San Diego",
+   "publisherType": "broadcaster",
+   "url": "https://www.nbcsandiego.com/?rss=y",
+   "geographicScope": "local",
+   "regionName": "California",
+   "cityName": "San Diego",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "nbcuniversal"
+  },
+  {
+   "sourceId": "us-times-of-san-diego",
+   "countryCode": "US",
+   "publisherName": "Times of San Diego",
+   "publisherType": "digital-native",
+   "url": "https://timesofsandiego.com/feed/",
+   "geographicScope": "local",
+   "regionName": "California",
+   "cityName": "San Diego",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-times-of-san-diego"
+  },
+  {
+   "sourceId": "us-wfaa",
+   "countryCode": "US",
+   "publisherName": "WFAA",
+   "publisherType": "broadcaster",
+   "url": "https://www.wfaa.com/feeds/syndication/rss/news/local",
+   "geographicScope": "local",
+   "regionName": "Texas",
+   "cityName": "Dallas",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "tegna"
+  },
+  {
+   "sourceId": "us-nbc-dfw",
+   "countryCode": "US",
+   "publisherName": "NBC 5 Dallas-Fort Worth",
+   "publisherType": "broadcaster",
+   "url": "https://www.nbcdfw.com/?rss=y",
+   "geographicScope": "local",
+   "regionName": "Texas",
+   "cityName": "Dallas",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "nbcuniversal"
+  },
+  {
+   "sourceId": "us-fox4-dallas",
+   "countryCode": "US",
+   "publisherName": "FOX 4 Dallas-Fort Worth",
+   "publisherType": "broadcaster",
+   "url": "https://www.fox4news.com/rss/category/local-news",
+   "geographicScope": "local",
+   "regionName": "Texas",
+   "cityName": "Fort Worth",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "fox-tv"
+  },
+  {
+   "sourceId": "us-news4jax",
+   "countryCode": "US",
+   "publisherName": "News4JAX",
+   "publisherType": "broadcaster",
+   "url": "https://www.news4jax.com/arc/outboundfeeds/rss/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "Florida",
+   "cityName": "Jacksonville",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "graham"
+  },
+  {
+   "sourceId": "us-first-coast-news",
+   "countryCode": "US",
+   "publisherName": "First Coast News",
+   "publisherType": "broadcaster",
+   "url": "https://www.firstcoastnews.com/feeds/syndication/rss/news/local",
+   "geographicScope": "local",
+   "regionName": "Florida",
+   "cityName": "Jacksonville",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "tegna"
+  },
+  {
+   "sourceId": "us-nbc-bay-area",
+   "countryCode": "US",
+   "publisherName": "NBC Bay Area",
+   "publisherType": "broadcaster",
+   "url": "https://www.nbcbayarea.com/?rss=y",
+   "geographicScope": "local",
+   "regionName": "California",
+   "cityName": "San Jose",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "nbcuniversal"
+  },
+  {
+   "sourceId": "us-kvue",
+   "countryCode": "US",
+   "publisherName": "KVUE",
+   "publisherType": "broadcaster",
+   "url": "https://www.kvue.com/feeds/syndication/rss/news/local",
+   "geographicScope": "local",
+   "regionName": "Texas",
+   "cityName": "Austin",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "tegna"
+  },
+  {
+   "sourceId": "us-kxan",
+   "countryCode": "US",
+   "publisherName": "KXAN",
+   "publisherType": "broadcaster",
+   "url": "https://www.kxan.com/news/local/feed/",
+   "geographicScope": "local",
+   "regionName": "Texas",
+   "cityName": "Austin",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "nexstar"
+  },
+  {
+   "sourceId": "us-austin-chronicle",
+   "countryCode": "US",
+   "publisherName": "The Austin Chronicle",
+   "publisherType": "newspaper",
+   "url": "https://www.austinchronicle.com/rss/",
+   "geographicScope": "local",
+   "regionName": "Texas",
+   "cityName": "Austin",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-austin-chronicle"
+  },
+  {
+   "sourceId": "us-nbc4-columbus",
+   "countryCode": "US",
+   "publisherName": "NBC4 Columbus",
+   "publisherType": "broadcaster",
+   "url": "https://www.nbc4i.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Ohio",
+   "cityName": "Columbus",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "nexstar"
+  },
+  {
+   "sourceId": "us-wcnc",
+   "countryCode": "US",
+   "publisherName": "WCNC Charlotte",
+   "publisherType": "broadcaster",
+   "url": "https://www.wcnc.com/feeds/syndication/rss/news/local",
+   "geographicScope": "local",
+   "regionName": "North Carolina",
+   "cityName": "Charlotte",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "tegna"
+  },
+  {
+   "sourceId": "us-wsoc-tv",
+   "countryCode": "US",
+   "publisherName": "WSOC-TV",
+   "publisherType": "broadcaster",
+   "url": "https://www.wsoctv.com/arc/outboundfeeds/rss/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "North Carolina",
+   "cityName": "Charlotte",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "cox-media"
+  },
+  {
+   "sourceId": "us-wthr",
+   "countryCode": "US",
+   "publisherName": "WTHR 13",
+   "publisherType": "broadcaster",
+   "url": "https://www.wthr.com/feeds/syndication/rss/news/local",
+   "geographicScope": "local",
+   "regionName": "Indiana",
+   "cityName": "Indianapolis",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "tegna"
+  },
+  {
+   "sourceId": "us-fox59",
+   "countryCode": "US",
+   "publisherName": "FOX59",
+   "publisherType": "broadcaster",
+   "url": "https://fox59.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Indiana",
+   "cityName": "Indianapolis",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "nexstar"
+  },
+  {
+   "sourceId": "us-9news-denver",
+   "countryCode": "US",
+   "publisherName": "9NEWS Denver",
+   "publisherType": "broadcaster",
+   "url": "https://www.9news.com/feeds/syndication/rss/news/local",
+   "geographicScope": "local",
+   "regionName": "Colorado",
+   "cityName": "Denver",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "tegna"
+  },
+  {
+   "sourceId": "us-krdo",
+   "countryCode": "US",
+   "publisherName": "KRDO",
+   "publisherType": "broadcaster",
+   "url": "https://krdo.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Colorado",
+   "cityName": "Colorado Springs",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "news-press-gazette"
+  },
+  {
+   "sourceId": "us-kktv",
+   "countryCode": "US",
+   "publisherName": "KKTV 11",
+   "publisherType": "broadcaster",
+   "url": "https://www.kktv.com/arc/outboundfeeds/rss/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "Colorado",
+   "cityName": "Colorado Springs",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "gray"
+  },
+  {
+   "sourceId": "us-nbc-washington",
+   "countryCode": "US",
+   "publisherName": "NBC4 Washington",
+   "publisherType": "broadcaster",
+   "url": "https://www.nbcwashington.com/?rss=y",
+   "geographicScope": "local",
+   "regionName": "District of Columbia",
+   "cityName": "Washington",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "nbcuniversal"
+  },
+  {
+   "sourceId": "us-wusa9",
+   "countryCode": "US",
+   "publisherName": "WUSA9",
+   "publisherType": "broadcaster",
+   "url": "https://www.wusa9.com/feeds/syndication/rss/news/local",
+   "geographicScope": "local",
+   "regionName": "District of Columbia",
+   "cityName": "Washington",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "tegna"
+  },
+  {
+   "sourceId": "us-wkrn",
+   "countryCode": "US",
+   "publisherName": "WKRN",
+   "publisherType": "broadcaster",
+   "url": "https://www.wkrn.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Tennessee",
+   "cityName": "Nashville",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "nexstar"
+  },
+  {
+   "sourceId": "us-koco",
+   "countryCode": "US",
+   "publisherName": "KOCO 5",
+   "publisherType": "broadcaster",
+   "url": "https://www.koco.com/local-news-rss",
+   "geographicScope": "local",
+   "regionName": "Oklahoma",
+   "cityName": "Oklahoma City",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "hearst-tv"
+  },
+  {
+   "sourceId": "us-tulsa-flyer",
+   "countryCode": "US",
+   "publisherName": "Tulsa Flyer",
+   "publisherType": "digital-native",
+   "url": "https://www.tulsaflyer.org/feed/",
+   "geographicScope": "local",
+   "regionName": "Oklahoma",
+   "cityName": "Tulsa",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-tulsa-flyer"
+  },
+  {
+   "sourceId": "us-ktul",
+   "countryCode": "US",
+   "publisherName": "KTUL",
+   "publisherType": "broadcaster",
+   "url": "https://ktul.com/news/local.rss",
+   "geographicScope": "local",
+   "regionName": "Oklahoma",
+   "cityName": "Tulsa",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "sinclair"
+  },
+  {
+   "sourceId": "us-kjrh",
+   "countryCode": "US",
+   "publisherName": "KJRH 2",
+   "publisherType": "broadcaster",
+   "url": "https://www.kjrh.com/news/local-news.rss",
+   "geographicScope": "local",
+   "regionName": "Oklahoma",
+   "cityName": "Tulsa",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "scripps"
+  },
+  {
+   "sourceId": "us-wcvb",
+   "countryCode": "US",
+   "publisherName": "WCVB 5",
+   "publisherType": "broadcaster",
+   "url": "https://www.wcvb.com/local-news-rss",
+   "geographicScope": "local",
+   "regionName": "Massachusetts",
+   "cityName": "Boston",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "hearst-tv"
+  },
+  {
+   "sourceId": "us-nbc-boston",
+   "countryCode": "US",
+   "publisherName": "NBC10 Boston",
+   "publisherType": "broadcaster",
+   "url": "https://www.nbcboston.com/?rss=y",
+   "geographicScope": "local",
+   "regionName": "Massachusetts",
+   "cityName": "Boston",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "nbcuniversal"
+  },
+  {
+   "sourceId": "us-kgw",
+   "countryCode": "US",
+   "publisherName": "KGW8",
+   "publisherType": "broadcaster",
+   "url": "https://www.kgw.com/feeds/syndication/rss/news/local",
+   "geographicScope": "local",
+   "regionName": "Oregon",
+   "cityName": "Portland",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "tegna"
+  },
+  {
+   "sourceId": "us-fox2-detroit",
+   "countryCode": "US",
+   "publisherName": "FOX 2 Detroit",
+   "publisherType": "broadcaster",
+   "url": "https://www.fox2detroit.com/rss/category/local-news",
+   "geographicScope": "local",
+   "regionName": "Michigan",
+   "cityName": "Detroit",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "fox-tv"
+  },
+  {
+   "sourceId": "us-clickondetroit",
+   "countryCode": "US",
+   "publisherName": "WDIV Local 4",
+   "publisherType": "broadcaster",
+   "url": "https://www.clickondetroit.com/arc/outboundfeeds/rss/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "Michigan",
+   "cityName": "Detroit",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "graham"
+  },
+  {
+   "sourceId": "us-8newsnow",
+   "countryCode": "US",
+   "publisherName": "8 News Now",
+   "publisherType": "broadcaster",
+   "url": "https://www.8newsnow.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Nevada",
+   "cityName": "Las Vegas",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "nexstar"
+  },
+  {
+   "sourceId": "us-ktnv",
+   "countryCode": "US",
+   "publisherName": "KTNV 13",
+   "publisherType": "broadcaster",
+   "url": "https://www.ktnv.com/news/local-news.rss",
+   "geographicScope": "local",
+   "regionName": "Nevada",
+   "cityName": "Henderson",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "scripps"
+  },
+  {
+   "sourceId": "us-wreg",
+   "countryCode": "US",
+   "publisherName": "WREG",
+   "publisherType": "broadcaster",
+   "url": "https://wreg.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Tennessee",
+   "cityName": "Memphis",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "nexstar"
+  },
+  {
+   "sourceId": "us-action-news-5",
+   "countryCode": "US",
+   "publisherName": "Action News 5",
+   "publisherType": "broadcaster",
+   "url": "https://www.actionnews5.com/arc/outboundfeeds/rss/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "Tennessee",
+   "cityName": "Memphis",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "gray"
+  },
+  {
+   "sourceId": "us-wlky",
+   "countryCode": "US",
+   "publisherName": "WLKY",
+   "publisherType": "broadcaster",
+   "url": "https://www.wlky.com/local-news-rss",
+   "geographicScope": "local",
+   "regionName": "Kentucky",
+   "cityName": "Louisville",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "hearst-tv"
+  },
+  {
+   "sourceId": "us-wuky",
+   "countryCode": "US",
+   "publisherName": "WUKY",
+   "publisherType": "public-broadcaster",
+   "url": "https://www.wuky.org/news.rss",
+   "geographicScope": "local",
+   "regionName": "Kentucky",
+   "cityName": "Lexington",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-wuky"
+  },
+  {
+   "sourceId": "us-wkyt",
+   "countryCode": "US",
+   "publisherName": "WKYT",
+   "publisherType": "broadcaster",
+   "url": "https://www.wkyt.com/arc/outboundfeeds/rss/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "Kentucky",
+   "cityName": "Lexington",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "gray"
+  },
+  {
+   "sourceId": "us-wbal-tv",
+   "countryCode": "US",
+   "publisherName": "WBAL-TV 11",
+   "publisherType": "broadcaster",
+   "url": "https://www.wbaltv.com/local-news-rss",
+   "geographicScope": "local",
+   "regionName": "Maryland",
+   "cityName": "Baltimore",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "hearst-tv"
+  },
+  {
+   "sourceId": "us-koat",
+   "countryCode": "US",
+   "publisherName": "KOAT 7",
+   "publisherType": "broadcaster",
+   "url": "https://www.koat.com/local-news-rss",
+   "geographicScope": "local",
+   "regionName": "New Mexico",
+   "cityName": "Albuquerque",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "hearst-tv"
+  },
+  {
+   "sourceId": "us-krqe",
+   "countryCode": "US",
+   "publisherName": "KRQE",
+   "publisherType": "broadcaster",
+   "url": "https://www.krqe.com/feed/",
+   "geographicScope": "local",
+   "regionName": "New Mexico",
+   "cityName": "Albuquerque",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "nexstar"
+  },
+  {
+   "sourceId": "us-wisn",
+   "countryCode": "US",
+   "publisherName": "WISN 12",
+   "publisherType": "broadcaster",
+   "url": "https://www.wisn.com/local-news-rss",
+   "geographicScope": "local",
+   "regionName": "Wisconsin",
+   "cityName": "Milwaukee",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "hearst-tv"
+  },
+  {
+   "sourceId": "us-kold",
+   "countryCode": "US",
+   "publisherName": "KOLD 13",
+   "publisherType": "broadcaster",
+   "url": "https://www.kold.com/arc/outboundfeeds/rss/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "Arizona",
+   "cityName": "Tucson",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "gray"
+  },
+  {
+   "sourceId": "us-kget",
+   "countryCode": "US",
+   "publisherName": "KGET 17",
+   "publisherType": "broadcaster",
+   "url": "https://www.kget.com/feed/",
+   "geographicScope": "local",
+   "regionName": "California",
+   "cityName": "Bakersfield",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "nexstar"
+  },
+  {
+   "sourceId": "us-yourcentralvalley",
+   "countryCode": "US",
+   "publisherName": "KSEE/KGPE (YourCentralValley)",
+   "publisherType": "broadcaster",
+   "url": "https://www.yourcentralvalley.com/feed/",
+   "geographicScope": "local",
+   "regionName": "California",
+   "cityName": "Fresno",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "nexstar"
+  },
+  {
+   "sourceId": "us-abc10",
+   "countryCode": "US",
+   "publisherName": "ABC10 Sacramento",
+   "publisherType": "broadcaster",
+   "url": "https://www.abc10.com/feeds/syndication/rss/news/local",
+   "geographicScope": "local",
+   "regionName": "California",
+   "cityName": "Sacramento",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "tegna"
+  },
+  {
+   "sourceId": "us-11alive",
+   "countryCode": "US",
+   "publisherName": "11Alive",
+   "publisherType": "broadcaster",
+   "url": "https://www.11alive.com/feeds/syndication/rss/news/local",
+   "geographicScope": "local",
+   "regionName": "Georgia",
+   "cityName": "Atlanta",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "tegna"
+  },
+  {
+   "sourceId": "us-wsb-tv",
+   "countryCode": "US",
+   "publisherName": "WSB-TV",
+   "publisherType": "broadcaster",
+   "url": "https://www.wsbtv.com/arc/outboundfeeds/rss/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "Georgia",
+   "cityName": "Atlanta",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "cox-media"
+  },
+  {
+   "sourceId": "us-nbc6-miami",
+   "countryCode": "US",
+   "publisherName": "NBC6 South Florida",
+   "publisherType": "broadcaster",
+   "url": "https://www.nbcmiami.com/?rss=y",
+   "geographicScope": "local",
+   "regionName": "Florida",
+   "cityName": "Miami",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "nbcuniversal"
+  },
+  {
+   "sourceId": "us-ketv",
+   "countryCode": "US",
+   "publisherName": "KETV 7",
+   "publisherType": "broadcaster",
+   "url": "https://www.ketv.com/local-news-rss",
+   "geographicScope": "local",
+   "regionName": "Nebraska",
+   "cityName": "Omaha",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "hearst-tv"
+  },
+  {
+   "sourceId": "us-klkn",
+   "countryCode": "US",
+   "publisherName": "KLKN-TV",
+   "publisherType": "broadcaster",
+   "url": "https://www.klkntv.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Nebraska",
+   "cityName": "Lincoln",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-klkn"
+  },
+  {
+   "sourceId": "us-koln",
+   "countryCode": "US",
+   "publisherName": "10/11 NOW",
+   "publisherType": "broadcaster",
+   "url": "https://www.1011now.com/arc/outboundfeeds/rss/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "Nebraska",
+   "cityName": "Lincoln",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "gray"
+  },
+  {
+   "sourceId": "us-wfmy",
+   "countryCode": "US",
+   "publisherName": "WFMY News 2",
+   "publisherType": "broadcaster",
+   "url": "https://www.wfmynews2.com/feeds/syndication/rss/news/local",
+   "geographicScope": "local",
+   "regionName": "North Carolina",
+   "cityName": "Greensboro",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "tegna"
+  },
+  {
+   "sourceId": "us-wxii",
+   "countryCode": "US",
+   "publisherName": "WXII 12",
+   "publisherType": "broadcaster",
+   "url": "https://www.wxii12.com/local-news-rss",
+   "geographicScope": "local",
+   "regionName": "North Carolina",
+   "cityName": "Winston-Salem",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "hearst-tv"
+  },
+  {
+   "sourceId": "us-kmbc",
+   "countryCode": "US",
+   "publisherName": "KMBC 9",
+   "publisherType": "broadcaster",
+   "url": "https://www.kmbc.com/local-news-rss",
+   "geographicScope": "local",
+   "regionName": "Missouri",
+   "cityName": "Kansas City",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "hearst-tv"
+  },
+  {
+   "sourceId": "us-ksn",
+   "countryCode": "US",
+   "publisherName": "KSN",
+   "publisherType": "broadcaster",
+   "url": "https://www.ksn.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Kansas",
+   "cityName": "Wichita",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "nexstar"
+  },
+  {
+   "sourceId": "us-kwch",
+   "countryCode": "US",
+   "publisherName": "KWCH 12",
+   "publisherType": "broadcaster",
+   "url": "https://www.kwch.com/arc/outboundfeeds/rss/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "Kansas",
+   "cityName": "Wichita",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "gray"
+  },
+  {
+   "sourceId": "us-wavy",
+   "countryCode": "US",
+   "publisherName": "WAVY",
+   "publisherType": "broadcaster",
+   "url": "https://www.wavy.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Virginia",
+   "cityName": "Virginia Beach",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "nexstar"
+  },
+  {
+   "sourceId": "us-13newsnow",
+   "countryCode": "US",
+   "publisherName": "13News Now",
+   "publisherType": "broadcaster",
+   "url": "https://www.13newsnow.com/feeds/syndication/rss/news/local",
+   "geographicScope": "local",
+   "regionName": "Virginia",
+   "cityName": "Norfolk",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "tegna"
+  },
+  {
+   "sourceId": "us-fox13-tampa",
+   "countryCode": "US",
+   "publisherName": "FOX 13 Tampa Bay",
+   "publisherType": "broadcaster",
+   "url": "https://www.fox13news.com/rss/category/local-news",
+   "geographicScope": "local",
+   "regionName": "Florida",
+   "cityName": "Tampa",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "fox-tv"
+  },
+  {
+   "sourceId": "us-wtsp",
+   "countryCode": "US",
+   "publisherName": "10 Tampa Bay",
+   "publisherType": "broadcaster",
+   "url": "https://www.wtsp.com/feeds/syndication/rss/news/local",
+   "geographicScope": "local",
+   "regionName": "Florida",
+   "cityName": "St. Petersburg",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "tegna"
+  },
+  {
+   "sourceId": "us-wesh",
+   "countryCode": "US",
+   "publisherName": "WESH 2",
+   "publisherType": "broadcaster",
+   "url": "https://www.wesh.com/local-news-rss",
+   "geographicScope": "local",
+   "regionName": "Florida",
+   "cityName": "Orlando",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "hearst-tv"
+  },
+  {
+   "sourceId": "us-clickorlando",
+   "countryCode": "US",
+   "publisherName": "WKMG News 6",
+   "publisherType": "broadcaster",
+   "url": "https://www.clickorlando.com/arc/outboundfeeds/rss/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "Florida",
+   "cityName": "Orlando",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "graham"
+  },
+  {
+   "sourceId": "us-kare11",
+   "countryCode": "US",
+   "publisherName": "KARE 11",
+   "publisherType": "broadcaster",
+   "url": "https://www.kare11.com/feeds/syndication/rss/news/local",
+   "geographicScope": "local",
+   "regionName": "Minnesota",
+   "cityName": "Minneapolis",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "tegna"
+  },
+  {
+   "sourceId": "us-spokesman-recorder",
+   "countryCode": "US",
+   "publisherName": "Minnesota Spokesman-Recorder",
+   "publisherType": "newspaper",
+   "url": "https://spokesman-recorder.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Minnesota",
+   "cityName": "Minneapolis",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "us-spokesman-recorder"
+  },
+  {
+   "sourceId": "us-kstp",
+   "countryCode": "US",
+   "publisherName": "KSTP 5",
+   "publisherType": "broadcaster",
+   "url": "https://kstp.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Minnesota",
+   "cityName": "Saint Paul",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "hubbard"
+  },
+  {
+   "sourceId": "us-wkyc",
+   "countryCode": "US",
+   "publisherName": "WKYC 3",
+   "publisherType": "broadcaster",
+   "url": "https://www.wkyc.com/feeds/syndication/rss/news/local",
+   "geographicScope": "local",
+   "regionName": "Ohio",
+   "cityName": "Cleveland",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "tegna"
+  },
+  {
+   "sourceId": "us-wlwt",
+   "countryCode": "US",
+   "publisherName": "WLWT 5",
+   "publisherType": "broadcaster",
+   "url": "https://www.wlwt.com/local-news-rss",
+   "geographicScope": "local",
+   "regionName": "Ohio",
+   "cityName": "Cincinnati",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "hearst-tv"
+  },
+  {
+   "sourceId": "us-wtol",
+   "countryCode": "US",
+   "publisherName": "WTOL 11",
+   "publisherType": "broadcaster",
+   "url": "https://www.wtol.com/feeds/syndication/rss/news/local",
+   "geographicScope": "local",
+   "regionName": "Ohio",
+   "cityName": "Toledo",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "tegna"
+  },
+  {
+   "sourceId": "us-wdsu",
+   "countryCode": "US",
+   "publisherName": "WDSU 6",
+   "publisherType": "broadcaster",
+   "url": "https://www.wdsu.com/local-news-rss",
+   "geographicScope": "local",
+   "regionName": "Louisiana",
+   "cityName": "New Orleans",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "hearst-tv"
+  },
+  {
+   "sourceId": "us-wwl-tv",
+   "countryCode": "US",
+   "publisherName": "WWL-TV",
+   "publisherType": "broadcaster",
+   "url": "https://www.wwltv.com/feeds/syndication/rss/news/local",
+   "geographicScope": "local",
+   "regionName": "Louisiana",
+   "cityName": "New Orleans",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "tegna"
+  },
+  {
+   "sourceId": "us-hawaii-news-now",
+   "countryCode": "US",
+   "publisherName": "Hawaii News Now",
+   "publisherType": "broadcaster",
+   "url": "https://www.hawaiinewsnow.com/arc/outboundfeeds/rss/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "Hawaii",
+   "cityName": "Honolulu",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "gray"
+  },
+  {
+   "sourceId": "us-wtae",
+   "countryCode": "US",
+   "publisherName": "WTAE 4",
+   "publisherType": "broadcaster",
+   "url": "https://www.wtae.com/local-news-rss",
+   "geographicScope": "local",
+   "regionName": "Pennsylvania",
+   "cityName": "Pittsburgh",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "hearst-tv"
+  },
+  {
+   "sourceId": "us-wpxi",
+   "countryCode": "US",
+   "publisherName": "WPXI",
+   "publisherType": "broadcaster",
+   "url": "https://www.wpxi.com/arc/outboundfeeds/rss/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "Pennsylvania",
+   "cityName": "Pittsburgh",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "cox-media"
+  },
+  {
+   "sourceId": "us-nbc15-madison",
+   "countryCode": "US",
+   "publisherName": "NBC15 Madison",
+   "publisherType": "broadcaster",
+   "url": "https://www.nbc15.com/arc/outboundfeeds/rss/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "Wisconsin",
+   "cityName": "Madison",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "gray"
+  },
+  {
+   "sourceId": "us-ksdk",
+   "countryCode": "US",
+   "publisherName": "KSDK 5",
+   "publisherType": "broadcaster",
+   "url": "https://www.ksdk.com/feeds/syndication/rss/news/local",
+   "geographicScope": "local",
+   "regionName": "Missouri",
+   "cityName": "St. Louis",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "tegna"
+  },
+  {
+   "sourceId": "us-wgrz",
+   "countryCode": "US",
+   "publisherName": "WGRZ 2",
+   "publisherType": "broadcaster",
+   "url": "https://www.wgrz.com/feeds/syndication/rss/news/local",
+   "geographicScope": "local",
+   "regionName": "New York",
+   "cityName": "Buffalo",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "tegna"
+  },
+  {
+   "sourceId": "us-wane",
+   "countryCode": "US",
+   "publisherName": "WANE 15",
+   "publisherType": "broadcaster",
+   "url": "https://www.wane.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Indiana",
+   "cityName": "Fort Wayne",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "nexstar"
+  },
+  {
+   "sourceId": "us-kgns",
+   "countryCode": "US",
+   "publisherName": "KGNS",
+   "publisherType": "broadcaster",
+   "url": "https://www.kgns.tv/arc/outboundfeeds/rss/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "Texas",
+   "cityName": "Laredo",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "gray"
+  },
+  {
+   "sourceId": "us-kiii",
+   "countryCode": "US",
+   "publisherName": "KIII 3News",
+   "publisherType": "broadcaster",
+   "url": "https://www.kiiitv.com/feeds/syndication/rss/news/local",
+   "geographicScope": "local",
+   "regionName": "Texas",
+   "cityName": "Corpus Christi",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "tegna"
+  },
+  {
+   "sourceId": "us-kcbd",
+   "countryCode": "US",
+   "publisherName": "KCBD 11",
+   "publisherType": "broadcaster",
+   "url": "https://www.kcbd.com/arc/outboundfeeds/rss/?outputType=xml",
+   "geographicScope": "local",
+   "regionName": "Texas",
+   "cityName": "Lubbock",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "gray"
+  },
+  {
+   "sourceId": "us-king5",
+   "countryCode": "US",
+   "publisherName": "KING 5",
+   "publisherType": "broadcaster",
+   "url": "https://www.king5.com/feeds/syndication/rss/news/local",
+   "geographicScope": "local",
+   "regionName": "Washington",
+   "cityName": "Seattle",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "tegna"
+  },
+  {
+   "sourceId": "us-kron4",
+   "countryCode": "US",
+   "publisherName": "KRON4",
+   "publisherType": "broadcaster",
+   "url": "https://www.kron4.com/feed/",
+   "geographicScope": "local",
+   "regionName": "California",
+   "cityName": "San Francisco",
+   "languageTags": [
+    "en-US"
+   ],
+   "group": "nexstar"
+  }
+ ]
+}

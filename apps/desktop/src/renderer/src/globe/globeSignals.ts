@@ -1,6 +1,7 @@
 import type { FieldSnapshot, SourceRecord } from '@intoponet/field-snapshot'
 import type { InterestSignal } from '../interestField'
 import type { NewsDigest, NewsHeadline } from '../../../shared/news/newsDigest'
+import { spreadGrowth, type SpreadingStory } from '../../../shared/news/spreadingStories'
 
 /**
  * Globe layers. Each layer is one measurement kind, so values are only ever
@@ -298,9 +299,9 @@ export const MEMBRANE_MAX_SIGNALS = 480
  * texture's work budget the faintest are left out of the surface only; every
  * signal still has its marker, label and list entry.
  */
-export function membraneSignals(signals: GlobeSignal[], timestamp: string): InterestSignal[] {
-  const strongest = signals.length > MEMBRANE_MAX_SIGNALS
-    ? [...signals].sort((a, b) => b.intensity * GLOBE_LAYERS[b.layer].gain - a.intensity * GLOBE_LAYERS[a.layer].gain).slice(0, MEMBRANE_MAX_SIGNALS)
+export function membraneSignals(signals: GlobeSignal[], timestamp: string, limit = MEMBRANE_MAX_SIGNALS): InterestSignal[] {
+  const strongest = signals.length > limit
+    ? [...signals].sort((a, b) => b.intensity * GLOBE_LAYERS[b.layer].gain - a.intensity * GLOBE_LAYERS[a.layer].gain).slice(0, limit)
     : signals
   return strongest.map((signal) => ({
     id: signal.id,
@@ -448,4 +449,112 @@ export function newsGlobeSignals(digest: NewsDigest | null): GlobeSignal[] {
     }]
   })
   return [...countries, ...places].sort((a, b) => b.intensity - a.intensity || a.id.localeCompare(b.id))
+}
+
+const hoursSince = (iso: string, now: number): string => {
+  const hours = Math.max(0, Math.round((now - Date.parse(iso)) / 3_600_000))
+  return hours < 1 ? 'within the hour' : `${hours} h ago`
+}
+
+/** The globe id of a spreading story's peak. */
+export const spreadSignalId = (story: SpreadingStory): string => `news:spread:${story.id}`
+
+/**
+ * Local stories that spread, as peaks at the place they started. A peak is
+ * ranked by how many places and outlets picked the story up, so it grows as
+ * the story travels.
+ */
+export function spreadGlobeSignals(digest: NewsDigest | null, now: number): GlobeSignal[] {
+  const stories = digest?.spreading ?? []
+  if (!stories.length) return []
+  const ranks = rankWithin(stories.map((story) => Math.log1p(story.pickups.length * 2 + story.outletCount)))
+  return stories.map((story, i): GlobeSignal => {
+    const places = story.pickups.length + 1
+    const { recent, earlier } = spreadGrowth(story, now)
+    const named = story.pickups.slice(0, 4).map((pickup) => pickup.name).join(', ') + (story.pickups.length > 4 ? ` and ${story.pickups.length - 4} more` : '')
+    const desks = story.nationalOutlets ? `, and ${story.nationalOutlets} national ${story.nationalOutlets === 1 ? 'desk' : 'desks'}` : ''
+    return {
+      id: spreadSignalId(story),
+      layer: 'news',
+      title: story.title,
+      kind: `Spreading from ${story.origin.name}`,
+      summary: `Started in ${story.origin.name} ${hoursSince(story.firstAt, now)}; picked up in ${named}${desks}.`,
+      placeLabel: story.origin.name,
+      lat: story.origin.lat,
+      lon: story.origin.lon,
+      url: story.url,
+      thumbnail: null,
+      measurement: `${places} places · ${story.outletCount} ${story.outletCount === 1 ? 'outlet' : 'outlets'}`,
+      value: places,
+      // Above ordinary city news: a story other places are carrying is the point of this view.
+      intensity: 0.55 + 0.45 * ranks[i]!,
+      radiusKm: Math.max(120, story.origin.radiusKm * 1.5),
+      observedAt: story.latestAt,
+      endedAt: null,
+      attribution: `Headlines and links from ${[...new Set(story.headlines.map((headline) => headline.publisher))].slice(0, 3).join(', ')}`,
+      licence: 'link-only',
+      sourceUrl: story.url,
+      headlines: story.headlines.map(({ placeName, ...headline }) => ({ ...headline, ...(placeName ? { place: placeName } : {}) })),
+      momentum: (recent - earlier) / (recent + earlier + 2),
+      trendNote: recent
+        ? `Picked up in ${recent} new ${recent === 1 ? 'place' : 'places'} in the last 6 h (${earlier} before)`
+        : `No new places in the last 6 h (${earlier} before)`,
+      isNew: now - Date.parse(story.firstAt) <= 12 * 3_600_000,
+    }
+  })
+}
+
+export const SPREAD_RIDGE_LIMIT = 120
+
+/** A point a fraction t of the way along the great circle from a to b. */
+function alongGreatCircle(a: { lat: number; lon: number }, b: { lat: number; lon: number }, t: number): { lat: number; lon: number } {
+  const rad = Math.PI / 180
+  const toVector = (p: { lat: number; lon: number }): [number, number, number] => [Math.cos(p.lat * rad) * Math.cos(p.lon * rad), Math.cos(p.lat * rad) * Math.sin(p.lon * rad), Math.sin(p.lat * rad)]
+  const va = toVector(a)
+  const vb = toVector(b)
+  const dot = Math.max(-1, Math.min(1, va[0] * vb[0] + va[1] * vb[1] + va[2] * vb[2]))
+  const omega = Math.acos(dot)
+  if (omega < 1e-9) return a
+  const ka = Math.sin((1 - t) * omega) / Math.sin(omega)
+  const kb = Math.sin(t * omega) / Math.sin(omega)
+  const [x, y, z] = [ka * va[0] + kb * vb[0], ka * va[1] + kb * vb[1], ka * va[2] + kb * vb[2]]
+  return { lat: Math.atan2(z, Math.hypot(x, y)) / rad, lon: Math.atan2(y, x) / rad }
+}
+
+/**
+ * Ridges in the field from where a story started to each place that picked it
+ * up: a chain of soft swells along the great circle, strongest at the origin.
+ * The selected story's ridges stand out; otherwise the widest few are drawn.
+ */
+export function spreadRidgeSignals(stories: SpreadingStory[], selectedId: string | null, timestamp: string, limit = SPREAD_RIDGE_LIMIT): InterestSignal[] {
+  const selected = stories.find((story) => spreadSignalId(story) === selectedId)
+  const shown = selected ? [selected, ...stories.filter((story) => story !== selected).slice(0, 2)] : stories.slice(0, 5)
+  const ridges: InterestSignal[] = []
+  for (const story of shown) {
+    const strength = story === selected ? 0.5 : selected ? 0.12 : 0.22
+    for (const pickup of story.pickups) {
+      const km = distanceKm(story.origin, pickup)
+      if (km < 60) continue
+      // Broad enough for the field's ~80 km texels, few enough to fit the budget.
+      const steps = Math.max(2, Math.min(8, Math.round(km / 220)))
+      const radiusKm = Math.max(110, Math.min(320, (km / steps) * 1.4))
+      for (let k = 1; k <= steps; k += 1) {
+        const t = k / steps
+        const point = alongGreatCircle(story.origin, pickup, t)
+        ridges.push({
+          id: `spread:${story.id}:${pickup.id}:${k}`,
+          lat: point.lat,
+          lon: point.lon,
+          intensity: strength * (1 - 0.45 * t),
+          radiusKm,
+          momentum: null,
+          confidence: 0.6,
+          timestamp,
+          topicId: 'news',
+          sourceType: 'public-aggregate',
+        })
+      }
+    }
+  }
+  return ridges.sort((a, b) => b.intensity - a.intensity).slice(0, limit)
 }

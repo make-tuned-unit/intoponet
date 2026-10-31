@@ -1,0 +1,3369 @@
+{
+ "region": "Sub-Saharan Africa (states, provinces and cities)",
+ "note": "Local and regional outlets for Sub-Saharan Africa. The gazetteer has no first-level regions for these countries, so every feed is local: state/province outlets sit on the capital or main city, and regionName gives the gazetteer region.",
+ "candidates": [
+  {
+   "sourceId": "ng-dailypost-abia",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Abia)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/abia/feed/",
+   "geographicScope": "local",
+   "regionName": "Abia State",
+   "cityName": "Umuahia",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailypost-adamawa",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Adamawa)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/adamawa/feed/",
+   "geographicScope": "local",
+   "regionName": "Adamawa",
+   "cityName": "Yola",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailypost-akwa-ibom",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Akwa Ibom)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/akwa-ibom/feed/",
+   "geographicScope": "local",
+   "regionName": "Akwa Ibom State",
+   "cityName": "Uyo",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailypost-anambra",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Anambra)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/anambra/feed/",
+   "geographicScope": "local",
+   "regionName": "Anambra",
+   "cityName": "Awka",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailypost-bauchi",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Bauchi)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/bauchi/feed/",
+   "geographicScope": "local",
+   "regionName": "Bauchi",
+   "cityName": "Bauchi",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailypost-benue",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Benue)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/benue/feed/",
+   "geographicScope": "local",
+   "regionName": "Benue State",
+   "cityName": "Makurdi",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailypost-borno",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Borno)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/borno/feed/",
+   "geographicScope": "local",
+   "regionName": "Borno State",
+   "cityName": "Maiduguri",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailypost-cross-river",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Cross River)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/cross-river/feed/",
+   "geographicScope": "local",
+   "regionName": "Cross River State",
+   "cityName": "Calabar",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailypost-delta",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Delta)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/delta/feed/",
+   "geographicScope": "local",
+   "regionName": "Delta",
+   "cityName": "Asaba",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailypost-ebonyi",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Ebonyi)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/ebonyi/feed/",
+   "geographicScope": "local",
+   "regionName": "Ebonyi State",
+   "cityName": "Abakaliki",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailypost-ekiti",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Ekiti)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/ekiti/feed/",
+   "geographicScope": "local",
+   "regionName": "Ekiti State",
+   "cityName": "Ado-Ekiti",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailypost-enugu",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Enugu)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/enugu/feed/",
+   "geographicScope": "local",
+   "regionName": "Enugu State",
+   "cityName": "Enugu",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailypost-jigawa",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Jigawa)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/jigawa/feed/",
+   "geographicScope": "local",
+   "regionName": "Jigawa State",
+   "cityName": "Dutse",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailypost-kaduna",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Kaduna)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/kaduna/feed/",
+   "geographicScope": "local",
+   "regionName": "Kaduna State",
+   "cityName": "Kaduna",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailypost-kano",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Kano)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/kano/feed/",
+   "geographicScope": "local",
+   "regionName": "Kano State",
+   "cityName": "Kano",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailypost-katsina",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Katsina)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/katsina/feed/",
+   "geographicScope": "local",
+   "regionName": "Katsina State",
+   "cityName": "Katsina",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailypost-kebbi",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Kebbi)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/kebbi/feed/",
+   "geographicScope": "local",
+   "regionName": "Kebbi",
+   "cityName": "Birnin Kebbi",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailypost-kogi",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Kogi)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/kogi/feed/",
+   "geographicScope": "local",
+   "regionName": "Kogi State",
+   "cityName": "Lokoja",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailypost-kwara",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Kwara)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/kwara/feed/",
+   "geographicScope": "local",
+   "regionName": "Kwara State",
+   "cityName": "Ilorin",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailypost-lagos",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Lagos)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/lagos/feed/",
+   "geographicScope": "local",
+   "regionName": "Lagos",
+   "cityName": "Lagos",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailypost-niger",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Niger)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/niger/feed/",
+   "geographicScope": "local",
+   "regionName": "Niger State",
+   "cityName": "Minna",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailypost-ogun",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Ogun)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/ogun/feed/",
+   "geographicScope": "local",
+   "regionName": "Ogun State",
+   "cityName": "Abeokuta",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailypost-ondo",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Ondo)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/ondo/feed/",
+   "geographicScope": "local",
+   "regionName": "Ondo State",
+   "cityName": "Akure",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailypost-osun",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Osun)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/osun/feed/",
+   "geographicScope": "local",
+   "regionName": "Osun State",
+   "cityName": "Osogbo",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailypost-oyo",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Oyo)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/oyo/feed/",
+   "geographicScope": "local",
+   "regionName": "Oyo State",
+   "cityName": "Ibadan",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailypost-plateau",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Plateau)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/plateau/feed/",
+   "geographicScope": "local",
+   "regionName": "Plateau State",
+   "cityName": "Jos",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailypost-rivers",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Rivers)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/rivers/feed/",
+   "geographicScope": "local",
+   "regionName": "Rivers State",
+   "cityName": "Port Harcourt",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailypost-sokoto",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Sokoto)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/sokoto/feed/",
+   "geographicScope": "local",
+   "regionName": "Sokoto",
+   "cityName": "Sokoto",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailypost-taraba",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Taraba)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/taraba/feed/",
+   "geographicScope": "local",
+   "regionName": "Taraba State",
+   "cityName": "Jalingo",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailypost-yobe",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Yobe)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/yobe/feed/",
+   "geographicScope": "local",
+   "regionName": "Yobe State",
+   "cityName": "Damaturu",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailypost-zamfara",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Zamfara)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/zamfara/feed/",
+   "geographicScope": "local",
+   "regionName": "Zamfara State",
+   "cityName": "Gusau",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailypost-abuja",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Abuja)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/abuja/feed/",
+   "geographicScope": "local",
+   "regionName": "FCT",
+   "cityName": "Abuja",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailypost-city-ibadan",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Ibadan)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/ibadan/feed/",
+   "geographicScope": "local",
+   "regionName": "Oyo State",
+   "cityName": "Ibadan",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailypost-city-port-harcourt",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Port Harcourt)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/port-harcourt/feed/",
+   "geographicScope": "local",
+   "regionName": "Rivers State",
+   "cityName": "Port Harcourt",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailypost-city-onitsha",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Onitsha)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/onitsha/feed/",
+   "geographicScope": "local",
+   "regionName": "Anambra",
+   "cityName": "Onitsha",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailypost-city-abeokuta",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Abeokuta)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/abeokuta/feed/",
+   "geographicScope": "local",
+   "regionName": "Ogun State",
+   "cityName": "Abeokuta",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailypost-city-aba",
+   "countryCode": "NG",
+   "publisherName": "Daily Post (Aba)",
+   "publisherType": "digital-native",
+   "url": "https://dailypost.ng/tag/aba/feed/",
+   "geographicScope": "local",
+   "regionName": "Abia State",
+   "cityName": "Aba",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "dailypost"
+  },
+  {
+   "sourceId": "ng-dailytrust-bauchi",
+   "countryCode": "NG",
+   "publisherName": "Daily Trust (Bauchi)",
+   "publisherType": "newspaper",
+   "url": "https://dailytrust.com/tag/bauchi/feed/",
+   "geographicScope": "local",
+   "regionName": "Bauchi",
+   "cityName": "Bauchi",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "media-trust"
+  },
+  {
+   "sourceId": "ng-dailytrust-bayelsa",
+   "countryCode": "NG",
+   "publisherName": "Daily Trust (Bayelsa)",
+   "publisherType": "newspaper",
+   "url": "https://dailytrust.com/tag/bayelsa/feed/",
+   "geographicScope": "local",
+   "regionName": "Bayelsa State",
+   "cityName": "Yenagoa",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "media-trust"
+  },
+  {
+   "sourceId": "ng-dailytrust-benue",
+   "countryCode": "NG",
+   "publisherName": "Daily Trust (Benue)",
+   "publisherType": "newspaper",
+   "url": "https://dailytrust.com/tag/benue/feed/",
+   "geographicScope": "local",
+   "regionName": "Benue State",
+   "cityName": "Makurdi",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "media-trust"
+  },
+  {
+   "sourceId": "ng-dailytrust-borno",
+   "countryCode": "NG",
+   "publisherName": "Daily Trust (Borno)",
+   "publisherType": "newspaper",
+   "url": "https://dailytrust.com/tag/borno/feed/",
+   "geographicScope": "local",
+   "regionName": "Borno State",
+   "cityName": "Maiduguri",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "media-trust"
+  },
+  {
+   "sourceId": "ng-dailytrust-edo",
+   "countryCode": "NG",
+   "publisherName": "Daily Trust (Edo)",
+   "publisherType": "newspaper",
+   "url": "https://dailytrust.com/tag/edo/feed/",
+   "geographicScope": "local",
+   "regionName": "Edo State",
+   "cityName": "Benin City",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "media-trust"
+  },
+  {
+   "sourceId": "ng-dailytrust-fct",
+   "countryCode": "NG",
+   "publisherName": "Daily Trust (FCT)",
+   "publisherType": "newspaper",
+   "url": "https://dailytrust.com/tag/fct/feed/",
+   "geographicScope": "local",
+   "regionName": "FCT",
+   "cityName": "Abuja",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "media-trust"
+  },
+  {
+   "sourceId": "ng-dailytrust-gombe",
+   "countryCode": "NG",
+   "publisherName": "Daily Trust (Gombe)",
+   "publisherType": "newspaper",
+   "url": "https://dailytrust.com/tag/gombe/feed/",
+   "geographicScope": "local",
+   "regionName": "Gombe State",
+   "cityName": "Gombe",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "media-trust"
+  },
+  {
+   "sourceId": "ng-dailytrust-jigawa",
+   "countryCode": "NG",
+   "publisherName": "Daily Trust (Jigawa)",
+   "publisherType": "newspaper",
+   "url": "https://dailytrust.com/tag/jigawa/feed/",
+   "geographicScope": "local",
+   "regionName": "Jigawa State",
+   "cityName": "Dutse",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "media-trust"
+  },
+  {
+   "sourceId": "ng-dailytrust-kaduna",
+   "countryCode": "NG",
+   "publisherName": "Daily Trust (Kaduna)",
+   "publisherType": "newspaper",
+   "url": "https://dailytrust.com/tag/kaduna/feed/",
+   "geographicScope": "local",
+   "regionName": "Kaduna State",
+   "cityName": "Kaduna",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "media-trust"
+  },
+  {
+   "sourceId": "ng-dailytrust-kano",
+   "countryCode": "NG",
+   "publisherName": "Daily Trust (Kano)",
+   "publisherType": "newspaper",
+   "url": "https://dailytrust.com/tag/kano/feed/",
+   "geographicScope": "local",
+   "regionName": "Kano State",
+   "cityName": "Kano",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "media-trust"
+  },
+  {
+   "sourceId": "ng-dailytrust-katsina",
+   "countryCode": "NG",
+   "publisherName": "Daily Trust (Katsina)",
+   "publisherType": "newspaper",
+   "url": "https://dailytrust.com/tag/katsina/feed/",
+   "geographicScope": "local",
+   "regionName": "Katsina State",
+   "cityName": "Katsina",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "media-trust"
+  },
+  {
+   "sourceId": "ng-dailytrust-kebbi",
+   "countryCode": "NG",
+   "publisherName": "Daily Trust (Kebbi)",
+   "publisherType": "newspaper",
+   "url": "https://dailytrust.com/tag/kebbi/feed/",
+   "geographicScope": "local",
+   "regionName": "Kebbi",
+   "cityName": "Birnin Kebbi",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "media-trust"
+  },
+  {
+   "sourceId": "ng-dailytrust-kogi",
+   "countryCode": "NG",
+   "publisherName": "Daily Trust (Kogi)",
+   "publisherType": "newspaper",
+   "url": "https://dailytrust.com/tag/kogi/feed/",
+   "geographicScope": "local",
+   "regionName": "Kogi State",
+   "cityName": "Lokoja",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "media-trust"
+  },
+  {
+   "sourceId": "ng-dailytrust-kwara",
+   "countryCode": "NG",
+   "publisherName": "Daily Trust (Kwara)",
+   "publisherType": "newspaper",
+   "url": "https://dailytrust.com/tag/kwara/feed/",
+   "geographicScope": "local",
+   "regionName": "Kwara State",
+   "cityName": "Ilorin",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "media-trust"
+  },
+  {
+   "sourceId": "ng-dailytrust-nasarawa",
+   "countryCode": "NG",
+   "publisherName": "Daily Trust (Nasarawa)",
+   "publisherType": "newspaper",
+   "url": "https://dailytrust.com/tag/nasarawa/feed/",
+   "geographicScope": "local",
+   "regionName": "Nasarawa State",
+   "cityName": "Lafia",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "media-trust"
+  },
+  {
+   "sourceId": "ng-dailytrust-plateau",
+   "countryCode": "NG",
+   "publisherName": "Daily Trust (Plateau)",
+   "publisherType": "newspaper",
+   "url": "https://dailytrust.com/tag/plateau/feed/",
+   "geographicScope": "local",
+   "regionName": "Plateau State",
+   "cityName": "Jos",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "media-trust"
+  },
+  {
+   "sourceId": "ng-dailytrust-sokoto",
+   "countryCode": "NG",
+   "publisherName": "Daily Trust (Sokoto)",
+   "publisherType": "newspaper",
+   "url": "https://dailytrust.com/tag/sokoto/feed/",
+   "geographicScope": "local",
+   "regionName": "Sokoto",
+   "cityName": "Sokoto",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "media-trust"
+  },
+  {
+   "sourceId": "ng-dailytrust-taraba",
+   "countryCode": "NG",
+   "publisherName": "Daily Trust (Taraba)",
+   "publisherType": "newspaper",
+   "url": "https://dailytrust.com/tag/taraba/feed/",
+   "geographicScope": "local",
+   "regionName": "Taraba State",
+   "cityName": "Jalingo",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "media-trust"
+  },
+  {
+   "sourceId": "ng-dailytrust-zamfara",
+   "countryCode": "NG",
+   "publisherName": "Daily Trust (Zamfara)",
+   "publisherType": "newspaper",
+   "url": "https://dailytrust.com/tag/zamfara/feed/",
+   "geographicScope": "local",
+   "regionName": "Zamfara State",
+   "cityName": "Gusau",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "media-trust"
+  },
+  {
+   "sourceId": "ng-punch-metro",
+   "countryCode": "NG",
+   "publisherName": "Punch (Metro Plus)",
+   "publisherType": "newspaper",
+   "url": "https://punchng.com/topics/metro-plus/feed/",
+   "geographicScope": "local",
+   "regionName": "Lagos",
+   "cityName": "Lagos",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "punch"
+  },
+  {
+   "sourceId": "ng-vanguard-metro",
+   "countryCode": "NG",
+   "publisherName": "Vanguard (Metro)",
+   "publisherType": "newspaper",
+   "url": "https://www.vanguardngr.com/category/metro/feed/",
+   "geographicScope": "local",
+   "regionName": "Lagos",
+   "cityName": "Lagos",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "vanguard"
+  },
+  {
+   "sourceId": "ng-pm-news",
+   "countryCode": "NG",
+   "publisherName": "P.M. News",
+   "publisherType": "newspaper",
+   "url": "https://pmnewsnigeria.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Lagos",
+   "cityName": "Lagos",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "independent-communications-network"
+  },
+  {
+   "sourceId": "ng-lagos-television",
+   "countryCode": "NG",
+   "publisherName": "Lagos Television",
+   "publisherType": "public-broadcaster",
+   "url": "https://lagostelevision.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Lagos",
+   "cityName": "Lagos",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "lagos-television"
+  },
+  {
+   "sourceId": "ng-eko-hot-blog",
+   "countryCode": "NG",
+   "publisherName": "Eko Hot Blog",
+   "publisherType": "digital-native",
+   "url": "https://ekohotblog.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Lagos",
+   "cityName": "Lagos",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "eko-hot-blog"
+  },
+  {
+   "sourceId": "ng-tribune",
+   "countryCode": "NG",
+   "publisherName": "Nigerian Tribune",
+   "publisherType": "newspaper",
+   "url": "https://tribuneonlineng.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Oyo State",
+   "cityName": "Ibadan",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "african-newspapers-nigeria"
+  },
+  {
+   "sourceId": "ng-oyo-insight",
+   "countryCode": "NG",
+   "publisherName": "Oyo Insight",
+   "publisherType": "digital-native",
+   "url": "https://oyoinsight.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Oyo State",
+   "cityName": "Ibadan",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "oyo-insight"
+  },
+  {
+   "sourceId": "ng-leadership",
+   "countryCode": "NG",
+   "publisherName": "Leadership",
+   "publisherType": "newspaper",
+   "url": "https://leadership.ng/feed/",
+   "geographicScope": "local",
+   "regionName": "FCT",
+   "cityName": "Abuja",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "leadership"
+  },
+  {
+   "sourceId": "ng-blueprint",
+   "countryCode": "NG",
+   "publisherName": "Blueprint",
+   "publisherType": "newspaper",
+   "url": "https://blueprint.ng/feed/",
+   "geographicScope": "local",
+   "regionName": "FCT",
+   "cityName": "Abuja",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "blueprint"
+  },
+  {
+   "sourceId": "ng-nigerian-observer",
+   "countryCode": "NG",
+   "publisherName": "The Nigerian Observer",
+   "publisherType": "newspaper",
+   "url": "https://nigerianobservernews.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Edo State",
+   "cityName": "Benin City",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "nigerian-observer"
+  },
+  {
+   "sourceId": "ng-osun-defender",
+   "countryCode": "NG",
+   "publisherName": "Osun Defender",
+   "publisherType": "newspaper",
+   "url": "https://osundefender.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Osun State",
+   "cityName": "Osogbo",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "osun-defender"
+  },
+  {
+   "sourceId": "ng-imo-trumpeta",
+   "countryCode": "NG",
+   "publisherName": "Trumpeta",
+   "publisherType": "newspaper",
+   "url": "https://www.imotrumpeta.com/?feed=rss2",
+   "geographicScope": "local",
+   "regionName": "Imo State",
+   "cityName": "Owerri",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "trumpeta"
+  },
+  {
+   "sourceId": "ng-crossriverwatch",
+   "countryCode": "NG",
+   "publisherName": "CrossRiverWatch",
+   "publisherType": "digital-native",
+   "url": "https://crossriverwatch.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Cross River State",
+   "cityName": "Calabar",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "crossriverwatch"
+  },
+  {
+   "sourceId": "ng-kano-focus",
+   "countryCode": "NG",
+   "publisherName": "Kano Focus",
+   "publisherType": "digital-native",
+   "url": "https://kanofocus.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Kano State",
+   "cityName": "Kano",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "kano-focus"
+  },
+  {
+   "sourceId": "ng-freedom-radio",
+   "countryCode": "NG",
+   "publisherName": "Freedom Radio",
+   "publisherType": "broadcaster",
+   "url": "https://freedomradionig.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Kano State",
+   "cityName": "Kano",
+   "languageTags": [
+    "ha-NG"
+   ],
+   "group": "freedom-radio"
+  },
+  {
+   "sourceId": "ng-niger-delta-today",
+   "countryCode": "NG",
+   "publisherName": "Niger Delta Today",
+   "publisherType": "digital-native",
+   "url": "https://www.nigerdeltatoday.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Rivers State",
+   "cityName": "Port Harcourt",
+   "languageTags": [
+    "en-NG"
+   ],
+   "group": "niger-delta-today"
+  },
+  {
+   "sourceId": "za-rekord",
+   "countryCode": "ZA",
+   "publisherName": "Rekord",
+   "publisherType": "newspaper",
+   "url": "https://www.citizen.co.za/rekord/feed/",
+   "geographicScope": "local",
+   "regionName": "Gauteng",
+   "cityName": "Pretoria",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "caxton"
+  },
+  {
+   "sourceId": "za-randburg-sun",
+   "countryCode": "ZA",
+   "publisherName": "Randburg Sun",
+   "publisherType": "newspaper",
+   "url": "https://www.citizen.co.za/randburg-sun/feed/",
+   "geographicScope": "local",
+   "regionName": "Gauteng",
+   "cityName": "Randburg",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "caxton"
+  },
+  {
+   "sourceId": "za-roodepoort-record",
+   "countryCode": "ZA",
+   "publisherName": "Roodepoort Record",
+   "publisherType": "newspaper",
+   "url": "https://www.citizen.co.za/roodepoort-record/feed/",
+   "geographicScope": "local",
+   "regionName": "Gauteng",
+   "cityName": "Roodepoort",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "caxton"
+  },
+  {
+   "sourceId": "za-krugersdorp-news",
+   "countryCode": "ZA",
+   "publisherName": "Krugersdorp News",
+   "publisherType": "newspaper",
+   "url": "https://www.citizen.co.za/krugersdorp-news/feed/",
+   "geographicScope": "local",
+   "regionName": "Gauteng",
+   "cityName": "Krugersdorp",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "caxton"
+  },
+  {
+   "sourceId": "za-benoni-city-times",
+   "countryCode": "ZA",
+   "publisherName": "Benoni City Times",
+   "publisherType": "newspaper",
+   "url": "https://www.citizen.co.za/benoni-city-times/feed/",
+   "geographicScope": "local",
+   "regionName": "Gauteng",
+   "cityName": "Benoni",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "caxton"
+  },
+  {
+   "sourceId": "za-boksburg-advertiser",
+   "countryCode": "ZA",
+   "publisherName": "Boksburg Advertiser",
+   "publisherType": "newspaper",
+   "url": "https://www.citizen.co.za/boksburg-advertiser/feed/",
+   "geographicScope": "local",
+   "regionName": "Gauteng",
+   "cityName": "Boksburg",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "caxton"
+  },
+  {
+   "sourceId": "za-brakpan-herald",
+   "countryCode": "ZA",
+   "publisherName": "Brakpan Herald",
+   "publisherType": "newspaper",
+   "url": "https://www.citizen.co.za/brakpan-herald/feed/",
+   "geographicScope": "local",
+   "regionName": "Gauteng",
+   "cityName": "Brakpan",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "caxton"
+  },
+  {
+   "sourceId": "za-germiston-city-news",
+   "countryCode": "ZA",
+   "publisherName": "Germiston City News",
+   "publisherType": "newspaper",
+   "url": "https://www.citizen.co.za/germiston-city-news/feed/",
+   "geographicScope": "local",
+   "regionName": "Gauteng",
+   "cityName": "Germiston",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "caxton"
+  },
+  {
+   "sourceId": "za-springs-advertiser",
+   "countryCode": "ZA",
+   "publisherName": "Springs Advertiser",
+   "publisherType": "newspaper",
+   "url": "https://www.citizen.co.za/springs-advertiser/feed/",
+   "geographicScope": "local",
+   "regionName": "Gauteng",
+   "cityName": "Springs",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "caxton"
+  },
+  {
+   "sourceId": "za-alberton-record",
+   "countryCode": "ZA",
+   "publisherName": "Alberton Record",
+   "publisherType": "newspaper",
+   "url": "https://www.citizen.co.za/alberton-record/feed/",
+   "geographicScope": "local",
+   "regionName": "Gauteng",
+   "cityName": "Alberton",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "caxton"
+  },
+  {
+   "sourceId": "za-northcliff-melville-times",
+   "countryCode": "ZA",
+   "publisherName": "Northcliff Melville Times",
+   "publisherType": "newspaper",
+   "url": "https://www.citizen.co.za/northcliff-melville-times/feed/",
+   "geographicScope": "local",
+   "regionName": "Gauteng",
+   "cityName": "Johannesburg",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "caxton"
+  },
+  {
+   "sourceId": "za-sandton-chronicle",
+   "countryCode": "ZA",
+   "publisherName": "Sandton Chronicle",
+   "publisherType": "newspaper",
+   "url": "https://www.citizen.co.za/sandton-chronicle/feed/",
+   "geographicScope": "local",
+   "regionName": "Gauteng",
+   "cityName": "Johannesburg",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "caxton"
+  },
+  {
+   "sourceId": "za-soweto-urban",
+   "countryCode": "ZA",
+   "publisherName": "Soweto Urban",
+   "publisherType": "newspaper",
+   "url": "https://www.citizen.co.za/soweto-urban/feed/",
+   "geographicScope": "local",
+   "regionName": "Gauteng",
+   "cityName": "Soweto",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "caxton"
+  },
+  {
+   "sourceId": "za-alex-news",
+   "countryCode": "ZA",
+   "publisherName": "Alex News",
+   "publisherType": "newspaper",
+   "url": "https://www.citizen.co.za/alex-news/feed/",
+   "geographicScope": "local",
+   "regionName": "Gauteng",
+   "cityName": "Alexandra",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "caxton"
+  },
+  {
+   "sourceId": "za-midrand-reporter",
+   "countryCode": "ZA",
+   "publisherName": "Midrand Reporter",
+   "publisherType": "newspaper",
+   "url": "https://www.citizen.co.za/midrand-reporter/feed/",
+   "geographicScope": "local",
+   "regionName": "Gauteng",
+   "cityName": "Midrand",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "caxton"
+  },
+  {
+   "sourceId": "za-randfontein-herald",
+   "countryCode": "ZA",
+   "publisherName": "Randfontein Herald",
+   "publisherType": "newspaper",
+   "url": "https://www.citizen.co.za/randfontein-herald/feed/",
+   "geographicScope": "local",
+   "regionName": "Gauteng",
+   "cityName": "Randfontein",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "caxton"
+  },
+  {
+   "sourceId": "za-carletonville-herald",
+   "countryCode": "ZA",
+   "publisherName": "Carletonville Herald",
+   "publisherType": "newspaper",
+   "url": "https://www.citizen.co.za/carletonville-herald/feed/",
+   "geographicScope": "local",
+   "regionName": "Gauteng",
+   "cityName": "Carletonville",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "caxton"
+  },
+  {
+   "sourceId": "za-sedibeng-ster",
+   "countryCode": "ZA",
+   "publisherName": "Sedibeng Ster",
+   "publisherType": "newspaper",
+   "url": "https://www.citizen.co.za/sedibeng-ster/feed/",
+   "geographicScope": "local",
+   "regionName": "Gauteng",
+   "cityName": "Vereeniging",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "caxton"
+  },
+  {
+   "sourceId": "za-heidelberg-nigel-heraut",
+   "countryCode": "ZA",
+   "publisherName": "Heidelberg Nigel Heraut",
+   "publisherType": "newspaper",
+   "url": "https://www.citizen.co.za/heidelberg-nigel-heraut/feed/",
+   "geographicScope": "local",
+   "regionName": "Gauteng",
+   "cityName": "Heidelberg",
+   "languageTags": [
+    "af-ZA"
+   ],
+   "group": "caxton"
+  },
+  {
+   "sourceId": "za-witbank-news",
+   "countryCode": "ZA",
+   "publisherName": "Witbank News",
+   "publisherType": "newspaper",
+   "url": "https://www.citizen.co.za/witbank-news/feed/",
+   "geographicScope": "local",
+   "regionName": "Mpumalanga",
+   "cityName": "Emalahleni",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "caxton"
+  },
+  {
+   "sourceId": "za-middelburg-observer",
+   "countryCode": "ZA",
+   "publisherName": "Middelburg Observer",
+   "publisherType": "newspaper",
+   "url": "https://www.citizen.co.za/middelburg-observer/feed/",
+   "geographicScope": "local",
+   "regionName": "Mpumalanga",
+   "cityName": "Middelburg",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "caxton"
+  },
+  {
+   "sourceId": "za-lowvelder",
+   "countryCode": "ZA",
+   "publisherName": "Lowvelder",
+   "publisherType": "newspaper",
+   "url": "https://www.citizen.co.za/lowvelder/feed/",
+   "geographicScope": "local",
+   "regionName": "Mpumalanga",
+   "cityName": "Mbombela",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "caxton"
+  },
+  {
+   "sourceId": "za-review-online",
+   "countryCode": "ZA",
+   "publisherName": "Review",
+   "publisherType": "newspaper",
+   "url": "https://www.citizen.co.za/review-online/feed/",
+   "geographicScope": "local",
+   "regionName": "Limpopo",
+   "cityName": "Polokwane",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "caxton"
+  },
+  {
+   "sourceId": "za-potchefstroom-herald",
+   "countryCode": "ZA",
+   "publisherName": "Potchefstroom Herald",
+   "publisherType": "newspaper",
+   "url": "https://www.citizen.co.za/potchefstroom-herald/feed/",
+   "geographicScope": "local",
+   "regionName": "North West",
+   "cityName": "Potchefstroom",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "caxton"
+  },
+  {
+   "sourceId": "za-parys-gazette",
+   "countryCode": "ZA",
+   "publisherName": "Parys Gazette",
+   "publisherType": "newspaper",
+   "url": "https://www.citizen.co.za/parys-gazette/feed/",
+   "geographicScope": "local",
+   "regionName": "Free State",
+   "cityName": "Parys",
+   "languageTags": [
+    "af-ZA"
+   ],
+   "group": "caxton"
+  },
+  {
+   "sourceId": "za-berea-mail",
+   "countryCode": "ZA",
+   "publisherName": "Berea Mail",
+   "publisherType": "newspaper",
+   "url": "https://www.citizen.co.za/berea-mail/feed/",
+   "geographicScope": "local",
+   "regionName": "KwaZulu-Natal",
+   "cityName": "Durban",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "caxton"
+  },
+  {
+   "sourceId": "za-highway-mail",
+   "countryCode": "ZA",
+   "publisherName": "Highway Mail",
+   "publisherType": "newspaper",
+   "url": "https://www.citizen.co.za/highway-mail/feed/",
+   "geographicScope": "local",
+   "regionName": "KwaZulu-Natal",
+   "cityName": "Pinetown",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "caxton"
+  },
+  {
+   "sourceId": "za-zululand-observer",
+   "countryCode": "ZA",
+   "publisherName": "Zululand Observer",
+   "publisherType": "newspaper",
+   "url": "https://www.citizen.co.za/zululand-observer/feed/",
+   "geographicScope": "local",
+   "regionName": "KwaZulu-Natal",
+   "cityName": "Richards Bay",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "caxton"
+  },
+  {
+   "sourceId": "za-northern-natal-news",
+   "countryCode": "ZA",
+   "publisherName": "Northern Natal News",
+   "publisherType": "newspaper",
+   "url": "https://www.citizen.co.za/northern-natal-news/feed/",
+   "geographicScope": "local",
+   "regionName": "KwaZulu-Natal",
+   "cityName": "Newcastle",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "caxton"
+  },
+  {
+   "sourceId": "za-north-coast-courier",
+   "countryCode": "ZA",
+   "publisherName": "North Coast Courier",
+   "publisherType": "newspaper",
+   "url": "https://www.citizen.co.za/north-coast-courier/feed/",
+   "geographicScope": "local",
+   "regionName": "KwaZulu-Natal",
+   "cityName": "KwaDukuza",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "caxton"
+  },
+  {
+   "sourceId": "za-south-coast-herald",
+   "countryCode": "ZA",
+   "publisherName": "South Coast Herald",
+   "publisherType": "newspaper",
+   "url": "https://www.citizen.co.za/south-coast-herald/feed/",
+   "geographicScope": "local",
+   "regionName": "KwaZulu-Natal",
+   "cityName": "Port Shepstone",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "caxton"
+  },
+  {
+   "sourceId": "za-iol-gauteng",
+   "countryCode": "ZA",
+   "publisherName": "IOL (Gauteng)",
+   "publisherType": "digital-native",
+   "url": "https://iol.co.za/rss/iol/news/south-africa/gauteng",
+   "geographicScope": "local",
+   "regionName": "Gauteng",
+   "cityName": "Johannesburg",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "independent-media"
+  },
+  {
+   "sourceId": "za-iol-kwazulu-natal",
+   "countryCode": "ZA",
+   "publisherName": "IOL (KwaZulu-Natal)",
+   "publisherType": "digital-native",
+   "url": "https://iol.co.za/rss/iol/news/south-africa/kwazulu-natal",
+   "geographicScope": "local",
+   "regionName": "KwaZulu-Natal",
+   "cityName": "Durban",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "independent-media"
+  },
+  {
+   "sourceId": "za-iol-western-cape",
+   "countryCode": "ZA",
+   "publisherName": "IOL (Western Cape)",
+   "publisherType": "digital-native",
+   "url": "https://iol.co.za/rss/iol/news/south-africa/western-cape",
+   "geographicScope": "local",
+   "regionName": "Western Cape",
+   "cityName": "Cape Town",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "independent-media"
+  },
+  {
+   "sourceId": "za-iol-eastern-cape",
+   "countryCode": "ZA",
+   "publisherName": "IOL (Eastern Cape)",
+   "publisherType": "digital-native",
+   "url": "https://iol.co.za/rss/iol/news/south-africa/eastern-cape",
+   "geographicScope": "local",
+   "regionName": "Eastern Cape",
+   "cityName": "Bhisho",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "independent-media"
+  },
+  {
+   "sourceId": "za-iol-free-state",
+   "countryCode": "ZA",
+   "publisherName": "IOL (Free State)",
+   "publisherType": "digital-native",
+   "url": "https://iol.co.za/rss/iol/news/south-africa/free-state",
+   "geographicScope": "local",
+   "regionName": "Free State",
+   "cityName": "Bloemfontein",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "independent-media"
+  },
+  {
+   "sourceId": "za-iol-limpopo",
+   "countryCode": "ZA",
+   "publisherName": "IOL (Limpopo)",
+   "publisherType": "digital-native",
+   "url": "https://iol.co.za/rss/iol/news/south-africa/limpopo",
+   "geographicScope": "local",
+   "regionName": "Limpopo",
+   "cityName": "Polokwane",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "independent-media"
+  },
+  {
+   "sourceId": "za-iol-mpumalanga",
+   "countryCode": "ZA",
+   "publisherName": "IOL (Mpumalanga)",
+   "publisherType": "digital-native",
+   "url": "https://iol.co.za/rss/iol/news/south-africa/mpumalanga",
+   "geographicScope": "local",
+   "regionName": "Mpumalanga",
+   "cityName": "Mbombela",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "independent-media"
+  },
+  {
+   "sourceId": "za-pretoria-news",
+   "countryCode": "ZA",
+   "publisherName": "Pretoria News",
+   "publisherType": "newspaper",
+   "url": "https://iol.co.za/rss/iol/pretoria-news",
+   "geographicScope": "local",
+   "regionName": "Gauteng",
+   "cityName": "Pretoria",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "independent-media"
+  },
+  {
+   "sourceId": "za-joburg-etc",
+   "countryCode": "ZA",
+   "publisherName": "Joburg ETC",
+   "publisherType": "digital-native",
+   "url": "https://www.joburgetc.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Gauteng",
+   "cityName": "Johannesburg",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "etc-media"
+  },
+  {
+   "sourceId": "za-cape-town-etc",
+   "countryCode": "ZA",
+   "publisherName": "Cape Town ETC",
+   "publisherType": "digital-native",
+   "url": "https://www.capetownetc.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Western Cape",
+   "cityName": "Cape Town",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "etc-media"
+  },
+  {
+   "sourceId": "za-groundup",
+   "countryCode": "ZA",
+   "publisherName": "GroundUp",
+   "publisherType": "digital-native",
+   "url": "https://www.groundup.org.za/sitenews/rss/",
+   "geographicScope": "local",
+   "regionName": "Western Cape",
+   "cityName": "Cape Town",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "groundup"
+  },
+  {
+   "sourceId": "za-the-herald",
+   "countryCode": "ZA",
+   "publisherName": "The Herald",
+   "publisherType": "newspaper",
+   "url": "https://theherald.co.za/atom/",
+   "geographicScope": "local",
+   "regionName": "Eastern Cape",
+   "cityName": "Gqeberha",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "arena-holdings"
+  },
+  {
+   "sourceId": "za-daily-dispatch",
+   "countryCode": "ZA",
+   "publisherName": "Daily Dispatch",
+   "publisherType": "newspaper",
+   "url": "https://dailydispatch.co.za/atom/",
+   "geographicScope": "local",
+   "regionName": "Eastern Cape",
+   "cityName": "East London",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "arena-holdings"
+  },
+  {
+   "sourceId": "za-dfa",
+   "countryCode": "ZA",
+   "publisherName": "Diamond Fields Advertiser",
+   "publisherType": "newspaper",
+   "url": "https://dfa.co.za/atom/",
+   "geographicScope": "local",
+   "regionName": "Northern Cape",
+   "cityName": "Kimberley",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "arena-holdings"
+  },
+  {
+   "sourceId": "za-the-witness",
+   "countryCode": "ZA",
+   "publisherName": "The Witness",
+   "publisherType": "newspaper",
+   "url": "https://witness.co.za/feed/",
+   "geographicScope": "local",
+   "regionName": "KwaZulu-Natal",
+   "cityName": "Pietermaritzburg",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "media24"
+  },
+  {
+   "sourceId": "za-bloemnews-express",
+   "countryCode": "ZA",
+   "publisherName": "BloemNews Express",
+   "publisherType": "newspaper",
+   "url": "https://www.express-news.co.za/feed/",
+   "geographicScope": "local",
+   "regionName": "Free State",
+   "cityName": "Bloemfontein",
+   "languageTags": [
+    "af-ZA"
+   ],
+   "group": "bloemnews-express"
+  },
+  {
+   "sourceId": "za-george-herald",
+   "countryCode": "ZA",
+   "publisherName": "George Herald",
+   "publisherType": "newspaper",
+   "url": "https://georgeherald.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Western Cape",
+   "cityName": "George",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "group-editors"
+  },
+  {
+   "sourceId": "za-mossel-bay-advertiser",
+   "countryCode": "ZA",
+   "publisherName": "Mossel Bay Advertiser",
+   "publisherType": "newspaper",
+   "url": "https://mosselbayadvertiser.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Western Cape",
+   "cityName": "Mossel Bay",
+   "languageTags": [
+    "en-ZA"
+   ],
+   "group": "group-editors"
+  },
+  {
+   "sourceId": "za-paarl-post",
+   "countryCode": "ZA",
+   "publisherName": "Paarl Post",
+   "publisherType": "newspaper",
+   "url": "https://novanews.co.za/paarlpost/feed/",
+   "geographicScope": "local",
+   "regionName": "Western Cape",
+   "cityName": "Paarl",
+   "languageTags": [
+    "af-ZA"
+   ],
+   "group": "novus-media"
+  },
+  {
+   "sourceId": "cm-jdc-douala",
+   "countryCode": "CM",
+   "publisherName": "Journal du Cameroun",
+   "publisherType": "digital-native",
+   "url": "https://fr.journalducameroun.com/tag/douala/feed/",
+   "geographicScope": "local",
+   "regionName": "Littoral",
+   "cityName": "Douala",
+   "languageTags": [
+    "fr-CM"
+   ],
+   "group": "journal-du-cameroun"
+  },
+  {
+   "sourceId": "cm-237online-douala",
+   "countryCode": "CM",
+   "publisherName": "237online",
+   "publisherType": "digital-native",
+   "url": "https://www.237online.com/tag/douala/feed/",
+   "geographicScope": "local",
+   "regionName": "Littoral",
+   "cityName": "Douala",
+   "languageTags": [
+    "fr-CM"
+   ],
+   "group": "237online"
+  },
+  {
+   "sourceId": "cm-237online-yaounde",
+   "countryCode": "CM",
+   "publisherName": "237online",
+   "publisherType": "digital-native",
+   "url": "https://www.237online.com/tag/yaounde/feed/",
+   "geographicScope": "local",
+   "regionName": "Centre",
+   "cityName": "Yaoundé",
+   "languageTags": [
+    "fr-CM"
+   ],
+   "group": "237online"
+  },
+  {
+   "sourceId": "cm-237online-bafoussam",
+   "countryCode": "CM",
+   "publisherName": "237online",
+   "publisherType": "digital-native",
+   "url": "https://www.237online.com/tag/bafoussam/feed/",
+   "geographicScope": "local",
+   "regionName": "West",
+   "cityName": "Bafoussam",
+   "languageTags": [
+    "fr-CM"
+   ],
+   "group": "237online"
+  },
+  {
+   "sourceId": "cm-cna-buea",
+   "countryCode": "CM",
+   "publisherName": "Cameroon News Agency",
+   "publisherType": "digital-native",
+   "url": "https://cameroonnewsagency.com/feed/",
+   "geographicScope": "local",
+   "regionName": "South-West",
+   "cityName": "Buea",
+   "languageTags": [
+    "en-CM"
+   ],
+   "group": "cameroon-news-agency"
+  },
+  {
+   "sourceId": "sn-thiesinfo",
+   "countryCode": "SN",
+   "publisherName": "Thiès Info",
+   "publisherType": "digital-native",
+   "url": "https://www.thiesinfo.com/xml/syndication.rss",
+   "geographicScope": "local",
+   "regionName": "Thies",
+   "cityName": "Thiès",
+   "languageTags": [
+    "fr-SN"
+   ],
+   "group": "thiesinfo"
+  },
+  {
+   "sourceId": "sn-ndarinfo",
+   "countryCode": "SN",
+   "publisherName": "NdarInfo",
+   "publisherType": "digital-native",
+   "url": "https://www.ndarinfo.com/xml/syndication.rss",
+   "geographicScope": "local",
+   "regionName": "Saint-Louis",
+   "cityName": "Saint-Louis",
+   "languageTags": [
+    "fr-SN"
+   ],
+   "group": "ndarinfo"
+  },
+  {
+   "sourceId": "gn-guineematin-conakry",
+   "countryCode": "GN",
+   "publisherName": "Guinéematin",
+   "publisherType": "digital-native",
+   "url": "https://guineematin.com/tag/conakry/feed/",
+   "geographicScope": "local",
+   "regionName": "Conakry",
+   "cityName": "Conakry",
+   "languageTags": [
+    "fr-GN"
+   ],
+   "group": "guineematin"
+  },
+  {
+   "sourceId": "gn-guineematin-kankan",
+   "countryCode": "GN",
+   "publisherName": "Guinéematin",
+   "publisherType": "digital-native",
+   "url": "https://guineematin.com/tag/kankan/feed/",
+   "geographicScope": "local",
+   "regionName": "Kankan Region",
+   "cityName": "Kankan",
+   "languageTags": [
+    "fr-GN"
+   ],
+   "group": "guineematin"
+  },
+  {
+   "sourceId": "gn-guineematin-kindia",
+   "countryCode": "GN",
+   "publisherName": "Guinéematin",
+   "publisherType": "digital-native",
+   "url": "https://guineematin.com/tag/kindia/feed/",
+   "geographicScope": "local",
+   "regionName": "Kindia",
+   "cityName": "Kindia",
+   "languageTags": [
+    "fr-GN"
+   ],
+   "group": "guineematin"
+  },
+  {
+   "sourceId": "gn-guineematin-labe",
+   "countryCode": "GN",
+   "publisherName": "Guinéematin",
+   "publisherType": "digital-native",
+   "url": "https://guineematin.com/tag/labe/feed/",
+   "geographicScope": "local",
+   "regionName": "Labé Region",
+   "cityName": "Labé",
+   "languageTags": [
+    "fr-GN"
+   ],
+   "group": "guineematin"
+  },
+  {
+   "sourceId": "gn-guineematin-mamou",
+   "countryCode": "GN",
+   "publisherName": "Guinéematin",
+   "publisherType": "digital-native",
+   "url": "https://guineematin.com/tag/mamou/feed/",
+   "geographicScope": "local",
+   "regionName": "Mamou Region",
+   "cityName": "Mamou",
+   "languageTags": [
+    "fr-GN"
+   ],
+   "group": "guineematin"
+  },
+  {
+   "sourceId": "gn-guineematin-siguiri",
+   "countryCode": "GN",
+   "publisherName": "Guinéematin",
+   "publisherType": "digital-native",
+   "url": "https://guineematin.com/tag/siguiri/feed/",
+   "geographicScope": "local",
+   "regionName": "Kankan Region",
+   "cityName": "Siguiri",
+   "languageTags": [
+    "fr-GN"
+   ],
+   "group": "guineematin"
+  },
+  {
+   "sourceId": "ci-afriksoir-abidjan",
+   "countryCode": "CI",
+   "publisherName": "Afrik Soir",
+   "publisherType": "digital-native",
+   "url": "https://afriksoir.net/tag/abidjan/feed/",
+   "geographicScope": "local",
+   "regionName": "Abidjan Autonomous District",
+   "cityName": "Abidjan",
+   "languageTags": [
+    "fr-CI"
+   ],
+   "group": "afrik-soir"
+  },
+  {
+   "sourceId": "ci-afriksoir-bouake",
+   "countryCode": "CI",
+   "publisherName": "Afrik Soir",
+   "publisherType": "digital-native",
+   "url": "https://afriksoir.net/tag/bouake/feed/",
+   "geographicScope": "local",
+   "regionName": "Vallée du Bandama District",
+   "cityName": "Bouaké",
+   "languageTags": [
+    "fr-CI"
+   ],
+   "group": "afrik-soir"
+  },
+  {
+   "sourceId": "ci-afriksoir-korhogo",
+   "countryCode": "CI",
+   "publisherName": "Afrik Soir",
+   "publisherType": "digital-native",
+   "url": "https://afriksoir.net/tag/korhogo/feed/",
+   "geographicScope": "local",
+   "regionName": "Savanes District",
+   "cityName": "Korhogo",
+   "languageTags": [
+    "fr-CI"
+   ],
+   "group": "afrik-soir"
+  },
+  {
+   "sourceId": "ci-afriksoir-daloa",
+   "countryCode": "CI",
+   "publisherName": "Afrik Soir",
+   "publisherType": "digital-native",
+   "url": "https://afriksoir.net/tag/daloa/feed/",
+   "geographicScope": "local",
+   "regionName": "Sassandra-Marahoue",
+   "cityName": "Daloa",
+   "languageTags": [
+    "fr-CI"
+   ],
+   "group": "afrik-soir"
+  },
+  {
+   "sourceId": "ci-afriksoir-sanpedro",
+   "countryCode": "CI",
+   "publisherName": "Afrik Soir",
+   "publisherType": "digital-native",
+   "url": "https://afriksoir.net/tag/san-pedro/feed/",
+   "geographicScope": "local",
+   "regionName": "Bas-Sassandra District",
+   "cityName": "San-Pédro",
+   "languageTags": [
+    "fr-CI"
+   ],
+   "group": "afrik-soir"
+  },
+  {
+   "sourceId": "cd-kmp-goma",
+   "countryCode": "CD",
+   "publisherName": "Kivu Morning Post",
+   "publisherType": "digital-native",
+   "url": "https://kivumorningpost.com/tag/goma/feed/",
+   "geographicScope": "local",
+   "regionName": "North Kivu",
+   "cityName": "Goma",
+   "languageTags": [
+    "fr-CD"
+   ],
+   "group": "kivu-morning-post"
+  },
+  {
+   "sourceId": "cd-kmp-beni",
+   "countryCode": "CD",
+   "publisherName": "Kivu Morning Post",
+   "publisherType": "digital-native",
+   "url": "https://kivumorningpost.com/tag/beni/feed/",
+   "geographicScope": "local",
+   "regionName": "North Kivu",
+   "cityName": "Beni",
+   "languageTags": [
+    "fr-CD"
+   ],
+   "group": "kivu-morning-post"
+  },
+  {
+   "sourceId": "cd-habarirdc-bukavu",
+   "countryCode": "CD",
+   "publisherName": "Habari RDC",
+   "publisherType": "digital-native",
+   "url": "https://habarirdc.net/tag/bukavu/feed/",
+   "geographicScope": "local",
+   "regionName": "South Kivu",
+   "cityName": "Bukavu",
+   "languageTags": [
+    "fr-CD"
+   ],
+   "group": "habari-rdc"
+  },
+  {
+   "sourceId": "cd-habarirdc-lubumbashi",
+   "countryCode": "CD",
+   "publisherName": "Habari RDC",
+   "publisherType": "digital-native",
+   "url": "https://habarirdc.net/tag/lubumbashi/feed/",
+   "geographicScope": "local",
+   "regionName": "Haut-Katanga",
+   "cityName": "Lubumbashi",
+   "languageTags": [
+    "fr-CD"
+   ],
+   "group": "habari-rdc"
+  },
+  {
+   "sourceId": "cd-congoprofond-mbujimayi",
+   "countryCode": "CD",
+   "publisherName": "Congo Profond",
+   "publisherType": "digital-native",
+   "url": "https://congoprofond.net/tag/mbuji-mayi/feed/",
+   "geographicScope": "local",
+   "regionName": "East Kasai",
+   "cityName": "Mbuji-Mayi",
+   "languageTags": [
+    "fr-CD"
+   ],
+   "group": "congo-profond"
+  },
+  {
+   "sourceId": "cd-congoprofond-kinshasa",
+   "countryCode": "CD",
+   "publisherName": "Congo Profond",
+   "publisherType": "digital-native",
+   "url": "https://congoprofond.net/tag/kinshasa/feed/",
+   "geographicScope": "local",
+   "regionName": "Kinshasa",
+   "cityName": "Kinshasa",
+   "languageTags": [
+    "fr-CD"
+   ],
+   "group": "congo-profond"
+  },
+  {
+   "sourceId": "cg-jdb-pointenoire",
+   "countryCode": "CG",
+   "publisherName": "Journal de Brazza",
+   "publisherType": "digital-native",
+   "url": "https://journaldebrazza.com/tag/pointe-noire/feed/",
+   "geographicScope": "local",
+   "regionName": "Pointe-Noire",
+   "cityName": "Pointe-Noire",
+   "languageTags": [
+    "fr-CG"
+   ],
+   "group": "journal-de-brazza"
+  },
+  {
+   "sourceId": "cg-jdb-brazzaville",
+   "countryCode": "CG",
+   "publisherName": "Journal de Brazza",
+   "publisherType": "digital-native",
+   "url": "https://journaldebrazza.com/tag/brazzaville/feed/",
+   "geographicScope": "local",
+   "regionName": "Brazzaville",
+   "cityName": "Brazzaville",
+   "languageTags": [
+    "fr-CG"
+   ],
+   "group": "journal-de-brazza"
+  },
+  {
+   "sourceId": "bf-wakatsera-ouagadougou",
+   "countryCode": "BF",
+   "publisherName": "Wakat Séra",
+   "publisherType": "digital-native",
+   "url": "https://www.wakatsera.com/tag/ouagadougou/feed/",
+   "geographicScope": "local",
+   "regionName": "Centre",
+   "cityName": "Ouagadougou",
+   "languageTags": [
+    "fr-BF"
+   ],
+   "group": "wakat-sera"
+  },
+  {
+   "sourceId": "bf-wakatsera-bobo",
+   "countryCode": "BF",
+   "publisherName": "Wakat Séra",
+   "publisherType": "digital-native",
+   "url": "https://www.wakatsera.com/tag/bobo-dioulasso/feed/",
+   "geographicScope": "local",
+   "regionName": "Hauts-Bassins",
+   "cityName": "Bobo-Dioulasso",
+   "languageTags": [
+    "fr-BF"
+   ],
+   "group": "wakat-sera"
+  },
+  {
+   "sourceId": "ml-jdm-bamako",
+   "countryCode": "ML",
+   "publisherName": "Journal du Mali",
+   "publisherType": "digital-native",
+   "url": "https://journaldumali.com/tag/bamako/feed/",
+   "geographicScope": "local",
+   "regionName": "Bamako",
+   "cityName": "Bamako",
+   "languageTags": [
+    "fr-ML"
+   ],
+   "group": "journal-du-mali"
+  },
+  {
+   "sourceId": "ml-jdm-segou",
+   "countryCode": "ML",
+   "publisherName": "Journal du Mali",
+   "publisherType": "digital-native",
+   "url": "https://journaldumali.com/tag/segou/feed/",
+   "geographicScope": "local",
+   "regionName": "Ségou",
+   "cityName": "Ségou",
+   "languageTags": [
+    "fr-ML"
+   ],
+   "group": "journal-du-mali"
+  },
+  {
+   "sourceId": "bj-matinlibre-cotonou",
+   "countryCode": "BJ",
+   "publisherName": "Matin Libre",
+   "publisherType": "newspaper",
+   "url": "https://matinlibre.com/tag/cotonou/feed/",
+   "geographicScope": "local",
+   "regionName": "Littoral",
+   "cityName": "Cotonou",
+   "languageTags": [
+    "fr-BJ"
+   ],
+   "group": "matin-libre"
+  },
+  {
+   "sourceId": "bj-matinlibre-parakou",
+   "countryCode": "BJ",
+   "publisherName": "Matin Libre",
+   "publisherType": "newspaper",
+   "url": "https://matinlibre.com/tag/parakou/feed/",
+   "geographicScope": "local",
+   "regionName": "Borgou",
+   "cityName": "Parakou",
+   "languageTags": [
+    "fr-BJ"
+   ],
+   "group": "matin-libre"
+  },
+  {
+   "sourceId": "ne-kalangou-agadez",
+   "countryCode": "NE",
+   "publisherName": "Studio Kalangou",
+   "publisherType": "broadcaster",
+   "url": "https://studiokalangou.org/tag/agadez/feed/",
+   "geographicScope": "local",
+   "regionName": "Agadez",
+   "cityName": "Agadez",
+   "languageTags": [
+    "fr-NE"
+   ],
+   "group": "fondation-hirondelle"
+  },
+  {
+   "sourceId": "cv-noticiasdonorte",
+   "countryCode": "CV",
+   "publisherName": "Notícias do Norte",
+   "publisherType": "digital-native",
+   "url": "https://noticiasdonorte.publ.cv/feed/",
+   "geographicScope": "local",
+   "regionName": "São Vicente",
+   "cityName": "Mindelo",
+   "languageTags": [
+    "pt-CV"
+   ],
+   "group": "noticias-do-norte"
+  },
+  {
+   "sourceId": "cv-mindelinsite",
+   "countryCode": "CV",
+   "publisherName": "Mindel Insite",
+   "publisherType": "digital-native",
+   "url": "https://mindelinsite.com/feed/",
+   "geographicScope": "local",
+   "regionName": "São Vicente",
+   "cityName": "Mindelo",
+   "languageTags": [
+    "pt-CV"
+   ],
+   "group": "mindel-insite"
+  },
+  {
+   "sourceId": "cv-opais",
+   "countryCode": "CV",
+   "publisherName": "O País",
+   "publisherType": "newspaper",
+   "url": "https://opais.cv/feed/",
+   "geographicScope": "local",
+   "regionName": "Praia",
+   "cityName": "Praia",
+   "languageTags": [
+    "pt-CV"
+   ],
+   "group": "o-pais-cv"
+  },
+  {
+   "sourceId": "td-alwihda",
+   "countryCode": "TD",
+   "publisherName": "Alwihda Info",
+   "publisherType": "digital-native",
+   "url": "https://www.alwihdainfo.com/rss/",
+   "geographicScope": "local",
+   "regionName": "N’Djaména",
+   "cityName": "N'Djamena",
+   "languageTags": [
+    "fr-TD"
+   ],
+   "group": "alwihda"
+  },
+  {
+   "sourceId": "cf-corbeaunews",
+   "countryCode": "CF",
+   "publisherName": "Corbeau News Centrafrique",
+   "publisherType": "digital-native",
+   "url": "https://corbeaunews-centrafrique.org/feed/",
+   "geographicScope": "local",
+   "regionName": "Bangui",
+   "cityName": "Bangui",
+   "languageTags": [
+    "fr-CF"
+   ],
+   "group": "corbeau-news"
+  },
+  {
+   "sourceId": "mr-lecalame-nouakchott",
+   "countryCode": "MR",
+   "publisherName": "Le Calame",
+   "publisherType": "newspaper",
+   "url": "https://lecalame.info/?q=rss.xml",
+   "geographicScope": "local",
+   "regionName": null,
+   "cityName": "Nouakchott",
+   "languageTags": [
+    "fr-MR"
+   ],
+   "group": "le-calame"
+  },
+  {
+   "sourceId": "tg-focusinfos-lome",
+   "countryCode": "TG",
+   "publisherName": "Focus Infos",
+   "publisherType": "newspaper",
+   "url": "https://focusinfos.tg/feed/",
+   "geographicScope": "local",
+   "regionName": "Maritime",
+   "cityName": "Lomé",
+   "languageTags": [
+    "fr-TG"
+   ],
+   "group": "focus-infos"
+  },
+  {
+   "sourceId": "ga-gabonclic-libreville",
+   "countryCode": "GA",
+   "publisherName": "Gabon Clic",
+   "publisherType": "digital-native",
+   "url": "https://gabonclic.info/feed/",
+   "geographicScope": "local",
+   "regionName": "Estuaire",
+   "cityName": "Libreville",
+   "languageTags": [
+    "fr-GA"
+   ],
+   "group": "gabon-clic"
+  },
+  {
+   "sourceId": "gq-realeg-malabo",
+   "countryCode": "GQ",
+   "publisherName": "Real Equatorial Guinea",
+   "publisherType": "digital-native",
+   "url": "https://realequatorialguinea.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Bioko Norte",
+   "cityName": "Malabo",
+   "languageTags": [
+    "es-GQ"
+   ],
+   "group": "real-equatorial-guinea"
+  },
+  {
+   "sourceId": "st-jornaltropical",
+   "countryCode": "ST",
+   "publisherName": "Jornal Tropical",
+   "publisherType": "digital-native",
+   "url": "https://www.jornaltropical.st/feed/",
+   "geographicScope": "local",
+   "regionName": "São Tomé Island",
+   "cityName": "São Tomé",
+   "languageTags": [
+    "pt-ST"
+   ],
+   "group": "jornal-tropical"
+  },
+  {
+   "sourceId": "zw-bulawayo24",
+   "countryCode": "ZW",
+   "publisherName": "Bulawayo24",
+   "publisherType": "digital-native",
+   "url": "https://bulawayo24.com/rss",
+   "geographicScope": "local",
+   "regionName": "Bulawayo",
+   "cityName": "Bulawayo",
+   "languageTags": [
+    "en-ZW"
+   ],
+   "group": "bulawayo24"
+  },
+  {
+   "sourceId": "zw-nehanda-bulawayo",
+   "countryCode": "ZW",
+   "publisherName": "Nehanda Radio – Bulawayo",
+   "publisherType": "digital-native",
+   "url": "https://nehandaradio.com/tag/bulawayo/feed/",
+   "geographicScope": "local",
+   "regionName": "Bulawayo",
+   "cityName": "Bulawayo",
+   "languageTags": [
+    "en-ZW"
+   ],
+   "group": "nehanda-radio"
+  },
+  {
+   "sourceId": "zw-masvingo-mirror",
+   "countryCode": "ZW",
+   "publisherName": "The Mirror (Masvingo)",
+   "publisherType": "newspaper",
+   "url": "https://www.masvingomirror.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Masvingo Province",
+   "cityName": "Masvingo",
+   "languageTags": [
+    "en-ZW"
+   ],
+   "group": "masvingo-mirror"
+  },
+  {
+   "sourceId": "zw-tellzim",
+   "countryCode": "ZW",
+   "publisherName": "TellZim News",
+   "publisherType": "digital-native",
+   "url": "https://tellzim.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Masvingo Province",
+   "cityName": "Masvingo",
+   "languageTags": [
+    "en-ZW"
+   ],
+   "group": "tellzim"
+  },
+  {
+   "sourceId": "zw-newsday-local",
+   "countryCode": "ZW",
+   "publisherName": "NewsDay – Local News",
+   "publisherType": "newspaper",
+   "url": "https://www.newsday.co.zw/category/local-news/feed/",
+   "geographicScope": "local",
+   "regionName": "Harare",
+   "cityName": "Harare",
+   "languageTags": [
+    "en-ZW"
+   ],
+   "group": "alpha-media-holdings"
+  },
+  {
+   "sourceId": "mw-nyasatimes-lilongwe",
+   "countryCode": "MW",
+   "publisherName": "Nyasa Times – Lilongwe",
+   "publisherType": "digital-native",
+   "url": "https://www.nyasatimes.com/tag/lilongwe/feed/",
+   "geographicScope": "local",
+   "regionName": "Central Region",
+   "cityName": "Lilongwe",
+   "languageTags": [
+    "en-MW"
+   ],
+   "group": "nyasa-times"
+  },
+  {
+   "sourceId": "mz-noticias-maputo",
+   "countryCode": "MZ",
+   "publisherName": "Jornal Notícias – Maputo",
+   "publisherType": "newspaper",
+   "url": "https://www.jornalnoticias.co.mz/tag/maputo/feed/",
+   "geographicScope": "local",
+   "regionName": "Maputo City",
+   "cityName": "Maputo",
+   "languageTags": [
+    "pt-MZ"
+   ],
+   "group": "sociedade-do-noticias"
+  },
+  {
+   "sourceId": "mz-noticias-matola",
+   "countryCode": "MZ",
+   "publisherName": "Jornal Notícias – Matola",
+   "publisherType": "newspaper",
+   "url": "https://www.jornalnoticias.co.mz/tag/matola/feed/",
+   "geographicScope": "local",
+   "regionName": "Maputo Province",
+   "cityName": "Matola",
+   "languageTags": [
+    "pt-MZ"
+   ],
+   "group": "sociedade-do-noticias"
+  },
+  {
+   "sourceId": "mz-noticias-sofala",
+   "countryCode": "MZ",
+   "publisherName": "Jornal Notícias – Sofala",
+   "publisherType": "newspaper",
+   "url": "https://www.jornalnoticias.co.mz/tag/sofala/feed/",
+   "geographicScope": "local",
+   "regionName": "Sofala",
+   "cityName": "Beira",
+   "languageTags": [
+    "pt-MZ"
+   ],
+   "group": "sociedade-do-noticias"
+  },
+  {
+   "sourceId": "mz-noticias-nampula",
+   "countryCode": "MZ",
+   "publisherName": "Jornal Notícias – Nampula",
+   "publisherType": "newspaper",
+   "url": "https://www.jornalnoticias.co.mz/tag/nampula/feed/",
+   "geographicScope": "local",
+   "regionName": "Nampula",
+   "cityName": "Nampula",
+   "languageTags": [
+    "pt-MZ"
+   ],
+   "group": "sociedade-do-noticias"
+  },
+  {
+   "sourceId": "mz-noticias-tete",
+   "countryCode": "MZ",
+   "publisherName": "Jornal Notícias – Tete",
+   "publisherType": "newspaper",
+   "url": "https://www.jornalnoticias.co.mz/tag/tete/feed/",
+   "geographicScope": "local",
+   "regionName": "Tete",
+   "cityName": "Tete",
+   "languageTags": [
+    "pt-MZ"
+   ],
+   "group": "sociedade-do-noticias"
+  },
+  {
+   "sourceId": "mz-noticias-inhambane",
+   "countryCode": "MZ",
+   "publisherName": "Jornal Notícias – Inhambane",
+   "publisherType": "newspaper",
+   "url": "https://www.jornalnoticias.co.mz/tag/inhambane/feed/",
+   "geographicScope": "local",
+   "regionName": "Inhambane Province",
+   "cityName": "Inhambane",
+   "languageTags": [
+    "pt-MZ"
+   ],
+   "group": "sociedade-do-noticias"
+  },
+  {
+   "sourceId": "mz-evidencias-nampula",
+   "countryCode": "MZ",
+   "publisherName": "Evidências – Nampula",
+   "publisherType": "newspaper",
+   "url": "https://evidencias.co.mz/tag/nampula/feed/",
+   "geographicScope": "local",
+   "regionName": "Nampula",
+   "cityName": "Nampula",
+   "languageTags": [
+    "pt-MZ"
+   ],
+   "group": "evidencias"
+  },
+  {
+   "sourceId": "ao-folha8-luanda",
+   "countryCode": "AO",
+   "publisherName": "Folha 8 – Luanda",
+   "publisherType": "newspaper",
+   "url": "https://jornalf8.net/tag/luanda/feed/",
+   "geographicScope": "local",
+   "regionName": "Luanda",
+   "cityName": "Luanda",
+   "languageTags": [
+    "pt-AO"
+   ],
+   "group": "folha-8"
+  },
+  {
+   "sourceId": "bw-the-voice",
+   "countryCode": "BW",
+   "publisherName": "The Voice",
+   "publisherType": "newspaper",
+   "url": "https://thevoicebw.com/feed/",
+   "geographicScope": "local",
+   "regionName": "City of Francistown",
+   "cityName": "Francistown",
+   "languageTags": [
+    "en-BW"
+   ],
+   "group": "the-voice-bw"
+  },
+  {
+   "sourceId": "mg-midi-antananarivo",
+   "countryCode": "MG",
+   "publisherName": "Midi Madagasikara – Antananarivo",
+   "publisherType": "newspaper",
+   "url": "https://midi-madagasikara.mg/tag/antananarivo/feed/",
+   "geographicScope": "local",
+   "regionName": "Analamanga",
+   "cityName": "Antananarivo",
+   "languageTags": [
+    "fr-MG",
+    "mg-MG"
+   ],
+   "group": "midi-madagasikara"
+  },
+  {
+   "sourceId": "mg-midi-toamasina",
+   "countryCode": "MG",
+   "publisherName": "Midi Madagasikara – Toamasina",
+   "publisherType": "newspaper",
+   "url": "https://midi-madagasikara.mg/tag/toamasina/feed/",
+   "geographicScope": "local",
+   "regionName": "Atsinanana",
+   "cityName": "Toamasina",
+   "languageTags": [
+    "fr-MG",
+    "mg-MG"
+   ],
+   "group": "midi-madagasikara"
+  },
+  {
+   "sourceId": "mg-midi-toliara",
+   "countryCode": "MG",
+   "publisherName": "Midi Madagasikara – Toliara",
+   "publisherType": "newspaper",
+   "url": "https://midi-madagasikara.mg/tag/toliara/feed/",
+   "geographicScope": "local",
+   "regionName": "Atsimo-Andrefana",
+   "cityName": "Toliara",
+   "languageTags": [
+    "fr-MG",
+    "mg-MG"
+   ],
+   "group": "midi-madagasikara"
+  },
+  {
+   "sourceId": "sl-sierraloaded-freetown",
+   "countryCode": "SL",
+   "publisherName": "Sierraloaded – Freetown",
+   "publisherType": "digital-native",
+   "url": "https://sierraloaded.sl/tag/freetown/feed/",
+   "geographicScope": "local",
+   "regionName": "Western Area",
+   "cityName": "Freetown",
+   "languageTags": [
+    "en-SL"
+   ],
+   "group": "sierraloaded"
+  },
+  {
+   "sourceId": "sl-sierraloaded-kenema",
+   "countryCode": "SL",
+   "publisherName": "Sierraloaded – Kenema",
+   "publisherType": "digital-native",
+   "url": "https://sierraloaded.sl/tag/kenema/feed/",
+   "geographicScope": "local",
+   "regionName": "Eastern Province",
+   "cityName": "Kenema",
+   "languageTags": [
+    "en-SL"
+   ],
+   "group": "sierraloaded"
+  },
+  {
+   "sourceId": "lr-liberian-investigator-monrovia",
+   "countryCode": "LR",
+   "publisherName": "Liberian Investigator – Monrovia",
+   "publisherType": "digital-native",
+   "url": "https://www.liberianinvestigator.com/tag/monrovia/feed/",
+   "geographicScope": "local",
+   "regionName": "Montserrado County",
+   "cityName": "Monrovia",
+   "languageTags": [
+    "en-LR"
+   ],
+   "group": "liberian-investigator"
+  },
+  {
+   "sourceId": "gh-myjoyonline-accra",
+   "countryCode": "GH",
+   "publisherName": "MyJoyOnline – Accra",
+   "publisherType": "broadcaster",
+   "url": "https://www.myjoyonline.com/tag/accra/feed/",
+   "geographicScope": "local",
+   "regionName": "Greater Accra",
+   "cityName": "Accra",
+   "languageTags": [
+    "en-GH"
+   ],
+   "group": "multimedia-group"
+  },
+  {
+   "sourceId": "gh-myjoyonline-tema",
+   "countryCode": "GH",
+   "publisherName": "MyJoyOnline – Tema",
+   "publisherType": "broadcaster",
+   "url": "https://www.myjoyonline.com/tag/tema/feed/",
+   "geographicScope": "local",
+   "regionName": "Greater Accra",
+   "cityName": "Tema",
+   "languageTags": [
+    "en-GH"
+   ],
+   "group": "multimedia-group"
+  },
+  {
+   "sourceId": "gh-myjoyonline-kumasi",
+   "countryCode": "GH",
+   "publisherName": "MyJoyOnline – Kumasi",
+   "publisherType": "broadcaster",
+   "url": "https://www.myjoyonline.com/tag/kumasi/feed/",
+   "geographicScope": "local",
+   "regionName": "Ashanti",
+   "cityName": "Kumasi",
+   "languageTags": [
+    "en-GH"
+   ],
+   "group": "multimedia-group"
+  },
+  {
+   "sourceId": "gh-myjoyonline-ashanti",
+   "countryCode": "GH",
+   "publisherName": "MyJoyOnline – Ashanti Region",
+   "publisherType": "broadcaster",
+   "url": "https://www.myjoyonline.com/tag/ashanti-region/feed/",
+   "geographicScope": "local",
+   "regionName": "Ashanti",
+   "cityName": "Kumasi",
+   "languageTags": [
+    "en-GH"
+   ],
+   "group": "multimedia-group"
+  },
+  {
+   "sourceId": "gh-myjoyonline-obuasi",
+   "countryCode": "GH",
+   "publisherName": "MyJoyOnline – Obuasi",
+   "publisherType": "broadcaster",
+   "url": "https://www.myjoyonline.com/tag/obuasi/feed/",
+   "geographicScope": "local",
+   "regionName": "Ashanti",
+   "cityName": "Obuase",
+   "languageTags": [
+    "en-GH"
+   ],
+   "group": "multimedia-group"
+  },
+  {
+   "sourceId": "gh-myjoyonline-tamale",
+   "countryCode": "GH",
+   "publisherName": "MyJoyOnline – Tamale",
+   "publisherType": "broadcaster",
+   "url": "https://www.myjoyonline.com/tag/tamale/feed/",
+   "geographicScope": "local",
+   "regionName": "Northern",
+   "cityName": "Tamale",
+   "languageTags": [
+    "en-GH"
+   ],
+   "group": "multimedia-group"
+  },
+  {
+   "sourceId": "gh-myjoyonline-western",
+   "countryCode": "GH",
+   "publisherName": "MyJoyOnline – Western Region",
+   "publisherType": "broadcaster",
+   "url": "https://www.myjoyonline.com/tag/western-region/feed/",
+   "geographicScope": "local",
+   "regionName": "Western",
+   "cityName": "Takoradi",
+   "languageTags": [
+    "en-GH"
+   ],
+   "group": "multimedia-group"
+  },
+  {
+   "sourceId": "gh-myjoyonline-eastern",
+   "countryCode": "GH",
+   "publisherName": "MyJoyOnline – Eastern Region",
+   "publisherType": "broadcaster",
+   "url": "https://www.myjoyonline.com/tag/eastern-region/feed/",
+   "geographicScope": "local",
+   "regionName": "Eastern",
+   "cityName": "Koforidua",
+   "languageTags": [
+    "en-GH"
+   ],
+   "group": "multimedia-group"
+  },
+  {
+   "sourceId": "gh-myjoyonline-kasoa",
+   "countryCode": "GH",
+   "publisherName": "MyJoyOnline – Kasoa",
+   "publisherType": "broadcaster",
+   "url": "https://www.myjoyonline.com/tag/kasoa/feed/",
+   "geographicScope": "local",
+   "regionName": "Central",
+   "cityName": "Kasoa",
+   "languageTags": [
+    "en-GH"
+   ],
+   "group": "multimedia-group"
+  },
+  {
+   "sourceId": "gh-starrfm-accra",
+   "countryCode": "GH",
+   "publisherName": "Starr FM – Accra",
+   "publisherType": "broadcaster",
+   "url": "https://www.starrfm.com.gh/tag/accra/feed/",
+   "geographicScope": "local",
+   "regionName": "Greater Accra",
+   "cityName": "Accra",
+   "languageTags": [
+    "en-GH"
+   ],
+   "group": "eib-network"
+  },
+  {
+   "sourceId": "gh-starrfm-ashanti",
+   "countryCode": "GH",
+   "publisherName": "Starr FM – Ashanti Region",
+   "publisherType": "broadcaster",
+   "url": "https://www.starrfm.com.gh/tag/ashanti-region/feed/",
+   "geographicScope": "local",
+   "regionName": "Ashanti",
+   "cityName": "Kumasi",
+   "languageTags": [
+    "en-GH"
+   ],
+   "group": "eib-network"
+  },
+  {
+   "sourceId": "gh-starrfm-tamale",
+   "countryCode": "GH",
+   "publisherName": "Starr FM – Tamale",
+   "publisherType": "broadcaster",
+   "url": "https://www.starrfm.com.gh/tag/tamale/feed/",
+   "geographicScope": "local",
+   "regionName": "Northern",
+   "cityName": "Tamale",
+   "languageTags": [
+    "en-GH"
+   ],
+   "group": "eib-network"
+  },
+  {
+   "sourceId": "gh-starrfm-koforidua",
+   "countryCode": "GH",
+   "publisherName": "Starr FM – Koforidua",
+   "publisherType": "broadcaster",
+   "url": "https://www.starrfm.com.gh/tag/koforidua/feed/",
+   "geographicScope": "local",
+   "regionName": "Eastern",
+   "cityName": "Koforidua",
+   "languageTags": [
+    "en-GH"
+   ],
+   "group": "eib-network"
+  },
+  {
+   "sourceId": "gh-starrfm-western",
+   "countryCode": "GH",
+   "publisherName": "Starr FM – Western Region",
+   "publisherType": "broadcaster",
+   "url": "https://www.starrfm.com.gh/tag/western-region/feed/",
+   "geographicScope": "local",
+   "regionName": "Western",
+   "cityName": "Takoradi",
+   "languageTags": [
+    "en-GH"
+   ],
+   "group": "eib-network"
+  },
+  {
+   "sourceId": "gh-savanna-online",
+   "countryCode": "GH",
+   "publisherName": "The Savanna Online",
+   "publisherType": "digital-native",
+   "url": "https://thesavannaonline.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Northern",
+   "cityName": "Tamale",
+   "languageTags": [
+    "en-GH"
+   ],
+   "group": "savanna-multimedia"
+  },
+  {
+   "sourceId": "gh-a1-radio",
+   "countryCode": "GH",
+   "publisherName": "A1 Radio Bolgatanga",
+   "publisherType": "broadcaster",
+   "url": "https://www.a1radioonline.com/feed",
+   "geographicScope": "local",
+   "regionName": "Upper East",
+   "cityName": "Bolgatanga",
+   "languageTags": [
+    "en-GH"
+   ],
+   "group": "a1-radio"
+  },
+  {
+   "sourceId": "ke-mount-kenya-times",
+   "countryCode": "KE",
+   "publisherName": "Mt Kenya Times",
+   "publisherType": "newspaper",
+   "url": "https://mountkenyatimes.co.ke/feed/",
+   "geographicScope": "local",
+   "regionName": "Nyeri County",
+   "cityName": "Nyeri",
+   "languageTags": [
+    "en-KE"
+   ],
+   "group": "mount-kenya-times"
+  },
+  {
+   "sourceId": "ke-kass-digital",
+   "countryCode": "KE",
+   "publisherName": "Kass Digital",
+   "publisherType": "broadcaster",
+   "url": "https://kassdigital.co.ke/feed/",
+   "geographicScope": "local",
+   "regionName": "Uasin Gishu County",
+   "cityName": "Eldoret",
+   "languageTags": [
+    "en-KE"
+   ],
+   "group": "kass-media"
+  },
+  {
+   "sourceId": "ke-nyanza-news",
+   "countryCode": "KE",
+   "publisherName": "Nyanza News",
+   "publisherType": "digital-native",
+   "url": "https://nyanzanews.co.ke/feed/",
+   "geographicScope": "local",
+   "regionName": "Kisumu County",
+   "cityName": "Kisumu",
+   "languageTags": [
+    "en-KE"
+   ],
+   "group": "nyanza-news"
+  },
+  {
+   "sourceId": "ke-nairobi-leo",
+   "countryCode": "KE",
+   "publisherName": "Nairobi Leo",
+   "publisherType": "digital-native",
+   "url": "https://nairobileo.co.ke/feed/",
+   "geographicScope": "local",
+   "regionName": "Nairobi County",
+   "cityName": "Nairobi",
+   "languageTags": [
+    "en-KE"
+   ],
+   "group": "nairobi-leo"
+  },
+  {
+   "sourceId": "tz-habari-leo",
+   "countryCode": "TZ",
+   "publisherName": "HabariLeo",
+   "publisherType": "newspaper",
+   "url": "https://habarileo.co.tz/feed/",
+   "geographicScope": "local",
+   "regionName": "Dar es Salaam Region",
+   "cityName": "Dar es Salaam",
+   "languageTags": [
+    "sw-TZ"
+   ],
+   "group": "tanzania-standard-newspapers"
+  },
+  {
+   "sourceId": "tz-the-citizen",
+   "countryCode": "TZ",
+   "publisherName": "The Citizen",
+   "publisherType": "newspaper",
+   "url": "https://thecitizen.co.tz/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Dar es Salaam Region",
+   "cityName": "Dar es Salaam",
+   "languageTags": [
+    "en-TZ"
+   ],
+   "group": "mwananchi-communications"
+  },
+  {
+   "sourceId": "tz-jamhuri",
+   "countryCode": "TZ",
+   "publisherName": "Jamhuri",
+   "publisherType": "newspaper",
+   "url": "https://www.jamhurimedia.co.tz/feed/",
+   "geographicScope": "local",
+   "regionName": "Dar es Salaam Region",
+   "cityName": "Dar es Salaam",
+   "languageTags": [
+    "sw-TZ"
+   ],
+   "group": "jamhuri-media"
+  },
+  {
+   "sourceId": "tz-arusha-news",
+   "countryCode": "TZ",
+   "publisherName": "Arusha News",
+   "publisherType": "newspaper",
+   "url": "https://www.arushanews.co.tz/feed/",
+   "geographicScope": "local",
+   "regionName": "Arusha",
+   "cityName": "Arusha",
+   "languageTags": [
+    "en-TZ"
+   ],
+   "group": "arusha-news"
+  },
+  {
+   "sourceId": "tz-znz-news",
+   "countryCode": "TZ",
+   "publisherName": "Zanzibar News",
+   "publisherType": "digital-native",
+   "url": "https://znznews.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Zanzibar Urban/West",
+   "cityName": "Zanzibar",
+   "languageTags": [
+    "en-TZ"
+   ],
+   "group": "znz-news"
+  },
+  {
+   "sourceId": "ug-busoga-times",
+   "countryCode": "UG",
+   "publisherName": "Busoga Times",
+   "publisherType": "digital-native",
+   "url": "https://busogatimes.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Eastern Region",
+   "cityName": "Jinja",
+   "languageTags": [
+    "en-UG"
+   ],
+   "group": "busoga-times"
+  },
+  {
+   "sourceId": "ug-radio-pacis",
+   "countryCode": "UG",
+   "publisherName": "Radio Pacis",
+   "publisherType": "broadcaster",
+   "url": "https://www.radiopacis.org/feed/",
+   "geographicScope": "local",
+   "regionName": "Northern Region",
+   "cityName": "Arua",
+   "languageTags": [
+    "en-UG"
+   ],
+   "group": "radio-pacis"
+  },
+  {
+   "sourceId": "ug-kampala-dispatch",
+   "countryCode": "UG",
+   "publisherName": "Kampala Dispatch",
+   "publisherType": "digital-native",
+   "url": "https://www.dispatch.ug/feed/",
+   "geographicScope": "local",
+   "regionName": "Central Region",
+   "cityName": "Kampala",
+   "languageTags": [
+    "en-UG"
+   ],
+   "group": "kampala-dispatch"
+  },
+  {
+   "sourceId": "ug-pml-daily",
+   "countryCode": "UG",
+   "publisherName": "PML Daily",
+   "publisherType": "digital-native",
+   "url": "https://pmldaily.com/feed",
+   "geographicScope": "local",
+   "regionName": "Central Region",
+   "cityName": "Kampala",
+   "languageTags": [
+    "en-UG"
+   ],
+   "group": "pml-daily"
+  },
+  {
+   "sourceId": "rw-umuseke",
+   "countryCode": "RW",
+   "publisherName": "Umuseke",
+   "publisherType": "digital-native",
+   "url": "https://umuseke.rw/feed/",
+   "geographicScope": "local",
+   "regionName": "Kigali",
+   "cityName": "Kigali",
+   "languageTags": [
+    "rw-RW"
+   ],
+   "group": "umuseke"
+  },
+  {
+   "sourceId": "rw-taarifa",
+   "countryCode": "RW",
+   "publisherName": "Taarifa Rwanda",
+   "publisherType": "digital-native",
+   "url": "https://taarifa.rw/feed/",
+   "geographicScope": "local",
+   "regionName": "Kigali",
+   "cityName": "Kigali",
+   "languageTags": [
+    "en-RW"
+   ],
+   "group": "taarifa"
+  },
+  {
+   "sourceId": "bi-akeza",
+   "countryCode": "BI",
+   "publisherName": "Akeza.net",
+   "publisherType": "digital-native",
+   "url": "https://akeza.net/feed/",
+   "geographicScope": "local",
+   "regionName": "Bujumbura Mairie",
+   "cityName": "Bujumbura",
+   "languageTags": [
+    "fr-BI"
+   ],
+   "group": "akeza"
+  },
+  {
+   "sourceId": "bi-jimbere",
+   "countryCode": "BI",
+   "publisherName": "Jimbere Magazine",
+   "publisherType": "magazine",
+   "url": "https://www.jimberemag.org/feed/",
+   "geographicScope": "local",
+   "regionName": "Bujumbura Mairie",
+   "cityName": "Bujumbura",
+   "languageTags": [
+    "fr-BI"
+   ],
+   "group": "jimbere"
+  },
+  {
+   "sourceId": "so-somaliland-standard",
+   "countryCode": "SO",
+   "publisherName": "Somaliland Standard",
+   "publisherType": "digital-native",
+   "url": "https://somalilandstandard.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Woqooyi Galbeed",
+   "cityName": "Hargeysa",
+   "languageTags": [
+    "en-SO"
+   ],
+   "group": "somaliland-standard"
+  },
+  {
+   "sourceId": "so-horn-diplomat",
+   "countryCode": "SO",
+   "publisherName": "Horn Diplomat",
+   "publisherType": "digital-native",
+   "url": "https://www.horndiplomat.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Woqooyi Galbeed",
+   "cityName": "Hargeysa",
+   "languageTags": [
+    "en-SO"
+   ],
+   "group": "horn-diplomat"
+  },
+  {
+   "sourceId": "so-somaliland-sun",
+   "countryCode": "SO",
+   "publisherName": "Somaliland Sun",
+   "publisherType": "digital-native",
+   "url": "https://somalilandsun.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Woqooyi Galbeed",
+   "cityName": "Hargeysa",
+   "languageTags": [
+    "en-SO"
+   ],
+   "group": "somaliland-sun"
+  },
+  {
+   "sourceId": "so-geeska-afrika",
+   "countryCode": "SO",
+   "publisherName": "Geeska Afrika",
+   "publisherType": "newspaper",
+   "url": "https://www.geeska.com/en/rss.xml",
+   "geographicScope": "local",
+   "regionName": "Woqooyi Galbeed",
+   "cityName": "Hargeysa",
+   "languageTags": [
+    "en-SO"
+   ],
+   "group": "geeska-afrika"
+  },
+  {
+   "sourceId": "so-puntland-post",
+   "countryCode": "SO",
+   "publisherName": "Puntland Post",
+   "publisherType": "digital-native",
+   "url": "https://puntlandpost.net/feed/",
+   "geographicScope": "local",
+   "regionName": "Nugaal",
+   "cityName": "Garoowe",
+   "languageTags": [
+    "so-SO"
+   ],
+   "group": "puntland-post"
+  },
+  {
+   "sourceId": "so-puntland-mirror",
+   "countryCode": "SO",
+   "publisherName": "Puntland Mirror",
+   "publisherType": "digital-native",
+   "url": "https://puntlandmirror.net/feed/",
+   "geographicScope": "local",
+   "regionName": "Nugaal",
+   "cityName": "Garoowe",
+   "languageTags": [
+    "so-SO"
+   ],
+   "group": "puntland-mirror"
+  },
+  {
+   "sourceId": "so-horseed-media",
+   "countryCode": "SO",
+   "publisherName": "Horseed Media",
+   "publisherType": "digital-native",
+   "url": "https://horseedmedia.net/feed/",
+   "geographicScope": "local",
+   "regionName": "Bari",
+   "cityName": "Bosaso",
+   "languageTags": [
+    "so-SO"
+   ],
+   "group": "horseed-media"
+  },
+  {
+   "sourceId": "so-radio-daljir",
+   "countryCode": "SO",
+   "publisherName": "Radio Daljir",
+   "publisherType": "broadcaster",
+   "url": "https://daljir.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Bari",
+   "cityName": "Bosaso",
+   "languageTags": [
+    "so-SO"
+   ],
+   "group": "radio-daljir"
+  },
+  {
+   "sourceId": "so-radio-jowhar",
+   "countryCode": "SO",
+   "publisherName": "Radio Jowhar",
+   "publisherType": "broadcaster",
+   "url": "https://jowhar.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Middle Shabele",
+   "cityName": "Jawhar",
+   "languageTags": [
+    "so-SO"
+   ],
+   "group": "radio-jowhar"
+  },
+  {
+   "sourceId": "so-shabelle",
+   "countryCode": "SO",
+   "publisherName": "Shabelle Media Network",
+   "publisherType": "broadcaster",
+   "url": "https://shabellemedia.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Banaadir",
+   "cityName": "Mogadishu",
+   "languageTags": [
+    "en-SO"
+   ],
+   "group": "shabelle-media"
+  },
+  {
+   "sourceId": "so-kaab-tv",
+   "countryCode": "SO",
+   "publisherName": "Kaab TV",
+   "publisherType": "broadcaster",
+   "url": "https://kaabtv.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Banaadir",
+   "cityName": "Mogadishu",
+   "languageTags": [
+    "so-SO"
+   ],
+   "group": "kaab-tv"
+  },
+  {
+   "sourceId": "so-allbanaadir",
+   "countryCode": "SO",
+   "publisherName": "Allbanaadir",
+   "publisherType": "digital-native",
+   "url": "https://www.allbanaadir.org/feed/",
+   "geographicScope": "local",
+   "regionName": "Banaadir",
+   "cityName": "Mogadishu",
+   "languageTags": [
+    "so-SO"
+   ],
+   "group": "allbanaadir"
+  },
+  {
+   "sourceId": "ss-hot-in-juba",
+   "countryCode": "SS",
+   "publisherName": "Hot in Juba",
+   "publisherType": "digital-native",
+   "url": "https://hotinjuba.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Central Equatoria",
+   "cityName": "Juba",
+   "languageTags": [
+    "en-SS"
+   ],
+   "group": "hot-in-juba"
+  },
+  {
+   "sourceId": "ss-pachodo",
+   "countryCode": "SS",
+   "publisherName": "Pachodo",
+   "publisherType": "digital-native",
+   "url": "https://pachodo.org/rss",
+   "geographicScope": "local",
+   "regionName": "Central Equatoria",
+   "cityName": "Juba",
+   "languageTags": [
+    "en-SS"
+   ],
+   "group": "pachodo"
+  },
+  {
+   "sourceId": "ss-radio-yei",
+   "countryCode": "SS",
+   "publisherName": "Radio Yei",
+   "publisherType": "broadcaster",
+   "url": "https://radioyei.org/feed/",
+   "geographicScope": "local",
+   "regionName": "Central Equatoria",
+   "cityName": "Yei",
+   "languageTags": [
+    "en-SS"
+   ],
+   "group": "radio-yei"
+  },
+  {
+   "sourceId": "sd-al-sudani",
+   "countryCode": "SD",
+   "publisherName": "Al-Sudani",
+   "publisherType": "newspaper",
+   "url": "https://alsudaninews.com/?feed=rss2",
+   "geographicScope": "local",
+   "regionName": "Khartoum",
+   "cityName": "Khartoum",
+   "languageTags": [
+    "ar-SD"
+   ],
+   "group": "al-sudani"
+  },
+  {
+   "sourceId": "sd-sudan-times",
+   "countryCode": "SD",
+   "publisherName": "Sudan Times",
+   "publisherType": "digital-native",
+   "url": "https://sudantimes.net/?feed=rss2",
+   "geographicScope": "local",
+   "regionName": "Khartoum",
+   "cityName": "Khartoum",
+   "languageTags": [
+    "ar-SD"
+   ],
+   "group": "sudan-times"
+  },
+  {
+   "sourceId": "dj-human-village",
+   "countryCode": "DJ",
+   "publisherName": "Human Village",
+   "publisherType": "magazine",
+   "url": "https://human-village.org/spip.php?page=backend",
+   "geographicScope": "local",
+   "regionName": "Djibouti",
+   "cityName": "Djibouti",
+   "languageTags": [
+    "fr-DJ"
+   ],
+   "group": "human-village"
+  },
+  {
+   "sourceId": "et-capital",
+   "countryCode": "ET",
+   "publisherName": "Capital Ethiopia",
+   "publisherType": "newspaper",
+   "url": "https://capitalethiopia.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Addis Ababa",
+   "cityName": "Addis Ababa",
+   "languageTags": [
+    "en-ET"
+   ],
+   "group": "capital-ethiopia"
+  },
+  {
+   "sourceId": "et-ethiopia-insider",
+   "countryCode": "ET",
+   "publisherName": "Ethiopia Insider",
+   "publisherType": "digital-native",
+   "url": "https://ethiopiainsider.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Addis Ababa",
+   "cityName": "Addis Ababa",
+   "languageTags": [
+    "am-ET"
+   ],
+   "group": "ethiopia-insider"
+  },
+  {
+   "sourceId": "et-wazema",
+   "countryCode": "ET",
+   "publisherName": "Wazema Radio",
+   "publisherType": "broadcaster",
+   "url": "https://wazemaradio.com/feed/",
+   "geographicScope": "local",
+   "regionName": "Addis Ababa",
+   "cityName": "Addis Ababa",
+   "languageTags": [
+    "am-ET"
+   ],
+   "group": "wazema"
+  }
+ ]
+}
