@@ -247,22 +247,25 @@ export class OldsService {
       const payload = await this.getJson(url.toString(), 8_000) as { query?: { search?: Array<{ title?: string }> } }
       return (payload.query?.search ?? []).map((hit) => hit.title).filter(isQid)
     }
+    const fold = (value: string): string => value.normalize('NFD').replace(/\p{M}+/gu, '').toLowerCase().replace(/[^\p{L}\d]+/gu, ' ').trim()
+    // Only an item named this place with an English label (a GeoNames id is sometimes on a ward or station too).
+    const named = async (hits: string[]): Promise<string | null> => {
+      if (!hits.length) return null
+      const entities = await this.entities(hits, 'en')
+      return hits.find((id) => {
+        const entity = entities.get(id)
+        if (!entity?.labels?.['en']?.value) return false
+        const names = Object.values(entity.labels).map((label) => label?.value).filter((value): value is string => !!value)
+        return names.some((value) => fold(value) === fold(name) || fold(value).startsWith(`${fold(name)} `) || fold(name).startsWith(`${fold(value)} `))
+      }) ?? null
+    }
     if (geonameId) {
-      const [qid] = await search(`haswbstatement:P1566=${geonameId}`)
+      const qid = await named(await search(`haswbstatement:P1566=${geonameId}`))
       if (qid) return qid
     }
     const countryQid = await this.countryQid(countryCode)
     if (!countryQid) return null
-    const hits = await search(`${name.replace(/["\\]/g, ' ')} haswbstatement:P17=${countryQid}`)
-    if (!hits.length) return null
-    // Only an item that is named this place, not something merely mentioning it.
-    const entities = await this.entities(hits, 'en')
-    const fold = (value: string): string => value.normalize('NFD').replace(/\p{M}+/gu, '').toLowerCase().trim()
-    return hits.find((id) => {
-      const entity = entities.get(id)
-      const names = Object.values(entity?.labels ?? {}).map((label) => label?.value).filter((value): value is string => !!value)
-      return names.some((value) => fold(value) === fold(name) || fold(value).startsWith(`${fold(name)} `))
-    }) ?? null
+    return named(await search(`${name.replace(/["\\]/g, ' ')} haswbstatement:P17=${countryQid}`))
   }
 
   private async countryThread(countryCode: string): Promise<OldsThread> {

@@ -165,7 +165,8 @@ const LETTERS: Array<[RegExp, string]> = [
   [/[ąęėįųūč]/i, 'lt'],
   [/[āēīūļņķģ]/i, 'lv'],
   [/[ñ¿¡]/i, 'es'],
-  [/[åæø]/i, 'da'],
+  // å is Swedish and Norwegian too: only æ/ø point to Danish.
+  [/[æø]/i, 'da'],
   [/ß|[äöü].*\b(der|die|das|und)\b/i, 'de'],
   [/ø.*ð|ð.*ø/i, 'fo'],
   [/[ðþ]/i, 'is'],

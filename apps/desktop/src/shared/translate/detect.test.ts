@@ -18,6 +18,8 @@ describe('headline language', () => {
     expect(headlineLanguage('ro', 'Actorul Patrick Stewart, protagonist al francizelor X-Men şi Star Trek, a murit')).toBe('ro')
     expect(headlineLanguage('tr', 'Beşiktaş yeni sezona hazır')).toBe('tr')
     expect(headlineLanguage('ro', 'Galatasaray kazandı, ışıklar söndü')).toBe('tr')
+    // å is Swedish too: a Swedish feed's headline stays Swedish.
+    expect(headlineLanguage('sv', 'Stillastående personbil ger stopp i ett körfält på E4')).toBe('sv')
     expect(headlineLanguage('es', 'Bolsonaro')).toBe('es')
     expect(headlineLanguage('pt', 'Lula vence eleição')).toBe('pt')
   })

@@ -2,6 +2,13 @@ import { describe, expect, it } from 'vitest'
 import { cleanHeadline, personNameAtStart, explicitPlacePhrases, fullPersonNameMentioned, entityNameAtStart, personActivityConflicts, eventKindMatches, eventNameConflicts, eventKindConflicts, foreignNamesIn, mentions, properPhrases, scoreCandidate, searchQueries, localLegislativeSubject, scopedSubjectMatches, titleWordsIn, isRelevantCandidate, topicAge } from './headline'
 import { headlineCountries, isWorkOrThing, keepCandidate, withoutCountryNames } from './oldsService'
 
+describe('overviews of a subject in a country', () => {
+  it('need the whole subject in the headline', () => {
+    expect(isRelevantCandidate('Video games in Malaysia', '3 arrested over viral assault video along Jalan Petanak', 'Malaysia', 2026)).toBe(false)
+    expect(isRelevantCandidate('Banking in Uganda', 'Nedbank buys its way into Uganda banking battle', 'Uganda', 2026)).toBe(true)
+  })
+})
+
 describe('sports do not cross', () => {
   it('keeps a cricket story off a racing series, and a sport on its own sport', () => {
     expect(eventKindConflicts('2026 Aussie Racing Car Series', 'Series set for epic finale as Aussie batters must stand up')).toBe(true)

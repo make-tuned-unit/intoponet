@@ -437,6 +437,10 @@ export function isRelevantCandidate(title: string, headline: string, countryName
   const shared = words + (currentYear && leading >= currentYear - 1 && leading <= currentYear + 1 && words > 0 ? 1 : 0)
   if (words < 1 || shared < Math.ceil(total / 3)) return false
   if (unexplainedNames(title, said) > shared) return false
+  // An overview of a subject in the country ("Video games in Malaysia") needs the whole subject in the headline,
+  // not one of its words ("assault video").
+  const overview = countryName ? title.match(new RegExp(`^(.+?) (?:in|of) (?:the )?${escapeRegExp(countryName)}$`, 'i')) : null
+  if (overview && titleWordsIn(overview[1]!, headline) < titleContentWords(overview[1]!).length) return false
   if (words > 1) return true
   // In a title-case headline every word looks like a name: one shared word is enough only for this year's event.
   if (isTitleCase(cleanHeadline(headline)) && !(currentYear && leading >= currentYear - 1)) return false
