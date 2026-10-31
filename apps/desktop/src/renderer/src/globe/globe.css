@@ -1958,3 +1958,19 @@ li.is-open .place-trend-chevron { transform: rotate(180deg); }
 .app-shell.bookmarks-open .globe-panel-pill {
   display: none;
 }
+
+/* The locator is clickable: it opens the place's own view (news, peaks, rising and fading there). */
+.globe-locator .globe-locator-hit {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.globe-locator button.globe-locator-label {
+  font-family: inherit;
+  cursor: pointer;
+  pointer-events: auto;
+}

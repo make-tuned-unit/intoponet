@@ -170,7 +170,7 @@ import {
   fadingSignals,
 } from './globe/globeSignals'
 import { dayPhaseText } from './earth/sun'
-import { cityAliases, countryPlace, nearestCountry, placesNamedIn, PLACE_ATTRIBUTION, placeLabel, searchPlaces, type Place } from '../../shared/places/places'
+import { cityAliases, countryPlace, distanceKm as placeDistanceKm, nearestCountry, placesNamedIn, PLACE_ATTRIBUTION, placeLabel, searchPlaces, type Place } from '../../shared/places/places'
 import { Tour } from './tour/Tour'
 import type { TourControls } from './tour/steps'
 import { parseNewsDigest, type NewsDigest, type NewsHeadline, type RisingTerm } from '../../shared/news/newsDigest'
@@ -2234,6 +2234,12 @@ export function App() {
           return countryView.hovered !== null
         }}
         onSurfaceClick={(point) => {
+          // A click on or around the city you flew to stays with that city; elsewhere opens the country.
+          if (focusedPlace && focusedPlace.kind !== 'country'
+            && placeDistanceKm(point.lat, point.lon, focusedPlace.lat, focusedPlace.lon) <= Math.max(40, focusedPlace.radiusKm * 1.5)) {
+            setSelectedSignalId(null)
+            return true
+          }
           const country = surfaceCountry(point)
           if (!country) return false
           selectCountry(country.code)
@@ -2661,6 +2667,7 @@ export function App() {
           hoverCard={hoverCard}
           hidden={panel.isVisible}
           locator={focusedPlace ? { id: `locator:${focusedPlace.id}`, label: focusedPlace.name } : null}
+          onLocatorSelect={() => setSelectedSignalId(null)}
         />
       )}
       {!fieldLabOpen && import.meta.env.DEV && designPreview && <aside className="coverage-note">

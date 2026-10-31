@@ -55,6 +55,17 @@ describe('rising and fading in one place', () => {
     expect(gap.uncompared).toBeGreaterThan(0)
     expect(gap.recentStories + gap.previousStories + gap.uncompared).toBe(7)
   })
+  it('counts a statewide outlet as the state’s own news, but not a city’s', () => {
+    const state: NewsSourceMeta[] = [
+      { sourceId: 's', countryCode: 'US', publisherName: 'CalMatters', publisherGroupId: 'calmatters', scope: 'regional', regionName: 'California', language: 'en' },
+      { sourceId: 'n', countryCode: 'US', publisherName: 'NPR', publisherGroupId: 'npr', scope: 'national', language: 'en' },
+    ]
+    const news = [item('s', 'Wildfire insurance bill passes the Assembly', 2), item('n', 'Senate votes on spending deal', 3)]
+    const california = placeTrends({ sources: state, items: news, coverage: { s: whole, n: whole }, now, place: { countryCode: 'US', name: 'California' } })
+    expect(california.latest.map((headline) => headline.publisher)).toEqual(['CalMatters'])
+    const fresno = placeTrends({ sources: state, items: news, coverage: { s: whole, n: whole }, now, place: { countryCode: 'US', name: 'Fresno' } })
+    expect(fresno.latest).toEqual([])
+  })
   it('recognises a city by its local name', () => {
     const rome: NewsSourceMeta[] = [{ sourceId: 'r', countryCode: 'IT', publisherName: 'ANSA', publisherGroupId: 'ansa', scope: 'national', language: 'it' }]
     const news = [item('r', 'Roma, sciopero dei trasporti oggi', 2), item('r', 'Sciopero a Roma: metro chiuse', 4), item('r', 'Milano, nebbia in città', 3)]

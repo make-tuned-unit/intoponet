@@ -8,10 +8,10 @@ import { FEED_ADAPTER_LIMITS, FEED_SANITIZE_LIMITS, feedCharset, isUtcTimestamp,
 const CACHE_SCHEMA_VERSION = 1
 const MAX_CACHE_BYTES = 16 * 1024 * 1024
 /** Hard ceiling for reading/writing any feed cache file. */
-const MAX_STORED_CACHE_BYTES = 64 * 1024 * 1024
+const MAX_STORED_CACHE_BYTES = 256 * 1024 * 1024
 const MAX_ENABLED_SOURCES = 32
 /** Ceiling for callers that opt into a larger registry (the per-country news layer). */
-const MAX_ENABLED_SOURCES_CEILING = 800
+const MAX_ENABLED_SOURCES_CEILING = 6_000
 const MAX_ITEMS_PER_SOURCE = 500
 const MAX_DEAD_LETTERS = 20
 const MIN_POLL_MS = 300_000
@@ -534,7 +534,7 @@ export class FeedFetchService {
     this.resolveHost = options.resolveHost ?? defaultResolveHost
     this.setTimer = options.setTimer ?? defaultSetTimer
     this.clearTimer = options.clearTimer ?? defaultClearTimer
-    this.maxConcurrency = optionInt(options.maxConcurrency, 3, 1, 8, 'maxConcurrency')
+    this.maxConcurrency = optionInt(options.maxConcurrency, 3, 1, 16, 'maxConcurrency')
     this.timeoutMs = optionInt(options.timeoutMs, DEFAULT_TIMEOUT_MS, 1_000, 60_000, 'timeoutMs')
     this.maxResponseBytes = optionInt(
       options.maxResponseBytes,

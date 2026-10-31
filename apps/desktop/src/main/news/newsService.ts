@@ -159,10 +159,10 @@ export function startNewsService(options: { userData: string; emit: (payload: st
   }
   const service = new FeedFetchService({
     registry: newsRegistry(feeds),
-    storage: createAtomicFeedStorage(join(options.userData, 'news-feed-cache.json'), 64 * 1024 * 1024),
-    maxEnabledSources: 800,
-    maxConcurrency: 6,
-    maxCacheBytes: 64 * 1024 * 1024,
+    storage: createAtomicFeedStorage(join(options.userData, 'news-feed-cache.json'), 192 * 1024 * 1024),
+    maxEnabledSources: 6_000,
+    maxConcurrency: 12,
+    maxCacheBytes: 192 * 1024 * 1024,
     persistDebounceMs: 15_000,
     tolerant: true,
     onResult: (result) => {

@@ -17,6 +17,7 @@ export function GlobeOverlay({
   hoverCard,
   hidden,
   locator,
+  onLocatorSelect,
 }: {
   projection: GlobeProjection
   /** In priority order. */
@@ -26,6 +27,8 @@ export function GlobeOverlay({
   hidden: boolean
   /** The place you flew to: a pulsing locator at its marker (id in the projection). */
   locator?: { id: string; label: string } | null
+  /** Clicking the locator opens that place's own view instead of the country's. */
+  onLocatorSelect?: () => void
 }) {
   const locatorEl = useRef<HTMLDivElement>(null)
   const labelEls = useRef(new Map<string, HTMLDivElement>())
@@ -133,7 +136,8 @@ export function GlobeOverlay({
           <span className="globe-locator-ring" />
           <span className="globe-locator-ring is-late" />
           <span className="globe-locator-dot" />
-          <span className="globe-locator-label">{locator.label}</span>
+          <button type="button" className="globe-locator-hit" onClick={onLocatorSelect} aria-label={`Show ${locator.label}: news, peaks, rising and fading`} />
+          <button type="button" className="globe-locator-label" onClick={onLocatorSelect}>{locator.label}</button>
         </div>
       )}
     </div>

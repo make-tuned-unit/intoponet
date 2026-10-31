@@ -78,9 +78,12 @@ export function placeTrends(input: { sources: NewsSourceMeta[]; items: NewsItemI
     const at = Date.parse(item.publishedAt ?? item.discoveredAt)
     if (!Number.isFinite(at) || at < previousStart || at > now + HOUR) continue
     const local = source.countryCode === place.countryCode && source.scope !== 'international'
-    const cityOutlet = !!place.name && !!source.cityName && placeNames.some((name) => fold(name) === fold(source.cityName!))
-    // A country: its own outlets. A city: its own outlets, and stories anywhere that name it.
-    const about = place.name ? cityOutlet || names(item.title, placeNames) : local
+    // A city's outlets are those based in it; a state's or province's are its statewide outlets too.
+    const homeOf = (home: string | null | undefined): boolean => !!home && placeNames.some((name) => fold(name) === fold(home))
+    const ownOutlet = !!place.name && source.countryCode === place.countryCode
+      && (homeOf(source.cityName) || (source.scope === 'regional' && homeOf(source.regionName)))
+    // A country: its own outlets. A city or region: its own outlets, and stories anywhere that name it.
+    const about = place.name ? ownOutlet || names(item.title, placeNames) : local
     if (!about) continue
     const key = fold(item.title).replace(/[^\p{L}\d]+/gu, ' ').trim().slice(0, 90)
     if (!key || stories.has(key)) continue

@@ -1,9 +1,9 @@
 {
  "schemaVersion": "1.0",
- "generatedAt": "2026-10-26",
+ "generatedAt": "2026-10-31",
  "admission": "Admitted by the product owner on 2026-10-26 for the desktop prototype: headline, link, id and publish time only; no bodies, images or descriptions are stored; 3-day retention; 20-minute polling with conditional requests. Per-source terms review remains open (SOURCE_APPROVAL).",
  "countryCount": 209,
- "feedCount": 451,
+ "feedCount": 541,
  "feeds": [
   {
    "sourceId": "ad-bondia",
@@ -11739,6 +11739,902 @@
    }
   },
   {
+   "sourceId": "us-abc-news",
+   "countryCode": "US",
+   "url": "https://abcnews.go.com/abcnews/usheadlines",
+   "format": "rss",
+   "publisherName": "ABC News",
+   "publisherType": "broadcaster",
+   "section": "national news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "national",
+   "regionName": null,
+   "cityName": null,
+   "independentPublisherGroupId": "disney-abc",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 25,
+    "newest": "2026-10-30T22:09:26.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Lawyers for ex-FBI Director James Comey will ask a judge to block Justice Department prosecution",
+     "The police said Sandra Birchmore's death was a suicide. Then the FBI accused a cop of murder"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-alabama-reflector",
+   "countryCode": "US",
+   "url": "https://alabamareflector.com/feed/",
+   "format": "rss",
+   "publisherName": "Alabama Reflector",
+   "publisherType": "digital-native",
+   "section": "Alabama news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Alabama",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T19:23:58.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Federal subpoenas to election officials mark escalating Trump DOJ pressure campaign",
+     "Doug Jones and Tommy Tuberville: Our profiles of Alabama’s gubernatorial candidates"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-alaska-beacon",
+   "countryCode": "US",
+   "url": "https://alaskabeacon.com/feed/",
+   "format": "rss",
+   "publisherName": "Alaska Beacon",
+   "publisherType": "digital-native",
+   "section": "Alaska news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Alaska",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T23:25:06.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "As Alaskans vote, state’s top federal prosecutor confirms criminal investigation of Dem groups",
+     "Peltola denies knowledge of spoiler candidate plan at Juneau rally"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-arizona-mirror",
+   "countryCode": "US",
+   "url": "https://azmirror.com/feed/",
+   "format": "rss",
+   "publisherName": "Arizona Mirror",
+   "publisherType": "digital-native",
+   "section": "Arizona news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Arizona",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T21:19:14.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "After court losses, Trump DOJ turns to subpoenas that critics say prove ‘the mask is off’",
+     "DOJ again warns election officials of potential criminal prosecution, days before midterm elections"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-arkansas-advocate",
+   "countryCode": "US",
+   "url": "https://arkansasadvocate.com/feed/",
+   "format": "rss",
+   "publisherName": "Arkansas Advocate",
+   "publisherType": "digital-native",
+   "section": "Arkansas news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Arkansas",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T23:40:24.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Data center developers sue county in Arkansas over new regulations",
+     "Trump loses appeals over California ballots, Homeland Security operations"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-axios",
+   "countryCode": "US",
+   "url": "https://api.axios.com/feed/",
+   "format": "rss",
+   "publisherName": "Axios",
+   "publisherType": "digital-native",
+   "section": "national news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "national",
+   "regionName": null,
+   "cityName": null,
+   "independentPublisherGroupId": "axios",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T21:07:40.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Trump DOJ loses last-minute California ballot bid",
+     "Judge to probe whether Trump officials lied in golf course case"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-block-club-chicago",
+   "countryCode": "US",
+   "url": "https://blockclubchicago.org/feed/",
+   "format": "rss",
+   "publisherName": "Block Club Chicago",
+   "publisherType": "digital-native",
+   "section": "Illinois news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "local",
+   "regionName": "Illinois",
+   "cityName": "Chicago",
+   "independentPublisherGroupId": "block-club-chicago",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 10,
+    "newest": "2026-10-30T20:44:04.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Open Books Closing In West Loop, Selling Inventory At Half Off",
+     "Wicker Park Post Office Expected To Finally Open In December"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-bridgedetroit",
+   "countryCode": "US",
+   "url": "https://www.bridgedetroit.com/feed/",
+   "format": "rss",
+   "publisherName": "BridgeDetroit",
+   "publisherType": "digital-native",
+   "section": "Michigan news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "local",
+   "regionName": "Michigan",
+   "cityName": "Detroit",
+   "independentPublisherGroupId": "bridgedetroit",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 10,
+    "newest": "2026-10-30T21:10:58.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Election 2026: Know your rights as a Detroit voter",
+     "Need a ride to the polls? Here are some Election Day options"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-calmatters",
+   "countryCode": "US",
+   "url": "https://calmatters.org/feed/",
+   "format": "rss",
+   "publisherName": "CalMatters",
+   "publisherType": "digital-native",
+   "section": "California news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "California",
+   "cityName": null,
+   "independentPublisherGroupId": "calmatters",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 10,
+    "newest": "2026-10-30T22:52:45.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Para que conste: El hombre de Fresno deportado por ICE tenía antecedentes de cruces ilegales",
+     "Dolores Huerta’s legacy is the generations of labor activists she inspired from the frontlines"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-cbs-news",
+   "countryCode": "US",
+   "url": "https://www.cbsnews.com/latest/rss/us",
+   "format": "rss",
+   "publisherName": "CBS News",
+   "publisherType": "broadcaster",
+   "section": "national news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "national",
+   "regionName": null,
+   "cityName": null,
+   "independentPublisherGroupId": "paramount-cbs",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 30,
+    "newest": "2026-10-30T23:55:03.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Heavy rain expected ahead of Halloween weekend in Southwest",
+     "How hard is it to recover the $6 billion stolen from Binance?"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-chicago-sun-times",
+   "countryCode": "US",
+   "url": "https://chicago.suntimes.com/rss/index.xml",
+   "format": "atom",
+   "publisherName": "Chicago Sun-Times",
+   "publisherType": "newspaper",
+   "section": "Illinois news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "local",
+   "regionName": "Illinois",
+   "cityName": "Chicago",
+   "independentPublisherGroupId": "chicago-public-media",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 55,
+    "newest": "2026-10-30T23:41:43.117Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Sky did Angel Reese a favor by dealing her to Dream",
+     "White Sox face a new challenge this winter — improving a contender"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-civil-beat",
+   "countryCode": "US",
+   "url": "https://www.civilbeat.org/feed/",
+   "format": "rss",
+   "publisherName": "Honolulu Civil Beat",
+   "publisherType": "digital-native",
+   "section": "Hawaii news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Hawaii",
+   "cityName": null,
+   "independentPublisherGroupId": "civil-beat",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 10,
+    "newest": "2026-10-30T10:01:00.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Plans For New Jail To Include Community-Based Treatment",
+     "Quotable: Bleak Poetry"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-colorado-newsline",
+   "countryCode": "US",
+   "url": "https://coloradonewsline.com/feed/",
+   "format": "rss",
+   "publisherName": "Colorado Newsline",
+   "publisherType": "digital-native",
+   "section": "Colorado news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Colorado",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T22:56:31.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Trump loses appeals over California ballots, Homeland Security operations",
+     "Federal subpoenas to election officials mark escalating Trump DOJ pressure campaign"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-colorado-sun",
+   "countryCode": "US",
+   "url": "https://coloradosun.com/feed/",
+   "format": "rss",
+   "publisherName": "The Colorado Sun",
+   "publisherType": "digital-native",
+   "section": "Colorado news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Colorado",
+   "cityName": null,
+   "independentPublisherGroupId": "colorado-sun",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 10,
+    "newest": "2026-10-30T23:34:32.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Phil Weiser announces opposition to Amendment 87, Colorado’s graduated income tax ballot question",
+     "Lower Arkansas River still has poop problems for duck hunters"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-ct-mirror",
+   "countryCode": "US",
+   "url": "https://ctmirror.org/feed/",
+   "format": "rss",
+   "publisherName": "The Connecticut Mirror",
+   "publisherType": "digital-native",
+   "section": "Connecticut news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Connecticut",
+   "cityName": null,
+   "independentPublisherGroupId": "ct-mirror",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 40,
+    "newest": "2026-10-30T21:30:00.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Data privacy, Middle East policy: CT politics news",
+     "Ready for hard night Tuesday, GOP legislators look to life after Trump"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-daily-montanan",
+   "countryCode": "US",
+   "url": "https://dailymontanan.com/feed/",
+   "format": "rss",
+   "publisherName": "Daily Montanan",
+   "publisherType": "digital-native",
+   "section": "Montana news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Montana",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T22:18:53.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Gates stolen from Montana’s oldest Jewish cemetery",
+     "President’s visit to Flathead costs county, municipalities more than $107,000"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-delaware-public-media",
+   "countryCode": "US",
+   "url": "https://www.delawarepublic.org/news.rss",
+   "format": "rss",
+   "publisherName": "Delaware Public Media",
+   "publisherType": "public-broadcaster",
+   "section": "Delaware news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Delaware",
+   "cityName": null,
+   "independentPublisherGroupId": "delaware-public-media",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 10,
+    "newest": "2026-10-30T16:04:30.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Congressional oversight committee questions Delaware's work on Artificial Intelligence Companies",
+     "Milford City Council reverses course on Cypress Hall development"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-denverite",
+   "countryCode": "US",
+   "url": "https://denverite.com/feed/",
+   "format": "rss",
+   "publisherName": "Denverite",
+   "publisherType": "digital-native",
+   "section": "Colorado news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "local",
+   "regionName": "Colorado",
+   "cityName": "Denver",
+   "independentPublisherGroupId": "colorado-public-radio",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 10,
+    "newest": "2026-10-30T22:09:05.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Free food, neighborhood cleanups, books: How one Denver candidate is spending public campaign funding",
+     "Sun Valley has a food hall now, too"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-florida-phoenix",
+   "countryCode": "US",
+   "url": "https://floridaphoenix.com/feed/",
+   "format": "rss",
+   "publisherName": "Florida Phoenix",
+   "publisherType": "digital-native",
+   "section": "Florida news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Florida",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T22:41:24.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Trump loses appeals over California ballots, Homeland Security operations",
+     "Trump continues rally spree in attempt to blunt Dem momentum in midterms lead-up"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-fox-news",
+   "countryCode": "US",
+   "url": "https://moxie.foxnews.com/google-publisher/us.xml",
+   "format": "rss",
+   "publisherName": "Fox News (U.S.)",
+   "publisherType": "broadcaster",
+   "section": "national news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "national",
+   "regionName": null,
+   "cityName": null,
+   "independentPublisherGroupId": "fox-corporation",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 25,
+    "newest": "2026-10-30T20:59:22.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Fox News Campus Radicals Newsletter: A rare reversal, a Christian battle and a reality check",
+     "Aspiring NYPD officer and college hockey captain killed in crash involving twice-removed Mexican national"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-georgia-recorder",
+   "countryCode": "US",
+   "url": "https://georgiarecorder.com/feed/",
+   "format": "rss",
+   "publisherName": "Georgia Recorder",
+   "publisherType": "digital-native",
+   "section": "Georgia news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Georgia",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T20:59:48.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Election officials brace for federal interference but expect to persevere",
+     "What early voting can – and can’t – tell us about Georgia’s midterm election so far"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-gothamist",
+   "countryCode": "US",
+   "url": "https://gothamist.com/feed",
+   "format": "rss",
+   "publisherName": "Gothamist",
+   "publisherType": "public-broadcaster",
+   "section": "New York news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "local",
+   "regionName": "New York",
+   "cityName": "New York",
+   "independentPublisherGroupId": "new-york-public-radio",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 40,
+    "newest": "2026-10-30T20:29:00.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "NYCHA says it's removed asbestos found at Brooklyn’s Marcy Houses",
+     "'It is a crime!': Upper West Side owl lovers outraged after rooftop work wrecks nest"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-houston-public-media",
+   "countryCode": "US",
+   "url": "https://www.houstonpublicmedia.org/feed/",
+   "format": "rss",
+   "publisherName": "Houston Public Media",
+   "publisherType": "public-broadcaster",
+   "section": "Texas news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "local",
+   "regionName": "Texas",
+   "cityName": "Houston",
+   "independentPublisherGroupId": "houston-public-media",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 40,
+    "newest": "2026-10-30T22:12:23.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Meet the candidates in the race for Fort Bend County judge",
+     "More than $2 million seized in Galveston-area illegal gambling investigation"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-idaho-capital-sun",
+   "countryCode": "US",
+   "url": "https://idahocapitalsun.com/feed/",
+   "format": "rss",
+   "publisherName": "Idaho Capital Sun",
+   "publisherType": "digital-native",
+   "section": "Idaho news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Idaho",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T22:01:00.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Federal appeals court upholds Idaho’s penalties amid legal challenge to state’s abortion ban",
+     "As millions pour into Idaho’s US Senate race, Achilles raises more than Risch’s recent challengers"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-indiana-capital-chronicle",
+   "countryCode": "US",
+   "url": "https://indianacapitalchronicle.com/feed/",
+   "format": "rss",
+   "publisherName": "Indiana Capital Chronicle",
+   "publisherType": "digital-native",
+   "section": "Indiana news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Indiana",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T19:54:07.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "What happened with threatened lawsuit over secretary of state’s race ad?",
+     "Indiana GOP pushing for Republicans to vote — and not stray from the party"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-iowa-capital-dispatch",
+   "countryCode": "US",
+   "url": "https://iowacapitaldispatch.com/feed/",
+   "format": "rss",
+   "publisherName": "Iowa Capital Dispatch",
+   "publisherType": "digital-native",
+   "section": "Iowa news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Iowa",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T22:17:23.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Refugee organization sued over alleged discrimination",
+     "Trump loses appeals over California ballots, Homeland Security operations"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-kansas-reflector",
+   "countryCode": "US",
+   "url": "https://kansasreflector.com/feed/",
+   "format": "rss",
+   "publisherName": "Kansas Reflector",
+   "publisherType": "digital-native",
+   "section": "Kansas news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Kansas",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T20:46:55.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Attorneys worry for asylum-seeking kids at last-minute hearing in Kansas City immigration court",
+     "Gov. Laura Kelly says blocking Medicaid expansion the &#8216;dumbest thing Kansas has ever done’"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-kcur",
+   "countryCode": "US",
+   "url": "https://www.kcur.org/news.rss",
+   "format": "rss",
+   "publisherName": "KCUR",
+   "publisherType": "public-broadcaster",
+   "section": "Missouri news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "local",
+   "regionName": "Missouri",
+   "cityName": "Kansas City",
+   "independentPublisherGroupId": "kcur",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 10,
+    "newest": "2026-10-30T09:00:00.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "The Missouri psychiatric museum inside a former asylum",
+     "Missouri passed a law to compensate the wrongfully convicted. Now it's refusing to pay"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-kentucky-lantern",
+   "countryCode": "US",
+   "url": "https://kentuckylantern.com/feed/",
+   "format": "rss",
+   "publisherName": "Kentucky Lantern",
+   "publisherType": "digital-native",
+   "section": "Kentucky news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Kentucky",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T16:07:06.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "More than 135,000 Kentuckians cast ballots on first day of early voting, upping numbers since 2022",
+     "Longtime KET CEO and executive director dies"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-kqed-news",
+   "countryCode": "US",
+   "url": "https://ww2.kqed.org/news/feed/",
+   "format": "rss",
+   "publisherName": "KQED News",
+   "publisherType": "public-broadcaster",
+   "section": "California news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "local",
+   "regionName": "California",
+   "cityName": "San Francisco",
+   "independentPublisherGroupId": "kqed",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 30,
+    "newest": "2026-10-30T23:05:00.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "What Would Democrat Xavier Becerra Prioritize If Elected Governor?",
+     "California Lawmakers and Drivers Pressure Regulators to Reign In Autonomous Vehicles"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-laist",
+   "countryCode": "US",
+   "url": "https://laist.com/index.atom",
+   "format": "atom",
+   "publisherName": "LAist",
+   "publisherType": "public-broadcaster",
+   "section": "California news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "local",
+   "regionName": "California",
+   "cityName": "Los Angeles",
+   "independentPublisherGroupId": "southern-california-public-radio",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 36,
+    "newest": "2026-10-30T23:32:49.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "At MacArthur Park, aid workers face an endless cycle of overdoses — and a system that can’t keep up",
+     "Who approved arresting people for using drugs at MacArthur Park? Bass and feds disagree"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-las-vegas-review-journal",
+   "countryCode": "US",
+   "url": "https://www.reviewjournal.com/feed/",
+   "format": "rss",
+   "publisherName": "Las Vegas Review-Journal",
+   "publisherType": "newspaper",
+   "section": "Nevada news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "local",
+   "regionName": "Nevada",
+   "cityName": "Las Vegas",
+   "independentPublisherGroupId": "las-vegas-review-journal",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 30,
+    "newest": "2026-10-30T23:40:49.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Raiders continue to preach competition for starting jobs, roster spots",
+     "Audit finds major flaws in Clark County administrator’s office"
+    ]
+   }
+  },
+  {
    "sourceId": "us-latimes-california",
    "countryCode": "US",
    "url": "https://www.latimes.com/california/rss2.0.xml",
@@ -11763,6 +12659,454 @@
     "sampleTitles": [
      "Experts question whether big-money campaigns backing Karen Bass are truly independent",
      "Bass and Raman skirmish over treatment of small business. The Valley is a battleground"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-louisiana-illuminator",
+   "countryCode": "US",
+   "url": "https://lailluminator.com/feed/",
+   "format": "rss",
+   "publisherName": "Louisiana Illuminator",
+   "publisherType": "digital-native",
+   "section": "Louisiana news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Louisiana",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T22:54:47.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Trump loses appeals over California ballots, Homeland Security operations",
+     "Trump continues rally spree in attempt to blunt Dem momentum in midterms lead-up"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-maine-morning-star",
+   "countryCode": "US",
+   "url": "https://mainemorningstar.com/feed/",
+   "format": "rss",
+   "publisherName": "Maine Morning Star",
+   "publisherType": "digital-native",
+   "section": "Maine news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Maine",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T22:08:23.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Trump loses appeals over California ballots, Homeland Security operations",
+     "Election officials brace for federal interference but expect to persevere"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-maryland-matters",
+   "countryCode": "US",
+   "url": "https://marylandmatters.org/feed/",
+   "format": "rss",
+   "publisherName": "Maryland Matters",
+   "publisherType": "digital-native",
+   "section": "Maryland news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Maryland",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T23:09:29.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Raskin goes on the road to help Democrats nationwide",
+     "DOJ warns election officials of potential prosecution again, days before midterms"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-michigan-advance",
+   "countryCode": "US",
+   "url": "https://michiganadvance.com/feed/",
+   "format": "rss",
+   "publisherName": "Michigan Advance",
+   "publisherType": "digital-native",
+   "section": "Michigan news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Michigan",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T21:53:56.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Trump loses appeals over California ballots, Homeland Security operations",
+     "Trump continues rally spree in attempt to blunt Dem momentum in midterms lead-up"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-minnesota-reformer",
+   "countryCode": "US",
+   "url": "https://minnesotareformer.com/feed/",
+   "format": "rss",
+   "publisherName": "Minnesota Reformer",
+   "publisherType": "digital-native",
+   "section": "Minnesota news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Minnesota",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T23:09:48.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Trump officials travel to St. Cloud to announce arrests of allegedly fraudulent Medicaid providers",
+     "Judge orders Kenis Lopez Gonzalez to be freed, returned to U.S. from Central African Republic"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-mission-local",
+   "countryCode": "US",
+   "url": "https://missionlocal.org/feed/",
+   "format": "rss",
+   "publisherName": "Mission Local",
+   "publisherType": "digital-native",
+   "section": "California news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "local",
+   "regionName": "California",
+   "cityName": "San Francisco",
+   "independentPublisherGroupId": "mission-local",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 31,
+    "newest": "2026-10-30T23:26:03.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Election Extra! Gary Locke, first Chinese-American governor and former U.S.-China ambassador, backing Connie Chan",
+     "S.F. police arrest suspect in fatal Saturday morning hit-and-run"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-mississippi-today",
+   "countryCode": "US",
+   "url": "https://mississippitoday.org/feed/",
+   "format": "rss",
+   "publisherName": "Mississippi Today",
+   "publisherType": "digital-native",
+   "section": "Mississippi news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Mississippi",
+   "cityName": null,
+   "independentPublisherGroupId": "mississippi-today",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 12,
+    "newest": "2026-10-30T21:27:10.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Jackson State employees face layoffs as university loses federal funding",
+     "Trump DOJ wants to give the Jackson Police Department millions, with strings attached"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-missouri-independent",
+   "countryCode": "US",
+   "url": "https://missouriindependent.com/feed/",
+   "format": "rss",
+   "publisherName": "Missouri Independent",
+   "publisherType": "digital-native",
+   "section": "Missouri news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Missouri",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T19:00:02.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "In a blizzard of lawsuits, Trump’s DOJ battles across the US over midterm elections",
+     "First MOScholars performance report exposes gaps in state oversight"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-nashville-banner",
+   "countryCode": "US",
+   "url": "https://nashvillebanner.com/feed/",
+   "format": "rss",
+   "publisherName": "Nashville Banner",
+   "publisherType": "digital-native",
+   "section": "Tennessee news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "local",
+   "regionName": "Tennessee",
+   "cityName": "Nashville",
+   "independentPublisherGroupId": "nashville-banner",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 10,
+    "newest": "2026-10-30T18:04:11.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Christa Pike Speaks on Life After Execution One Month After Failed Lethal Injection",
+     "Despite Huge Final Day for Early Voting in Nashville, Turnout Still Down from 2018"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-nbc-news",
+   "countryCode": "US",
+   "url": "https://feeds.nbcnews.com/nbcnews/public/news",
+   "format": "rss",
+   "publisherName": "NBC News",
+   "publisherType": "broadcaster",
+   "section": "national news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "national",
+   "regionName": null,
+   "cityName": null,
+   "independentPublisherGroupId": "nbcuniversal",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 25,
+    "newest": "2026-10-30T23:33:33.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Federal prosecutors announce investigation into Alaska Senate race",
+     "Appeals court again rejects DOJ’s bid to segregate over 20,000 alleged noncitizen ballots in California"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-nc-newsline",
+   "countryCode": "US",
+   "url": "https://ncnewsline.com/feed/",
+   "format": "rss",
+   "publisherName": "NC Newsline",
+   "publisherType": "digital-native",
+   "section": "North Carolina news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "North Carolina",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T19:17:03.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Federal subpoenas to election officials mark escalating Trump DOJ pressure campaign",
+     "In a blizzard of lawsuits, Trump’s DOJ battles across the US over midterm elections"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-nebraska-examiner",
+   "countryCode": "US",
+   "url": "https://nebraskaexaminer.com/feed/",
+   "format": "rss",
+   "publisherName": "Nebraska Examiner",
+   "publisherType": "digital-native",
+   "section": "Nebraska news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Nebraska",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T23:28:52.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "DOJ again warns election officials of potential criminal prosecution, days before midterm elections",
+     "Nebraska Senate race is one of the most expensive political races in state history"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-nevada-current",
+   "countryCode": "US",
+   "url": "https://nevadacurrent.com/feed/",
+   "format": "rss",
+   "publisherName": "Nevada Current",
+   "publisherType": "digital-native",
+   "section": "Nevada news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Nevada",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T12:00:20.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Microplastics found in freshly fallen snow in Sierra Nevada",
+     "‘Medically frail’ Medicaid enrollees won’t have to prove their inability to work to keep coverage"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-new-hampshire-bulletin",
+   "countryCode": "US",
+   "url": "https://newhampshirebulletin.com/feed/",
+   "format": "rss",
+   "publisherName": "New Hampshire Bulletin",
+   "publisherType": "digital-native",
+   "section": "New Hampshire news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "New Hampshire",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T21:12:39.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Feds eye New England universities in push to reshore rare earth metal refining",
+     "Election officials brace for federal interference but expect to persevere"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-new-jersey-monitor",
+   "countryCode": "US",
+   "url": "https://newjerseymonitor.com/feed/",
+   "format": "rss",
+   "publisherName": "New Jersey Monitor",
+   "publisherType": "digital-native",
+   "section": "New Jersey news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "New Jersey",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T22:33:57.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Trump loses appeals over California ballots, Homeland Security operations",
+     "Democrats have long hopes, and odds, in bid to oust Jeff Van Drew"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-north-dakota-monitor",
+   "countryCode": "US",
+   "url": "https://northdakotamonitor.com/feed/",
+   "format": "rss",
+   "publisherName": "North Dakota Monitor",
+   "publisherType": "digital-native",
+   "section": "North Dakota news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "North Dakota",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T22:28:48.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Trump loses appeals over California ballots, Homeland Security operations",
+     "Trump continues rally spree in attempt to blunt Dem momentum in midterms lead-up"
     ]
    }
   },
@@ -11795,6 +13139,734 @@
    }
   },
   {
+   "sourceId": "us-nyt-us",
+   "countryCode": "US",
+   "url": "https://rss.nytimes.com/services/xml/rss/nyt/US.xml",
+   "format": "rss",
+   "publisherName": "The New York Times (U.S.)",
+   "publisherType": "newspaper",
+   "section": "national news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "national",
+   "regionName": null,
+   "cityName": null,
+   "independentPublisherGroupId": "new-york-times",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 41,
+    "newest": "2026-10-31T00:01:53.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Justice Dept. Confirms Alaska Inquiry Even as Its Focus Remains Unclear",
+     "Why Running for the U.S. Senate Is a Rich Person’s Game"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-oaklandside",
+   "countryCode": "US",
+   "url": "https://oaklandside.org/feed/",
+   "format": "rss",
+   "publisherName": "The Oaklandside",
+   "publisherType": "digital-native",
+   "section": "California news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "local",
+   "regionName": "California",
+   "cityName": "Oakland",
+   "independentPublisherGroupId": "cityside",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 20,
+    "newest": "2026-10-30T21:58:59.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "ICE showed no warrant when they took Highland Hospital patient, officials say",
+     "A last-minute voter guide for Oakland’s Nov. 3 election"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-ohio-capital-journal",
+   "countryCode": "US",
+   "url": "https://ohiocapitaljournal.com/feed/",
+   "format": "rss",
+   "publisherName": "Ohio Capital Journal",
+   "publisherType": "digital-native",
+   "section": "Ohio news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Ohio",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T16:53:27.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Trump will hold in-person rallies in Iowa and Kansas after all as election nears",
+     "Ramaswamy pulls down controversial ad after mass backlash"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-oklahoma-voice",
+   "countryCode": "US",
+   "url": "https://oklahomavoice.com/feed/",
+   "format": "rss",
+   "publisherName": "Oklahoma Voice",
+   "publisherType": "digital-native",
+   "section": "Oklahoma news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Oklahoma",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T22:05:32.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "New Oklahoma laws take effect on Sunday",
+     "Trump will hold in-person rallies in Iowa and Kansas after all as election nears"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-opb",
+   "countryCode": "US",
+   "url": "https://www.opb.org/arc/outboundfeeds/rss/?outputType=xml",
+   "format": "rss",
+   "publisherName": "Oregon Public Broadcasting",
+   "publisherType": "public-broadcaster",
+   "section": "Oregon news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Oregon",
+   "cityName": null,
+   "independentPublisherGroupId": "opb",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 76,
+    "newest": "2026-10-30T23:02:55.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Ja Morant could miss a month after straining left hamstring in Blazers' loss to Grizzlies",
+     "‘It all happened so fast’: Silver Rail teacher who fought school shooter releases first statement"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-oregon-capital-chronicle",
+   "countryCode": "US",
+   "url": "https://oregoncapitalchronicle.com/feed/",
+   "format": "rss",
+   "publisherName": "Oregon Capital Chronicle",
+   "publisherType": "digital-native",
+   "section": "Oregon news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Oregon",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T23:31:39.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Oregon has some of the nation’s strongest gun control laws. Some groups want more.",
+     "DOJ again warns election officials of potential criminal prosecution, days before midterm elections"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-pbs-newshour",
+   "countryCode": "US",
+   "url": "https://www.pbs.org/newshour/feeds/rss/headlines",
+   "format": "rss",
+   "publisherName": "PBS News",
+   "publisherType": "public-broadcaster",
+   "section": "national news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "national",
+   "regionName": null,
+   "cityName": null,
+   "independentPublisherGroupId": "pbs",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 20,
+    "newest": "2026-10-31T00:01:16.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "For many, striped bass fishing is a way of life. But the iconic species could face collapse",
+     "Judge orders 3 taxpayer-funded Trump administration ads to be pulled from TV, social media"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-pennsylvania-capital-star",
+   "countryCode": "US",
+   "url": "https://penncapital-star.com/feed/",
+   "format": "rss",
+   "publisherName": "Pennsylvania Capital-Star",
+   "publisherType": "digital-native",
+   "section": "Pennsylvania news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Pennsylvania",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T11:27:09.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Election officials brace for federal interference but expect to persevere",
+     "Trump administration has slow-walked 380K potential immigrant voters"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-politico",
+   "countryCode": "US",
+   "url": "https://rss.politico.com/politics-news.xml",
+   "format": "rss",
+   "publisherName": "Politico",
+   "publisherType": "digital-native",
+   "section": "national news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "national",
+   "regionName": null,
+   "cityName": null,
+   "independentPublisherGroupId": "politico",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 30,
+    "newest": "2026-10-30T16:00:00.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "'A wave can hide a lot of weaknesses': Dems question if they'll learn anything",
+     "Josh Shapiro aims for a strong finish in a campaign with 2028 implications"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-portland-mercury",
+   "countryCode": "US",
+   "url": "https://www.portlandmercury.com/feed",
+   "format": "rss",
+   "publisherName": "Portland Mercury",
+   "publisherType": "newspaper",
+   "section": "Oregon news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "local",
+   "regionName": "Oregon",
+   "cityName": "Portland",
+   "independentPublisherGroupId": "portland-mercury",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 10,
+    "newest": "2026-10-30T19:20:10.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Don’t Miss the Mercury’s Scream Queen Halloween Dance Party &#038; Costume Contest!",
+     "The Best Bang for Your Buck Events in Portland This Weekend: Oct 30–Nov 1, 2026"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-propublica",
+   "countryCode": "US",
+   "url": "https://www.propublica.org/feeds/propublica/main",
+   "format": "rss",
+   "publisherName": "ProPublica",
+   "publisherType": "digital-native",
+   "section": "national news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "national",
+   "regionName": null,
+   "cityName": null,
+   "independentPublisherGroupId": "propublica",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 20,
+    "newest": "2026-10-30T15:10:00.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Trump Has Tried to Exert More Control Over Elections. Here Are the Key Findings From Our Reporting.",
+     "How a Secret Vote by U.N. Scientists Legitimized Carbon Capture and Skewed Decades of Climate Policy"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-publicsource",
+   "countryCode": "US",
+   "url": "https://www.publicsource.org/feed/",
+   "format": "rss",
+   "publisherName": "PublicSource",
+   "publisherType": "digital-native",
+   "section": "Pennsylvania news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "local",
+   "regionName": "Pennsylvania",
+   "cityName": "Pittsburgh",
+   "independentPublisherGroupId": "publicsource",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 10,
+    "newest": "2026-10-30T09:30:00.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "How a &#8216;green’ cemetery cured my fear of death",
+     "Springdale Borough’s failure to release records draws Public Source legal action"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-rhode-island-current",
+   "countryCode": "US",
+   "url": "https://rhodeislandcurrent.com/feed/",
+   "format": "rss",
+   "publisherName": "Rhode Island Current",
+   "publisherType": "digital-native",
+   "section": "Rhode Island news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Rhode Island",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T22:23:32.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Matos campaign asks RI elections board to investigate Loughlin’s financial reports, TV buys",
+     "After five years, Providence Superintendent Montañez to leave post"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-sahan-journal",
+   "countryCode": "US",
+   "url": "https://sahanjournal.com/feed/",
+   "format": "rss",
+   "publisherName": "Sahan Journal",
+   "publisherType": "digital-native",
+   "section": "Minnesota news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "local",
+   "regionName": "Minnesota",
+   "cityName": "Minneapolis",
+   "independentPublisherGroupId": "sahan-journal",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 10,
+    "newest": "2026-10-30T15:43:40.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "How to ‘Vote Without Fear’ in Minnesota? Election officials and advocates offer advice for a safe Election Day.",
+     "Somali Museum turns 13 as zombies and a Day of the Dead festival take over the Twin Cities"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-salt-lake-tribune",
+   "countryCode": "US",
+   "url": "https://www.sltrib.com/arc/outboundfeeds/rss/?outputType=xml",
+   "format": "rss",
+   "publisherName": "The Salt Lake Tribune",
+   "publisherType": "newspaper",
+   "section": "Utah news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "local",
+   "regionName": "Utah",
+   "cityName": "Salt Lake City",
+   "independentPublisherGroupId": "salt-lake-tribune",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 40,
+    "newest": "2026-10-30T20:43:08.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "They spent $40K turning their St. George home into a Halloween haunt. It’s about more than scares.",
+     "LDS Church joins the battle against an invasive enemy threatening the Great Salt Lake"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-san-jose-spotlight",
+   "countryCode": "US",
+   "url": "https://sanjosespotlight.com/feed/",
+   "format": "rss",
+   "publisherName": "San José Spotlight",
+   "publisherType": "digital-native",
+   "section": "California news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "local",
+   "regionName": "California",
+   "cityName": "San Jose",
+   "independentPublisherGroupId": "san-jose-spotlight",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 10,
+    "newest": "2026-10-30T23:58:57.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Santa Clara County jails see influx of ICE agents",
+     "San Jose State unveils mural honoring Filipino American history"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-sc-daily-gazette",
+   "countryCode": "US",
+   "url": "https://scdailygazette.com/feed/",
+   "format": "rss",
+   "publisherName": "SC Daily Gazette",
+   "publisherType": "digital-native",
+   "section": "South Carolina news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "South Carolina",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T20:31:36.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Texas congresswoman campaigns to help SC Democrats, says she’s &#8216;not one of those’ 2028 contenders",
+     "Santee Cooper approves rate increase, including early expenses for new gas plant"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-seattle-times-local",
+   "countryCode": "US",
+   "url": "https://www.seattletimes.com/seattle-news/feed/",
+   "format": "rss",
+   "publisherName": "The Seattle Times (Local)",
+   "publisherType": "newspaper",
+   "section": "Washington news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "local",
+   "regionName": "Washington",
+   "cityName": "Seattle",
+   "independentPublisherGroupId": "seattle-times",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 34,
+    "newest": "2026-10-30T23:35:02.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "GLP-1 weight-loss drugs will be covered for fewer U.S. employees",
+     "Pilot worked on engine before fatal small-plane crash at Paine Field Airport"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-sf-standard",
+   "countryCode": "US",
+   "url": "https://sfstandard.com/feed/",
+   "format": "rss",
+   "publisherName": "The San Francisco Standard",
+   "publisherType": "digital-native",
+   "section": "California news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "local",
+   "regionName": "California",
+   "cityName": "San Francisco",
+   "independentPublisherGroupId": "sf-standard",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 10,
+    "newest": "2026-10-30T19:01:42.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Tesla is set to open reservations for Optimus robot later this year, says industry expert",
+     "The Valkyries’ title hopes rest on Gabby Williams. Can she carry them in Game 7?"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-sfist",
+   "countryCode": "US",
+   "url": "https://sfist.com/rss",
+   "format": "rss",
+   "publisherName": "SFist",
+   "publisherType": "digital-native",
+   "section": "California news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "local",
+   "regionName": "California",
+   "cityName": "San Francisco",
+   "independentPublisherGroupId": "sfist",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 15,
+    "newest": "2026-10-30T23:51:07.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Key Witness In Sheng Thao Corruption Trial Testifies About Alleged Pay-to-Play Deal",
+     "Three Vallejo Men at Large, Possibly In Mexico, Wanted for Kidnapping and Murder of Sikh Cook"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-signal-cleveland",
+   "countryCode": "US",
+   "url": "https://signalcleveland.org/feed/",
+   "format": "rss",
+   "publisherName": "Signal Cleveland",
+   "publisherType": "digital-native",
+   "section": "Ohio news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "local",
+   "regionName": "Ohio",
+   "cityName": "Cleveland",
+   "independentPublisherGroupId": "signal-ohio",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 10,
+    "newest": "2026-10-30T04:05:00.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Cleveland Public Power seeks higher rates to build ‘new and better CPP’",
+     "After dozens of car break-ins, CMSD adds parking lot monitors"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-source-nm",
+   "countryCode": "US",
+   "url": "https://sourcenm.com/feed/",
+   "format": "rss",
+   "publisherName": "Source New Mexico",
+   "publisherType": "digital-native",
+   "section": "New Mexico news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "New Mexico",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T22:23:29.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "New Mexico Gov. Lujan Grisham criticizes Trump for not approving flood cost reimbursement",
+     "Trump loses appeals over California ballots, Homeland Security operations"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-south-dakota-searchlight",
+   "countryCode": "US",
+   "url": "https://southdakotasearchlight.com/feed/",
+   "format": "rss",
+   "publisherName": "South Dakota Searchlight",
+   "publisherType": "digital-native",
+   "section": "South Dakota news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "South Dakota",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T21:34:23.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Trump loses appeals over California ballots, Homeland Security operations",
+     "Federal subpoenas to election officials mark escalating Trump DOJ pressure campaign"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-stateline",
+   "countryCode": "US",
+   "url": "https://stateline.org/feed/",
+   "format": "rss",
+   "publisherName": "Stateline (States Newsroom)",
+   "publisherType": "digital-native",
+   "section": "national news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "national",
+   "regionName": null,
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T21:16:46.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Federal subpoenas to election officials mark escalating Trump DOJ pressure campaign",
+     "Election officials brace for federal interference but expect to persevere"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-stlpr",
+   "countryCode": "US",
+   "url": "https://www.stlpr.org/news.rss",
+   "format": "rss",
+   "publisherName": "St. Louis Public Radio",
+   "publisherType": "public-broadcaster",
+   "section": "Missouri news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "local",
+   "regionName": "Missouri",
+   "cityName": "St. Louis",
+   "independentPublisherGroupId": "st-louis-public-radio",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 10,
+    "newest": "2026-10-30T17:45:13.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "University of Missouri names Ashwani Monga as next chancellor of UMSL",
+     "Raja the elephant arrives at his new Cincinnati home after decades at the St. Louis Zoo"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-tennessee-lookout",
+   "countryCode": "US",
+   "url": "https://tennesseelookout.com/feed/",
+   "format": "rss",
+   "publisherName": "Tennessee Lookout",
+   "publisherType": "digital-native",
+   "section": "Tennessee news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Tennessee",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T20:22:01.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Trump will hold in-person rallies in Iowa and Kansas after all as election nears",
+     "Commentary: Sledgehammers for you, pillows for me: the politics of selective morality in Tennessee"
+    ]
+   }
+  },
+  {
    "sourceId": "us-texas-tribune",
    "countryCode": "US",
    "url": "https://feeds.texastribune.org/feeds/main/",
@@ -11819,6 +13891,454 @@
     "sampleTitles": [
      "Ties to Trump, Biden loom large in key South Texas congressional race",
      "As South Texas Republicans brace for losses, Ryan Guillen’s career offers a possible roadmap back"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-the-city-nyc",
+   "countryCode": "US",
+   "url": "https://www.thecity.nyc/feed/",
+   "format": "rss",
+   "publisherName": "THE CITY",
+   "publisherType": "digital-native",
+   "section": "New York news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "local",
+   "regionName": "New York",
+   "cityName": "New York",
+   "independentPublisherGroupId": "the-city-nyc",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 10,
+    "newest": "2026-10-30T16:28:19.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "The High School Hunt: A Guide to NYC’s Complex Admissions Process",
+     "E-Bike Battery Fires on the Rise at NYCHA, Leaving Death in Their Wake"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-the-hill",
+   "countryCode": "US",
+   "url": "https://thehill.com/news/feed/",
+   "format": "rss",
+   "publisherName": "The Hill",
+   "publisherType": "newspaper",
+   "section": "national news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "national",
+   "regionName": null,
+   "cityName": null,
+   "independentPublisherGroupId": "nexstar",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 15,
+    "newest": "2026-10-30T23:42:47.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "RNC chair predicts GOP wins in Alaska, Texas, 3 other battlegrounds",
+     "Democrats weigh Israel election results amid lingering uncertainty"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-the-lens-nola",
+   "countryCode": "US",
+   "url": "https://thelensnola.org/feed/",
+   "format": "rss",
+   "publisherName": "The Lens",
+   "publisherType": "digital-native",
+   "section": "Louisiana news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "local",
+   "regionName": "Louisiana",
+   "cityName": "New Orleans",
+   "independentPublisherGroupId": "the-lens",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T11:01:00.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Making minor tweaks to law enforcement budgets will truly protect and serve our communities",
+     "To fix New Orleans budget, City Hall must show receipts"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-the-stranger",
+   "countryCode": "US",
+   "url": "https://www.thestranger.com/feed",
+   "format": "rss",
+   "publisherName": "The Stranger",
+   "publisherType": "newspaper",
+   "section": "Washington news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "local",
+   "regionName": "Washington",
+   "cityName": "Seattle",
+   "independentPublisherGroupId": "the-stranger",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 10,
+    "newest": "2026-10-30T23:35:00.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "State Supreme Court Candidate Sean O’Donnell Says he Supports Reproductive Rights, Local Advocates Aren’t Convinced",
+     "The Stranger’s Noise Complaint: Intisaar Jubran"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-tpr",
+   "countryCode": "US",
+   "url": "https://www.tpr.org/news.rss",
+   "format": "rss",
+   "publisherName": "Texas Public Radio",
+   "publisherType": "public-broadcaster",
+   "section": "Texas news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "local",
+   "regionName": "Texas",
+   "cityName": "San Antonio",
+   "independentPublisherGroupId": "texas-public-radio",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 10,
+    "newest": "2026-10-30T22:13:10.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Alamo Colleges District trustee Gloria Ray resigns from board",
+     "A San Antonio candy company produced Halloween treats for more than a century"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-utah-news-dispatch",
+   "countryCode": "US",
+   "url": "https://utahnewsdispatch.com/feed/",
+   "format": "rss",
+   "publisherName": "Utah News Dispatch",
+   "publisherType": "digital-native",
+   "section": "Utah news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Utah",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T21:36:06.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Trump loses appeals over California ballots, Homeland Security operations",
+     "Pamela Atkinson, Utah’s champion for the homeless, remembered as ‘larger than life’"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-virginia-mercury",
+   "countryCode": "US",
+   "url": "https://virginiamercury.com/feed/",
+   "format": "rss",
+   "publisherName": "Virginia Mercury",
+   "publisherType": "digital-native",
+   "section": "Virginia news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Virginia",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T15:10:18.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "‘Medically frail’ Medicaid enrollees won’t have to prove their inability to work to keep coverage",
+     "With thousands newly able to vote, a Va. ballot measure could unlock voting rights for more"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-voice-of-san-diego",
+   "countryCode": "US",
+   "url": "https://voiceofsandiego.org/feed/",
+   "format": "rss",
+   "publisherName": "Voice of San Diego",
+   "publisherType": "digital-native",
+   "section": "California news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "local",
+   "regionName": "California",
+   "cityName": "San Diego",
+   "independentPublisherGroupId": "voice-of-san-diego",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 10,
+    "newest": "2026-10-30T22:53:12.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "How Candidates Plan to Solve San Diego’s Bonkers Infrastructure Backlog",
+     "These Candidates Are Stars on Social Media. Can They Turn Their Views Into Votes?"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-vtdigger",
+   "countryCode": "US",
+   "url": "https://vtdigger.org/feed/",
+   "format": "rss",
+   "publisherName": "VTDigger",
+   "publisherType": "digital-native",
+   "section": "Vermont news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Vermont",
+   "cityName": null,
+   "independentPublisherGroupId": "vtdigger",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 30,
+    "newest": "2026-10-30T20:51:22.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "The saga of a sweet turnip",
+     "Community nurse programs are getting a lot of airtime this election. Here’s how they work."
+    ]
+   }
+  },
+  {
+   "sourceId": "us-washington-city-paper",
+   "countryCode": "US",
+   "url": "https://washingtoncitypaper.com/feed/",
+   "format": "rss",
+   "publisherName": "Washington City Paper",
+   "publisherType": "newspaper",
+   "section": "District of Columbia news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "local",
+   "regionName": "District of Columbia",
+   "cityName": "Washington",
+   "independentPublisherGroupId": "washington-city-paper",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 10,
+    "newest": "2026-10-30T16:45:22.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "The Needle: Data Shows Black Workers Were Hit Hardest by DOGE Cuts, DOJ Filed Notice That East Potomac Park Will Close Nov. 15, a Small Minnesota Firm Given $257 Million Kennedy Center Contract, and More",
+     "The Revitalized Hirshhorn Sculpture Garden Invites You to Dive Right In"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-washington-state-standard",
+   "countryCode": "US",
+   "url": "https://washingtonstatestandard.com/feed/",
+   "format": "rss",
+   "publisherName": "Washington State Standard",
+   "publisherType": "digital-native",
+   "section": "Washington news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Washington",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T23:00:44.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "WA mobilizes National Guard for added security for ballot drop boxes",
+     "Trump loses appeals over California ballots, Homeland Security operations"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-wbur",
+   "countryCode": "US",
+   "url": "https://www.wbur.org/feed",
+   "format": "rss",
+   "publisherName": "WBUR",
+   "publisherType": "public-broadcaster",
+   "section": "Massachusetts news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "local",
+   "regionName": "Massachusetts",
+   "cityName": "Boston",
+   "independentPublisherGroupId": "wbur",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T10:33:09.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Super PACs ramp up ad spending in final days of governor's race",
+     "Lindsay Clancy is due in court Monday. The hearing may settle if she'll face new trial"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-west-virginia-watch",
+   "countryCode": "US",
+   "url": "https://westvirginiawatch.com/feed/",
+   "format": "rss",
+   "publisherName": "West Virginia Watch",
+   "publisherType": "digital-native",
+   "section": "West Virginia news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "West Virginia",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T20:19:16.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Trump continues rally spree in attempt to blunt Dem momentum in midterms lead-up",
+     "Federal subpoenas to election officials mark escalating Trump DOJ pressure campaign"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-whyy",
+   "countryCode": "US",
+   "url": "https://whyy.org/feed/",
+   "format": "rss",
+   "publisherName": "WHYY",
+   "publisherType": "public-broadcaster",
+   "section": "Pennsylvania news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "local",
+   "regionName": "Pennsylvania",
+   "cityName": "Philadelphia",
+   "independentPublisherGroupId": "whyy",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 20,
+    "newest": "2026-10-30T23:10:50.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "WHYY Newscast for Friday 7:00 p.m.",
+     "Cẩm nang dành cho cử tri trẻ về cuộc tổng tuyển cử năm 2026 tại Pennsylvania"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-wisconsin-examiner",
+   "countryCode": "US",
+   "url": "https://wisconsinexaminer.com/feed/",
+   "format": "rss",
+   "publisherName": "Wisconsin Examiner",
+   "publisherType": "digital-native",
+   "section": "Wisconsin news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Wisconsin",
+   "cityName": null,
+   "independentPublisherGroupId": "states-newsroom",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 100,
+    "newest": "2026-10-30T22:19:22.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Milwaukee celebrates Brewers World Series victory",
+     "Federal subpoenas to election officials mark escalating Trump DOJ pressure campaign"
+    ]
+   }
+  },
+  {
+   "sourceId": "us-wyofile",
+   "countryCode": "US",
+   "url": "https://wyofile.com/feed/",
+   "format": "rss",
+   "publisherName": "WyoFile",
+   "publisherType": "digital-native",
+   "section": "Wyoming news",
+   "languageTags": [
+    "en-US"
+   ],
+   "geographicScope": "regional",
+   "regionName": "Wyoming",
+   "cityName": null,
+   "independentPublisherGroupId": "wyofile",
+   "termsUrl": null,
+   "evidence": {
+    "checkedAt": "2026-10-31",
+    "status": 200,
+    "items": 10,
+    "newest": "2026-10-30T20:02:05.000Z",
+    "termsNote": "not reviewed; admitted on the same terms as existing feeds",
+    "sampleTitles": [
+     "Grizzly bear deaths in Yellowstone region climb to modern record high for third straight year",
+     "Wyoming Women’s History House celebrates 25 years in Laramie"
     ]
    }
   },
