@@ -24,7 +24,7 @@ import { countryPlace, placeNames, placesNamedIn } from '../../shared/places/pla
 import { COUNTRY_ROWS } from '../../shared/places/placeData'
 import { figuresIn, withoutCitations } from '../knowledge/claims'
 import type { OldsChronicleEntry, OldsRelatedTopic } from '@intoponet/browser-api'
-import { cleanHeadline, foreignNamesIn, isRelevantCandidate, mentions, properPhrases, personNameAtStart, explicitPlacePhrases, fullPersonNameMentioned, officeHolderNamed, outletIsSubject, MEDIA_OUTLET_CLASSES, entityNameAtStart, personActivityConflicts, NOT_A_TOPIC, PATH_PROPERTIES, foldAccents, scoreCandidate, searchQueries, localLegislativeSubject, scopedSubjectMatches, titleContentWords, titleWordsIn, topicAge, eventNameConflicts, eventKindConflicts, eventKindMatches, eventKindNamed, unmentionedEditions, namedEvents } from './headline'
+import { cleanHeadline, foreignNamesIn, isRelevantCandidate, mentions, properPhrases, personNameAtStart, explicitPlacePhrases, fullPersonNameMentioned, officeHolderNamed, outletIsSubject, MEDIA_OUTLET_CLASSES, entityNameAtStart, personActivityConflicts, NOT_A_TOPIC, PATH_PROPERTIES, foldAccents, scoreCandidate, searchQueries, localLegislativeSubject, scopedSubjectMatches, titleContentWords, titleWordsIn, topicAge, eventNameConflicts, eventKindConflicts, eventKindMatches, eventKindNamed, unmentionedEditions, namedEvents, namesASport } from './headline'
 
 const USER_AGENT = 'Intoponet/0.1 (+https://github.com/make-tuned-unit/intoponet; The Olds)'
 const TIMEOUT_MS = 15_000
@@ -224,6 +224,45 @@ export class OldsService {
     // Prefer the item that has not ended (P576), e.g. Germany over West Germany.
     const entities = await this.entities(candidates, 'en')
     return candidates.find((id) => !(entities.get(id)?.claims?.['P576']?.length)) ?? candidates[0] ?? null
+  }
+
+  /** The history of the city or region a local outlet is based in, framed as the story's backdrop; null when unknown. */
+  private async localFallback(query: Extract<OldsQuery, { kind: 'headline' }>, lang: string, unique: Array<{ id: string; node: OldsNode }>): Promise<OldsThread | null> {
+    if (!query.place || !query.countryCode || query.topic) return null
+    const placeQid = await this.localPlaceQid(query.place, query.geonameId, query.countryCode).catch(() => null)
+    if (!placeQid) return null
+    const local = await this.headlineThread({ ...query, topic: placeQid }).catch(() => null)
+    if (!local?.context) return null
+    const label = local.nodes.find((node) => node.id === local.rootId)?.label ?? query.place
+    local.context.matchedBy = `Local fallback: no specific Wikipedia subject or event clearly matched this headline${lang !== 'en' ? ` in ${lang} Wikipedia; add this language under Languages so headlines can be translated on this Mac first` : ''}. It comes from an outlet in ${label}, so that place's history is shown.`
+    local.context.candidates = unique.slice(0, 4).map((candidate) => ({ id: candidate.id, label: candidate.node.label, description: candidate.node.description }))
+    return local
+  }
+
+  /** The Wikidata item for a city (by GeoNames id) or a region (by name, in its country). */
+  private async localPlaceQid(name: string, geonameId: string | undefined, countryCode: string): Promise<string | null> {
+    const search = async (srsearch: string): Promise<string[]> => {
+      const url = new URL('https://www.wikidata.org/w/api.php')
+      url.search = new URLSearchParams({ action: 'query', list: 'search', srsearch, srlimit: '5', format: 'json' }).toString()
+      const payload = await this.getJson(url.toString(), 8_000) as { query?: { search?: Array<{ title?: string }> } }
+      return (payload.query?.search ?? []).map((hit) => hit.title).filter(isQid)
+    }
+    if (geonameId) {
+      const [qid] = await search(`haswbstatement:P1566=${geonameId}`)
+      if (qid) return qid
+    }
+    const countryQid = await this.countryQid(countryCode)
+    if (!countryQid) return null
+    const hits = await search(`${name.replace(/["\\]/g, ' ')} haswbstatement:P17=${countryQid}`)
+    if (!hits.length) return null
+    // Only an item that is named this place, not something merely mentioning it.
+    const entities = await this.entities(hits, 'en')
+    const fold = (value: string): string => value.normalize('NFD').replace(/\p{M}+/gu, '').toLowerCase().trim()
+    return hits.find((id) => {
+      const entity = entities.get(id)
+      const names = Object.values(entity?.labels ?? {}).map((label) => label?.value).filter((value): value is string => !!value)
+      return names.some((value) => fold(value) === fold(name) || fold(value).startsWith(`${fold(name)} `))
+    }) ?? null
   }
 
   private async countryThread(countryCode: string): Promise<OldsThread> {
@@ -892,6 +931,11 @@ export class OldsService {
     const ids = (entity: WikidataEntity | undefined, property: string): string[] => ((entity?.claims?.[property] ?? []) as Array<{ mainsnak?: { datavalue?: { value?: { id?: string } } } }>)
       .map((claim) => claim.mainsnak?.datavalue?.value?.id).filter((id): id is string => typeof id === 'string')
     const subjectText = withoutCountryNames(text, countryLabel)
+    // The headline without the cities and regions it names (and the outlet's own place): what is left is its subject.
+    const namedPlaces = [...placesNamedIn(text, 6).map((place) => place.name), ...(query.place ? [query.place] : [])]
+    const placeWords = new Set(namedPlaces.flatMap((name) => foldAccents(name).toLowerCase().split(/[^\p{L}\d]+/u).filter(Boolean)))
+    const withoutPlaces = (value: string): string => value.split(/\s+/).filter((word) => !placeWords.has(foldAccents(word).toLowerCase().replace(/[^\p{L}\d]+/gu, ''))).join(' ')
+    const isNamedPlace = (label: string): boolean => namedPlaces.some((name) => foldAccents(name).toLowerCase() === foldAccents(label.replace(/\s*\(.*?\)\s*$/, '')).toLowerCase())
     // Names in the headline (not its first word, which is capitalised anyway), and the person it opens with.
     // (The first word is dropped: "Culture and sports to merge…" names no culture.)
     const headlineNames = properPhrases(cleanHeadline(text).replace(/^\S+\s*/, '')).join(' ')
@@ -901,7 +945,8 @@ export class OldsService {
       !isTitleCase(text) && personNameAtStart(label, text, translated ? query.text : undefined)
 
     // A story about a film, game or book may be about the work itself ("New 'Call of Duty' game imagines…").
-    const aboutAWork = WORK_WORDS.test(text)
+    // "Series" and "game" are sports words too: a test series or a match is not a TV series or a video game.
+    const aboutAWork = WORK_WORDS.test(text) && !(namesASport(text) && !/\b(film|movie|documentary|album|song|novel|book|trailer|premiere[sd]?|box office|soundtrack|video game)\b/i.test(text))
     // The organisation the headline opens with ("Nedbank buys…"): its own article is the subject.
     const subjectEntity = (label: string): boolean => {
       if (translated || isTitleCase(text) || !opening) return false
@@ -1010,7 +1055,12 @@ export class OldsService {
       // A country-only match is a topic only when it is a current event ("2026 Brazilian general election"), never "Partition of India".
       const leadingYear = Number(matchTitle.match(/^(\d{4})\b/)?.[1] ?? NaN)
       // …and the headline must point to that kind of event: "Lula's win" → the election, not a Mastercard deal → an offensive.
-      const weakOnly = countryOnly && !(leadingYear >= currentYear - 1 && eventKindMatches(node.label, text))
+      // Sharing only a place's name ("FC Botoșani" for a water cut in Botoșani, a camp in Ebensee for a film made there)
+      // is weak too, unless it is that place itself.
+      // (Events are named for their place by convention: "2026 Tamil Nadu election" stays a candidate.)
+      const placeOnly = !filedThread && !isEventLike(entity) && placeWords.size > 0 && !isNamedPlace(matchTitle) && !isNamedPlace(node.label)
+        && titleWordsIn(matchTitle, subjectText) > 0 && titleWordsIn(matchTitle, withoutPlaces(subjectText)) === 0
+      const weakOnly = (countryOnly || placeOnly) && !(leadingYear >= currentYear - 1 && eventKindMatches(node.label, text))
       // A general concept with no country ("Soldier") is a poor starting point for one country's news.
       const general = !isEventLike(entity) && ids(entity, 'P17').length === 0 && !ids(entity, 'P31').includes('Q5')
       // Without translation, one shared word is too weak ("ONU" → "EJ Onu"), unless the title is that one word.
@@ -1088,6 +1138,9 @@ export class OldsService {
         }
         throw new Error('No Wikipedia topic matched this headline.')
       }
+      // A local outlet's story with no topic of its own: the history of the city or region it comes from, before the whole country's.
+      const local = await this.localFallback(query, lang, unique)
+      if (local) return local
       const loadCountry = (): Promise<OldsThread> => this.thread({ kind: 'country', countryCode: query.countryCode! })
       const country = { ...await loadCountry().catch(() => new Promise<OldsThread>((resolve) => setTimeout(resolve, 1_500)).then(loadCountry)).catch(() => { throw new Error('No Wikipedia topic matched this headline, and its country’s history could not be loaded. Try again in a moment.') }) }
       const year = new Date(this.now()).getUTCFullYear()
@@ -1183,6 +1236,17 @@ export class OldsService {
       || /\b(region|country|continent|province|state of|subcontinent|territory)\b/i.test(description)
       || placeTypeDescription
       || /^History of /.test(chosen.node.label)
+    // A place matched only by the headline's capitalised first word ("Česká liga…" → the village of Česká), and not a
+    // known place in the story's country, is not where the story is: the outlet's own city or region is the better backdrop.
+    if (broad && !query.topic && query.place && query.countryCode) {
+      const afterOpening = cleanHeadline(text).replace(/^\S+\s*/, '')
+      const openingOnly = titleWordsIn(chosen.node.label, text) > 0 && titleWordsIn(chosen.node.label, afterOpening) === 0
+      const known = placesNamedIn(chosen.node.label, 1).some((place) => place.countryCode === query.countryCode)
+      if (openingOnly && !known) {
+        const local = await this.localFallback(query, lang, unique)
+        if (local) return local
+      }
+    }
     if (broad && lang === 'en') {
       const focus = focusStems(text, chosen.node.label)
       const title = titleFromWikipediaUrl(chosen.node.wikipediaUrl)
@@ -1744,7 +1808,7 @@ function rawCacheKey(query: OldsQuery): string {
   if (query.kind === 'wikipedia') return `wikipedia|${query.lang ?? 'en'}|${query.title.replace(/_/g, ' ').toLowerCase()}`
   if (query.kind === 'qid') return `qid|${query.qid}`
   if (query.kind === 'chapter') return `chapter|${query.article.toLowerCase()}|${query.section.toLowerCase()}`
-  if (query.kind === 'headline') return `headline|${query.lang ?? 'en'}|${query.countryCode ?? ''}|${query.topic ?? ''}|${query.text.toLowerCase()}`
+  if (query.kind === 'headline') return `headline|${query.lang ?? 'en'}|${query.countryCode ?? ''}|${query.topic ?? ''}|${query.place ?? ''}|${query.text.toLowerCase()}`
   return `country|${query.countryCode}`
 }
 

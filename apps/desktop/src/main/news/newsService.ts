@@ -137,6 +137,7 @@ export function startNewsService(options: { userData: string; emit: (payload: st
   if (!feeds.length) return { stop: () => undefined, latest: () => latest, trends: async () => ({ rising: [], fading: [], recentStories: 0, previousStories: 0, outlets: 0, uncompared: 0, latest: [], earlier: [] }) }
 
   let digestTimer: ReturnType<typeof setTimeout> | null = null
+  let lastBuildMs = 0
   // The latest items behind the digest, for place trends (in memory only).
   let lastItems: NewsItemInput[] = []
   // Wikipedia's "In the news", refreshed every two hours.
@@ -191,27 +192,24 @@ export function startNewsService(options: { userData: string; emit: (payload: st
     const now = Date.now()
     const all = [...stored, ...memoryOnly]
     lastItems = all
-    latest = JSON.stringify({
+    const started = performance.now()
+    const build = (items: NewsItemInput[]): string => JSON.stringify({
       coverageSchemaVersion: COVERAGE_SCHEMA_VERSION,
-      ...buildNewsDigest({ sources: meta, items: all, health, now, coverage }),
-      global: buildGlobalStories({ sources: meta, items: all, now }),
-      spreading: buildSpreadingStories({ sources: meta, items: all, now }),
+      ...buildNewsDigest({ sources: meta, items, health, now, coverage }),
+      global: buildGlobalStories({ sources: meta, items, now }),
+      spreading: buildSpreadingStories({ sources: meta, items, now }),
       inTheNews,
     })
+    latest = build(all)
     options.emit(latest)
     try {
-      // The on-disk copy (shown at the next launch) excludes no-store feeds.
-      writeFileSync(digestPath, JSON.stringify({
-        coverageSchemaVersion: COVERAGE_SCHEMA_VERSION,
-        ...buildNewsDigest({ sources: meta, items: stored, health, now, coverage }),
-        global: buildGlobalStories({ sources: meta, items: stored, now }),
-        spreading: buildSpreadingStories({ sources: meta, items: stored, now }),
-        inTheNews,
-      }), { encoding: 'utf8', mode: 0o644 })
+      // The on-disk copy (shown at the next launch) excludes no-store feeds; built separately only when there are any.
+      writeFileSync(digestPath, memoryOnly.length ? build(stored) : latest, { encoding: 'utf8', mode: 0o644 })
       writeFileSync(coveragePath, JSON.stringify({ schemaVersion: COVERAGE_SCHEMA_VERSION, sources: coverage }), { encoding: 'utf8', mode: 0o644 })
     } catch {
       // The digest is rebuilt from the feed cache on the next update.
     }
+    lastBuildMs = performance.now() - started
   }
 
   function scheduleDigest(): void {
@@ -221,7 +219,8 @@ export function startNewsService(options: { userData: string; emit: (payload: st
       void publish().catch((error: unknown) => {
         console.error('News digest failed.', error instanceof Error ? error.message : error)
       })
-    }, DIGEST_DEBOUNCE_MS)
+    // Building takes a few seconds with thousands of feeds: leave the main process mostly free between builds.
+    }, Math.max(DIGEST_DEBOUNCE_MS, Math.min(120_000, lastBuildMs * 5)))
     digestTimer.unref?.()
   }
 

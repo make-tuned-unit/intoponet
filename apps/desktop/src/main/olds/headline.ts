@@ -202,6 +202,24 @@ const EVENT_KINDS: Array<[string, RegExp]> = [
   ['services', /\b(water|electricity|power cut|outage|blackout|internet|road works?|traffic)\b/i],
 ]
 
+/** Sports by their own vocabulary: a cricket story ("Aussie batters") is not a racing series. */
+const SPORTS: Array<[string, RegExp]> = [
+  ['cricket', /\b(cricket|batters?|batsm[ae]n|bowlers?|wickets?|innings|odi|t20|ipl|the ashes|test (match|series))\b/i],
+  ['motor', /\b(motor ?sport|racing car|race car|grand prix|formula (one|1|e|2|3)|f1|motogp|nascar|indycar|supercars|rally|superbike|motocross)\b/i],
+  ['football', /\b(football|soccer|premier league|la liga|serie a|bundesliga|striker|midfielder|goalkeeper)\b/i],
+  ['basketball', /\b(basketball|nba|wnba)\b/i],
+  ['rugby', /\b(rugby|six nations|all blacks|springboks|wallabies)\b/i],
+  ['tennis', /\b(tennis|wimbledon|roland garros|us open tennis|atp|wta)\b/i],
+  ['golf', /\b(golf|pga|masters tournament|ryder cup)\b/i],
+  ['baseball', /\b(baseball|mlb|home runs?|world series)\b/i],
+  ['hockey', /\b(ice hockey|nhl|stanley cup)\b/i],
+]
+
+/** Whether a headline is about a sport by its own vocabulary ("Aussie batters", "Grand Prix"). */
+export function namesASport(headline: string): boolean {
+  return SPORTS.some(([, pattern]) => pattern.test(headline))
+}
+
 /** The headline names one kind of event and the title another ("Commonwealth leaders at summit" vs "Commonwealth Games"). */
 export function eventKindConflicts(title: string, headline: string): boolean {
   // Mentioning a historical person does not make their death the headline's subject.
@@ -210,6 +228,10 @@ export function eventKindConflicts(title: string, headline: string): boolean {
   // A named storm shares its name with people ("Hurricane Isaias" vs President Isaias): only a weather story is about it.
   if (/^(?:\d{4}\s+)?(?:Hurricane|Cyclone|Typhoon|Tropical Storm|Storm|Super Typhoon)\b/i.test(title)
     && !/\b(hurricane|cyclone|typhoon|storm|tropical|landfall|winds?|rain\w*|flood\w*|weather|evacuat\w*)\b/i.test(headline)) return true
+  const sportsOf = (text: string): string[] => SPORTS.filter(([, pattern]) => pattern.test(text)).map(([sport]) => sport)
+  const titleSports = sportsOf(title)
+  const headlineSports = sportsOf(headline)
+  if (titleSports.length && headlineSports.length && !titleSports.some((sport) => headlineSports.includes(sport))) return true
   const kindsOf = (text: string): string[] => EVENT_KINDS.filter(([, pattern]) => pattern.test(text)).map(([kind]) => kind)
   const inTitle = kindsOf(title)
   const inHeadline = kindsOf(headline)
@@ -268,12 +290,17 @@ export function foldAccents(text: string): string {
 }
 
 /** A full name or an exact surname opening the headline, never one word of a different full name. */
+// Roles that open headlines on their own and are also surnames.
+const OPENING_ROLES = new Set(['judge', 'judges', 'mayor', 'sheriff', 'governor', 'senator', 'minister', 'chancellor', 'coach', 'police', 'officer', 'officers', 'jury', 'council', 'court', 'pastor', 'bishop', 'cardinal', 'general', 'major', 'captain', 'chief', 'doctor', 'nurse', 'teacher', 'teachers', 'student', 'students', 'farmer', 'farmers', 'banker', 'bankers', 'pope', 'president', 'premier', 'speaker', 'marshal', 'ranger', 'rangers', 'trooper', 'troopers', 'warden', 'deputy', 'deputies', 'firefighter', 'firefighters', 'voters', 'workers'])
+
 export function personNameAtStart(label: string, headline: string, originalHeadline?: string): boolean {
   const normalize = (value: string): string => foldAccents(value).toLowerCase().replace(/[’]/g, "'").trim()
   const name = normalize(label.replace(/\s*\(.*?\)\s*$/, ''))
   const opening = cleanHeadline(headline).match(/^(\p{Lu}[\p{L}'’.-]+(?:\s+\p{Lu}[\p{L}'’.-]+){0,2})/u)?.[1]
   if (!opening || !name) return false
   const start = normalize(opening)
+  // A headline that opens with a role ("Judge rejects…", "Mayor says…") names no one: not Mike Judge.
+  if (!start.includes(' ') && OPENING_ROLES.has(start)) return false
   // Translation may reorder a real name, but must not invent an English namesake
   // (Spanish "Lluvias" → "Rains" must not identify actor Claude Rains).
   if (originalHeadline !== undefined) {

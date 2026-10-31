@@ -199,7 +199,8 @@ export const OLDS_HEADLINE_MAX = 400
 
 export type OldsQuery =
   | { kind: 'chapter'; article: string; section: string }
-  | { kind: 'headline'; text: string; countryCode?: string; lang?: string; topic?: string }
+  /** place/geonameId: where the story's outlet is based (a city or region), for when no topic matches. */
+  | { kind: 'headline'; text: string; countryCode?: string; lang?: string; topic?: string; place?: string; geonameId?: string }
   | { kind: 'wikipedia'; title: string; lang?: string }
   | { kind: 'qid'; qid: string }
   | { kind: 'country'; countryCode: string }
@@ -240,7 +241,14 @@ export function parseOldsQuery(value: unknown): OldsQuery {
       if (lang !== undefined && (typeof lang !== 'string' || !/^[a-z]{2,3}$/.test(lang))) throw new Error('Invalid language.')
       const topic = value['topic']
       if (topic !== undefined && !isQid(topic)) throw new Error('Invalid topic.')
-      return { kind: 'headline', text: text.trim().replace(/\s+/g, ' '), ...(code ? { countryCode: code } : {}), ...(lang ? { lang } : {}), ...(topic ? { topic } : {}) }
+      const place = value['place']
+      if (place !== undefined && (typeof place !== 'string' || !place.trim() || place.length > 120 || /[<>[\]{}|#]/.test(place))) throw new Error('Invalid place.')
+      const geonameId = value['geonameId']
+      if (geonameId !== undefined && (typeof geonameId !== 'string' || !/^\d{1,10}$/.test(geonameId))) throw new Error('Invalid GeoNames id.')
+      return {
+        kind: 'headline', text: text.trim().replace(/\s+/g, ' '), ...(code ? { countryCode: code } : {}), ...(lang ? { lang } : {}), ...(topic ? { topic } : {}),
+        ...(typeof place === 'string' ? { place: place.trim() } : {}), ...(geonameId ? { geonameId } : {}),
+      }
     }
     case 'wikipedia': {
       const title = value['title']

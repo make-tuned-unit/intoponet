@@ -108,6 +108,7 @@ export function OldsPanel({
   onOpen,
   onFollowArticle,
   onPickTopic,
+  translateOffer,
 }: {
   state: OldsState
   /** Labels of the threads followed so far (for the back button). */
@@ -120,6 +121,8 @@ export function OldsPanel({
   onFollowArticle?: (title: string) => void
   /** From a headline: switch to another matched topic. */
   onPickTopic?: (topic: string) => void
+  /** A headline matched in its own language: translate it on this Mac and look again. */
+  translateOffer?: { label: string; detail: string; busy: boolean; onTranslate: () => void } | null
 }) {
   const sheen = useGlassSheen<HTMLDivElement>()
   const reduceMotion = useReducedMotion()
@@ -345,6 +348,14 @@ export function OldsPanel({
       )}
       {state.status === 'error' && <div className="olds-status is-error" role="alert">{state.message}</div>}
       {thread?.historyNote && <p className="olds-history-note">{thread.historyNote}</p>}
+      {thread?.context && translateOffer && (
+        <div className="olds-translate-offer">
+          <span>{translateOffer.detail}</span>
+          <button type="button" onClick={translateOffer.onTranslate} disabled={translateOffer.busy}>
+            {translateOffer.busy ? <Loader2 size={12} className="olds-spin" aria-hidden="true" /> : null}{translateOffer.label}
+          </button>
+        </div>
+      )}
 
       {thread && entries.length === 0 && !thread.context && (
         <div className="olds-status">No sourced historical links were found for this yet. That means Wikidata has no statements, not that there is no history.</div>

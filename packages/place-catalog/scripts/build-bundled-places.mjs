@@ -20,6 +20,8 @@ const ALIASES = {
   'country:US': ['USA', 'US', 'United States of America', 'America'],
   'country:GB': ['UK', 'Britain', 'Great Britain', 'England'],
   'country:AE': ['UAE'],
+  // Common in headlines ("Aussie batters"), where it means the country.
+  'country:AU': ['Aussie', 'Aussies'],
   'country:NL': ['Holland'],
   'country:DE': ['Deutschland'],
   'country:KR': ['Korea'],

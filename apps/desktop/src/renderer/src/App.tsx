@@ -60,7 +60,7 @@ import { FreeCoverageBar } from './access/FreeCoverageBar'
 import { learnedPaywalls, rememberPaywall } from './access/learnedPaywalls'
 import { hostIsPaywalled } from '../../shared/news/paywall'
 import { hostOf } from './favicons'
-import { useTranslate } from './translate/useTranslate'
+import { formatMegabytes, languageName, modelFor, useTranslate } from './translate/useTranslate'
 import { FormEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   defaultAnchor,
@@ -1961,13 +1961,72 @@ export function App() {
   }
   /** The history behind a news story: matched to a topic, then traced back through sourced links. */
   const openOldsForHeadline = (headline: NewsHeadline, englishText: string | null, signal: GlobeSignal | null): void => {
-    const country = signal
+    // Where the story's outlet is: a city or region signal, a spreading story's origin, or the city you are looking at.
+    const localPlace = ((): { name: string; geonameId?: string; countryCode: string } | null => {
+      const placeSignal = signal?.id.match(/^news:(city|region):(.+)$/)
+      if (signal && placeSignal) {
+        const country = nearestCountry(signal.lat, signal.lon)?.place.countryCode
+        return country ? { name: signal.title, ...(placeSignal[1] === 'city' ? { geonameId: placeSignal[2] } : {}), countryCode: country } : null
+      }
+      if (signal?.id.startsWith('news:spread:') && signal.placeLabel) {
+        const country = nearestCountry(signal.lat, signal.lon)?.place.countryCode
+        return country ? { name: signal.placeLabel, countryCode: country } : null
+      }
+      if (!signal && focusedPlace && focusedPlace.kind !== 'country') {
+        const geonameId = focusedPlace.id.match(/^city:(\d+)$/)?.[1]
+        return { name: focusedPlace.name, ...(geonameId ? { geonameId } : {}), countryCode: focusedPlace.countryCode }
+      }
+      return null
+    })()
+    const country = localPlace?.countryCode ?? (signal
       ? signal.id.match(/^news:country:([A-Z]{2})$/)?.[1] ?? (signal.layer === 'news' ? nearestCountry(signal.lat, signal.lon)?.place.countryCode : undefined)
-      : undefined
+      : focusedPlace?.countryCode)
     const lang = englishText ? undefined : normalizeLanguage(headline.lang)?.split('-')[0]
     const text = (englishText ?? headline.title).slice(0, 400)
-    loadOlds([{ query: { kind: 'headline' as const, text, ...(country ? { countryCode: country } : {}), ...(lang && lang !== 'en' ? { lang } : {}) }, label: text.length > 60 ? `${text.slice(0, 57)}…` : text }])
+    loadOlds([{
+      query: {
+        kind: 'headline' as const, text, ...(country ? { countryCode: country } : {}), ...(lang && lang !== 'en' ? { lang } : {}),
+        ...(localPlace ? { place: localPlace.name, ...(localPlace.geonameId ? { geonameId: localPlace.geonameId } : {}) } : {}),
+      },
+      label: text.length > 60 ? `${text.slice(0, 57)}…` : text,
+    }])
   }
+  // A headline matched in its own language (no model installed): offer to translate it on this Mac and look again.
+  const [oldsTranslating, setOldsTranslating] = useState(false)
+  const oldsTranslateOffer = ((): { label: string; detail: string; busy: boolean; onTranslate: () => void } | null => {
+    const top = olds?.stack[olds.stack.length - 1]
+    if (!olds || !top || top.query.kind !== 'headline' || !top.query.lang || top.query.lang === 'en') return null
+    const model = modelFor(top.query.lang, translation.supported)
+    if (!model || translation.ready.has(model.code)) return null
+    const name = languageName(top.query.lang)
+    const bytes = (translation.status?.languages.find((item) => item.code === model.code)?.bytes ?? 0)
+      + (translation.status && !translation.status.engine.downloaded ? translation.status.engine.bytes : 0)
+    const query = top.query
+    const stack = olds.stack
+    return {
+      label: oldsTranslating ? 'Translating…' : `Add ${name}${bytes ? ` (${formatMegabytes(bytes)})` : ''} and look again`,
+      detail: `This ${name} headline was matched in ${name}, which often misses. Translated on this Mac (nothing leaves it), it matches far more reliably.`,
+      busy: oldsTranslating,
+      onTranslate: () => {
+        if (oldsTranslating) return
+        setOldsTranslating(true)
+        void (async () => {
+          try {
+            await translation.install(model.code)
+            const [english] = await window.intoponet.translate.translate({ from: model.code, to: 'en', texts: [query.text] })
+            if (english && english.trim() && english !== query.text) {
+              const { lang: _lang, ...rest } = query
+              loadOlds([...stack.slice(0, -1), { query: { ...rest, text: english.slice(0, 400) }, label: top.label }])
+            }
+          } catch {
+            // The original match stays; the Languages settings show any download error.
+          } finally {
+            setOldsTranslating(false)
+          }
+        })()
+      },
+    }
+  })()
   const openOldsFor = (signal: GlobeSignal): void => {
     const target = oldsQueryFor(signal)
     if (target) loadOlds([target])
@@ -2663,6 +2722,7 @@ export function App() {
               if (top?.query.kind === 'headline') loadOlds([...olds.stack.slice(0, -1), { query: { ...top.query, topic }, label: top.label }])
             }}
             onFollowArticle={(title) => loadOlds([...olds.stack, { query: { kind: 'wikipedia' as const, title }, label: title }].slice(-12))}
+            translateOffer={oldsTranslateOffer}
           />
         )}
       </AnimatePresence>

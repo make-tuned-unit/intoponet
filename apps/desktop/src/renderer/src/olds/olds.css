@@ -781,6 +781,38 @@
 .olds-story-link.is-context,
 .olds-story-link.is-now { color: var(--muted); }
 
+.olds-translate-offer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(214, 246, 241, 0.12);
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.olds-translate-offer button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid rgba(214, 246, 241, 0.22);
+  border-radius: 999px;
+  background: rgba(6, 19, 32, 0.5);
+  color: var(--warm-white);
+  font: inherit;
+  cursor: pointer;
+}
+
+.olds-translate-offer button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .olds-story-note {
   max-width: 820px;
   margin: 0;

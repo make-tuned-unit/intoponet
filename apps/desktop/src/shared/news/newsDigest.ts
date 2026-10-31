@@ -241,11 +241,16 @@ export function placeNamedIn(title: string, countryCode: string): Place | null {
   return best?.place ?? null
 }
 
+const declaredPlaces = new Map<string, Place | null>()
+
+/** Where a city or regional outlet is based (looked up once per country and name). */
 export function declaredPlace(source: NewsSourceMeta): Place | null {
   if (source.scope === 'national') return null
   const wanted = normalizePlaceText(source.cityName ?? source.regionName ?? '')
   if (!wanted) return null
-  return placesInCountry(source.countryCode).find((place) => normalizePlaceText(place.name) === wanted) ?? null
+  const key = `${source.countryCode}|${wanted}`
+  if (!declaredPlaces.has(key)) declaredPlaces.set(key, placesInCountry(source.countryCode).find((place) => normalizePlaceText(place.name) === wanted) ?? null)
+  return declaredPlaces.get(key)!
 }
 
 function storyKey(title: string): string {
@@ -353,7 +358,11 @@ export function buildNewsDigest(input: {
     }
     // Alternate outlets so one prolific publisher can't fill the list.
     const queues = new Map<string, Story[]>()
-    for (const story of list) queues.set(story.publisherGroupId, [...(queues.get(story.publisherGroupId) ?? []), story])
+    for (const story of list) {
+      const queue = queues.get(story.publisherGroupId)
+      if (queue) queue.push(story)
+      else queues.set(story.publisherGroupId, [story])
+    }
     const mixed: Story[] = []
     for (let i = 0; mixed.length < Math.min(list.length, NEWS_DIGEST_LIMITS.headlinesPerCountry); i += 1) {
       for (const queue of queues.values()) if (queue[i] && mixed.length < NEWS_DIGEST_LIMITS.headlinesPerCountry) mixed.push(queue[i]!)
@@ -375,7 +384,9 @@ export function buildNewsDigest(input: {
     const byPlace = new Map<string, Story[]>()
     for (const story of list) {
       if (!story.placeRef) continue
-      byPlace.set(story.placeRef.id, [...(byPlace.get(story.placeRef.id) ?? []), story])
+      const group = byPlace.get(story.placeRef.id)
+      if (group) group.push(story)
+      else byPlace.set(story.placeRef.id, [story])
     }
     const placeEntries = [...byPlace.values()]
       .sort((a, b) => b.length - a.length || b[0]!.at - a[0]!.at)

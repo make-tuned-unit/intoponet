@@ -14,6 +14,10 @@ describe('headline language', () => {
   it('keeps a feed’s language unless the headline plainly says otherwise', () => {
     expect(headlineLanguage(null, 'Ukraina chce rozmów z Rosją i USA')).toBe('pl')
     expect(headlineLanguage('en', 'Ukraina chce rozmów z Rosją i USA')).toBe('pl')
+    // A cedilla ş is written by Romanian sites too: it does not make a Romanian feed's headline Turkish.
+    expect(headlineLanguage('ro', 'Actorul Patrick Stewart, protagonist al francizelor X-Men şi Star Trek, a murit')).toBe('ro')
+    expect(headlineLanguage('tr', 'Beşiktaş yeni sezona hazır')).toBe('tr')
+    expect(headlineLanguage('ro', 'Galatasaray kazandı, ışıklar söndü')).toBe('tr')
     expect(headlineLanguage('es', 'Bolsonaro')).toBe('es')
     expect(headlineLanguage('pt', 'Lula vence eleição')).toBe('pt')
   })

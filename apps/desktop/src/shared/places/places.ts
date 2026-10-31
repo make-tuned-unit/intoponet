@@ -184,12 +184,19 @@ export function countryPlace(countryCode: string): Place | null {
 }
 
 /** Cities and first-level regions inside one country, largest first. */
+const byCountry = new Map<string, Place[]>()
+
+/** A country's cities and regions, largest first (computed once per country; treat as read-only). */
 export function placesInCountry(countryCode: string): Place[] {
+  const cached = byCountry.get(countryCode)
+  if (cached) return cached
   index ??= buildIndex()
-  return index
+  const places = index
     .filter((entry) => entry.place.kind !== 'country' && entry.place.countryCode === countryCode)
     .map((entry) => entry.place)
     .sort((a, b) => b.population - a.population)
+  byCountry.set(countryCode, places)
+  return places
 }
 
 /** Great-circle distance in km. */

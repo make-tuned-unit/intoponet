@@ -26,7 +26,7 @@ const notes = await runAppCheck(async (ctx) => {
   const digest = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getNewsDigest()`))
   // Local stories only: headlines from city and regional outlets, and stories spreading between places.
   const pool = []
-  for (const s of (digest.spreading ?? [])) pool.push({ from: `spreading from ${s.origin.name} (${s.pickups.length} places)`, title: s.title, countryCode: s.origin.countryCode, lang: s.headlines.find((h) => h.title === s.title)?.lang ?? null })
+  for (const s of (digest.spreading ?? [])) pool.push({ from: `spreading from ${s.origin.name} (${s.pickups.length} places)`, title: s.title, countryCode: s.origin.countryCode, place: s.origin.name, geonameId: s.origin.id.match(/^city:(\d+)$/)?.[1] ?? null, lang: s.headlines.find((h) => h.title === s.title)?.lang ?? null })
   const places = [...digest.places].filter((p) => p.evidence !== 'named-in-headline').sort(() => Math.random() - 0.5)
   // Spread across countries: at most two places per country.
   const perCountry = new Map()
@@ -35,7 +35,7 @@ const notes = await runAppCheck(async (ctx) => {
     const h = p.headlines[Math.floor(Math.random() * Math.min(4, p.headlines.length))]
     if (!h) continue
     perCountry.set(p.countryCode, (perCountry.get(p.countryCode) ?? 0) + 1)
-    pool.push({ from: `local ${p.name}, ${p.countryCode}`, title: h.title, countryCode: p.countryCode, lang: h.lang ?? null })
+    pool.push({ from: `local ${p.name}, ${p.countryCode}`, title: h.title, countryCode: p.countryCode, place: p.name, geonameId: p.id.match(/^city:(\d+)$/)?.[1] ?? null, lang: h.lang ?? null })
   }
   const spreadCount = Math.min(digest.spreading?.length ?? 0, Math.ceil(count / 4))
   const shuffled = [...pool.slice(0, spreadCount), ...pool.slice(digest.spreading?.length ?? 0)]
@@ -50,7 +50,7 @@ const notes = await runAppCheck(async (ctx) => {
   }
   const results = []
   for (const p of picks) {
-    const query = { kind: 'headline', text: p.title.slice(0, 400), ...(p.countryCode ? { countryCode: p.countryCode } : {}), ...(p.lang && !p.lang.startsWith('en') ? { lang: p.lang.split('-')[0] } : {}) }
+    const query = { kind: 'headline', text: p.title.slice(0, 400), ...(p.countryCode ? { countryCode: p.countryCode } : {}), ...(p.lang && !p.lang.startsWith('en') ? { lang: p.lang.split('-')[0] } : {}), ...(p.place ? { place: p.place } : {}), ...(p.geonameId ? { geonameId: p.geonameId } : {}) }
     const started = Date.now()
     try {
       const t = JSON.parse(await ctx.evaluate(`window.intoponet.olds.thread(${JSON.stringify(query)}).then((t) => JSON.stringify(t))`))

@@ -208,6 +208,8 @@ export function headlineLanguage(declared: string | null | undefined, title: str
   if (!found || found === tag) return tag
   // Override only on strong evidence: another writing system, or a language-specific letter.
   const otherScript = SCRIPTS.some(([pattern]) => count(title, pattern) > 3)
-  const letterProof = LETTERS.some(([pattern, code]) => code === found && pattern.test(title))
+  // Romanian sites often write ş/ţ with a cedilla, which is also Turkish: alone it proves neither over the other.
+  const shared = (tag === 'ro' && found === 'tr') || (tag === 'tr' && found === 'ro') ? title.replace(/[şŞţŢ]/g, '') : title
+  const letterProof = LETTERS.some(([pattern, code]) => code === found && pattern.test(shared))
   return otherScript || letterProof || tag === 'en' ? found : tag
 }

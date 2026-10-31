@@ -2,6 +2,15 @@ import { describe, expect, it } from 'vitest'
 import { cleanHeadline, personNameAtStart, explicitPlacePhrases, fullPersonNameMentioned, entityNameAtStart, personActivityConflicts, eventKindMatches, eventNameConflicts, eventKindConflicts, foreignNamesIn, mentions, properPhrases, scoreCandidate, searchQueries, localLegislativeSubject, scopedSubjectMatches, titleWordsIn, isRelevantCandidate, topicAge } from './headline'
 import { headlineCountries, isWorkOrThing, keepCandidate, withoutCountryNames } from './oldsService'
 
+describe('sports do not cross', () => {
+  it('keeps a cricket story off a racing series, and a sport on its own sport', () => {
+    expect(eventKindConflicts('2026 Aussie Racing Car Series', 'Series set for epic finale as Aussie batters must stand up')).toBe(true)
+    expect(eventKindConflicts('2026 Ashes series', 'Aussie batters must stand up as Ashes series reaches its finale')).toBe(false)
+    expect(eventKindConflicts('2026 Formula One World Championship', 'Grand Prix: Verstappen wins in Mexico')).toBe(false)
+    expect(eventKindConflicts('2026 FIFA World Cup', 'Election day in Ohio')).toBe(true)
+  })
+})
+
 describe('headline matching', () => {
   it('cleans outlet suffixes and expands abbreviations', () => {
     expect(cleanHeadline('Lula rejects US tariffs - Reuters')).toBe('Lula rejects United States tariffs')
@@ -210,6 +219,10 @@ describe('people opening a headline', () => {
   it('keeps names preserved through translation without inventing namesakes', () => {
     expect(personNameAtStart('Kylian Mbappé', 'Mbappé controversy in China: Real Madrid apologizes', 'Polémique Mbappé en Chine : le Real Madrid s’excuse')).toBe(true)
     expect(personNameAtStart('Claude Rains', 'Rains cause flooding in Peru', 'Lluvias en Perú')).toBe(false)
+    // A role opening a headline is not a surname.
+    expect(personNameAtStart('Mike Judge', 'Judge rejects Trump administration bid to set aside 20,000 California ballots')).toBe(false)
+    expect(personNameAtStart('Doug Mayor', 'Mayor says the bridge will reopen')).toBe(false)
+    expect(personNameAtStart('Stephen King', 'King returns to Maine for his new novel')).toBe(true)
     expect(personNameAtStart('Kylian Mbappé', 'Mbappé apologizes', 'Polémique Mbappéville')).toBe(false)
   })
   it('recognises exact surnames and full names without accents', () => {
