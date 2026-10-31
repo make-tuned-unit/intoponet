@@ -2,9 +2,12 @@
 //   node experiments/e2e/olds-query.mjs queries.json   (needs a built app; network)
 // queries.json: [{ "text": "…", "countryCode": "CZ", "lang": "cs", "place": "Zlín", "geonameId": "3061370" }, …]
 import { runAppCheck } from './lib.mjs'
-import { readFileSync } from 'node:fs'
+import { readFileSync, rmSync } from 'node:fs'
+import { join } from 'node:path'
 
 const queries = JSON.parse(readFileSync(process.argv[2], 'utf8'))
+// Each run judges the current code: drop The Olds' cache from a kept profile.
+if (process.env.E2E_PROFILE) rmSync(join(process.env.E2E_PROFILE, 'olds-cache'), { recursive: true, force: true })
 const notes = await runAppCheck(async (ctx) => {
   const lines = []
   for (const q of queries) {

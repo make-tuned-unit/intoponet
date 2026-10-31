@@ -28,6 +28,8 @@ import { cleanHeadline, foreignNamesIn, isRelevantCandidate, mentions, properPhr
 
 const USER_AGENT = 'Intoponet/0.1 (+https://github.com/make-tuned-unit/intoponet; The Olds)'
 const TIMEOUT_MS = 15_000
+// Words that turn a place name into something else in it ("Ajloun Castle", "Ulsan station").
+const FACILITY = /\b(castle|fort|fortress|palace|cathedral|church|mosque|temple|airport|station|stadium|arena|university|college|school|hospital|museum|bridge|port|harbou?r|bay|river|lake|mountain|mount|hill|island|district|ward|dam|prison|tower|park|market|club|fc)\b/
 const TTL_MS = 7 * 24 * 60 * 60 * 1_000
 const MAX_CACHE_FILES = 300
 const MAX_MEMORY = 100
@@ -239,7 +241,7 @@ export class OldsService {
     return local
   }
 
-  /** The Wikidata item for a city (by GeoNames id) or a region (by name, in its country). */
+  /** The Wikidata item for a city (by GeoNames id) or a region (by name, in its country); exact names first. */
   private async localPlaceQid(name: string, geonameId: string | undefined, countryCode: string): Promise<string | null> {
     const search = async (srsearch: string): Promise<string[]> => {
       const url = new URL('https://www.wikidata.org/w/api.php')
@@ -256,7 +258,10 @@ export class OldsService {
         const entity = entities.get(id)
         if (!entity?.labels?.['en']?.value) return false
         const names = Object.values(entity.labels).map((label) => label?.value).filter((value): value is string => !!value)
-        return names.some((value) => fold(value) === fold(name) || fold(value).startsWith(`${fold(name)} `) || fold(name).startsWith(`${fold(value)} `))
+        // A longer name must only add a disambiguator ("Perm, Russia"), never make it a building or feature ("Ajloun Castle").
+        return names.some((value) => fold(value) === fold(name)
+          || (fold(value).startsWith(`${fold(name)} `) && !FACILITY.test(fold(value).slice(fold(name).length)))
+          || fold(name).startsWith(`${fold(value)} `))
       }) ?? null
     }
     if (geonameId) {
@@ -996,6 +1001,10 @@ export class OldsService {
       const person = ids(entity, 'P31').includes('Q5')
       // Without a description, do not identify a person by partial full-name overlap alone.
       if (person && !filedThread && !node.description && !subjectPerson(node.label) && !fullPersonNameMentioned(node.label, text)) return []
+      // A person a named place is called after ("João Pessoa", the city, not the politician) is not the story,
+      // unless it is about the person (a death, a birth, a legacy).
+      if (person && !filedThread && isNamedPlace(node.label)
+        && !/\b(died|dies|death|born|birth|birthday|anniversary|legacy|statue|monument|remember\w*|tribute|biograph\w*)\b/i.test(text)) return []
       const death = (entity.claims?.['P570'] ?? []).find((claim) => claim.rank !== 'deprecated')?.mainsnak?.datavalue?.value as { time?: string } | undefined
       const deathYear = death?.time?.match(/^\+?(\d{4})-/)?.[1]
       if (person && !filedThread && lang === 'en' && personActivityConflicts(node.label, text, deathYear ? Number(deathYear) : null, currentYear)) return []
