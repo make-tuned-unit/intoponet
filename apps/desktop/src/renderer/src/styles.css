@@ -1063,6 +1063,20 @@ button.origin-badge,
     0 14px 38px rgba(0, 0, 0, 0.25),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(24px) saturate(1.22);
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+/* The input drops its own outline, so the launcher shows where typing goes (⌘L, the tab rail's +). */
+.command-launcher:focus-within {
+  border-color: rgba(32, 244, 228, 0.5);
+  box-shadow:
+    0 0 0 4px rgba(32, 244, 228, 0.12),
+    0 14px 38px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.command-launcher.is-new-tab .command-input input::placeholder {
+  color: rgba(213, 244, 241, 0.86);
 }
 
 .command-input {

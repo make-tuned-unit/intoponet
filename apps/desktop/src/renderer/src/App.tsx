@@ -430,6 +430,8 @@ export function App() {
   const tabStrip = useRef<HTMLDivElement>(null)
   const [tabEdges, setTabEdges] = useState({ overflow: false, atStart: true, atEnd: true })
   const input = useRef<HTMLInputElement>(null)
+  /** The tab rail's + was pressed: the launcher is where the new tab starts, so it says so until it loses focus. */
+  const [newTabDraft, setNewTabDraft] = useState(false)
   const findInput = useRef<HTMLInputElement>(null)
   const pinBrowserClose = useRef<Promise<void> | null>(null)
   const activeTabId = useRef<string | null>(null)
@@ -1136,6 +1138,7 @@ export function App() {
 
   const submit = (event: FormEvent): void => {
     event.preventDefault()
+    setNewTabDraft(false)
     const place = placeActive >= 0 ? placeMatch.places[placeActive] : undefined
     if (place) {
       flyToPlace(place)
@@ -2351,6 +2354,8 @@ export function App() {
         onPinnedChange={setRailPinned}
         onNewTab={() => {
           setQuery('')
+          setPlacesDismissed(false)
+          setNewTabDraft(true)
           input.current?.focus()
         }}
       />
@@ -3679,7 +3684,9 @@ export function App() {
             )}
           </div>
         )}
-        <form className="command-launcher unified-launcher" onSubmit={submit}>
+        <form className={`command-launcher unified-launcher${newTabDraft ? ' is-new-tab' : ''}`} onSubmit={submit} onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setNewTabDraft(false)
+        }}>
           <PlaceSuggestions
             places={placeMatch.places}
             active={placeActive}
@@ -3706,7 +3713,7 @@ export function App() {
                   setPlacesDismissed(true)
                 }
               }}
-              placeholder="Search, fly to a place, or enter a web address"
+              placeholder={newTabDraft ? 'New tab: search or enter a web address' : 'Search, fly to a place, or enter a web address'}
               autoComplete="off"
               spellCheck
               role="combobox"
