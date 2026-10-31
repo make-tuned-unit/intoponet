@@ -259,9 +259,12 @@ export class OldsService {
         if (!entity?.labels?.['en']?.value) return false
         const names = Object.values(entity.labels).map((label) => label?.value).filter((value): value is string => !!value)
         // A longer name must only add a disambiguator ("Perm, Russia"), never make it a building or feature ("Ajloun Castle").
-        return names.some((value) => fold(value) === fold(name)
-          || (fold(value).startsWith(`${fold(name)} `) && !FACILITY.test(fold(value).slice(fold(name).length)))
-          || fold(name).startsWith(`${fold(value)} `))
+        // A longer name only adds a disambiguator ("Perm, Russia", "Nagano (city)"), never another thing ("Hong Kong Stock Exchange").
+        const disambiguated = (value: string): boolean => {
+          const rest = foldAccents(value).toLowerCase().slice(foldAccents(name).toLowerCase().length)
+          return foldAccents(value).toLowerCase().startsWith(foldAccents(name).toLowerCase()) && /^\s*[,(]/.test(rest) && !FACILITY.test(fold(rest))
+        }
+        return names.some((value) => fold(value) === fold(name) || disambiguated(value) || fold(name).startsWith(`${fold(value)} `))
       }) ?? null
     }
     if (geonameId) {
@@ -1089,11 +1092,22 @@ export class OldsService {
       // …and so is an event that is past ("2018 Toronto van attack" for a home invasion) or not the kind of event the
       // headline names ("RAF Abu Dhabi", a wrestling show, for an Abu Dhabi summit).
       const headlineKinds = eventKindsIn(text)
+      // A named incident ("2026 South Cotabato school shooting") is another story unless the headline names that kind of incident.
+      const incident = String(node.label).match(/\b(shooting|attack|bombing|crash|collision|derailment|fire|flood|floods|earthquake|explosion|massacre|stampede|riot|riots|landslide|storm)\b/i)?.[1]
       const placeLikeEvent = isEventLike(entity) && ((ageYears !== null && ageYears >= 2)
-        || (headlineKinds.length > 0 && !eventKindsIn(node.label).some((kind) => headlineKinds.includes(kind))))
+        || (headlineKinds.length > 0 && !eventKindsIn(node.label).some((kind) => headlineKinds.includes(kind)))
+        || (!!incident && !new RegExp(`\\b${incident.slice(0, 5)}`, 'i').test(text)))
       const placeOnly = !filedThread && (!isEventLike(entity) || placeLikeEvent) && placeWords.size > 0 && !isNamedPlace(node.label)
         && titleWordsIn(matchTitle, subjectText) > 0 && titleWordsIn(matchTitle, withoutPlaces(subjectText)) === 0
-      const weakOnly = (countryOnly || placeOnly) && !(leadingYear >= currentYear - 1 && eventKindMatches(node.label, text))
+      // A named incident of another kind is another story, whatever else it shares ("school shooting" for an armed encounter).
+      // Words for the same kind of incident count as the same ("train crash" is the "train collision").
+      const INCIDENT_FAMILIES = [/\b(crash|collision|collid|derail|accident|wreck|pile-?up)/i, /\b(fire|blaze|wildfire|bushfire|inferno|arson)/i,
+        /\b(flood|deluge|inundat)/i, /\b(storm|cyclone|hurricane|typhoon|tornado)/i, /\b(shoot|gunman|gunfire|gunmen)/i,
+        /\b(attack|bomb|blast|explosion|explod|massacre|terror)/i, /\b(earthquake|quake|tremor)/i, /\b(riot|unrest|clash)/i, /\b(landslide|mudslide)/i, /\b(stampede|crush)/i]
+      const family = incident ? INCIDENT_FAMILIES.find((pattern) => pattern.test(incident)) : undefined
+      const otherIncident = !filedThread && lang === 'en' && isEventLike(entity) && !!incident
+        && !(family ? family.test(text) : new RegExp(`\\b${incident.slice(0, 5)}`, 'i').test(text))
+      const weakOnly = otherIncident || ((countryOnly || placeOnly) && !(leadingYear >= currentYear - 1 && eventKindMatches(node.label, text)))
       // A general concept with no country ("Soldier") is a poor starting point for one country's news.
       const general = !isEventLike(entity) && ids(entity, 'P17').length === 0 && !ids(entity, 'P31').includes('Q5')
       // Without translation, one shared word is too weak ("ONU" → "EJ Onu"), unless the title is that one word.
@@ -1142,7 +1156,17 @@ export class OldsService {
       .sort((a, b) => Number(b.localEvent) - Number(a.localEvent) || Number(b.scopedSubject) - Number(a.scopedSubject) || b.score - a.score)
     this.options.debug?.(text, scored.map((candidate, index) => ({ label: candidate.node.label, description: candidate.node.description, score: candidate.score + (byMeaning ? similarity[index]! * MEANING_WEIGHT : 0), meaning: byMeaning ? similarity[index]! : null, words: candidate.words, named: candidate.named, localEvent: candidate.localEvent, scopedSubject: candidate.scopedSubject, weakOnly: candidate.weakOnly, kept: relevant.some((item) => item.id === candidate.id) && !candidate.weakOnly })), { queries, titles: ranked })
     const scoredRelevant = relevant
-    const unique = scoredRelevant.filter((candidate, index) => scoredRelevant.findIndex((other) => other.id === candidate.id) === index)
+    const deduped = scoredRelevant.filter((candidate, index) => scoredRelevant.findIndex((other) => other.id === candidate.id) === index)
+    // A town and a river (or lake, mountain…) of the same name: the town, unless the headline speaks of the feature.
+    const baseName = (label: string): string => foldAccents(label.replace(/\s*\(.*?\)\s*$/, '')).toLowerCase()
+    const SETTLEMENT = /\b(city|town|village|municipality|commune|settlement|borough|county seat|capital|suburb|locality)\b/i
+    const FEATURE = /\b(river|lake|mountain|mount|hill|island|bay|creek|stream|valley|glacier|forest|cape|peninsula)\b/i
+    const unique = deduped.map((candidate) => {
+      const feature = (candidate.node.description ?? '').match(FEATURE)?.[1] ?? candidate.node.label.match(/\((river|lake|mountain|island|bay)\)/i)?.[1]
+      if (!feature || new RegExp(`\\b${feature}`, 'i').test(text)) return candidate
+      const town = deduped.find((other) => other !== candidate && !other.weakOnly && baseName(other.node.label) === baseName(candidate.node.label) && SETTLEMENT.test(other.node.description ?? ''))
+      return town ? { ...candidate, weakOnly: true } : candidate
+    })
     const chosen = query.topic ? { id: query.topic, entity: entities.get(query.topic), node: entities.get(query.topic) ? nodeFromEntity(entities.get(query.topic)!, 'en') : null } : unique.find((candidate) => !candidate.weakOnly)
     if (!chosen?.entity || !chosen.node) {
       // No topic: still place the story in its country's history, and say why.
@@ -1271,6 +1295,15 @@ export class OldsService {
       || /^History of /.test(chosen.node.label)
     // A place matched only by the headline's capitalised first word ("Česká liga…" → the village of Česká), and not a
     // known place in the story's country, is not where the story is: the outlet's own city or region is the better backdrop.
+    // A place in another country that the headline doesn't name ("Chester County" in Pennsylvania → Chester, England)
+    // is a namesake: the outlet's own place is the story's backdrop.
+    if (broad && !query.topic && query.place && query.countryCode && countryQid) {
+      const placeCountries = ids(chosen.entity, 'P17')
+      if (placeCountries.length && !placeCountries.includes(countryQid) && !placeCountries.some((qid) => otherQids.includes(qid))) {
+        const local = await this.localFallback(query, lang, unique)
+        if (local) return local
+      }
+    }
     if (broad && !query.topic && query.place && query.countryCode) {
       const afterOpening = cleanHeadline(text).replace(/^\S+\s*/, '')
       const openingOnly = titleWordsIn(chosen.node.label, text) > 0 && titleWordsIn(chosen.node.label, afterOpening) === 0
@@ -1726,7 +1759,7 @@ export function isWorkOrThing(description: string | null | undefined, aboutAWork
   // Plants and trees are things; dinosaurs and viruses can be news ("Nanotyrannus").
   if (/\b(species|genus|cultivar|variety) of (tree|plant|flowering plant|shrub|grass|herb|fungus|palm|cactus)\b/i.test(description)) return true
   const head = description.toLowerCase().replace(/\s+(by|directed|written|starring|from|produced|created|released|launched|issued|named|associated|owned|based|bearing|with|that|which|used|about|featuring|for|in|of|on)\b.*$/, '').replace(/,.*$/, '').trim()
-  return /\b(film|movie|documentary|album|song|single|novel|book|(television|tv|drama|comedy|web|animated|anime|reality)( drama| comedy)? series|miniseries|sitcom|episode|video game|band|musical|opera|painting|comic|manga|anime|cultivar|dish|food|snack|nut|drink|beverage|brand|character|surname|given name|family name|name|coin|meme coin|memecoin|cryptocurrency|token|phrase|slogan|idiom|catchphrase|expression|proverb)$/.test(head)
+  return /\b(film|movie|documentary|album|song|single|novel|book|(television|tv|drama|comedy|web|animated|anime|reality)( drama| comedy)? series|miniseries|sitcom|episode|video game|band|musical|opera|painting|comic|manga|anime|cultivar|dish|food|snack|nut|drink|beverage|brand|character|surname|given name|family name|name|coin|meme coin|memecoin|cryptocurrency|token|phrase|slogan|idiom|catchphrase|expression|proverb|website|web site|blog|podcast|channel|youtube channel|webcomic|app)$/.test(head)
 }
 
 /** Common European languages by their function words, for headlines whose feed gave no language. */
