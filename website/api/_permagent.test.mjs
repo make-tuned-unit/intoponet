@@ -88,11 +88,11 @@ test('the drain fails closed and forwards the cursor', async () => {
   assert.equal((await drain(request(env.PERMAGENT_ANALYTICS_KEY, '?since=-1'), env, fetchImpl)).status, 400)
 })
 
-test('every page loads the snippet, which keeps the relative endpoint and the version guard', () => {
+test('every page source carries the snippet tag once, in <head>, and the snippet keeps the relative endpoint and version guard', () => {
   const snippet = readFileSync(new URL('../permagent.js', import.meta.url), 'utf8')
   assert.ok(snippet.includes('var E = "/api/permagent-analytics/collect";'))
   assert.ok(snippet.includes('window.permagent.v = 2;'))
-  for (const page of ['index.html', 'beacon-policy.html']) {
+  for (const page of ['index.html', 'beacon-policy.html', '404.html']) {
     const html = readFileSync(new URL(`../${page}`, import.meta.url), 'utf8')
     assert.equal(html.split('<script src="/permagent.js"></script>').length, 2, page)
     assert.ok(html.indexOf('/permagent.js') < html.indexOf('</head>'), page)

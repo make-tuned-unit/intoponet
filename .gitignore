@@ -18,3 +18,4 @@ apps/desktop/.eval-build/
 .vercel
 .env*
 apps/desktop/out-*/
+website/dist/

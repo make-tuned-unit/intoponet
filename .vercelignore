@@ -2,3 +2,4 @@
 !/website
 /website/.vercel
 /website/api/*.test.mjs
+/website/build.test.mjs
