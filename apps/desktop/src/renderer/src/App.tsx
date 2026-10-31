@@ -344,7 +344,8 @@ export function App() {
   const setFieldView = (view: FieldView): void => updateGlobePrefs({ view })
   const [selectedSignalId, setSelectedSignalId] = useState<string | null>(null)
   const [newsDigest, setNewsDigest] = useState<NewsDigest | null>(null)
-  const [listView, setListView] = useState<ListView>('top')
+  // World first: what the world is reporting together; Peaks, Rising and Fading are a tab away.
+  const [listView, setListView] = useState<ListView>('world')
   const [activeTerm, setActiveTerm] = useState<RisingTerm | null>(null)
   const [olds, setOlds] = useState<{ stack: Array<{ query: OldsQuery; label: string }>; state: OldsState } | null>(null)
   const oldsRequest = useRef(0)
@@ -2557,7 +2558,8 @@ export function App() {
           onSave={saveGlobeSignal}
           onFly={(signal) => flyToPoint(signal.lat, signal.lon, 1.9)}
           onHistory={selectedSignal && oldsQueryFor(selectedSignal) ? openOldsFor : null}
-          listView={listView}
+          // Near a focused place, World stories are not about that place: show its peaks instead.
+          listView={focusedPlace && listView === 'world' ? 'top' : listView}
           onListViewChange={setListView}
           risingTerms={risingTerms}
           activeTerm={activeTerm}

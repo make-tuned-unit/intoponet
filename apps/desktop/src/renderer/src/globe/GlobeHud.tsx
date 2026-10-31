@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion, type Transition } from 'motion/react'
-import { Activity, ArrowDownRight, ArrowLeft, ArrowUpRight, BookmarkPlus, BookOpen, ChevronRight, ExternalLink, Flame, History, Info, MapPin, Moon, Navigation, Newspaper, Satellite, Sparkles, Sun, X } from 'lucide-react'
+import { Activity, ArrowDownRight, ArrowLeft, ArrowUpRight, BookmarkPlus, BookOpen, ChevronDown, ChevronRight, ChevronUp, ExternalLink, Flame, History, Info, MapPin, Moon, Navigation, Newspaper, Satellite, Sparkles, Sun, X } from 'lucide-react'
 import type { NewsHeadline, RisingTerm, WikiNewsItem } from '../../../shared/news/newsDigest'
 import { dayPhase, dayPhaseText } from '../earth/sun'
 import { BiggerPicture } from './BiggerPicture'
@@ -99,6 +99,8 @@ const layerIcon: Record<GlobeLayerId, ReactNode> = {
 
 export type FieldView = 'public' | 'personal'
 export type ListView = 'world' | 'top' | 'rising' | 'fading'
+
+const HIGHLIGHTS_COLLAPSED_KEY = 'intoponet.highlights.collapsed'
 
 export function GlobeHeader({
   title,
@@ -490,6 +492,21 @@ export function SignalPanel({
   const sheen = useGlassSheen<HTMLDivElement>()
   const reduceMotion = useReducedMotion()
   const enter = reduceMotion ? { opacity: 0 } : { opacity: 0, x: 14, filter: 'blur(6px)' }
+  // Collapsed, the list gets out of the way so the globe can be explored freely; a selected signal still opens.
+  const [collapsed, setCollapsedState] = useState<boolean>(() => {
+    try { return localStorage.getItem(HIGHLIGHTS_COLLAPSED_KEY) === '1' } catch { return false }
+  })
+  const setCollapsed = (value: boolean): void => {
+    setCollapsedState(value)
+    try { localStorage.setItem(HIGHLIGHTS_COLLAPSED_KEY, value ? '1' : '0') } catch { /* a convenience only */ }
+  }
+  if (collapsed && !selected) {
+    return (
+      <button type="button" className="globe-panel-pill lg-surface" onClick={() => setCollapsed(false)} aria-expanded="false" aria-label={`Show ${heading} (${signals.length})`}>
+        <span>{heading}</span><span className="globe-panel-pill-count">{signals.length}</span><ChevronDown size={14} aria-hidden="true" />
+      </button>
+    )
+  }
   return (
     <aside ref={sheen} className="globe-panel lg-surface lg-sheen" aria-label={selected ? 'Signal details' : heading}>
       <AnimatePresence mode="wait" initial={false}>
@@ -616,7 +633,15 @@ export function SignalPanel({
             transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
           >
             <div className="globe-list-top">
-              <h2 className="globe-list-heading">{heading}<span>{signals.length}</span></h2>
+              <h2 className="globe-list-heading">
+                {heading}
+                <span className="globe-list-heading-end">
+                  <span>{signals.length}</span>
+                  <button type="button" className="globe-panel-collapse" onClick={() => setCollapsed(true)} aria-expanded="true" aria-label={`Hide ${heading}`} title="Hide the list and explore the globe">
+                    <ChevronUp size={14} aria-hidden="true" />
+                  </button>
+                </span>
+              </h2>
               <div className="globe-tabs" role="tablist" aria-label="Order">
                 {(['world', 'top', 'rising', 'fading'] as const).map((option) => (
                   <button
