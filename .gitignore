@@ -17,3 +17,4 @@ experiments/e2e/evidence/
 apps/desktop/.eval-build/
 .vercel
 .env*
+apps/desktop/out-*/

@@ -61,7 +61,7 @@ if [[ "$mode" == "--keep-older" ]]; then
   exit 0
 fi
 echo "Removing older releases…"
-old="$(blob list --prefix releases/ --limit 100 2>/dev/null | grep -oE 'https://[^ ]+/releases/[^ ]+' | grep -v "/releases/${version}/" || true)"
+old="$(blob list --prefix releases/ --limit 100 2>&1 | grep -oE 'https://[^ ]+/releases/[^ ]+' | grep -v "/releases/${version}/" || true)"
 if [[ -n "$old" ]]; then
   # shellcheck disable=SC2086
   blob del $old
