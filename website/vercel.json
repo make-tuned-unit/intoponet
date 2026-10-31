@@ -57,8 +57,8 @@
   "cleanUrls": true,
   "redirects": [
     {
-      "source": "/updates/arm64/Intoponet-0.1.4-arm64-mac.zip",
-      "destination": "https://klszmlqipgkquywh.public.blob.vercel-storage.com/releases/0.1.4/Intoponet-0.1.4-arm64-mac.zip",
+      "source": "/updates/arm64/Intoponet-0.1.5-arm64-mac.zip",
+      "destination": "https://klszmlqipgkquywh.public.blob.vercel-storage.com/releases/0.1.5/Intoponet-0.1.5-arm64-mac.zip",
       "permanent": false
     }
   ]
