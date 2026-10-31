@@ -265,8 +265,17 @@ export class OldsService {
       }) ?? null
     }
     if (geonameId) {
-      const qid = await named(await search(`haswbstatement:P1566=${geonameId}`))
+      // The GeoNames id is the evidence: names may be spelled differently ("Kafr ash Shaykh" / "Kafr El Sheikh").
+      // Still skip items without an English label and buildings or features named after the place.
+      const hits = await search(`haswbstatement:P1566=${geonameId}`)
+      const qid = await named(hits)
       if (qid) return qid
+      const entities = hits.length ? await this.entities(hits, 'en') : new Map<string, WikidataEntity>()
+      const byId = hits.find((id) => {
+        const label = entities.get(id)?.labels?.['en']?.value
+        return !!label && !FACILITY.test(fold(label))
+      })
+      if (byId) return byId
     }
     const countryQid = await this.countryQid(countryCode)
     if (!countryQid) return null
@@ -943,7 +952,9 @@ export class OldsService {
     const namedPlaces = [...placesNamedIn(text, 6).map((place) => place.name), ...(query.place ? [query.place] : [])]
     const placeWords = new Set(namedPlaces.flatMap((name) => foldAccents(name).toLowerCase().split(/[^\p{L}\d]+/u).filter(Boolean)))
     const withoutPlaces = (value: string): string => value.split(/\s+/).filter((word) => !placeWords.has(foldAccents(word).toLowerCase().replace(/[^\p{L}\d]+/gu, ''))).join(' ')
-    const isNamedPlace = (label: string): boolean => namedPlaces.some((name) => foldAccents(name).toLowerCase() === foldAccents(label.replace(/\s*\(.*?\)\s*$/, '')).toLowerCase())
+    // "Traun (river)" is not the town of Traun: a disambiguator naming a feature or building makes it something else.
+    const isNamedPlace = (label: string): boolean => !FACILITY.test(foldAccents(label.match(/\(([^)]*)\)\s*$/)?.[1] ?? '').toLowerCase())
+      && namedPlaces.some((name) => foldAccents(name).toLowerCase() === foldAccents(label.replace(/\s*\(.*?\)\s*$/, '')).toLowerCase())
     // Names in the headline (not its first word, which is capitalised anyway), and the person it opens with.
     // (The first word is dropped: "Culture and sports to merge…" names no culture.)
     const headlineNames = properPhrases(cleanHeadline(text).replace(/^\S+\s*/, '')).join(' ')
@@ -1080,7 +1091,7 @@ export class OldsService {
       const headlineKinds = eventKindsIn(text)
       const placeLikeEvent = isEventLike(entity) && ((ageYears !== null && ageYears >= 2)
         || (headlineKinds.length > 0 && !eventKindsIn(node.label).some((kind) => headlineKinds.includes(kind))))
-      const placeOnly = !filedThread && (!isEventLike(entity) || placeLikeEvent) && placeWords.size > 0 && !isNamedPlace(matchTitle) && !isNamedPlace(node.label)
+      const placeOnly = !filedThread && (!isEventLike(entity) || placeLikeEvent) && placeWords.size > 0 && !isNamedPlace(node.label)
         && titleWordsIn(matchTitle, subjectText) > 0 && titleWordsIn(matchTitle, withoutPlaces(subjectText)) === 0
       const weakOnly = (countryOnly || placeOnly) && !(leadingYear >= currentYear - 1 && eventKindMatches(node.label, text))
       // A general concept with no country ("Soldier") is a poor starting point for one country's news.
