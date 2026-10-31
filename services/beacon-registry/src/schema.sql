@@ -69,3 +69,25 @@ create table if not exists beacon_moderation_log (
 );
 create index if not exists beacon_moderation_log_at on beacon_moderation_log (at);
 create index if not exists beacon_nonces_at on beacon_nonces (at);
+
+-- First-party website analytics (Permagent). The id is the drain cursor and must stay monotonic.
+-- No IP addresses or user agents are stored; visitor_hash rotates daily. Purged after 90 days.
+create table if not exists permagent_analytics_events (
+  id bigserial primary key,
+  kind text not null check (kind in ('pageview', 'event')),
+  path text not null,
+  referrer text,
+  name text,
+  visitor_hash text,
+  created_at timestamptz not null default now(),
+  properties jsonb,
+  is_bot boolean not null default false,
+  session_id text,
+  utm_source text,
+  utm_medium text,
+  utm_campaign text,
+  country text
+);
+create index if not exists permagent_analytics_events_created_at on permagent_analytics_events (created_at);
+create index if not exists permagent_analytics_events_bot_created_at on permagent_analytics_events (is_bot, created_at);
+create index if not exists permagent_analytics_events_properties on permagent_analytics_events using gin (properties);

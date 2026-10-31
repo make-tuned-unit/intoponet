@@ -46,6 +46,12 @@
     },
     "api/download.js": {
       "maxDuration": 15
+    },
+    "api/permagent-analytics/collect.js": {
+      "maxDuration": 10
+    },
+    "api/permagent-analytics/drain.js": {
+      "maxDuration": 30
     }
   },
   "cleanUrls": true,

@@ -2,7 +2,8 @@ import { attachDatabasePool } from '@neon/functions'
 import pg from 'pg'
 import { createRegistry } from './registry.ts'
 import { readLimitedJsonBody } from './functionHttp.ts'
-import { edgeClientAddress } from './edge.ts'
+import { edgeClientAddress, fromEdge } from './edge.ts'
+import { createAnalytics, drainParams, parseEvent } from './analytics.ts'
 
 /**
  * The beacon registry as a Neon Function (Node 24, next to its Lakebase
@@ -31,6 +32,8 @@ const registry = createRegistry({
   ...(Number.isInteger(globalLimit) && globalLimit > 0 ? { globalPublishPerDay: globalLimit } : {}),
 })
 
+const analytics = createAnalytics(async (sql, params) => (await pool.query(sql, params)).rows)
+
 const json = (status: number, body: unknown, headers: Record<string, string> = {}): Response =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', ...headers } })
 
@@ -42,7 +45,26 @@ export default {
     // x-neon-* headers, so this header's presence shows the request came from Neon.
     if (url.pathname === '/internal/purge') {
       if (request.method !== 'POST' || !request.headers.get('x-neon-trigger-invocation-id')) return json(404, { error: 'Not found.' })
-      return json(200, await registry.purge())
+      const purged = await registry.purge()
+      const analyticsEvents = await analytics.purge().catch(() => null)
+      return json(200, { ...purged, analyticsEvents })
+    }
+    // Website analytics: only through the edge proxy, which cleans events and authenticates the drain.
+    if (url.pathname === '/v1/analytics/events') {
+      if (!fromEdge(request.headers, edgeSecret)) return json(404, { error: 'Not found.' })
+      if (request.method === 'POST') {
+        const body = await readLimitedJsonBody(request)
+        const event = body.ok ? parseEvent(body.body) : null
+        if (!event) return json(400, { error: 'Invalid event.' })
+        await analytics.insert(event)
+        return new Response(null, { status: 202 })
+      }
+      if (request.method === 'GET') {
+        const params = drainParams(url.searchParams)
+        if (!params) return json(400, { error: 'since and limit must be non-negative integers.' })
+        return json(200, { events: await analytics.drain(params.since, params.limit) }, { 'cache-control': 'no-store' })
+      }
+      return json(405, { error: 'Method not allowed.' })
     }
     const parsed = request.method === 'GET' || request.method === 'HEAD'
       ? { ok: true as const, body: null }
