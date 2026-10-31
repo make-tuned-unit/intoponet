@@ -32,7 +32,10 @@ const notes = await runAppCheck(async (ctx) => {
   const perCountry = new Map()
   for (const p of places) {
     if ((perCountry.get(p.countryCode) ?? 0) >= 2) continue
-    const h = p.headlines[Math.floor(Math.random() * Math.min(4, p.headlines.length))]
+    // OLDS_LOCAL_LANG=en: only headlines in that language (undeclared counts as English).
+    const wanted = process.env.OLDS_LOCAL_LANG
+    const usable = wanted ? p.headlines.filter((item) => (item.lang ?? 'en').startsWith(wanted)) : p.headlines
+    const h = usable[Math.floor(Math.random() * Math.min(4, usable.length))]
     if (!h) continue
     perCountry.set(p.countryCode, (perCountry.get(p.countryCode) ?? 0) + 1)
     pool.push({ from: `local ${p.name}, ${p.countryCode}`, title: h.title, countryCode: p.countryCode, place: p.name, geonameId: p.id.match(/^city:(\d+)$/)?.[1] ?? null, lang: h.lang ?? null })

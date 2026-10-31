@@ -24,7 +24,7 @@ import { countryPlace, placeNames, placesNamedIn } from '../../shared/places/pla
 import { COUNTRY_ROWS } from '../../shared/places/placeData'
 import { figuresIn, withoutCitations } from '../knowledge/claims'
 import type { OldsChronicleEntry, OldsRelatedTopic } from '@intoponet/browser-api'
-import { cleanHeadline, foreignNamesIn, isRelevantCandidate, mentions, properPhrases, personNameAtStart, explicitPlacePhrases, fullPersonNameMentioned, officeHolderNamed, outletIsSubject, MEDIA_OUTLET_CLASSES, entityNameAtStart, personActivityConflicts, NOT_A_TOPIC, PATH_PROPERTIES, foldAccents, scoreCandidate, searchQueries, localLegislativeSubject, scopedSubjectMatches, titleContentWords, titleWordsIn, topicAge, eventNameConflicts, eventKindConflicts, eventKindMatches, eventKindNamed, unmentionedEditions, namedEvents, namesASport } from './headline'
+import { cleanHeadline, foreignNamesIn, isRelevantCandidate, mentions, properPhrases, personNameAtStart, explicitPlacePhrases, fullPersonNameMentioned, officeHolderNamed, outletIsSubject, MEDIA_OUTLET_CLASSES, entityNameAtStart, personActivityConflicts, NOT_A_TOPIC, PATH_PROPERTIES, foldAccents, scoreCandidate, searchQueries, localLegislativeSubject, scopedSubjectMatches, titleContentWords, titleWordsIn, topicAge, eventNameConflicts, eventKindConflicts, eventKindMatches, eventKindNamed, unmentionedEditions, namedEvents, namesASport, eventKindsIn } from './headline'
 
 const USER_AGENT = 'Intoponet/0.1 (+https://github.com/make-tuned-unit/intoponet; The Olds)'
 const TIMEOUT_MS = 15_000
@@ -1040,6 +1040,11 @@ export class OldsService {
         // The person the headline opens with is named, though first words are left out of its names ("Mbappe apologises…").
         && !namedPerson
       if (foreign) return []
+      // A thing described as in another country ("type of Medicare facility in the United States") is not a local story there.
+      // Only where the description says it is ("… in the United States"), not any nationality it mentions ("British Crown Dependencies").
+      const describedIn = (node.description ?? '').match(/\bin (?:the )?([^,;()]+)$/)?.[1] ?? ''
+      const describedCountries = person || isEventLike(entity) || filedThread || !query.countryCode || !describedIn ? [] : headlineCountries(describedIn)
+      if (describedCountries.length && !describedCountries.some((code) => code === query.countryCode || namedCountries.includes(code))) return []
       // A foreign topic that brings in a name the story never mentions ("Mickey's Halloween Party" for a party in Bermuda).
       const elsewhere = !filedThread && storyQids.length > 0 && countries.length > 0 && countries.length <= 2 && !storyQids.some((qid) => countries.includes(qid))
       if (elsewhere && foreignNamesIn(matchTitle, text) > 0 && !namedPerson) return []
@@ -1070,7 +1075,12 @@ export class OldsService {
       // Sharing only a place's name ("FC Botoșani" for a water cut in Botoșani, a camp in Ebensee for a film made there)
       // is weak too, unless it is that place itself.
       // (Events are named for their place by convention: "2026 Tamil Nadu election" stays a candidate.)
-      const placeOnly = !filedThread && !isEventLike(entity) && placeWords.size > 0 && !isNamedPlace(matchTitle) && !isNamedPlace(node.label)
+      // …and so is an event that is past ("2018 Toronto van attack" for a home invasion) or not the kind of event the
+      // headline names ("RAF Abu Dhabi", a wrestling show, for an Abu Dhabi summit).
+      const headlineKinds = eventKindsIn(text)
+      const placeLikeEvent = isEventLike(entity) && ((ageYears !== null && ageYears >= 2)
+        || (headlineKinds.length > 0 && !eventKindsIn(node.label).some((kind) => headlineKinds.includes(kind))))
+      const placeOnly = !filedThread && (!isEventLike(entity) || placeLikeEvent) && placeWords.size > 0 && !isNamedPlace(matchTitle) && !isNamedPlace(node.label)
         && titleWordsIn(matchTitle, subjectText) > 0 && titleWordsIn(matchTitle, withoutPlaces(subjectText)) === 0
       const weakOnly = (countryOnly || placeOnly) && !(leadingYear >= currentYear - 1 && eventKindMatches(node.label, text))
       // A general concept with no country ("Soldier") is a poor starting point for one country's news.

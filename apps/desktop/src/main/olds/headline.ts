@@ -220,6 +220,11 @@ export function namesASport(headline: string): boolean {
   return SPORTS.some(([, pattern]) => pattern.test(headline))
 }
 
+/** The kinds of scheduled event a text names (meeting, sport, election, culture, services). */
+export function eventKindsIn(text: string): string[] {
+  return EVENT_KINDS.filter(([, pattern]) => pattern.test(text)).map(([kind]) => kind)
+}
+
 /** The headline names one kind of event and the title another ("Commonwealth leaders at summit" vs "Commonwealth Games"). */
 export function eventKindConflicts(title: string, headline: string): boolean {
   // Mentioning a historical person does not make their death the headline's subject.
