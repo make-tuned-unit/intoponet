@@ -1,15 +1,20 @@
 #!/usr/bin/env bash
 # Upload one macOS release to the Atlas Atlantic Blob store and delete every older release there,
 # so the store only ever holds the current version (about 250 MB).
-# Usage, from the repo root: scripts/upload-release.sh 0.1.3
+# Usage, from the repo root:
+#   scripts/upload-release.sh 0.1.4 --keep-older   upload, leaving older releases (the live site still links to them)
+#   (deploy the website so it links to the new release)
+#   scripts/upload-release.sh 0.1.4 --prune-only   remove every release older than 0.1.4
+#   scripts/upload-release.sh 0.1.4                upload and prune in one go
 # Needs: the intoponet-preview project on the Atlas Atlantic team, with the intoponet-releases store connected.
 set -euo pipefail
 
-version="${1:?usage: scripts/upload-release.sh <version>}"
+version="${1:?usage: scripts/upload-release.sh <version> [--keep-older|--prune-only]}"
+mode="${2:-}"
 release_dir="dist/macos/release/${version}-arm64"
 dmg="${release_dir}/Intoponet-${version}-arm64.dmg"
 zip="${release_dir}/Intoponet-${version}-arm64-mac.zip"
-[[ -f "$dmg" && -f "$zip" ]] || { echo "missing $dmg or $zip" >&2; exit 1; }
+[[ "$mode" == "--prune-only" || ( -f "$dmg" && -f "$zip" ) ]] || { echo "missing $dmg or $zip" >&2; exit 1; }
 
 # The token lives only in this temporary file and is removed on exit.
 env_file="$(mktemp -t intoponet-blob)"
@@ -44,10 +49,17 @@ else
   blob() { vercel blob "$@" --oidc-token "$oidc" --store-id "$store_id"; }
 fi
 
-echo "Uploading ${version}…"
-blob put "$dmg" --pathname "releases/${version}/Intoponet-${version}-arm64.dmg" --access public --allow-overwrite true
-blob put "$zip" --pathname "releases/${version}/Intoponet-${version}-arm64-mac.zip" --access public --allow-overwrite true
+if [[ "$mode" != "--prune-only" ]]; then
+  echo "Uploading ${version}…"
+  blob put "$dmg" --pathname "releases/${version}/Intoponet-${version}-arm64.dmg" --access public --allow-overwrite true
+  blob put "$zip" --pathname "releases/${version}/Intoponet-${version}-arm64-mac.zip" --access public --allow-overwrite true
+fi
 
+if [[ "$mode" == "--keep-older" ]]; then
+  echo "Keeping older releases: run with --prune-only after the website deploy."
+  blob list --prefix releases/
+  exit 0
+fi
 echo "Removing older releases…"
 old="$(blob list --prefix releases/ --limit 100 2>/dev/null | grep -oE 'https://[^ ]+/releases/[^ ]+' | grep -v "/releases/${version}/" || true)"
 if [[ -n "$old" ]]; then
