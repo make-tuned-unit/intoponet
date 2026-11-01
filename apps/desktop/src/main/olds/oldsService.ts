@@ -1122,7 +1122,10 @@ export class OldsService {
       // backdrop. A one-word title the headline uses ("Capoeira") is still the topic.
       const nativeThin = native && !filedThread && !person && !!query.place
         && matchTitle.replace(/\(.*?\)/g, ' ').split(/[^\p{L}\d]+/u).filter((word) => word.length >= 2).length >= 2 && titleWordsIn(matchTitle, text) < 2
-      const weakOnly = otherIncident || nativeThin || ((countryOnly || placeOnly) && !(leadingYear >= currentYear - 1 && eventKindMatches(node.label, text)))
+      // A general concept ("Software development process") is the topic only when the headline names all of it, not one
+      // of its words ("infrastructure development" for saffron exports).
+      const partialConcept = !isEventLike(entity) && ids(entity, 'P17').length === 0 && !person && !filedThread && !native && titleWordsIn(node.label, text) < titleContentWords(node.label).length
+      const weakOnly = otherIncident || nativeThin || partialConcept || ((countryOnly || placeOnly) && !(leadingYear >= currentYear - 1 && eventKindMatches(node.label, text)))
       // A general concept with no country ("Soldier") is a poor starting point for one country's news.
       const general = !isEventLike(entity) && ids(entity, 'P17').length === 0 && !ids(entity, 'P31').includes('Q5')
       // Without translation, one shared word is too weak ("ONU" → "EJ Onu"), unless the title is that one word.
