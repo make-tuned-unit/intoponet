@@ -395,7 +395,10 @@ export function titleWordsIn(rawTitle: string, rawHeadline: string): number {
   const titleAcronyms = new Set(title.split(/[^\p{L}\d]+/u).filter((word) => /^\p{Lu}{2,6}$/u.test(word)).map((word) => word.toLowerCase()))
   const words = [...new Set(rawWords.map((word) => word.toLowerCase()).filter((word) => word.length > 2 && !STOPWORDS.has(word) && (!acronyms.has(word) || titleAcronyms.has(word))).map(stem))]
   // Same stem, or one a 5+ letter prefix of the other ("India" ~ "Indian").
-  const matches = (a: string): boolean => words.some((b) => a === b || (Math.min(a.length, b.length) >= 5 && (a.startsWith(b) || b.startsWith(a))))
+  // A word extends another by an ending or a compound (Indian, Japanese, Nepali, courtroom), but not by a/o/u, which in
+  // these languages usually makes another word ("hauteur" is not "haute", "Lovera" is not "Lover").
+  const extends_ = (long: string, short: string): boolean => long.startsWith(short) && !/^[aou]/.test(long.slice(short.length))
+  const matches = (a: string): boolean => words.some((b) => a === b || (Math.min(a.length, b.length) >= 5 && (extends_(a, b) || extends_(b, a))))
   // Years are not shared subjects ("2026 GB3 Championship" ≠ "2026 Guam … Championship"); recency is scored separately.
   // Each title word once ("Combined authorities and combined county authorities" shares one word, not two).
   return new Set(title.toLowerCase().replace(/\(.*?\)/g, '').split(/[^\p{L}\d]+/u).filter((word) => word.length > 2 && !STOPWORDS.has(word) && !MONTH_WORDS.has(word) && !NUMBER_WORDS.has(word) && !/^\d{4}$/.test(word) && matches(stem(word))).map(stem)).size
