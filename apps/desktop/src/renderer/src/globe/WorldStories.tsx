@@ -53,6 +53,8 @@ export function WorldStories({
     const next = expanded === story.id ? null : story.id
     setExpanded(next)
     onFocus(next ? story : null)
+    // Opening a story also opens its article, so the reader can go straight to the source.
+    if (next) onOpen(story.url)
   }
   return (
     <div className="world-stories">
@@ -72,7 +74,7 @@ export function WorldStories({
                     className="world-row"
                     aria-expanded={open}
                     onClick={() => toggle(story)}
-                    title={`Local outlets in ${story.countries.length} countries${story.internationalDesks ? ` and ${story.internationalDesks} international desks` : ''} covered it (${story.outletCount} outlets in all). Shared words: ${story.terms.join(', ')}.`}
+                    title={`Open the article and see where it was covered. Local outlets in ${story.countries.length} countries${story.internationalDesks ? ` and ${story.internationalDesks} international desks` : ''} covered it (${story.outletCount} outlets in all). Shared words: ${story.terms.join(', ')}.`}
                   >
                     <span className="world-rank">{index + 1}</span>
                     <span className="world-text">
