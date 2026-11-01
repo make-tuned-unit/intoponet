@@ -11,7 +11,8 @@ import { join } from 'node:path'
 import { createHash } from 'node:crypto'
 
 const out = process.argv[2] ?? 'olds-eval.json'
-const goldSource = readFileSync(join(import.meta.dirname, 'olds-gold.json'), 'utf8')
+// GOLD=olds-local-gold.json scores the local-news set instead (stories carry their outlet's place).
+const goldSource = readFileSync(join(import.meta.dirname, process.env.GOLD ?? 'olds-gold.json'), 'utf8')
 const goldSha256 = createHash('sha256').update(goldSource).digest('hex')
 const gold = JSON.parse(goldSource).stories
   .filter((story) => !process.env.ONLY || new RegExp(process.env.ONLY).test(story.title))
@@ -34,7 +35,7 @@ const summary = await runAppCheck(async (ctx) => {
   if (laya) await ctx.wait(`window.intoponet.laya.status().then((s) => s.enabled && s.model.downloaded && !s.busy)`, 900_000, 'Laya to be ready')
   const results = []
   for (const story of gold) {
-    const query = { kind: 'headline', text: story.title.slice(0, 400), ...(story.countryCode ? { countryCode: story.countryCode } : {}), ...(story.lang && !story.lang.startsWith('en') ? { lang: story.lang.split('-')[0] } : {}) }
+    const query = { kind: 'headline', text: story.title.slice(0, 400), ...(story.countryCode ? { countryCode: story.countryCode } : {}), ...(story.lang && !story.lang.startsWith('en') ? { lang: story.lang.split('-')[0] } : {}), ...(story.place ? { place: story.place } : {}), ...(story.geonameId ? { geonameId: story.geonameId } : {}) }
     const started = Date.now()
     try {
       const t = JSON.parse(await ctx.evaluate(`window.intoponet.olds.thread(${JSON.stringify(query)}).then((t) => JSON.stringify({ root: t.nodes.find((n) => n.id === t.rootId)?.label ?? '', events: (t.chronicle ?? []).length, matchedBy: t.context?.matchedBy ?? '', filed: t.context?.filedUnder?.threads ?? [] }))`))

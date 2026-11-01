@@ -28,6 +28,13 @@ import { cleanHeadline, foreignNamesIn, isRelevantCandidate, mentions, properPhr
 
 const USER_AGENT = 'Intoponet/0.1 (+https://github.com/make-tuned-unit/intoponet; The Olds)'
 const TIMEOUT_MS = 15_000
+// Nationalities the country detector skips as ambiguous ("Indian": India or the Ocean?) but which, opening a
+// description ("Indian bill"), plainly name a country.
+const DESCRIPTION_DEMONYMS: Record<string, string> = {
+  Indian: 'IN', French: 'FR', German: 'DE', Spanish: 'ES', Italian: 'IT', Chinese: 'CN', Japanese: 'JP', Russian: 'RU',
+  American: 'US', Canadian: 'CA', Australian: 'AU', Mexican: 'MX', Dutch: 'NL', Swiss: 'CH', Irish: 'IE', Turkish: 'TR',
+  Greek: 'GR', Polish: 'PL', Swedish: 'SE', Norwegian: 'NO', Danish: 'DK', Finnish: 'FI', Portuguese: 'PT', Korean: 'KR',
+}
 // Words that turn a place name into something else in it ("Ajloun Castle", "Ulsan station").
 const FACILITY = /\b(castle|fort|fortress|palace|cathedral|church|mosque|temple|airport|station|stadium|arena|university|college|school|hospital|museum|bridge|port|harbou?r|bay|river|lake|mountain|mount|hill|island|district|ward|dam|prison|tower|park|market|club|fc)\b/
 const TTL_MS = 7 * 24 * 60 * 60 * 1_000
@@ -1056,8 +1063,11 @@ export class OldsService {
       if (foreign) return []
       // A thing described as in another country ("type of Medicare facility in the United States") is not a local story there.
       // Only where the description says it is ("… in the United States"), not any nationality it mentions ("British Crown Dependencies").
-      const describedIn = (node.description ?? '').match(/\bin (?:the )?([^,;()]+)$/)?.[1] ?? ''
-      const describedCountries = person || isEventLike(entity) || filedThread || !query.countryCode || !describedIn ? [] : headlineCountries(describedIn)
+      // …or whose description opens with a nationality ("Indian bill" for Fiji's amendment bill).
+      const describedIn = (node.description ?? '').match(/\bin (?:the )?([^,;()]+)$/)?.[1]
+        ?? (node.description ?? '').match(/^(\p{Lu}[\p{L}-]+)\s+(?:bill|law|act|statute|constitution|ministry|agency|party|parliament|court|police|army|navy|government|cabinet|election|referendum|company|bank)\b/u)?.[1] ?? ''
+      const describedCountries = person || isEventLike(entity) || filedThread || !query.countryCode || !describedIn ? []
+        : DESCRIPTION_DEMONYMS[describedIn] ? [DESCRIPTION_DEMONYMS[describedIn]!] : headlineCountries(describedIn)
       if (describedCountries.length && !describedCountries.some((code) => code === query.countryCode || namedCountries.includes(code))) return []
       // A foreign topic that brings in a name the story never mentions ("Mickey's Halloween Party" for a party in Bermuda).
       const elsewhere = !filedThread && storyQids.length > 0 && countries.length > 0 && countries.length <= 2 && !storyQids.some((qid) => countries.includes(qid))
