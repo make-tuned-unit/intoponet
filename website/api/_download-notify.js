@@ -1,3 +1,5 @@
+import { recordServerEvent } from './_permagent.js'
+
 // /download/mac: redirect to the current DMG, and email the owner that someone downloaded it.
 // Privacy: the email carries the version, the time and a country name only. No IP address,
 // user agent or identifier is sent or stored. Bots, link previews and prefetches are not counted.
@@ -47,9 +49,14 @@ export async function sendNotification(env, message, fetchImpl = fetch) {
   return { sent: true }
 }
 
-/** Always redirects; the email is sent alongside, and its failure never blocks the download. */
+/** Always redirects; the email and the analytics event are sent alongside, and their failure never blocks the download. */
 export function handleDownload(request, { release, env = process.env, now = () => new Date(), waitUntil = (promise) => { promise.catch(() => {}) }, fetchImpl = fetch } = {}) {
-  if (isHumanDownload(request)) {
+  const human = isHumanDownload(request)
+  // Every GET is counted in analytics (bots flagged, never dropped), so downloads show up beside pageviews.
+  if (request.method === 'GET') {
+    waitUntil(recordServerEvent(request, { name: 'download', path: '/download/mac', properties: { version: release.version, platform: 'macos', arch: 'arm64' }, isBot: !human }, env, fetchImpl, now()).catch(() => {}))
+  }
+  if (human) {
     const message = composeEmail({ version: release.version, when: now(), country: countryName(request.headers.get('x-vercel-ip-country')), timeZone: env.DOWNLOAD_NOTIFY_TIMEZONE || 'America/Halifax' })
     waitUntil(sendNotification(env, message, fetchImpl).then((result) => {
       if (!result.sent && result.reason !== 'not-configured') console.error(`Download notification failed: ${result.reason}`)

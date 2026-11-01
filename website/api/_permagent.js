@@ -122,6 +122,40 @@ export async function collect(request, env = process.env, fetchImpl = fetch) {
   return accepted()
 }
 
+/**
+ * Records an event the server sees directly (a download through /download/mac) in the same store as beacons,
+ * with the same visitor hash, bot flag and country, and no IP or user agent. Never throws.
+ */
+export async function recordServerEvent(request, { name, path, properties = null, isBot = null }, env = process.env, fetchImpl = fetch, now = new Date()) {
+  const upstream = upstreamConfig(env)
+  if (!upstream) return { recorded: false, reason: 'not-configured' }
+  const userAgent = request.headers.get('user-agent')
+  const country = request.headers.get('x-vercel-ip-country')?.trim().toUpperCase() ?? ''
+  const event = {
+    kind: 'event',
+    ...splitPath(path),
+    referrer: null,
+    name: text(name, LIMITS.name),
+    properties: cleanProperties(properties),
+    sessionId: null,
+    visitorHash: visitorHash(env.PERMAGENT_ANALYTICS_SALT, userAgent, request.headers.get('accept-language'), now),
+    isBot: isBot ?? isBotAgent(userAgent),
+    country: /^[A-Z]{2}$/.test(country) && country !== 'XX' ? country : null,
+  }
+  try {
+    const response = await fetchImpl(`${upstream.origin}/v1/analytics/events`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-intoponet-edge': upstream.secret },
+      body: JSON.stringify(event),
+      signal: AbortSignal.timeout(4_000),
+    })
+    await response.body?.cancel()
+    return { recorded: response.ok }
+  } catch {
+    return { recorded: false, reason: 'unreachable' }
+  }
+}
+
 const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } })
 
 function keyMatches(provided, expected) {

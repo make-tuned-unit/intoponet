@@ -67,3 +67,22 @@ test('tolerates spaces and quotes in the recipient setting, and rejects malforme
   const bad = await sendNotification({ RESEND_API_KEY: 're_test', DOWNLOAD_NOTIFY_TO: 'not an address' }, { subject: 's', text: 't' }, async () => { throw new Error('should not send') })
   assert.deepEqual(bad, { sent: false, reason: 'invalid-recipient' })
 })
+
+test('records each download in analytics: version, country and bot flag, no IP or user agent', async () => {
+  const sent = []; const pending = []
+  const analyticsEnv = { ...env, BEACON_REGISTRY_ORIGIN: 'https://registry.example', BEACON_EDGE_SECRET: 's'.repeat(32), PERMAGENT_ANALYTICS_SALT: 'salt' }
+  const fetchImpl = async (url, init) => { sent.push({ url: String(url), body: JSON.parse(init.body) }); return new Response('{}', { status: 202 }) }
+  handleDownload(req({ 'user-agent': safari, 'x-vercel-ip-country': 'CA', 'x-real-ip': '203.0.113.9' }), { release, env: analyticsEnv, waitUntil: (p) => pending.push(p), fetchImpl })
+  handleDownload(req({ 'user-agent': 'curl/8.7.1' }), { release, env: analyticsEnv, waitUntil: (p) => pending.push(p), fetchImpl })
+  handleDownload(req({ 'user-agent': safari }, 'HEAD'), { release, env: analyticsEnv, waitUntil: (p) => pending.push(p), fetchImpl })
+  await Promise.all(pending)
+  const events = sent.filter((call) => call.url === 'https://registry.example/v1/analytics/events').map((call) => call.body)
+  assert.equal(events.length, 2)
+  assert.deepEqual({ kind: events[0].kind, name: events[0].name, path: events[0].path, country: events[0].country, isBot: events[0].isBot, properties: events[0].properties },
+    { kind: 'event', name: 'download', path: '/download/mac', country: 'CA', isBot: false, properties: { version: '0.1.2', platform: 'macos', arch: 'arm64' } })
+  assert.equal(events[0].visitorHash.length, 32)
+  assert.equal(events[1].isBot, true)
+  assert.doesNotMatch(JSON.stringify(events), /203\.0\.113\.9|Safari|curl/)
+  // The owner's email still goes out once, for the person only.
+  assert.equal(sent.filter((call) => call.url === 'https://api.resend.com/emails').length, 1)
+})
