@@ -1117,7 +1117,12 @@ export class OldsService {
       const family = incident ? INCIDENT_FAMILIES.find((pattern) => pattern.test(incident)) : undefined
       const otherIncident = !filedThread && lang === 'en' && isEventLike(entity) && !!incident
         && !(family ? family.test(text) : new RegExp(`\\b${incident.slice(0, 5)}`, 'i').test(text))
-      const weakOnly = otherIncident || ((countryOnly || placeOnly) && !(leadingYear >= currentYear - 1 && eventKindMatches(node.label, text)))
+      // Matched untranslated, a several-word title that shares one word ("FC Barcelona" for a city presenting itself in
+      // Barcelona, "KZ Ebensee" for a film from Ebensee) is thin evidence; for a local outlet its own place is the better
+      // backdrop. A one-word title the headline uses ("Capoeira") is still the topic.
+      const nativeThin = native && !filedThread && !person && !!query.place
+        && matchTitle.replace(/\(.*?\)/g, ' ').split(/[^\p{L}\d]+/u).filter((word) => word.length >= 2).length >= 2 && titleWordsIn(matchTitle, text) < 2
+      const weakOnly = otherIncident || nativeThin || ((countryOnly || placeOnly) && !(leadingYear >= currentYear - 1 && eventKindMatches(node.label, text)))
       // A general concept with no country ("Soldier") is a poor starting point for one country's news.
       const general = !isEventLike(entity) && ids(entity, 'P17').length === 0 && !ids(entity, 'P31').includes('Q5')
       // Without translation, one shared word is too weak ("ONU" → "EJ Onu"), unless the title is that one word.
