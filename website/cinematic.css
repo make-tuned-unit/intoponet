@@ -169,3 +169,58 @@ header{position:relative;z-index:20;background:transparent;border-bottom:0;-webk
 @media(prefers-reduced-motion:reduce){.everyday *{animation:none!important}.bm-new,.cap-thumb,.pv-list li,.tr-swap span:last-child{opacity:1}.pv-shield svg{stroke-dashoffset:0}.ev-card{transition:none}}
 @media(max-width:760px){.tab-strip{gap:3px;grid-template-columns:repeat(2,minmax(0,1fr)) 24px}.tab.t3{display:none}.tab{padding:7px 8px;gap:6px}.kbd-list{gap:10px 8px;font-size:12px}.kbd-list li{gap:4px;white-space:nowrap}.kbd-list kbd{min-width:22px;height:22px;padding:0 4px;font-size:11px}}
 .footer-credit{color:#c9d8dc;text-decoration:underline;text-decoration-color:#20f4e466;text-underline-offset:3px;transition:color .2s}.footer-credit:hover{color:#20f4e4}
+/* Icons: thin-stroke inline SVGs (Lucide geometry), sized by their wrapper's font-size. */
+.icon{display:block;width:1em;height:1em;flex:none;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;overflow:visible}
+.ico{display:inline-flex;align-items:center;justify-content:center;line-height:1}
+.nav-cta{display:inline-flex;align-items:center}.nav-cta .ico{padding-left:12px;font-size:14px}
+.button .ico,.download-button .ico{font-size:18px}.button .icon,.download-button .icon{stroke-width:2}
+.quiet-link{display:inline-flex;align-items:center}.quiet-link .ico{font-size:14px}
+.hero-foot a{display:inline-flex;align-items:center;gap:8px}.hero-foot .ico{font-size:13px}
+.text-link{align-items:center}.text-link .ico{font-size:14px}
+.capability-strip i{display:inline-flex;align-items:center;font-size:12px}
+.icon-mark{stroke-width:1.25}.icon-mark-dot{fill:currentColor;stroke:none}
+.share-flow b.ico{justify-content:flex-start;font-size:16px}
+.share-flow .beacon{align-items:center}.privacy .beacon i{animation:none;font-size:18px;color:#20f4e4}.privacy .beacon .icon{stroke-width:1.5}
+.knowledge-core .icon-core{font-size:40px;stroke-width:1.1;filter:drop-shadow(0 0 12px #a58ad480)}
+.tab-add .icon{font-size:14px}
+.kbd-list kbd .icon{font-size:13px;stroke-width:2}
+/* Narrow widths: the hero is its content plus a band of artwork, not a fixed tall block. */
+@media(max-width:760px){
+  .hero{min-height:0;height:auto;padding-bottom:clamp(150px,40vw,280px)}
+  .hero-art img{object-position:72% 62%}
+  .hero-art:after{background:linear-gradient(180deg,#030c18f0 0%,#030c18c4 42%,#030c1859 72%,#030c1826 86%,#061320d9 100%)}
+  .hero-caption{bottom:20px}
+  .perspective{padding-top:56px;padding-bottom:56px}
+  .discovery-demo{margin-top:36px}
+  .product{padding-top:56px}
+  .everyday{padding:56px 6%}
+  .everyday-head{margin-bottom:32px}
+  .depth-section{padding:48px 5% 56px}
+  .history-visual{height:160px;margin-top:16px}
+  .knowledge-visual{min-height:300px}
+  .privacy{padding:56px 6%}
+  .privacy .eyebrow{margin-bottom:24px}
+  .vision{padding:56px 6%}
+  .vision h2{margin:28px 0}
+  .roadmap{margin-top:28px}
+  .download h2{font-size:clamp(58px,16vw,85px)}
+}
+@media(max-width:760px){.capability-strip{column-gap:22px;row-gap:10px;padding:20px 6%;font-size:12px}.capability-strip i{display:none}}
+/* See the browser: real captures of the app, shown as macOS windows (the PNG keeps the window's rounded corners). */
+.showcase{padding:110px 7% 120px;background:radial-gradient(ellipse at 50% 0%,#10303c 0%,#061320 58%),#061320;color:#f7f5f0}
+.showcase-head{display:grid;grid-template-columns:1.1fr 1fr;gap:6%;align-items:end;margin-bottom:56px}
+.showcase-head .eyebrow{grid-column:1/-1;color:#9eb8c0;margin:0 0 18px}
+.showcase-head h2{margin:0}.showcase-head h2 em{color:#20f4e4}
+.showcase-head>p:last-child{color:#c9d8dc;font-size:17px;line-height:1.6;max-width:480px;margin:0}
+.showcase-tabs{grid-template-columns:repeat(4,1fr);margin-bottom:0}
+.shot-track{display:grid;grid-auto-flow:column;grid-auto-columns:100%;gap:56px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scrollbar-width:none;margin:0 -7%;padding:40px 7% 8px;scroll-padding-inline:7%}
+.shot-track::-webkit-scrollbar{display:none}
+.shot{margin:0;scroll-snap-align:start;scroll-snap-stop:always;padding-bottom:40px;opacity:.45;transition:opacity .5s ease}
+.shot.is-active{opacity:1}
+.shot img{display:block;width:100%;height:auto;filter:drop-shadow(0 0 1px #88d0d570) drop-shadow(0 28px 40px #000000a6)}
+.shot figcaption{margin-top:22px;max-width:640px;font-size:14px;line-height:1.6;color:#9eb8c0}
+.shot figcaption strong{color:#f7f5f0;font-weight:500}
+.showcase-note{margin:8px 0 0;font-size:12px;color:#7f98a1}
+@media(max-width:760px){.showcase{padding:56px 5%}.showcase-head{grid-template-columns:1fr;gap:14px;margin-bottom:28px;padding:0 1%}.showcase-head>p:last-child{font-size:15px}.shot-track{margin:0 -5%;padding:24px 5% 4px;scroll-padding-inline:5%;gap:24px}.shot{padding-bottom:24px}.shot figcaption{margin-top:14px;font-size:13px;padding:0 1%}.showcase-note{padding:0 1%}}
+@media(prefers-reduced-motion:reduce){.shot{transition:none}}
+.showcase-tabs button:focus-visible{outline-offset:-3px}

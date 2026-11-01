@@ -150,7 +150,7 @@ export function TranslateBar({ model, onClose }: { model: TranslateModel; onClos
               const busy = downloading?.code === code
               return (
                 <li key={code} className={language.downloaded ? 'is-installed' : ''}>
-                  <span><strong>{languageName(code)}</strong><small>{nativeName(code)}</small></span>
+                  <span><strong>{languageName(code)}{language.downloaded && <Check size={12} strokeWidth={2.25} className="tr-installed" aria-label="Installed" />}</strong><small>{nativeName(code)}</small></span>
                   {language.downloaded ? (
                     <button type="button" aria-label={`Remove ${languageName(code)}`} onClick={() => void model.remove(code)}><Trash2 size={12} /> Remove</button>
                   ) : (

@@ -204,8 +204,9 @@
   font-size: 11px;
 }
 
-.tr-manage li.is-installed strong::after {
-  content: ' ✓';
+.tr-manage li .tr-installed {
+  margin-left: 5px;
+  vertical-align: -1px;
   color: #9fe0b5;
 }
 
