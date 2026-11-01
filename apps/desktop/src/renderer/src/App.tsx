@@ -429,7 +429,7 @@ export function App() {
   const [error, setError] = useState('')
   const [libraryReadError, setLibraryReadError] = useState('')
   const panelBody = useRef<HTMLDivElement>(null)
-  const shortcutHandlers = useRef({ newTab: () => {}, focusAddress: () => {}, toggleBookmarksPane: () => {}, capture: () => {}, togglePrivate: () => {}, absorbSelection: () => {} })
+  const shortcutHandlers = useRef({ find: () => {}, bookmark: () => {}, newTab: () => {}, focusAddress: () => {}, toggleBookmarksPane: () => {}, capture: () => {}, togglePrivate: () => {}, absorbSelection: () => {} })
   const tabStrip = useRef<HTMLDivElement>(null)
   const [tabEdges, setTabEdges] = useState({ overflow: false, atStart: true, atEnd: true })
   const input = useRef<HTMLInputElement>(null)
@@ -612,6 +612,9 @@ export function App() {
       }
       if (event.type === 'shortcut') {
         if (event.action === 'new-tab') shortcutHandlers.current.newTab()
+        else if (event.action === 'find') shortcutHandlers.current.find()
+        else if (event.action === 'bookmark') shortcutHandlers.current.bookmark()
+        else if (event.action === 'next-tab' || event.action === 'previous-tab') void window.intoponet.browserHost.cycleTabs(event.action === 'next-tab' ? 'next' : 'previous')
         else if (event.action === 'focus-launcher') shortcutHandlers.current.focusAddress()
         else if (event.action === 'capture') shortcutHandlers.current.capture()
         else if (event.action === 'toggle-private') shortcutHandlers.current.togglePrivate()
@@ -1321,7 +1324,7 @@ export function App() {
     })
   }
 
-  shortcutHandlers.current = { newTab: openNewTab, focusAddress, toggleBookmarksPane, capture: () => void startCapture('image'), togglePrivate: () => setPrivateMode(!(privacyState?.privateMode ?? false)), absorbSelection: () => startAbsorb('selection') }
+  shortcutHandlers.current = { find: () => { if (panel.isVisible && !panel.isStartPage) openFind() }, bookmark: () => { if (panel.isVisible && panel.url) toggleBookmark() }, newTab: openNewTab, focusAddress, toggleBookmarksPane, capture: () => void startCapture('image'), togglePrivate: () => setPrivateMode(!(privacyState?.privateMode ?? false)), absorbSelection: () => startAbsorb('selection') }
 
   const saveCurrentToGroup = (groupId: string): void => {
     if (!panel.url) return

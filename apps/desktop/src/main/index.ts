@@ -41,7 +41,8 @@ import {
   windowButtonsVisible,
   TAB_DOCK_TWEEN_MS,
 } from './tabDockBounds'
-import { shellShortcutForInput } from './shellShortcuts'
+import { pageShortcutForInput, shellShortcutForInput, tabCycleForInput, type PageShortcut } from './shellShortcuts'
+import { TRACKER_STUB_SCRIPT } from './trackerStubs'
 import { bindPermissionOwnerLifecycle, kindsFor, originOf, SitePermissionBroker, SitePermissionStore } from './sitePermissions'
 import { bindPopupCloseWithOwner, nestedPopupDecision, popupDecision, popupWindowOptions, PopupLimiter } from './popups'
 import { rejectCertificateErrorForSession } from './browserCertificatePolicy'
@@ -113,6 +114,8 @@ let tabDockHeld = false
 let chromeRevealed = false
 let chromeHeld = false
 let tabRailExpanded = false
+/** A page that asked for HTML fullscreen (a video, a game): its view fills the window until it leaves. */
+let htmlFullScreenView: WebContentsView | null = null
 /** Animated dock reservation; null when resting at its target. */
 let dockReserveNow: number | null = null
 let dockTweenTimer: ReturnType<typeof setTimeout> | null = null
@@ -370,12 +373,14 @@ async function applyCosmeticFilters(contents: Electron.WebContents): Promise<voi
         ? null
         : protection.cosmeticRules(lastKnownUrl, lastKnownUrl)
     const css = rules?.cssRules.join('\n') ?? ''
+    // With protection on, blocked tracker globals get quiet stand-ins so the page's own buttons don't throw.
+    const script = rules ? `${cosmeticInjection(css)};${TRACKER_STUB_SCRIPT}` : cosmeticInjection(css)
     const frames = contents.mainFrame?.framesInSubtree ?? []
     await Promise.all(
       frames.map(async (frame) => {
         if (frame.detached) return
         try {
-          await frame.executeJavaScript(cosmeticInjection(css))
+          await frame.executeJavaScript(script)
         } catch {
           // The frame can detach between the snapshot and the injection.
         }
@@ -418,6 +423,11 @@ function attachPageView(): void {
 
 function applyPageViewBounds(): void {
   if (!pageView) return
+  if (htmlFullScreenView === pageView && window) {
+    const [width = 0, height = 0] = window.getContentSize()
+    pageView.setBounds({ x: 0, y: 0, width, height })
+    return
+  }
   const viewportHeight = window?.getContentSize()[1] ?? lastBounds.y + lastBounds.height
   pageView.setBounds(pageViewBoundsForDock(lastBounds, viewportHeight, browserFullWidth, tabDockOpen, dockReserveNow ?? undefined))
 }
@@ -662,6 +672,8 @@ function showTab(id: string): WebContentsView | null {
   attachPageView()
   emitTabs()
   emitProtectionState()
+  // A tab that loaded in the background missed its cosmetic rules and tracker stand-ins.
+  if (!tab.start && !tab.view.webContents.isLoading()) void applyCosmeticFilters(tab.view.webContents)
   const current = tab.view.webContents.getURL()
   if ((!current || current === 'about:blank') && safeHttpUrl(tab.url) && crashRecovery.canAutoRecover(tab.id)) {
     void tab.view.webContents.loadURL(tab.url)
@@ -836,8 +848,21 @@ function buildView(isPrivate = privateMode): WebContentsView {
   })
   // Shell shortcuts would otherwise be swallowed by the focused page.
   view.webContents.on('before-input-event', (event, input) => {
+    if (pageView !== view) return
+    const pageAction = pageShortcutForInput(input)
+    if (pageAction) {
+      event.preventDefault()
+      void runPageShortcut(pageAction)
+      return
+    }
+    const cycle = tabCycleForInput(input)
+    if (cycle) {
+      event.preventDefault()
+      void handleBrowserCommand({ type: 'cycle-tabs', direction: cycle === 'next-tab' ? 'next' : 'previous' })
+      return
+    }
     const action = shellShortcutForInput(input)
-    if (!action || pageView !== view) return
+    if (!action) return
     event.preventDefault()
     window?.webContents.focus()
     emit({ type: 'shortcut', action })
@@ -925,6 +950,20 @@ function buildView(isPrivate = privateMode): WebContentsView {
     if (pageView !== view) return
     void applyCosmeticFilters(view.webContents)
   })
+  // HTML fullscreen (video, games): the window goes fullscreen and the page view must fill it.
+  view.webContents.on('enter-html-full-screen', () => {
+    htmlFullScreenView = view
+    applyPageViewBounds()
+  })
+  view.webContents.on('leave-html-full-screen', () => {
+    if (htmlFullScreenView === view) htmlFullScreenView = null
+    applyPageViewBounds()
+  })
+  // Early as well, so a banner clicked before the page finishes loading already works.
+  view.webContents.on('dom-ready', () => {
+    if (pageView !== view) return
+    void applyCosmeticFilters(view.webContents)
+  })
   view.webContents.on('did-navigate', (_event, url) => {
     rememberTab(view)
     protectionPages.commitNavigation(view.webContents.id, url)
@@ -1009,6 +1048,19 @@ function buildView(isPrivate = privateMode): WebContentsView {
   })
 
   return view
+}
+
+/** Browser keys pressed inside a page act on it directly, as the toolbar would. */
+function runPageShortcut(action: PageShortcut): Promise<unknown> {
+  switch (action) {
+    case 'reload': return handleBrowserCommand({ type: 'reload' })
+    case 'back': return handleBrowserCommand({ type: 'back' })
+    case 'forward': return handleBrowserCommand({ type: 'forward' })
+    case 'zoom-in': return handleBrowserCommand({ type: 'zoom', action: 'in' })
+    case 'zoom-out': return handleBrowserCommand({ type: 'zoom', action: 'out' })
+    case 'zoom-reset': return handleBrowserCommand({ type: 'zoom', action: 'reset' })
+    case 'print': return handleBrowserCommand({ type: 'print' })
+  }
 }
 
 function createPageView(attach = true): WebContentsView {
@@ -1309,6 +1361,10 @@ function createWindow(): void {
     })
   }
 
+  // The window grows into fullscreen over an animation: keep a fullscreen page filling it.
+  window.on('resize', () => {
+    if (htmlFullScreenView && htmlFullScreenView === pageView) applyPageViewBounds()
+  })
   window.on('closed', () => {
     if (persistenceTimer) clearTimeout(persistenceTimer)
     writeFileSync(stateFilePath(), JSON.stringify(persistentState()), {

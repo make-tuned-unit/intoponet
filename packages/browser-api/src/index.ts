@@ -127,7 +127,7 @@ export type BrowserHostEvent =
   /** Validated per-country local news digest (JSON). */
   | { type: 'news-digest'; payload: string }
 
-export type ShellShortcut = 'new-tab' | 'focus-launcher' | 'toggle-bookmarks' | 'capture' | 'toggle-private' | 'absorb-selection'
+export type ShellShortcut = 'new-tab' | 'find' | 'bookmark' | 'next-tab' | 'previous-tab' | 'focus-launcher' | 'toggle-bookmarks' | 'capture' | 'toggle-private' | 'absorb-selection'
 
 export type PublicFieldStatus = {
   mode: 'local' | 'shared'
