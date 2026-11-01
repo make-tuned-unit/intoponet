@@ -1,6 +1,6 @@
 // Shared harness for feature checks: launches the built app with a fresh profile,
 // drives the renderer over CDP, and always shuts the app down.
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -47,7 +47,20 @@ export async function runAppCheck(check, { port = 9400 + Math.floor(Math.random(
   const profile = keep ?? mkdtempSync(join(process.env.E2E_TMP ?? tmpdir(), 'intoponet-e2e-'))
   const env = { ...process.env, INTOPONET_CAPTURE_ROOT: join(profile, 'Pictures', 'Intoponet'), ...extraEnv }
   delete env.ELECTRON_RUN_AS_NODE
-  const app = spawn(join(repo, 'node_modules/.bin/electron'), [`--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, (process.env.E2E_APP_MAIN ?? join(repo, 'apps/desktop/out/main/index.js'))], { env, stdio: 'ignore' })
+  // node_modules/.bin/electron is a launcher that starts Electron as a child: run it in its own process group and
+  // stop the whole group, or Electron outlives the check (and a few runs can exhaust the Mac's memory).
+  const app = spawn(join(repo, 'node_modules/.bin/electron'), [`--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, (process.env.E2E_APP_MAIN ?? join(repo, 'apps/desktop/out/main/index.js'))], { env, stdio: 'ignore', detached: true })
+  const stopApp = (signal) => {
+    try { process.kill(-app.pid, signal) } catch { /* gone */ }
+    // Anything still holding this profile (Electron's helpers re-parent sometimes).
+    try { spawnSync('pkill', [signal === 'SIGKILL' ? '-9' : '-15', '-f', `--user-data-dir=${profile}`]) } catch { /* none */ }
+  }
+  // If this process is stopped or crashes, the app must not be left running.
+  const onExit = () => stopApp('SIGKILL')
+  const onSignal = (signal) => { stopApp('SIGKILL'); process.exit(signal === 'SIGINT' ? 130 : 143) }
+  process.once('exit', onExit)
+  process.once('SIGINT', onSignal)
+  process.once('SIGTERM', onSignal)
   const sockets = []
   try {
     let target
@@ -116,9 +129,12 @@ export async function runAppCheck(check, { port = 9400 + Math.floor(Math.random(
     }
   } finally {
     for (const socket of sockets) try { socket.close() } catch { /* closed */ }
-    app.kill('SIGTERM')
+    stopApp('SIGTERM')
     await delay(800)
-    try { app.kill('SIGKILL') } catch { /* gone */ }
+    stopApp('SIGKILL')
+    process.removeListener('exit', onExit)
+    process.removeListener('SIGINT', onSignal)
+    process.removeListener('SIGTERM', onSignal)
     if (!keep) try { rmSync(profile, { recursive: true, force: true }) } catch { /* temp */ }
   }
 }

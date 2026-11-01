@@ -56,7 +56,11 @@ const notes = await runAppCheck(async (ctx) => {
     const query = { kind: 'headline', text: p.title.slice(0, 400), ...(p.countryCode ? { countryCode: p.countryCode } : {}), ...(p.lang && !p.lang.startsWith('en') ? { lang: p.lang.split('-')[0] } : {}), ...(p.place ? { place: p.place } : {}), ...(p.geonameId ? { geonameId: p.geonameId } : {}) }
     const started = Date.now()
     try {
-      const t = JSON.parse(await ctx.evaluate(`window.intoponet.olds.thread(${JSON.stringify(query)}).then((t) => JSON.stringify(t))`))
+      // One slow story must not sink the run: two minutes each.
+      const t = JSON.parse(await Promise.race([
+        ctx.evaluate(`window.intoponet.olds.thread(${JSON.stringify(query)}).then((t) => JSON.stringify(t))`),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Story took longer than 120 s')), 120_000)),
+      ]))
       const root = t.nodes.find((n) => n.id === t.rootId)
       results.push({
         ...p,
@@ -73,6 +77,8 @@ const notes = await runAppCheck(async (ctx) => {
     } catch (error) {
       results.push({ ...p, error: String(error) })
     }
+    // Written after every story, so a run cut short still leaves its results.
+    writeFileSync(out, JSON.stringify(results, null, 2))
   }
   writeFileSync(out, JSON.stringify(results, null, 2))
   return `${results.length} stories`
