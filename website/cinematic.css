@@ -212,15 +212,24 @@ header{position:relative;z-index:20;background:transparent;border-bottom:0;-webk
 .showcase-head .eyebrow{grid-column:1/-1;color:#9eb8c0;margin:0 0 18px}
 .showcase-head h2{margin:0}.showcase-head h2 em{color:#20f4e4}
 .showcase-head>p:last-child{color:#c9d8dc;font-size:17px;line-height:1.6;max-width:480px;margin:0}
+/* Tabbed scrollers (tabs.js): a scroll-snap track of tabpanels, one panel wide. */
+.snap-track{display:grid;grid-auto-flow:column;grid-auto-columns:100%;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scrollbar-width:none}
+.snap-track::-webkit-scrollbar{display:none}
+.snap-track>[role=tabpanel]{min-width:0;scroll-snap-align:start;scroll-snap-stop:always}
+/* The showcase track bleeds only far enough for the window shadows; the gap is wider than the bleed,
+   so neighbouring shots never show past the section's content edge. */
+.showcase{overflow-x:clip}
 .showcase-tabs{grid-template-columns:repeat(4,1fr);margin-bottom:0}
-.shot-track{display:grid;grid-auto-flow:column;grid-auto-columns:100%;gap:56px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scrollbar-width:none;margin:0 -7%;padding:40px 7% 8px;scroll-padding-inline:7%}
-.shot-track::-webkit-scrollbar{display:none}
-.shot{margin:0;scroll-snap-align:start;scroll-snap-stop:always;padding-bottom:40px;opacity:.45;transition:opacity .5s ease}
+.shot-track{gap:72px;margin:0 -32px;padding:36px 32px 8px;scroll-padding-inline:32px}
+.shot{margin:0;padding-bottom:40px;opacity:.45;transition:opacity .5s ease}
 .shot.is-active{opacity:1}
-.shot img{display:block;width:100%;height:auto;filter:drop-shadow(0 0 1px #88d0d570) drop-shadow(0 28px 40px #000000a6)}
+.shot img{display:block;width:100%;height:auto;filter:drop-shadow(0 0 1px #88d0d570) drop-shadow(0 22px 26px #000000a6)}
 .shot figcaption{margin-top:22px;max-width:640px;font-size:14px;line-height:1.6;color:#9eb8c0}
 .shot figcaption strong{color:#f7f5f0;font-weight:500}
 .showcase-note{margin:8px 0 0;font-size:12px;color:#7f98a1}
-@media(max-width:760px){.showcase{padding:56px 5%}.showcase-head{grid-template-columns:1fr;gap:14px;margin-bottom:28px;padding:0 1%}.showcase-head>p:last-child{font-size:15px}.shot-track{margin:0 -5%;padding:24px 5% 4px;scroll-padding-inline:5%;gap:24px}.shot{padding-bottom:24px}.shot figcaption{margin-top:14px;font-size:13px;padding:0 1%}.showcase-note{padding:0 1%}}
-@media(prefers-reduced-motion:reduce){.shot{transition:none}}
-.showcase-tabs button:focus-visible{outline-offset:-3px}
+/* Feature panels: one at a time on wider screens, a swipe track on phones. */
+@media(min-width:761px){.feature-track{display:block;overflow:visible}.feature-track>.feature-panel:not(.is-active){display:none}}
+@media(max-width:760px){.showcase{padding:56px 5%}.showcase-head{grid-template-columns:1fr;gap:14px;margin-bottom:28px;padding:0 1%}.showcase-head>p:last-child{font-size:15px}.shot-track{margin:0 -16px;padding:20px 16px 4px;scroll-padding-inline:16px;gap:40px}.shot{padding-bottom:24px}.shot figcaption{margin-top:14px;font-size:13px;padding:0 1%}.showcase-note{padding:0 1%}
+  .product{overflow-x:clip}.feature-track{margin:0 -16px;padding:0 16px 6px;scroll-padding-inline:16px;gap:40px}.feature-track>.feature-panel{opacity:.45;transition:opacity .5s ease}.feature-track>.feature-panel.is-active{opacity:1}}
+@media(prefers-reduced-motion:reduce){.shot,.feature-track>.feature-panel{transition:none}}
+.feature-tabs button:focus-visible{outline-offset:-3px}
