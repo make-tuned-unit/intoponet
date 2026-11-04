@@ -2361,9 +2361,16 @@ export function App() {
         membraneSettings={activityMembraneSettings}
         onOrganicMetrics={diagnosticsOpen ? setOrganicMetrics : undefined}
         onDistanceChange={(radius) => {
-          const next = scaleFromDistance(radius)
           setPose((current) => ({ ...current, radius }))
-          if (next !== scale) rememberScale(next, radius)
+          const next = scaleFromDistance(radius)
+          // A wheel zoom only changes the scale label: the globe stays turned to wherever the cursor
+          // zoomed it. rememberScale would aim at the topic's anchor (or restore a saved pose) and
+          // swing the globe away mid-zoom.
+          if (next !== scale) {
+            if (shouldSnapshotBeforeTopic(scale, next)) topicReturnPose.current = { ...pose, radius }
+            setScale(next)
+            writeScale(next)
+          }
         }}
         onPoseChange={(next) => {
           setPose(next)

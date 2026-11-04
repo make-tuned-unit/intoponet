@@ -1,6 +1,7 @@
 import { useThree } from '@react-three/fiber'
 import { useEffect, useRef } from 'react'
-import { Vector3 } from 'three'
+import { PerspectiveCamera, Vector3 } from 'three'
+import { orbitKeepingPointUnderCursor, surfaceUnderCursor, wheelRadius, type Ndc, type Vec3 } from './zoomToCursor'
 
 export function OrbitRig({
   distance,
@@ -23,7 +24,12 @@ export function OrbitRig({
   const spherical = useRef({ theta, phi, radius: distance })
   const desired = useRef({ theta, phi, radius: distance })
   const dragging = useRef(false)
-  const wheeledAt = useRef(0)
+  /** The surface point being zoomed toward and where it sits on screen; it stays under the cursor while the zoom eases in. */
+  const zoomAnchor = useRef<{ point: Vec3; ndc: Ndc } | null>(null)
+  /** A wheel zoom is easing toward its radius; the pose is reported when it lands. */
+  const zooming = useRef(false)
+  /** The radius last reported up, so its echo back as the `distance` prop isn't mistaken for a new target. */
+  const reportedRadius = useRef<number | null>(null)
   const last = useRef({ x: 0, y: 0 })
   const look = useRef(new Vector3(0, 0, 0))
   /** Spin velocity (radians per frame) after a drag is released: the globe keeps the direction you threw it. */
@@ -38,9 +44,13 @@ export function OrbitRig({
   useEffect(() => {
     const before = props.current
     props.current = { theta, phi, distance }
-    if (distance !== before.distance) desired.current.radius = distance
+    if (distance !== before.distance && distance !== reportedRadius.current) {
+      desired.current.radius = distance
+      zoomAnchor.current = null
+    }
     if (theta !== before.theta || phi !== before.phi) {
       velocity.current = { theta: 0, phi: 0 }
+      zoomAnchor.current = null
       // Shortest way round: aim for the equivalent angle nearest where the globe is now.
       const turn = Math.PI * 2
       const delta = ((((theta - spherical.current.theta) % turn) + turn * 1.5) % turn) - Math.PI
@@ -59,6 +69,7 @@ export function OrbitRig({
     const onDown = (event: PointerEvent): void => {
       if (!enabled) return
       dragging.current = true
+      zoomAnchor.current = null
       velocity.current = { theta: 0, phi: 0 }
       last.current = { x: event.clientX, y: event.clientY }
       lastMoveAt.current = performance.now()
@@ -97,13 +108,32 @@ export function OrbitRig({
     const onWheel = (event: WheelEvent): void => {
       if (!enabled) return
       event.preventDefault()
-      wheeledAt.current = performance.now()
-      const next = Math.min(
-        5.4,
-        Math.max(1.48, spherical.current.radius + event.deltaY * 0.0024),
-      )
-      spherical.current.radius = next
+      // Zooming stops a spin, so the point under the cursor holds still.
+      velocity.current = { theta: 0, phi: 0 }
+      const rect = element.getBoundingClientRect()
+      const ndc = {
+        x: ((event.clientX - rect.left) / Math.max(1, rect.width)) * 2 - 1,
+        y: 1 - ((event.clientY - rect.top) / Math.max(1, rect.height)) * 2,
+      }
+      const lens = lensOf(camera)
+      // Off the globe, zoom straight toward the centre.
+      const point = surfaceUnderCursor(spherical.current, ndc, lens)
+      zoomAnchor.current = point ? { point, ndc } : null
+      const lines = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 400 : 1
+      const next = wheelRadius(desired.current.radius, event.deltaY * lines, { pinch: event.ctrlKey })
       desired.current.radius = next
+      zooming.current = true
+      if (reducedMotion) {
+        spherical.current.radius = next
+        if (zoomAnchor.current) {
+          const aimed = orbitKeepingPointUnderCursor(spherical.current, next, zoomAnchor.current.point, zoomAnchor.current.ndc, lens)
+          spherical.current.theta = aimed.theta
+          spherical.current.phi = aimed.phi
+        }
+        desired.current.theta = spherical.current.theta
+        desired.current.phi = spherical.current.phi
+      }
+      reportedRadius.current = next
       report.current.onDistanceChange?.(next)
     }
     element.addEventListener('pointerdown', onDown)
@@ -118,7 +148,7 @@ export function OrbitRig({
       element.removeEventListener('pointercancel', onUp)
       element.removeEventListener('wheel', onWheel)
     }
-  }, [enabled, gl, reducedMotion])
+  }, [camera, enabled, gl, reducedMotion])
 
   useEffect(() => {
     let frame = 0
@@ -138,8 +168,21 @@ export function OrbitRig({
         }
       }
       const steer = reducedMotion ? 1 : dragging.current ? 0 : 0.055
-      if (performance.now() - wheeledAt.current > 240) {
-        spherical.current.radius += (desired.current.radius - spherical.current.radius) * steer
+      spherical.current.radius += (desired.current.radius - spherical.current.radius) * (zooming.current && !reducedMotion ? 0.2 : steer)
+      const anchor = zoomAnchor.current
+      if (anchor && !dragging.current) {
+        // Turn the globe just enough that the zoomed-to point stays under the cursor at this radius.
+        const aimed = orbitKeepingPointUnderCursor(spherical.current, spherical.current.radius, anchor.point, anchor.ndc, lensOf(camera))
+        spherical.current.theta = aimed.theta
+        spherical.current.phi = aimed.phi
+        desired.current.theta = aimed.theta
+        desired.current.phi = aimed.phi
+      }
+      if (zooming.current && Math.abs(desired.current.radius - spherical.current.radius) < 1e-3) {
+        spherical.current.radius = desired.current.radius
+        zooming.current = false
+        zoomAnchor.current = null
+        report.current.onPoseChange?.({ ...spherical.current })
       }
       spherical.current.theta += (desired.current.theta - spherical.current.theta) * steer
       spherical.current.phi += (desired.current.phi - spherical.current.phi) * steer
@@ -157,4 +200,10 @@ export function OrbitRig({
   }, [camera, reducedMotion])
 
   return null
+}
+
+function lensOf(camera: unknown): { fovDeg: number; aspect: number } {
+  return camera instanceof PerspectiveCamera
+    ? { fovDeg: camera.fov, aspect: camera.aspect }
+    : { fovDeg: 38, aspect: 1 }
 }
