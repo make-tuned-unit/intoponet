@@ -1,15 +1,15 @@
 {
-  "currentRelease": "0.1.9",
+  "currentRelease": "0.1.10",
   "releases": [
     {
-      "version": "0.1.9",
+      "version": "0.1.10",
       "updateTo": {
-        "version": "0.1.9",
+        "version": "0.1.10",
         "name": "Intoponet",
-        "pub_date": "2026-11-01T07:37:30.541Z",
-        "url": "https://intoponet.com/updates/arm64/Intoponet-0.1.9-arm64-mac.zip",
-        "sha256": "a3c481e1075642426e218e64110fbb70afead22581711d0d1b134d574e7e93af",
-        "size": 125689041
+        "pub_date": "2026-11-04T23:43:52.598Z",
+        "url": "https://intoponet.com/updates/arm64/Intoponet-0.1.10-arm64-mac.zip",
+        "sha256": "cb49c21ad892e76eed6ed94c697e4b9b9db5d4cef311965072fc75946a663063",
+        "size": 125690853
       }
     }
   ]
