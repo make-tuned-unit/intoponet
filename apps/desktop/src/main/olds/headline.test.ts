@@ -15,6 +15,8 @@ describe('sports do not cross', () => {
     expect(eventKindConflicts('2026 Ashes series', 'Aussie batters must stand up as Ashes series reaches its finale')).toBe(false)
     expect(eventKindConflicts('2026 Formula One World Championship', 'Grand Prix: Verstappen wins in Mexico')).toBe(false)
     expect(eventKindConflicts('2026 FIFA World Cup', 'Election day in Ohio')).toBe(true)
+    expect(eventKindConflicts("Florida's 22nd congressional district", "Florida's 27th Congressional District race between Salazar and her challenger")).toBe(true)
+    expect(eventKindConflicts("Florida's 27th congressional district", "Florida's 27th Congressional District race tightens")).toBe(false)
   })
 })
 

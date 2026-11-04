@@ -237,6 +237,11 @@ export function eventKindConflicts(title: string, headline: string): boolean {
   const titleSports = sportsOf(title)
   const headlineSports = sportsOf(headline)
   if (titleSports.length && headlineSports.length && !titleSports.some((sport) => headlineSports.includes(sport))) return true
+  // Numbered things differ by their number: "Florida's 27th Congressional District" is not the 22nd.
+  const ordinals = (text: string): string[] => [...text.matchAll(/\b(\d{1,3})(?:st|nd|rd|th)\b/gi)].map((match) => match[1]!)
+  const titleOrdinals = ordinals(title)
+  const headlineOrdinals = ordinals(headline)
+  if (titleOrdinals.length && headlineOrdinals.length && !titleOrdinals.some((number) => headlineOrdinals.includes(number))) return true
   const kindsOf = (text: string): string[] => EVENT_KINDS.filter(([, pattern]) => pattern.test(text)).map(([kind]) => kind)
   const inTitle = kindsOf(title)
   const inHeadline = kindsOf(headline)

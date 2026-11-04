@@ -1120,8 +1120,10 @@ export class OldsService {
       // Matched untranslated, a several-word title that shares one word ("FC Barcelona" for a city presenting itself in
       // Barcelona, "KZ Ebensee" for a film from Ebensee) is thin evidence; for a local outlet its own place is the better
       // backdrop. A one-word title the headline uses ("Capoeira") is still the topic.
+      // (A disambiguator counts: "Миколаїв (футбольний клуб)" is a club, not the city. People are left out: a story that
+      // opens with a surname is usually about that person — "Owono…" is the goalkeeper — though not always.)
       const nativeThin = native && !filedThread && !person && !!query.place
-        && matchTitle.replace(/\(.*?\)/g, ' ').split(/[^\p{L}\d]+/u).filter((word) => word.length >= 2).length >= 2 && titleWordsIn(matchTitle, text) < 2
+        && matchTitle.split(/[^\p{L}\d]+/u).filter((word) => word.length >= 2).length >= 2 && titleWordsIn(matchTitle.replace(/[()]/g, ' '), text) < 2
       // A general concept ("Software development process") is the topic only when the headline names all of it, not one
       // of its words ("infrastructure development" for saffron exports).
       const partialConcept = !isEventLike(entity) && ids(entity, 'P17').length === 0 && !person && !filedThread && !native && titleWordsIn(node.label, text) < titleContentWords(node.label).length
