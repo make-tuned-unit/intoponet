@@ -328,7 +328,28 @@ export const checks = {
     // Main process still answers (closing tabs used to crash it).
     const after = await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => t.length)`)
     expect(after === 0, 'The tab did not close.')
-    return `Toolbar: ${labels.join(', ')}; pages see ${ua.match(/Chrome\/\S+/)?.[0]}; tab closed cleanly.`
+    // A page that closes itself (window.close()) takes its tab with it, and the app keeps answering.
+    const closer = await new Promise((resolve) => {
+      const server = createServer((_request, response) => { response.setHeader('content-type', 'text/html'); response.end('<!doctype html><title>Closes itself</title><p>bye') })
+      server.listen(0, 'localhost', () => resolve(server))
+    })
+    try {
+      const closerUrl = `http://localhost:${closer.address().port}/`
+      await openPage(ctx, closerUrl, 2500)
+      void (await ctx.page(`localhost:${closer.address().port}`)).evaluate('(() => { window.close(); return true })()').catch(() => undefined)
+      await ctx.delay(2000)
+      const left = await Promise.race([ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => t.length)`), ctx.delay(5000).then(() => 'no answer')])
+      expect(left === 0, `After a page closed itself the app ${left === 'no answer' ? 'stopped answering' : `still lists ${left} tab(s)`}.`)
+    } finally {
+      closer.close()
+    }
+    // The app window never leaves the app: a page loaded in its place would get the app's whole API.
+    const appUrl = await ctx.evaluate('location.href')
+    await ctx.evaluate(`(() => { location.href = 'https://example.com/'; return true })()`).catch(() => undefined)
+    await ctx.delay(2500)
+    const stayed = await ctx.evaluate(`location.href === ${JSON.stringify(appUrl)} && !!document.querySelector('.topbar')`).catch(() => false)
+    expect(stayed, 'The app window navigated away from the app.')
+    return `Toolbar: ${labels.join(', ')}; pages see ${ua.match(/Chrome\/\S+/)?.[0]}; tab closed cleanly; a self-closing page took its tab; the app window stayed on the app.`
   },
 
   async PROTECTION(ctx) {
