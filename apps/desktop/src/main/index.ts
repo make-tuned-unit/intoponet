@@ -141,6 +141,8 @@ let chromeRevealed = false
 let chromeHeld = false
 let tabRailExpanded = false
 /** A page that asked for HTML fullscreen (a video, a game): its view fills the window until it leaves. */
+/** Isolated world for reading a page's rating declarations (others: translate, knowledge, access). */
+const RATING_WORLD_ID = 1305
 let htmlFullScreenView: WebContentsView | null = null
 let removeFullscreenNotice: (() => void) | null = null
 /** Animated dock reservation; null when resting at its target. */
@@ -1195,7 +1197,8 @@ function buildView(isPrivate = privateMode): WebContentsView {
     if (!safeHttpUrl(url)) return
     // Read only rating declarations locally. These untrusted hints can exclude
     // content; their absence is never a certification that a page is suitable.
-    void view.webContents.executeJavaScript(`(() => {
+    // In an isolated world: the page's own scripts cannot see or tamper with the reader.
+    void view.webContents.executeJavaScriptInIsolatedWorld(RATING_WORLD_ID, [{ code: `(() => {
       const values = [];
       for (const node of Array.from(document.querySelectorAll('meta[name="rating"], meta[itemprop="contentRating"], meta[property="og:restrictions:age"], [itemprop="contentRating"]')).slice(0, 20)) {
         values.push((node.getAttribute('content') || node.textContent || '').slice(0, 120));
@@ -1205,7 +1208,7 @@ function buildView(isPrivate = privateMode): WebContentsView {
         for (const match of source.matchAll(/"contentRating"\\s*:\\s*"([^"\\n]{1,120})"/g)) values.push(match[1]);
       }
       return values.join(' | ').slice(0, 1000);
-    })()`).then((rating: unknown) => {
+    })()` }]).then((rating: unknown) => {
       if (viewGone(view) || pageView !== view || !frequencyLoadSucceeded || generation !== frequencyNavigation || url !== view.webContents.getURL()) return
       // Private tabs and excluded sites leave no footprints and no interest signals.
       if (privateViews.has(view) || isExcludedSite(url, excludedSites)) return
