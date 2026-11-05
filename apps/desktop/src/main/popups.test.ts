@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { EventEmitter } from 'node:events'
-import { bindPopupCloseWithOwner, nestedPopupDecision, popupDecision, popupWindowOptions, PopupLimiter } from './popups'
+import { bindPopupCloseWithOwner, isActivationInput, nestedPopupDecision, popupDecision, popupWindowOptions, PopupLimiter, trackUserActivation, UserActivation } from './popups'
 
 describe('popup policy', () => {
   it('opens ordinary new-tab requests as tabs and rejects unsupported protocols', () => {
@@ -31,6 +31,38 @@ describe('popup policy', () => {
     expect(popupDecision({ ...first, url: 'about:blank' }, new PopupLimiter(), 46, 10).action).toBe('window')
     expect(nestedPopupDecision({ ...first, url: 'http://example.test/two' }, limiter, 45, 13).action).toBe('tab')
     expect(nestedPopupDecision({ ...first, url: 'https://example.test/three' }, limiter, 45, 14).action).toBe('deny')
+  })
+
+  it('blocks tabs and windows a page opens without a click or key press', () => {
+    const limiter = new PopupLimiter()
+    const tab = { url: 'https://example.test/', disposition: 'foreground-tab', features: '' }
+    const signIn = { url: 'https://accounts.example.test/', disposition: 'new-window', features: 'width=500' }
+    expect(popupDecision(tab, limiter, 1, 10, false)).toMatchObject({ action: 'deny', withoutGesture: true })
+    expect(popupDecision(signIn, limiter, 1, 10, false)).toMatchObject({ action: 'deny', withoutGesture: true })
+    expect(nestedPopupDecision(tab, limiter, 2, 10, false)).toMatchObject({ action: 'deny', withoutGesture: true })
+    // Unsupported addresses are refused for that reason, not offered in the bar.
+    expect(popupDecision({ ...tab, url: 'file:///etc/passwd' }, limiter, 1, 10, false)).not.toHaveProperty('withoutGesture')
+    expect(popupDecision(tab, limiter, 1, 10, true).action).toBe('tab')
+  })
+
+  it('one recent click or key press allows one popup, briefly', () => {
+    const activation = new UserActivation(5_000)
+    expect(activation.consume(1, 100)).toBe(false)
+    activation.note(1, 1_000)
+    expect(activation.consume(1, 1_500)).toBe(true)
+    expect(activation.consume(1, 1_600)).toBe(false)
+    activation.note(1, 2_000)
+    expect(activation.consume(1, 8_000)).toBe(false)
+    expect(isActivationInput('mouseDown')).toBe(true)
+    expect(isActivationInput('rawKeyDown')).toBe(true)
+    expect(isActivationInput('mouseMove')).toBe(false)
+    expect(isActivationInput('mouseWheel')).toBe(false)
+    const contents = Object.assign(new EventEmitter(), { id: 7 })
+    trackUserActivation(contents as unknown as Electron.WebContents, activation)
+    contents.emit('input-event', {}, { type: 'mouseMove' })
+    expect(activation.consume(7)).toBe(false)
+    contents.emit('input-event', {}, { type: 'mouseDown' })
+    expect(activation.consume(7)).toBe(true)
   })
 
   it('provides bounded opener-preserving child window options', () => {

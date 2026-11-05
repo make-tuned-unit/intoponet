@@ -8,9 +8,11 @@ export const sitePermissionChannels = {
   event: 'intoponet:site-permissions-event',
 } as const
 
-export const SITE_PERMISSION_KINDS = ['camera', 'microphone', 'location', 'notifications', 'clipboard-read'] as const
+export const SITE_PERMISSION_KINDS = ['camera', 'microphone', 'location', 'notifications', 'clipboard-read', 'popups'] as const
 export type SitePermissionKind = (typeof SITE_PERMISSION_KINDS)[number]
 export type SitePermissionDecision = 'allow' | 'block'
+/** What the person can answer in the bar: 'allow-once' grants this request without remembering it. */
+export type SitePermissionAnswer = SitePermissionDecision | 'allow-once' | 'dismiss'
 
 export type SitePermissionRequest = {
   id: string
@@ -29,7 +31,7 @@ export type SitePermissionEvent =
   | { type: 'changed'; origin: string }
 
 export type SitePermissionCommand =
-  | { type: 'decide'; id: string; decision: SitePermissionDecision | 'dismiss' }
+  | { type: 'decide'; id: string; decision: SitePermissionAnswer }
   | { type: 'list'; origin: string }
   | { type: 'reset'; origin: string; kind?: SitePermissionKind }
   | { type: 'pending' }
@@ -37,7 +39,7 @@ export type SitePermissionCommand =
 export type SitePermissionMap = Partial<Record<SitePermissionKind, SitePermissionDecision>>
 
 export interface SitePermissionApi {
-  decide(id: string, decision: SitePermissionDecision | 'dismiss'): Promise<void>
+  decide(id: string, decision: SitePermissionAnswer): Promise<void>
   list(origin: string): Promise<SitePermissionMap>
   reset(origin: string, kind?: SitePermissionKind): Promise<SitePermissionMap>
   pending(): Promise<SitePermissionRequest[]>
@@ -52,8 +54,8 @@ export function parseSitePermissionCommand(value: unknown): SitePermissionComman
   const v = value as Record<string, unknown>
   switch (v['type']) {
     case 'decide':
-      if (typeof v['id'] !== 'string' || v['id'].length > 80 || !['allow', 'block', 'dismiss'].includes(v['decision'] as string)) break
-      return { type: 'decide', id: v['id'], decision: v['decision'] as SitePermissionDecision | 'dismiss' }
+      if (typeof v['id'] !== 'string' || v['id'].length > 80 || !['allow', 'allow-once', 'block', 'dismiss'].includes(v['decision'] as string)) break
+      return { type: 'decide', id: v['id'], decision: v['decision'] as SitePermissionAnswer }
     case 'list':
       if (!isOrigin(v['origin'])) break
       return { type: 'list', origin: v['origin'] }
@@ -74,10 +76,11 @@ export function describePermissionKinds(kinds: SitePermissionKind[]): string {
     location: 'your location',
     notifications: 'to show notifications',
     'clipboard-read': 'to read your clipboard',
+    popups: 'to open pop-ups',
   }
   const uses = kinds.filter((kind) => kind === 'camera' || kind === 'microphone' || kind === 'location').map((kind) => words[kind].replace(/^your /, ''))
   const parts: string[] = []
   if (uses.length) parts.push(`use your ${uses.length > 1 ? `${uses.slice(0, -1).join(', ')} and ${uses.at(-1)}` : uses[0]}`)
-  for (const kind of kinds) if (kind === 'notifications' || kind === 'clipboard-read') parts.push(words[kind].replace(/^to /, ''))
+  for (const kind of kinds) if (kind === 'notifications' || kind === 'clipboard-read' || kind === 'popups') parts.push(words[kind].replace(/^to /, ''))
   return parts.join(' and ')
 }

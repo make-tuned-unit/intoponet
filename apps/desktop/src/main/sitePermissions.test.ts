@@ -67,6 +67,18 @@ describe('permission broker', () => {
     expect(broker.check('https://meet.test', ['camera'], false, 'https://evil.test')).toBe(false)
     expect(broker.check('https://meet.test', ['camera'], false, 'https://other.test')).toBeNull()
   })
+  it('Allow once grants this request without remembering it', async () => {
+    const { events, normal, broker } = setup()
+    const answers: boolean[] = []
+    broker.request({ origin: 'https://a.test', kinds: ['popups'], isPrivate: false, owner: 1 }, (granted) => answers.push(granted))
+    const request = (events.find((event) => event.type === 'request') as Extract<SitePermissionEvent, { type: 'request' }>).request
+    await broker.decide(request.id, 'allow-once')
+    expect(answers).toEqual([true])
+    expect(normal.get('https://a.test')).toEqual({})
+    expect(broker.check('https://a.test', ['popups'], false)).toBeNull()
+    expect(parseSitePermissionCommand({ type: 'decide', id: 'x', decision: 'allow-once' })).toEqual({ type: 'decide', id: 'x', decision: 'allow-once' })
+    expect(describePermissionKinds(['popups'])).toBe('open pop-ups')
+  })
   it('Block is remembered; Not now is not; a blocked kind wins', async () => {
     const { events, normal, broker } = setup()
     const answers: boolean[] = []

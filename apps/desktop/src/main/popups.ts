@@ -10,7 +10,7 @@ import { SAFE_DIALOG_PREFERENCES } from './leavePrompt'
  *   a burst is stopped.
  */
 export type PopupPlan =
-  | { action: 'deny'; reason: string }
+  | { action: 'deny'; reason: string; /** Blocked only because nobody clicked or typed: the site may be asked about. */ withoutGesture?: true }
   | { action: 'tab'; background: boolean }
   | { action: 'window'; width: number; height: number }
 
@@ -54,14 +54,52 @@ export class PopupLimiter {
   }
 }
 
+/**
+ * Pages may open tabs and windows only right after the person clicked or typed in them
+ * (Electron does not report Chromium's user activation to the window-open handler, so main
+ * watches the page's own input). One input allows one popup, within `windowMs`.
+ */
+export class UserActivation {
+  private last = new Map<number, number>()
+  constructor(private readonly windowMs = 5_000) {}
+  note(owner: number, now = Date.now()): void {
+    this.last.set(owner, now)
+  }
+  consume(owner: number, now = Date.now()): boolean {
+    const at = this.last.get(owner)
+    this.last.delete(owner)
+    return at !== undefined && now - at >= 0 && now - at <= this.windowMs
+  }
+  forget(owner: number): void {
+    this.last.delete(owner)
+  }
+}
+
+/** Input that counts as the person acting on a page (not pointer movement or scrolling). */
+export function isActivationInput(type: string): boolean {
+  return type === 'mouseDown' || type === 'mouseUp' || type === 'rawKeyDown' || type === 'keyDown' || type === 'char' || type === 'gestureTap' || type === 'touchEnd'
+}
+
+/** Watch a page's input so its window-open requests can be told apart from unprompted ones. */
+export function trackUserActivation(contents: Pick<Electron.WebContents, 'id' | 'on' | 'once'>, activation: UserActivation): void {
+  const id = contents.id
+  contents.on('input-event', (_event: Electron.Event, input: Electron.InputEvent) => {
+    if (isActivationInput(input.type)) activation.note(id)
+  })
+  contents.once('destroyed', () => activation.forget(id))
+}
+
 export function popupDecision(
   details: { url: string; disposition: string; features: string },
   limiter: PopupLimiter,
   owner: number,
   now = Date.now(),
+  /** The person clicked or typed in the page just before (or always allows this site's pop-ups). */
+  activated = true,
 ): PopupPlan {
   const plan = popupPlan(details)
   if (plan.action === 'deny') return plan
+  if (!activated) return { action: 'deny', reason: 'Blocked a pop-up the page opened on its own.', withoutGesture: true }
   if (!limiter.allow(owner, now)) {
     return { action: 'deny', reason: 'This page opened several windows at once; the rest were blocked.' }
   }
@@ -74,6 +112,7 @@ export function nestedPopupDecision(
   limiter: PopupLimiter,
   owner: number,
   now = Date.now(),
+  activated = true,
 ): PopupPlan {
   const plan = popupPlan(details)
   if (plan.action === 'deny') return plan
@@ -82,7 +121,7 @@ export function nestedPopupDecision(
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
     return { action: 'deny', reason: 'Blocked a popup to an unsupported address.' }
   }
-  const rateLimited = popupDecision(details, limiter, owner, now)
+  const rateLimited = popupDecision(details, limiter, owner, now, activated)
   if (rateLimited.action === 'deny') return rateLimited
   return { action: 'tab', background: false }
 }

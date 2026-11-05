@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { readFileSync, mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
-import type { SitePermissionDecision, SitePermissionEvent, SitePermissionKind, SitePermissionMap, SitePermissionRequest } from '@intoponet/browser-api'
+import type { SitePermissionAnswer, SitePermissionDecision, SitePermissionEvent, SitePermissionKind, SitePermissionMap, SitePermissionRequest } from '@intoponet/browser-api'
 import type { WebContents } from 'electron'
 import { writeFileAtomicSync } from './atomicFile'
 
@@ -156,21 +156,24 @@ export class SitePermissionBroker {
     this.options.emit({ type: 'request', request })
   }
 
-  async decide(id: string, decision: SitePermissionDecision | 'dismiss'): Promise<void> {
+  async decide(id: string, decision: SitePermissionAnswer): Promise<void> {
     const item = this.pending.get(id)
     if (!item) return
-    if (decision === 'allow' && item.allowing) return
+    const allows = decision === 'allow' || decision === 'allow-once'
+    if (allows && item.allowing) return
     const version = ++item.decisionVersion
-    item.allowing = decision === 'allow'
+    item.allowing = allows
     const { kinds, isPrivate } = item.request
     const key = keyOf(item.request)
-    if (decision !== 'dismiss') {
+    // Only a remembered answer settles the site's other waiting prompts.
+    const remembered = decision === 'allow' || decision === 'block'
+    if (remembered) {
       for (const [otherId, other] of this.pending) {
         if (otherId !== id && keyOf(other.request) === key && other.request.isPrivate === isPrivate
           && other.request.kinds.some((kind) => kinds.includes(kind))) this.finish(otherId, false)
       }
     }
-    let granted = decision === 'allow'
+    let granted = allows
     if (granted && this.options.systemAccess) {
       for (const kind of kinds) {
         if ((kind === 'camera' || kind === 'microphone') && !(await this.options.systemAccess(kind).catch(() => false))) granted = false
@@ -180,7 +183,7 @@ export class SitePermissionBroker {
       }
     }
     if (this.pending.get(id) !== item || item.decisionVersion !== version) return
-    if (decision !== 'dismiss') {
+    if (remembered) {
       this.options.store(isPrivate).set(key, kinds, decision)
       this.options.emit({ type: 'changed', origin: item.request.topOrigin ?? item.request.origin })
     }

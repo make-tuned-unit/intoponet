@@ -66,7 +66,7 @@ import {
 import { pageShortcutForInput, shellShortcutForInput, tabCycleForInput, type PageShortcut } from './shellShortcuts'
 import { TRACKER_STUB_SCRIPT } from './trackerStubs'
 import { bindPermissionOwnerLifecycle, kindsFor, originOf, SitePermissionBroker, SitePermissionStore } from './sitePermissions'
-import { bindPopupCloseWithOwner, nestedPopupDecision, popupDecision, popupWindowOptions, PopupLimiter } from './popups'
+import { bindPopupCloseWithOwner, nestedPopupDecision, popupDecision, popupWindowOptions, PopupLimiter, trackUserActivation, UserActivation } from './popups'
 import { rejectCertificateErrorForSession } from './browserCertificatePolicy'
 import { reserveDownloadPath, sanitizeDownloadFilename } from './downloadReservation'
 import { CrashRecoveryPolicy } from './crashRecovery'
@@ -955,7 +955,7 @@ function discardTab(id: string): void {
 }
 
 function makeRoomForTab(): void {
-  while (openTabs.length >= 12) {
+  while (openTabs.length >= MAX_TABS) {
     const victim = openTabs.find((tab) => tab.id !== activeTabId) ?? openTabs[0]
     if (!victim) return
     discardTab(victim.id)
@@ -966,6 +966,32 @@ function makeRoomForTab(): void {
 const viewContentsIds = new WeakMap<WebContentsView, number>()
 
 const popupLimiter = new PopupLimiter()
+/** When each page was last clicked or typed in: pages open tabs and windows only right after. */
+const userActivation = new UserActivation()
+
+/** Most tabs open at once; a page asking for more is refused rather than closing your tabs. */
+const MAX_TABS = 12
+
+/**
+ * A page asked for a tab or window without a click or key press first. A site always allowed
+ * pop-ups gets it (as a tab); otherwise it is blocked and the bar offers to open it.
+ */
+function blockedPopup(opener: WebContentsView, url: string): void {
+  const target = safeHttpUrl(url)
+  if (!target || !sitePermissions || viewGone(opener)) return
+  const contents = opener.webContents
+  const isPrivate = privateViews.has(opener)
+  sitePermissions.request({ origin: originOf(contents.getURL()), kinds: ['popups'], isPrivate, owner: contents.id }, (granted) => {
+    if (!granted || viewGone(opener) || !popupLimiter.allow(contents.id)) return
+    const tab = createBrowserTab(target.toString(), true, isPrivate, true)
+    if (tab) void tab.webContents.loadURL(target.toString()).catch(() => undefined)
+  })
+}
+
+/** Whether this site was always allowed pop-ups (the bar's "Always for this site"). */
+function popupsAllowed(contents: Electron.WebContents, isPrivate: boolean): boolean {
+  return sitePermissions?.check(originOf(contents.getURL()), ['popups'], isPrivate) === true
+}
 const crashRecovery = new CrashRecoveryPolicy()
 
 /** A popup window opened by a page: http(s) only, nested popups become tabs, closes with its page. */
@@ -974,13 +1000,15 @@ function wirePopupWindow(child: BrowserWindow, opener: WebContentsView): void {
   child.webContents.on('will-navigate', (event, url) => { if (!safeHttpUrl(url)) event.preventDefault() })
   bindLeavePrompt(child.webContents, () => child, dialog.showMessageBoxSync)
   const childContentsId = child.webContents.id
+  trackUserActivation(child.webContents, userActivation)
   child.webContents.setWindowOpenHandler(({ url, disposition, features }) => {
-    const plan = nestedPopupDecision({ url, disposition, features }, popupLimiter, childContentsId)
+    const activated = userActivation.consume(childContentsId)
+    const plan = nestedPopupDecision({ url, disposition, features }, popupLimiter, childContentsId, Date.now(), activated)
     if (plan.action === 'deny') {
-      emit({ type: 'navigation-failed', url, reason: plan.reason })
+      if (!plan.withoutGesture) emit({ type: 'navigation-failed', url, reason: plan.reason })
       return { action: 'deny' }
     }
-    const tab = createBrowserTab(url, true, privateViews.has(opener))
+    const tab = createBrowserTab(url, true, privateViews.has(opener), true)
     if (tab) void tab.webContents.loadURL(url).catch(() => undefined)
     return { action: 'deny' }
   })
@@ -988,9 +1016,14 @@ function wirePopupWindow(child: BrowserWindow, opener: WebContentsView): void {
   bindPopupCloseWithOwner(child, opener.webContents)
 }
 
-function createBrowserTab(urlValue: string, activate = true, isPrivate = privateMode): WebContentsView | null {
+function createBrowserTab(urlValue: string, activate = true, isPrivate = privateMode, openedByPage = false): WebContentsView | null {
   const url = safeHttpUrl(urlValue)
   if (!url) return null
+  // A page never closes your tabs to make room for its own.
+  if (openedByPage && openTabs.length >= MAX_TABS) {
+    emit({ type: 'navigation-failed', url: url.toString(), reason: `A page tried to open another tab, but ${MAX_TABS} tabs are already open. Close a tab and try again.` })
+    return null
+  }
   makeRoomForTab()
   const view = buildView(isPrivate)
   const tab = { id: randomUUID(), url: url.toString(), title: '', favicon: '', view }
@@ -1174,15 +1207,19 @@ function buildView(isPrivate = privateMode): WebContentsView {
   })
   preferReadablePageTheme(view.webContents)
   bindLeavePrompt(view.webContents, () => window, dialog.showMessageBoxSync)
+  trackUserActivation(view.webContents, userActivation)
   view.webContents.setWindowOpenHandler(({ url, disposition, features }) => {
-    const plan = popupDecision({ url, disposition, features }, popupLimiter, view.webContents.id)
+    // Only right after a click or key press in the page (or for a site always allowed pop-ups).
+    const activated = userActivation.consume(view.webContents.id) || popupsAllowed(view.webContents, privateViews.has(view))
+    const plan = popupDecision({ url, disposition, features }, popupLimiter, view.webContents.id, Date.now(), activated)
     if (plan.action === 'deny') {
-      emit({ type: 'navigation-failed', url, reason: plan.reason })
+      if (plan.withoutGesture) blockedPopup(view, url)
+      else emit({ type: 'navigation-failed', url, reason: plan.reason })
       return { action: 'deny' }
     }
     if (plan.action === 'tab') {
       // Same privacy as the page that opened it.
-      const tab = createBrowserTab(url, !plan.background, privateViews.has(view))
+      const tab = createBrowserTab(url, !plan.background, privateViews.has(view), true)
       if (tab) void tab.webContents.loadURL(url).catch(() => undefined)
       return { action: 'deny' }
     }
