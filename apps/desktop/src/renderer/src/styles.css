@@ -1603,7 +1603,8 @@ button.zoom-indicator:hover {
 .browser-chrome { grid-template-columns: 120px minmax(120px, 340px) minmax(0, 1fr); }
 .browser-actions { min-width: 0; }
 .browser-chrome .browser-actions > button,
-.browser-chrome .browser-actions > .shield-control > button {
+.browser-chrome .browser-actions > .shield-control > button,
+.browser-chrome .browser-actions > .pdf-tool > button:first-child {
   display: inline-flex;
   align-items: center;
   gap: 6px;

@@ -56,8 +56,12 @@ import {
   Languages,
   LoaderCircle,
   History,
+  FileDown,
+  ChevronDown,
 } from 'lucide-react'
 import { TranslateBar } from './translate/TranslateBar'
+import { PdfBar } from './pdf/PdfBar'
+import type { PdfExportEvent } from '@intoponet/browser-api'
 import { formatPublicSourceHealth } from './globe/publicFieldStatus'
 import { SiteIcon } from './SiteIcon'
 import { FreeCoverageBar } from './access/FreeCoverageBar'
@@ -438,6 +442,10 @@ export function App() {
   const [renameDraft, setRenameDraft] = useState('')
   const [findOpen, setFindOpen] = useState(false)
   const [translateOpen, setTranslateOpen] = useState(false)
+  const [pdfStatus, setPdfStatus] = useState<PdfExportEvent | null>(null)
+  const [pdfOptionsOpen, setPdfOptionsOpen] = useState(false)
+  /** Files a saved PDF into its bookmark group (kept current each render: the event listener is long-lived). */
+  const pdfSavedRef = useRef<(event: Extract<PdfExportEvent, { state: 'saved' }>) => void>(() => undefined)
   const [findQuery, setFindQuery] = useState('')
   const [findResult, setFindResult] = useState<FindInPageResult | null>(null)
   const [protection, setProtection] = useState<ProtectionSnapshot>(emptyProtection)
@@ -683,6 +691,11 @@ export function App() {
       }
       if (event.type === 'find-result') {
         setFindResult(event)
+        return
+      }
+      if (event.type === 'pdf-export') {
+        setPdfStatus(event.event)
+        if (event.event.state === 'saved') pdfSavedRef.current(event.event)
         return
       }
       if (event.type === 'download-finished') {
@@ -1181,6 +1194,37 @@ export function App() {
     () => [...collections.map((collection) => ({ id: collection.id, label: collection.label })), { id: UNSORTED_GROUP_ID, label: 'Unsorted' }],
     [collections],
   )
+
+  pdfSavedRef.current = (saved) => {
+    if (!saved.groupId || saved.isPrivate) return
+    const savedAt = new Date().toISOString()
+    setBookmarks((current) => {
+      const existing = current.find((bookmark) => bookmark.url === saved.url)
+      const next = upsertBookmark(current, {
+        url: saved.url,
+        title: existing?.title || saved.title || originLabel(saved.url),
+        topic: existing?.topic || (researchTopic ?? activeTopic),
+        savedAt: existing?.savedAt || savedAt,
+        pdf: { path: saved.path, savedAt },
+      })
+      writeBookmarks(next)
+      return next
+    })
+    if (saved.groupId !== UNSORTED_GROUP_ID && collections.some((collection) => collection.id === saved.groupId)) {
+      setCollections((current) => {
+        const next = moveBookmarkToGroup(current, saved.url, UNSORTED_GROUP_ID, saved.groupId)
+        writeCollections(next)
+        return next
+      })
+    }
+  }
+
+  // A finished save stays up for a while, then the bar goes (unless its options are open).
+  useEffect(() => {
+    if (!pdfStatus || pdfStatus.state === 'working' || pdfOptionsOpen) return
+    const timer = setTimeout(() => setPdfStatus(null), pdfStatus.state === 'saved' ? 20_000 : 30_000)
+    return () => clearTimeout(timer)
+  }, [pdfStatus, pdfOptionsOpen])
 
   const groupLabel = (groupId: string | null): string =>
     collections.find((collection) => collection.id === groupId)?.label ?? 'Unsorted'
@@ -3552,6 +3596,33 @@ export function App() {
                   </button>
                 )}
               </AnimatePresence>
+              <span className="pdf-tool">
+                <button
+                  type="button"
+                  className={pdfStatus?.state === 'working' ? 'selected' : ''}
+                  aria-label="Save this page as PDF"
+                  aria-busy={pdfStatus?.state === 'working'}
+                  title="Save as PDF in one click (⌥⌘E). ⌥-click for options."
+                  onClick={(event) => {
+                    if (event.altKey) { setPdfOptionsOpen((open) => !open); return }
+                    if (pdfStatus?.state === 'working') return
+                    void window.intoponet.browserHost.exportPdf().catch(() => undefined)
+                  }}
+                >
+                  {pdfStatus?.state === 'working' ? <LoaderCircle size={15} className="pdf-spin" /> : <FileDown size={15} />}
+                  <span className="chrome-label">PDF</span>
+                </button>
+                <button
+                  type="button"
+                  className={`pdf-more${pdfOptionsOpen ? ' selected' : ''}`}
+                  aria-label="PDF options"
+                  aria-expanded={pdfOptionsOpen}
+                  title="PDF options: layout, paper, text size, bookmark group"
+                  onClick={() => setPdfOptionsOpen((open) => !open)}
+                >
+                  <ChevronDown size={12} />
+                </button>
+              </span>
               <button
                 type="button"
                 className={isBookmarked ? 'selected' : ''}
@@ -3648,6 +3719,15 @@ export function App() {
               </button>
             </div>
           </div>
+          <PdfBar
+            status={pdfStatus}
+            optionsOpen={pdfOptionsOpen}
+            groups={captureGroups}
+            isPrivate={!!panel.isPrivate}
+            onClose={() => setPdfStatus((current) => (current?.state === 'working' ? current : null))}
+            onCloseOptions={() => setPdfOptionsOpen(false)}
+            onError={setError}
+          />
           {translateOpen && <TranslateBar model={translation} onClose={() => setTranslateOpen(false)} site={pageSite} neverSite={neverThisSite} onNeverSite={setNeverSite} />}
           {pageAccess && pageAccess.url === panel.url && !accessHidden.includes(hostOf(pageAccess.url)) && (
             <FreeCoverageBar

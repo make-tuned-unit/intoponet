@@ -6,6 +6,7 @@ import { createServer as createHttpsServer } from 'node:https'
 import { tmpdir } from 'node:os'
 import { createServer } from 'node:http'
 import { join } from 'node:path'
+import { deflateSync as zlibSync } from 'node:zlib'
 import { CheckFailure, expect, repo } from './lib.mjs'
 
 // The app's default: the website's edge proxy in front of the Neon registry (see apps/desktop/src/main/beacons/defaults.ts).
@@ -75,6 +76,125 @@ const signIn = async (ctx, page, username, password) => {
   }
 }
 const pageFields = (page) => page.evaluate(`JSON.stringify([document.querySelector('#username')?.value ?? null, document.querySelector('#password')?.value ?? null])`).then(JSON.parse)
+
+/** A plain PNG of one colour (fixture images for the PDF check). */
+const solidPng = (width, height, [r, g, b]) => {
+  const crcTable = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k += 1) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0 })
+  const crc = (buf) => { let c = 0xffffffff; for (const byte of buf) c = crcTable[(c ^ byte) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0 }
+  const chunk = (type, data) => { const len = Buffer.alloc(4); len.writeUInt32BE(data.length); const body = Buffer.concat([Buffer.from(type), data]); const sum = Buffer.alloc(4); sum.writeUInt32BE(crc(body)); return Buffer.concat([len, body, sum]) }
+  const header = Buffer.alloc(13); header.writeUInt32BE(width, 0); header.writeUInt32BE(height, 4); header[8] = 8; header[9] = 2
+  const row = Buffer.concat([Buffer.from([0]), Buffer.from(Array.from({ length: width }, () => [r, g, b]).flat())])
+  return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', header), chunk('IDAT', zlibSync(Buffer.concat(Array.from({ length: height }, () => row)))), chunk('IEND', Buffer.alloc(0))])
+}
+
+/** An article with everything a PDF should leave out (ads, hidden and clipped text, a consent overlay) and a lazy image. */
+const PDF_ARTICLE = (sections) => `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Harbour lights of Charlottetown | Island Fixture News</title>
+<meta name="citation_title" content="Harbour lights of Charlottetown"><meta name="citation_author" content="Fixture Reporter">
+<meta property="og:site_name" content="Island Fixture News"><meta property="article:published_time" content="2026-03-04T10:00:00Z">
+<script type="application/ld+json">{"@type":"NewsArticle","headline":"Harbour lights of Charlottetown","articleBody":"JSONLD-SENTINEL never print this"}</script>
+<style>body{font:17px Georgia;margin:0}header.site{position:sticky;top:0;background:#123;color:#fff;padding:12px}main{max-width:700px;margin:auto}.consent{position:fixed;inset:auto 0 0 0;height:45vh;background:#fff;border-top:2px solid #000}</style></head>
+<body><header class="site">Island Fixture News · Home · World</header>
+<main><article><h1>Harbour lights of Charlottetown</h1>
+<p>START-SENTINEL The harbour at Charlottetown has been lit by the same family of keepers for four generations, and the lamps still turn every night.</p>
+<figure><img src="/img/top.png" width="640" height="320" alt="The harbour at dusk"><figcaption>The harbour at dusk.</figcaption></figure>
+<div class="ad-slot">AD-SENTINEL-ONE Buy the best boats today</div>
+<ins class="adsbygoogle" style="display:block">AD-SENTINEL-TWO</ins>
+<aside><span>Advertisement</span><div>AD-SENTINEL-THREE</div></aside>
+<div style="display:none">HIDDEN-SENTINEL subscriber only text</div>
+<div style="max-height:60px;overflow:hidden"><p>The tide comes in twice a day.</p><p style="margin-top:400px">CLIPPED-SENTINEL more subscriber text</p></div>
+${sections.map((section, index) => `<h2>${section}</h2>${Array.from({ length: 6 }, (_, p) => `<p>${index === 4 && p === 3 ? 'MIDDLE-SENTINEL ' : ''}Paragraph ${p + 1} about ${section.toLowerCase()}: the keepers wrote down the weather, the ships that passed and the state of the lamps in long ledgers that are now kept in the provincial archives, where anyone can read them.</p>`).join('')}`).join('')}
+<p style="margin-top:1600px">Further down the page.</p><figure><img loading="lazy" src="/img/lazy.png" width="600" height="300" alt="A lamp"></figure>
+<p>END-SENTINEL That is the story of the harbour lights.</p></article></main>
+<div class="consent" role="dialog">OVERLAY-SENTINEL We use cookies <button>Accept</button></div></body></html>`
+
+const PDF_SHOP = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Lighthouse lamp — Fixture Shop</title>
+<meta property="og:type" content="product"><script type="application/ld+json">{"@type":"Product","name":"Lighthouse lamp"}</script>
+<style>body{font:15px system-ui;margin:20px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.card{border:1px solid #ccc;padding:10px}</style></head>
+<body><h1>Lighthouse lamp</h1><p>SHOP-SENTINEL A brass lamp, 30 cm.</p><div class="grid">${Array.from({ length: 9 }, (_, i) => `<div class="card">Lamp ${i + 1} · $${20 + i}</div>`).join('')}</div>
+<div id="div-gpt-ad-1" class="ad-holder">AD-SENTINEL-SHOP</div><div class="banner-ad"><span>Sponsored</span><b>AD-SENTINEL-SPONSORED</b></div></body></html>`
+
+async function pdfExport(ctx) {
+  const top = solidPng(64, 32, [40, 90, 160])
+  const lazy = solidPng(60, 30, [200, 120, 40])
+  const sections = ['Keepers', 'Ledgers', 'Storms', 'Ships', 'Lamps', 'Archives', 'Visitors', 'Tomorrow']
+  const server = await new Promise((resolve) => {
+    const site = createServer((request, response) => {
+      if (request.url === '/img/top.png' || request.url === '/img/lazy.png') {
+        response.setHeader('content-type', 'image/png')
+        response.end(request.url.includes('lazy') ? lazy : top)
+        return
+      }
+      response.setHeader('content-type', 'text/html; charset=utf-8')
+      response.end(request.url?.startsWith('/shop') ? PDF_SHOP : PDF_ARTICLE(sections))
+    })
+    site.listen(0, '127.0.0.1', () => resolve(site))
+  })
+  const base = `http://127.0.0.1:${server.address().port}`
+  const savedPath = async (previous) => {
+    await ctx.wait(`(() => { const el = document.querySelector('.pdf-done .pdf-name'); return !!el && el.title !== ${JSON.stringify(previous ?? '')} })()`, 90_000, 'the PDF to be saved')
+    return ctx.evaluate(`document.querySelector('.pdf-done .pdf-name').title`)
+  }
+  const text = (path) => execFileSync('/opt/homebrew/bin/pdftotext', ['-layout', path, '-'], { encoding: 'utf8' })
+  const info = (path) => execFileSync('/opt/homebrew/bin/pdfinfo', [path], { encoding: 'utf8' })
+  try {
+    const t = now()
+    await seedLibrary(ctx, { collections: [{ id: 'pdfgroup', label: 'Reading', createdAt: t, memberUrls: [] }] })
+    await ctx.evaluate(`window.intoponet.browserHost.setPdfSettings({ mode: 'auto', paper: 'a4', textSize: 'medium', images: true, citation: true, groupId: 'pdfgroup' }).then(() => true)`)
+    const article = `${base}/article`
+    await openPage(ctx, article, 3000)
+    expect(await ctx.click('[aria-label="Save this page as PDF"]'), 'The toolbar has no PDF button.')
+    const path = await savedPath()
+    expect(path.endsWith('.pdf') && existsSync(path), `No PDF was written (${path}).`)
+    expect(/Harbour lights of Charlottetown – Island Fixture News – \d{4}-\d{2}-\d{2}\.pdf$/.test(path), `The file name is not "Title – Site – date.pdf": ${path}`)
+    const body = text(path)
+    for (const sentinel of ['START-SENTINEL', 'MIDDLE-SENTINEL', 'END-SENTINEL', 'Fixture Reporter', '4 March 2026', 'with Intoponet']) {
+      expect(body.includes(sentinel), `The formatted PDF is missing "${sentinel}".`)
+    }
+    for (const sentinel of ['AD-SENTINEL', 'HIDDEN-SENTINEL', 'CLIPPED-SENTINEL', 'OVERLAY-SENTINEL', 'JSONLD-SENTINEL', 'Island Fixture News · Home']) {
+      expect(!body.includes(sentinel), `The formatted PDF still contains "${sentinel}" (ads, hidden or overlay content must be left out).`)
+    }
+    expect(/\b2 ?\/ ?\d+\b/.test(body), `The pages have no "n / m" page numbers: …${body.slice(-600)}`)
+    const details = info(path)
+    expect(/Tagged:\s+yes/.test(details), 'The PDF is not tagged.')
+    expect(/Title:\s+Harbour lights of Charlottetown/.test(details), `The PDF title is not set:\n${details}`)
+    expect(/Author:\s+Fixture Reporter/.test(details), 'The PDF author is not set.')
+    expect(/A4/.test(details), 'The PDF is not on A4 paper as chosen.')
+    const pages = Number(/Pages:\s+(\d+)/.exec(details)?.[1] ?? 0)
+    expect(pages >= 2, `The PDF has ${pages} page(s).`)
+    const images = execFileSync('/opt/homebrew/bin/pdfimages', ['-list', path], { encoding: 'utf8' }).trim().split('\n').length - 2
+    expect(images >= 2, `The PDF has ${images} image(s); the lazy-loaded one should be there too.`)
+    const { PDFDocument, PDFName } = await import('@cantoo/pdf-lib')
+    const doc = await PDFDocument.load(readFileSync(path))
+    expect(doc.catalog.has(PDFName.of('Outlines')), 'The PDF has no outline (bookmarks of its headings).')
+    expect(doc.catalog.has(PDFName.of('StructTreeRoot')), 'The PDF lost its accessibility tags.')
+    const whereFrom = execFileSync('/usr/bin/xattr', ['-p', 'com.apple.metadata:kMDItemWhereFroms', path], { encoding: 'utf8' })
+    expect(whereFrom.trim().length > 0, 'Finder has no "Where from" for the PDF.')
+    await ctx.delay(1500)
+    const library = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.readPrivateLibrary().then((r) => r.payload)`))
+    const bookmark = library.bookmarks.find((item) => item.url === article)
+    expect(bookmark?.pdf?.path === path, `The page was not bookmarked with a link to its PDF: ${JSON.stringify(bookmark)}`)
+    expect(library.collections.find((c) => c.id === 'pdfgroup')?.memberUrls.includes(article), 'The bookmark is not in the chosen group.')
+    const downloads = await ctx.evaluate(`window.intoponet.downloads.list().then((l) => l.some((d) => d.filename.endsWith('.pdf') && d.state === 'completed'))`).catch(() => null)
+    expect(downloads !== false, 'The PDF is not listed in Downloads.')
+
+    // A shop page is not an article: saved as seen, still without ads, and the live page is left as it was.
+    await ctx.evaluate(`window.intoponet.browserHost.setPdfSettings({ mode: 'auto', paper: 'a4', textSize: 'medium', images: true, citation: true, groupId: '' }).then(() => true)`)
+    await openPage(ctx, `${base}/shop`, 2500)
+    await ctx.evaluate(`window.intoponet.browserHost.exportPdf().then(() => true)`)
+    const shopPath = await savedPath(path)
+    const shop = text(shopPath)
+    expect(shop.includes('SHOP-SENTINEL') && shop.includes('Lamp 9'), 'The shop page PDF is missing its content.')
+    expect(!shop.includes('AD-SENTINEL'), 'The as-seen PDF still contains ads.')
+    const note = await ctx.evaluate(`document.querySelector('.pdf-done .pdf-meta').textContent`)
+    expect(/As seen/.test(note), `The shop page was not saved as seen: ${note}`)
+    const live = await ctx.page('/shop')
+    const restored = await live.evaluate(`getComputedStyle(document.getElementById('div-gpt-ad-1')).display !== 'none' && !document.getElementById('div-gpt-ad-1').getAttribute('style')`)
+    expect(restored === true, 'Saving as seen left the live page changed.')
+    return `Article: ${pages} pages, ${images} images, tagged with outline, ads/hidden/overlay text left out, bookmarked in "Reading" with the PDF linked; shop page saved as seen without ads.`
+  } finally {
+    server.close()
+  }
+}
 
 /**
  * Browser keys pressed inside a page (the page has keyboard focus): ⌘W closes the tab for real,
@@ -997,6 +1117,8 @@ export const checks = {
     expect(access && typeof access.paywalled === 'boolean', 'Paywall detection did not report on the page.')
     return `nytimes.com section page: paywalled=${access.paywalled} (${access.signals.join(', ') || 'no signals'}).`
   },
+
+  PDF_EXPORT: pdfExport,
 
   async CAPTURE(ctx) {
     await openAnyPage(ctx)

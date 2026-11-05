@@ -588,3 +588,47 @@
 li:hover > .bm-move, .bm-move:focus-visible, li:focus-within > .bm-move { opacity: 1; pointer-events: auto; }
 .bm-captures li { position: relative; }
 .bm-captures .bm-move { right: 4px; top: auto; bottom: 4px; transform: none; max-width: 90px; }
+
+/* A bookmark's saved PDF (Export as PDF into a group): open it, or show it in Finder. */
+.bm-item-pdf {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  margin-right: 2px;
+}
+
+.bm-pdf-open {
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid rgba(250, 154, 146, 0.42);
+  border-radius: 6px;
+  background: rgba(250, 154, 146, 0.1);
+  color: #ffc9c3;
+  font: 600 9.5px/1 var(--font-ui, inherit);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.bm-pdf-open:hover,
+.bm-pdf-open:focus-visible {
+  background: rgba(250, 154, 146, 0.22);
+}
+
+.bm-pdf-reveal {
+  width: 22px;
+  height: 22px;
+  opacity: 0;
+  transition: opacity 180ms var(--lg-spring);
+}
+
+.bm-item:hover .bm-pdf-reveal,
+.bm-item:focus-within .bm-pdf-reveal {
+  opacity: 1;
+}
+
+.bm-item-pdf.is-missing .bm-pdf-open {
+  text-decoration: line-through;
+  opacity: 0.55;
+}

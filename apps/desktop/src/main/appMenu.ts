@@ -10,6 +10,7 @@ export type AppCommand =
   | { type: 'close-tab' }
   | { type: 'reopen-closed-tab'; id?: string }
   | { type: 'save-page' }
+  | { type: 'export-pdf' }
   | { type: 'print' }
   | { type: 'find' }
   | { type: 'find-next' }
@@ -63,6 +64,7 @@ export const APP_SHORTCUTS = {
   'close-tab': ['CmdOrCtrl+W'],
   'reopen-closed-tab': ['CmdOrCtrl+Shift+T'],
   'save-page': ['CmdOrCtrl+S'],
+  'export-pdf': ['CmdOrCtrl+Alt+E'],
   print: ['CmdOrCtrl+P'],
   find: ['CmdOrCtrl+F'],
   'find-next': ['CmdOrCtrl+G'],
@@ -113,6 +115,7 @@ export function routeAppCommand(command: AppCommand): AppCommandRoute {
     case 'close-tab': return { kind: 'host', command: { type: 'close-active-tab' } }
     case 'reopen-closed-tab': return { kind: 'host', command: command.id ? { type: 'reopen-closed-tab', id: command.id } : { type: 'reopen-closed-tab' } }
     case 'save-page': return { kind: 'host', command: { type: 'save-page' } }
+    case 'export-pdf': return { kind: 'host', command: { type: 'export-pdf' } }
     case 'print': return { kind: 'host', command: { type: 'print' } }
     case 'reload': return { kind: 'host', command: { type: 'reload' } }
     case 'force-reload': return { kind: 'host', command: { type: 'force-reload' } }
@@ -215,6 +218,7 @@ export function appMenuTemplate(state: AppMenuState, run: (command: AppCommand) 
         ...item('Reopen Closed Tab', 'reopen-closed-tab', state.recentlyClosed.length > 0),
         { type: 'separator' },
         ...item('Save Page As…', 'save-page', page),
+        ...item('Export as PDF', 'export-pdf', page),
         { type: 'separator' },
         ...item('Print…', 'print', page),
         ...(isMac ? [] : [{ type: 'separator' } as const, { role: 'quit' } as const]),

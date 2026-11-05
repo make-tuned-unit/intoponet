@@ -137,6 +137,21 @@ export class DownloadManager {
     }
   }
 
+  /** A file the app wrote itself (Export as PDF): listed as a finished download, with Open and Show in Finder. */
+  recordSaved(input: { filename: string; url: string; path: string; bytes: number; isPrivate: boolean }): string {
+    const now = this.now()
+    const entry: Tracked = {
+      id: randomUUID(), filename: this.deps.sanitize(input.filename), url: input.url, path: input.path, state: 'completed',
+      receivedBytes: input.bytes, totalBytes: input.bytes, bytesPerSecond: 0, startedAt: now, endedAt: now,
+      isPrivate: input.isPrivate, pageKey: null, exists: true, item: null, reservation: null,
+      attention: null, dangerous: false, note: null, error: null, sample: null,
+    }
+    this.entries.unshift(entry)
+    this.save()
+    this.scheduleEmit()
+    return entry.id
+  }
+
   /** The person clicked or typed in a page (a download right after is one they asked for). */
   gesture(pageKey: string): void {
     this.limiter.gesture(pageKey, this.now())

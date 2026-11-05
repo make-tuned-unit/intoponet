@@ -274,3 +274,17 @@ describe('DownloadManager', () => {
     expect(downloads.list()[0]).toMatchObject({ state: 'interrupted', error: 'The file could not be saved in Downloads.' })
   })
 })
+
+describe('Files the app saves itself', () => {
+  it('lists an exported PDF as a finished download, kept for normal tabs only', () => {
+    const { manager: downloads } = manager()
+    downloads.recordSaved({ filename: 'Page – Site – 2026-11-05.pdf', url: 'https://example.com/a', path: `${directory}/Page.pdf`, bytes: 1234, isPrivate: false })
+    downloads.recordSaved({ filename: 'Saved page 2026-11-05.pdf', url: 'https://secret.example/', path: `${directory}/Saved.pdf`, bytes: 99, isPrivate: true })
+    const list = downloads.list()
+    expect(list[0]).toMatchObject({ filename: 'Saved page 2026-11-05.pdf', state: 'completed', exists: true, isPrivate: true })
+    expect(list[1]).toMatchObject({ filename: 'Page – Site – 2026-11-05.pdf', state: 'completed', totalBytes: 1234 })
+    vi.runAllTimers()
+    const kept = persisted.at(-1) ?? []
+    expect(kept.map((record) => record.filename)).toEqual(['Page – Site – 2026-11-05.pdf'])
+  })
+})

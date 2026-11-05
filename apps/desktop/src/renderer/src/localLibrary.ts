@@ -11,6 +11,8 @@ export type SavedBookmark = {
   hiddenOnMap?: boolean
   /** Further tags beyond the main topic. */
   tags?: string[]
+  /** The page saved as a PDF on this Mac (Export as PDF into a bookmark group). */
+  pdf?: { path: string; savedAt: string }
 }
 
 /** "Water, Pacific, climate" → main topic "Water" and tags ["Pacific", "climate"]. */
@@ -182,6 +184,9 @@ export function upsertBookmark(
     existing.fieldAnchor !== undefined
   ) {
     next.fieldAnchor = existing.fieldAnchor
+  }
+  if (existing && bookmark.pdf === undefined && existing.pdf !== undefined) {
+    next.pdf = existing.pdf
   }
   return [...bookmarks.filter((item) => item.url !== bookmark.url), next]
 }

@@ -444,6 +444,7 @@ function PaneBody({
                                       <small>{bookmarkHost(bookmark.url)}</small>
                                     </span>
                                   </button>
+                                  {bookmark.pdf && <SavedPdf path={bookmark.pdf.path} title={bookmark.title || bookmarkHost(bookmark.url)} />}
                                   <MoveTo
                                     label={`Move ${bookmark.title || bookmarkHost(bookmark.url)} to another folder`}
                                     current={group.id}
@@ -560,5 +561,36 @@ function MoveTo({ label, current, targets, onMove }: { label: string; current: s
       <option value="">Move to…</option>
       {targets.filter((target) => target.id !== current).map((target) => <option key={target.id} value={target.id}>{target.label}</option>)}
     </select>
+  )
+}
+
+/** The page's saved PDF: opens it, or shows it in Finder. Marked when the file was moved or deleted. */
+function SavedPdf({ path, title }: { path: string; title: string }) {
+  const [missing, setMissing] = useState(false)
+  const name = path.split('/').pop() ?? path
+  const run = (reveal: boolean) => {
+    window.intoponet.browserHost.openSavedFile(path, reveal).then(() => setMissing(false), () => setMissing(true))
+  }
+  return (
+    <span className={`bm-item-pdf${missing ? ' is-missing' : ''}`}>
+      <button
+        type="button"
+        className="bm-pdf-open"
+        aria-label={missing ? `Saved PDF of ${title} was moved or deleted` : `Open saved PDF of ${title}`}
+        title={missing ? `Moved or deleted: ${path}` : `Open ${name}`}
+        onClick={() => run(false)}
+      >
+        PDF
+      </button>
+      <button
+        type="button"
+        className="lg-icon-button bm-pdf-reveal"
+        aria-label={`Show saved PDF of ${title} in Finder`}
+        title={`Show in Finder: ${path}`}
+        onClick={() => run(true)}
+      >
+        <FolderOpen size={12} />
+      </button>
+    </span>
   )
 }

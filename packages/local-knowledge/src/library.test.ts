@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { historicalFixtures, presentedAsCause, relationshipLabel } from './history'
-import { absorbPage, isSensitiveUrl, parsePrivateLibrary, searchAbsorbed, serializePrivateLibrary } from './library'
+import { absorbPage, isSensitiveUrl, mergePrivateLibraries, parsePrivateLibrary, searchAbsorbed, serializePrivateLibrary } from './library'
 
 describe('private library', () => {
   it('round-trips explicit bookmark field anchors while accepting legacy bookmarks', () => {
@@ -130,5 +130,22 @@ describe('tags and import', () => {
     expect(library.collections.find((c) => c.id === 'c1')?.memberUrls).toEqual(['https://a.test/', 'https://b.test/'])
     expect(library.recents.map((r) => r.url)).toEqual(['https://r2.test/', 'https://r1.test/'])
     expect(added).toEqual({ bookmarks: 1, collections: 1, recents: 1, absorbed: 0 })
+  })
+})
+
+describe('Bookmarks linked to a saved PDF', () => {
+  const base = { schema: 'intoponet.private-library.v1', collections: [], recents: [], absorbed: [] }
+  const bookmark = { url: 'https://example.com/a', title: 'A', topic: 'T', savedAt: '2026-11-05T00:00:00Z' }
+  it('keeps a link to an absolute .pdf path, and drops anything else', () => {
+    const parse = (pdf: unknown) => parsePrivateLibrary(JSON.stringify({ ...base, bookmarks: [{ ...bookmark, pdf }] }))?.bookmarks[0]?.pdf
+    expect(parse({ path: '/Users/me/Downloads/A.pdf', savedAt: '2026-11-05T00:00:00Z' })).toEqual({ path: '/Users/me/Downloads/A.pdf', savedAt: '2026-11-05T00:00:00Z' })
+    expect(parse({ path: 'relative/A.pdf', savedAt: 'x' })).toBeUndefined()
+    expect(parse({ path: '/Applications/Evil.app', savedAt: 'x' })).toBeUndefined()
+    expect(parse('nope')).toBeUndefined()
+  })
+  it('keeps the link when another library is merged in', () => {
+    const mine = parsePrivateLibrary(JSON.stringify({ ...base, bookmarks: [bookmark] }))!
+    const theirs = parsePrivateLibrary(JSON.stringify({ ...base, bookmarks: [{ ...bookmark, pdf: { path: '/tmp/A.pdf', savedAt: 'x' } }] }))!
+    expect(mergePrivateLibraries(mine, theirs).library.bookmarks[0]?.pdf?.path).toBe('/tmp/A.pdf')
   })
 })

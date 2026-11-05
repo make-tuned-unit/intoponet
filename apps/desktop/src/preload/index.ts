@@ -25,6 +25,7 @@ import {
   type BrowserPanelSnapshot,
   type ClosedTabSnapshot,
   type PageTabSnapshot,
+  type PdfExportOptions,
   type PrivateLibraryReadResult,
   type ProtectionSnapshot,
   type PublicFieldStatus,
@@ -39,6 +40,7 @@ const invoke = (
   | ClosedTabSnapshot[]
   | PrivateLibraryReadResult
   | PublicFieldStatus
+  | PdfExportOptions
   | string
   | null
 > =>
@@ -152,6 +154,19 @@ const browserHost: BrowserHostApi = {
   },
   savePage: async () => {
     await invoke({ type: 'save-page' })
+  },
+  exportPdf: async (options) => {
+    await invoke(options ? { type: 'export-pdf', options } : { type: 'export-pdf' })
+  },
+  cancelPdfExport: async () => {
+    await invoke({ type: 'cancel-pdf-export' })
+  },
+  getPdfSettings: () => invoke({ type: 'get-pdf-settings' }) as Promise<PdfExportOptions>,
+  setPdfSettings: async (options) => {
+    await invoke({ type: 'set-pdf-settings', options })
+  },
+  openSavedFile: async (path, reveal) => {
+    await invoke({ type: 'open-saved-file', path, reveal })
   },
   readPrivateLibrary: () =>
     invoke({ type: 'read-private-library' }) as Promise<PrivateLibraryReadResult>,

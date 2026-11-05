@@ -323,6 +323,16 @@
       "promise": "A screenshot of the page is saved, and you can make a new folder while saving."
     },
     {
+      "id": "PDF_EXPORT",
+      "title": "Save page as PDF",
+      "deps": [
+        "SETTINGS"
+      ],
+      "tier": "core",
+      "kind": "e2e",
+      "promise": "One click saves the page as a tagged PDF in Downloads, formatted for reading with its source on page one and page numbers, with ads, hidden text and overlays left out, lazy images loaded, an outline of its headings, a Finder \"Where from\", and, when a bookmark group is chosen, a bookmark in that group linked to the PDF. Pages that are not articles are saved as seen, still without ads."
+    },
+    {
       "id": "PAYWALL_ALTERNATIVES",
       "title": "Paywall detection",
       "deps": [

@@ -118,7 +118,9 @@ import { bindPermissionOwnerLifecycle, kindsFor, originOf, SitePermissionBroker,
 import { bindPopupCloseWithOwner, nestedPopupDecision, popupDecision, popupWindowOptions, PopupLimiter, trackUserActivation, UserActivation, guardPopupWindow } from './popups'
 import { CLIENT_CERTIFICATE_NOTICE, declineClientCertificate, rejectCertificateErrorForSession } from './browserCertificatePolicy'
 import { reserveDownloadPath, sanitizeDownloadFilename } from './downloadReservation'
-import { installBrowsingData, openHistoryPane, type BrowsingData } from './browsingData'
+import { downloadsDirectory, installBrowsingData, openHistoryPane, type BrowsingData } from './browsingData'
+import { exportPagePdf } from './pdfExport/exportPdf'
+import { DEFAULT_PDF_SETTINGS, parsePdfSettings, type PdfExportSettings } from './pdfExport/settings'
 import { CrashRecoveryPolicy } from './crashRecovery'
 import { BeaconPublisher } from './beacons/publisher'
 import { DEFAULT_BEACON_REGISTRY } from './beacons/defaults'
@@ -1302,6 +1304,9 @@ function contextMenuTemplate(view: WebContentsView, params: Electron.ContextMenu
   if (has('copy-image') || has('copy-image-address') || has('save-image')) items.push({ type: 'separator' })
 
   items.push(...moreContextItems(view, params))
+  if (!params.isEditable && !linkUrl && params.mediaType === 'none' && !params.selectionText.trim()) {
+    items.push({ label: 'Save Page as PDF', accelerator: 'CmdOrCtrl+Alt+E', click: () => void runPdfExport(view) }, { type: 'separator' })
+  }
 
   if (has('back')) items.push({ label: 'Back', click: () => view.webContents.navigationHistory.goBack() })
   if (has('forward')) items.push({ label: 'Forward', click: () => view.webContents.navigationHistory.goForward() })
@@ -1825,6 +1830,96 @@ function applySiteZoom(view: WebContentsView, url: string): void {
 const zoomedWhileLoading = new WeakSet<WebContentsView>()
 
 /** Save Page As…: the page with its images and styles, into Downloads unless another place is chosen. */
+// ---- Export as PDF ------------------------------------------------------------------------------
+
+let pdfSettings: PdfExportSettings | null = null
+let pdfJob: { cancelled: boolean } | null = null
+const pdfSettingsFile = (): string => join(app.getPath('userData'), 'pdf-export.json')
+
+function currentPdfSettings(): PdfExportSettings {
+  if (pdfSettings) return pdfSettings
+  try {
+    pdfSettings = parsePdfSettings(JSON.parse(readFileSync(pdfSettingsFile(), 'utf8')))
+  } catch {
+    pdfSettings = { ...DEFAULT_PDF_SETTINGS }
+  }
+  return pdfSettings
+}
+
+function savePdfSettings(next: PdfExportSettings): void {
+  pdfSettings = next
+  void writeFileAtomic(pdfSettingsFile(), JSON.stringify(next)).catch(() => undefined)
+}
+
+/** One PDF at a time; a second click while one is being made is ignored. */
+async function runPdfExport(view: WebContentsView | null = pageView, options?: PdfExportSettings): Promise<void> {
+  if (options) savePdfSettings(options)
+  if (pdfJob || !view || viewGone(view) || isStartView(view)) return
+  const contents = view.webContents
+  if (!safeHttpUrl(contents.getURL())) {
+    emit({ type: 'pdf-export', event: { state: 'failed', reason: 'Only web pages can be saved as PDF.' } })
+    return
+  }
+  const settings = currentPdfSettings()
+  const isPrivate = privateViews.has(view)
+  const job = { cancelled: false }
+  pdfJob = job
+  emit({ type: 'pdf-export', event: { state: 'working', step: 'preparing' } })
+  try {
+    const outcome = await exportPagePdf({
+      contents,
+      isPrivate,
+      settings,
+      countryCode: app.getLocaleCountryCode() || '',
+      appVersion: app.getVersion(),
+      isBlocked: (url, topLevelUrl) => protection.evaluate({ requestUrl: url, topLevelUrl, initiatorOrigin: null, resourceType: 'image', profileId: 'default', isPrivate }).action === 'block',
+      adSelectors: protection.cosmeticRules(contents.getURL(), contents.getURL()).hideSelectors,
+      cancelled: () => job.cancelled,
+      progress: (step) => { if (!job.cancelled) emit({ type: 'pdf-export', event: { state: 'working', step } }) },
+      destination: async (name) => {
+        // Private tabs never write to Downloads on their own: the person picks where (and the name).
+        if (isPrivate) {
+          if (!window || window.isDestroyed()) return null
+          const { canceled, filePath } = await dialog.showSaveDialog(window, {
+            title: 'Export as PDF',
+            defaultPath: join(downloadsDirectory(), name),
+            filters: [{ name: 'PDF', extensions: ['pdf'] }],
+            properties: ['createDirectory', 'showOverwriteConfirmation'],
+          })
+          if (canceled || !filePath) return null
+          return { path: filePath.toLowerCase().endsWith('.pdf') ? filePath : `${filePath}.pdf`, reserved: false, release: () => undefined }
+        }
+        const reservation = reserveDownloadPath(downloadsDirectory(), name)
+        return { path: reservation.path, reserved: true, release: () => { reservation.cleanupIfEmpty() } }
+      },
+    })
+    if (outcome.status === 'saved') {
+      browsingData?.downloads.recordSaved({ filename: outcome.filename, url: outcome.url, path: outcome.path, bytes: outcome.bytes, isPrivate })
+      emit({ type: 'pdf-export', event: { ...outcome, state: 'saved', groupId: isPrivate ? '' : settings.groupId, isPrivate } })
+    } else if (outcome.status === 'cancelled') {
+      emit({ type: 'pdf-export', event: { state: 'cancelled' } })
+    } else {
+      emit({ type: 'pdf-export', event: { state: 'failed', reason: outcome.reason } })
+    }
+  } finally {
+    if (pdfJob === job) pdfJob = null
+  }
+}
+
+/** A PDF this app saved (from a bookmark): only existing .pdf files, opened or shown in Finder. */
+async function openSavedFile(path: string, reveal: boolean): Promise<void> {
+  try {
+    if (!statSync(path).isFile()) throw new Error()
+  } catch {
+    throw new Error('That PDF is no longer there.')
+  }
+  if (reveal) shell.showItemInFolder(path)
+  else {
+    const failure = await shell.openPath(path)
+    if (failure) throw new Error(failure)
+  }
+}
+
 async function savePageAs(): Promise<void> {
   const view = pageView
   if (!view || !pageAttached || viewGone(view) || isStartView(view) || !window || window.isDestroyed()) return
@@ -1944,6 +2039,7 @@ async function handleBrowserCommand(
   | ClosedTabSnapshot[]
   | PrivateLibraryReadResult
   | PublicFieldStatus
+  | PdfExportSettings
   | string
   | null
 > {
@@ -2046,6 +2142,20 @@ async function handleBrowserCommand(
       break
     case 'save-page':
       await savePageAs()
+      return null
+    case 'export-pdf':
+      void runPdfExport(pageView, command.options)
+      return null
+    case 'cancel-pdf-export':
+      if (pdfJob) pdfJob.cancelled = true
+      return null
+    case 'get-pdf-settings':
+      return currentPdfSettings()
+    case 'set-pdf-settings':
+      savePdfSettings(command.options)
+      return null
+    case 'open-saved-file':
+      await openSavedFile(command.path, command.reveal)
       return null
     case 'navigate': {
       const target = safeHttpUrl(command.url)

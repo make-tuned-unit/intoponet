@@ -1,0 +1,186 @@
+.pdf-bar {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--hairline);
+  background: rgba(6, 19, 32, 0.72);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.pdf-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 4px 10px 4px 12px;
+  overflow: hidden;
+}
+
+.pdf-row + .pdf-row {
+  border-top: 1px solid var(--hairline);
+}
+
+.pdf-options {
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+
+.pdf-icon { flex: none; color: #ffb4ac; }
+.pdf-spacer { flex: 1; }
+
+.pdf-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--warm-white);
+  white-space: nowrap;
+}
+
+.pdf-done svg { flex: none; color: #20f4e4; }
+.pdf-failed { color: #ffc9c3; white-space: normal; }
+
+.pdf-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pdf-meta {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+}
+
+.pdf-spin { flex: none; animation: pdf-spin 900ms linear infinite; }
+
+@keyframes pdf-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .pdf-spin { animation-duration: 2.4s; }
+}
+
+.pdf-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.pdf-label {
+  color: var(--muted);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pdf-segmented {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: 9px;
+  background: var(--lg-inset-fill, rgba(0, 0, 0, 0.3));
+}
+
+.pdf-segmented button {
+  height: 24px;
+  padding: 0 9px;
+  color: var(--muted);
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.pdf-segmented button.is-on {
+  color: var(--warm-white);
+  background: rgba(205, 245, 240, 0.14);
+}
+
+.pdf-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--warm-white);
+  cursor: pointer;
+}
+
+.pdf-field select {
+  max-width: 200px;
+  height: 28px;
+  padding: 0 8px;
+  color: var(--warm-white);
+  border: 1px solid rgba(214, 246, 241, 0.14);
+  border-radius: 8px;
+  background: rgba(4, 12, 20, 0.6);
+  font: inherit;
+}
+
+.pdf-field select:disabled { opacity: 0.5; }
+
+.pdf-button,
+.pdf-close {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  color: var(--warm-white);
+  border: 1px solid rgba(214, 246, 241, 0.14);
+  border-radius: 8px;
+  background: rgba(205, 245, 240, 0.05);
+  font: inherit;
+  cursor: pointer;
+}
+
+.pdf-button:hover:not(:disabled),
+.pdf-close:hover {
+  background: var(--lg-hover);
+}
+
+.pdf-button:disabled { opacity: 0.45; cursor: default; }
+
+.pdf-primary {
+  color: #1d0806;
+  border-color: transparent;
+  background: linear-gradient(160deg, #ffd0ca, #ff9f94);
+  font-weight: 600;
+}
+
+.pdf-primary:hover:not(:disabled) {
+  background: linear-gradient(160deg, #ffdcd7, #ffb0a6);
+}
+
+.pdf-close {
+  width: 28px;
+  justify-content: center;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+}
+
+/* The toolbar's PDF button and its options chevron, side by side. */
+.pdf-tool {
+  display: inline-flex;
+  align-items: stretch;
+}
+
+.pdf-tool > button:first-child {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.pdf-tool > .pdf-more {
+  width: 22px;
+  min-width: 22px;
+  padding: 0;
+  justify-content: center;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}

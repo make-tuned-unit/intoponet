@@ -127,12 +127,72 @@ export type PrivateLibraryReadResult =
       reason: 'encryption-unavailable' | 'decrypt-failed' | 'reencrypt-failed'
     }
 
+/** Export as PDF: what a plain click does (the options popover changes it). */
+export type PdfExportOptions = {
+  /** auto: Formatted when the page reads as an article, else As seen. */
+  mode: 'auto' | 'formatted' | 'asSeen'
+  paper: 'auto' | 'a4' | 'letter'
+  textSize: 'small' | 'medium' | 'large'
+  images: boolean
+  /** The source block on page one (title, author, site, dates, address) and the footer title. */
+  citation: boolean
+  /** Bookmark group the page is filed in, with a link to the PDF ('' = none, 'unsorted' = no group). */
+  groupId: string
+}
+
+export const DEFAULT_PDF_EXPORT_OPTIONS: PdfExportOptions = {
+  mode: 'auto',
+  paper: 'auto',
+  textSize: 'medium',
+  images: true,
+  citation: true,
+  groupId: '',
+}
+
+/** Anything unknown or malformed falls back to the default, field by field. */
+export function parsePdfExportOptions(value: unknown): PdfExportOptions {
+  const input = isRecord(value) ? value : {}
+  const pick = <T extends string>(key: string, allowed: readonly T[], fallback: T): T =>
+    allowed.includes(input[key] as T) ? (input[key] as T) : fallback
+  const groupId = typeof input['groupId'] === 'string' && /^[\w-]{0,80}$/.test(input['groupId']) ? input['groupId'] : ''
+  return {
+    mode: pick('mode', ['auto', 'formatted', 'asSeen'] as const, DEFAULT_PDF_EXPORT_OPTIONS.mode),
+    paper: pick('paper', ['auto', 'a4', 'letter'] as const, DEFAULT_PDF_EXPORT_OPTIONS.paper),
+    textSize: pick('textSize', ['small', 'medium', 'large'] as const, DEFAULT_PDF_EXPORT_OPTIONS.textSize),
+    images: typeof input['images'] === 'boolean' ? input['images'] : DEFAULT_PDF_EXPORT_OPTIONS.images,
+    citation: typeof input['citation'] === 'boolean' ? input['citation'] : DEFAULT_PDF_EXPORT_OPTIONS.citation,
+    groupId,
+  }
+}
+
+export type PdfExportEvent =
+  | { state: 'working'; step: 'preparing' | 'printing' | 'finishing' }
+  | {
+      state: 'saved'
+      filename: string
+      path: string
+      pages: number | null
+      bytes: number
+      mode: 'formatted' | 'asSeen'
+      /** Why Formatted was not used when Auto was asked for ('' when it was). */
+      fellBack: string
+      missingImages: number
+      ads: number
+      url: string
+      title: string
+      groupId: string
+      isPrivate: boolean
+    }
+  | { state: 'failed'; reason: string }
+  | { state: 'cancelled' }
+
 export type BrowserHostEvent =
   | { type: 'frequency-visit'; url: string; title: string; rating: string | null; navigationId: string }
   | { type: 'panel-state'; panel: BrowserPanelSnapshot }
   | { type: 'navigation-failed'; url: string; reason: string }
   | ({ type: 'find-result' } & FindInPageResult)
   | ({ type: 'download-finished' } & DownloadFinishedEvent)
+  | { type: 'pdf-export'; event: PdfExportEvent }
   | { type: 'protection-state'; protection: ProtectionSnapshot }
   | { type: 'tabs'; tabs: PageTabSnapshot[] }
   | { type: 'tab-dock-state'; open: boolean }
@@ -225,6 +285,12 @@ export interface BrowserHostApi {
   forceReload(): Promise<void>
   /** Save the page as HTML with its files (asks where, in Downloads). */
   savePage(): Promise<void>
+  /** Save the page as a PDF now (progress and the result arrive as 'pdf-export' events). */
+  exportPdf(options?: PdfExportOptions): Promise<void>
+  cancelPdfExport(): Promise<void>
+  getPdfSettings(): Promise<PdfExportOptions>
+  setPdfSettings(options: PdfExportOptions): Promise<void>
+  openSavedFile(path: string, reveal: boolean): Promise<void>
   readPrivateLibrary(): Promise<PrivateLibraryReadResult>
   writePrivateLibrary(payload: string): Promise<void>
   deletePrivateLibrary(): Promise<void>
@@ -286,6 +352,13 @@ export type BrowserHostCommand =
   | { type: 'select-tab'; index: number }
   | { type: 'force-reload' }
   | { type: 'save-page' }
+  /** Save the page as a PDF in one click (options: also remembered for the next click). */
+  | { type: 'export-pdf'; options?: PdfExportOptions }
+  | { type: 'cancel-pdf-export' }
+  | { type: 'get-pdf-settings' }
+  | { type: 'set-pdf-settings'; options: PdfExportOptions }
+  /** A PDF this app saved: open it, or show it in Finder. */
+  | { type: 'open-saved-file'; path: string; reveal: boolean }
   | { type: 'read-private-library' }
   | { type: 'write-private-library'; payload: string }
   | { type: 'delete-private-library' }
@@ -335,6 +408,11 @@ const commandTypes = new Set<BrowserHostCommand['type']>([
   'select-tab',
   'force-reload',
   'save-page',
+  'export-pdf',
+  'cancel-pdf-export',
+  'get-pdf-settings',
+  'set-pdf-settings',
+  'open-saved-file',
   'read-private-library',
   'write-private-library',
   'delete-private-library',
@@ -544,7 +622,18 @@ export function parseBrowserHostCommand(value: unknown): BrowserHostCommand {
     case 'get-closed-tabs':
     case 'force-reload':
     case 'save-page':
+    case 'cancel-pdf-export':
+    case 'get-pdf-settings':
       return { type }
+    case 'export-pdf':
+      return value['options'] === undefined ? { type } : { type, options: parsePdfExportOptions(value['options']) }
+    case 'set-pdf-settings':
+      return { type, options: parsePdfExportOptions(value['options']) }
+    case 'open-saved-file': {
+      const path = value['path']
+      if (typeof path !== 'string' || !path.startsWith('/') || path.length > 2048 || !/\.pdf$/i.test(path) || path.includes('\0')) throw new Error('Invalid file.')
+      return { type, path, reveal: value['reveal'] === true }
+    }
     default:
       throw new Error('Unknown browser-host command.')
   }

@@ -22,6 +22,19 @@ export type StoredBookmark = {
   hiddenOnMap?: boolean
   /** Further tags beyond the main topic (MEM-007). */
   tags?: string[]
+  /** The page saved as a PDF on this Mac (Export as PDF into a bookmark group). */
+  pdf?: SavedPdfLink
+}
+
+export type SavedPdfLink = { path: string; savedAt: string }
+
+/** An absolute path to a .pdf file, or nothing. */
+export function savedPdfFrom(value: unknown): SavedPdfLink | undefined {
+  if (!isRecord(value)) return undefined
+  const { path, savedAt } = value
+  if (typeof path !== 'string' || !path.startsWith('/') || path.length > 2048 || !/\.pdf$/i.test(path) || path.includes('\0')) return undefined
+  if (typeof savedAt !== 'string' || savedAt.length > 40) return undefined
+  return { path, savedAt }
 }
 
 /** Clean tags: trimmed, at most 8 of up to 40 characters, no duplicates of each other or of the topic. */
@@ -165,6 +178,7 @@ function bookmarksFrom(value: unknown): StoredBookmark[] {
         ...(fieldAnchor ? { fieldAnchor } : {}),
         ...(item['hiddenOnMap'] === true ? { hiddenOnMap: true } : {}),
         ...(cleanTags(item['tags'], item['topic']).length ? { tags: cleanTags(item['tags'], item['topic']) } : {}),
+        ...(savedPdfFrom(item['pdf']) ? { pdf: savedPdfFrom(item['pdf'])! } : {}),
       },
     ]
   })
@@ -278,6 +292,7 @@ export function mergePrivateLibraries(current: PrivateLibraryDocument, incoming:
       ...mine,
       ...(mine.fieldAnchor || !item.fieldAnchor ? {} : { fieldAnchor: item.fieldAnchor }),
       ...(mine.note || !item.note ? {} : { note: item.note }),
+      ...(mine.pdf || !item.pdf ? {} : { pdf: item.pdf }),
       ...(tags.length ? { tags } : {}),
     }
   }

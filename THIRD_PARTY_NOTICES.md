@@ -7,7 +7,7 @@ or terms, as set out here. Where a licence requires a notice or attribution,
 this file provides it. The full text of each licence comes with the component
 (its `LICENSE` file, its file header, or the URL given).
 
-Last reviewed: 2026-10-27, against `package-lock.json` and the source tree at that date.
+Last reviewed: 2026-11-05, against `package-lock.json` and the source tree at that date.
 
 ---
 
@@ -60,6 +60,18 @@ and each package's `package.json`.
 | ieee754 | 1.2.1 | BSD-3-Clause | https://github.com/feross/ieee754 |
 | tslib | 2.8.1 | 0BSD | https://github.com/microsoft/tslib |
 | @types/react-reconciler, @types/webxr | 0.28.9, 0.5.24 | MIT | type declarations only; nothing reaches the bundle |
+| @mozilla/readability (Export as PDF: finds the article) | 0.6.0 | Apache-2.0 | https://github.com/mozilla/readability |
+| dompurify (Export as PDF: cleans the article's HTML) | 3.4.17 | MPL-2.0 OR Apache-2.0 (used under Apache-2.0) | https://github.com/cure53/DOMPurify |
+| @cantoo/pdf-lib (Export as PDF: title, author and compression) | 2.11.1 | MIT | https://github.com/cantoo-scribe/pdf-lib |
+| fflate | 0.8.3 | MIT | https://github.com/101arrowz/fflate |
+| culori | 4.0.2 | MIT | https://github.com/Evercoder/culori |
+| node-html-better-parser | 1.5.9 | MIT | https://github.com/Sharcoux/node-html-parser |
+
+The Export as PDF packages are listed under `devDependencies` because the build
+bundles them into the app's own files (Readability and DOMPurify as scripts run
+in the page, pdf-lib in a worker); they are distributed all the same. Readability
+and DOMPurify are taken under Apache-2.0, whose licence text must go with the app
+(neither package has a NOTICE file). DOMPurify's MPL-2.0 option is not used.
 
 None of the bundled npm packages is copyleft. MIT, ISC and BSD-3-Clause all
 require the copyright and permission notice to go with copies of the software.
