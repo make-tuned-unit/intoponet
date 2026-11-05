@@ -152,6 +152,25 @@ function put(input: HTMLInputElement, value: string, overwrite: boolean): void {
   input.dispatchEvent(new Event('change', { bubbles: true }))
 }
 
+/**
+ * A fill main sent on its own (one saved account) waits for the reader: the username goes in now,
+ * the password at their first real click or key press on the page (like Chrome), so scripts on the
+ * page cannot read a saved password just by showing a sign-in form. Script-made events are not
+ * trusted (event.isTrusted), so they cannot release it.
+ */
+let waiting: { message: PasswordFillMessage; field: HTMLInputElement; placeholder: string } | null = null
+
+function release(event: Event): void {
+  if (!event.isTrusted || !waiting) return
+  const { message, field, placeholder } = waiting
+  waiting = null
+  document.removeEventListener('pointerdown', release, true)
+  document.removeEventListener('keydown', release, true)
+  field.placeholder = placeholder
+  if (message.origin !== location.origin || !field.isConnected) return
+  put(field, message.password, false)
+}
+
 ipcRenderer.on(passwordPageChannels.fill, (_event, message: PasswordFillMessage) => {
   if (!message || typeof message.password !== 'string' || typeof message.username !== 'string') return
   // Main checked the origin; check again in case the page moved on meanwhile.
@@ -162,5 +181,13 @@ ipcRenderer.on(passwordPageChannels.fill, (_event, message: PasswordFillMessage)
   const targets = fillTargets(inputs.map(info))
   if (!targets) return
   if (targets.username !== null && message.username) put(inputs[targets.username]!, message.username, message.overwrite)
-  put(inputs[targets.password]!, message.password, message.overwrite)
+  const field = inputs[targets.password]!
+  // The reader chose this account in the toolbar: fill now.
+  if (message.overwrite) return put(field, message.password, true)
+  if (field.value) return
+  if (waiting) waiting.field.placeholder = waiting.placeholder
+  waiting = { message, field, placeholder: field.placeholder }
+  field.placeholder = '•••••••• saved'
+  document.addEventListener('pointerdown', release, true)
+  document.addEventListener('keydown', release, true)
 })

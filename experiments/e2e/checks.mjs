@@ -413,17 +413,28 @@ export const checks = {
       const sealed = readFileSync(sealedPath)
       expect(!sealed.includes(password) && !sealed.includes('tester@example.com'), 'The password file holds plaintext.')
 
-      // Back to the sign-in page: one saved account is filled on its own.
+      // Back to the sign-in page: one saved account is filled on its own: the username at once,
+      // the password only at the reader's first real click or key (page scripts cannot read it before).
       await ctx.evaluate(`window.intoponet.browserHost.navigate(${JSON.stringify(login)}).then(() => true)`)
       await ctx.delay(1500)
       const reload = await ctx.page(`${site}/login`)
       let fields = []
       for (let i = 0; i < 20; i += 1) {
         fields = await pageFields(reload)
-        if (fields[1]) break
+        if (fields[0]) break
         await ctx.delay(300)
       }
-      expect(fields[0] === 'tester@example.com' && fields[1] === password, `The saved sign-in was not filled (got ${JSON.stringify(fields.map((f) => (f ? f.length : f)))}).`)
+      expect(fields[0] === 'tester@example.com' && fields[1] === '', `Before any input, expected the username only (got ${JSON.stringify(fields.map((f) => (f ? f.length : f)))}).`)
+      // A script's fake click does not release the password.
+      await reload.evaluate(`(() => { document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); document.body.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'a' })); return true })()`)
+      await ctx.delay(300)
+      expect((await pageFields(reload))[1] === '', 'A page script released the saved password.')
+      // A real click does.
+      await reload.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: 5, y: 5, button: 'left', clickCount: 1 })
+      await reload.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 5, y: 5, button: 'left', clickCount: 1 })
+      await ctx.delay(300)
+      fields = await pageFields(reload)
+      expect(fields[0] === 'tester@example.com' && fields[1] === password, `The saved sign-in was not filled after a click (got ${JSON.stringify(fields.map((f) => (f ? f.length : f)))}).`)
       await ctx.wait(`!!document.querySelector('.password-toggle')`, 5_000, 'the Passwords button in the page toolbar')
       await ctx.pageShot(reload, 'filled-page')
       await ctx.shot('filled-shell')
@@ -466,7 +477,7 @@ export const checks = {
       await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
       const count = await ctx.evaluate(`window.intoponet.passwords.list().then((l) => l.length)`)
       expect(count === 2, 'A private sign-in was saved.')
-      return `Failed sign-in not offered; offered, saved, bookmarked in Accounts (sealed file, no plaintext), filled one account on its own, asked between two, listed in Settings; private tab untouched (${site}).`
+      return `Failed sign-in not offered; offered, saved, bookmarked in Accounts (sealed file, no plaintext), filled one account (password only after a real click; a script click did not release it), asked between two, listed in Settings; private tab untouched (${site}).`
     } finally {
       server.close()
     }
