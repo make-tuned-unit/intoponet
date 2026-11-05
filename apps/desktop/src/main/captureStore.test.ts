@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readdir, rename, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -137,3 +137,74 @@ describe('capture library', () => {
     await expect(library().filePath('../index.json')).rejects.toThrow(/Invalid capture id/)
   })
 })
+
+describe('capture index safety', () => {
+  // A real PNG header (IHDR 640×480) so a rebuilt record gets its size.
+  const realPng = Buffer.concat([Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex'), Buffer.from([0, 0, 2, 128, 0, 0, 1, 224]), Buffer.from('rest')])
+
+  it('keeps a corrupt index aside and rebuilds it from the files in the library', async () => {
+    const lib = library()
+    await lib.syncGroups(groups)
+    const image = await lib.add(input({ media: realPng }))
+    await lib.add(input({ kind: 'video', title: 'Clip', groupId: null }))
+    await writeFile(join(privateDir, 'index.json'), '{"version":2,"records":[{"trunc')
+    const fresh = library()
+    const records = await fresh.list()
+    expect(records.map((item) => [item.kind, item.title, item.fileName]).sort()).toEqual([
+      ['image', 'Aurora – Wikipedia', image.fileName],
+      ['video', 'Clip', 'Clip 2026-10-26 at 11.42.05.webm'],
+    ])
+    const rebuiltImage = records.find((item) => item.kind === 'image')!
+    expect(rebuiltImage).toMatchObject({ width: 640, height: 480, createdAt: at.toISOString(), byteLength: realPng.length })
+    // The damaged index is kept for inspection, and a fresh one written.
+    const kept = (await readdir(privateDir)).filter((name) => name.startsWith('index.json.corrupt-'))
+    expect(kept).toHaveLength(1)
+    expect(await readFile(join(privateDir, kept[0]!), 'utf8')).toContain('trunc')
+    expect(JSON.parse(await readFile(join(privateDir, 'index.json'), 'utf8')).records).toHaveLength(2)
+    // Without a thumbnail the image itself stands in; the group comes back with the next sync.
+    expect(await fresh.readThumb(rebuiltImage.id)).toEqual(realPng)
+    await fresh.syncGroups(groups)
+    expect((await fresh.list()).find((item) => item.id === rebuiltImage.id)?.groupId).toBe('research')
+  })
+
+  it('does not treat an unreadable index as empty, and never saves over it', async () => {
+    const lib = library()
+    await lib.syncGroups(groups)
+    await lib.add(input())
+    const before = await readFile(join(privateDir, 'index.json'))
+    // Make the index unreadable (not missing, not corrupt): EISDIR stands in for EACCES/EMFILE.
+    await rename(join(privateDir, 'index.json'), join(privateDir, 'saved.json'))
+    await mkdir(join(privateDir, 'index.json'))
+    const fresh = library()
+    await expect(fresh.list()).rejects.toThrow(/could not be read/)
+    await expect(fresh.add(input())).rejects.toThrow(/could not be read/)
+    // Once readable again, the next call succeeds with everything intact.
+    await rm(join(privateDir, 'index.json'), { recursive: true })
+    await rename(join(privateDir, 'saved.json'), join(privateDir, 'index.json'))
+    expect(await readFile(join(privateDir, 'index.json'))).toEqual(before)
+    expect(await fresh.list()).toHaveLength(1)
+  })
+
+  it('puts back folders left hidden mid-rename by a quit', async () => {
+    const lib = library()
+    await lib.syncGroups(groups)
+    const record = await lib.add(input())
+    await rename(join(root, 'Research'), join(root, '.renaming-0b7c5a4e-1d2f-4c3b-9a8e-7f6d5c4b3a21-Research'))
+    await mkdir(join(root, '.renaming-1b7c5a4e-1d2f-4c3b-9a8e-7f6d5c4b3a21'))
+    const records = await library().list()
+    expect((await readdir(root)).sort()).toEqual(['Recovered captures', 'Research'])
+    expect(records.map((item) => item.id)).toEqual([record.id])
+  })
+
+  it('puts folders back when renaming them fails part-way', async () => {
+    const lib = library()
+    await lib.syncGroups(groups)
+    await lib.add(input())
+    // A file where the renamed folder should go makes the merge fail.
+    await writeFile(join(root, 'Studies'), 'in the way')
+    await expect(lib.syncGroups([{ id: 'research', label: 'Studies' }, { id: 'banking', label: 'Banking' }])).rejects.toThrow()
+    expect((await readdir(root)).filter((name) => name.startsWith('.'))).toEqual([])
+    expect(await readdir(join(root, 'Research'))).toHaveLength(1)
+  })
+})
+
