@@ -67,7 +67,7 @@ import { pageShortcutForInput, shellShortcutForInput, tabCycleForInput, type Pag
 import { TRACKER_STUB_SCRIPT } from './trackerStubs'
 import { bindPermissionOwnerLifecycle, kindsFor, originOf, SitePermissionBroker, SitePermissionStore } from './sitePermissions'
 import { bindPopupCloseWithOwner, nestedPopupDecision, popupDecision, popupWindowOptions, PopupLimiter, trackUserActivation, UserActivation, guardPopupWindow } from './popups'
-import { rejectCertificateErrorForSession } from './browserCertificatePolicy'
+import { CLIENT_CERTIFICATE_NOTICE, declineClientCertificate, rejectCertificateErrorForSession } from './browserCertificatePolicy'
 import { reserveDownloadPath, sanitizeDownloadFilename } from './downloadReservation'
 import { CrashRecoveryPolicy } from './crashRecovery'
 import { BeaconPublisher } from './beacons/publisher'
@@ -1843,6 +1843,11 @@ app.whenReady().then(async () => {
     // Private tabs get the same protections, permissions and download handling.
     wireDownloadSession(PRIVATE_PARTITION)
     wireProtectionSession(PRIVATE_PARTITION)
+    // No TLS client certificate is ever sent on its own (Electron's default sends the first one).
+    app.on('select-client-certificate', (event, contents, url, _list, callback) => {
+      declineClientCertificate(event, callback)
+      if (pageView && !viewGone(pageView) && pageView.webContents === contents) emit({ type: 'navigation-failed', url, reason: CLIENT_CERTIFICATE_NOTICE })
+    })
   })
 
   let laya: LayaService | null = null

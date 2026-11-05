@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { rejectCertificateErrorForSession } from './browserCertificatePolicy'
+import { declineClientCertificate, rejectCertificateErrorForSession } from './browserCertificatePolicy'
 
 describe('certificate error policy', () => {
   it('prevents the default and rejects the certificate for the target session', () => {
@@ -17,5 +17,15 @@ describe('certificate error policy', () => {
     expect(rejectCertificateErrorForSession(event, { session: {} }, {}, callback)).toBe(false)
     expect(event.preventDefault).not.toHaveBeenCalled()
     expect(callback).not.toHaveBeenCalled()
+  })
+})
+
+describe('client certificates', () => {
+  it('never picks a certificate automatically: continues without one', () => {
+    const event = { preventDefault: vi.fn() }
+    const callback = vi.fn()
+    declineClientCertificate(event, callback)
+    expect(event.preventDefault).toHaveBeenCalledOnce()
+    expect(callback).toHaveBeenCalledWith()
   })
 })
