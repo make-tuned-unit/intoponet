@@ -1,9 +1,12 @@
 import { createPrivateKey, generateKeyPairSync, randomBytes, sign, type KeyObject } from 'node:crypto'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
+import { mkdir, readFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import { canonicalBeaconUrl, signingText, validateBeacon, type SignedRequest } from '@intoponet/beacon-core'
 import type { BeaconDraft, BeaconPreview, BeaconReportKind, BeaconResource, BeaconState, PublishedBeacon } from '@intoponet/browser-api'
 import { RETIRED_BEACON_REGISTRIES } from './defaults'
+import { writeFileAtomic } from '../atomicFile'
+import { readBoundedPublicJson } from '../boundedPublicJson'
 
 /**
  * Beacon publisher (PRD §7 "the only component allowed to transmit a
@@ -12,7 +15,59 @@ import { RETIRED_BEACON_REGISTRIES } from './defaults'
  * device. The key is kept encrypted by the OS keychain; it is not tied to any
  * account and the registry never publishes it.
  */
-export type SecretBox = { available: () => boolean; seal: (text: string) => Buffer; open: (sealed: Buffer) => string }
+export type SecretBox = {
+  available: () => boolean | Promise<boolean>
+  seal: (text: string) => Buffer | Promise<Buffer>
+  open: (sealed: Buffer) => string | Promise<string>
+}
+
+/** Registry answers are small; anything larger is refused rather than read into memory. */
+const MAX_REGISTRY_BYTES = 1024 * 1024
+const MAX_RESOURCES = 60
+
+const isText = (value: unknown, max: number): value is string => typeof value === 'string' && value.length <= max
+const isNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value)
+
+/** The record of beacons this Mac published, dropping anything malformed. */
+export function parsePublished(value: unknown): PublishedBeacon[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((item): PublishedBeacon[] => {
+    if (!item || typeof item !== 'object') return []
+    const { id, url, title, publishedAt, registry } = item as Record<string, unknown>
+    if (!isText(id, 80) || !id || !isText(url, 2048) || !isText(title, 400) || !isText(publishedAt, 40) || !isText(registry, 500)) return []
+    return [{ id, url, title, publishedAt, registry }]
+  })
+}
+
+function parsePlace(value: unknown): { label: string; lat: number; lon: number } | null {
+  if (!value || typeof value !== 'object') return null
+  const { label, lat, lon } = value as Record<string, unknown>
+  if (!isText(label, 300) || !isNumber(lat) || !isNumber(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null
+  return { label, lat, lon }
+}
+
+/** A registry resource as the app shows it, or null when it is not one. */
+export function parseResource(value: unknown): BeaconResource | null {
+  if (!value || typeof value !== 'object') return null
+  const v = value as Record<string, unknown>
+  if (!isText(v['url'], 2048) || !/^https?:\/\//i.test(v['url']) || !isText(v['title'], 400) || !isText(v['topic'], 200)) return null
+  if (v['note'] !== undefined && v['note'] !== null && !isText(v['note'], 1000)) return null
+  if (!isText(v['publishers'], 200) || !isNumber(v['prominence']) || !isText(v['firstAt'], 40) || !isText(v['lastAt'], 40)) return null
+  const places = (Array.isArray(v['places']) ? v['places'] : []).slice(0, 200).map(parsePlace).filter((place) => place !== null)
+  let contested: BeaconResource['contested'] = null
+  if (v['contested'] !== null && v['contested'] !== undefined) {
+    const c = v['contested'] as Record<string, unknown>
+    if (typeof c !== 'object' || !isNumber(c['count'])) return null
+    contested = { count: c['count'], notes: (Array.isArray(c['notes']) ? c['notes'] : []).filter((note): note is string => isText(note, 1000)).slice(0, 20) }
+  }
+  return {
+    url: v['url'], title: v['title'], topic: v['topic'],
+    ...(typeof v['note'] === 'string' ? { note: v['note'] } : {}),
+    places, publishers: v['publishers'], prominence: v['prominence'], firstAt: v['firstAt'], lastAt: v['lastAt'], contested,
+  }
+}
+
+const isMissing = (error: unknown): boolean => typeof error === 'object' && error !== null && (error as { code?: unknown }).code === 'ENOENT'
 
 type Files = { key: string; settings: string; published: string }
 
@@ -33,6 +88,7 @@ export function normalizeRegistry(value: string): string | null {
 
 export class BeaconPublisher {
   private key: { privateKey: KeyObject; publisherKey: string } | null = null
+  private keyLoading: Promise<{ privateKey: KeyObject; publisherKey: string }> | null = null
 
   constructor(private readonly options: { files: Files; box: SecretBox; fetchImpl?: typeof fetch; defaultRegistry?: string; now?: () => number }) {}
 
@@ -44,9 +100,13 @@ export class BeaconPublisher {
     }
   }
 
-  private write(file: string, value: unknown): void {
-    mkdirSync(dirname(file), { recursive: true })
-    writeFileSync(file, JSON.stringify(value), { mode: 0o600 })
+  private async write(file: string, value: unknown): Promise<void> {
+    await mkdir(dirname(file), { recursive: true })
+    await writeFileAtomic(file, JSON.stringify(value))
+  }
+
+  private published(): PublishedBeacon[] {
+    return parsePublished(this.load<unknown>(this.options.files.published, []))
   }
 
   registry(): string {
@@ -55,14 +115,22 @@ export class BeaconPublisher {
     return normalizeRegistry(saved ?? this.options.defaultRegistry ?? '') ?? ''
   }
 
-  state(): BeaconState {
-    return { registry: this.registry(), published: this.load<PublishedBeacon[]>(this.options.files.published, []), canSign: this.options.box.available() }
+  async state(): Promise<BeaconState> {
+    return { registry: this.registry(), published: this.published(), canSign: await this.available() }
   }
 
-  setRegistry(url: string): BeaconState {
+  private async available(): Promise<boolean> {
+    try {
+      return await this.options.box.available()
+    } catch {
+      return false
+    }
+  }
+
+  async setRegistry(url: string): Promise<BeaconState> {
     const registry = normalizeRegistry(url)
     if (registry === null) throw new Error('Use an https:// address for the beacon registry (http://localhost is allowed for testing).')
-    this.write(this.options.files.settings, { registry })
+    await this.write(this.options.files.settings, { registry })
     return this.state()
   }
 
@@ -73,29 +141,56 @@ export class BeaconPublisher {
     return { ok: true, payload: checked.payload as unknown as Record<string, unknown>, json: JSON.stringify(checked.payload, null, 2) }
   }
 
-  private signer(): { privateKey: KeyObject; publisherKey: string } {
-    if (this.key) return this.key
-    if (!this.options.box.available()) throw new Error('On-device encryption is unavailable, so a beacon key cannot be kept safely. Nothing was sent.')
-    let pem: string | null = null
-    try {
-      pem = this.options.box.open(readFileSync(this.options.files.key))
-    } catch {
-      pem = null
-    }
-    if (!pem) {
-      const pair = generateKeyPairSync('ed25519')
-      pem = pair.privateKey.export({ format: 'pem', type: 'pkcs8' }).toString()
-      mkdirSync(dirname(this.options.files.key), { recursive: true })
-      writeFileSync(this.options.files.key, this.options.box.seal(pem), { mode: 0o600 })
-    }
-    const privateKey = createPrivateKey(pem)
-    const publisherKey = (privateKey.export({ format: 'jwk' }) as { x: string }).x
-    this.key = { privateKey, publisherKey }
-    return this.key
+  /**
+   * The anonymous signing key. It is made once, only when there is no key file yet: a key the
+   * Keychain will not unlock (access denied, Keychain locked) is reported and left untouched, so
+   * beacons published with it can still be withdrawn once access is allowed. A failure is not
+   * remembered; the next attempt tries again.
+   */
+  private signer(): Promise<{ privateKey: KeyObject; publisherKey: string }> {
+    if (this.key) return Promise.resolve(this.key)
+    this.keyLoading ??= this.loadKey().then((key) => {
+      this.key = key
+      return key
+    }).finally(() => { this.keyLoading = null })
+    return this.keyLoading
   }
 
-  private signed<T>(kind: SignedRequest<T>['kind'], body: T): SignedRequest<T> {
-    const { privateKey, publisherKey } = this.signer()
+  private async loadKey(): Promise<{ privateKey: KeyObject; publisherKey: string }> {
+    if (!(await this.available())) throw new Error('On-device encryption is unavailable, so a beacon key cannot be kept safely. Nothing was sent.')
+    const file = this.options.files.key
+    let sealed: Buffer | null
+    try {
+      sealed = await readFile(file)
+    } catch (error) {
+      if (!isMissing(error)) throw new Error('This Mac\'s beacon key could not be read. Nothing was sent, and the key was left as it is.')
+      sealed = null
+    }
+    let pem: string
+    if (sealed) {
+      try {
+        pem = await this.options.box.open(sealed)
+        if (!pem) throw new Error('empty')
+      } catch {
+        throw new Error('The macOS Keychain did not unlock this Mac\'s beacon key. Allow Intoponet to use it and try again. Nothing was sent, and the key was left as it is.')
+      }
+    } else {
+      pem = generateKeyPairSync('ed25519').privateKey.export({ format: 'pem', type: 'pkcs8' }).toString()
+      await mkdir(dirname(file), { recursive: true })
+      await writeFileAtomic(file, await this.options.box.seal(pem))
+    }
+    let privateKey: KeyObject
+    try {
+      privateKey = createPrivateKey(pem)
+    } catch {
+      throw new Error('This Mac\'s beacon key is damaged. Nothing was sent, and the key was left as it is.')
+    }
+    const publisherKey = (privateKey.export({ format: 'jwk' }) as { x: string }).x
+    return { privateKey, publisherKey }
+  }
+
+  private async signed<T>(kind: SignedRequest<T>['kind'], body: T): Promise<SignedRequest<T>> {
+    const { privateKey, publisherKey } = await this.signer()
     const at = new Date((this.options.now ?? Date.now)()).toISOString()
     const nonce = randomBytes(18).toString('base64url')
     const signature = sign(null, Buffer.from(signingText(kind, body, publisherKey, at, nonce)), privateKey).toString('base64url')
@@ -113,39 +208,43 @@ export class BeaconPublisher {
       credentials: 'omit',
       signal: AbortSignal.timeout(15_000),
     })
-    const body = await response.json().catch(() => ({})) as { error?: string }
-    if (!response.ok) throw new Error(body.error ?? `The registry answered ${response.status}.`)
+    const body = await readBoundedPublicJson(response, MAX_REGISTRY_BYTES).catch(() => ({})) as unknown
+    const error = body && typeof body === 'object' ? (body as { error?: unknown }).error : undefined
+    if (!response.ok) throw new Error(typeof error === 'string' && error ? error.slice(0, 300) : `The registry answered ${response.status}.`)
     return body
   }
 
   async publish(draft: BeaconDraft): Promise<PublishedBeacon> {
     const checked = validateBeacon(draft)
     if (!checked.ok) throw new Error(checked.reason)
-    const result = await this.call('/v1/beacons', { method: 'POST', body: this.signed('publish', checked.payload) }) as { id: string }
-    const record: PublishedBeacon = { id: result.id, url: checked.payload.url, title: checked.payload.title, publishedAt: new Date((this.options.now ?? Date.now)()).toISOString(), registry: this.registry() }
-    this.write(this.options.files.published, [record, ...this.state().published.filter((item) => item.id !== record.id)])
+    const result = await this.call('/v1/beacons', { method: 'POST', body: await this.signed('publish', checked.payload) })
+    const id = result && typeof result === 'object' ? (result as { id?: unknown }).id : undefined
+    if (!isText(id, 80) || !id) throw new Error('The registry gave an unexpected answer. The beacon may have been published; check the registry before trying again.')
+    const record: PublishedBeacon = { id, url: checked.payload.url, title: checked.payload.title, publishedAt: new Date((this.options.now ?? Date.now)()).toISOString(), registry: this.registry() }
+    await this.write(this.options.files.published, [record, ...this.published().filter((item) => item.id !== record.id)])
     return record
   }
 
   async withdraw(id: string): Promise<BeaconState> {
-    const record = this.state().published.find((item) => item.id === id)
+    const record = this.published().find((item) => item.id === id)
     if (!record) throw new Error('That beacon is not one this Mac published.')
-    await this.call(`/v1/beacons/${encodeURIComponent(id)}/withdraw`, { method: 'POST', body: this.signed('withdraw', { id }) })
-    this.write(this.options.files.published, this.state().published.filter((item) => item.id !== id))
+    await this.call(`/v1/beacons/${encodeURIComponent(id)}/withdraw`, { method: 'POST', body: await this.signed('withdraw', { id }) })
+    await this.write(this.options.files.published, this.published().filter((item) => item.id !== id))
     return this.state()
   }
 
   async report(url: string, kind: BeaconReportKind, text?: string): Promise<void> {
     const canonical = canonicalBeaconUrl(url)
     if (!canonical) throw new Error('That address cannot be reported.')
-    await this.call('/v1/reports', { method: 'POST', body: this.signed('report', { url: canonical, kind, ...(text ? { text } : {}) }) })
+    await this.call('/v1/reports', { method: 'POST', body: await this.signed('report', { url: canonical, kind, ...(text ? { text } : {}) }) })
   }
 
   async read(filter: { topic?: string; bbox?: [number, number, number, number] } = {}): Promise<BeaconResource[]> {
     const params = new URLSearchParams({ limit: '60' })
     if (filter.topic) params.set('topic', filter.topic)
     if (filter.bbox) params.set('bbox', filter.bbox.join(','))
-    const body = await this.call(`/v1/beacons?${params}`, { method: 'GET' }) as { resources?: BeaconResource[] }
-    return body.resources ?? []
+    const body = await this.call(`/v1/beacons?${params}`, { method: 'GET' })
+    const resources = body && typeof body === 'object' ? (body as { resources?: unknown }).resources : undefined
+    return (Array.isArray(resources) ? resources : []).slice(0, MAX_RESOURCES).map(parseResource).filter((item) => item !== null)
   }
 }
