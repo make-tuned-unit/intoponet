@@ -141,6 +141,9 @@ function EarthSphere({ reducedMotion, dayNight, onSun }: { reducedMotion: boolea
  * frames while something on the globe gently animates by itself.
  */
 function SceneFrames({ ambientFps }: { ambientFps: number | null }) {
+  // A resize clears the canvas: re-render (and so redraw) when the size or pixel ratio changes.
+  useThree((state) => state.size)
+  useThree((state) => state.viewport.dpr)
   useInvalidateOnRender()
   useAmbientFrames(ambientFps)
   return null
