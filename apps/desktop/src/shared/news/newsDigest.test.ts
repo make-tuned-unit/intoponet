@@ -190,9 +190,11 @@ describe('rising terms', () => {
   it('stays fast on a large digest', () => {
     const many: NewsItemInput[] = []
     for (let i = 0; i < 15_000; i += 1) many.push(item(`${countries[i % 5]}-x`, `Headline ${i} mentions harbour cranes and storm number ${i % 97}`, (i % 47) + 0.5))
-    const t = performance.now()
+    // CPU time, not wall-clock: a busy machine (parallel builds, e2e runs) made this flaky.
+    const before = process.cpuUsage()
     buildNewsDigest({ sources, items: many, health: {}, now, coverage })
-    const elapsed = performance.now() - t
+    const used = process.cpuUsage(before)
+    const elapsed = (used.user + used.system) / 1000
     expect(elapsed).toBeLessThan(1500)
     ;(globalThis as { __digestMs?: number }).__digestMs = elapsed
   })
