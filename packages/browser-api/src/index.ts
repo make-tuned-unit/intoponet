@@ -16,6 +16,8 @@ export type BrowserPanelSnapshot = {
   isPrivate?: boolean
   /** The active tab is a new tab that has not loaded a page yet: the shell draws its start page. */
   isStartPage?: boolean
+  /** The page could not load: the shell draws the error page in its place (the view stays hidden). */
+  loadError?: import('./browsing').PageLoadError
 }
 
 export type NavigationIntent =
@@ -441,3 +443,4 @@ export * from './privacy'
 export * from './sitePermissions'
 export * from './beacons'
 export * from './updates'
+export * from './browsing'

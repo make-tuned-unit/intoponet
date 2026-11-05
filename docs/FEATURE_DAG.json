@@ -213,6 +213,46 @@
       "promise": "Sites ask for camera, microphone or location in a bar you answer; sign-in popups keep working; new-tab links open as tabs."
     },
     {
+      "id": "EXTERNAL_APPS",
+      "title": "Links to other apps",
+      "deps": [
+        "APP_BOOT"
+      ],
+      "tier": "core",
+      "kind": "e2e",
+      "promise": "A mailto:, tel: or zoommtg: link asks \"Open <app>?\" (Open / Cancel, Always allow per site) and never navigates the tab; files and scripts are never handed to other apps."
+    },
+    {
+      "id": "ERROR_PAGE",
+      "title": "Error page with Retry",
+      "deps": [
+        "APP_BOOT"
+      ],
+      "tier": "core",
+      "kind": "e2e",
+      "promise": "A page that cannot load shows a clear error page in the tab (offline, can't find, too slow, not secure with certificate details) with Retry and Back; the address stays in the toolbar."
+    },
+    {
+      "id": "PDF_VIEWER",
+      "title": "PDFs open in the tab",
+      "deps": [
+        "APP_BOOT"
+      ],
+      "tier": "core",
+      "kind": "e2e",
+      "promise": "PDF links open in Chromium's viewer in the tab; PDFs sent as attachments still download."
+    },
+    {
+      "id": "PAGE_APPEARANCE",
+      "title": "Light and dark pages",
+      "deps": [
+        "APP_BOOT"
+      ],
+      "tier": "core",
+      "kind": "e2e",
+      "promise": "Pages follow the Mac's light or dark appearance by default, or Light/Dark chosen in Settings, which also shows the default-browser status."
+    },
+    {
       "id": "PRIVATE_BROWSING",
       "title": "Private browsing",
       "deps": [

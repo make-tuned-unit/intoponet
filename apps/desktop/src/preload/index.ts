@@ -8,6 +8,7 @@ import { knowledgeChannels, oldsChannels, type AbsorbPreview, type AbsorbRefusal
 import { contextBridge, ipcRenderer } from 'electron'
 import { passwordChannels, type PasswordApi, type PasswordCommand, type PasswordEvent, type PasswordPageState, type PasswordVaultStatus, type SavedLogin } from '../shared/passwords'
 import { updateChannels, type UpdatesApi, type UpdateCommand, type UpdateStatus } from '@intoponet/browser-api'
+import { browsingChannels, type BrowsingApi, type BrowsingCommand, type BrowsingEvent, type BrowsingSettings, type ExternalOpenRequest } from '@intoponet/browser-api'
 import {
   CAPTURE_SCHEME,
   captureChannels,
@@ -311,4 +312,18 @@ const passwords: PasswordApi = {
   },
 }
 
-contextBridge.exposeInMainWorld('intoponet', Object.freeze({ browserHost, captures, olds, knowledge, laya, translate, privacy, sitePermissions, beacons, favicons, articles, access, updates, feedback, passwords }))
+const browsingInvoke = (command: BrowsingCommand): Promise<unknown> => ipcRenderer.invoke(browsingChannels.command, command)
+const browsing: BrowsingApi = {
+  decideExternal: async (id, decision, always) => { await browsingInvoke({ type: 'external-decide', id, decision, always: always === true }) },
+  pendingExternal: () => browsingInvoke({ type: 'external-pending' }) as Promise<ExternalOpenRequest[]>,
+  settings: () => browsingInvoke({ type: 'settings' }) as Promise<BrowsingSettings>,
+  setPageAppearance: (appearance) => browsingInvoke({ type: 'set-page-appearance', appearance }) as Promise<BrowsingSettings>,
+  makeDefaultBrowser: () => browsingInvoke({ type: 'make-default-browser' }) as Promise<BrowsingSettings>,
+  subscribe: (listener) => {
+    const handler = (_event: Electron.IpcRendererEvent, event: BrowsingEvent): void => listener(event)
+    ipcRenderer.on(browsingChannels.event, handler)
+    return () => { ipcRenderer.removeListener(browsingChannels.event, handler) }
+  },
+}
+
+contextBridge.exposeInMainWorld('intoponet', Object.freeze({ browserHost, captures, olds, knowledge, laya, translate, privacy, sitePermissions, beacons, favicons, articles, access, updates, feedback, passwords, browsing }))

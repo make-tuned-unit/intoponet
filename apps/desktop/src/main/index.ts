@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { readFile } from 'node:fs/promises'
-import { appendFileSync, existsSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
+import { appendFileSync, existsSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import {
   app,
   BrowserWindow,
@@ -20,6 +20,8 @@ import {
   dialog,
   nativeImage,
   webFrameMain,
+  net,
+  nativeTheme,
 } from 'electron'
 import type { IpcMainInvokeEvent, MenuItemConstructorOptions } from 'electron'
 import { pendingWrite, writeFileAtomic, writeFileAtomicSync } from './atomicFile'
@@ -34,6 +36,12 @@ import { parsePasswordCommand, passwordChannels, type PasswordEvent } from '../s
 import { parsePasswordPageMessage, passwordPageChannels } from '../shared/passwordPage'
 import { updateChannels, parseUpdateCommand } from '@intoponet/browser-api'
 import { browserUserAgent } from './browserUserAgent'
+import { browsingChannels, parseBrowsingCommand, type BrowsingEvent, type BrowsingSettings, type PageLoadError } from '@intoponet/browser-api'
+import { ExternalOpenBroker, classifyExternalUrl } from './externalOpen'
+import { CertificateErrorMemo, classifyLoadError, isCertificateError, showsErrorPage, summarizeCertificate } from './errorPage'
+import { IncomingOpenQueue, LocalFileGrants, incomingFileTarget, incomingTargetsFromArgs, incomingWebUrl, type IncomingTarget } from './incomingOpen'
+import { PageAppearanceController, parsePageAppearanceFile } from './pageAppearance'
+import { browserContextExtras, searchSelectionLabel } from './browserContextMenu'
 
 declare const __INTOPONET_MAC_UPDATE_URL__: string
 
@@ -46,6 +54,37 @@ if (!app.isReady()) {
     'WebContentsForceDark,WebContentsForceDarkVariations',
   )
 }
+
+// ---- Links and files from other apps (default browser, Open With, a second launch) ----
+/** What arrived before the window was ready opens once it is (see whenReady). */
+const incomingOpens = new IncomingOpenQueue()
+/** Local files opened from Finder: the only files a tab may read (see servePageFiles). */
+const localFileGrants = new LocalFileGrants()
+const readSmallFile = (path: string): Buffer => {
+  if (statSync(path).size > 64_000) throw new Error('Too large for a saved link.')
+  return readFileSync(path)
+}
+if (!app.requestSingleInstanceLock()) {
+  // Intoponet is already open (with this profile): it opens what this launch was given.
+  app.quit()
+} else {
+  app.on('second-instance', (_event, argv, workingDirectory) => {
+    for (const target of incomingTargetsFromArgs(argv, workingDirectory, readSmallFile)) incomingOpens.push(target)
+    if (window && !window.isDestroyed()) {
+      if (window.isMinimized()) window.restore()
+      window.focus()
+    }
+  })
+}
+app.on('open-url', (event, url) => {
+  event.preventDefault()
+  const web = incomingWebUrl(url)
+  if (web) incomingOpens.push({ kind: 'web', url: web })
+})
+app.on('open-file', (event, path) => {
+  event.preventDefault()
+  incomingOpens.push(incomingFileTarget(path, readSmallFile))
+})
 import { cachedPublicField, publicFieldStatus, startPublicFieldRefresh } from './public-field'
 import { startNewsService } from './news/newsService'
 import { openDigestBuilder } from './news/openDigestBuilder'
@@ -156,7 +195,18 @@ type OpenTab = {
   view: WebContentsView
   /** A new tab that has not loaded a page: its view stays hidden and the shell draws the start page. */
   start?: boolean
+  /** The page could not load: its view stays hidden and the shell draws the error page (errorPage.ts). */
+  loadError?: PageLoadError
+  /** An offline error already retried once by itself (reset when a page loads). */
+  autoRetried?: boolean
 }
+
+/** Asks before a page opens another app (externalOpen.ts); null until the app is ready. */
+let externalOpener: ExternalOpenBroker | null = null
+/** Pages follow the Mac's light/dark appearance unless Settings says otherwise (pageAppearance.ts). */
+const pageAppearance = new PageAppearanceController('system')
+/** Certificate problems, kept until the failed load that follows shows them. */
+const certificateErrors = new CertificateErrorMemo()
 
 type PersistentBrowserState = {
   version: 2
@@ -323,6 +373,7 @@ function panelState(): BrowserPanelSnapshot {
     isLoading: contents.isLoading(),
     isVisible: pageAttached,
     isPrivate: privateViews.has(pageView),
+    ...loadErrorOf(pageView),
   }
 }
 
@@ -502,14 +553,19 @@ let pageHeld = false
 
 function setPageHeld(held: boolean): void {
   pageHeld = held
-  if (pageView && pageAttached) pageView.setVisible(!held && !isStartView(pageView))
+  if (pageView && pageAttached) pageView.setVisible(pageViewShown(pageView))
+}
+
+/** The page view is drawn unless the shell draws over it (start page, error page, held). */
+function pageViewShown(view: WebContentsView): boolean {
+  return !pageHeld && !isStartView(view) && !openTabs.some((tab) => tab.view === view && tab.loadError)
 }
 
 function attachPageView(): void {
   if (!window || !pageView || pageAttached) return
   window.contentView.addChildView(pageView)
   // A start-page tab keeps its (blank) view hidden so the shell's start page shows and takes input.
-  pageView.setVisible(!isStartView(pageView) && !pageHeld)
+  pageView.setVisible(pageViewShown(pageView))
   applyPageViewBounds()
   pageAttached = true
   updateWindowButtons()
@@ -721,6 +777,55 @@ function wirePasswords(): void {
   })
 }
 
+// ---- The in-tab error page (errorPage.ts says why it is drawn by the shell) ----
+
+function loadErrorOf(view: WebContentsView): { loadError?: PageLoadError } {
+  const error = openTabs.find((tab) => tab.view === view)?.loadError
+  return error ? { loadError: error } : {}
+}
+
+/** Show (or, with null, take away) a tab's error page. */
+function setLoadError(view: WebContentsView, error: PageLoadError | null): void {
+  const tab = openTabs.find((item) => item.view === view)
+  if (!tab || (!error && !tab.loadError)) return
+  if (error) tab.loadError = error
+  else {
+    delete tab.loadError
+    tab.autoRetried = false
+  }
+  if (pageView === view && pageAttached) view.setVisible(pageViewShown(view))
+  if (pageView === view) emitPanelState()
+  // "Offline" while the Mac reports a network (it changed under the load): one quiet retry.
+  if (error?.autoRetry && net.isOnline() && !tab.autoRetried) {
+    tab.autoRetried = true
+    setTimeout(() => { if (tab.loadError?.autoRetry && !viewGone(tab.view)) tab.view.webContents.reload() }, 3_000).unref?.()
+  }
+  watchForNetwork()
+}
+
+let networkWatch: ReturnType<typeof setInterval> | null = null
+let networkWasOnline = true
+
+/** While a tab shows "No internet connection", reload it when the Mac is back online. */
+function watchForNetwork(): void {
+  const waiting = openTabs.some((tab) => tab.loadError?.autoRetry)
+  if (!waiting) {
+    if (networkWatch) clearInterval(networkWatch)
+    networkWatch = null
+    return
+  }
+  if (networkWatch) return
+  networkWasOnline = net.isOnline()
+  networkWatch = setInterval(() => {
+    const online = net.isOnline()
+    if (online && !networkWasOnline) {
+      for (const tab of openTabs) if (tab.loadError?.autoRetry && !viewGone(tab.view)) tab.view.webContents.reload()
+    }
+    networkWasOnline = online
+  }, 2_000)
+  networkWatch.unref?.()
+}
+
 function navigationFailureReason(code: number, description: string): string {
   if (code <= -200 && code >= -219) {
     return `The site certificate was not trusted (${description}). The page was not loaded.`
@@ -734,6 +839,13 @@ function wireDownloadSession(partition = 'persist:intoponet-default'): void {
   // Camera, microphone, location, notifications and clipboard reading are asked in a bar under the toolbar;
   // harmless ones (fullscreen, writing to the clipboard) are granted; everything else is refused.
   browsing.setPermissionRequestHandler((contents, permission, callback, details) => {
+    // A link to another app that reached Chromium (a redirect, a frame): asked like any other.
+    if (permission === 'openExternal') {
+      callback(false)
+      const externalURL = (details as { externalURL?: string }).externalURL
+      if (externalURL) routeExternal(contents, externalURL)
+      return
+    }
     if (!sitePermissions) return callback(false)
     const mediaTypes = (details as { mediaTypes?: string[] }).mediaTypes ?? []
     sitePermissions.request({ origin: originOf(details.requestingUrl || contents.getURL()), kinds: kindsFor(permission, mediaTypes), isPrivate, owner: contents.id }, callback)
@@ -743,11 +855,32 @@ function wireDownloadSession(partition = 'persist:intoponet-default'): void {
     const kinds = kindsFor(permission, mediaType === 'video' ? ['video'] : mediaType === 'audio' ? ['audio'] : [])
     return sitePermissions?.check(originOf(requestingOrigin), kinds, isPrivate) === true
   })
-  app.on('certificate-error', (event, webContents, _url, _error, _certificate, callback) => {
-    rejectCertificateErrorForSession(event, webContents, browsing, callback)
+  app.on('certificate-error', (event, webContents, url, error, certificate, callback, isMainFrame) => {
+    // Refused, as before; the error page shows what was wrong with the certificate.
+    if (rejectCertificateErrorForSession(event, webContents, browsing, callback) && isMainFrame !== false) {
+      certificateErrors.remember(webContents.id, url, summarizeCertificate(certificate, error))
+    }
   })
+  servePageFiles(browsing)
+  browsing.setSpellCheckerEnabled(true)
+  if (process.platform !== 'darwin') {
+    // macOS uses its own spell checker and languages; elsewhere, the person's preferred languages.
+    const available = new Set(browsing.availableSpellCheckerLanguages)
+    const preferred = app.getPreferredSystemLanguages().flatMap((code) => [code, code.split('-')[0] ?? code]).filter((code) => available.has(code))
+    if (preferred.length) browsing.setSpellCheckerLanguages([...new Set(preferred)].slice(0, 3))
+  }
   browsing.on('will-download', (_event, item) => {
     const requestedFilename = item.getFilename() || 'download'
+    // "Save Link As": macOS asks where to save it.
+    if (saveAsRequests.delete(item.getURLChain()[0] ?? item.getURL())) {
+      item.setSaveDialogOptions({ title: 'Save Link As', defaultPath: join(app.getPath('downloads'), sanitizeDownloadFilename(requestedFilename)) })
+      item.once('done', (_download, state) => {
+        const path = item.getSavePath()
+        if (!path) return
+        emit({ type: 'download-finished', filename: path.split('/').pop() || requestedFilename, path, state })
+      })
+      return
+    }
     let reservation: ReturnType<typeof reserveDownloadPath> | null = null
     try {
       reservation = reserveDownloadPath(app.getPath('downloads'), requestedFilename)
@@ -771,26 +904,31 @@ function wireDownloadSession(partition = 'persist:intoponet-default'): void {
   })
 }
 
-function preferReadablePageTheme(contents: Electron.WebContents): void {
-  const apply = async (): Promise<void> => {
-    try {
-      if (!contents.debugger.isAttached()) {
-        contents.debugger.attach('1.3')
-      }
-      await contents.debugger.sendCommand('Emulation.setAutoDarkModeOverride', {
-        enabled: false,
-      })
-      await contents.debugger.sendCommand('Emulation.setEmulatedMedia', {
-        features: [{ name: 'prefers-color-scheme', value: 'light' }],
-      })
-    } catch {
-      // DevTools may already own the debugger session.
-    }
-  }
-  void apply()
-  contents.on('did-start-navigation', () => {
-    void apply()
+/** Links saved with "Save Link As", waiting for their download to start. */
+const saveAsRequests = new Set<string>()
+
+/**
+ * file:// in a tab: only files opened from Finder or another app (and a saved page's own
+ * "_files" folder) are served; Electron would otherwise let a local page read any file.
+ */
+function servePageFiles(browsing: Electron.Session): void {
+  browsing.protocol.handle('file', (request) => {
+    let path = ''
+    try { path = fileURLToPath(request.url) } catch { /* not a file path */ }
+    if (!path || !localFileGrants.allows(path)) return new Response('This file was not opened in Intoponet.', { status: 403, headers: { 'content-type': 'text/plain' } })
+    return net.fetch(pathToFileURL(path).href, { bypassCustomProtocolHandlers: true })
   })
+}
+
+/** A page (or its popup) wants to open another app: ask first (externalOpen.ts). */
+function routeExternal(contents: Electron.WebContents, href: string): void {
+  if (!externalOpener || contents.isDestroyed()) return
+  const isPrivate = contents.session === session.fromPartition(PRIVATE_PARTITION)
+  const result = externalOpener.request({ href, pageUrl: contents.getURL(), isPrivate, owner: contents.id })
+  if (result === 'no-app' && pageView && !viewGone(pageView) && pageView.webContents === contents) {
+    const target = classifyExternalUrl(href)
+    if (target.kind === 'external') emit({ type: 'navigation-failed', url: `${target.scheme}:`, reason: `No app on this Mac opens ${target.scheme}: links.` })
+  }
 }
 
 function safeFavicon(value: string): string {
@@ -840,7 +978,7 @@ function leaveStartPage(view: WebContentsView): void {
   const tab = openTabs.find((item) => item.view === view)
   if (!tab?.start) return
   tab.start = false
-  if (pageView === view && pageAttached && !pageHeld) view.setVisible(true)
+  if (pageView === view && pageAttached) view.setVisible(pageViewShown(view))
   emitTabs()
   if (pageView === view) emitPanelState()
 }
@@ -946,7 +1084,11 @@ const crashRecovery = new CrashRecoveryPolicy()
 /** A popup window opened by a page: http(s) only, nested popups become tabs, closes with its page. */
 function wirePopupWindow(child: BrowserWindow, opener: WebContentsView): void {
   bindPermissionOwnerLifecycle(child.webContents, (owner) => sitePermissions?.dropOwner(owner))
-  child.webContents.on('will-navigate', (event, url) => { if (!safeHttpUrl(url)) event.preventDefault() })
+  child.webContents.on('will-navigate', (event, url) => {
+    if (safeHttpUrl(url)) return
+    event.preventDefault()
+    routeExternal(child.webContents, url)
+  })
   const childContentsId = child.webContents.id
   child.webContents.setWindowOpenHandler(({ url, disposition, features }) => {
     const plan = nestedPopupDecision({ url, disposition, features }, popupLimiter, childContentsId)
@@ -962,8 +1104,9 @@ function wirePopupWindow(child: BrowserWindow, opener: WebContentsView): void {
   bindPopupCloseWithOwner(child, opener.webContents)
 }
 
-function createBrowserTab(urlValue: string, activate = true, isPrivate = privateMode): WebContentsView | null {
-  const url = safeHttpUrl(urlValue)
+function createBrowserTab(urlValue: string, activate = true, isPrivate = privateMode, localFile = false): WebContentsView | null {
+  // A local file only when it was opened from Finder or another app (see openIncoming).
+  const url = safeHttpUrl(urlValue) ?? (localFile && urlValue.startsWith('file:') ? new URL(urlValue) : null)
   if (!url) return null
   makeRoomForTab()
   const view = buildView(isPrivate)
@@ -1027,12 +1170,71 @@ function contextMenuTemplate(view: WebContentsView, params: Electron.ContextMenu
   }
   if (has('copy-image') || has('copy-image-address') || has('save-image')) items.push({ type: 'separator' })
 
+  items.push(...moreContextItems(view, params))
+
   if (has('back')) items.push({ label: 'Back', click: () => view.webContents.navigationHistory.goBack() })
   if (has('forward')) items.push({ label: 'Forward', click: () => view.webContents.navigationHistory.goForward() })
   if (has('reload')) items.push({ label: 'Reload', click: () => view.webContents.reload() })
   return items.filter((item, index) => item.type !== 'separator' || (
     index > 0 && index < items.length - 1 && items[index - 1]?.type !== 'separator'
   ))
+}
+
+/**
+ * Spelling suggestions, Search Web for the selection, Open Link in Private Tab, Save Link As,
+ * Open Image in New Tab. Spelling goes first in the menu, as in other Mac apps.
+ */
+function moreContextItems(view: WebContentsView, params: Electron.ContextMenuParams): MenuItemConstructorOptions[] {
+  const isPrivate = privateViews.has(view)
+  const extras = browserContextExtras({
+    linkURL: params.linkURL,
+    srcURL: params.srcURL,
+    mediaType: params.mediaType,
+    isEditable: params.isEditable,
+    selectionText: params.selectionText,
+    misspelledWord: params.misspelledWord,
+    dictionarySuggestions: params.dictionarySuggestions,
+    isPrivate,
+  })
+  const items: MenuItemConstructorOptions[] = []
+  const linkUrl = safeHttpUrl(params.linkURL)?.toString()
+  const imageUrl = safeHttpUrl(params.srcURL)?.toString()
+  const openInTab = (url: string, privately: boolean): void => {
+    const tab = createBrowserTab(url, true, privately)
+    if (tab) void tab.webContents.loadURL(url).catch(() => undefined)
+  }
+  if (extras.openLinkInPrivateTab && linkUrl) items.push({ label: 'Open Link in Private Tab', click: () => openInTab(linkUrl, true) })
+  if (extras.saveLinkAs && linkUrl) {
+    items.push({ label: 'Save Link As…', click: () => {
+      saveAsRequests.add(linkUrl)
+      view.webContents.downloadURL(linkUrl)
+    } })
+  }
+  if (extras.openImageInNewTab && imageUrl) items.push({ label: 'Open Image in New Tab', click: () => openInTab(imageUrl, isPrivate) })
+  if (extras.searchSelection) {
+    const query = extras.searchSelection
+    items.push({ label: searchSelectionLabel(query), click: () => openInTab(resolveNavigationIntent({ kind: 'search', value: query }), isPrivate) })
+  }
+  if (items.length) items.push({ type: 'separator' })
+  return items
+}
+
+/** Suggestions for a misspelled word, then Add to Dictionary: they go at the top of the menu. */
+function spellingContextItems(view: WebContentsView, params: Electron.ContextMenuParams): MenuItemConstructorOptions[] {
+  const extras = browserContextExtras({
+    linkURL: '', srcURL: '', mediaType: 'none', selectionText: '', isPrivate: false,
+    isEditable: params.isEditable,
+    misspelledWord: params.misspelledWord,
+    dictionarySuggestions: params.dictionarySuggestions,
+  })
+  if (!extras.spelling) return []
+  const { word, suggestions } = extras.spelling
+  const items: MenuItemConstructorOptions[] = suggestions.length
+    ? suggestions.map((suggestion) => ({ label: suggestion, click: () => view.webContents.replaceMisspelling(suggestion) }))
+    : [{ label: 'No Guesses Found', enabled: false }]
+  items.push({ label: 'Add to Dictionary', click: () => view.webContents.session.addWordToSpellCheckerDictionary(word) })
+  items.push({ type: 'separator' })
+  return items
 }
 
 function buildView(isPrivate = privateMode): WebContentsView {
@@ -1043,6 +1245,9 @@ function buildView(isPrivate = privateMode): WebContentsView {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      // PDF links open in Chromium's built-in viewer without `plugins: true` (Electron 45; the
+      // PDF_VIEWER feature check proves it), so plugins stay off.
+      spellcheck: true,
       session: session.fromPartition(isPrivate ? PRIVATE_PARTITION : 'persist:intoponet-default'),
       // The sign-in helper for saved passwords; private tabs never get it.
       ...(isPrivate ? {} : { preload: join(__dirname, '../preload/page.js') }),
@@ -1050,7 +1255,8 @@ function buildView(isPrivate = privateMode): WebContentsView {
   })
   if (isPrivate) privateViews.add(view)
 
-  view.setBackgroundColor('#ffffff')
+  // Behind a page before it paints: light, or dark when pages are dark (no white flash at night).
+  view.setBackgroundColor(pageAppearance.current === 'dark' || (pageAppearance.current === 'system' && nativeTheme.shouldUseDarkColors) ? '#202124' : '#ffffff')
   view.webContents.setWebRTCIPHandlingPolicy(WEBRTC_POLICY)
   view.webContents.on('before-mouse-event', (_event, input) => {
     if (shouldCloseTabDockFromNativeMouse({
@@ -1101,7 +1307,7 @@ function buildView(isPrivate = privateMode): WebContentsView {
   })
   view.webContents.on('context-menu', (event, params) => {
     if (viewGone(view) || !window || window.isDestroyed()) return
-    const template = contextMenuTemplate(view, params)
+    const template = [...spellingContextItems(view, params), ...contextMenuTemplate(view, params)]
     if (template.length === 0) return
     event.preventDefault()
     Menu.buildFromTemplate(template).popup({ window })
@@ -1145,8 +1351,13 @@ function buildView(isPrivate = privateMode): WebContentsView {
         navigationId: `${view.webContents.id}:${generation}` })
     }).catch(() => { /* No activity is recorded when rating extraction fails. */ })
   })
-  preferReadablePageTheme(view.webContents)
+  pageAppearance.watch(view.webContents)
   view.webContents.setWindowOpenHandler(({ url, disposition, features }) => {
+    // A link to another app (mailto:, zoommtg:…) opened in a new window: asked, never a window.
+    if (classifyExternalUrl(url).kind === 'external') {
+      routeExternal(view.webContents, url)
+      return { action: 'deny' }
+    }
     const plan = popupDecision({ url, disposition, features }, popupLimiter, view.webContents.id)
     if (plan.action === 'deny') {
       emit({ type: 'navigation-failed', url, reason: plan.reason })
@@ -1167,6 +1378,7 @@ function buildView(isPrivate = privateMode): WebContentsView {
   viewContentsIds.set(view, contentsId)
   view.webContents.once('destroyed', () => {
     popupLimiter.forget(contentsId)
+    externalOpener?.dropOwner(contentsId)
     passwords?.forget(contentsId)
     // The page closed itself (window.close()) or its contents went away: drop its tab, unless the
     // whole window is closing (then the tabs are kept to be restored next launch).
@@ -1176,7 +1388,10 @@ function buildView(isPrivate = privateMode): WebContentsView {
   })
   bindPermissionOwnerLifecycle(view.webContents, (owner) => sitePermissions?.dropOwner(owner))
   view.webContents.on('will-navigate', (event, url) => {
-    if (!safeHttpUrl(url)) event.preventDefault()
+    if (safeHttpUrl(url)) return
+    event.preventDefault()
+    // mailto:, tel:, zoommtg:… ask "Open <app>?"; file:, javascript: and the like stay refused.
+    routeExternal(view.webContents, url)
   })
   view.webContents.on('did-start-loading', () => {
     if (pageView === view) emitPanelState()
@@ -1211,6 +1426,7 @@ function buildView(isPrivate = privateMode): WebContentsView {
     void applyCosmeticFilters(view.webContents, { only: view.webContents.mainFrame })
   })
   view.webContents.on('did-navigate', (_event, url) => {
+    setLoadError(view, null)
     rememberTab(view)
     protectionPages.commitNavigation(view.webContents.id, url)
     passwords?.navigated(view.webContents.id)
@@ -1259,6 +1475,12 @@ function buildView(isPrivate = privateMode): WebContentsView {
         validatedUrl,
         view.webContents.getURL() || tab?.url || '',
       )
+      // The tab shows its error page (with Retry) instead of a passing banner.
+      if (showsErrorPage(code, validatedUrl)) {
+        const certificate = isCertificateError(code) ? certificateErrors.take(view.webContents.id, validatedUrl) : undefined
+        setLoadError(view, classifyLoadError({ code, description, url: validatedUrl, online: net.isOnline(), ...(certificate ? { certificate } : {}) }))
+        return
+      }
       if (code === -3 || pageView !== view) return
       emit({
         type: 'navigation-failed',
@@ -1286,6 +1508,7 @@ function buildView(isPrivate = privateMode): WebContentsView {
     const replacement = buildView(privateViews.has(view))
     tab.view = replacement
     tab.url = crashedUrl
+    delete tab.loadError
     if (activeTabId === tab.id) {
       pageView = replacement
       lastKnownUrl = crashedUrl
@@ -1708,6 +1931,78 @@ function createWindow(): void {
   }
 }
 
+// ---- Browsing: other apps' links, default browser, page appearance ----
+
+function emitBrowsing(event: BrowsingEvent): void {
+  if (window && !window.isDestroyed()) window.webContents.send(browsingChannels.event, event)
+}
+
+function browsingSettings(): BrowsingSettings {
+  return {
+    pageAppearance: pageAppearance.current,
+    defaultBrowser: {
+      isDefault: app.isDefaultProtocolClient('http') && app.isDefaultProtocolClient('https'),
+      // Only the installed app: from a development build macOS would register Electron itself.
+      canSet: process.platform === 'darwin' && app.isPackaged,
+    },
+  }
+}
+
+function wireBrowsing(): void {
+  const settingsFile = join(app.getPath('userData'), 'browsing-settings.json')
+  const rememberedFile = join(app.getPath('userData'), 'external-apps.json')
+  const readJson = (path: string): unknown => {
+    try { return JSON.parse(readFileSync(path, 'utf8')) as unknown } catch { return null }
+  }
+  pageAppearance.set(parsePageAppearanceFile(readJson(settingsFile)))
+  externalOpener = new ExternalOpenBroker({
+    emit: emitBrowsing,
+    openExternal: (href) => shell.openExternal(href, { activate: true }),
+    appName: (href) => {
+      try { return app.getApplicationNameForProtocol(href).replace(/\.app$/i, '') } catch { return '' }
+    },
+    remembered: readJson(rememberedFile),
+    save: (data) => { trackedWrite(rememberedFile, data).catch((error: unknown) => console.error('Could not save app links:', error)) },
+  })
+  handleFromShell(browsingChannels.command, async (_event, value: unknown) => {
+    const command = parseBrowsingCommand(value)
+    switch (command.type) {
+      case 'external-decide':
+        externalOpener?.decide(command.id, command.decision, command.always)
+        return null
+      case 'external-pending':
+        return externalOpener?.list() ?? []
+      case 'settings':
+        return browsingSettings()
+      case 'set-page-appearance':
+        pageAppearance.set(command.appearance)
+        await trackedWrite(settingsFile, JSON.stringify({ pageAppearance: command.appearance })).catch(() => undefined)
+        emitBrowsing({ type: 'settings', settings: browsingSettings() })
+        return browsingSettings()
+      case 'make-default-browser':
+        if (browsingSettings().defaultBrowser.canSet) {
+          // macOS asks the person to confirm (keep the current browser, or use Intoponet).
+          app.setAsDefaultProtocolClient('http')
+          app.setAsDefaultProtocolClient('https')
+        }
+        return browsingSettings()
+    }
+  })
+}
+
+/** A link or file from another app: a new tab, with the window brought forward. */
+function openIncoming(target: IncomingTarget): void {
+  if (!window || window.isDestroyed()) createWindow()
+  if (target.kind === 'file') localFileGrants.grant(target.path)
+  const view = createBrowserTab(target.url, true, privateMode, target.kind === 'file')
+  if (view) void view.webContents.loadURL(target.url).catch(() => undefined)
+  if (window && !window.isDestroyed()) {
+    if (window.isMinimized()) window.restore()
+    window.show()
+    window.focus()
+  }
+}
+
 /** One part of the app failing to start (a damaged settings file, say) must not keep the window from opening. */
 function startup(part: string, run: () => void): void {
   try {
@@ -2018,6 +2313,7 @@ app.whenReady().then(async () => {
     handleFromShell(updateChannels.command, (_event, value: unknown) => controller.handle(parseUpdateCommand(value)))
   })
   app.once('will-quit', () => { void translateService?.close() })
+  startup('browsing', wireBrowsing)
   createWindow()
   startup('automatic updates', () => updateController?.startAutomatic())
   if (restoredState?.wasVisible && pageView && lastKnownUrl) {
@@ -2025,6 +2321,11 @@ app.whenReady().then(async () => {
     void pageView.webContents.loadURL(lastKnownUrl).catch(() => undefined)
   }
   emitTabs()
+  // Links and files handed over by other apps (and this launch's own arguments) open as tabs now.
+  startup('opening links from other apps', () => {
+    for (const target of incomingTargetsFromArgs(process.argv, process.cwd(), readSmallFile)) incomingOpens.push(target)
+    incomingOpens.ready(openIncoming)
+  })
 
   startup('public field', () => {
     // Cached field now, then live refreshes (earthquakes/natural events every
