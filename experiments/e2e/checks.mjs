@@ -122,6 +122,7 @@ async function browserKeys(ctx) {
     panel = await state()
     expect(open.length === 2 && open.some((tab) => tab.url.includes('/second')), `⌘⇧T did not reopen the closed tab (tabs: ${JSON.stringify(open)}).`)
     expect(panel.url.includes('/second'), 'The reopened tab is not the one shown.')
+    await ctx.wait(`window.intoponet.browserHost.getTabs().then((t) => t.some((tab) => tab.active && !tab.loading))`, 10_000, 'the reopened tab to finish loading')
 
     // ⌘= zooms the page; the toolbar shows the zoom and it is kept for the site.
     await chord('/second', '=')

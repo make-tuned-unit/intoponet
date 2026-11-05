@@ -1812,9 +1812,17 @@ function applySiteZoom(view: WebContentsView, url: string): void {
   if (viewGone(view)) return
   void view.webContents.setVisualZoomLevelLimits(1, 3).catch(() => undefined)
   if (privateViews.has(view) || !zoomStore) return
+  // Zoomed while this page was still loading: that choice wins, and is kept for the site.
+  if (zoomedWhileLoading.delete(view)) {
+    zoomStore.set(url, view.webContents.getZoomFactor())
+    return
+  }
   const factor = zoomStore.get(url)
   if (Math.abs(view.webContents.getZoomFactor() - factor) > 0.001) view.webContents.setZoomFactor(factor)
 }
+
+/** Pages zoomed by the person before their current navigation committed (see applySiteZoom). */
+const zoomedWhileLoading = new WeakSet<WebContentsView>()
 
 /** Save Page As…: the page with its images and styles, into Downloads unless another place is chosen. */
 async function savePageAs(): Promise<void> {
@@ -2098,6 +2106,7 @@ async function handleBrowserCommand(
       const contents = pageView.webContents
       const next = command.action === 'reset' ? 1 : stepZoom(contents.getZoomFactor(), command.action)
       contents.setZoomFactor(next)
+      if (contents.isLoading()) zoomedWhileLoading.add(pageView)
       // Remembered for the site (100% forgets it); private tabs leave nothing behind.
       if (!privateViews.has(pageView)) zoomStore?.set(contents.getURL(), next)
       break
