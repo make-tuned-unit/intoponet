@@ -62,6 +62,7 @@ import {
 } from './tabDockBounds'
 import { pageShortcutForInput, shellShortcutForInput, tabCycleForInput, type PageShortcut } from './shellShortcuts'
 import { TRACKER_STUB_SCRIPT } from './trackerStubs'
+import { addressMenuTemplate, pasteAndGoText } from './addressMenu'
 import { bindPermissionOwnerLifecycle, kindsFor, originOf, SitePermissionBroker, SitePermissionStore } from './sitePermissions'
 import { bindPopupCloseWithOwner, nestedPopupDecision, popupDecision, popupWindowOptions, PopupLimiter } from './popups'
 import { rejectCertificateErrorForSession } from './browserCertificatePolicy'
@@ -845,6 +846,23 @@ function leaveStartPage(view: WebContentsView): void {
   if (pageView === view) emitPanelState()
 }
 
+/** The address bar's own menu; "Paste and Go" reads the clipboard here, only when chosen. */
+async function showAddressMenu(hasSelection: boolean): Promise<void> {
+  const canPasteAndGo = pasteAndGoText(await clipboard.readText()) !== null
+  if (!window || window.isDestroyed()) return
+  const template = addressMenuTemplate({
+    hasSelection,
+    canPasteAndGo,
+    onPasteAndGo: () => {
+      void Promise.resolve(clipboard.readText()).then((raw) => {
+        const text = pasteAndGoText(raw)
+        if (text) emit({ type: 'paste-and-go', text })
+      })
+    },
+  })
+  Menu.buildFromTemplate(template).popup({ window })
+}
+
 function emitTabs(): void {
   emit({ type: 'tabs', tabs: tabSnapshots() })
 }
@@ -1392,6 +1410,12 @@ async function handleBrowserCommand(
   switch (command.type) {
     case 'open': {
       const url = resolveNavigationIntent(command.intent)
+      // ⌘↵ / ⌥↵ from the address bar: always a fresh tab, behind or in front.
+      if (command.disposition) {
+        const view = createBrowserTab(url, command.disposition === 'foreground-tab')
+        if (view) await view.webContents.loadURL(url)
+        break
+      }
       // From a new tab's start page, the page opens in that same tab.
       if (pageView && pageAttached && isStartView(pageView)) {
         const view = pageView
@@ -1566,6 +1590,9 @@ async function handleBrowserCommand(
       return publicFieldStatus()
     case 'get-news-digest':
       return newsService?.latest() ?? null
+    case 'address-menu':
+      await showAddressMenu(command.hasSelection)
+      return null
     case 'get-place-trends':
       return newsService ? JSON.stringify(await newsService.trends({ countryCode: command.countryCode, ...(command.name ? { name: command.name } : {}), ...(command.aliases ? { aliases: command.aliases } : {}), ...(command.geonameId ? { geonameId: command.geonameId } : {}) })) : null
   }

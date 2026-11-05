@@ -3,6 +3,8 @@ import { UpdateBanner } from './settings/UpdateBanner'
 import type {
   BrowserPanelSnapshot,
   FindInPageResult,
+  NavigationIntent,
+  OpenDisposition,
   PageTabSnapshot,
   ProtectionSnapshot,
   PublicFieldStatus,
@@ -151,7 +153,9 @@ import { MinePanel } from './globe/MinePanel'
 import { normalizeLanguage, type AbsorbScope, type KnowledgeRecord, type OldsNode, type OldsQuery } from '@intoponet/browser-api'
 import { AbsorbSheet, type AbsorbState } from './knowledge/AbsorbSheet'
 import { KnowledgeSheet } from './knowledge/KnowledgeSheet'
-import { PlaceSuggestions, placeMatches } from './globe/PlaceSuggestions'
+import { placeMatches } from './globe/PlaceSuggestions'
+import { OmniboxSuggestions, useOmnibox } from './OmniboxSuggestions'
+import type { OmniboxSuggestion } from './omnibox'
 import { poseToward, radiusForSpan } from './globe/flyTo'
 import {
   filterGlobeSignals,
@@ -368,7 +372,6 @@ export function App() {
   const [knowledgeRecords, setKnowledgeRecords] = useState<KnowledgeRecord[]>([])
   const [hoveredMarkerId, setHoveredMarkerId] = useState<string | null>(null)
   const [focusedPlace, setFocusedPlace] = useState<Place | null>(null)
-  const [placeActive, setPlaceActive] = useState(-1)
   const [placesDismissed, setPlacesDismissed] = useState(false)
   const [clock, setClock] = useState(() => Date.now())
   const [globeProjection] = useState(createGlobeProjection)
@@ -1146,13 +1149,13 @@ export function App() {
   }
 
   /** Shared by the field launcher and the full-screen dock search. */
-  const navigateFromLauncher = (raw: string): Promise<void> => {
+  const navigateFromLauncher = (raw: string, options: { intent?: NavigationIntent; disposition?: OpenDisposition } = {}): Promise<void> => {
     const value = raw.trim()
     if (!value) return Promise.resolve()
     setError('')
     let intent: ReturnType<typeof inferUnifiedLauncherIntent>
     try {
-      intent = inferUnifiedLauncherIntent(value, launcherTopics)
+      intent = options.intent ?? inferUnifiedLauncherIntent(value, launcherTopics)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Could not understand that search or address.')
       return Promise.reject(reason)
@@ -1164,7 +1167,7 @@ export function App() {
       return Promise.resolve()
     }
     if (intent.kind === 'search') setResearchTopic(intent.value)
-    return window.intoponet.browserHost.open(intent).catch((reason: unknown) => {
+    return window.intoponet.browserHost.open(intent, options.disposition).catch((reason: unknown) => {
       setError(reason instanceof Error ? reason.message : 'Navigation failed.')
       throw reason
     })
@@ -1172,11 +1175,7 @@ export function App() {
 
   const submit = (event: FormEvent): void => {
     event.preventDefault()
-    const place = placeActive >= 0 ? placeMatch.places[placeActive] : undefined
-    if (place) {
-      flyToPlace(place)
-      return
-    }
+    if (omnibox.submit()) return
     const submittedDraft = query
     void navigateFromLauncher(submittedDraft).then(() => {
       if (input.current?.value === submittedDraft) setQuery('')
@@ -2162,9 +2161,6 @@ export function App() {
     () => (placesDismissed ? { places: [], preferred: -1 } : placeMatches(query)),
     [query, placesDismissed],
   )
-  useEffect(() => {
-    setPlaceActive(placeMatch.preferred)
-  }, [placeMatch])
 
   const flyToPoint = (lat: number, lon: number, radius: number): void => {
     const nextPose = poseToward(pose, lat, lon, radius)
@@ -2228,6 +2224,47 @@ export function App() {
     const middle = place.kind === 'country' ? countryShape(place.countryCode) : null
     flyToPoint(middle?.lat ?? place.lat, middle?.lon ?? place.lon, radiusForSpan(place.radiusKm * (place.kind === 'city' ? 1.4 : 2.4)))
   }
+
+  /** A chosen address bar suggestion: fly, switch to the open tab, or open (⌘↵ behind, ⌥↵ in front). */
+  const pickOmnibox = (row: OmniboxSuggestion, disposition?: OpenDisposition): void => {
+    if (row.kind === 'place') {
+      flyToPlace(row.place)
+      return
+    }
+    if (row.kind === 'tab' && row.tabId) {
+      setQuery('')
+      input.current?.blur()
+      void window.intoponet.browserHost.activateTab(row.tabId).catch(() => setError('That tab could not be shown.'))
+      return
+    }
+    const submittedDraft = query
+    const intent: NavigationIntent =
+      row.kind === 'search' ? { kind: 'search', value: row.value }
+        : row.kind === 'topic' ? { kind: 'topic', value: row.value }
+          : row.kind === 'url' ? { kind: 'url', value: row.value }
+            : { kind: 'url', value: row.url }
+    void navigateFromLauncher(intent.value, { intent, ...(disposition && intent.kind !== 'topic' ? { disposition } : {}) }).then(() => {
+      if (input.current?.value.startsWith(submittedDraft)) setQuery('')
+    }).catch(() => undefined)
+  }
+  const omniboxTabs = useMemo(() => tabs.filter((tab) => !tab.isStartPage), [tabs])
+  const omnibox = useOmnibox({
+    query,
+    setQuery: (value) => { setQuery(value); setPlacesDismissed(false) },
+    inputRef: input,
+    tabs: omniboxTabs,
+    bookmarks,
+    recents,
+    places: placeMatch,
+    topics: launcherTopics,
+    privateMode: (privacyState?.privateMode ?? false) || panel.isPrivate === true,
+    onPick: pickOmnibox,
+    onDismiss: () => setPlacesDismissed(true),
+    onPasteAndGo: (text) => {
+      setQuery(text)
+      void navigateFromLauncher(text).then(() => setQuery('')).catch(() => undefined)
+    },
+  })
 
   const saveGlobeSignal = (signal: GlobeSignal): void => {
     if (bookmarks.some((bookmark) => bookmark.url === signal.url)) {
@@ -3854,40 +3891,15 @@ export function App() {
           </div>
         )}
         <form className="command-launcher unified-launcher" onSubmit={submit}>
-          <PlaceSuggestions
-            places={placeMatch.places}
-            active={placeActive}
-            onHover={setPlaceActive}
-            onPick={flyToPlace}
-          />
+          <OmniboxSuggestions {...omnibox.list} />
           <label className="command-input">
             <span className="sr-only">Search, fly to a place, or enter a web address</span>
             <input
               ref={input}
-              value={query}
-              onChange={(event) => { setQuery(event.target.value); setPlacesDismissed(false) }}
-              onKeyDown={(event) => {
-                const count = placeMatch.places.length
-                if (!count) return
-                if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-                  event.preventDefault()
-                  const step = event.key === 'ArrowDown' ? 1 : -1
-                  // -1 means "search the web" with no place highlighted.
-                  setPlaceActive((current) => ((current + 1 + step + count + 1) % (count + 1)) - 1)
-                } else if (event.key === 'Escape') {
-                  event.preventDefault()
-                  event.stopPropagation()
-                  setPlacesDismissed(true)
-                }
-              }}
+              {...omnibox.inputProps}
               placeholder="Search, fly to a place, or enter a web address"
               autoComplete="off"
               spellCheck
-              role="combobox"
-              aria-expanded={placeMatch.places.length > 0}
-              aria-controls="place-suggestions"
-              aria-autocomplete="list"
-              aria-activedescendant={placeActive >= 0 && placeMatch.places.length ? `place-option-${placeActive}` : undefined}
             />
           </label>
           <button className="go-button" type="submit" aria-label="Go">

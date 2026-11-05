@@ -51,6 +51,19 @@ describe('inferLauncherIntent', () => {
 })
 
 describe('parseBrowserHostCommand', () => {
+  it('accepts an open disposition from the address bar and nothing else', () => {
+    const intent = { kind: 'url', value: 'example.com' }
+    expect(parseBrowserHostCommand({ type: 'open', intent, disposition: 'background-tab' })).toEqual({ type: 'open', intent, disposition: 'background-tab' })
+    expect(parseBrowserHostCommand({ type: 'open', intent, disposition: 'foreground-tab' })).toEqual({ type: 'open', intent, disposition: 'foreground-tab' })
+    expect(parseBrowserHostCommand({ type: 'open', intent })).toEqual({ type: 'open', intent })
+    expect(() => parseBrowserHostCommand({ type: 'open', intent, disposition: 'new-window' })).toThrow('Invalid open disposition')
+  })
+
+  it('parses the address bar menu request', () => {
+    expect(parseBrowserHostCommand({ type: 'address-menu', hasSelection: true, extra: 1 })).toEqual({ type: 'address-menu', hasSelection: true })
+    expect(parseBrowserHostCommand({ type: 'address-menu', hasSelection: 'yes' })).toEqual({ type: 'address-menu', hasSelection: false })
+  })
+
   it('copies a valid command into the trusted shape', () => {
     expect(
       parseBrowserHostCommand({

@@ -41,8 +41,8 @@ const invoke = (
   ipcRenderer.invoke(browserHostChannels.command, command)
 
 const browserHost: BrowserHostApi = {
-  open: async (intent) => {
-    await invoke({ type: 'open', intent })
+  open: async (intent, disposition) => {
+    await invoke({ type: 'open', intent, ...(disposition ? { disposition } : {}) })
   },
   newTab: async () => {
     await invoke({ type: 'new-tab' })
@@ -133,6 +133,9 @@ const browserHost: BrowserHostApi = {
   getPublicFieldStatus: () => invoke({ type: 'get-public-field-status' }) as Promise<PublicFieldStatus>,
   getNewsDigest: () => invoke({ type: 'get-news-digest' }) as Promise<string | null>,
   getPlaceTrends: (place: { countryCode: string; name?: string; aliases?: string[]; geonameId?: string }) => invoke({ type: 'get-place-trends', ...place }) as Promise<string | null>,
+  showAddressMenu: async (hasSelection) => {
+    await invoke({ type: 'address-menu', hasSelection })
+  },
   subscribe: (listener) => {
     const handler = (_event: Electron.IpcRendererEvent, payload: BrowserHostEvent): void => {
       listener(payload)

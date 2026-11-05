@@ -193,6 +193,16 @@
       "promise": "Pages open in tabs with a named toolbar (Translate, Capture, Pin, Absorb, Bookmarks), and closing tabs never crashes the app."
     },
     {
+      "id": "OMNIBOX",
+      "title": "Address bar suggestions",
+      "deps": [
+        "BROWSE"
+      ],
+      "tier": "network",
+      "kind": "e2e",
+      "promise": "Typing the start of a visited site's host completes it inline (Backspace removes the completion) and offers that page first, from history or as \"Switch to tab\"; Enter lands on it without a duplicate tab, ⌘↵ opens it in a background tab, and a typed place name still flies the globe."
+    },
+    {
       "id": "PROTECTION",
       "title": "Ad and tracker protection",
       "deps": [
