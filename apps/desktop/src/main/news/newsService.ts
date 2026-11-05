@@ -168,7 +168,8 @@ export function startNewsService(options: { userData: string; emit: (payload: st
     maxEnabledSources: 6_000,
     maxConcurrency: 20,
     maxCacheBytes: 192 * 1024 * 1024,
-    persistDebounceMs: 15_000,
+    // Saving serializes the whole cache (~35 MB) on this thread; it is only a restart cache and is flushed on quit.
+    persistDebounceMs: 60_000,
     tolerant: true,
     onResult: (result) => {
       // no-store feeds: keep their latest headlines in memory only, never on disk.
