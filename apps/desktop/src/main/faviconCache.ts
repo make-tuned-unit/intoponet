@@ -1,4 +1,5 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
+import { writeFileAtomic } from './atomicFile'
 
 /**
  * Site icons for bookmarks and lists, stored on this Mac as small data URLs.
@@ -8,6 +9,10 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
  */
 const MAX_BYTES = 100_000
 const RETRY_MS = 7 * 24 * 3_600_000
+/** Hosts kept; the least recently used are dropped beyond this. */
+export const MAX_ICON_HOSTS = 1_000
+/** A page that keeps changing its icon is fetched at most this often. */
+const REMEMBER_COOLDOWN_MS = 30_000
 const HOST = /^(?=.{1,253}$)([a-z0-9-]{1,63}\.)+[a-z]{2,63}$/i
 
 type Entry = { data: string | null; at: number }
@@ -19,13 +24,18 @@ export function isIconHost(host: string): boolean {
 export class FaviconCache {
   private readonly entries = new Map<string, Entry>()
   private readonly inflight = new Map<string, Promise<void>>()
+  /** Page-reported icons: one fetch per host at a time, then a pause before the next. */
+  private readonly remembering = new Map<string, number>()
   private saveTimer: ReturnType<typeof setTimeout> | null = null
 
-  constructor(private readonly file: string, private readonly fetchImpl: typeof fetch = fetch) {
+  constructor(private readonly file: string, private readonly fetchImpl: typeof fetch = fetch, private readonly now: () => number = Date.now) {
     try {
       if (existsSync(file)) {
         const raw = JSON.parse(readFileSync(file, 'utf8')) as Record<string, Entry>
-        for (const [host, entry] of Object.entries(raw)) if (isIconHost(host) && entry && typeof entry.at === 'number') this.entries.set(host, entry)
+        for (const [host, entry] of Object.entries(raw)) {
+          if (isIconHost(host) && entry && typeof entry.at === 'number' && (entry.data === null || typeof entry.data === 'string')) this.entries.set(host, entry)
+        }
+        this.trim()
       }
     } catch {
       // Start empty.
@@ -41,13 +51,26 @@ export class FaviconCache {
       return
     }
     if (!isIconHost(host) || !/^https?:\/\//i.test(iconUrl)) return
-    void this.fetchIcon(iconUrl).then((data) => { if (data) this.set(host, data) })
+    const now = this.now()
+    const last = this.remembering.get(host)
+    if (last !== undefined && (last === Infinity || now - last < REMEMBER_COOLDOWN_MS)) return
+    // Infinity marks a fetch in flight; the cooldown starts when it ends.
+    this.remembering.set(host, Infinity)
+    void this.fetchIcon(iconUrl)
+      .then((data) => { if (data) this.set(host, data) })
+      .finally(() => {
+        this.remembering.set(host, this.now())
+        if (this.remembering.size > 200) {
+          const cutoff = this.now() - REMEMBER_COOLDOWN_MS
+          for (const [known, at] of this.remembering) if (at !== Infinity && at < cutoff) this.remembering.delete(known)
+        }
+      })
   }
 
   /** Icons for these hosts: cached ones at once; missing ones fetched from the site's /favicon.ico first. */
   async get(hosts: string[]): Promise<Record<string, string>> {
     const wanted = [...new Set(hosts.filter(isIconHost))].slice(0, 300)
-    const now = Date.now()
+    const now = this.now()
     const missing = wanted.filter((host) => {
       const entry = this.entries.get(host)
       return !entry || (!entry.data && now - entry.at > RETRY_MS)
@@ -57,8 +80,12 @@ export class FaviconCache {
     }
     const out: Record<string, string> = {}
     for (const host of wanted) {
-      const data = this.entries.get(host)?.data
-      if (data) out[host] = data
+      const entry = this.entries.get(host)
+      if (!entry) continue
+      // Recently used hosts are kept longest.
+      this.entries.delete(host)
+      this.entries.set(host, entry)
+      if (entry.data) out[host] = entry.data
     }
     return out
   }
@@ -69,8 +96,7 @@ export class FaviconCache {
     const job = (async () => {
       const data = await this.fetchIcon(`https://${host}/favicon.ico`)
         ?? (host.startsWith('www.') ? null : await this.fetchIcon(`https://www.${host}/favicon.ico`))
-      this.entries.set(host, { data, at: Date.now() })
-      this.scheduleSave()
+      this.store(host, { data, at: this.now() })
     })().finally(() => this.inflight.delete(host))
     this.inflight.set(host, job)
     return job
@@ -81,10 +107,8 @@ export class FaviconCache {
       const response = await this.fetchImpl(url, { redirect: 'follow', credentials: 'omit', signal: AbortSignal.timeout(5_000), headers: { accept: 'image/*' } })
       if (!response.ok) return null
       const type = (response.headers.get('content-type') ?? '').split(';')[0]!.trim().toLowerCase()
-      const length = Number(response.headers.get('content-length') ?? 0)
-      if (length > MAX_BYTES) return null
-      const bytes = Buffer.from(await response.arrayBuffer())
-      if (!bytes.byteLength || bytes.byteLength > MAX_BYTES) return null
+      const bytes = await readAtMost(response, MAX_BYTES)
+      if (!bytes?.byteLength) return null
       const mime = type.startsWith('image/') ? type : sniff(bytes)
       if (!mime) return null
       return `data:${mime};base64,${bytes.toString('base64')}`
@@ -94,22 +118,54 @@ export class FaviconCache {
   }
 
   private set(host: string, data: string): void {
-    this.entries.set(host, { data, at: Date.now() })
+    this.store(host, { data, at: this.now() })
+  }
+
+  private store(host: string, entry: Entry): void {
+    this.entries.delete(host)
+    this.entries.set(host, entry)
+    this.trim()
     this.scheduleSave()
+  }
+
+  /** Drop the least recently used hosts beyond the cap. */
+  private trim(): void {
+    while (this.entries.size > MAX_ICON_HOSTS) this.entries.delete(this.entries.keys().next().value!)
   }
 
   private scheduleSave(): void {
     if (this.saveTimer) return
     this.saveTimer = setTimeout(() => {
       this.saveTimer = null
-      try {
-        writeFileSync(this.file, JSON.stringify(Object.fromEntries(this.entries)), { encoding: 'utf8', mode: 0o600 })
-      } catch {
-        // Best effort.
-      }
+      // Best effort: a failed save leaves the previous file whole.
+      void writeFileAtomic(this.file, JSON.stringify(Object.fromEntries(this.entries))).catch(() => undefined)
     }, 2_000)
     this.saveTimer.unref?.()
   }
+}
+
+/** The whole body, or null when it is larger than `limit` (read as a stream, so a huge or endless body is cut off). */
+async function readAtMost(response: Response, limit: number): Promise<Buffer | null> {
+  const length = response.headers.get('content-length')
+  if (length !== null && Number(length) > limit) {
+    await response.body?.cancel().catch(() => undefined)
+    return null
+  }
+  const reader = response.body?.getReader()
+  if (!reader) return Buffer.alloc(0)
+  const chunks: Uint8Array[] = []
+  let total = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    total += value.byteLength
+    if (total > limit) {
+      await reader.cancel().catch(() => undefined)
+      return null
+    }
+    chunks.push(value)
+  }
+  return Buffer.concat(chunks)
 }
 
 /** Image types by magic bytes (sites often serve favicon.ico without a content type). */
