@@ -1,12 +1,11 @@
 {
-  "started": "2026-11-05T15:49:39.418Z",
-  "finished": "2026-11-05T15:54:47.820Z",
-  "tier": "full",
+  "started": "2026-11-05T15:59:01.136Z",
+  "finished": "2026-11-05T15:59:12.770Z",
+  "tier": "network",
   "only": [
-    "ROUGH_TRANSLATE",
-    "AUTO_TRANSLATE"
+    "BROWSE"
   ],
-  "summary": "2 passed, 0 failed, 0 blocked, 0 skipped, 27 assumed",
+  "summary": "1 passed, 0 failed, 0 blocked, 0 skipped, 28 assumed",
   "results": {
     "BUILD": {
       "status": "assumed",
@@ -77,8 +76,9 @@
       "notes": ""
     },
     "BROWSE": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Toolbar: Protected, Translate, Capture, Pin, Absorb, Bookmarks; pages see Chrome/156.0.8078.48; tab closed cleanly.",
+      "seconds": 8
     },
     "PROTECTION": {
       "status": "assumed",
@@ -117,14 +117,12 @@
       "notes": ""
     },
     "AUTO_TRANSLATE": {
-      "status": "pass",
-      "notes": "fontanka.ru translated from Russian with no clicks (Russian downloaded by itself; 3029 Latin vs 0 Cyrillic letters); \"Never translate this site\" sticks.",
-      "seconds": 186
+      "status": "assumed",
+      "notes": ""
     },
     "ROUGH_TRANSLATE": {
-      "status": "pass",
-      "notes": "Faroese headlines translated roughly via Icelandic, labelled as such.",
-      "seconds": 110
+      "status": "assumed",
+      "notes": ""
     }
   }
 }

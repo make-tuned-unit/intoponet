@@ -28,8 +28,12 @@ import { passwordOrigin } from './passwords/origin'
 import { parsePasswordCommand, passwordChannels, type PasswordEvent } from '../shared/passwords'
 import { parsePasswordPageMessage, passwordPageChannels } from '../shared/passwordPage'
 import { updateChannels, parseUpdateCommand } from '@intoponet/browser-api'
+import { browserUserAgent } from './browserUserAgent'
 
 declare const __INTOPONET_MAC_UPDATE_URL__: string
+
+// Sites see plain Chrome (some refuse "Electron" as an outdated browser).
+app.userAgentFallback = browserUserAgent(app.userAgentFallback)
 
 if (!app.isReady()) {
   app.commandLine.appendSwitch(

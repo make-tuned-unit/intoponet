@@ -1,6 +1,6 @@
 # Feature verification
 
-Run 2026-11-05 15:49 UTC · tier `full` · only ROUGH_TRANSLATE, AUTO_TRANSLATE · **2 passed, 0 failed, 0 blocked, 0 skipped, 27 assumed**.
+Run 2026-11-05 15:59 UTC · tier `network` · only BROWSE · **1 passed, 0 failed, 0 blocked, 0 skipped, 28 assumed**.
 
 Each feature makes a promise to the user; its check drives the built app end to end. Defined in `docs/FEATURE_DAG.json`, checks in `experiments/e2e/checks.mjs`, run with `npm run verify:features`.
 
@@ -23,7 +23,7 @@ Each feature makes a promise to the user; its check drives the built app end to 
 | · | **A country's history** (`OLDS_COUNTRY`) | A country's history has key facts, chapters and events from the last ten years. | APP_BOOT | assumed |
 | · | **Competing interpretations** (`OLDS_DEBATE`) | Where Wikipedia attributes competing views, The Olds shows them side by side with who holds each. | APP_BOOT | assumed |
 | · | **The Olds panel from a headline** (`OLDS_UI`) | A headline's history button opens The Olds with Story and Timeline views, no clipped timeline cards, and Escape closes it. | COUNTRY_PANEL, OLDS_HEADLINE | assumed |
-| · | **Browse the web** (`BROWSE`) | Pages open in tabs with a named toolbar (Translate, Capture, Pin, Absorb, Bookmarks), and closing tabs never crashes the app. | APP_BOOT | assumed |
+| ✅ | **Browse the web** (`BROWSE`) | Pages open in tabs with a named toolbar (Translate, Capture, Pin, Absorb, Bookmarks), and closing tabs never crashes the app. | APP_BOOT | pass · 8 s — Toolbar: Protected, Translate, Capture, Pin, Absorb, Bookmarks; pages see Chrome/156.0.8078.48; tab closed cleanly. |
 | · | **Ad and tracker protection** (`PROTECTION`) | Ads and trackers are blocked and the protection bar under the toolbar shows what was blocked. | BROWSE | assumed |
 | · | **Site permissions and sign-in popups** (`PERMISSIONS`) | Sites ask for camera, microphone or location in a bar you answer; sign-in popups keep working; new-tab links open as tabs. | BROWSE | assumed |
 | · | **Private browsing** (`PRIVATE_BROWSING`) | Private tabs are marked, leave no footprints, and close with their session when private browsing ends. | BROWSE | assumed |
@@ -33,5 +33,5 @@ Each feature makes a promise to the user; its check drives the built app end to 
 | · | **Paywall detection** (`PAYWALL_ALTERNATIVES`) | Paywalled outlets are recognised so free coverage of the same story can be offered (never circumvented). | BROWSE, GLOBE_LIVE | assumed |
 | · | **Absorb, search and claims** (`ABSORB`) | Absorbing a page (or just a selection) keeps it on this Mac; search returns the cited paragraph; claims are listed without false disputes. | BROWSE | assumed |
 | · | **Beacon registry on Neon** (`BEACONS_REGISTRY`) | The app reaches the live beacon registry, which is healthy and refuses unsigned requests. | LIBRARY | assumed |
-| ✅ | **Automatic page translation** (`AUTO_TRANSLATE`) | With automatic translation on, a Russian page is detected and translated into your language on this Mac. | SETTINGS, BROWSE | pass · 186 s — fontanka.ru translated from Russian with no clicks (Russian downloaded by itself; 3029 Latin vs 0 Cyrillic letters); "Never translate this site" sticks. |
-| ✅ | **Languages without a model** (`ROUGH_TRANSLATE`) | Faroese headlines translate roughly through Icelandic and say so. | COUNTRY_PANEL | pass · 110 s — Faroese headlines translated roughly via Icelandic, labelled as such. |
+| · | **Automatic page translation** (`AUTO_TRANSLATE`) | With automatic translation on, a Russian page is detected and translated into your language on this Mac. | SETTINGS, BROWSE | assumed |
+| · | **Languages without a model** (`ROUGH_TRANSLATE`) | Faroese headlines translate roughly through Icelandic and say so. | COUNTRY_PANEL | assumed |

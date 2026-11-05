@@ -320,12 +320,15 @@ export const checks = {
     expect(tabs.length === 1 && tabs[0].url.includes(host), 'Opening a page did not create its tab.')
     const labels = await ctx.evaluate(`[...document.querySelectorAll('.browser-actions .chrome-label')].map((l) => l.textContent)`)
     for (const name of ['Translate', 'Capture', 'Pin', 'Absorb', 'Bookmarks']) expect(labels.some((l) => l.includes(name)), `Toolbar is missing "${name}".`)
+    // Pages see plain Chrome: some sites call "Electron" an outdated browser.
+    const ua = await (await ctx.page(host)).evaluate(`navigator.userAgent`)
+    expect(/Chrome\//.test(ua) && !/Electron|Intoponet/i.test(ua), `Pages see the user agent "${ua}".`)
     await ctx.evaluate(`window.intoponet.browserHost.closeTab(${JSON.stringify(tabs[0].id)}).then(() => true)`)
     await ctx.delay(1500)
     // Main process still answers (closing tabs used to crash it).
     const after = await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => t.length)`)
     expect(after === 0, 'The tab did not close.')
-    return `Toolbar: ${labels.join(', ')}; tab closed cleanly.`
+    return `Toolbar: ${labels.join(', ')}; pages see ${ua.match(/Chrome\/\S+/)?.[0]}; tab closed cleanly.`
   },
 
   async PROTECTION(ctx) {
