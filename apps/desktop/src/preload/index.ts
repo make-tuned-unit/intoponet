@@ -5,6 +5,7 @@ import { sitePermissionChannels, type SitePermissionApi, type SitePermissionComm
 import { layaChannels, type LayaApi, type LayaCommand, type LayaHit, type LayaPassage, type LayaProgress, type LayaRelated, type LayaStatus, type LayaTheme } from '@intoponet/browser-api'
 import { knowledgeChannels, oldsChannels, type AbsorbPreview, type AbsorbRefusal, type KnowledgeApi, type KnowledgeCommand, type KnowledgeDocument, type KnowledgeClaim, type KnowledgeHit, type KnowledgeRecord, type OldsApi, type OldsQuery, type OldsThread } from '@intoponet/browser-api'
 import { contextBridge, ipcRenderer } from 'electron'
+import { passwordChannels, type PasswordApi, type PasswordCommand, type PasswordEvent, type PasswordPageState, type PasswordVaultStatus, type SavedLogin } from '../shared/passwords'
 import { updateChannels, type UpdatesApi, type UpdateCommand, type UpdateStatus } from '@intoponet/browser-api'
 import {
   CAPTURE_SCHEME,
@@ -282,4 +283,24 @@ const feedback = {
   send: (rating: number | null, comment: string) => ipcRenderer.invoke('intoponet:feedback', { kind: 'send', rating, comment }) as Promise<{ due: boolean; sent?: boolean }>,
 }
 
-contextBridge.exposeInMainWorld('intoponet', Object.freeze({ browserHost, captures, olds, knowledge, laya, translate, privacy, sitePermissions, beacons, favicons, access, updates, feedback }))
+const passwordInvoke = (command: PasswordCommand): Promise<unknown> => ipcRenderer.invoke(passwordChannels.command, command)
+const passwords: PasswordApi = {
+  pageState: () => passwordInvoke({ type: 'page-state' }) as Promise<PasswordPageState | null>,
+  decide: async (id, decision) => { await passwordInvoke({ type: 'decide', id, decision }) },
+  fill: async (id) => { await passwordInvoke({ type: 'fill', id }) },
+  dismissChoice: async () => { await passwordInvoke({ type: 'dismiss-choice' }) },
+  list: () => passwordInvoke({ type: 'list' }) as Promise<SavedLogin[]>,
+  status: () => passwordInvoke({ type: 'status' }) as Promise<PasswordVaultStatus>,
+  reveal: (id) => passwordInvoke({ type: 'reveal', id }) as Promise<string | null>,
+  copy: (id) => passwordInvoke({ type: 'copy', id }) as Promise<boolean>,
+  remove: async (id) => { await passwordInvoke({ type: 'remove', id }) },
+  neverList: () => passwordInvoke({ type: 'never-list' }) as Promise<string[]>,
+  removeNever: async (origin) => { await passwordInvoke({ type: 'remove-never', origin }) },
+  subscribe: (listener) => {
+    const handler = (_event: Electron.IpcRendererEvent, event: PasswordEvent): void => listener(event)
+    ipcRenderer.on(passwordChannels.event, handler)
+    return () => { ipcRenderer.removeListener(passwordChannels.event, handler) }
+  },
+}
+
+contextBridge.exposeInMainWorld('intoponet', Object.freeze({ browserHost, captures, olds, knowledge, laya, translate, privacy, sitePermissions, beacons, favicons, access, updates, feedback, passwords }))

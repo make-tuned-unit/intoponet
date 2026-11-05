@@ -1,6 +1,7 @@
 // One end-to-end check per feature in docs/FEATURE_DAG.json. Each drives the
 // real built app and fails with a plain sentence when its promise isn't kept.
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
+import { createServer } from 'node:http'
 import { join } from 'node:path'
 import { CheckFailure, expect, repo } from './lib.mjs'
 
@@ -33,6 +34,38 @@ const openPage = async (ctx, url, wait = 6000) => {
   await ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: ${JSON.stringify(url)} }).then(() => true)`)
   await ctx.delay(wait)
 }
+
+/** A tiny sign-in site on this Mac (http://localhost is allowed for saved passwords). */
+const LOGIN_PAGE = `<!doctype html><html><head><meta charset="utf-8"><title>Test sign in</title>
+<style>body{font:16px system-ui;margin:40px}label{display:block;margin:12px 0}input{font:inherit;padding:6px;width:260px}</style></head>
+<body><h1>Sign in</h1><form method="post" action="/welcome">
+<label>Email <input id="username" name="username" type="email" autocomplete="username"></label>
+<label>Password <input id="password" name="password" type="password" autocomplete="current-password"></label>
+<button id="go" type="submit">Sign in</button></form></body></html>`
+const startLoginSite = () => new Promise((resolve) => {
+  const server = createServer((request, response) => {
+    response.setHeader('content-type', 'text/html; charset=utf-8')
+    if (request.method === 'POST') {
+      request.resume()
+      request.on('end', () => { response.statusCode = 303; response.setHeader('location', '/welcome'); response.end() })
+      return
+    }
+    response.end(request.url?.startsWith('/welcome') ? '<!doctype html><title>Welcome</title><h1>Signed in</h1>' : LOGIN_PAGE)
+  })
+  server.listen(0, 'localhost', () => resolve(server))
+})
+/** Type into a page field and send the form with a real click, as a person would. */
+const signIn = async (ctx, page, username, password) => {
+  await page.evaluate(`(() => { const u = document.querySelector('#username'); u.value = ''; u.focus(); return true })()`)
+  await page.send('Input.insertText', { text: username })
+  await page.evaluate(`(() => { const p = document.querySelector('#password'); p.value = ''; p.focus(); return true })()`)
+  await page.send('Input.insertText', { text: password })
+  const box = JSON.parse(await page.evaluate(`JSON.stringify(document.querySelector('#go').getBoundingClientRect())`))
+  for (const type of ['mousePressed', 'mouseReleased']) {
+    await page.send('Input.dispatchMouseEvent', { type, x: box.x + box.width / 2, y: box.y + box.height / 2, button: 'left', clickCount: 1 })
+  }
+}
+const pageFields = (page) => page.evaluate(`JSON.stringify([document.querySelector('#username')?.value ?? null, document.querySelector('#password')?.value ?? null])`).then(JSON.parse)
 
 export const checks = {
   // ---- Foundations ---------------------------------------------------------
@@ -270,6 +303,90 @@ export const checks = {
     const left = await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => t.length)`)
     expect(!off.privateMode && left === 0, 'Turning private browsing off left private tabs open.')
     return 'Private tab marked, no footprints, closed when private mode ended.'
+  },
+
+  async SAVED_PASSWORDS(ctx) {
+    const server = await startLoginSite()
+    const port = server.address().port
+    const site = `localhost:${port}`
+    const login = `http://${site}/login`
+    const password = 'Test-Pa55word!e2e'
+    try {
+      await openPage(ctx, login, 2500)
+      const page = await ctx.page(`${site}/login`)
+      expect(JSON.stringify(await pageFields(page)) === '["",""]', 'The sign-in form was filled before anything was saved.')
+      await signIn(ctx, page, 'tester@example.com', password)
+      await ctx.wait(`(document.querySelector('.password-bar')?.innerText ?? '').includes('Save password')`, 15_000, 'the "Save password" offer after signing in')
+      const offer = await ctx.evaluate(`document.querySelector('.password-bar').innerText`)
+      expect(offer.includes(site) && offer.includes('tester@example.com'), `The offer does not name the site and account: "${offer}"`)
+      expect(offer.includes('macOS Keychain'), 'The offer does not say where the password is kept.')
+      await ctx.shot('offer')
+      expect(await ctx.click('.password-bar button', 'Save'), 'The offer has no Save button.')
+      await ctx.wait(`window.intoponet.passwords.list().then((l) => l.length === 1 && l[0].username === 'tester@example.com' && l[0].origin === 'http://${site}')`, 10_000, 'the sign-in to be saved')
+      const listed = await ctx.evaluate(`window.intoponet.passwords.list().then((l) => JSON.stringify(l))`)
+      expect(!listed.includes(password), 'The saved list sent the password to the shell.')
+      const sealedPath = join(ctx.profile, 'passwords.v1.seal')
+      expect(existsSync(sealedPath), 'No sealed password file was written.')
+      const sealed = readFileSync(sealedPath)
+      expect(!sealed.includes(password) && !sealed.includes('tester@example.com'), 'The password file holds plaintext.')
+
+      // Back to the sign-in page: one saved account is filled on its own.
+      await ctx.evaluate(`window.intoponet.browserHost.navigate(${JSON.stringify(login)}).then(() => true)`)
+      await ctx.delay(1500)
+      const reload = await ctx.page(`${site}/login`)
+      let fields = []
+      for (let i = 0; i < 20; i += 1) {
+        fields = await pageFields(reload)
+        if (fields[1]) break
+        await ctx.delay(300)
+      }
+      expect(fields[0] === 'tester@example.com' && fields[1] === password, `The saved sign-in was not filled (got ${JSON.stringify(fields.map((f) => (f ? f.length : f)))}).`)
+      await ctx.wait(`!!document.querySelector('.password-toggle')`, 5_000, 'the Passwords button in the page toolbar')
+      await ctx.pageShot(reload, 'filled-page')
+      await ctx.shot('filled-shell')
+
+      // A second account: saved, then the next visit asks which one.
+      await signIn(ctx, reload, 'second@example.com', 'Another-Pa55')
+      await ctx.wait(`(document.querySelector('.password-bar')?.innerText ?? '').includes('Save password')`, 15_000, 'an offer for the second account')
+      await ctx.click('.password-bar button', 'Save')
+      await ctx.wait(`window.intoponet.passwords.list().then((l) => l.length === 2)`, 10_000, 'the second account to be saved')
+      await ctx.evaluate(`window.intoponet.browserHost.navigate(${JSON.stringify(login)}).then(() => true)`)
+      await ctx.wait(`(document.querySelector('.password-bar')?.innerText ?? '').includes('Sign in to')`, 15_000, 'the account choice for a site with two sign-ins')
+      const choice = await ctx.page(`${site}/login`)
+      expect(JSON.stringify(await pageFields(choice)) === '["",""]', 'With two accounts, one was filled without asking.')
+      await ctx.shot('choose')
+      expect(await ctx.click('.password-accounts button', 'second@example.com'), 'The second account is not offered.')
+      await ctx.delay(800)
+      fields = await pageFields(choice)
+      expect(fields[0] === 'second@example.com' && fields[1] === 'Another-Pa55', 'Choosing an account did not fill it.')
+
+      // Settings › Passwords lists them without showing passwords.
+      await ctx.evaluate(`window.intoponet.browserHost.close().then(() => true)`)
+      await openPanel(ctx, 'Settings')
+      await ctx.wait(`(document.querySelector('.password-settings')?.innerText ?? '').includes('second@example.com')`, 5_000, 'Settings › Passwords to list the accounts')
+      const settings = await ctx.evaluate(`document.querySelector('.password-settings').innerText`)
+      expect(settings.includes(site) && settings.includes('tester@example.com') && !settings.includes(password), 'Settings › Passwords does not list the saved sign-ins (or shows a password).')
+      await ctx.evaluate(`(() => { document.querySelector('.password-settings').scrollIntoView({ block: 'start' }); return true })()`)
+      await ctx.delay(400)
+      await ctx.shot('settings')
+      await ctx.click('[aria-label="Close settings"]')
+
+      // Private tabs are never filled and never offer to save.
+      await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(true).then(() => true)`)
+      await openPage(ctx, login, 2500)
+      const hidden = await ctx.page(`${site}/login`)
+      expect(JSON.stringify(await pageFields(hidden)) === '["",""]', 'A private tab was filled with a saved password.')
+      await signIn(ctx, hidden, 'private@example.com', 'Private-Pa55')
+      await ctx.delay(2500)
+      const privateOffer = await ctx.evaluate(`!!document.querySelector('.password-bar')`)
+      expect(!privateOffer, 'A private tab offered to save a password.')
+      await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
+      const count = await ctx.evaluate(`window.intoponet.passwords.list().then((l) => l.length)`)
+      expect(count === 2, 'A private sign-in was saved.')
+      return `Offered, saved (sealed file, no plaintext), filled one account on its own, asked between two, listed in Settings; private tab untouched (${site}).`
+    } finally {
+      server.close()
+    }
   },
 
   async PAYWALL_ALTERNATIVES(ctx) {

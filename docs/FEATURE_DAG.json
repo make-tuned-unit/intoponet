@@ -213,6 +213,16 @@
       "promise": "Private tabs are marked, leave no footprints, and close with their session when private browsing ends."
     },
     {
+      "id": "SAVED_PASSWORDS",
+      "title": "Saved passwords",
+      "deps": [
+        "SETTINGS"
+      ],
+      "tier": "core",
+      "kind": "e2e",
+      "promise": "After you sign in, Intoponet offers to save the password, keeps it sealed on this Mac, fills it next time (or asks which account), lists it in Settings, and never saves or fills in a private tab."
+    },
+    {
       "id": "EXCLUDED_SITES",
       "title": "Sites to leave out",
       "deps": [

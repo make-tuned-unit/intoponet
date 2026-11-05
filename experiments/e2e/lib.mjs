@@ -38,7 +38,7 @@ async function connect(url) {
 
 /**
  * Run `check(ctx)` against a freshly launched app. Returns notes from the check.
- * ctx: evaluate, send, delay, wait, click, type, press, shot, page(urlPart), profile, env.
+ * ctx: evaluate, send, delay, wait, click, type, press, shot, pageShot(session, label), page(urlPart), profile, env.
  */
 export async function runAppCheck(check, { port = 9400 + Math.floor(Math.random() * 400), env: extraEnv = {}, evidenceDir, name, timeoutMs = 180_000 } = {}) {
   // E2E_PROFILE: a profile kept between runs (e.g. with translation models installed); otherwise a fresh one.
@@ -97,6 +97,13 @@ export async function runAppCheck(check, { port = 9400 + Math.floor(Math.random(
       const { data } = await send('Page.captureScreenshot', { format: 'png' })
       writeFileSync(join(evidenceDir, `${name ?? 'check'}-${label}.png`), Buffer.from(data, 'base64'))
     }
+    /** Screenshot of a web page's own contents (the shell screenshot does not include native page views). */
+    const pageShot = async (session, label) => {
+      if (!evidenceDir) return
+      mkdirSync(evidenceDir, { recursive: true })
+      const { data } = await session.send('Page.captureScreenshot', { format: 'png' })
+      writeFileSync(join(evidenceDir, `${name ?? 'check'}-${label}.png`), Buffer.from(data, 'base64'))
+    }
     /** A web page's own CDP session (for selecting text, asking for permissions…). */
     const page = async (urlPart) => {
       let found
@@ -122,7 +129,7 @@ export async function runAppCheck(check, { port = 9400 + Math.floor(Math.random(
     let timer
     const limit = new Promise((_, reject) => { timer = setTimeout(() => reject(new CheckFailure(`Took longer than ${Math.round(timeoutMs / 1000)} s.`)), timeoutMs) })
     try {
-      const notes = await Promise.race([check({ evaluate, send, delay, wait, click, type, press, shot, page, flyTo, waitForNews, profile, port }), limit])
+      const notes = await Promise.race([check({ evaluate, send, delay, wait, click, type, press, shot, pageShot, page, flyTo, waitForNews, profile, port }), limit])
       return notes ?? ''
     } finally {
       clearTimeout(timer)

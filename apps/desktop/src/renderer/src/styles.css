@@ -1685,6 +1685,28 @@ button.origin-badge,
 }
 .permission-bar button:hover { background: var(--lg-hover); }
 .permission-bar button.is-primary { color: #041311; border-color: transparent; background: var(--teal); font-weight: 600; }
+/* Saved passwords: save or update after a sign-in, or pick an account to fill. */
+.password-bar { border-bottom-color: rgba(120, 215, 205, 0.35); background: linear-gradient(90deg, rgba(120, 215, 205, 0.14), rgba(6, 19, 32, 0.8)); }
+.password-bar .permission-bar-ask svg { color: var(--teal); }
+.password-bar-note { display: block; margin-top: 2px; color: var(--muted); font-size: 11px; }
+.password-accounts { flex-wrap: wrap; }
+.password-accounts button { display: inline-flex; align-items: center; gap: 5px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.password-search {
+  width: 100%; height: 28px; padding: 0 9px; color: var(--warm-white); font: inherit; font-size: 12px;
+  border: 1px solid rgba(214, 246, 241, 0.16); border-radius: 8px; background: rgba(6, 19, 32, 0.8);
+}
+.password-list { display: grid; gap: 4px; max-height: 320px; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
+.password-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 0; border-bottom: 1px solid rgba(214, 246, 241, 0.07); }
+.password-entry { display: grid; min-width: 0; gap: 1px; font-size: 12px; }
+.password-entry strong { color: var(--warm-white); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.password-entry small { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.password-shown { margin-top: 2px; color: var(--warm-white); font-size: 12px; word-break: break-all; user-select: text; }
+.password-actions { display: inline-flex; flex: none; gap: 4px; }
+.password-actions button {
+  display: grid; place-items: center; width: 26px; height: 26px; padding: 0; color: var(--warm-white); cursor: pointer;
+  border: 1px solid rgba(214, 246, 241, 0.16); border-radius: 8px; background: rgba(205, 245, 240, 0.05);
+}
+.password-actions button:hover { background: var(--lg-hover); }
 .site-permission-chips { gap: 6px; }
 .shield-bar button.site-permission-chip {
   display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 9px; font: inherit; font-size: 11.5px; cursor: pointer;
