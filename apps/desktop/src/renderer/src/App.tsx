@@ -125,6 +125,7 @@ import { aggregateTopicTraffic, topicTrafficDemoResult } from './topicTraffic'
 import { inferUnifiedLauncherIntent } from './launcherIntent'
 import { TabDock } from './TabDock'
 import { TabRail } from './TabRail'
+import { PageTabStrip } from './PageTabStrip'
 import './shellChrome.css'
 import { BookmarkPane } from './BookmarkPane'
 import { groupOf, moveBookmarkToGroup, UNSORTED_GROUP_ID } from './bookmarkGroups'
@@ -3809,37 +3810,7 @@ export function App() {
                 <ChevronLeft size={14} />
               </button>
             )}
-            <div className="page-tabs" ref={tabStrip} role="tablist" aria-label="Open screens">
-              {tabs.map((tab) => {
-                const caption = tabCaption(tab)
-                return (
-                  <div key={tab.id} className={`page-tab${tab.active ? ' selected' : ''}${tab.isPrivate ? ' is-private' : ''}`}>
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={tab.active}
-                      title={`${tab.isPrivate ? 'Private tab · ' : ''}${tab.title || originLabel(tab.url)}`}
-                      onClick={() => void window.intoponet.browserHost.activateTab(tab.id)}
-                    >
-                      {tab.favicon ? (
-                        <img src={tab.favicon} alt="" width={14} height={14} />
-                      ) : (
-                        <Globe2 size={12} />
-                      )}
-                      {tab.isPrivate && <EyeOff size={11} className="tab-private-mark" aria-label="Private" />}
-                      <span>{caption}</span>
-                    </button>
-                    <button
-                      type="button"
-                      aria-label={`Close ${tab.title || originLabel(tab.url)}`}
-                      onClick={() => void window.intoponet.browserHost.closeTab(tab.id)}
-                    >
-                      <X size={12} />
-                    </button>
-                  </div>
-                )
-              })}
-            </div>
+            <PageTabStrip tabs={tabs} stripRef={tabStrip} caption={tabCaption} label={(tab) => tab.title || originLabel(tab.url)} />
             {tabEdges.overflow && (
               <button
                 type="button"

@@ -74,9 +74,9 @@ const signIn = async (ctx, page, username, password) => {
 const pageFields = (page) => page.evaluate(`JSON.stringify([document.querySelector('#username')?.value ?? null, document.querySelector('#password')?.value ?? null])`).then(JSON.parse)
 
 /** Fails the check on any WCAG 2.2 AA violation axe finds in the app window right now. */
-async function axeAudit(ctx, where) {
+async function axeAudit(ctx, where, selector = null) {
   if (!(await ctx.evaluate(`typeof axe !== 'undefined'`))) await ctx.evaluate(`${readFileSync(join(repo, 'node_modules/axe-core/axe.min.js'), 'utf8')}; true`)
-  const raw = JSON.parse(await ctx.evaluate(`axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'] }, resultTypes: ['violations'] }).then((r) => JSON.stringify(r.violations.map((v) => v.id + ' ×' + v.nodes.length + ' (' + v.nodes.slice(0, 2).map((n) => n.target.join(' ')).join('; ') + ')')))`))
+  const raw = JSON.parse(await ctx.evaluate(`axe.run(${selector ? `document.querySelector(${JSON.stringify(selector)})` : 'document'}, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'] }, resultTypes: ['violations'] }).then((r) => JSON.stringify(r.violations.map((v) => v.id + ' ×' + v.nodes.length + ' (' + v.nodes.slice(0, 2).map((n) => n.target.join(' ')).join('; ') + ')')))`))
   expect(raw.length === 0, `WCAG violations on ${where}: ${raw.join(', ')}`)
 }
 
@@ -394,6 +394,107 @@ export const checks = {
     const left = await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => t.length)`)
     expect(!off.privateMode && left === 0, 'Turning private browsing off left private tabs open.')
     return 'Private tab marked, no footprints, closed when private mode ended.'
+  },
+
+  async TABS(ctx) {
+    // Pages on this Mac: plain ones, a slow one (for the spinner) and one to play a tone in.
+    const server = await new Promise((resolve) => {
+      const site = createServer((request, response) => {
+        response.setHeader('content-type', 'text/html; charset=utf-8')
+        const path = request.url ?? '/'
+        if (path.startsWith('/slow')) { setTimeout(() => response.end('<!doctype html><title>Slow page</title><p>slow'), 6000); return }
+        response.end(`<!doctype html><title>Page ${path.slice(1)}</title><p>${path}`)
+      })
+      site.listen(0, 'localhost', () => resolve(site))
+    })
+    const base = `http://localhost:${server.address().port}`
+    const host = 'window.intoponet.browserHost'
+    const tabs = async () => JSON.parse(await ctx.evaluate(`${host}.getTabs().then((t) => JSON.stringify(t))`))
+    const order = async () => (await tabs()).map((tab) => tab.id).join(' ')
+    const domOrder = () => ctx.evaluate(`[...document.querySelectorAll('[role="tablist"] [data-tab-id]')].map((e) => e.dataset.tabId).join(' ')`)
+    const key = async (key, code, modifiers) => {
+      for (const type of ['rawKeyDown', 'keyUp']) await ctx.send('Input.dispatchKeyEvent', { type, key, code: key, windowsVirtualKeyCode: code, modifiers })
+    }
+    try {
+      for (const name of ['one', 'two', 'three']) await openPage(ctx, `${base}/${name}`, 1200)
+      const opened = await tabs()
+      expect(opened.length === 3, `Opening three pages made ${opened.length} tab(s).`)
+      const [one, two, three] = opened.map((tab) => tab.id)
+
+      // Move a tab (the main-process order is what the rail and strip show, and what is saved).
+      await ctx.evaluate(`${host}.moveTab(${JSON.stringify(three)}, 0).then(() => true)`)
+      await ctx.delay(500)
+      expect(await order() === [three, one, two].join(' '), 'Moving the third tab to the front did not reorder the tabs.')
+      expect(await domOrder() === [three, one, two].join(' '), 'The tab list on screen does not show the new order.')
+
+      // Drag with the pointer in the rail: "one" above "three".
+      const boxes = JSON.parse(await ctx.evaluate(`JSON.stringify([...document.querySelectorAll('.tab-rail-list [data-tab-id] [role="tab"]')].map((e) => e.getBoundingClientRect()))`))
+      expect(boxes.length === 3, 'The tab rail is not showing the three tabs.')
+      const from = { x: boxes[1].x + boxes[1].width / 2, y: boxes[1].y + boxes[1].height / 2 }
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: from.x, y: from.y })
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: from.x, y: from.y, button: 'left', buttons: 1, clickCount: 1 })
+      for (let step = 1; step <= 8; step += 1) {
+        await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: from.x, y: from.y - (from.y - boxes[0].y - 4) * (step / 8), button: 'left', buttons: 1 })
+        await ctx.delay(30)
+      }
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: from.x, y: boxes[0].y + 4, button: 'left', buttons: 0, clickCount: 1 })
+      await ctx.delay(700)
+      expect(await order() === [one, three, two].join(' '), `Dragging a tab in the rail did not move it (order: ${await order()}).`)
+
+      // Keyboard: ⌥⇧↓ on the focused tab moves it down and keeps focus on it.
+      await ctx.evaluate(`document.querySelector('.tab-rail-list [data-tab-id=${JSON.stringify(one)}] [role="tab"]').focus()`)
+      await key('ArrowDown', 40, 1 | 8)
+      await ctx.delay(700)
+      expect(await order() === [three, one, two].join(' '), `⌥⇧↓ did not move the focused tab (order: ${await order()}).`)
+      const focused = await ctx.evaluate(`document.activeElement?.closest('[data-tab-id]')?.dataset.tabId ?? ''`)
+      expect(focused === one, 'The moved tab lost keyboard focus.')
+
+      // Pin: it goes first, shows as an icon, and is saved for next launch.
+      await ctx.evaluate(`${host}.setTabPinned(${JSON.stringify(two)}, true).then(() => true)`)
+      await ctx.delay(800)
+      const pinned = await tabs()
+      expect(pinned[0]?.id === two && pinned[0]?.pinned === true, 'A pinned tab did not move to the front.')
+      expect(await ctx.evaluate(`!!document.querySelector('.tab-rail-pinned [data-tab-id=${JSON.stringify(two)}]')`), 'The rail does not show the pinned tab among the pinned icons.')
+      const saved = JSON.parse(readFileSync(join(ctx.profile, 'browser-state.v1.json'), 'utf8'))
+      expect(saved.tabs?.[0]?.pinned === true && saved.tabs[0].url.includes('/two'), 'The pinned tab is not saved as pinned for the next launch.')
+      await axeAudit(ctx, 'the tab rail with a pinned tab', '.tab-rail')
+
+      // The strip under the launcher (page closed): pinned tab first, icon only, no close button.
+      await ctx.evaluate(`${host}.close().then(() => true)`)
+      await ctx.wait(`document.querySelectorAll('.page-tabs [data-tab-id]').length === 3`, 10_000, 'the tab strip')
+      const strip = JSON.parse(await ctx.evaluate(`(() => { const p = document.querySelector('.page-tab.is-pinned'); return JSON.stringify({ first: document.querySelector('.page-tabs [data-tab-id]')?.dataset.tabId, close: !!p?.querySelector('.page-tab-close'), caption: !!p?.querySelector('.page-tab-main span') }) })()`))
+      expect(strip.first === two && !strip.close && !strip.caption, `The strip does not show the pinned tab first as an icon (${JSON.stringify(strip)}).`)
+      await axeAudit(ctx, 'the tab strip with a pinned tab', '.page-tab-row')
+      await ctx.evaluate(`document.querySelector('.page-tabs [data-tab-id=${JSON.stringify(one)}] [role="tab"]').focus()`)
+      await key('ArrowLeft', 37, 1 | 8)
+      await ctx.delay(700)
+      expect(await order() === [two, one, three].join(' '), `⌥⇧← in the strip did not move the focused tab (order: ${await order()}).`)
+      await ctx.evaluate(`${host}.restore().then(() => true)`)
+      await ctx.delay(800)
+
+      // Sound: the speaker appears on a playing tab, and clicking it mutes and unmutes.
+      await openPage(ctx, `${base}/tone`, 1500)
+      const tonePage = await ctx.page(`${base}/tone`)
+      await tonePage.evaluate(`(() => { const c = new AudioContext(); const o = c.createOscillator(); const g = c.createGain(); g.gain.value = 0.03; o.connect(g).connect(c.destination); o.start(); window.__tone = c; return c.resume().then(() => c.state) })()`, { userGesture: true })
+      await ctx.wait(`${host}.getTabs().then((t) => t.some((x) => x.url.includes('/tone') && x.audible))`, 15_000, 'the playing tab to be marked audible')
+      await ctx.wait(`(document.querySelector('.tab-rail-audio')?.getAttribute('aria-label') ?? '').startsWith('Mute')`, 5_000, 'a "Mute" speaker button on the playing tab')
+      await ctx.click('.tab-rail-audio')
+      await ctx.wait(`${host}.getTabs().then((t) => t.some((x) => x.url.includes('/tone') && x.muted))`, 5_000, 'the tab to mute')
+      await ctx.wait(`(document.querySelector('.tab-rail-audio')?.getAttribute('aria-label') ?? '').startsWith('Unmute')`, 5_000, 'the speaker button to offer "Unmute"')
+      await ctx.click('.tab-rail-audio')
+      await ctx.wait(`${host}.getTabs().then((t) => t.some((x) => x.url.includes('/tone') && !x.muted))`, 5_000, 'the tab to unmute')
+      await tonePage.evaluate(`window.__tone.close().then(() => true)`).catch(() => undefined)
+
+      // Loading: a slow page shows a spinner in place of its icon, then its page.
+      await ctx.evaluate(`(${host}.open({ kind: 'url', value: ${JSON.stringify(`${base}/slow`)} }).catch(() => undefined), true)`)
+      await ctx.wait(`!!document.querySelector('[data-tab-id] .tab-spinner') && !!document.querySelector('[role="tab"][aria-busy="true"]')`, 5_000, 'a spinner on the loading tab')
+      const loading = await ctx.evaluate(`${host}.getTabs().then((t) => t.some((x) => x.url.includes('/slow') && x.loading))`)
+      expect(loading, 'The loading tab is not marked as loading.')
+      await ctx.wait(`!document.querySelector('[data-tab-id] .tab-spinner')`, 20_000, 'the spinner to stop once the page loaded')
+      return 'Moved by command, drag and ⌥⇧↓ (focus kept); pinned tab first, icon-only and saved; speaker muted and unmuted a playing tab; spinner while a slow page loaded; no axe violations in rail or strip.'
+    } finally {
+      server.close()
+    }
   },
 
   async SAVED_PASSWORDS(ctx) {

@@ -95,6 +95,9 @@ protocol.registerSchemesAsPrivileged([
 ])
 let captures: CaptureService | null = null
 import { browserContextActions, type BrowserContextAction } from './browserContextMenu'
+import { duplicateIndex, moveTab, otherTabIds, pinnedFirst, setPinned, tabIdsToRight } from './tabOrder'
+import { tabMenuTemplate, type TabMenuAction } from './tabMenu'
+import { liveTabFlags } from './tabState'
 import {
   browserHostChannels,
   type BrowserHostCommand,
@@ -156,6 +159,8 @@ type OpenTab = {
   view: WebContentsView
   /** A new tab that has not loaded a page: its view stays hidden and the shell draws the start page. */
   start?: boolean
+  /** Pinned tabs sit first and are restored next launch as pinned. */
+  pinned?: boolean
 }
 
 type PersistentBrowserState = {
@@ -163,7 +168,7 @@ type PersistentBrowserState = {
   url: string
   bounds: BrowserPanelBounds
   wasVisible: boolean
-  tabs: { id: string; url: string; title: string }[]
+  tabs: { id: string; url: string; title: string; pinned?: boolean }[]
 }
 
 const defaultPanelState = (): BrowserPanelSnapshot => ({
@@ -205,6 +210,7 @@ function persistentState(): PersistentBrowserState {
       id: tab.id,
       url: tab.url,
       title: tab.title,
+      ...(tab.pinned ? { pinned: true } : {}),
     })),
   }
 }
@@ -282,6 +288,7 @@ async function loadPersistentState(): Promise<PersistentBrowserState | null> {
               id: typeof record['id'] === 'string' ? record['id'].slice(0, 80) : randomUUID(),
               url: record['url'],
               title: typeof record['title'] === 'string' ? record['title'].slice(0, 180) : '',
+              ...(record['pinned'] === true ? { pinned: true } : {}),
             },
           ]
         })
@@ -817,6 +824,7 @@ function tabSnapshots(): PageTabSnapshot[] {
       active: tab.id === activeTabId,
       isPrivate: privateViews.has(tab.view),
       ...(tab.start ? { isStartPage: true } : {}),
+      ...liveTabFlags(live ? tab.view.webContents : null, tab),
     }
   })
 }
@@ -931,7 +939,7 @@ function discardTab(id: string): void {
 
 function makeRoomForTab(): void {
   while (openTabs.length >= 12) {
-    const victim = openTabs.find((tab) => tab.id !== activeTabId) ?? openTabs[0]
+    const victim = openTabs.find((tab) => tab.id !== activeTabId && !tab.pinned) ?? openTabs.find((tab) => tab.id !== activeTabId) ?? openTabs[0]
     if (!victim) return
     discardTab(victim.id)
   }
@@ -1179,8 +1187,11 @@ function buildView(isPrivate = privateMode): WebContentsView {
     if (!safeHttpUrl(url)) event.preventDefault()
   })
   view.webContents.on('did-start-loading', () => {
+    emitTabs()
     if (pageView === view) emitPanelState()
   })
+  // The tab's speaker icon.
+  view.webContents.on('audio-state-changed', () => emitTabs())
   view.webContents.on('did-stop-loading', () => {
     rememberTab(view)
     if (pageView !== view) return
@@ -1299,6 +1310,50 @@ function buildView(isPrivate = privateMode): WebContentsView {
   })
 
   return view
+}
+
+/** A tab context menu choice (see tabMenu.ts). Closing goes through 'close-tab', as the close button does. */
+async function runTabMenuAction(action: TabMenuAction, id: string): Promise<void> {
+  const tab = openTabs.find((item) => item.id === id)
+  if (!tab) return
+  const live = !viewGone(tab.view)
+  const url = live && safeHttpUrl(tab.view.webContents.getURL()) ? tab.view.webContents.getURL() : tab.url
+  switch (action) {
+    case 'reload':
+      if (activeTabId === id) await handleBrowserCommand({ type: 'reload' })
+      else if (live) tab.view.webContents.reload()
+      break
+    case 'duplicate': {
+      if (!safeHttpUrl(url)) break
+      const at = duplicateIndex(openTabs, id)
+      // A private tab's duplicate stays private.
+      const view = createBrowserTab(url, true, privateViews.has(tab.view))
+      const copy = view && openTabs.find((item) => item.view === view)
+      if (copy) await handleBrowserCommand({ type: 'move-tab', id: copy.id, toIndex: at })
+      if (view) void view.webContents.loadURL(url).catch(() => undefined)
+      break
+    }
+    case 'pin':
+    case 'unpin':
+      await handleBrowserCommand({ type: 'set-tab-pinned', id, pinned: action === 'pin' })
+      break
+    case 'mute':
+    case 'unmute':
+      await handleBrowserCommand({ type: 'set-tab-muted', id, muted: action === 'mute' })
+      break
+    case 'copy-link':
+      if (safeHttpUrl(url)) clipboard.writeText(url)
+      break
+    case 'close':
+      await handleBrowserCommand({ type: 'close-tab', id })
+      break
+    case 'close-others':
+    case 'close-right':
+      for (const other of action === 'close-others' ? otherTabIds(openTabs, id) : tabIdsToRight(openTabs, id)) {
+        await handleBrowserCommand({ type: 'close-tab', id: other })
+      }
+      break
+  }
 }
 
 /** Browser keys pressed inside a page act on it directly, as the toolbar would. */
@@ -1434,6 +1489,32 @@ async function handleBrowserCommand(
       const delta = command.direction === 'previous' ? -1 : 1
       const next = openTabs[(index + delta + openTabs.length) % openTabs.length]
       if (next) showTab(next.id)
+      break
+    }
+    case 'move-tab':
+      if (moveTab(openTabs, command.id, command.toIndex)) {
+        emitTabs()
+        schedulePersistentStateSave()
+      }
+      break
+    case 'set-tab-pinned':
+      if (setPinned(openTabs, command.id, command.pinned)) {
+        emitTabs()
+        schedulePersistentStateSave()
+      }
+      break
+    case 'set-tab-muted': {
+      const tab = openTabs.find((item) => item.id === command.id)
+      if (tab && !viewGone(tab.view)) {
+        tab.view.webContents.setAudioMuted(command.muted)
+        emitTabs()
+      }
+      break
+    }
+    case 'tab-menu': {
+      if (!window || window.isDestroyed() || !openTabs.some((tab) => tab.id === command.id)) break
+      const menu = Menu.buildFromTemplate(tabMenuTemplate(tabSnapshots(), command.id, (action, id) => void runTabMenuAction(action, id)))
+      menu.popup({ window, ...(command.x !== undefined && command.y !== undefined ? { x: command.x, y: command.y } : {}) })
       break
     }
     case 'get-tabs':
@@ -1737,8 +1818,9 @@ app.whenReady().then(async () => {
     lastBounds = restoredState.bounds
     for (const saved of restoredState.tabs) {
       const view = buildView(false)
-      openTabs.push({ id: saved.id, url: saved.url, title: saved.title, favicon: '', view })
+      openTabs.push({ id: saved.id, url: saved.url, title: saved.title, favicon: '', view, ...(saved.pinned ? { pinned: true } : {}) })
     }
+    openTabs.splice(0, openTabs.length, ...pinnedFirst(openTabs))
     const active =
       openTabs.find((tab) => samePage(tab.url, restoredState.url)) ?? openTabs[0]
     if (active) {

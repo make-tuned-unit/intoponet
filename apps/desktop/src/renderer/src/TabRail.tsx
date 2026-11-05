@@ -1,8 +1,9 @@
 import { AnimatePresence, motion, useReducedMotion, type Transition } from 'motion/react'
-import { Globe2, PanelLeftClose, PanelLeftOpen, Plus, X } from 'lucide-react'
+import { PanelLeftClose, PanelLeftOpen, Plus, X } from 'lucide-react'
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import type { PageTabSnapshot } from '@intoponet/browser-api'
 import { useGlassSheen } from './glass/useGlassSheen'
+import { moveTabByKey, openTabMenu, TabAudioButton, TabIcon, tabSoundLabel, useTabDrag } from './tabControls'
 import './glass/glass.css'
 import './tabRail.css'
 
@@ -24,7 +25,8 @@ export type TabRailProps = {
  * Vertical favicon rail beside the browser panel (visionOS-ornament style).
  * Hover expands it to show titles; native page views draw above the UI, so
  * the panel glides right to make room rather than being overlapped. Pin
- * keeps it expanded as vertical tabs.
+ * keeps it expanded as vertical tabs. Pinned tabs sit first as icons; tabs
+ * can be dragged (or moved with ⌥⇧↑ / ⌥⇧↓) into a new order.
  */
 export function TabRail({ tabs, visible, expanded, pinned, onExpandedChange, onPinnedChange, onNewTab }: TabRailProps) {
   const reduceMotion = useReducedMotion()
@@ -33,13 +35,9 @@ export function TabRail({ tabs, visible, expanded, pinned, onExpandedChange, onP
   const intent = useRef<number | null>(null)
   const [focusIndex, setFocusIndex] = useState(() => Math.max(0, tabs.findIndex((tab) => tab.active)))
   const open = expanded || pinned
-
-  useEffect(() => {
-    const active = tabs.findIndex((tab) => tab.active)
-    if (active >= 0) setFocusIndex(active)
-  }, [tabs])
-
-  useEffect(() => () => { if (intent.current) window.clearTimeout(intent.current) }, [])
+  const dragHandlers = useTabDrag('y')
+  /** A tab moved from the keyboard keeps focus once the rail shows the new order. */
+  const refocus = useRef<string | null>(null)
 
   const focusTab = (index: number): void => {
     const next = Math.max(0, Math.min(tabs.length - 1, index))
@@ -47,8 +45,29 @@ export function TabRail({ tabs, visible, expanded, pinned, onExpandedChange, onP
     requestAnimationFrame(() => list.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus())
   }
 
+  useEffect(() => {
+    const moved = refocus.current ? tabs.findIndex((tab) => tab.id === refocus.current) : -1
+    refocus.current = null
+    if (moved >= 0) {
+      focusTab(moved)
+      return
+    }
+    const active = tabs.findIndex((tab) => tab.active)
+    if (active >= 0) setFocusIndex(active)
+    // focusTab only reads the latest tabs.
+  }, [tabs])
+
+  useEffect(() => () => { if (intent.current) window.clearTimeout(intent.current) }, [])
+
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
     const tab = tabs[focusIndex]
+    // The tab that has focus (after a drag it can differ from the remembered one).
+    const focusedId = (event.target as HTMLElement).closest<HTMLElement>('[data-tab-id]')?.dataset['tabId']
+    const focusedIndex = tabs.findIndex((item) => item.id === focusedId)
+    if (focusedIndex >= 0 && moveTabByKey(event, tabs, focusedIndex, 'y') !== null) {
+      refocus.current = focusedId ?? null
+      return
+    }
     if (event.key === 'ArrowDown') focusTab(focusIndex + 1)
     else if (event.key === 'ArrowUp') focusTab(focusIndex - 1)
     else if (event.key === 'Home') focusTab(0)
@@ -58,6 +77,64 @@ export function TabRail({ tabs, visible, expanded, pinned, onExpandedChange, onP
       focusTab(focusIndex >= tabs.length - 1 ? focusIndex - 1 : focusIndex)
     } else return
     event.preventDefault()
+  }
+
+  const pinnedTabs = tabs.filter((tab) => tab.pinned)
+  const otherTabs = tabs.filter((tab) => !tab.pinned)
+
+  const renderTab = (tab: PageTabSnapshot, index: number) => {
+    const title = tab.title || tab.url || 'Untitled page'
+    const label = `${title}${tab.pinned ? ', pinned' : ''}${tabSoundLabel(tab)}${tab.loading ? ', loading' : ''}`
+    return (
+      <motion.div
+        key={tab.id}
+        data-tab-id={tab.id}
+        layout="position"
+        className={`tab-rail-item${tab.active ? ' is-active' : ''}${tab.pinned ? ' is-pinned-tab' : ''}`}
+        initial={{ opacity: 0, scale: 0.7 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.7, transition: { duration: 0.14 } }}
+        transition={spring}
+      >
+        {tab.active && <motion.span layoutId="tab-rail-active" className="tab-rail-indicator" transition={spring} aria-hidden="true" />}
+        <button
+          type="button"
+          role="tab"
+          className="tab-rail-tab"
+          aria-selected={tab.active}
+          aria-setsize={tabs.length}
+          aria-posinset={index + 1}
+          aria-label={label}
+          aria-busy={tab.loading || undefined}
+          aria-keyshortcuts="Alt+Shift+ArrowUp Alt+Shift+ArrowDown"
+          tabIndex={index === focusIndex ? 0 : -1}
+          title={open && !tab.pinned ? undefined : label}
+          onFocus={() => setFocusIndex(index)}
+          onClick={() => void window.intoponet.browserHost.activateTab(tab.id)}
+          onAuxClick={(event) => {
+            if (event.button === 1) void window.intoponet.browserHost.closeTab(tab.id)
+          }}
+          onContextMenu={(event) => openTabMenu(event, tab.id)}
+          {...dragHandlers(tab, index)}
+        >
+          <span className="tab-rail-icon">
+            <TabIcon tab={tab} size={18} />
+          </span>
+          <span className="tab-rail-title" aria-hidden={!open}>{title}</span>
+        </button>
+        <TabAudioButton tab={tab} className="tab-rail-audio" focusable={false} />
+        <button
+          type="button"
+          className="tab-rail-close"
+          aria-label={`Close ${title}`}
+          tabIndex={-1}
+          aria-hidden="true"
+          onClick={() => void window.intoponet.browserHost.closeTab(tab.id)}
+        >
+          <X size={12} />
+        </button>
+      </motion.div>
+    )
   }
 
   return (
@@ -95,54 +172,14 @@ export function TabRail({ tabs, visible, expanded, pinned, onExpandedChange, onP
         >
           <div ref={surface} className="tab-rail-surface lg-surface lg-sheen">
             <div ref={list} className="tab-rail-list" role="tablist" aria-orientation="vertical" aria-label="Open tabs" onKeyDown={onKeyDown}>
-              <AnimatePresence initial={false}>
-                {tabs.map((tab, index) => {
-                  const title = tab.title || tab.url || 'Untitled page'
-                  return (
-                    <motion.div
-                      key={tab.id}
-                      layout="position"
-                      className={`tab-rail-item${tab.active ? ' is-active' : ''}`}
-                      initial={{ opacity: 0, scale: 0.7 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.7, transition: { duration: 0.14 } }}
-                      transition={spring}
-                    >
-                      {tab.active && <motion.span layoutId="tab-rail-active" className="tab-rail-indicator" transition={spring} aria-hidden="true" />}
-                      <button
-                        type="button"
-                        role="tab"
-                        className="tab-rail-tab"
-                        aria-selected={tab.active}
-                        aria-setsize={tabs.length}
-                        aria-posinset={index + 1}
-                        aria-label={title}
-                        tabIndex={index === focusIndex ? 0 : -1}
-                        title={open ? undefined : title}
-                        onFocus={() => setFocusIndex(index)}
-                        onClick={() => void window.intoponet.browserHost.activateTab(tab.id)}
-                        onAuxClick={(event) => {
-                          if (event.button === 1) void window.intoponet.browserHost.closeTab(tab.id)
-                        }}
-                      >
-                        <span className="tab-rail-icon">
-                          {tab.favicon ? <img src={tab.favicon} alt="" /> : <Globe2 size={15} aria-hidden="true" />}
-                        </span>
-                        <span className="tab-rail-title" aria-hidden={!open}>{title}</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="tab-rail-close"
-                        aria-label={`Close ${title}`}
-                        tabIndex={-1}
-                        onClick={() => void window.intoponet.browserHost.closeTab(tab.id)}
-                      >
-                        <X size={12} />
-                      </button>
-                    </motion.div>
-                  )
-                })}
-              </AnimatePresence>
+              {pinnedTabs.length > 0 && (
+                <div className="tab-rail-pinned" role="none">
+                  <AnimatePresence initial={false}>{pinnedTabs.map((tab, index) => renderTab(tab, index))}</AnimatePresence>
+                </div>
+              )}
+              <div className="tab-rail-group" role="none">
+                <AnimatePresence initial={false}>{otherTabs.map((tab, index) => renderTab(tab, pinnedTabs.length + index))}</AnimatePresence>
+              </div>
             </div>
             <div className="tab-rail-footer">
               <button type="button" className="tab-rail-action" aria-label="New tab" title="New tab (⌘T)" onClick={onNewTab}>

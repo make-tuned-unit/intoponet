@@ -121,6 +121,18 @@ const browserHost: BrowserHostApi = {
   cycleTabs: async (direction) => {
     await invoke({ type: 'cycle-tabs', direction })
   },
+  moveTab: async (id, toIndex) => {
+    await invoke({ type: 'move-tab', id, toIndex })
+  },
+  setTabPinned: async (id, pinned) => {
+    await invoke({ type: 'set-tab-pinned', id, pinned })
+  },
+  setTabMuted: async (id, muted) => {
+    await invoke({ type: 'set-tab-muted', id, muted })
+  },
+  showTabMenu: async (id, at) => {
+    await invoke({ type: 'tab-menu', id, ...(at ? { x: at.x, y: at.y } : {}) })
+  },
   readPrivateLibrary: () =>
     invoke({ type: 'read-private-library' }) as Promise<PrivateLibraryReadResult>,
   writePrivateLibrary: async (payload) => {

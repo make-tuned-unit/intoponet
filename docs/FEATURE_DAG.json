@@ -51,6 +51,16 @@
       "promise": "No WCAG 2.2 AA violations (axe); every header panel opens with Enter, closes with Escape and returns focus to its button."
     },
     {
+      "id": "TABS",
+      "title": "Modern tabs",
+      "deps": [
+        "APP_BOOT"
+      ],
+      "tier": "core",
+      "kind": "e2e",
+      "promise": "Tabs show a spinner while loading and a speaker that mutes a playing tab; they reorder by drag or keyboard, pin first as icons (kept for next launch), and stay accessible."
+    },
+    {
       "id": "LIBRARY",
       "title": "Encrypted private library, pins and beacon consent",
       "deps": [
