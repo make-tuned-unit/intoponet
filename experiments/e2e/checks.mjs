@@ -5,7 +5,8 @@ import { createServer } from 'node:http'
 import { join } from 'node:path'
 import { CheckFailure, expect, repo } from './lib.mjs'
 
-const LIVE_REGISTRY = 'https://br-delicate-flower-b7mxmy9q-beacons.compute.c-13.us-east-1.aws.neon.tech'
+// The app's default: the website's edge proxy in front of the Neon registry (see apps/desktop/src/main/beacons/defaults.ts).
+const LIVE_REGISTRY = 'https://intoponet.com/registry'
 const now = () => new Date().toISOString()
 const seedLibrary = async (ctx, library) => {
   await ctx.evaluate(`window.intoponet.browserHost.writePrivateLibrary(${JSON.stringify(JSON.stringify({ schema: 'intoponet.private-library.v1', bookmarks: [], collections: [], recents: [], absorbed: [], ...library }))}).then(() => { location.reload(); return true })`).catch(() => undefined)
@@ -83,6 +84,8 @@ export const checks = {
 
   async GLOBE_LIVE(ctx) {
     await ctx.waitForNews()
+    // Highlights open on World (story cards); signal rows are under Peaks.
+    expect(await ctx.click('.globe-tabs button', 'Peaks'), 'Highlights tab "Peaks" is missing.')
     await ctx.wait(`document.querySelectorAll('.globe-list .globe-row').length >= 5`, 60_000, 'highlight rows on the globe panel')
     const summary = await ctx.evaluate(`[...document.querySelectorAll('p')].find((p) => /public signals/.test(p.innerText))?.innerText ?? ''`)
     const count = Number(summary.match(/(\d[\d,]*) public signals/)?.[1]?.replace(/,/g, '') ?? 0)
