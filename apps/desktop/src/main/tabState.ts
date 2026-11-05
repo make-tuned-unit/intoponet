@@ -17,3 +17,73 @@ export function liveTabFlags(contents: TabContentsLike | null, tab: { start?: bo
     ...(tab.pinned ? { pinned: true as const } : {}),
   }
 }
+
+/**
+ * Which address browser-state.v1.json records as the open page. Only tabs that may be saved
+ * (never private ones) are candidates, so a private tab's address never reaches the disk even
+ * when it is the active tab or the last page shown.
+ */
+export function persistedActiveUrl(savedTabs: readonly { id: string; url: string }[], activeTabId: string | null, lastKnownUrl: string): string {
+  const active = savedTabs.find((tab) => tab.id === activeTabId)
+  if (active) return active.url
+  return savedTabs.find((tab) => sameAddress(tab.url, lastKnownUrl))?.url ?? savedTabs[0]?.url ?? ''
+}
+
+/** Longest page address sent to the app window or saved; longer ones lose their query, then their path. */
+export const MAX_SNAPSHOT_URL = 8 * 1024
+export const MAX_SNAPSHOT_TITLE = 512
+
+export function capUrl(url: string): string {
+  if (url.length <= MAX_SNAPSHOT_URL) return url
+  try {
+    const parsed = new URL(url)
+    const withoutQuery = `${parsed.origin}${parsed.pathname}`
+    if (withoutQuery.length <= MAX_SNAPSHOT_URL) return withoutQuery
+    return parsed.origin.length < MAX_SNAPSHOT_URL ? `${parsed.origin}/` : ''
+  } catch {
+    return ''
+  }
+}
+
+export function capTitle(title: string): string {
+  return title.length <= MAX_SNAPSHOT_TITLE ? title : title.slice(0, MAX_SNAPSHOT_TITLE)
+}
+
+/**
+ * Run `send` at most once per `ms`: the first call goes at once, calls during the pause are
+ * folded into one more at its end. Pages can fire title, favicon and navigation events as fast
+ * as they like; the app window gets at most one update per frame.
+ */
+export function coalesce(send: () => void, ms = 16, later: (run: () => void, ms: number) => unknown = setTimeout): () => void {
+  let waiting = false
+  let again = false
+  const reopen = (): void => {
+    if (!again) {
+      waiting = false
+      return
+    }
+    again = false
+    send()
+    later(reopen, ms)
+  }
+  return () => {
+    if (waiting) {
+      again = true
+      return
+    }
+    waiting = true
+    send()
+    later(reopen, ms)
+  }
+}
+
+function sameAddress(left: string, right: string): boolean {
+  if (!left || !right) return false
+  try {
+    const a = new URL(left)
+    const b = new URL(right)
+    return a.origin === b.origin && a.pathname.replace(/\/$/, '') === b.pathname.replace(/\/$/, '') && a.search === b.search
+  } catch {
+    return left === right
+  }
+}

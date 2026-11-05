@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events'
 import { describe, expect, it, vi } from 'vitest'
 import { parseUpdateCommand } from '@intoponet/browser-api'
-import { sanitizedPreferences, UpdateController, validatedUpdateFeedUrl, type UpdateAdapter } from './updates'
+import { compareVersions, fetchCurrentRelease, isNewerVersion, sanitizedPreferences, UpdateController, validatedUpdateFeedUrl, type UpdateAdapter } from './updates'
 
 class FakeUpdater extends EventEmitter implements UpdateAdapter {
   feed: { url: string; serverType: 'json' } | null = null
@@ -18,6 +18,62 @@ const enabledOptions = (adapter: FakeUpdater, emit = vi.fn()) => ({
   feedUrl: 'https://updates.example.org/intoponet',
   adapter,
   emit,
+  latestVersion: async () => '9.9.9',
+})
+const flush = () => new Promise((resolve) => setTimeout(resolve, 0))
+
+describe('update versions', () => {
+  it('orders versions numerically, with prereleases before their release', () => {
+    expect(compareVersions('0.1.9', '0.1.10')).toBe(-1)
+    expect(compareVersions('0.1.10', '0.1.9')).toBe(1)
+    expect(compareVersions('1.2.3', '1.2.3')).toBe(0)
+    expect(compareVersions('1.0.0-beta.2', '1.0.0')).toBe(-1)
+    expect(compareVersions('1.0.0-beta.2', '1.0.0-beta.10')).toBe(-1)
+    expect(compareVersions('1.0.0-alpha', '1.0.0-alpha.1')).toBe(-1)
+    expect(compareVersions('1.0.0-1', '1.0.0-alpha')).toBe(-1)
+    expect(compareVersions('2.0.0', 'garbage')).toBeNull()
+    expect(isNewerVersion('0.1.10', '0.1.9')).toBe(true)
+    expect(isNewerVersion('0.1.9', '0.1.10')).toBe(false)
+    expect(isNewerVersion('1.2.3', '1.2.3')).toBe(false)
+    expect(isNewerVersion('1.0.0', '1.0.0-rc.1')).toBe(true)
+    expect(isNewerVersion('', '1.0.0')).toBe(false)
+  })
+
+  it('reads currentRelease from the feed', async () => {
+    const ok = (async () => new Response(JSON.stringify({ currentRelease: '1.2.4', releases: [] }))) as unknown as typeof fetch
+    expect(await fetchCurrentRelease('https://u.example.org/releases.json', ok)).toBe('1.2.4')
+    const missing = (async () => new Response('{}')) as unknown as typeof fetch
+    expect(await fetchCurrentRelease('https://u.example.org/releases.json', missing)).toBeNull()
+  })
+
+  it('reports up to date, without asking Squirrel, when the feed is not newer (no downgrades)', async () => {
+    for (const offered of ['1.2.3', '1.2.2', '0.9.0', '1.2.3-rc.1', null]) {
+      const adapter = new FakeUpdater()
+      const controller = new UpdateController({ ...enabledOptions(adapter), latestVersion: async () => offered })
+      controller.handle({ type: 'check-and-download' })
+      await flush()
+      expect(adapter.checkForUpdates).not.toHaveBeenCalled()
+      expect(controller.status().state).toBe('not-available')
+    }
+    const failing = new FakeUpdater()
+    const controller = new UpdateController({ ...enabledOptions(failing), latestVersion: async () => { throw new Error('offline') } })
+    controller.handle({ type: 'check-and-download' })
+    await flush()
+    expect(failing.checkForUpdates).not.toHaveBeenCalled()
+    expect(controller.status().state).toBe('error')
+  })
+
+  it('never offers a downloaded build that is not newer', async () => {
+    const adapter = new FakeUpdater()
+    const controller = new UpdateController(enabledOptions(adapter))
+    controller.handle({ type: 'check-and-download' })
+    await flush()
+    adapter.emit('update-available')
+    adapter.emit('update-downloaded', {}, '', '1.2.0', new Date(), 'https://u.example.org/x.zip')
+    expect(controller.status().state).toBe('not-available')
+    controller.handle({ type: 'restart' })
+    expect(adapter.quitAndInstall).not.toHaveBeenCalled()
+  })
 })
 
 describe('manual update controller', () => {
@@ -44,13 +100,15 @@ describe('manual update controller', () => {
     expect(controller.status()).toMatchObject({ state: 'idle', currentVersion: '1.2.3' })
   })
 
-  it('requires explicit check and explicit restart, and ignores duplicate checks while active', () => {
+  it('requires explicit check and explicit restart, and ignores duplicate checks while active', async () => {
     const adapter = new FakeUpdater()
     const emit = vi.fn()
     const controller = new UpdateController(enabledOptions(adapter, emit))
     expect(controller.handle({ type: 'check-and-download' }).state).toBe('checking')
+    await flush()
     expect(adapter.checkForUpdates).toHaveBeenCalledTimes(1)
     controller.handle({ type: 'check-and-download' })
+    await flush()
     expect(adapter.checkForUpdates).toHaveBeenCalledTimes(1)
     expect(adapter.quitAndInstall).not.toHaveBeenCalled()
 
@@ -137,10 +195,12 @@ describe('automatic update checks', () => {
     clock.advance(AUTO_FIRST_DELAY_MS - 1)
     expect(adapter.checkForUpdates).not.toHaveBeenCalled()
     clock.advance(1)
+    await flush()
     expect(adapter.checkForUpdates).toHaveBeenCalledTimes(1)
     expect(saved.at(-1)).toMatchObject({ automatic: true, lastCheckedAt: clock.now() })
     adapter.emit('update-not-available')
     clock.advance(AUTO_INTERVAL_MS)
+    await flush()
     expect(adapter.checkForUpdates).toHaveBeenCalledTimes(2)
   })
 
@@ -152,10 +212,11 @@ describe('automatic update checks', () => {
     clock.advance(AUTO_INTERVAL_MS - 2 * 60 * 60 * 1000 - 1)
     expect(adapter.checkForUpdates).not.toHaveBeenCalled()
     clock.advance(1)
+    await flush()
     expect(adapter.checkForUpdates).toHaveBeenCalledTimes(1)
     adapter.emit('update-available')
-    adapter.emit('update-downloaded', {}, '', '0.1.3', new Date(), 'https://intoponet.com/updates/arm64/x.zip')
-    expect(controller.status()).toMatchObject({ state: 'downloaded', availableVersion: '0.1.3' })
+    adapter.emit('update-downloaded', {}, '', '1.3.0', new Date(), 'https://intoponet.com/updates/arm64/x.zip')
+    expect(controller.status()).toMatchObject({ state: 'downloaded', availableVersion: '1.3.0' })
     clock.advance(AUTO_INTERVAL_MS)
     expect(adapter.checkForUpdates).toHaveBeenCalledTimes(1)
   })

@@ -9,7 +9,8 @@ import './tabControls.css'
 /** The tab's favicon, or a spinner while its page loads. */
 export function TabIcon({ tab, size }: { tab: PageTabSnapshot; size: number }) {
   if (tab.loading) return <span className="tab-spinner" style={{ width: size, height: size }} aria-hidden="true" />
-  if (tab.favicon) return <img src={tab.favicon} alt="" width={size} height={size} />
+  // Only data: icons (main fetched them through the page's own session): the shell never loads a page-chosen URL.
+  if (tab.favicon?.startsWith('data:image/')) return <img src={tab.favicon} alt="" width={size} height={size} />
   return <Globe2 size={size - 2} aria-hidden="true" />
 }
 

@@ -19,13 +19,14 @@ import {
   autoUpdater,
   dialog,
   nativeImage,
+  net,
   webFrameMain,
 } from 'electron'
 import type { IpcMainInvokeEvent, MenuItemConstructorOptions } from 'electron'
 import { pendingWrite, writeFileAtomic, writeFileAtomicSync } from './atomicFile'
 import { isAppShellUrl, SHELL_PERMISSIONS } from './shellGuard'
 import { LatestWriter } from './latestWriter'
-import { UpdateController } from './updates'
+import { fetchCurrentRelease, UpdateController } from './updates'
 import { FeedbackService, parseFeedbackCommand } from './feedback'
 import { PasswordVault } from './passwords/vault'
 import { PasswordService, type PasswordPage } from './passwords/service'
@@ -34,8 +35,16 @@ import { parsePasswordCommand, passwordChannels, type PasswordEvent } from '../s
 import { parsePasswordPageMessage, passwordPageChannels } from '../shared/passwordPage'
 import { updateChannels, parseUpdateCommand } from '@intoponet/browser-api'
 import { browserUserAgent } from './browserUserAgent'
+import { capTitle, capUrl, coalesce, persistedActiveUrl } from './tabState'
+import { EXIT_FULLSCREEN_SCRIPT, FULLSCREEN_WORLD_ID, fullscreenSiteName, showFullscreenNotice } from './fullscreenNotice'
+import { bindLeavePrompt, SAFE_DIALOG_PREFERENCES } from './leavePrompt'
+import { fetchTabIcon, TabIconMemory } from './tabFavicon'
 
 declare const __INTOPONET_MAC_UPDATE_URL__: string
+
+// Every renderer is sandboxed, whatever its own options say (a backstop: each window and view
+// already asks for it). Must run before the app is ready; worker threads in main are unaffected.
+app.enableSandbox()
 
 // Sites see plain Chrome (some refuse "Electron" as an outdated browser).
 app.userAgentFallback = browserUserAgent(app.userAgentFallback)
@@ -68,8 +77,8 @@ import { savePageFilename } from './savePage'
 import { TRACKER_STUB_SCRIPT } from './trackerStubs'
 import { addressMenuTemplate, pasteAndGoText } from './addressMenu'
 import { bindPermissionOwnerLifecycle, kindsFor, originOf, SitePermissionBroker, SitePermissionStore } from './sitePermissions'
-import { bindPopupCloseWithOwner, nestedPopupDecision, popupDecision, popupWindowOptions, PopupLimiter } from './popups'
-import { rejectCertificateErrorForSession } from './browserCertificatePolicy'
+import { bindPopupCloseWithOwner, nestedPopupDecision, popupDecision, popupWindowOptions, PopupLimiter, trackUserActivation, UserActivation, guardPopupWindow } from './popups'
+import { CLIENT_CERTIFICATE_NOTICE, declineClientCertificate, rejectCertificateErrorForSession } from './browserCertificatePolicy'
 import { reserveDownloadPath, sanitizeDownloadFilename } from './downloadReservation'
 import { installBrowsingData, openHistoryPane, type BrowsingData } from './browsingData'
 import { CrashRecoveryPolicy } from './crashRecovery'
@@ -148,7 +157,10 @@ let chromeRevealed = false
 let chromeHeld = false
 let tabRailExpanded = false
 /** A page that asked for HTML fullscreen (a video, a game): its view fills the window until it leaves. */
+/** Isolated world for reading a page's rating declarations (others: translate, knowledge, access). */
+const RATING_WORLD_ID = 1305
 let htmlFullScreenView: WebContentsView | null = null
+let removeFullscreenNotice: (() => void) | null = null
 /** Animated dock reservation; null when resting at its target. */
 let dockReserveNow: number | null = null
 let dockTweenTimer: ReturnType<typeof setTimeout> | null = null
@@ -213,19 +225,20 @@ function safeHttpUrl(value: string): URL | null {
 }
 
 function persistentState(): PersistentBrowserState {
-  const currentUrl = pageView && !viewGone(pageView) ? pageView.webContents.getURL() : undefined
+  // Private tabs are never saved or restored; nor are empty new tabs.
+  const tabs = tabSnapshots().filter((tab) => !tab.isPrivate && !tab.isStartPage).map((tab) => ({
+    id: tab.id,
+    url: tab.url,
+    title: tab.title,
+    ...(tab.pinned ? { pinned: true } : {}),
+  }))
   return {
     version: 2,
-    url: safeHttpUrl(currentUrl ?? '') ? currentUrl! : lastKnownUrl,
+    // The open page only when it is a saved tab: a private page's address never reaches the disk.
+    url: persistedActiveUrl(tabs, activeTabId, lastKnownUrl),
     bounds: lastBounds,
     wasVisible: pageAttached,
-    // Private tabs are never saved or restored; nor are empty new tabs.
-    tabs: tabSnapshots().filter((tab) => !tab.isPrivate && !tab.isStartPage).map((tab) => ({
-      id: tab.id,
-      url: tab.url,
-      title: tab.title,
-      ...(tab.pinned ? { pinned: true } : {}),
-    })),
+    tabs,
   }
 }
 
@@ -337,8 +350,8 @@ function panelState(): BrowserPanelSnapshot {
     }
   }
   return {
-    url: contents.getURL(),
-    title: contents.getTitle(),
+    url: capUrl(contents.getURL()),
+    title: capTitle(contents.getTitle()),
     canGoBack: contents.navigationHistory.canGoBack(),
     canGoForward: contents.navigationHistory.canGoForward(),
     isLoading: contents.isLoading(),
@@ -356,9 +369,8 @@ function emit(event: BrowserHostEvent): void {
   if (event.type === 'panel-state' || event.type === 'tabs') appMenu.schedule()
 }
 
-function emitPanelState(): void {
-  emit({ type: 'panel-state', panel: panelState() })
-}
+/** At most about one per frame: a page can fire navigation and title events as fast as it likes. */
+const emitPanelState = coalesce(() => emit({ type: 'panel-state', panel: panelState() }))
 
 function exceptionsFilePath(): string {
   return join(app.getPath('userData'), 'protection-exceptions.json')
@@ -387,9 +399,8 @@ function protectionSnapshot(): ProtectionSnapshot {
   }
 }
 
-function emitProtectionState(): void {
-  emit({ type: 'protection-state', protection: protectionSnapshot() })
-}
+/** Coalesced too: every blocked request of the open page asks for an update. */
+const emitProtectionState = coalesce(() => emit({ type: 'protection-state', protection: protectionSnapshot() }))
 
 function persistExceptions(): void {
   if (!app.isReady()) return
@@ -760,12 +771,14 @@ function wireDownloadSession(partition = 'persist:intoponet-default'): void {
   browsing.setPermissionRequestHandler((contents, permission, callback, details) => {
     if (!sitePermissions) return callback(false)
     const mediaTypes = (details as { mediaTypes?: string[] }).mediaTypes ?? []
-    sitePermissions.request({ origin: originOf(details.requestingUrl || contents.getURL()), kinds: kindsFor(permission, mediaTypes), isPrivate, owner: contents.id }, callback)
+    // Answers are kept per (asking site, page it is in): an embedded frame is named with its page.
+    sitePermissions.request({ origin: originOf(details.requestingUrl || contents.getURL()), topOrigin: originOf(contents.getURL()), kinds: kindsFor(permission, mediaTypes), isPrivate, owner: contents.id }, callback)
   })
-  browsing.setPermissionCheckHandler((_contents, permission, requestingOrigin, details) => {
+  browsing.setPermissionCheckHandler((contents, permission, requestingOrigin, details) => {
     const mediaType = (details as { mediaType?: string }).mediaType
     const kinds = kindsFor(permission, mediaType === 'video' ? ['video'] : mediaType === 'audio' ? ['audio'] : [])
-    return sitePermissions?.check(originOf(requestingOrigin), kinds, isPrivate) === true
+    const topOrigin = contents ? originOf(contents.getURL()) : originOf((details as { embeddingOrigin?: string }).embeddingOrigin ?? '')
+    return sitePermissions?.check(originOf(requestingOrigin), kinds, isPrivate, topOrigin) === true
   })
   app.on('certificate-error', (event, webContents, _url, _error, _certificate, callback) => {
     rejectCertificateErrorForSession(event, webContents, browsing, callback)
@@ -839,15 +852,34 @@ function preferReadablePageTheme(contents: Electron.WebContents): void {
   })
 }
 
-function safeFavicon(value: string): string {
-  if (value.startsWith('data:image/') && value.length < 80_000) return value
-  try {
-    const url = new URL(value)
-    if (url.protocol === 'https:' || url.protocol === 'http:') return url.toString().slice(0, 2_048)
-  } catch {
-    return ''
+/** Icons already converted for each page (by icon address), and the newest icon each page reported. */
+const tabIconMemory = new WeakMap<WebContentsView, TabIconMemory>()
+const tabIconWanted = new WeakMap<WebContentsView, string>()
+
+/**
+ * A page reported its icon: the tab shows it as a small data: URL fetched through the page's own
+ * session (never by the app window, which would load any address a page names).
+ */
+function updateTabIcon(view: WebContentsView, iconUrl: string): void {
+  tabIconWanted.set(view, iconUrl)
+  let memory = tabIconMemory.get(view)
+  if (!memory) tabIconMemory.set(view, (memory = new TabIconMemory()))
+  const apply = (data: string): void => {
+    if (tabIconWanted.get(view) !== iconUrl) return
+    const tab = openTabs.find((item) => item.view === view)
+    if (!tab || tab.favicon === data) return
+    tab.favicon = data
+    emitTabs()
   }
-  return ''
+  const known = iconUrl ? memory.get(iconUrl) : ''
+  if (known !== undefined) return apply(known)
+  if (viewGone(view)) return
+  const pageSession = view.webContents.session
+  const remembered = memory
+  void fetchTabIcon(iconUrl, (url, init) => pageSession.fetch(url, init)).then((data) => {
+    remembered.set(iconUrl, data)
+    apply(data)
+  })
 }
 
 function tabSnapshots(): PageTabSnapshot[] {
@@ -857,8 +889,9 @@ function tabSnapshots(): PageTabSnapshot[] {
     const currentUrl = live ? tab.view.webContents.getURL() : ''
     return {
       id: tab.id,
-      url: tab.start ? '' : safeHttpUrl(currentUrl) ? currentUrl : tab.url,
-      title: tab.start ? 'New tab' : (live ? tab.view.webContents.getTitle() : '') || tab.title || tab.url,
+      // Bounded: a page's address and title can be made enormous.
+      url: tab.start ? '' : capUrl(safeHttpUrl(currentUrl) ? currentUrl : tab.url),
+      title: tab.start ? 'New tab' : capTitle((live ? tab.view.webContents.getTitle() : '') || tab.title || capUrl(tab.url)),
       favicon: tab.favicon,
       active: tab.id === activeTabId,
       isPrivate: privateViews.has(tab.view),
@@ -909,9 +942,8 @@ async function showAddressMenu(hasSelection: boolean): Promise<void> {
   Menu.buildFromTemplate(template).popup({ window })
 }
 
-function emitTabs(): void {
-  emit({ type: 'tabs', tabs: tabSnapshots() })
-}
+/** Coalesced like the panel state (titles, icons and navigations of every tab arrive here). */
+const emitTabs = coalesce(() => emit({ type: 'tabs', tabs: tabSnapshots() }))
 
 function samePage(left: string, right: string): boolean {
   try {
@@ -995,7 +1027,7 @@ function discardTab(id: string): void {
 }
 
 function makeRoomForTab(): void {
-  while (openTabs.length >= 12) {
+  while (openTabs.length >= MAX_TABS) {
     const victim = openTabs.find((tab) => tab.id !== activeTabId && !tab.pinned) ?? openTabs.find((tab) => tab.id !== activeTabId) ?? openTabs[0]
     if (!victim) return
     discardTab(victim.id)
@@ -1006,20 +1038,50 @@ function makeRoomForTab(): void {
 const viewContentsIds = new WeakMap<WebContentsView, number>()
 
 const popupLimiter = new PopupLimiter()
+/** When each page was last clicked or typed in: pages open tabs and windows only right after. */
+const userActivation = new UserActivation()
+
+/** Most tabs open at once; a page asking for more is refused rather than closing your tabs. */
+const MAX_TABS = 12
+
+/**
+ * A page asked for a tab or window without a click or key press first. A site always allowed
+ * pop-ups gets it (as a tab); otherwise it is blocked and the bar offers to open it.
+ */
+function blockedPopup(opener: WebContentsView, url: string): void {
+  const target = safeHttpUrl(url)
+  if (!target || !sitePermissions || viewGone(opener)) return
+  const contents = opener.webContents
+  const isPrivate = privateViews.has(opener)
+  sitePermissions.request({ origin: originOf(contents.getURL()), kinds: ['popups'], isPrivate, owner: contents.id }, (granted) => {
+    if (!granted || viewGone(opener) || !popupLimiter.allow(contents.id)) return
+    const tab = createBrowserTab(target.toString(), true, isPrivate, true)
+    if (tab) void tab.webContents.loadURL(target.toString()).catch(() => undefined)
+  })
+}
+
+/** Whether this site was always allowed pop-ups (the bar's "Always for this site"). */
+function popupsAllowed(contents: Electron.WebContents, isPrivate: boolean): boolean {
+  return sitePermissions?.check(originOf(contents.getURL()), ['popups'], isPrivate) === true
+}
 const crashRecovery = new CrashRecoveryPolicy()
 
 /** A popup window opened by a page: http(s) only, nested popups become tabs, closes with its page. */
 function wirePopupWindow(child: BrowserWindow, opener: WebContentsView): void {
   bindPermissionOwnerLifecycle(child.webContents, (owner) => sitePermissions?.dropOwner(owner))
   child.webContents.on('will-navigate', (event, url) => { if (!safeHttpUrl(url)) event.preventDefault() })
+  bindLeavePrompt(child.webContents, () => child, dialog.showMessageBoxSync)
+  guardPopupWindow(child)
   const childContentsId = child.webContents.id
+  trackUserActivation(child.webContents, userActivation)
   child.webContents.setWindowOpenHandler(({ url, disposition, features }) => {
-    const plan = nestedPopupDecision({ url, disposition, features }, popupLimiter, childContentsId)
+    const activated = userActivation.consume(childContentsId)
+    const plan = nestedPopupDecision({ url, disposition, features }, popupLimiter, childContentsId, Date.now(), activated)
     if (plan.action === 'deny') {
-      emit({ type: 'navigation-failed', url, reason: plan.reason })
+      if (!plan.withoutGesture) emit({ type: 'navigation-failed', url, reason: plan.reason })
       return { action: 'deny' }
     }
-    const tab = createBrowserTab(url, true, privateViews.has(opener))
+    const tab = createBrowserTab(url, true, privateViews.has(opener), true)
     if (tab) void tab.webContents.loadURL(url).catch(() => undefined)
     return { action: 'deny' }
   })
@@ -1027,9 +1089,14 @@ function wirePopupWindow(child: BrowserWindow, opener: WebContentsView): void {
   bindPopupCloseWithOwner(child, opener.webContents)
 }
 
-function createBrowserTab(urlValue: string, activate = true, isPrivate = privateMode): WebContentsView | null {
+function createBrowserTab(urlValue: string, activate = true, isPrivate = privateMode, openedByPage = false): WebContentsView | null {
   const url = safeHttpUrl(urlValue)
   if (!url) return null
+  // A page never closes your tabs to make room for its own.
+  if (openedByPage && openTabs.length >= MAX_TABS) {
+    emit({ type: 'navigation-failed', url: url.toString(), reason: `A page tried to open another tab, but ${MAX_TABS} tabs are already open. Close a tab and try again.` })
+    return null
+  }
   makeRoomForTab()
   const view = buildView(isPrivate)
   const tab = { id: randomUUID(), url: url.toString(), title: '', favicon: '', view }
@@ -1072,7 +1139,7 @@ function contextMenuTemplate(view: WebContentsView, params: Electron.ContextMenu
   if (has('open-link-in-new-tab') || has('copy-link-address')) items.push({ type: 'separator' })
 
   // Keep a highlighted passage (a statistic, a quote, a description) in your private knowledge.
-  if (has('copy-selection') && !params.isEditable && params.selectionText.trim().split(/\s+/).length >= 3) {
+  if (has('copy-selection') && !privateViews.has(view) && !params.isEditable && params.selectionText.trim().split(/\s+/).length >= 3) {
     items.push({ label: 'Absorb Selection', click: () => emit({ type: 'shortcut', action: 'absorb-selection' }) })
   }
   if (has('copy-selection')) items.push({ label: 'Copy', role: 'copy' })
@@ -1109,6 +1176,7 @@ function buildView(isPrivate = privateMode): WebContentsView {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      ...SAFE_DIALOG_PREFERENCES,
       session: session.fromPartition(isPrivate ? PRIVATE_PARTITION : 'persist:intoponet-default'),
       // The sign-in helper for saved passwords; private tabs never get it.
       ...(isPrivate ? {} : { preload: join(__dirname, '../preload/page.js') }),
@@ -1148,6 +1216,12 @@ function buildView(isPrivate = privateMode): WebContentsView {
   // Browser keys pressed in a page: carried out here, so a page cannot swallow them. preventDefault
   // also keeps the menu bar from running the same key a second time.
   view.webContents.on('before-input-event', (event, input) => {
+    // Esc always leaves a page's fullscreen (the page cannot keep it for itself).
+    if (htmlFullScreenView === view && input.type === 'keyDown' && input.key === 'Escape') {
+      event.preventDefault()
+      void view.webContents.executeJavaScriptInIsolatedWorld(FULLSCREEN_WORLD_ID, [{ code: EXIT_FULLSCREEN_SCRIPT }]).catch(() => undefined)
+      return
+    }
     if (pageView !== view) return
     // Escape stops a page still loading; the page gets the key as well.
     if (isPlainEscape(input) && view.webContents.isLoading()) view.webContents.stop()
@@ -1188,7 +1262,8 @@ function buildView(isPrivate = privateMode): WebContentsView {
     if (!safeHttpUrl(url)) return
     // Read only rating declarations locally. These untrusted hints can exclude
     // content; their absence is never a certification that a page is suitable.
-    void view.webContents.executeJavaScript(`(() => {
+    // In an isolated world: the page's own scripts cannot see or tamper with the reader.
+    void view.webContents.executeJavaScriptInIsolatedWorld(RATING_WORLD_ID, [{ code: `(() => {
       const values = [];
       for (const node of Array.from(document.querySelectorAll('meta[name="rating"], meta[itemprop="contentRating"], meta[property="og:restrictions:age"], [itemprop="contentRating"]')).slice(0, 20)) {
         values.push((node.getAttribute('content') || node.textContent || '').slice(0, 120));
@@ -1198,7 +1273,7 @@ function buildView(isPrivate = privateMode): WebContentsView {
         for (const match of source.matchAll(/"contentRating"\\s*:\\s*"([^"\\n]{1,120})"/g)) values.push(match[1]);
       }
       return values.join(' | ').slice(0, 1000);
-    })()`).then((rating: unknown) => {
+    })()` }]).then((rating: unknown) => {
       if (viewGone(view) || pageView !== view || !frequencyLoadSucceeded || generation !== frequencyNavigation || url !== view.webContents.getURL()) return
       // Private tabs and excluded sites leave no footprints and no interest signals.
       if (privateViews.has(view) || isExcludedSite(url, excludedSites)) return
@@ -1208,15 +1283,20 @@ function buildView(isPrivate = privateMode): WebContentsView {
     }).catch(() => { /* No activity is recorded when rating extraction fails. */ })
   })
   preferReadablePageTheme(view.webContents)
+  bindLeavePrompt(view.webContents, () => window, dialog.showMessageBoxSync)
+  trackUserActivation(view.webContents, userActivation)
   view.webContents.setWindowOpenHandler(({ url, disposition, features }) => {
-    const plan = popupDecision({ url, disposition, features }, popupLimiter, view.webContents.id)
+    // Only right after a click or key press in the page (or for a site always allowed pop-ups).
+    const activated = userActivation.consume(view.webContents.id) || popupsAllowed(view.webContents, privateViews.has(view))
+    const plan = popupDecision({ url, disposition, features }, popupLimiter, view.webContents.id, Date.now(), activated)
     if (plan.action === 'deny') {
-      emit({ type: 'navigation-failed', url, reason: plan.reason })
+      if (plan.withoutGesture) blockedPopup(view, url)
+      else emit({ type: 'navigation-failed', url, reason: plan.reason })
       return { action: 'deny' }
     }
     if (plan.action === 'tab') {
       // Same privacy as the page that opened it.
-      const tab = createBrowserTab(url, !plan.background, privateViews.has(view))
+      const tab = createBrowserTab(url, !plan.background, privateViews.has(view), true)
       if (tab) void tab.webContents.loadURL(url).catch(() => undefined)
       return { action: 'deny' }
     }
@@ -1265,9 +1345,14 @@ function buildView(isPrivate = privateMode): WebContentsView {
   view.webContents.on('enter-html-full-screen', () => {
     htmlFullScreenView = view
     applyPageViewBounds()
+    // The page now covers the toolbar: say which site it is and how to leave.
+    removeFullscreenNotice?.()
+    removeFullscreenNotice = window && !window.isDestroyed() ? showFullscreenNotice(window, fullscreenSiteName(view.webContents.getURL())) : null
   })
   view.webContents.on('leave-html-full-screen', () => {
     if (htmlFullScreenView === view) htmlFullScreenView = null
+    removeFullscreenNotice?.()
+    removeFullscreenNotice = null
     applyPageViewBounds()
   })
   // Early as well, so a banner clicked before the page finishes loading already works.
@@ -1299,12 +1384,9 @@ function buildView(isPrivate = privateMode): WebContentsView {
     if (pageView === view) emitPanelState()
   })
   view.webContents.on('page-favicon-updated', (_event, favicons) => {
-    if (favicons[0]) faviconCache?.remember(view.webContents.getURL(), favicons[0])
-    const tab = openTabs.find((item) => item.view === view)
-    const next = safeFavicon(favicons[0] ?? '')
-    if (!tab || tab.favicon === next) return
-    tab.favicon = next
-    emitTabs()
+    // Private tabs leave nothing in favicons.json.
+    if (favicons[0] && !privateViews.has(view)) faviconCache?.remember(view.webContents.getURL(), favicons[0])
+    updateTabIcon(view, favicons[0] ?? '')
   })
   view.webContents.on('found-in-page', (_event, result) => {
     if (pageView !== view) return
@@ -2076,6 +2158,11 @@ app.whenReady().then(async () => {
     // Private tabs get the same protections, permissions and download handling.
     wireDownloadSession(PRIVATE_PARTITION)
     wireProtectionSession(PRIVATE_PARTITION)
+    // No TLS client certificate is ever sent on its own (Electron's default sends the first one).
+    app.on('select-client-certificate', (event, contents, url, _list, callback) => {
+      declineClientCertificate(event, callback)
+      if (pageView && !viewGone(pageView) && pageView.webContents === contents) emit({ type: 'navigation-failed', url, reason: CLIENT_CERTIFICATE_NOTICE })
+    })
   })
 
   let laya: LayaService | null = null
@@ -2126,6 +2213,7 @@ app.whenReady().then(async () => {
       dir: knowledgeDir,
       crypto: knowledgeCrypto,
       getActivePage: () => (pageAttached && pageView ? pageView.webContents : null),
+      isPrivatePage: (page) => openTabs.some((tab) => privateViews.has(tab.view) && !viewGone(tab.view) && tab.view.webContents === page),
       isExcluded: (url) => isExcludedSite(url, excludedSites),
       onChange: (change) => laya?.onKnowledgeChange(change),
     })
@@ -2304,6 +2392,8 @@ app.whenReady().then(async () => {
       platform: process.platform,
       currentVersion: app.getVersion(),
       feedUrl: __INTOPONET_MAC_UPDATE_URL__,
+      // Read releases.json through Chromium's network stack (system proxy, like Squirrel itself).
+      latestVersion: (manifestUrl) => fetchCurrentRelease(manifestUrl, (input, init) => net.fetch(String(input), init)),
       adapter: app.isPackaged && process.platform === 'darwin' && __INTOPONET_MAC_UPDATE_URL__.length > 0 ? autoUpdater : undefined,
       emit: (status) => { if (window && !window.isDestroyed()) window.webContents.send(updateChannels.event, status) },
       // The automatic-check setting and last check time, kept between launches.

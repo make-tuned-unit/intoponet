@@ -1,28 +1,40 @@
-import { Bell, Camera, ClipboardPaste, MapPin, Mic, ShieldQuestion } from 'lucide-react'
-import { describePermissionKinds, type SitePermissionKind, type SitePermissionMap, type SitePermissionRequest } from '@intoponet/browser-api'
+import { Bell, Camera, ClipboardPaste, ExternalLink, MapPin, Mic, ShieldQuestion } from 'lucide-react'
+import { describePermissionKinds, type SitePermissionAnswer, type SitePermissionKind, type SitePermissionMap, type SitePermissionRequest } from '@intoponet/browser-api'
 
-const ICONS: Record<SitePermissionKind, typeof Camera> = { camera: Camera, microphone: Mic, location: MapPin, notifications: Bell, 'clipboard-read': ClipboardPaste }
-const NAMES: Record<SitePermissionKind, string> = { camera: 'Camera', microphone: 'Microphone', location: 'Location', notifications: 'Notifications', 'clipboard-read': 'Clipboard' }
+const ICONS: Record<SitePermissionKind, typeof Camera> = { camera: Camera, microphone: Mic, location: MapPin, notifications: Bell, 'clipboard-read': ClipboardPaste, popups: ExternalLink }
+const NAMES: Record<SitePermissionKind, string> = { camera: 'Camera', microphone: 'Microphone', location: 'Location', notifications: 'Notifications', 'clipboard-read': 'Clipboard', popups: 'Pop-ups' }
 
 const hostOf = (origin: string): string => origin.replace(/^https?:\/\//, '')
 
 /** A site asking for something: one bar under the toolbar, answered once per site. */
-export function PermissionBar({ request, more, onDecide }: { request: SitePermissionRequest; more: number; onDecide: (decision: 'allow' | 'block' | 'dismiss') => void }) {
+export function PermissionBar({ request, more, onDecide }: { request: SitePermissionRequest; more: number; onDecide: (decision: SitePermissionAnswer) => void }) {
+  // A pop-up the page opened without a click was blocked: open it this once, or always for the site.
+  const popup = request.kinds.length === 1 && request.kinds[0] === 'popups'
   const Icon = request.kinds.length === 1 ? ICONS[request.kinds[0]!] : ShieldQuestion
   return (
-    <div className="permission-bar" role="alertdialog" aria-label={`${hostOf(request.origin)} asks for permission`}>
+    <div className="permission-bar" role="alertdialog" aria-label={`${hostOf(request.origin)}${request.topOrigin ? ` on ${hostOf(request.topOrigin)}` : ''} asks for permission`}>
       <span className="permission-bar-ask">
         <Icon size={15} aria-hidden="true" />
         <span>
-          <strong>{hostOf(request.origin)}</strong> wants to {describePermissionKinds(request.kinds)}.
-          {request.isPrivate ? ' Private tab: your answer is forgotten when private browsing ends.' : ' Your answer is remembered for this site.'}
+          {popup ? 'Pop-up blocked: ' : null}<strong>{hostOf(request.origin)}</strong>{request.topOrigin ? <> on <strong>{hostOf(request.topOrigin)}</strong></> : null} wants to {describePermissionKinds(request.kinds)}.
+          {popup ? '' : request.isPrivate ? ' Private tab: your answer is forgotten when private browsing ends.' : ' Your answer is remembered for this site.'}
           {more > 0 ? ` (${more} more waiting)` : ''}
         </span>
       </span>
       <span className="permission-bar-actions">
-        <button type="button" onClick={() => onDecide('dismiss')} title="Decline this time and ask again later">Not now</button>
-        <button type="button" onClick={() => onDecide('block')}>Block</button>
-        <button type="button" className="is-primary" onClick={() => onDecide('allow')} autoFocus>Allow</button>
+        {popup ? (
+          <>
+            <button type="button" onClick={() => onDecide('dismiss')} title="Keep it blocked this time">Not now</button>
+            <button type="button" onClick={() => onDecide('allow-once')}>Allow once</button>
+            <button type="button" className="is-primary" onClick={() => onDecide('allow')}>Always for this site</button>
+          </>
+        ) : (
+          <>
+            <button type="button" onClick={() => onDecide('dismiss')} title="Decline this time and ask again later">Not now</button>
+            <button type="button" onClick={() => onDecide('block')}>Block</button>
+            <button type="button" className="is-primary" onClick={() => onDecide('allow')} autoFocus>Allow</button>
+          </>
+        )}
       </span>
     </div>
   )

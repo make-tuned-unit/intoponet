@@ -558,13 +558,31 @@ export const checks = {
     await ctx.delay(1500)
     const state = await page.evaluate(`navigator.permissions.query({ name: 'geolocation' }).then((p) => p.state)`)
     expect(state === 'granted', `After Allow, the site still sees location as "${state}".`)
-    const opened = await page.evaluate(`(() => { const w = window.open('https://www.wikipedia.org/', 'signin', 'width=480,height=600'); return !!w && w.opener === window })()`, { userGesture: true })
-    expect(opened, 'A sign-in style popup was blocked or lost its opener.')
-    await page.evaluate(`(() => { const a = document.createElement('a'); a.href = 'https://www.iana.org/'; a.target = '_blank'; document.body.append(a); a.click(); return true })()`, { userGesture: true })
+    // A page opening a tab on its own (no click) is blocked, and the bar offers to open it.
+    await page.evaluate(`(() => { window.open('https://example.org/', '_blank'); return true })()`)
+    await ctx.wait(`(document.querySelector('.permission-bar')?.innerText ?? '').includes('Pop-up blocked')`, 10_000, 'the "Pop-up blocked" bar after a window.open without a click')
+    let tabs = await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => t.map((x) => x.url).join(' '))`)
+    expect(!/example\.org/.test(tabs), 'A window.open without a click opened a tab.')
+    expect(await ctx.click('.permission-bar button', 'Allow once'), 'The pop-up bar has no "Allow once" button.')
+    await ctx.wait(`window.intoponet.browserHost.getTabs().then((t) => t.some((x) => /example\.org/.test(x.url)))`, 10_000, 'the blocked pop-up to open after "Allow once"')
+    await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => t.find((x) => !/example\.org/.test(x.url))).then((t) => t && window.intoponet.browserHost.activateTab(t.id)).then(() => true)`)
+    await ctx.delay(1000)
+    // A real click in the page (not a scripted one) lets it open a sign-in window and a new tab.
+    const clickPage = async (session) => {
+      for (const type of ['mousePressed', 'mouseReleased']) await session.send('Input.dispatchMouseEvent', { type, x: 20, y: 20, button: 'left', clickCount: 1 })
+    }
+    await page.evaluate(`(() => { addEventListener('click', () => { window.__signin = window.open('https://www.wikipedia.org/', 'signin', 'width=480,height=600'); window.__ok = !!window.__signin && window.__signin.opener === window }, { once: true }); return true })()`)
+    await clickPage(page)
+    await ctx.delay(500)
+    // Read when it opened: the site may cut the opener later (Cross-Origin-Opener-Policy).
+    const opened = await page.evaluate(`window.__ok === true`)
+    expect(opened, 'A sign-in style popup opened from a click was blocked or lost its opener.')
+    await page.evaluate(`(() => { const a = document.createElement('a'); a.href = 'https://www.iana.org/'; a.target = '_blank'; document.body.append(a); addEventListener('click', () => a.click(), { once: true }); return true })()`)
+    await clickPage(page)
     await ctx.delay(2500)
-    const tabs = await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => t.map((x) => x.url).join(' '))`)
-    expect(/iana\.org/.test(tabs), 'A target=_blank link did not open as a tab.')
-    return 'Location allowed via the bar; popup kept its opener; _blank opened a tab.'
+    tabs = await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => t.map((x) => x.url).join(' '))`)
+    expect(/iana\.org/.test(tabs), 'A target=_blank link clicked by the person did not open as a tab.')
+    return 'Location allowed via the bar; a pop-up without a click was blocked and opened with "Allow once"; a clicked popup kept its opener; a clicked _blank link opened a tab.'
   },
 
   async PRIVATE_BROWSING(ctx) {
@@ -574,6 +592,13 @@ export const checks = {
     expect(tab?.isPrivate === true, 'A tab opened in private mode is not private.')
     const recents = await ctx.evaluate(`window.intoponet.browserHost.readPrivateLibrary().then((r) => r.status === 'ok' && r.payload ? JSON.parse(r.payload).recents.length : 0)`)
     expect(recents === 0, 'A private visit was kept in recent pages.')
+    // Nothing about the private page reaches the profile's files (open tabs, site icons).
+    await ctx.delay(3500)
+    for (const file of ['browser-state.v1.json', 'favicons.json']) {
+      const path = join(ctx.profile, file)
+      const text = existsSync(path) ? readFileSync(path, 'utf8') : ''
+      expect(!text.includes(new URL(tab.url).hostname), `${file} records the private page (${new URL(tab.url).hostname}).`)
+    }
     const off = JSON.parse(await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then((s) => JSON.stringify(s))`))
     await ctx.delay(1000)
     const left = await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => t.length)`)

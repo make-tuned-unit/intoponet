@@ -1,3 +1,5 @@
+import { isExcludedSite } from '@intoponet/browser-api'
+
 /** Hosts this Mac has seen declare a paywall (kept locally, so future headlines from them are labelled). */
 const KEY = 'intoponet.paywalled-hosts.v1'
 
@@ -8,6 +10,14 @@ export function learnedPaywalls(): string[] {
   } catch {
     return []
   }
+}
+
+/**
+ * Whether a visit may leave a trace in the app's local storage (learned paywalls, hidden bars):
+ * never from a private tab or a site the person asked to leave out.
+ */
+export function mayRememberSite(url: string, isPrivate: boolean | undefined, excludedSites: readonly string[]): boolean {
+  return !isPrivate && !isExcludedSite(url, excludedSites)
 }
 
 export function rememberPaywall(url: string): void {

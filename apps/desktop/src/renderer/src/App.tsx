@@ -61,7 +61,7 @@ import { TranslateBar } from './translate/TranslateBar'
 import { formatPublicSourceHealth } from './globe/publicFieldStatus'
 import { SiteIcon } from './SiteIcon'
 import { FreeCoverageBar } from './access/FreeCoverageBar'
-import { learnedPaywalls, rememberPaywall } from './access/learnedPaywalls'
+import { learnedPaywalls, mayRememberSite, rememberPaywall } from './access/learnedPaywalls'
 import { hostIsPaywalled } from '../../shared/news/paywall'
 import { hostOf } from './favicons'
 import { formatMegabytes, languageName, modelFor, useTranslate } from './translate/useTranslate'
@@ -316,16 +316,18 @@ export function App() {
     setPageAccess(null)
     if (!panel.isVisible || panel.isLoading || !/^https?:/i.test(panel.url)) return
     const url = panel.url
+    const isPrivate = panel.isPrivate
     const timer = setTimeout(() => {
       void window.intoponet.access.page().then((access) => {
         if (!access || access.url !== url) return
         const known = hostIsPaywalled(url, learnedPaywalls())
-        if (access.paywalled) rememberPaywall(url)
+        // Private tabs and left-out sites are never written to local storage.
+        if (access.paywalled && mayRememberSite(url, isPrivate, excludedSitesRef.current)) rememberPaywall(url)
         if (access.paywalled || known) setPageAccess({ url, title: access.title, signals: access.signals })
       }).catch(() => undefined)
     }, 1_200)
     return () => clearTimeout(timer)
-  }, [panel.url, panel.isLoading, panel.isVisible])
+  }, [panel.url, panel.isLoading, panel.isVisible, panel.isPrivate])
   const [activeTopic, setActiveTopic] = useState(
     () => localStorage.getItem(topicKey) ?? 'Open knowledge',
   )
@@ -345,6 +347,8 @@ export function App() {
   const privacySettingsRef = useRef(privacySettings)
   privacySettingsRef.current = privacySettings
   const [privacyState, setPrivacyState] = useState<PrivacyState | null>(null)
+  const excludedSitesRef = useRef<string[]>([])
+  excludedSitesRef.current = privacyState?.excludedSites ?? []
   const [recents, setRecents] = useState(() => pruneRecents(readRecents(), readPrivacySettings().retentionDays))
   const [absorbed, setAbsorbed] = useState<AbsorbRecord[]>([])
   const [absorbExcerpt, setAbsorbExcerpt] = useState('')
@@ -3657,7 +3661,15 @@ export function App() {
               onClose={() => {
                 const next = [...new Set([hostOf(pageAccess.url), ...accessHidden])].slice(0, 300)
                 setAccessHidden(next)
-                try { localStorage.setItem('intoponet.paywall-bar-hidden.v1', JSON.stringify(next)) } catch { /* convenience only */ }
+                // Hidden for this session only when the tab is private or the site is left out.
+                if (mayRememberSite(pageAccess.url, panel.isPrivate, excludedSitesRef.current)) {
+                  try {
+                    // From what is stored, not this session's list (which may hold private or left-out hosts).
+                    const stored = JSON.parse(localStorage.getItem('intoponet.paywall-bar-hidden.v1') ?? '[]') as unknown
+                    const kept = Array.isArray(stored) ? stored.filter((host): host is string => typeof host === 'string') : []
+                    localStorage.setItem('intoponet.paywall-bar-hidden.v1', JSON.stringify([...new Set([hostOf(pageAccess.url), ...kept])].slice(0, 300)))
+                  } catch { /* convenience only */ }
+                }
               }}
             />
           )}

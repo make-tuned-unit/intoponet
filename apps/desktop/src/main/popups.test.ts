@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { EventEmitter } from 'node:events'
-import { bindPopupCloseWithOwner, nestedPopupDecision, popupDecision, popupWindowOptions, PopupLimiter } from './popups'
+import { bindPopupCloseWithOwner, guardPopupWindow, isActivationInput, popupWindowTitle, nestedPopupDecision, popupDecision, popupWindowOptions, PopupLimiter, trackUserActivation, UserActivation } from './popups'
 
 describe('popup policy', () => {
   it('opens ordinary new-tab requests as tabs and rejects unsupported protocols', () => {
@@ -33,13 +33,100 @@ describe('popup policy', () => {
     expect(nestedPopupDecision({ ...first, url: 'https://example.test/three' }, limiter, 45, 14).action).toBe('deny')
   })
 
+  it('blocks tabs and windows a page opens without a click or key press', () => {
+    const limiter = new PopupLimiter()
+    const tab = { url: 'https://example.test/', disposition: 'foreground-tab', features: '' }
+    const signIn = { url: 'https://accounts.example.test/', disposition: 'new-window', features: 'width=500' }
+    expect(popupDecision(tab, limiter, 1, 10, false)).toMatchObject({ action: 'deny', withoutGesture: true })
+    expect(popupDecision(signIn, limiter, 1, 10, false)).toMatchObject({ action: 'deny', withoutGesture: true })
+    expect(nestedPopupDecision(tab, limiter, 2, 10, false)).toMatchObject({ action: 'deny', withoutGesture: true })
+    // Unsupported addresses are refused for that reason, not offered in the bar.
+    expect(popupDecision({ ...tab, url: 'file:///etc/passwd' }, limiter, 1, 10, false)).not.toHaveProperty('withoutGesture')
+    expect(popupDecision(tab, limiter, 1, 10, true).action).toBe('tab')
+  })
+
+  it('one recent click or key press allows one popup, briefly', () => {
+    const activation = new UserActivation(5_000)
+    expect(activation.consume(1, 100)).toBe(false)
+    activation.note(1, 1_000)
+    expect(activation.consume(1, 1_500)).toBe(true)
+    expect(activation.consume(1, 1_600)).toBe(false)
+    activation.note(1, 2_000)
+    expect(activation.consume(1, 8_000)).toBe(false)
+    expect(isActivationInput('mouseDown')).toBe(true)
+    expect(isActivationInput('rawKeyDown')).toBe(true)
+    expect(isActivationInput('mouseMove')).toBe(false)
+    expect(isActivationInput('mouseWheel')).toBe(false)
+    const contents = Object.assign(new EventEmitter(), { id: 7 })
+    trackUserActivation(contents as unknown as Electron.WebContents, activation)
+    contents.emit('input-event', {}, { type: 'mouseMove' })
+    expect(activation.consume(7)).toBe(false)
+    contents.emit('input-event', {}, { type: 'mouseDown' })
+    expect(activation.consume(7)).toBe(true)
+  })
+
   it('provides bounded opener-preserving child window options', () => {
     const plan = popupDecision({ url: 'https://example.test/', disposition: 'new-window', features: 'width=9999,height=120' }, new PopupLimiter(), 1)
     expect(plan).toEqual({ action: 'window', width: 1200, height: 320 })
     if (plan.action !== 'window') throw new Error('expected a child window plan')
     const options = popupWindowOptions(plan)
-    expect(options).toMatchObject({ width: 1200, height: 320, title: 'Sign-in window' })
-    expect(options.webPreferences).toMatchObject({ sandbox: true, contextIsolation: true, nodeIntegration: false })
+    expect(options).toMatchObject({ width: 1200, height: 320, title: 'Pop-up' })
+    expect(options.webPreferences).toMatchObject({ sandbox: true, contextIsolation: true, nodeIntegration: false, safeDialogs: true })
+  })
+
+  it('titles popup windows with the site they are really at', () => {
+    expect(popupWindowTitle('https://accounts.google.com/o/oauth2/auth?x=1', 'Sign in - Google Accounts')).toBe('accounts.google.com — Sign in - Google Accounts')
+    expect(popupWindowTitle('http://login.example.test/', 'Bank')).toBe('Not secure: login.example.test — Bank')
+    expect(popupWindowTitle('about:blank', '')).toBe('Pop-up')
+    expect(popupWindowTitle('https://a.test/', '')).toBe('a.test')
+    expect(popupWindowTitle('https://a.test/', 'x'.repeat(500)).length).toBeLessThan(140)
+  })
+
+  function fakePopup(url: string, empty: boolean) {
+    const contents = Object.assign(new EventEmitter(), {
+      url,
+      isDestroyed: () => false,
+      getURL() { return this.url },
+      getTitle: () => '',
+      executeJavaScriptInIsolatedWorld: vi.fn(async () => empty),
+    })
+    const titles: string[] = []
+    let closed = false
+    const child = Object.assign(new EventEmitter(), {
+      webContents: contents,
+      isDestroyed: () => closed,
+      setTitle: (title: string) => titles.push(title),
+      close: () => { closed = true },
+    })
+    guardPopupWindow(child as unknown as Electron.BrowserWindow, 1_000)
+    return { child, contents, titles, isClosed: () => closed }
+  }
+
+  it('closes a popup still empty on about:blank after the grace period, and keeps the rest', async () => {
+    vi.useFakeTimers()
+    try {
+      const blank = fakePopup('about:blank', true)
+      const written = fakePopup('about:blank', false)
+      const navigated = fakePopup('about:blank', true)
+      navigated.contents.url = 'https://accounts.example.test/'
+      navigated.contents.emit('did-navigate')
+      expect(navigated.titles.at(-1)).toBe('accounts.example.test')
+      await vi.advanceTimersByTimeAsync(1_100)
+      expect(blank.isClosed()).toBe(true)
+      expect(written.isClosed()).toBe(false)
+      expect(navigated.isClosed()).toBe(false)
+      expect(navigated.contents.executeJavaScriptInIsolatedWorld).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('a page cannot set its popup window title on its own', () => {
+    const popup = fakePopup('https://accounts.example.test/', false)
+    const event = { preventDefault: vi.fn() }
+    popup.child.emit('page-title-updated', event, 'accounts.google.com')
+    expect(event.preventDefault).toHaveBeenCalled()
+    expect(popup.titles.at(-1)).toBe('accounts.example.test')
   })
 
   it('force-destroys the child when its opener WebContents is destroyed', () => {

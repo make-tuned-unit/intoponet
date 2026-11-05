@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { readFileSync, mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
-import type { SitePermissionDecision, SitePermissionEvent, SitePermissionKind, SitePermissionMap, SitePermissionRequest } from '@intoponet/browser-api'
+import type { SitePermissionAnswer, SitePermissionDecision, SitePermissionEvent, SitePermissionKind, SitePermissionMap, SitePermissionRequest } from '@intoponet/browser-api'
 import type { WebContents } from 'electron'
 import { writeFileAtomicSync } from './atomicFile'
 
@@ -18,8 +18,12 @@ export function bindPermissionOwnerLifecycle(contents: Pick<WebContents, 'id' | 
   contents.once('destroyed', () => dropOwner(id))
 }
 
-/** Chromium permissions granted without asking: harmless, and expected by ordinary pages. */
-const ALWAYS_ALLOW = new Set(['fullscreen', 'clipboard-sanitized-write', 'pointerLock', 'keyboardLock'])
+/**
+ * Chromium permissions granted without asking: harmless, and expected by ordinary pages.
+ * Fullscreen comes with a notice naming the site and Esc to leave; pointer and keyboard lock
+ * (which would take the mouse or Esc away from you) are refused.
+ */
+const ALWAYS_ALLOW = new Set(['fullscreen', 'clipboard-sanitized-write'])
 
 /**
  * What a Chromium permission request is asking for, in our terms. null means
@@ -52,6 +56,16 @@ export function originOf(url: string): string | null {
 }
 
 type Saved = Record<string, SitePermissionMap>
+
+/**
+ * Where an answer is kept. A site asking as the page you opened is keyed by its origin alone;
+ * a frame embedded in another site is keyed by both ("<frame> in <top>"), so allowing
+ * meet.example.com in its own tab does not let it use your camera inside some other page.
+ * Answers saved before this rule are plain origins, so they keep applying only to top-level use.
+ */
+export function permissionKey(origin: string, topOrigin?: string | null): string {
+  return topOrigin && topOrigin !== origin ? `${origin} in ${topOrigin}` : origin
+}
 
 /** Remembered answers per origin. A file for normal browsing; memory only for private tabs. */
 export class SitePermissionStore {
@@ -115,49 +129,55 @@ export class SitePermissionBroker {
   }) {}
 
   /** Answer from storage if possible: true/false, or null when the user must be asked. */
-  check(origin: string | null, kinds: SitePermissionKind[] | 'always' | null, isPrivate: boolean): boolean | null {
+  check(origin: string | null, kinds: SitePermissionKind[] | 'always' | null, isPrivate: boolean, topOrigin?: string | null): boolean | null {
     if (kinds === 'always') return true
     if (!kinds || !origin) return false
-    const saved = this.options.store(isPrivate).get(origin)
+    const saved = this.options.store(isPrivate).get(permissionKey(origin, topOrigin))
     if (kinds.some((kind) => saved[kind] === 'block')) return false
     if (kinds.every((kind) => saved[kind] === 'allow')) return true
     return null
   }
 
-  request(input: { origin: string | null; kinds: SitePermissionKind[] | 'always' | null; isPrivate: boolean; owner: number }, callback: (granted: boolean) => void): void {
-    const known = this.check(input.origin, input.kinds, input.isPrivate)
+  request(input: { origin: string | null; topOrigin?: string | null; kinds: SitePermissionKind[] | 'always' | null; isPrivate: boolean; owner: number }, callback: (granted: boolean) => void): void {
+    const known = this.check(input.origin, input.kinds, input.isPrivate, input.topOrigin)
     if (known !== null || !input.origin || !Array.isArray(input.kinds)) {
       callback(known === true)
       return
     }
     const kinds = input.kinds
+    const key = permissionKey(input.origin, input.topOrigin)
     // The same site asking again while a prompt is open joins that prompt.
-    const same = [...this.pending.values()].find((item) => item.owner === input.owner && item.request.origin === input.origin && item.request.kinds.join() === kinds.join())
+    const same = [...this.pending.values()].find((item) => item.owner === input.owner && keyOf(item.request) === key && item.request.kinds.join() === kinds.join())
     if (same) {
       same.callbacks.push(callback)
       return
     }
-    const request: SitePermissionRequest = { id: randomUUID(), origin: input.origin, kinds, isPrivate: input.isPrivate }
+    const embedded = input.topOrigin && input.topOrigin !== input.origin ? { topOrigin: input.topOrigin } : {}
+    const request: SitePermissionRequest = { id: randomUUID(), origin: input.origin, ...embedded, kinds, isPrivate: input.isPrivate }
     const timer = setTimeout(() => this.finish(request.id, false), this.options.timeoutMs ?? 120_000)
     timer.unref?.()
     this.pending.set(request.id, { request, callbacks: [callback], owner: input.owner, timer, decisionVersion: 0, allowing: false })
     this.options.emit({ type: 'request', request })
   }
 
-  async decide(id: string, decision: SitePermissionDecision | 'dismiss'): Promise<void> {
+  async decide(id: string, decision: SitePermissionAnswer): Promise<void> {
     const item = this.pending.get(id)
     if (!item) return
-    if (decision === 'allow' && item.allowing) return
+    const allows = decision === 'allow' || decision === 'allow-once'
+    if (allows && item.allowing) return
     const version = ++item.decisionVersion
-    item.allowing = decision === 'allow'
-    const { origin, kinds, isPrivate } = item.request
-    if (decision !== 'dismiss') {
+    item.allowing = allows
+    const { kinds, isPrivate } = item.request
+    const key = keyOf(item.request)
+    // Only a remembered answer settles the site's other waiting prompts.
+    const remembered = decision === 'allow' || decision === 'block'
+    if (remembered) {
       for (const [otherId, other] of this.pending) {
-        if (otherId !== id && other.request.origin === origin && other.request.isPrivate === isPrivate
+        if (otherId !== id && keyOf(other.request) === key && other.request.isPrivate === isPrivate
           && other.request.kinds.some((kind) => kinds.includes(kind))) this.finish(otherId, false)
       }
     }
-    let granted = decision === 'allow'
+    let granted = allows
     if (granted && this.options.systemAccess) {
       for (const kind of kinds) {
         if ((kind === 'camera' || kind === 'microphone') && !(await this.options.systemAccess(kind).catch(() => false))) granted = false
@@ -167,9 +187,9 @@ export class SitePermissionBroker {
       }
     }
     if (this.pending.get(id) !== item || item.decisionVersion !== version) return
-    if (decision !== 'dismiss') {
-      this.options.store(isPrivate).set(origin, kinds, decision)
-      this.options.emit({ type: 'changed', origin })
+    if (remembered) {
+      this.options.store(isPrivate).set(key, kinds, decision)
+      this.options.emit({ type: 'changed', origin: item.request.topOrigin ?? item.request.origin })
     }
     this.finish(id, granted)
   }
@@ -178,7 +198,7 @@ export class SitePermissionBroker {
   reset(origin: string, isPrivate: boolean, kind?: SitePermissionKind): void {
     this.options.store(isPrivate).reset(origin, kind)
     for (const [id, item] of this.pending) {
-      if (item.request.origin === origin && item.request.isPrivate === isPrivate
+      if (keyOf(item.request) === origin && item.request.isPrivate === isPrivate
         && (!kind || item.request.kinds.includes(kind))) this.finish(id, false)
     }
     this.options.emit({ type: 'changed', origin })
@@ -208,3 +228,5 @@ export class SitePermissionBroker {
     this.options.emit({ type: 'resolved', id })
   }
 }
+
+const keyOf = (request: SitePermissionRequest): string => permissionKey(request.origin, request.topOrigin)
