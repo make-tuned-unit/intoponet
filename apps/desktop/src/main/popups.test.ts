@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { EventEmitter } from 'node:events'
-import { bindPopupCloseWithOwner, isActivationInput, nestedPopupDecision, popupDecision, popupWindowOptions, PopupLimiter, trackUserActivation, UserActivation } from './popups'
+import { bindPopupCloseWithOwner, guardPopupWindow, isActivationInput, popupWindowTitle, nestedPopupDecision, popupDecision, popupWindowOptions, PopupLimiter, trackUserActivation, UserActivation } from './popups'
 
 describe('popup policy', () => {
   it('opens ordinary new-tab requests as tabs and rejects unsupported protocols', () => {
@@ -70,8 +70,63 @@ describe('popup policy', () => {
     expect(plan).toEqual({ action: 'window', width: 1200, height: 320 })
     if (plan.action !== 'window') throw new Error('expected a child window plan')
     const options = popupWindowOptions(plan)
-    expect(options).toMatchObject({ width: 1200, height: 320, title: 'Sign-in window' })
+    expect(options).toMatchObject({ width: 1200, height: 320, title: 'Pop-up' })
     expect(options.webPreferences).toMatchObject({ sandbox: true, contextIsolation: true, nodeIntegration: false, safeDialogs: true })
+  })
+
+  it('titles popup windows with the site they are really at', () => {
+    expect(popupWindowTitle('https://accounts.google.com/o/oauth2/auth?x=1', 'Sign in - Google Accounts')).toBe('accounts.google.com — Sign in - Google Accounts')
+    expect(popupWindowTitle('http://login.example.test/', 'Bank')).toBe('Not secure: login.example.test — Bank')
+    expect(popupWindowTitle('about:blank', '')).toBe('Pop-up')
+    expect(popupWindowTitle('https://a.test/', '')).toBe('a.test')
+    expect(popupWindowTitle('https://a.test/', 'x'.repeat(500)).length).toBeLessThan(140)
+  })
+
+  function fakePopup(url: string, empty: boolean) {
+    const contents = Object.assign(new EventEmitter(), {
+      url,
+      isDestroyed: () => false,
+      getURL() { return this.url },
+      getTitle: () => '',
+      executeJavaScriptInIsolatedWorld: vi.fn(async () => empty),
+    })
+    const titles: string[] = []
+    let closed = false
+    const child = Object.assign(new EventEmitter(), {
+      webContents: contents,
+      isDestroyed: () => closed,
+      setTitle: (title: string) => titles.push(title),
+      close: () => { closed = true },
+    })
+    guardPopupWindow(child as unknown as Electron.BrowserWindow, 1_000)
+    return { child, contents, titles, isClosed: () => closed }
+  }
+
+  it('closes a popup still empty on about:blank after the grace period, and keeps the rest', async () => {
+    vi.useFakeTimers()
+    try {
+      const blank = fakePopup('about:blank', true)
+      const written = fakePopup('about:blank', false)
+      const navigated = fakePopup('about:blank', true)
+      navigated.contents.url = 'https://accounts.example.test/'
+      navigated.contents.emit('did-navigate')
+      expect(navigated.titles.at(-1)).toBe('accounts.example.test')
+      await vi.advanceTimersByTimeAsync(1_100)
+      expect(blank.isClosed()).toBe(true)
+      expect(written.isClosed()).toBe(false)
+      expect(navigated.isClosed()).toBe(false)
+      expect(navigated.contents.executeJavaScriptInIsolatedWorld).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('a page cannot set its popup window title on its own', () => {
+    const popup = fakePopup('https://accounts.example.test/', false)
+    const event = { preventDefault: vi.fn() }
+    popup.child.emit('page-title-updated', event, 'accounts.google.com')
+    expect(event.preventDefault).toHaveBeenCalled()
+    expect(popup.titles.at(-1)).toBe('accounts.example.test')
   })
 
   it('force-destroys the child when its opener WebContents is destroyed', () => {

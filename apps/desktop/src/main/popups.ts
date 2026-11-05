@@ -136,7 +136,7 @@ export function popupWindowOptions(
     ...(parent && !parent.isDestroyed() ? { parent } : {}),
     autoHideMenuBar: true,
     backgroundColor: '#ffffff',
-    title: 'Sign-in window',
+    title: 'Pop-up',
     webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, ...SAFE_DIALOG_PREFERENCES },
   }
 }
@@ -146,4 +146,60 @@ export function bindPopupCloseWithOwner(child: Electron.BrowserWindow, opener: E
   const closeWithOpener = (): void => { if (!child.isDestroyed()) child.destroy() }
   opener.once('destroyed', closeWithOpener)
   child.once('closed', () => { if (!opener.isDestroyed()) opener.removeListener('destroyed', closeWithOpener) })
+}
+
+/**
+ * A popup window's title: the address it is really at first (the title bar is drawn by macOS, so
+ * a page cannot paint over it), then the page's own title. A sign-in window always shows which
+ * site is asking for your password.
+ */
+export function popupWindowTitle(url: string, pageTitle: string): string {
+  let where = 'Pop-up'
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol === 'https:' || parsed.protocol === 'http:') where = `${parsed.protocol === 'http:' ? 'Not secure: ' : ''}${parsed.host}`
+  } catch {
+    // about:blank or nothing yet.
+  }
+  const title = pageTitle.replace(/\s+/g, ' ').trim().slice(0, 120)
+  return title && title !== url ? `${where} — ${title}` : where
+}
+
+/** A popup left on about:blank this long, with nothing in it, is closed. */
+export const BLANK_POPUP_GRACE_MS = 5_000
+export const POPUP_WORLD_ID = 1301
+/** Run in the popup's isolated world: true when the blank document has no content. */
+export const BLANK_POPUP_PROBE = `(() => { const body = document.body; return !body || (body.children.length === 0 && !(body.textContent || '').trim()) })()`
+
+export function isBlankAddress(url: string): boolean {
+  return url === '' || url === 'about:blank'
+}
+
+/**
+ * Keep the popup's title naming its site, and close a popup that stays an empty about:blank:
+ * sign-in flows open about:blank and then set its location (or write into it), so it is given a
+ * few seconds first and kept when it has content.
+ */
+export function guardPopupWindow(child: Electron.BrowserWindow, graceMs = BLANK_POPUP_GRACE_MS): void {
+  const contents = child.webContents
+  const retitle = (): void => {
+    if (!child.isDestroyed() && !contents.isDestroyed()) child.setTitle(popupWindowTitle(contents.getURL(), contents.getTitle()))
+  }
+  child.on('page-title-updated', (event) => {
+    event.preventDefault()
+    retitle()
+  })
+  contents.on('did-navigate', retitle)
+  contents.on('did-navigate-in-page', retitle)
+  retitle()
+  const timer = setTimeout(() => {
+    if (child.isDestroyed() || contents.isDestroyed() || !isBlankAddress(contents.getURL())) return
+    void contents.executeJavaScriptInIsolatedWorld(POPUP_WORLD_ID, [{ code: BLANK_POPUP_PROBE }])
+      .catch(() => true)
+      .then((empty: unknown) => {
+        if (empty === true && !child.isDestroyed() && !contents.isDestroyed() && isBlankAddress(contents.getURL())) child.close()
+      })
+  }, graceMs)
+  timer.unref?.()
+  child.once('closed', () => clearTimeout(timer))
 }

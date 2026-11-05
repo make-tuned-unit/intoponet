@@ -66,7 +66,7 @@ import {
 import { pageShortcutForInput, shellShortcutForInput, tabCycleForInput, type PageShortcut } from './shellShortcuts'
 import { TRACKER_STUB_SCRIPT } from './trackerStubs'
 import { bindPermissionOwnerLifecycle, kindsFor, originOf, SitePermissionBroker, SitePermissionStore } from './sitePermissions'
-import { bindPopupCloseWithOwner, nestedPopupDecision, popupDecision, popupWindowOptions, PopupLimiter, trackUserActivation, UserActivation } from './popups'
+import { bindPopupCloseWithOwner, nestedPopupDecision, popupDecision, popupWindowOptions, PopupLimiter, trackUserActivation, UserActivation, guardPopupWindow } from './popups'
 import { rejectCertificateErrorForSession } from './browserCertificatePolicy'
 import { reserveDownloadPath, sanitizeDownloadFilename } from './downloadReservation'
 import { CrashRecoveryPolicy } from './crashRecovery'
@@ -999,6 +999,7 @@ function wirePopupWindow(child: BrowserWindow, opener: WebContentsView): void {
   bindPermissionOwnerLifecycle(child.webContents, (owner) => sitePermissions?.dropOwner(owner))
   child.webContents.on('will-navigate', (event, url) => { if (!safeHttpUrl(url)) event.preventDefault() })
   bindLeavePrompt(child.webContents, () => child, dialog.showMessageBoxSync)
+  guardPopupWindow(child)
   const childContentsId = child.webContents.id
   trackUserActivation(child.webContents, userActivation)
   child.webContents.setWindowOpenHandler(({ url, disposition, features }) => {
