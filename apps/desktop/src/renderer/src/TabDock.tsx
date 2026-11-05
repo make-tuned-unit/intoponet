@@ -211,7 +211,7 @@ export function TabDock({ tabs, fullWidth, visible, currentUrl, bookmarksOpen, f
                         title={title}
                         onClick={() => void window.intoponet.browserHost.activateTab(tab.id)}
                       >
-                        {tab.favicon ? <img src={tab.favicon} alt="" /> : <Globe2 size={14} aria-hidden="true" />}
+                        {tab.favicon?.startsWith('data:image/') ? <img src={tab.favicon} alt="" /> : <Globe2 size={14} aria-hidden="true" />}
                         <span>{title}</span>
                       </button>
                       <button

@@ -117,7 +117,7 @@ export class FaviconCache {
       const type = (response.headers.get('content-type') ?? '').split(';')[0]!.trim().toLowerCase()
       const bytes = await readAtMost(response, MAX_BYTES)
       if (!bytes?.byteLength) return null
-      const mime = type.startsWith('image/') ? type : sniff(bytes)
+      const mime = type.startsWith('image/') ? type : sniffImageType(bytes)
       if (!mime) return null
       return `data:${mime};base64,${bytes.toString('base64')}`
     } catch {
@@ -153,7 +153,7 @@ export class FaviconCache {
 }
 
 /** The whole body, or null when it is larger than `limit` (read as a stream, so a huge or endless body is cut off). */
-async function readAtMost(response: Response, limit: number): Promise<Buffer | null> {
+export async function readAtMost(response: Response, limit: number): Promise<Buffer | null> {
   const length = response.headers.get('content-length')
   if (length !== null && Number(length) > limit) {
     await response.body?.cancel().catch(() => undefined)
@@ -177,7 +177,7 @@ async function readAtMost(response: Response, limit: number): Promise<Buffer | n
 }
 
 /** Image types by magic bytes (sites often serve favicon.ico without a content type). */
-function sniff(bytes: Buffer): string | null {
+export function sniffImageType(bytes: Buffer): string | null {
   if (bytes[0] === 0 && bytes[1] === 0 && bytes[2] === 1 && bytes[3] === 0) return 'image/x-icon'
   if (bytes[0] === 0x89 && bytes[1] === 0x50) return 'image/png'
   if (bytes[0] === 0x47 && bytes[1] === 0x49) return 'image/gif'

@@ -3821,7 +3821,7 @@ export function App() {
                       title={`${tab.isPrivate ? 'Private tab · ' : ''}${tab.title || originLabel(tab.url)}`}
                       onClick={() => void window.intoponet.browserHost.activateTab(tab.id)}
                     >
-                      {tab.favicon ? (
+                      {tab.favicon?.startsWith('data:image/') ? (
                         <img src={tab.favicon} alt="" width={14} height={14} />
                       ) : (
                         <Globe2 size={12} />

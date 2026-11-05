@@ -35,6 +35,7 @@ import { parsePasswordPageMessage, passwordPageChannels } from '../shared/passwo
 import { updateChannels, parseUpdateCommand } from '@intoponet/browser-api'
 import { browserUserAgent } from './browserUserAgent'
 import { persistedActiveUrl } from './tabState'
+import { fetchTabIcon, TabIconMemory } from './tabFavicon'
 
 declare const __INTOPONET_MAC_UPDATE_URL__: string
 
@@ -795,15 +796,34 @@ function preferReadablePageTheme(contents: Electron.WebContents): void {
   })
 }
 
-function safeFavicon(value: string): string {
-  if (value.startsWith('data:image/') && value.length < 80_000) return value
-  try {
-    const url = new URL(value)
-    if (url.protocol === 'https:' || url.protocol === 'http:') return url.toString().slice(0, 2_048)
-  } catch {
-    return ''
+/** Icons already converted for each page (by icon address), and the newest icon each page reported. */
+const tabIconMemory = new WeakMap<WebContentsView, TabIconMemory>()
+const tabIconWanted = new WeakMap<WebContentsView, string>()
+
+/**
+ * A page reported its icon: the tab shows it as a small data: URL fetched through the page's own
+ * session (never by the app window, which would load any address a page names).
+ */
+function updateTabIcon(view: WebContentsView, iconUrl: string): void {
+  tabIconWanted.set(view, iconUrl)
+  let memory = tabIconMemory.get(view)
+  if (!memory) tabIconMemory.set(view, (memory = new TabIconMemory()))
+  const apply = (data: string): void => {
+    if (tabIconWanted.get(view) !== iconUrl) return
+    const tab = openTabs.find((item) => item.view === view)
+    if (!tab || tab.favicon === data) return
+    tab.favicon = data
+    emitTabs()
   }
-  return ''
+  const known = iconUrl ? memory.get(iconUrl) : ''
+  if (known !== undefined) return apply(known)
+  if (viewGone(view)) return
+  const pageSession = view.webContents.session
+  const remembered = memory
+  void fetchTabIcon(iconUrl, (url, init) => pageSession.fetch(url, init)).then((data) => {
+    remembered.set(iconUrl, data)
+    apply(data)
+  })
 }
 
 function tabSnapshots(): PageTabSnapshot[] {
@@ -1237,11 +1257,7 @@ function buildView(isPrivate = privateMode): WebContentsView {
   view.webContents.on('page-favicon-updated', (_event, favicons) => {
     // Private tabs leave nothing in favicons.json.
     if (favicons[0] && !privateViews.has(view)) faviconCache?.remember(view.webContents.getURL(), favicons[0])
-    const tab = openTabs.find((item) => item.view === view)
-    const next = safeFavicon(favicons[0] ?? '')
-    if (!tab || tab.favicon === next) return
-    tab.favicon = next
-    emitTabs()
+    updateTabIcon(view, favicons[0] ?? '')
   })
   view.webContents.on('found-in-page', (_event, result) => {
     if (pageView !== view) return

@@ -126,7 +126,7 @@ export function TabRail({ tabs, visible, expanded, pinned, onExpandedChange, onP
                         }}
                       >
                         <span className="tab-rail-icon">
-                          {tab.favicon ? <img src={tab.favicon} alt="" /> : <Globe2 size={15} aria-hidden="true" />}
+                          {tab.favicon?.startsWith('data:image/') ? <img src={tab.favicon} alt="" /> : <Globe2 size={15} aria-hidden="true" />}
                         </span>
                         <span className="tab-rail-title" aria-hidden={!open}>{title}</span>
                       </button>
