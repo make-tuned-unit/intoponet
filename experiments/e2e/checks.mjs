@@ -73,6 +73,96 @@ const signIn = async (ctx, page, username, password) => {
 }
 const pageFields = (page) => page.evaluate(`JSON.stringify([document.querySelector('#username')?.value ?? null, document.querySelector('#password')?.value ?? null])`).then(JSON.parse)
 
+/**
+ * Browser keys pressed inside a page (the page has keyboard focus): ⌘W closes the tab for real,
+ * ⌘⇧T reopens it, ⌘= zooms and the zoom is kept for the site, ⌘1/⌘9 pick tabs.
+ */
+async function browserKeys(ctx) {
+  const server = await new Promise((resolve) => {
+    const site = createServer((request, response) => {
+      response.setHeader('content-type', 'text/html; charset=utf-8')
+      const name = request.url?.includes('second') ? 'Second' : 'First'
+      response.end(`<!doctype html><title>${name} page</title><h1>${name}</h1><p>${'Words to read. '.repeat(200)}</p>`)
+    })
+    site.listen(0, '127.0.0.1', () => resolve(site))
+  })
+  const port = server.address().port
+  // Two hosts, so each has its own zoom.
+  const first = `http://localhost:${port}/first`
+  const second = `http://127.0.0.1:${port}/second`
+  const tabs = async () => JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => JSON.stringify(t.map((x) => ({ id: x.id, url: x.url, active: x.active }))))`))
+  const state = async () => JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getState().then((s) => JSON.stringify(s))`))
+  /** A key chord typed while the page has focus (through the browser's key handling, as from the keyboard). */
+  const chord = async (urlPart, keyCode, modifiers = ['meta']) => {
+    expect(await ctx.keyInPage(urlPart, keyCode, modifiers), `No page at ${urlPart} to type into.`)
+  }
+  try {
+    await openPage(ctx, first, 2000)
+    await openPage(ctx, second, 2000)
+    let open = await tabs()
+    expect(open.length === 2 && open[1].active && open[1].url.includes('/second'), `Two pages did not open as two tabs: ${JSON.stringify(open)}`)
+
+    // ⌘W with the page focused closes its tab and shows the one that is left.
+    await chord('/second', 'W')
+    await ctx.delay(1200)
+    open = await tabs()
+    let panel = await state()
+    expect(open.length === 1 && open[0].url.includes('/first'), `⌘W in a page did not close its tab (tabs: ${JSON.stringify(open)}).`)
+    expect(panel.isVisible && panel.url.includes('/first'), `After ⌘W the remaining tab is not shown (showing ${panel.isVisible ? panel.url : 'the globe'}).`)
+    const closed = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getClosedTabs().then((t) => JSON.stringify(t))`))
+    expect(closed[0]?.url.includes('/second'), 'The closed tab is not in Recently Closed.')
+
+    // ⌘⇧T brings it back.
+    await chord('/first', 'T', ['meta', 'shift'])
+    await ctx.delay(2000)
+    open = await tabs()
+    panel = await state()
+    expect(open.length === 2 && open.some((tab) => tab.url.includes('/second')), `⌘⇧T did not reopen the closed tab (tabs: ${JSON.stringify(open)}).`)
+    expect(panel.url.includes('/second'), 'The reopened tab is not the one shown.')
+
+    // ⌘= zooms the page; the toolbar shows the zoom and it is kept for the site.
+    await chord('/second', '=')
+    await ctx.delay(800)
+    panel = await state()
+    expect(Math.abs((panel.zoomFactor ?? 1) - 1.1) < 0.01, `⌘= in a page did not zoom it (zoom ${panel.zoomFactor}).`)
+    await ctx.wait(`(document.querySelector('.zoom-indicator')?.innerText ?? '').includes('110%')`, 5000, 'the 110% zoom indicator in the toolbar')
+    await ctx.delay(800)
+    const saved = JSON.parse(readFileSync(join(ctx.profile, 'site-zoom.json'), 'utf8'))
+    expect(saved.sites?.['127.0.0.1'] === 1.1, `The site zoom was not saved: ${JSON.stringify(saved)}`)
+
+    // Closed and opened again: the site comes back at its zoom.
+    await chord('/second', 'W')
+    await ctx.delay(1000)
+    await openPage(ctx, second, 2000)
+    panel = await state()
+    expect(Math.abs((panel.zoomFactor ?? 1) - 1.1) < 0.01, `A site opened again lost its zoom (zoom ${panel.zoomFactor}).`)
+    expect(await ctx.click('.zoom-indicator'), 'The zoom indicator cannot be clicked.')
+    await ctx.delay(600)
+    panel = await state()
+    expect(Math.abs((panel.zoomFactor ?? 1) - 1) < 0.01 && !(await ctx.evaluate(`!!document.querySelector('.zoom-indicator')`)), 'Clicking the zoom indicator did not reset the page to 100%.')
+
+    // ⌘1 and ⌘9 pick the first and last tabs.
+    await chord('/second', '1')
+    await ctx.delay(600)
+    expect((await state()).url.includes('/first'), '⌘1 did not show the first tab.')
+    await chord('/first', '9')
+    await ctx.delay(600)
+    expect((await state()).url.includes('/second'), '⌘9 did not show the last tab.')
+
+    // ⌘W on the last tabs: the globe once none are left.
+    await chord('/second', 'W')
+    await ctx.delay(800)
+    await chord('/first', 'W')
+    await ctx.delay(1000)
+    open = await tabs()
+    panel = await state()
+    expect(open.length === 0 && !panel.isVisible, `Closing the last tab did not return to the globe (${open.length} tabs left).`)
+    return '⌘W closed tabs from inside the page, ⌘⇧T reopened one, ⌘= zoom shown and kept for the site, ⌘1/⌘9 picked tabs'
+  } finally {
+    server.close()
+  }
+}
+
 /** Fails the check on any WCAG 2.2 AA violation axe finds in the app window right now. */
 async function axeAudit(ctx, where) {
   if (!(await ctx.evaluate(`typeof axe !== 'undefined'`))) await ctx.evaluate(`${readFileSync(join(repo, 'node_modules/axe-core/axe.min.js'), 'utf8')}; true`)
@@ -343,13 +433,14 @@ export const checks = {
     } finally {
       closer.close()
     }
+    const keys = await browserKeys(ctx)
     // The app window never leaves the app: a page loaded in its place would get the app's whole API.
     const appUrl = await ctx.evaluate('location.href')
     await ctx.evaluate(`(() => { location.href = 'https://example.com/'; return true })()`).catch(() => undefined)
     await ctx.delay(2500)
     const stayed = await ctx.evaluate(`location.href === ${JSON.stringify(appUrl)} && !!document.querySelector('.topbar')`).catch(() => false)
     expect(stayed, 'The app window navigated away from the app.')
-    return `Toolbar: ${labels.join(', ')}; pages see ${ua.match(/Chrome\/\S+/)?.[0]}; tab closed cleanly; a self-closing page took its tab; the app window stayed on the app.`
+    return `Toolbar: ${labels.join(', ')}; pages see ${ua.match(/Chrome\/\S+/)?.[0]}; tab closed cleanly; a self-closing page took its tab; ${keys}; the app window stayed on the app.`
   },
 
   async PROTECTION(ctx) {
