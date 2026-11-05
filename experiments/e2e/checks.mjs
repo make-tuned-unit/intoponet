@@ -386,10 +386,11 @@ export const checks = {
     const clickPage = async (session) => {
       for (const type of ['mousePressed', 'mouseReleased']) await session.send('Input.dispatchMouseEvent', { type, x: 20, y: 20, button: 'left', clickCount: 1 })
     }
-    await page.evaluate(`(() => { addEventListener('click', () => { window.__signin = window.open('https://www.wikipedia.org/', 'signin', 'width=480,height=600') }, { once: true }); return true })()`)
+    await page.evaluate(`(() => { addEventListener('click', () => { window.__signin = window.open('https://www.wikipedia.org/', 'signin', 'width=480,height=600'); window.__ok = !!window.__signin && window.__signin.opener === window }, { once: true }); return true })()`)
     await clickPage(page)
     await ctx.delay(500)
-    const opened = await page.evaluate(`!!window.__signin && window.__signin.opener === window`)
+    // Read when it opened: the site may cut the opener later (Cross-Origin-Opener-Policy).
+    const opened = await page.evaluate(`window.__ok === true`)
     expect(opened, 'A sign-in style popup opened from a click was blocked or lost its opener.')
     await page.evaluate(`(() => { const a = document.createElement('a'); a.href = 'https://www.iana.org/'; a.target = '_blank'; document.body.append(a); addEventListener('click', () => a.click(), { once: true }); return true })()`)
     await clickPage(page)
