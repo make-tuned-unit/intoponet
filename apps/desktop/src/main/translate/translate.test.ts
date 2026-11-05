@@ -237,6 +237,32 @@ describe('service and engine', () => {
     await engine.close()
   })
 
+  it('restarts a hung engine: the stuck batch fails and the next one works', async () => {
+    const { catalog, blobs } = fakeCatalog()
+    const store = new TranslateStore(await tempDir(), fakeFetch(blobs), catalog)
+    const log: WorkerRequest[] = []
+    let started = 0
+    let terminated = 0
+    let hang = true
+    const engine = new TranslationEngine(store, () => {
+      started += 1
+      const worker = fakeWorker(log)
+      const post = worker.postMessage.bind(worker)
+      const terminate = worker.terminate.bind(worker)
+      worker.postMessage = (message) => { if (!(hang && message.type === 'translate')) post(message) }
+      worker.terminate = () => { terminated += 1; return terminate() }
+      return worker
+    }, 60_000, 50)
+    const service = new TranslateService({ store, engine, emit: () => undefined, getActivePage: () => null, catalog })
+    await service.install('es')
+    await expect(service.translate('es', 'en', ['hola'], false)).rejects.toThrow(/stopped responding/)
+    expect(terminated).toBe(1)
+    hang = false
+    expect(await service.translate('es', 'en', ['adiós'], false)).toEqual(['[es>en] adiós'])
+    expect(started).toBe(2)
+    await engine.close()
+  })
+
   it('removes a language and the engine once none remain', async () => {
     const { service, store, catalog } = await setup()
     await service.install('es')
