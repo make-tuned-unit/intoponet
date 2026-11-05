@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
 import type { PasswordApi } from '../../shared/passwords'
-import type { BeaconApi, BrowserHostApi, DownloadsApi, HistoryApi, CaptureApi, KnowledgeApi, LayaApi, OldsApi, PrivacyApi, SitePermissionApi, TranslateApi, UpdatesApi } from '@intoponet/browser-api'
+import type { BeaconApi, BrowserHostApi, BrowsingApi, DownloadsApi, HistoryApi, CaptureApi, KnowledgeApi, LayaApi, OldsApi, PrivacyApi, SitePermissionApi, TranslateApi, UpdatesApi } from '@intoponet/browser-api'
 
 declare global {
   interface Window {
@@ -29,6 +29,8 @@ declare global {
       passwords: PasswordApi
       downloads: DownloadsApi
       history: HistoryApi
+      /** Links to other apps, default browser, page appearance. */
+      browsing: BrowsingApi
     }
   }
 }

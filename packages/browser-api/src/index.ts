@@ -18,6 +18,8 @@ export type BrowserPanelSnapshot = {
   isStartPage?: boolean
   /** The page's zoom (1 = 100%); the toolbar shows it when it is not 100%. */
   zoomFactor?: number
+  /** The page could not load: the shell draws the error page in its place (the view stays hidden). */
+  loadError?: import('./browsing').PageLoadError
 }
 
 /** A recently closed tab that can be reopened (private tabs are never kept). */
@@ -559,3 +561,4 @@ export * from './beacons'
 export * from './updates'
 export * from './downloads'
 export * from './history'
+export * from './browsing'

@@ -1,7 +1,9 @@
 // One end-to-end check per feature in docs/FEATURE_DAG.json. Each drives the
 // real built app and fails with a plain sentence when its promise isn't kept.
 import { execFileSync } from 'node:child_process'
-import { existsSync, readFileSync, statSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs'
+import { createServer as createHttpsServer } from 'node:https'
+import { tmpdir } from 'node:os'
 import { createServer } from 'node:http'
 import { join } from 'node:path'
 import { CheckFailure, expect, repo } from './lib.mjs'
@@ -188,6 +190,40 @@ const startDownloadSite = () => new Promise((resolve) => {
   })
   server.listen(0, 'localhost', () => resolve(server))
 })
+/** A tiny site on this Mac for the browsing checks: links to other apps, a PDF, a colour-scheme probe. */
+const TEST_PDF = Buffer.from('JVBERi0xLjQKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDEgPj4KZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAgMCAzMDAgMjAwXSAvQ29udGVudHMgNCAwIFIgL1Jlc291cmNlcyA8PCAvRm9udCA8PCAvRjEgNSAwIFIgPj4gPj4gPj4KZW5kb2JqCjQgMCBvYmoKPDwgL0xlbmd0aCA0OSA+PgpzdHJlYW0KQlQgL0YxIDI0IFRmIDQwIDEwMCBUZCAoSW50b3BvbmV0IFBERiB0ZXN0KSBUaiBFVAplbmRzdHJlYW0KZW5kb2JqCjUgMCBvYmoKPDwgL1R5cGUgL0ZvbnQgL1N1YnR5cGUgL1R5cGUxIC9CYXNlRm9udCAvSGVsdmV0aWNhID4+CmVuZG9iagp4cmVmCjAgNgowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAwMDkgMDAwMDAgbiAKMDAwMDAwMDA1OCAwMDAwMCBuIAowMDAwMDAwMTE1IDAwMDAwIG4gCjAwMDAwMDAyNDEgMDAwMDAgbiAKMDAwMDAwMDM0MCAwMDAwMCBuIAp0cmFpbGVyCjw8IC9TaXplIDYgL1Jvb3QgMSAwIFIgPj4Kc3RhcnR4cmVmCjQxMAolJUVPRgo=', 'base64')
+const startBrowsingSite = (port = 0) => new Promise((resolve, reject) => {
+  const server = createServer((request, response) => {
+    if (request.url?.startsWith('/doc.pdf')) { response.setHeader('content-type', 'application/pdf'); response.end(TEST_PDF); return }
+    if (request.url?.startsWith('/attach.pdf')) {
+      response.setHeader('content-type', 'application/pdf')
+      response.setHeader('content-disposition', 'attachment; filename="intoponet-e2e-attachment.pdf"')
+      response.end(TEST_PDF)
+      return
+    }
+    response.setHeader('content-type', 'text/html; charset=utf-8')
+    response.end(`<!doctype html><title>Browsing test</title><meta name="color-scheme" content="light dark">
+<p><a id="mail" href="mailto:someone@example.com?subject=Hello">Write to us</a> · <a id="pdf" href="/doc.pdf">Read the PDF</a></p>
+<p id="scheme"></p><script>const s = document.getElementById('scheme'); const q = matchMedia('(prefers-color-scheme: dark)'); const set = () => { s.textContent = q.matches ? 'dark' : 'light' }; set(); q.addEventListener('change', set)</script>`)
+  })
+  server.once('error', reject)
+  server.listen(port, '127.0.0.1', () => resolve(server))
+})
+/** An https site on this Mac with a self-signed certificate (null when openssl is unavailable). */
+const selfSignedSite = async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'intoponet-e2e-cert-'))
+  try {
+    execFileSync('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '2', '-subj', '/CN=Intoponet E2E', '-keyout', join(dir, 'key.pem'), '-out', join(dir, 'cert.pem')], { stdio: 'ignore' })
+    const server = createHttpsServer({ key: readFileSync(join(dir, 'key.pem')), cert: readFileSync(join(dir, 'cert.pem')) }, (_request, response) => { response.end('<!doctype html><title>Insecure</title>') })
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+    return { server }
+  } catch {
+    return null
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+}
+const panelState = (ctx) => ctx.evaluate(`window.intoponet.browserHost.getState().then((s) => JSON.stringify(s))`).then(JSON.parse)
 
 /** Fails the check on any WCAG 2.2 AA violation axe finds in the app window right now. */
 async function axeAudit(ctx, where, selector = null) {
@@ -583,6 +619,144 @@ export const checks = {
     tabs = await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => t.map((x) => x.url).join(' '))`)
     expect(/iana\.org/.test(tabs), 'A target=_blank link clicked by the person did not open as a tab.')
     return 'Location allowed via the bar; a pop-up without a click was blocked and opened with "Allow once"; a clicked popup kept its opener; a clicked _blank link opened a tab.'
+  },
+
+  async EXTERNAL_APPS(ctx) {
+    const site = await startBrowsingSite()
+    const origin = `http://127.0.0.1:${site.address().port}`
+    try {
+      await openPage(ctx, `${origin}/`, 2500)
+      const page = await ctx.page(`127.0.0.1:${site.address().port}`)
+      await page.evaluate(`(() => { document.getElementById('mail').click(); return true })()`, { userGesture: true })
+      await ctx.wait(`!!document.querySelector('.external-open-bar')`, 10_000, 'the "Open …?" prompt after clicking a mailto: link')
+      const prompt = await ctx.evaluate(`document.querySelector('.external-open-bar').innerText`)
+      expect(/^Open /.test(prompt) && prompt.includes('mailto:someone@example.com'), `The prompt does not say what opens: "${prompt}"`)
+      expect(/Cancel/.test(prompt) && /Always allow/.test(prompt), `The prompt lacks Cancel or "Always allow": "${prompt}"`)
+      const state = await panelState(ctx)
+      expect(state.url === `${origin}/` && !state.loadError, `A mailto: link navigated the tab (now ${state.url}).`)
+      expect(await ctx.click('.external-open-bar button', 'Cancel'), 'The prompt has no Cancel button.')
+      await ctx.wait(`!document.querySelector('.external-open-bar')`, 5_000, 'the prompt to go after Cancel')
+      // Cancelled: nothing opens, and an immediate second click does not bring the prompt straight back (no prompt storms).
+      await page.evaluate(`(() => { document.getElementById('mail').click(); document.getElementById('mail').click(); return true })()`, { userGesture: true })
+      await ctx.delay(1200)
+      const again = await ctx.evaluate(`document.querySelectorAll('.external-open-bar').length`)
+      expect(again === 0, 'The prompt came straight back after Cancel.')
+      // Scripts and local files are never handed to another app.
+      await page.evaluate(`(() => { location.href = 'file:///etc/hosts'; return true })()`).catch(() => undefined)
+      await ctx.delay(1000)
+      expect(!(await ctx.evaluate(`!!document.querySelector('.external-open-bar')`)) && (await panelState(ctx)).url === `${origin}/`, 'A page could navigate to or offer to open a local file.')
+      return `"${prompt.split('\n')[0]}" asked for a mailto: link; the tab stayed on ${origin}/; Cancel closed it and no prompt storm followed.`
+    } finally {
+      site.close()
+    }
+  },
+
+  async ERROR_PAGE(ctx) {
+    // A port with nothing listening (then a server starts on it, for Retry).
+    const probe = createServer()
+    await new Promise((resolve) => probe.listen(0, '127.0.0.1', resolve))
+    const port = probe.address().port
+    await new Promise((resolve) => probe.close(resolve))
+    const url = `http://127.0.0.1:${port}/`
+    await ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: ${JSON.stringify(url)} }).then(() => true, () => true)`)
+    await ctx.wait(`!!document.querySelector('.load-error-page')`, 15_000, 'the error page for a site that is not answering')
+    const text = await ctx.evaluate(`document.querySelector('.load-error-page').innerText`)
+    expect(/refused to connect/.test(text) && /ERR_CONNECTION_REFUSED/.test(text), `The error page does not explain the failure: "${text}"`)
+    expect(await ctx.evaluate(`[...document.querySelectorAll('.load-error-page button')].some((b) => b.innerText.includes('Retry'))`), 'The error page has no Retry button.')
+    const toolbar = await ctx.evaluate(`document.querySelector('.origin-badge')?.getAttribute('title') ?? ''`)
+    expect(toolbar === url, `The toolbar shows "${toolbar}" instead of the address that failed (${url}).`)
+    const banner = await ctx.evaluate(`[...document.querySelectorAll('[role=alert]')].map((e) => e.innerText).join(' ')`)
+    expect(!/ERR_CONNECTION_REFUSED/.test(banner), `A raw error banner showed as well: "${banner}"`)
+    await ctx.shot('error-page')
+    const site = await startBrowsingSite(port)
+    try {
+      expect(await ctx.click('.load-error-page button', 'Retry'), 'Retry could not be pressed.')
+      await ctx.wait(`window.intoponet.browserHost.getState().then((s) => !s.loadError && s.title === 'Browsing test')`, 15_000, 'Retry to load the page once the site answers')
+      expect(!(await ctx.evaluate(`!!document.querySelector('.load-error-page')`)), 'The error page stayed after a successful retry.')
+      // Back to the error entry and forward again behave like normal history.
+      const state = await panelState(ctx)
+      expect(state.url === url, `After Retry the tab is at ${state.url}.`)
+    } finally {
+      site.close()
+    }
+    // A certificate nobody vouches for: "Connection not secure", with the certificate's details.
+    const certificate = await selfSignedSite()
+    if (!certificate) return `"${text.split('\n')[0]}" with Retry; toolbar kept ${url}; Retry loaded the page once a server listened (openssl missing: certificate page not checked).`
+    try {
+      const secureUrl = `https://127.0.0.1:${certificate.server.address().port}/`
+      await ctx.evaluate(`window.intoponet.browserHost.navigate(${JSON.stringify(secureUrl)}).then(() => true, () => true)`)
+      await ctx.wait(`(document.querySelector('.load-error-page')?.innerText ?? '').includes('Connection not secure')`, 15_000, 'the "Connection not secure" page for a self-signed certificate')
+      const secure = await ctx.evaluate(`document.querySelector('.load-error-page').innerText`)
+      expect(/ERR_CERT_/.test(secure) && /Issued by/.test(secure) && secure.includes('Intoponet E2E'), `The certificate page lacks the code or certificate details: "${secure}"`)
+      expect(await ctx.evaluate(`window.intoponet.browserHost.getState().then((s) => s.url)`) === secureUrl, 'The toolbar lost the address of the insecure site.')
+      expect(await ctx.click('.load-error-page button', 'Back'), 'The certificate error page has no Back button.')
+      await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.url === ${JSON.stringify(url)} && !s.loadError)`, 10_000, 'Back to return to the previous page')
+      await ctx.shot('certificate')
+      return `"${text.split('\n')[0]}" with Retry; toolbar kept ${url}; Retry loaded the page once a server listened; a self-signed site showed "${secure.split('\n')[0]}" with its certificate and Back returned.`
+    } finally {
+      certificate.server.close()
+    }
+  },
+
+  async PDF_VIEWER(ctx) {
+    const site = await startBrowsingSite()
+    const origin = `http://127.0.0.1:${site.address().port}`
+    try {
+      await openPage(ctx, `${origin}/`, 2000)
+      await ctx.evaluate(`(() => { window.__downloads = []; window.intoponet.browserHost.subscribe((e) => { if (e.type === 'download-finished') window.__downloads.push(e) }); return true })()`)
+      const page = await ctx.page(`127.0.0.1:${site.address().port}`)
+      await page.evaluate(`(() => { document.getElementById('pdf').click(); return true })()`, { userGesture: true })
+      await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.url.endsWith('/doc.pdf') && !s.isLoading)`, 15_000, 'the PDF to open in the tab')
+      await ctx.delay(1500)
+      const targets = (await (await fetch(`http://127.0.0.1:${ctx.port}/json/list`)).json()).map((t) => t.url)
+      expect(targets.some((u) => u.startsWith('chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/')), `Chromium's PDF viewer did not open (targets: ${targets.join(', ')}).`)
+      expect((await ctx.evaluate(`window.__downloads.length`)) === 0, 'The PDF link downloaded instead of opening.')
+      await ctx.pageShot(await ctx.page('doc.pdf'), 'pdf')
+      // A PDF sent as an attachment still downloads.
+      await ctx.evaluate(`window.intoponet.browserHost.navigate(${JSON.stringify(`${origin}/attach.pdf`)}).then(() => true, () => true)`)
+      await ctx.wait(`window.__downloads.length > 0`, 15_000, 'the attachment PDF to download')
+      const download = JSON.parse(await ctx.evaluate(`JSON.stringify(window.__downloads[0])`))
+      if (download.path && /intoponet-e2e-attachment/.test(download.path)) {
+        try { rmSync(download.path, { force: true }) } catch { /* left in Downloads */ }
+      }
+      expect(download.state === 'completed' && /intoponet-e2e-attachment/.test(download.filename), `The attachment PDF did not download (${JSON.stringify(download)}).`)
+      return `doc.pdf opened in the tab in Chromium's viewer; the attachment downloaded as ${download.filename}.`
+    } finally {
+      site.close()
+    }
+  },
+
+  async PAGE_APPEARANCE(ctx) {
+    const site = await startBrowsingSite()
+    const host = `127.0.0.1:${site.address().port}`
+    try {
+      const initial = JSON.parse(await ctx.evaluate(`window.intoponet.browsing.settings().then((s) => JSON.stringify(s))`))
+      expect(initial.pageAppearance === 'system', `Pages do not follow the system appearance by default (${initial.pageAppearance}).`)
+      await openPage(ctx, `http://${host}/`, 2000)
+      const page = await ctx.page(host)
+      const scheme = () => page.evaluate(`matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'`)
+      // Match system: the page sees what the app window (which follows macOS) sees.
+      const system = await ctx.evaluate(`matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'`)
+      expect((await scheme()) === system, `With "Match system" the page sees ${await scheme()} but macOS is ${system}.`)
+      const seen = []
+      for (const choice of ['dark', 'light', 'system']) {
+        await ctx.evaluate(`window.intoponet.browsing.setPageAppearance('${choice}').then(() => true)`)
+        await ctx.delay(700)
+        const want = choice === 'system' ? system : choice
+        expect((await scheme()) === want, `With "${choice}" the page sees ${await scheme()}.`)
+        // A new page load keeps it.
+        await page.evaluate(`(() => { location.reload(); return true })()`)
+        await ctx.delay(1500)
+        expect((await page.evaluate(`document.getElementById('scheme')?.textContent`)) === want, `After a reload with "${choice}" the page renders ${want === 'dark' ? 'light' : 'dark'}.`)
+        seen.push(`${choice}→${want}`)
+      }
+      await openPanel(ctx, 'Settings')
+      const text = await ctx.evaluate(`document.querySelector('.settings-pane')?.innerText ?? ''`)
+      for (const piece of ['Match system', 'Light', 'Dark', 'default browser']) expect(text.includes(piece), `Settings is missing "${piece}".`)
+      return `Pages: ${seen.join(', ')} (system is ${system}); Settings shows the choice and default-browser status.`
+    } finally {
+      site.close()
+    }
   },
 
   async PRIVATE_BROWSING(ctx) {

@@ -6,6 +6,7 @@ import { BeaconSettings } from '../beacons/BeaconSettings'
 import { LayaSettings } from './LayaSettings'
 import { UpdatesSettings } from './UpdatesSettings'
 import { PasswordSettings } from '../passwords/PasswordSettings'
+import { BrowsingSettings } from '../browsing/BrowsingSettings'
 import brandSymbol from '../brand/intoponet-mark-spectrum.svg'
 
 /** Settings: your reading language, automatic translation, downloaded languages, and a way to Privacy. */
@@ -126,6 +127,8 @@ export function SettingsPanel({
           )}
           {translation.error && <p className="settings-error" role="alert">{translation.error}</p>}
         </section>
+
+        <BrowsingSettings />
 
         <PasswordSettings />
 

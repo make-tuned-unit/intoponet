@@ -36,7 +36,29 @@ module.exports = {
     // Unsigned previews: re-sign ad hoc after flipping fuses, or Apple silicon refuses to launch them.
     resetAdHocDarwinSignature: !isRelease,
   },
+  // Intoponet can be the Mac's default browser: it claims web links (CFBundleURLTypes) and web
+  // pages, PDFs and saved links (CFBundleDocumentTypes), so macOS lists it in Desktop & Dock ›
+  // Default web browser and in Finder's Open With. Links and files arrive as open-url/open-file.
+  protocols: [
+    { name: 'Web site URL', schemes: ['http', 'https'], role: 'Viewer' },
+  ],
+  fileAssociations: [
+    { ext: ['html', 'htm', 'xhtml'], name: 'HTML document', role: 'Viewer', rank: 'Alternate' },
+    { ext: 'pdf', name: 'PDF document', role: 'Viewer', rank: 'Alternate' },
+    { ext: 'webloc', name: 'Website location', role: 'Viewer', rank: 'Alternate' },
+  ],
   mac: {
+    // Launch Services looks for the content types too when listing default browsers.
+    extendInfo: {
+      CFBundleDocumentTypes: [
+        {
+          CFBundleTypeName: 'Web page',
+          CFBundleTypeRole: 'Viewer',
+          LSHandlerRank: 'Alternate',
+          LSItemContentTypes: ['public.html', 'public.xhtml', 'com.adobe.pdf', 'com.apple.web-internet-location'],
+        },
+      ],
+    },
     icon: path.join(__dirname, 'resources/Intoponet.icns'),
     category: 'public.app-category.productivity',
     target: ['dmg', 'zip'],

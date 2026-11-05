@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { browserContextActions, type BrowserContextMenuInput } from './browserContextMenu'
+import { browserContextActions, browserContextExtras, searchSelectionLabel, type BrowserContextExtrasInput, type BrowserContextMenuInput } from './browserContextMenu'
 
 const base: BrowserContextMenuInput = {
   linkURL: '',
@@ -57,5 +57,39 @@ describe('native browser context actions', () => {
       srcURL: 'data:image/png;base64,abc',
       hasImageContents: true,
     })).toContain('copy-image')
+  })
+})
+
+const extrasBase: BrowserContextExtrasInput = {
+  linkURL: '',
+  srcURL: '',
+  mediaType: 'none',
+  isEditable: false,
+  selectionText: '',
+  misspelledWord: '',
+  dictionarySuggestions: [],
+  isPrivate: false,
+}
+
+describe('more context actions', () => {
+  it('offers spelling suggestions for a misspelled word in a field', () => {
+    expect(browserContextExtras({ ...extrasBase, isEditable: true, misspelledWord: 'recieve', dictionarySuggestions: ['receive', 'relieve', 'a', 'b', 'c', 'd'] }).spelling)
+      .toEqual({ word: 'recieve', suggestions: ['receive', 'relieve', 'a', 'b', 'c'] })
+    expect(browserContextExtras({ ...extrasBase, isEditable: true, misspelledWord: 'qzxv' }).spelling).toEqual({ word: 'qzxv', suggestions: [] })
+    expect(browserContextExtras({ ...extrasBase, misspelledWord: 'recieve' }).spelling).toBeNull()
+  })
+
+  it('searches the web for a selection', () => {
+    expect(browserContextExtras({ ...extrasBase, selectionText: '  ocean   heat\ncontent ' }).searchSelection).toBe('ocean heat content')
+    expect(browserContextExtras(extrasBase).searchSelection).toBeNull()
+    expect(searchSelectionLabel('a fairly long selection of words that keeps going')).toBe('Search Web for “a fairly long selection of word…”')
+  })
+
+  it('offers private tabs, Save Link As and Open Image for web links only', () => {
+    const link = browserContextExtras({ ...extrasBase, linkURL: 'https://example.org/a', mediaType: 'image', srcURL: 'https://example.org/i.png' })
+    expect(link).toMatchObject({ openLinkInPrivateTab: true, saveLinkAs: true, openImageInNewTab: true })
+    expect(browserContextExtras({ ...extrasBase, linkURL: 'https://example.org/a', isPrivate: true }).openLinkInPrivateTab).toBe(false)
+    const unsafe = browserContextExtras({ ...extrasBase, linkURL: 'javascript:alert(1)', mediaType: 'image', srcURL: 'file:///etc/passwd' })
+    expect(unsafe).toMatchObject({ openLinkInPrivateTab: false, saveLinkAs: false, openImageInNewTab: false })
   })
 })
