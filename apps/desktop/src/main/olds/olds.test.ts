@@ -303,3 +303,19 @@ describe('OldsService', () => {
     expect(thread.chronicle?.map((entry) => entry.sourceTitle)).toEqual([editionTitles[0], editionTitles[2], editionTitles[3]])
   })
 })
+
+describe('names a headline must say', () => {
+  it('a named port is another port unless its name is there', async () => {
+    const { facilityNamed } = await import('./oldsService')
+    expect(facilityNamed('Lekki Port', 'Deep Sea Port, OgunLNG trigger fresh investor rush to Ogun - Abiodun')).toBe(false)
+    expect(facilityNamed('Lekki Port', 'Lekki port handles record cargo')).toBe(true)
+    expect(facilityNamed('Port of Rotterdam', 'Strike at Rotterdam port')).toBe(true)
+    expect(facilityNamed('Money laundering', 'Anything')).toBe(true)
+  })
+  it('a surname alone does not name someone’s given name', async () => {
+    const { givenNameMentioned } = await import('./oldsService')
+    expect(givenNameMentioned('Franco Sartori', 'Garuhapé celebrates its 80th anniversary: Sartori called to face the situation')).toBe(false)
+    expect(givenNameMentioned('Chlöe Swarbrick', 'How National have made Chloe Swarbrick the boogeyman')).toBe(true)
+    expect(givenNameMentioned('Madonna', 'Madonna tours again')).toBe(true)
+  })
+})

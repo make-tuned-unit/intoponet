@@ -53,9 +53,10 @@ const vertexShader = /* glsl */ `
     vFacing = dot(normal, normalize(cameraPosition - position));
     vColor = aColor;
     vState = aState;
-    float zoom = clamp(3.2 / -mv.z, 0.75, 2.4);
+    // Dots grow as you zoom in, so towns stay easy to see and to click up close.
+    float zoom = clamp(3.2 / -mv.z, 0.75, 3.2);
     float lift = aState > 1.5 ? 1.9 : aState > 0.5 ? 1.45 : aState < -0.5 ? 0.6 : 1.0;
-    gl_PointSize = aSize * uPixelRatio * sqrt(zoom) * lift;
+    gl_PointSize = aSize * uPixelRatio * pow(zoom, 0.55) * lift;
     gl_Position = projectionMatrix * mv;
   }
 `

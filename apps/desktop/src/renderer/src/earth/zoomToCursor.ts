@@ -158,7 +158,7 @@ export function orbitKeepingPointUnderCursor(
 export function wheelRadius(
   radius: number,
   deltaY: number,
-  { pinch = false, min = 1.48, max = 5.4 }: { pinch?: boolean; min?: number; max?: number } = {},
+  { pinch = false, min = 1.2, max = 5.4 }: { pinch?: boolean; min?: number; max?: number } = {},
 ): number {
   const altitude = Math.max(1e-3, radius - 1)
   // Trackpad pinch (ctrl+wheel) reports small deltas; give it more reach per unit.

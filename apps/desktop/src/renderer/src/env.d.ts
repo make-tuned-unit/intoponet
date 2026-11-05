@@ -15,6 +15,12 @@ declare global {
       sitePermissions: SitePermissionApi
       beacons: BeaconApi
       favicons: { get(hosts: string[]): Promise<Record<string, string>> }
+      feedback: {
+        status(): Promise<{ due: boolean }>
+        later(): Promise<{ due: boolean }>
+        never(): Promise<{ due: boolean }>
+        send(rating: number | null, comment: string): Promise<{ due: boolean; sent?: boolean }>
+      }
       access: { page(): Promise<{ url: string; title: string; paywalled: boolean; signals: string[]; doi: string | null } | null> }
       updates: UpdatesApi
     }

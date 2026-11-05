@@ -682,6 +682,13 @@
   transition: opacity 260ms ease;
   will-change: transform, opacity;
   text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
+  cursor: pointer;
+}
+
+/* Labels open what they name; the hover lifts the one under the pointer. */
+.globe-label:hover {
+  color: #fff;
+  background: linear-gradient(90deg, rgba(6, 19, 32, 0.92), rgba(6, 19, 32, 0.55));
 }
 
 .globe-hover-card {

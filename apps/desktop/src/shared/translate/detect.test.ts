@@ -24,6 +24,16 @@ describe('headline language', () => {
     expect(headlineLanguage('es', 'Bolsonaro')).toBe('es')
     expect(headlineLanguage('pt', 'Lula vence eleição')).toBe('pt')
   })
+  it('tells apart languages that share letters or a writing system', () => {
+    // Lithuanian writes ą and ę like Polish, but also ė, į, ų and ū.
+    expect(detectHeadline('Tyrimą Vilniaus arkikatedroje pradėję archeologai: kol kas neradome to, ko tikėtasi')).toBe('lt')
+    expect(detectHeadline('Prezydent spotkał się z rolnikami w Łodzi')).toBe('pl')
+    // Nepali is not Hindi; Mongolian is not Russian.
+    expect(detectHeadline('आवश्यकता अनुसार स्वास्थ्य संस्थामा अस्थायी दरबन्दी थप्दैछौं : मुख्यमन्त्री थापामगर')).toBe('ne')
+    expect(detectHeadline('दिल्ली में बारिश से कई इलाकों में जलभराव, यातायात प्रभावित है')).toBe('hi')
+    expect(detectHeadline('Б.Мөнхбат: "Туулын хурдны зам төсөл"-ийн гүйцэтгэгч компани гэрээний алданги ₮80 тэрбум')).toBe('mn')
+    expect(detectHeadline('Україна і Польща підписали угоду про співпрацю')).toBe('uk')
+  })
 })
 
 describe('Faroese is not Icelandic', () => {

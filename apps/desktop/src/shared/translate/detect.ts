@@ -93,8 +93,18 @@ export function detectFromText(text: string): string | null {
       if (count(sample, /[پچژگکی]/g) >= 5) return 'fa'
       return 'ar'
     }
+    if (code === 'hi') {
+      // Nepali and Hindi share Devanagari: their grammar words tell them apart ("संस्थामा", "छ" vs "में", "है").
+      const words = sample.split(/[\s\p{P}]+/u).filter(Boolean)
+      const nepali = words.filter((word) => /^(छ|छन्|छौं|हो|हुन्छ|लाई|गर्ने|भएको|र)$/.test(word) || /(मा|लाई|हरू|छौं|छन्|हुने|गर्ने)$/.test(word)).length
+      const hindi = words.filter((word) => /^(में|है|हैं|और|से|का|की|के|था|थे|थी|नहीं|पर|ने|भी)$/.test(word)).length
+      return nepali > hindi ? 'ne' : 'hi'
+    }
     if (code === 'ru') {
       if (count(sample, /[ђјљњћџ]/gi) >= 3) return 'sr'
+      // Kazakh and Mongolian Cyrillic: their own letters (Mongolian adds only ө and ү).
+      if (count(sample, /[әғқұһ]/gi) >= 2) return 'kk'
+      if (count(sample, /[өү]/gi) >= 2 && count(sample, /[әғқұһің]/gi) === 0) return 'mn'
       if (count(sample, /[ў]/gi) >= 2) return 'be'
       if (count(sample, /[іїєґ]/gi) >= 3) return 'uk'
       if (count(sample, /ы/gi) === 0 && count(sample, /ъ/gi) >= 3) return 'bg'
@@ -155,14 +165,16 @@ const HEADLINE_SETS = Object.entries(STOPWORDS).map(([code, words]) => [code, ne
 
 /** Letters that belong to one language (or a close pair), for headlines too short for word counts. */
 const LETTERS: Array<[RegExp, string]> = [
-  [/[łżźśćńąę]/i, 'pl'],
+  // Polish and Lithuanian share ą and ę: Polish by its own letters, Lithuanian by ė, į, ų, ū.
+  [/[łżźśćń]/i, 'pl'],
+  [/[ėįųū]/i, 'lt'],
+  [/[ąę]/i, 'pl'],
   [/[őű]/i, 'hu'],
   [/[șțăâî]/i, 'ro'],
   [/[ğış]|İ/, 'tr'],
   [/[ãõ]/i, 'pt'],
   [/[řůě]/i, 'cs'],
   [/[ľĺŕ]/i, 'sk'],
-  [/[ąęėįųūč]/i, 'lt'],
   [/[āēīūļņķģ]/i, 'lv'],
   [/[ñ¿¡]/i, 'es'],
   // å is Swedish and Norwegian too: only æ/ø point to Danish.

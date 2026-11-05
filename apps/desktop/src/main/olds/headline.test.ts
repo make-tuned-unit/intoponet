@@ -419,3 +419,13 @@ describe('capitals standing for their country', () => {
     expect(capitalCountries('Washington state wildfires spread')).toEqual([])
   })
 })
+
+describe('local headlines from the November 2026 sample', () => {
+  it('a speech to Congress is not an election result', () => {
+    expect(eventKindConflicts('2025 Donald Trump speech to a joint session of Congress', 'Democrats take Congress in historic sweep as voters rebuke Trump')).toBe(true)
+  })
+  it('New Mexico is not Mexico', () => {
+    expect(eventKindConflicts('2026 New Mexico gubernatorial election', 'Potosino businessmen differ on the impact of United States elections for Mexico')).toBe(true)
+    expect(eventKindConflicts('2026 New Mexico gubernatorial election', 'Haaland wins New Mexico governor race')).toBe(false)
+  })
+})

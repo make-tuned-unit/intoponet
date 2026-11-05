@@ -1,0 +1,146 @@
+/* Feedback card: bottom right over the globe, clear of the command dock. */
+.feedback-card {
+  position: absolute;
+  z-index: 12;
+  right: 24px;
+  bottom: 24px;
+  display: grid;
+  gap: 10px;
+  width: min(320px, calc(100vw - 48px));
+  padding: 14px 16px 12px;
+  border-radius: 18px;
+  background: var(--lg-fill-strong, rgba(8, 24, 36, 0.94));
+  color: rgba(236, 248, 246, 0.95);
+  animation: feedback-in 320ms ease-out;
+}
+
+@keyframes feedback-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+.feedback-card header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.feedback-card strong {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.feedback-close {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin: -3px -5px 0 0;
+  border: 0;
+  border-radius: 8px;
+  color: rgba(236, 248, 246, 0.7);
+  background: transparent;
+  cursor: pointer;
+}
+
+.feedback-close:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+
+.feedback-stars {
+  display: flex;
+  gap: 2px;
+}
+
+.feedback-stars button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 10px;
+  color: rgba(236, 248, 246, 0.42);
+  background: transparent;
+  cursor: pointer;
+  transition: color 120ms ease, transform 120ms ease;
+}
+
+.feedback-stars button:hover { transform: scale(1.08); }
+
+.feedback-stars button.is-on {
+  color: var(--teal, #20f4e4);
+}
+
+.feedback-stars button.is-on svg { fill: currentColor; }
+
+.feedback-card textarea {
+  width: 100%;
+  min-height: 64px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 11px;
+  color: inherit;
+  background: rgba(0, 0, 0, 0.22);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+  resize: vertical;
+}
+
+.feedback-card textarea:focus-visible,
+.feedback-card button:focus-visible {
+  outline: 2px solid var(--teal, #20f4e4);
+  outline-offset: 2px;
+}
+
+.feedback-card footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.feedback-never {
+  padding: 4px 0;
+  border: 0;
+  color: rgba(236, 248, 246, 0.62);
+  background: transparent;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.feedback-never:hover { color: #fff; }
+
+.feedback-send {
+  padding: 7px 18px;
+  border: 0;
+  border-radius: 999px;
+  color: #04181a;
+  background: var(--teal, #20f4e4);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.feedback-send:disabled { opacity: 0.45; cursor: default; }
+
+.feedback-note,
+.feedback-error {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: rgba(236, 248, 246, 0.55);
+}
+
+.feedback-error { color: #ffb4a8; }
+
+.feedback-thanks {
+  margin: 4px 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feedback-card { animation: none; }
+  .feedback-stars button { transition: none; }
+}

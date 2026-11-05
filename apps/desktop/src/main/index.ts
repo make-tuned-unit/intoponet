@@ -6,6 +6,7 @@ import {
   app,
   BrowserWindow,
   ipcMain,
+  powerMonitor,
   Menu,
   safeStorage,
   session,
@@ -18,6 +19,7 @@ import {
 } from 'electron'
 import type { MenuItemConstructorOptions } from 'electron'
 import { UpdateController } from './updates'
+import { FeedbackService, parseFeedbackCommand } from './feedback'
 import { updateChannels, parseUpdateCommand } from '@intoponet/browser-api'
 
 declare const __INTOPONET_MAC_UPDATE_URL__: string
@@ -1575,6 +1577,15 @@ app.whenReady().then(async () => {
       case 'read': return beacons.read({ ...(command.topic ? { topic: command.topic } : {}), ...(command.bbox ? { bbox: command.bbox } : {}) })
     }
   })
+  // Feedback: after an hour of active use the app asks once for a rating or a comment.
+  // Only what the person writes, their rating and the app version are sent, and only when they press Send.
+  const feedback = new FeedbackService(join(app.getPath('userData'), 'feedback.json'), app.getVersion())
+  const feedbackTick = setInterval(() => {
+    const inUse = !!window && !window.isDestroyed() && window.isVisible() && window.isFocused() && powerMonitor.getSystemIdleTime() < 120
+    if (inUse) void feedback.addActiveTime(60_000)
+  }, 60_000)
+  feedbackTick.unref()
+  ipcMain.handle('intoponet:feedback', (_event, value: unknown) => feedback.handle(parseFeedbackCommand(value)))
   // Site icons for bookmarks: from visited pages or the site's own /favicon.ico, cached on this Mac.
   faviconCache = new FaviconCache(join(app.getPath('userData'), 'favicons.json'))
   ipcMain.handle('intoponet:favicons', (_event, value: unknown) => {

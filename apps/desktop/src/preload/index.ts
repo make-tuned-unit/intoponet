@@ -275,4 +275,11 @@ const favicons = {
   get: (hosts: string[]) => ipcRenderer.invoke('intoponet:favicons', hosts) as Promise<Record<string, string>>,
 }
 
-contextBridge.exposeInMainWorld('intoponet', Object.freeze({ browserHost, captures, olds, knowledge, laya, translate, privacy, sitePermissions, beacons, favicons, access, updates }))
+const feedback = {
+  status: () => ipcRenderer.invoke('intoponet:feedback', { kind: 'status' }) as Promise<{ due: boolean }>,
+  later: () => ipcRenderer.invoke('intoponet:feedback', { kind: 'later' }) as Promise<{ due: boolean }>,
+  never: () => ipcRenderer.invoke('intoponet:feedback', { kind: 'never' }) as Promise<{ due: boolean }>,
+  send: (rating: number | null, comment: string) => ipcRenderer.invoke('intoponet:feedback', { kind: 'send', rating, comment }) as Promise<{ due: boolean; sent?: boolean }>,
+}
+
+contextBridge.exposeInMainWorld('intoponet', Object.freeze({ browserHost, captures, olds, knowledge, laya, translate, privacy, sitePermissions, beacons, favicons, access, updates, feedback }))

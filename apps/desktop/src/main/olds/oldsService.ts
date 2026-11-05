@@ -1038,6 +1038,11 @@ export class OldsService {
       // "… dies age 86": a person who died this year is the story, not an article about their works.
       const diedNow = namedPerson && !!deathYear && Number(deathYear) >= currentYear
         && /\b(dies|died|dead|death|passes away|passed away|obituary|tributes?|mourn\w*)\b/i.test(text)
+      // A surname alone, mid-headline, is anyone's ("…: Sartori convocó" in Misiones is not the Italian Franco Sartori):
+      // someone from elsewhere (or nowhere recorded) not named in full, first or by office is the story only when known worldwide.
+      if (person && !filedThread && !native && !namedPerson && !givenNameMentioned(node.label, `${text} ${query.text}`)
+        && !(storyQids.length && storyQids.some((qid) => countries.includes(qid)))
+        && Object.keys(entity.sitelinks ?? {}).filter((site) => site.endsWith('wiki')).length < 40) return []
       if (person && surnameOnly && countries.length && storyQids.length && !storyQids.some((qid) => countries.includes(qid)) && !famous.has(item.qid)) return []
       // Partial native-language name overlap is not enough to identify a foreign namesake
       // when translation was unavailable (Wilson Neves in Angola ≠ Wilson das Neves in Brazil).
@@ -1048,6 +1053,9 @@ export class OldsService {
       if (storyCountries.length && titleCountries.length && !titleCountries.some((code) => storyCountries.includes(code))) return []
       // Films, TV series, songs and foods share words with the news ("Melania (film)", "Soldier Soldier", "Brazil nut").
       if (isWorkOrThing(node.description, aboutAWork)) return []
+      // A named port, airport or bridge that shares only its kind with the headline ("Lekki Port" for a deep sea
+      // port in Ogun) is another one: its own name must be in the headline.
+      if (!filedThread && !native && !facilityNamed(node.label, `${text} ${query.text}`)) return []
       // Sharing only the country's name ("German economic crisis" for a speech by Merz) is a weak match.
       // (The outlet's country counts too: "Cabinet of Egypt" for a renewables plan from an Egyptian paper.)
       const countryOnly = !native && !filedThread && titleWordsIn(node.label, `${text} ${countryLabel ?? ''}`) > 0 && titleWordsIn(node.label, subjectText) === 0
@@ -1924,3 +1932,25 @@ export function isTrivialHere(entity: WikidataEntity): boolean {
 
 /** The history article could not be fetched right now (network or rate limit), as opposed to not existing. */
 class HistoryUnavailable extends Error {}
+
+const FACILITY_KIND = /\b(port|seaport|airport|bridge|dam|stadium|station|hospital|university|refinery|railway|expressway|highway|prison|mall|harbou?r|terminal)$/i
+const FACILITY_FILLER = new Set('the of and de del la le port seaport airport bridge dam stadium station hospital university refinery railway expressway highway prison mall harbour harbor terminal deep sea international national new old central main grand general teaching state federal city'.split(' '))
+const foldWords = (value: string): string[] => foldAccents(value).toLowerCase().split(/[^\p{L}\d]+/u).filter(Boolean)
+
+/** True unless the label is a named facility ("Lekki Port") whose own name the headline never says. */
+export function facilityNamed(label: string, headline: string): boolean {
+  const base = label.replace(/\s*\(.*?\)\s*$/, '')
+  if (!FACILITY_KIND.test(base)) return true
+  const names = foldWords(base).filter((word) => word.length >= 3 && !FACILITY_FILLER.has(word))
+  if (!names.length) return true
+  const said = new Set(foldWords(headline))
+  return names.some((word) => said.has(word))
+}
+
+/** Whether the headline says a person's given name (the first word of "Franco Sartori"), or the label is one word. */
+export function givenNameMentioned(label: string, headline: string): boolean {
+  const words = foldWords(label.replace(/\s*\(.*?\)\s*$/, ''))
+  if (words.length < 2) return true
+  const said = new Set(foldWords(headline))
+  return said.has(words[0]!)
+}

@@ -197,7 +197,7 @@ export function eventKindMatches(title: string, headline: string): boolean {
 const EVENT_KINDS: Array<[string, RegExp]> = [
   ['meeting', /\b(summit|meeting|conference|talks|forum|assembly|session|chogm|g7|g20|cop\d+)\b/i],
   ['sport', /\b(games|olympics|cup|championships?|tournament|league|grand prix|marathon|match|world series|super bowl|football (club|team)|national (football|basketball|rugby|cricket) team|f\.?c\.?)\b/i],
-  ['election', /\b(elections?|referendum|primary|primaries|vote|votes|polls?)\b/i],
+  ['election', /\b(elections?|referendum|primary|primaries|vote|votes|voters|polls?|ballots?|midterms?)\b/i],
   ['culture', /\b(festival|awards?|song contest|eurovision|biennale|expo|fair|premiere|thriller|film|movie|fundraiser)\b/i],
   ['services', /\b(water|electricity|power cut|outage|blackout|internet|road works?|traffic)\b/i],
 ]
@@ -242,6 +242,9 @@ export function eventKindConflicts(title: string, headline: string): boolean {
   const titleOrdinals = ordinals(title)
   const headlineOrdinals = ordinals(headline)
   if (titleOrdinals.length && headlineOrdinals.length && !titleOrdinals.some((number) => headlineOrdinals.includes(number))) return true
+  // "New Mexico" is not Mexico: a title naming the New one, for a headline that names only the country.
+  const newPlace = title.match(/\bNew (Mexico|Guinea|England|Caledonia)\b/)?.[1]
+  if (newPlace && new RegExp(`\\b${newPlace}\\b`, 'i').test(foldAccents(headline)) && !new RegExp(`\\b(new|nuevo|nueva|nouvelle|novo|nova) ${newPlace}\\b`, 'i').test(foldAccents(headline))) return true
   const kindsOf = (text: string): string[] => EVENT_KINDS.filter(([, pattern]) => pattern.test(text)).map(([kind]) => kind)
   const inTitle = kindsOf(title)
   const inHeadline = kindsOf(headline)

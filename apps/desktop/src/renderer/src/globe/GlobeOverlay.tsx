@@ -18,6 +18,7 @@ export function GlobeOverlay({
   hidden,
   locator,
   onLocatorSelect,
+  onLabelSelect,
 }: {
   projection: GlobeProjection
   /** In priority order. */
@@ -29,6 +30,8 @@ export function GlobeOverlay({
   locator?: { id: string; label: string } | null
   /** Clicking the locator opens that place's own view instead of the country's. */
   onLocatorSelect?: () => void
+  /** Clicking a label opens what it names, like clicking its marker. */
+  onLabelSelect?: (id: string) => void
 }) {
   const locatorEl = useRef<HTMLDivElement>(null)
   const labelEls = useRef(new Map<string, HTMLDivElement>())
@@ -92,6 +95,7 @@ export function GlobeOverlay({
         const facing = i === undefined ? 0 : projection.facing[i]!
         if (off || i === undefined || facing <= 0.08 || label.id === hovered) {
           el.style.opacity = '0'
+          el.style.pointerEvents = 'none'
           continue
         }
         const w = el.offsetWidth
@@ -102,11 +106,13 @@ export function GlobeOverlay({
         const clash = placed.some((other) => box[0] < other[2] && box[2] > other[0] && box[1] < other[3] && box[3] > other[1])
         if (clash) {
           el.style.opacity = '0'
+          el.style.pointerEvents = 'none'
           continue
         }
         placed.push(box)
         el.style.transform = `translate3d(${left}px, ${top}px, 0)`
         el.style.opacity = String(Math.min(1, (facing - 0.08) * 4))
+        el.style.pointerEvents = 'auto'
       }
     }
     frame = requestAnimationFrame(tick)
@@ -120,6 +126,7 @@ export function GlobeOverlay({
           key={label.id}
           className="globe-label"
           style={{ ['--label-color' as string]: label.color }}
+          onClick={onLabelSelect ? () => onLabelSelect(label.id) : undefined}
           ref={(el) => {
             if (el) labelEls.current.set(label.id, el)
             else labelEls.current.delete(label.id)

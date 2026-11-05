@@ -142,6 +142,7 @@ import type { PlaceTrendState } from './globe/PlaceTrendList'
 import type { PlaceTrends } from '../../shared/news/placeTrends'
 import { countryAt, countryShape } from '../../shared/places/countryAt'
 import { GlobeOverlay, type GlobeLabel } from './globe/GlobeOverlay'
+import { labelViewChanged, viewLabelSignals, type LabelView } from './globe/viewLabels'
 import { GlobeHeader, HoverCardContent, LayerCard, SignalPanel, type FieldView, type ListView } from './globe/GlobeHud'
 import { OldsPanel, type OldsState } from './olds/OldsPanel'
 import { MinePanel } from './globe/MinePanel'
@@ -188,6 +189,7 @@ import type { SitePermissionMap, SitePermissionRequest } from '@intoponet/browse
 import { autoTranslatePlan, headlinePrefKey, readAppSettings, writeAppSettings, type AppSettings } from './settings/appSettings'
 import { readPrivacySettings, writePrivacySettings, type PrivacySettings } from './privacy/privacySettings'
 import { StartPage } from './StartPage'
+import { FeedbackPrompt } from './FeedbackPrompt'
 import { startBookmarks, startNews, startRecents } from './startPageModel'
 import { inferLauncherIntent } from '@intoponet/browser-api'
 
@@ -1876,14 +1878,22 @@ export function App() {
     // The place you flew to: projected like any marker so the locator can sit exactly on it.
     ...(focusedPlace ? [{ id: `locator:${focusedPlace.id}`, lat: focusedPlace.lat, lon: focusedPlace.lon, color: '#ffffff', size: 0, kind: 'pin' as const }] : []),
   ], [publicGlobe, visibleGlobeSignals, pinMarkers, knowledgeMarkers, focusedPlace])
+  // What part of Earth is in view, sampled a few times a second: labels follow it as you zoom and turn.
+  const [labelView, setLabelView] = useState<LabelView | null>(null)
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (!countryView.width) return
+      const next: LabelView = { centerLat: countryView.centerLat, centerLon: countryView.centerLon, distance: countryView.distance, degPerPx: countryView.degPerPx, width: countryView.width, height: countryView.height }
+      setLabelView((current) => (labelViewChanged(current, next) ? next : current))
+    }, 250)
+    return () => window.clearInterval(timer)
+  }, [countryView])
   const globeLabels = useMemo<GlobeLabel[]>(() => {
     const short = (text: string): string => (text.length > 34 ? `${text.slice(0, 32)}…` : text)
     const signals = publicGlobe ? visibleGlobeSignals : []
-    const ordered = selectedSignal && signals.some((signal) => signal.id === selectedSignal.id)
-      ? [selectedSignal, ...signals.filter((signal) => signal.id !== selectedSignal.id)]
-      : signals
+    const ordered = viewLabelSignals(signals, labelView, selectedSignal?.id ?? null)
     return [
-      ...ordered.slice(0, 16).map((signal) => ({ id: signal.id, text: short(signal.title), color: GLOBE_LAYERS[signal.layer].color })),
+      ...ordered.map((signal) => ({ id: signal.id, text: short(signal.title), color: GLOBE_LAYERS[signal.layer].color })),
       ...bookmarks.filter((bookmark) => bookmark.fieldAnchor).slice(0, 12)
         .map((bookmark) => ({ id: `pin:${bookmark.url}`, text: short(bookmark.title || bookmark.url), color: PIN_COLOR })),
       ...(fieldView === 'personal'
@@ -1891,7 +1901,7 @@ export function App() {
           .sort((a, b) => b.count - a.count).slice(0, 14).map(({ count: _count, ...label }) => label)
         : []),
     ]
-  }, [publicGlobe, visibleGlobeSignals, selectedSignal, bookmarks, globePrefs.pins, fieldView, knowledgeRecords])
+  }, [publicGlobe, visibleGlobeSignals, selectedSignal, labelView, bookmarks, globePrefs.pins, fieldView, knowledgeRecords])
   const hoverCard = useMemo(() => {
     if (!hoveredMarkerId) return null
     if (hoveredMarkerId.startsWith('know:')) {
@@ -2784,6 +2794,7 @@ export function App() {
           hidden={panel.isVisible}
           locator={focusedPlace ? { id: `locator:${focusedPlace.id}`, label: focusedPlace.name } : null}
           onLocatorSelect={() => setSelectedSignalId(null)}
+          onLabelSelect={selectGlobeMarker}
         />
       )}
       {!fieldLabOpen && import.meta.env.DEV && designPreview && <aside className="coverage-note">
@@ -3789,6 +3800,8 @@ export function App() {
       </div>
 
       <UpdateBanner />
+      {/* Never over a web page (it would sit under it) or The Olds. */}
+      <FeedbackPrompt hidden={panel.isVisible || !!olds || fieldLabOpen} />
       {notice && (
         <div className="notice-message" role="status">
           {notice}

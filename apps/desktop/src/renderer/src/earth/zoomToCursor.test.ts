@@ -105,7 +105,7 @@ describe('wheelRadius', () => {
 
   it('pinch deltas reach further per unit, and both clamp to the rig limits', () => {
     expect(4 - wheelRadius(4, -5, { pinch: true })).toBeGreaterThan(4 - wheelRadius(4, -5))
-    expect(wheelRadius(1.5, -10_000)).toBe(1.48)
+    expect(wheelRadius(1.5, -10_000)).toBe(1.2)
     expect(wheelRadius(5, 10_000)).toBe(5.4)
   })
 })
