@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { PasswordFillMessage } from '../../shared/passwordPage'
-import { CLIPBOARD_CLEAR_MS, PasswordService, type PasswordPage } from './service'
+import { CLIPBOARD_CLEAR_MS, HELD_OFFER_MS, PasswordService, type PasswordPage } from './service'
 import { PasswordVault, type VaultCrypto } from './vault'
 
 const crypto: VaultCrypto = {
@@ -9,7 +9,9 @@ const crypto: VaultCrypto = {
   decrypt: async (data) => ({ result: Buffer.from(data).reverse().toString(), shouldReEncrypt: false }),
 }
 
-function setup(authorized = true) {
+const signedIn = { type: 'settled', passwordForm: false } as const
+
+function setup(authorized = true, clock: () => number = Date.now) {
   let stored: Buffer | null = null
   const vault = new PasswordVault(crypto, { read: () => stored, write: (data) => { stored = data } })
   const changed: Array<number | null> = []
@@ -20,7 +22,7 @@ function setup(authorized = true) {
     authorize: async () => authorized,
     clipboard,
     setTimer: (run, ms) => { expect(ms).toBe(CLIPBOARD_CLEAR_MS); timers.push(run) },
-  })
+  }, clock)
   return { vault, service, changed, clipboard, timers }
 }
 
@@ -49,15 +51,39 @@ describe('PasswordService', () => {
     const { service, vault } = setup()
     const tab = page('https://example.com/login')
     await service.report(tab, { type: 'submitted', username: 'ada', password: 'pw1' })
-    // The offer survives the redirect after signing in.
+    // Nothing is offered until the sign-in is seen to work.
+    expect((await service.pageState(tab))?.offer).toBeNull()
     tab.url = 'https://example.com/home'
     service.navigated(tab.id)
+    await service.report(tab, signedIn)
     const state = await service.pageState(tab)
     expect(state?.offer).toMatchObject({ origin: 'https://example.com', username: 'ada', kind: 'save' })
     expect(JSON.stringify(state)).not.toContain('pw1')
     await service.decide(state!.offer!.id, 'save')
     expect((await vault.forSite('https://example.com'))[0]).toMatchObject({ username: 'ada', password: 'pw1' })
     expect((await service.pageState(tab))?.offer).toBeNull()
+  })
+
+  it('offers nothing when the sign-in form comes back, or when the page never settles', async () => {
+    let now = 1_000
+    const { service } = setup(true, () => now)
+    const tab = page('https://example.com/login')
+    await service.report(tab, { type: 'submitted', username: 'ada', password: 'wrong' })
+    service.navigated(tab.id)
+    await service.report(tab, { type: 'settled', passwordForm: true })
+    expect((await service.pageState(tab))?.offer).toBeNull()
+    // The verdict is used once: a later page without a form does not bring the old attempt back.
+    await service.report(tab, signedIn)
+    expect((await service.pageState(tab))?.offer).toBeNull()
+
+    await service.report(tab, { type: 'submitted', username: 'ada', password: 'slow' })
+    now += HELD_OFFER_MS + 1
+    await service.report(tab, signedIn)
+    expect((await service.pageState(tab))?.offer).toBeNull()
+
+    await service.report(tab, { type: 'submitted', username: 'ada', password: 'right' })
+    await service.report(tab, signedIn)
+    expect((await service.pageState(tab))?.offer).toMatchObject({ username: 'ada', kind: 'save' })
   })
 
   it('offers an update when the username is saved with another password, and nothing when unchanged', async () => {
@@ -67,6 +93,7 @@ describe('PasswordService', () => {
     await service.report(tab, { type: 'submitted', username: 'ada', password: 'old' })
     expect((await service.pageState(tab))?.offer).toBeNull()
     await service.report(tab, { type: 'submitted', username: 'ada', password: 'new' })
+    await service.report(tab, signedIn)
     expect((await service.pageState(tab))?.offer).toMatchObject({ kind: 'update', origin: 'https://example.com' })
   })
 
@@ -74,14 +101,18 @@ describe('PasswordService', () => {
     const { service } = setup()
     const privateTab = page('https://example.com/login', { isPrivate: true })
     await service.report(privateTab, { type: 'submitted', username: 'ada', password: 'pw' })
+    await service.report(privateTab, signedIn)
     expect(await service.pageState(privateTab)).toBeNull()
     const plain = page('http://example.com/login', { id: 2 })
     await service.report(plain, { type: 'submitted', username: 'ada', password: 'pw' })
+    await service.report(plain, signedIn)
     expect(await service.pageState(plain)).toBeNull()
     const tab = page('https://example.com/login', { id: 3 })
     await service.report(tab, { type: 'submitted', username: 'ada', password: 'pw' })
+    await service.report(tab, signedIn)
     await service.decide((await service.pageState(tab))!.offer!.id, 'never')
     await service.report(tab, { type: 'submitted', username: 'bob', password: 'pw' })
+    await service.report(tab, signedIn)
     expect((await service.pageState(tab))?.offer).toBeNull()
   })
 
@@ -91,6 +122,7 @@ describe('PasswordService', () => {
     await service.report(tab, { type: 'identifier', username: 'ada@example.com' })
     tab.url = 'https://example.com/challenge'
     await service.report(tab, { type: 'submitted', username: '', password: 'pw' })
+    await service.report(tab, signedIn)
     expect((await service.pageState(tab))?.offer?.username).toBe('ada@example.com')
   })
 

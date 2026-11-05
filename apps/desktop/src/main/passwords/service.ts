@@ -26,6 +26,8 @@ type PendingOffer = PasswordOffer & { password: string }
 
 type PageRecord = {
   offer: PendingOffer | null
+  /** A sign-in that was sent but has not yet worked: offered only once the page moves past its sign-in form. */
+  held: { offer: PendingOffer; at: number } | null
   filled: string | null
   choiceDismissed: boolean
   /** Username sent on the first page of a two-step sign-in. */
@@ -34,6 +36,8 @@ type PageRecord = {
 
 export const CLIPBOARD_CLEAR_MS = 30_000
 const IDENTIFIER_MS = 10 * 60_000
+/** How long a sent sign-in waits for the page to show it worked. */
+export const HELD_OFFER_MS = 2 * 60_000
 
 export class PasswordService {
   private readonly pages = new Map<number, PageRecord>()
@@ -43,7 +47,7 @@ export class PasswordService {
   private record(id: number): PageRecord {
     let record = this.pages.get(id)
     if (!record) {
-      record = { offer: null, filled: null, choiceDismissed: false, identifier: null }
+      record = { offer: null, held: null, filled: null, choiceDismissed: false, identifier: null }
       this.pages.set(id, record)
     }
     return record
@@ -52,6 +56,18 @@ export class PasswordService {
   /** A message from the page's sign-in helper. Private pages and other origins are ignored. */
   async report(page: PasswordPage, message: PasswordPageMessage): Promise<void> {
     if (page.isPrivate) return
+    if (message.type === 'settled') {
+      // Checked before the origin: a sign-in may land on another site or page kind.
+      const record = this.pages.get(page.id)
+      const held = record?.held
+      if (!record || !held) return
+      record.held = null
+      // The sign-in form is back (wrong password, a captcha): nothing to save.
+      if (message.passwordForm || this.clock() - held.at > HELD_OFFER_MS) return
+      record.offer = held.offer
+      this.deps.changed(page.id)
+      return
+    }
     const origin = page.origin()
     if (!origin) return
     const record = this.record(page.id)
@@ -77,11 +93,10 @@ export class PasswordService {
       await this.vault.markUsed(existing.id).catch(() => undefined)
       return
     }
-    record.offer = { id: randomUUID(), origin: existing?.origin ?? origin, username, password: message.password, kind: existing ? 'update' : 'save' }
-    this.deps.changed(page.id)
+    record.held = { offer: { id: randomUUID(), origin: existing?.origin ?? origin, username, password: message.password, kind: existing ? 'update' : 'save' }, at: this.clock() }
   }
 
-  /** A new document in the page: what was filled no longer applies. A pending offer stays (sign-ins redirect). */
+  /** A new document in the page: what was filled no longer applies. Offers stay (sign-ins redirect). */
   navigated(pageId: number): void {
     const record = this.pages.get(pageId)
     if (!record) return

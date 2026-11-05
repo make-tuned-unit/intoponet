@@ -53,7 +53,40 @@ function capture(scope: ParentNode): void {
   lastSent = key
   lastSentAt = Date.now()
   report({ type: 'submitted', ...credentials })
+  watchSameDocument()
 }
+
+// ---- Did the sign-in work? -------------------------------------------------------
+// Main holds a sent sign-in and offers to save it only once the page moves past its form:
+// a new page with no password box, or (single-page sites) the password box going away.
+
+const anyPasswordBox = (): boolean => Array.from(document.querySelectorAll<HTMLInputElement>('input[type="password" i]')).slice(0, MAX_INPUTS).some(visible)
+
+let sameDocumentTimer: ReturnType<typeof setInterval> | null = null
+
+function watchSameDocument(): void {
+  if (sameDocumentTimer) clearInterval(sameDocumentTimer)
+  const started = Date.now()
+  let clear = 0
+  sameDocumentTimer = setInterval(() => {
+    // Two checks in a row, so a form briefly hidden behind a spinner does not count.
+    clear = anyPasswordBox() ? 0 : clear + 1
+    const done = clear >= 2
+    if (done) report({ type: 'settled', passwordForm: false })
+    if (done || Date.now() - started > 20_000) {
+      clearInterval(sameDocumentTimer!)
+      sameDocumentTimer = null
+    }
+  }, 600)
+}
+
+function settleNewDocument(): void {
+  // A sign-in sent on this page is judged by the same-document watch instead.
+  setTimeout(() => { if (!lastSentAt) report({ type: 'settled', passwordForm: anyPasswordBox() }) }, 1_500)
+}
+
+if (document.readyState === 'complete') settleNewDocument()
+else window.addEventListener('load', settleNewDocument, { once: true })
 
 document.addEventListener('submit', (event) => capture(scopeOf(event.target as Element)), true)
 

@@ -18,6 +18,8 @@ export type PasswordPageMessage =
   | { type: 'identifier'; username: string }
   /** The page shows a sign-in form. */
   | { type: 'login-form' }
+  /** After a sign-in was sent: a new page finished loading, or the sign-in form went away. Whether a password box still shows. */
+  | { type: 'settled'; passwordForm: boolean }
 
 export type PasswordFillMessage = {
   /** The page's own origin when main sent it; the page ignores a fill meant for another origin. */
@@ -36,6 +38,7 @@ export function parsePasswordPageMessage(value: unknown): PasswordPageMessage | 
   const input = value as Record<string, unknown>
   switch (input['type']) {
     case 'login-form': return { type: 'login-form' }
+    case 'settled': return typeof input['passwordForm'] === 'boolean' ? { type: 'settled', passwordForm: input['passwordForm'] } : null
     case 'identifier': {
       const username = text(input['username'], USERNAME_LIMIT)?.trim()
       return username ? { type: 'identifier', username } : null

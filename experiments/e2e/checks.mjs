@@ -46,8 +46,13 @@ const startLoginSite = () => new Promise((resolve) => {
   const server = createServer((request, response) => {
     response.setHeader('content-type', 'text/html; charset=utf-8')
     if (request.method === 'POST') {
-      request.resume()
-      request.on('end', () => { response.statusCode = 303; response.setHeader('location', '/welcome'); response.end() })
+      let body = ''
+      request.on('data', (chunk) => { body += chunk })
+      // A wrong password shows the sign-in form again, as real sites do.
+      request.on('end', () => {
+        if (body.includes('Wrong-Pa55')) { response.statusCode = 401; response.end(LOGIN_PAGE); return }
+        response.statusCode = 303; response.setHeader('location', '/welcome'); response.end()
+      })
       return
     }
     response.end(request.url?.startsWith('/welcome') ? '<!doctype html><title>Welcome</title><h1>Signed in</h1>' : LOGIN_PAGE)
@@ -315,7 +320,11 @@ export const checks = {
       await openPage(ctx, login, 2500)
       const page = await ctx.page(`${site}/login`)
       expect(JSON.stringify(await pageFields(page)) === '["",""]', 'The sign-in form was filled before anything was saved.')
-      await signIn(ctx, page, 'tester@example.com', password)
+      // A failed sign-in (the form comes back) is not offered.
+      await signIn(ctx, page, 'tester@example.com', 'Wrong-Pa55')
+      await ctx.delay(4000)
+      expect(!(await ctx.evaluate(`!!document.querySelector('.password-bar')`)), 'A failed sign-in offered to save its password.')
+      await signIn(ctx, await ctx.page(`${site}/welcome`), 'tester@example.com', password)
       await ctx.wait(`(document.querySelector('.password-bar')?.innerText ?? '').includes('Save password')`, 15_000, 'the "Save password" offer after signing in')
       const offer = await ctx.evaluate(`document.querySelector('.password-bar').innerText`)
       expect(offer.includes(site) && offer.includes('tester@example.com'), `The offer does not name the site and account: "${offer}"`)
@@ -383,7 +392,7 @@ export const checks = {
       await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
       const count = await ctx.evaluate(`window.intoponet.passwords.list().then((l) => l.length)`)
       expect(count === 2, 'A private sign-in was saved.')
-      return `Offered, saved (sealed file, no plaintext), filled one account on its own, asked between two, listed in Settings; private tab untouched (${site}).`
+      return `Failed sign-in not offered; offered, saved (sealed file, no plaintext), filled one account on its own, asked between two, listed in Settings; private tab untouched (${site}).`
     } finally {
       server.close()
     }
