@@ -6,7 +6,7 @@ import { buildPage } from './build.mjs'
 
 const snippet = readFileSync(new URL('./permagent.js', import.meta.url), 'utf8')
 
-for (const page of ['index.html', 'beacon-policy.html', '404.html']) {
+for (const page of ['index.html', 'beacon-policy.html', '404.html', 'ideas.html']) {
   test(`${page}: the snippet is inlined once and the page policy allows exactly it`, () => {
     const built = buildPage(readFileSync(new URL(`./${page}`, import.meta.url), 'utf8'), snippet)
     assert.equal(built.split('window.permagent.v = 2;').length, 2)

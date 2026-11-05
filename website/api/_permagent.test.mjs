@@ -92,7 +92,7 @@ test('every page source carries the snippet tag once, in <head>, and the snippet
   const snippet = readFileSync(new URL('../permagent.js', import.meta.url), 'utf8')
   assert.ok(snippet.includes('var E = "/api/permagent-analytics/collect";'))
   assert.ok(snippet.includes('window.permagent.v = 2;'))
-  for (const page of ['index.html', 'beacon-policy.html', '404.html']) {
+  for (const page of ['index.html', 'beacon-policy.html', '404.html', 'ideas.html']) {
     const html = readFileSync(new URL(`../${page}`, import.meta.url), 'utf8')
     assert.equal(html.split('<script src="/permagent.js"></script>').length, 2, page)
     assert.ok(html.indexOf('/permagent.js') < html.indexOf('</head>'), page)

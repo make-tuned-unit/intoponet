@@ -52,6 +52,12 @@
     },
     "api/permagent-analytics/drain.js": {
       "maxDuration": 30
+    },
+    "api/feedback.js": {
+      "maxDuration": 15
+    },
+    "api/ideas.js": {
+      "maxDuration": 15
     }
   },
   "cleanUrls": true,

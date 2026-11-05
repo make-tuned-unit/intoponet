@@ -38,7 +38,7 @@ export async function sendNotification(env, message, fetchImpl = fetch) {
   const response = await fetchImpl('https://api.resend.com/emails', {
     method: 'POST',
     headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
-    body: JSON.stringify({ from: env.DOWNLOAD_NOTIFY_FROM?.trim().replace(/^["']+|["']+$/g, '') || 'Intoponet <onboarding@resend.dev>', to, subject: message.subject, text: message.text }),
+    body: JSON.stringify({ from: env.DOWNLOAD_NOTIFY_FROM?.trim().replace(/^["']+|["']+$/g, '') || 'Intoponet <onboarding@resend.dev>', to, subject: message.subject, text: message.text, ...(message.replyTo ? { reply_to: message.replyTo } : {}) }),
     signal: AbortSignal.timeout(8_000),
   })
   if (!response.ok) {

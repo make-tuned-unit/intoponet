@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Share an idea — intoponet</title>
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="intoponet">
+  <meta property="og:title" content="Share an idea — intoponet">
+  <meta property="og:description" content="Tell the people building intoponet what would make it better: a feature, a fix, a place it should know about.">
+  <meta property="og:url" content="https://intoponet.com/ideas">
+  <meta property="og:image" content="https://intoponet.com/open-graph-1200x630.png">
+  <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="intoponet — Explore beyond the expected.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="description" content="Tell the people building intoponet what would make it better: a feature, a fix, a place it should know about.">
+  <meta name="theme-color" content="#061320"><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/ideas.css">
+  <link rel="canonical" href="https://intoponet.com/ideas">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/brand/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <link rel="preload" href="/fonts/inter-latin-opsz-normal.woff2" as="font" type="font/woff2" crossorigin>
+<script src="/permagent.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header><a class="brand" href="/" aria-label="intoponet home"><img class="brand-logo" src="/brand/intoponet-horizontal-on-dark.svg" alt="intoponet" width="175" height="34"></a><nav aria-label="Main navigation"><a href="/#browser">The browser</a><a href="/ideas" aria-current="page">Ideas</a><a class="nav-cta" href="/download/mac">Download for macOS <span class="ico"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg></span></a></nav></header>
+<main id="main" class="ideas">
+  <div class="ideas-intro">
+    <p class="eyebrow"><span class="dot"></span> Ideas</p>
+    <h1>Help shape <em>intoponet</em>.</h1>
+    <p class="ideas-lede">A feature you wish it had, something that got in your way, a city whose news it should carry, or a wild idea about what a browser could be. Every idea is read by the people building it.</p>
+    <ul class="ideas-points">
+      <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 4h16v12H7l-3 3z"/></svg><span>Your idea goes straight to the team by email. Nothing is published.</span></li>
+      <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><span>Your email is optional, used only to reply to you, and never added to a list.</span></li>
+      <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg><span>Good ideas show up in the next releases, which install on their own.</span></li>
+    </ul>
+  </div>
+
+  <form class="ideas-form" id="idea-form" novalidate>
+    <label for="idea-area">What is it about?</label>
+    <div class="ideas-select">
+      <select id="idea-area" name="area">
+        <option value="globe">The globe and map</option>
+        <option value="news">Local news</option>
+        <option value="olds">The Olds</option>
+        <option value="browsing">Browsing and tabs</option>
+        <option value="privacy">Privacy and protection</option>
+        <option value="beacons">Beacons and sharing</option>
+        <option value="other" selected>Something else</option>
+      </select>
+    </div>
+
+    <label for="idea-text">Your idea</label>
+    <textarea id="idea-text" name="idea" rows="7" maxlength="3000" required aria-describedby="idea-count" placeholder="What would make intoponet better for you?"></textarea>
+    <p class="ideas-count" id="idea-count" aria-live="polite">0 / 3000</p>
+
+    <div class="ideas-row">
+      <div>
+        <label for="idea-name">Name <span>optional</span></label>
+        <input id="idea-name" name="name" type="text" maxlength="80" autocomplete="name">
+      </div>
+      <div>
+        <label for="idea-email">Email <span>optional, to hear back</span></label>
+        <input id="idea-email" name="email" type="email" maxlength="200" autocomplete="email" inputmode="email">
+      </div>
+    </div>
+
+    <!-- Left empty by people; filled in by bots. -->
+    <div class="ideas-trap" aria-hidden="true">
+      <label for="idea-website">Website</label>
+      <input id="idea-website" name="website" type="text" tabindex="-1" autocomplete="off">
+    </div>
+
+    <p class="ideas-status" id="idea-status" role="status" aria-live="polite"></p>
+    <button class="ideas-submit" type="submit" disabled>Send idea <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></button>
+    <noscript><p class="ideas-status is-error">This form needs JavaScript. You can also email your idea to support@atlasatlantic.co.</p></noscript>
+  </form>
+</main>
+<footer><a class="brand" href="/"><img class="brand-logo" src="/brand/intoponet-horizontal-on-dark.svg" alt="intoponet" width="144" height="28"></a><p>support@atlasatlantic.co</p><span><a class="footer-credit" href="https://atlasatlantic.co" rel="noopener">Built by Atlas Atlantic</a></span></footer>
+<script src="/ideas.js" defer></script>
+</body>
+</html>
