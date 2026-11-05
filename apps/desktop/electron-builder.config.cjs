@@ -19,6 +19,23 @@ module.exports = {
     { from: path.resolve(__dirname, '../../THIRD_PARTY_NOTICES.md'), to: 'THIRD_PARTY_NOTICES.md' },
   ],
   asar: true,
+  // Electron fuses (flipped in the binary before signing). Without these, any local program could
+  // start the app as plain Node or with --inspect / NODE_OPTIONS and use its Keychain access to
+  // decrypt saved passwords and the private library. grantFileProtocolExtraPrivileges stays on:
+  // the shell loads its module scripts from file://, which needs it (moving it to a custom scheme
+  // would change its storage origin).
+  electronFuses: {
+    runAsNode: false,
+    enableNodeOptionsEnvironmentVariable: false,
+    enableNodeCliInspectArguments: false,
+    enableEmbeddedAsarIntegrityValidation: true,
+    onlyLoadAppFromAsar: true,
+    enableCookieEncryption: true,
+    loadBrowserProcessSpecificV8Snapshot: false,
+    grantFileProtocolExtraPrivileges: true,
+    // Unsigned previews: re-sign ad hoc after flipping fuses, or Apple silicon refuses to launch them.
+    resetAdHocDarwinSignature: !isRelease,
+  },
   mac: {
     icon: path.join(__dirname, 'resources/Intoponet.icns'),
     category: 'public.app-category.productivity',
