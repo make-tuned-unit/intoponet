@@ -1,6 +1,6 @@
 # Feature verification
 
-Run 2026-11-05 05:00 UTC · tier `network` · only SOURCE_CAROUSEL · **1 passed, 0 failed, 0 blocked, 0 skipped, 28 assumed**.
+Run 2026-11-05 05:07 UTC · tier `full` · only AUTO_TRANSLATE, SETTINGS, ROUGH_TRANSLATE · **3 passed, 0 failed, 0 blocked, 0 skipped, 26 assumed**.
 
 Each feature makes a promise to the user; its check drives the built app end to end. Defined in `docs/FEATURE_DAG.json`, checks in `experiments/e2e/checks.mjs`, run with `npm run verify:features`.
 
@@ -8,7 +8,7 @@ Each feature makes a promise to the user; its check drives the built app end to 
 | --- | --- | --- | --- | --- |
 | · | **Typecheck, unit tests and production build** (`BUILD`) | The app is built from code that typechecks and passes every unit test. | — | assumed |
 | · | **App starts** (`APP_BOOT`) | Intoponet opens to the globe with Private, Bookmarks, The Olds, Knowledge, My map and Settings in the header. | BUILD | assumed |
-| · | **Settings and Privacy** (`SETTINGS`) | Settings covers language, automatic translation, beacons, credits and privacy; Privacy covers private browsing, footprints, sites to leave out, pins and backups. | APP_BOOT | assumed |
+| ✅ | **Settings and Privacy** (`SETTINGS`) | Settings covers language, automatic translation, beacons, credits and privacy; Privacy covers private browsing, footprints, sites to leave out, pins and backups. | APP_BOOT | pass · 6 s — Settings and Privacy sections present. |
 | · | **Accessible and keyboard friendly** (`ACCESSIBILITY`) | No WCAG 2.1 AA violations; every header panel opens with Enter, closes with Escape and returns focus to its button. | APP_BOOT | assumed |
 | · | **Encrypted private library, pins and beacon consent** (`LIBRARY`) | Saved pages live only in the encrypted library (old plain copies migrate without loss); pins can be hidden; publishing a pin as a beacon needs explicit agreement. | APP_BOOT | assumed |
 | · | **Collections explained and split; tags** (`COLLECTIONS_IMPORT`) | A collection explains what it holds (sites, topics, places) and can be split by site; pins carry several tags. | LIBRARY | assumed |
@@ -33,5 +33,5 @@ Each feature makes a promise to the user; its check drives the built app end to 
 | · | **Paywall detection** (`PAYWALL_ALTERNATIVES`) | Paywalled outlets are recognised so free coverage of the same story can be offered (never circumvented). | BROWSE, GLOBE_LIVE | assumed |
 | · | **Absorb, search and claims** (`ABSORB`) | Absorbing a page (or just a selection) keeps it on this Mac; search returns the cited paragraph; claims are listed without false disputes. | BROWSE | assumed |
 | · | **Beacon registry on Neon** (`BEACONS_REGISTRY`) | The app reaches the live beacon registry, which is healthy and refuses unsigned requests. | LIBRARY | assumed |
-| · | **Automatic page translation** (`AUTO_TRANSLATE`) | With automatic translation on, a Russian page is detected and translated into your language on this Mac. | SETTINGS, BROWSE | assumed |
-| · | **Languages without a model** (`ROUGH_TRANSLATE`) | Faroese headlines translate roughly through Icelandic and say so. | COUNTRY_PANEL | assumed |
+| ✅ | **Automatic page translation** (`AUTO_TRANSLATE`) | With automatic translation on, a Russian page is detected and translated into your language on this Mac. | SETTINGS, BROWSE | pass · 67 s — fontanka.ru translated from Russian with no clicks (Russian downloaded by itself; 3043 Latin vs 0 Cyrillic letters); "Never translate this site" sticks. |
+| ✅ | **Languages without a model** (`ROUGH_TRANSLATE`) | Faroese headlines translate roughly through Icelandic and say so. | COUNTRY_PANEL | pass · 147 s — Faroese headlines translated roughly via Icelandic, labelled as such. |

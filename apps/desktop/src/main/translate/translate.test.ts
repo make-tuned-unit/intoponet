@@ -199,14 +199,14 @@ describe('store', () => {
   })
 })
 
-async function setup(options: { page?: TranslatePage | null } = {}) {
+async function setup(options: { page?: TranslatePage | null; isPrivate?: boolean } = {}) {
   const { catalog, blobs } = fakeCatalog()
   const store = new TranslateStore(await tempDir(), fakeFetch(blobs), catalog)
   const log: WorkerRequest[] = []
   let started = 0
   const engine = new TranslationEngine(store, () => { started += 1; return fakeWorker(log) }, 60_000)
   const events: TranslateEvent[] = []
-  const service = new TranslateService({ store, engine, emit: (event) => events.push(event), getActivePage: () => options.page ?? null, catalog })
+  const service = new TranslateService({ store, engine, emit: (event) => events.push(event), getActivePage: () => options.page ?? null, isPrivatePage: () => options.isPrivate === true, catalog })
   return { service, engine, log, events, store, catalog, started: () => started }
 }
 
@@ -311,6 +311,24 @@ describe('service and engine', () => {
     await service.install('fr')
     await service.translatePage('fr', 'en')
     expect(calls).toBe(1)
+  })
+
+  it('translates a private page without keeping its text in the cache', async () => {
+    const page: TranslatePage = {
+      id: 11,
+      getURL: () => 'https://example.es/privado',
+      async executeJavaScriptInIsolatedWorld(_world, [script]) {
+        if (script!.code === collectScript()) return { url: 'https://example.es/privado', lang: 'es', sample: '', units: [{ id: 1, html: false, source: 'secreto' }] }
+        return 1
+      },
+    }
+    const { service, log } = await setup({ page, isPrivate: true })
+    await service.install('es')
+    expect((await service.translatePage('es', 'en')).status).toBe('translated')
+    const asked = log.filter((message) => message.type === 'translate').length
+    // Not cached: the same text goes to the engine again.
+    await service.translate('es', 'en', ['secreto'], false)
+    expect(log.filter((message) => message.type === 'translate').length).toBe(asked + 1)
   })
 })
 

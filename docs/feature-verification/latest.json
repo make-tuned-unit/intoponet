@@ -1,11 +1,13 @@
 {
-  "started": "2026-11-05T02:05:52.832Z",
-  "finished": "2026-11-05T02:06:09.269Z",
-  "tier": "network",
+  "started": "2026-11-05T05:07:43.566Z",
+  "finished": "2026-11-05T05:11:23.650Z",
+  "tier": "full",
   "only": [
-    "SAVED_PASSWORDS"
+    "AUTO_TRANSLATE",
+    "SETTINGS",
+    "ROUGH_TRANSLATE"
   ],
-  "summary": "1 passed, 0 failed, 0 blocked, 0 skipped, 27 assumed",
+  "summary": "3 passed, 0 failed, 0 blocked, 0 skipped, 26 assumed",
   "results": {
     "BUILD": {
       "status": "assumed",
@@ -16,8 +18,9 @@
       "notes": ""
     },
     "SETTINGS": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Settings and Privacy sections present.",
+      "seconds": 6
     },
     "ACCESSIBILITY": {
       "status": "assumed",
@@ -44,6 +47,10 @@
       "notes": ""
     },
     "GLOBE_LIVE": {
+      "status": "assumed",
+      "notes": ""
+    },
+    "SOURCE_CAROUSEL": {
       "status": "assumed",
       "notes": ""
     },
@@ -88,9 +95,8 @@
       "notes": ""
     },
     "SAVED_PASSWORDS": {
-      "status": "pass",
-      "notes": "Offered, saved (sealed file, no plaintext), filled one account on its own, asked between two, listed in Settings; private tab untouched (localhost:58226).",
-      "seconds": 16
+      "status": "assumed",
+      "notes": ""
     },
     "EXCLUDED_SITES": {
       "status": "assumed",
@@ -113,12 +119,14 @@
       "notes": ""
     },
     "AUTO_TRANSLATE": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "fontanka.ru translated from Russian with no clicks (Russian downloaded by itself; 3043 Latin vs 0 Cyrillic letters); \"Never translate this site\" sticks.",
+      "seconds": 67
     },
     "ROUGH_TRANSLATE": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Faroese headlines translated roughly via Icelandic, labelled as such.",
+      "seconds": 147
     }
   }
 }

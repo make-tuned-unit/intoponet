@@ -52,6 +52,7 @@ import {
   Trash2,
   X,
   Languages,
+  LoaderCircle,
   History,
 } from 'lucide-react'
 import { TranslateBar } from './translate/TranslateBar'
@@ -190,7 +191,8 @@ import { siteLabel, type PasswordPageState } from '../../shared/passwords'
 import { BeaconConsent } from './beacons/BeaconConsent'
 import type { BeaconDraft } from '@intoponet/browser-api'
 import type { SitePermissionMap, SitePermissionRequest } from '@intoponet/browser-api'
-import { autoTranslatePlan, headlinePrefKey, readAppSettings, writeAppSettings, type AppSettings } from './settings/appSettings'
+import { autoTranslatePlan, isNeverTranslated, readAppSettings, siteKey, withNeverTranslate, writeAppSettings, type AppSettings } from './settings/appSettings'
+import { useHeadlinePref } from './translate/headlinePref'
 import { readPrivacySettings, writePrivacySettings, type PrivacySettings } from './privacy/privacySettings'
 import { StartPage } from './StartPage'
 import { FeedbackPrompt } from './FeedbackPrompt'
@@ -389,9 +391,8 @@ export function App() {
   const tourOpenedPage = useRef(false)
   const [beaconDraft, setBeaconDraft] = useState<BeaconDraft | null>(null)
   const [appSettings, setAppSettingsState] = useState(readAppSettings)
-  const [headlinesTranslated, setHeadlinesTranslatedState] = useState(() => {
-    try { return localStorage.getItem(headlinePrefKey) === '1' } catch { return false }
-  })
+  // Headlines and titles in your language (default) or as published; shared with every headline list.
+  const [headlinesTranslated, setHeadlinesPref] = useHeadlinePref()
   const [bookmarksOpen, setBookmarksOpenState] = useState(() => {
     try { return localStorage.getItem(bookmarkPaneOpenKey) === '1' } catch { return false }
   })
@@ -1665,17 +1666,24 @@ export function App() {
   const updateAppSettings = (next: AppSettings): void => {
     setAppSettingsState(next)
     writeAppSettings(next)
-    if (next.autoTranslate && !appSettings.autoTranslate) setHeadlinesPref(true)
+    // The one switch covers headlines and titles too.
+    if (next.autoTranslate !== appSettings.autoTranslate) setHeadlinesPref(next.autoTranslate)
   }
-  const setHeadlinesPref = (on: boolean): void => {
-    setHeadlinesTranslatedState(on)
-    try { localStorage.setItem(headlinePrefKey, on ? '1' : '0') } catch { /* this session only */ }
-    window.dispatchEvent(new CustomEvent('intoponet:headline-pref', { detail: on }))
+  const pageSite = panel.isVisible && panel.url ? siteKey(panel.url) : null
+  const neverThisSite = !!panel.url && isNeverTranslated(panel.url, appSettings.neverTranslate)
+  const setNeverSite = (never: boolean): void => {
+    if (!pageSite) return
+    // Turning a site back on translates the open page again.
+    if (!never) for (const key of [...autoTried.current]) if (siteKey(key.split('|')[0]!) === pageSite) autoTried.current.delete(key)
+    updateAppSettings(withNeverTranslate(appSettings, pageSite, never))
   }
 
-  // Automatic translation: a page in another language is translated into yours as it loads.
-  // "Original" sticks for that page (each page and language is tried once).
+  // Automatic translation (on by default): a page in another language is translated into yours as it
+  // loads, in private tabs too (on this Mac; private page text is not kept in the translation cache).
+  // A missing language downloads quietly first. "Original" sticks for that page (each page and language is tried once).
   const autoTried = useRef(new Set<string>())
+  const livePageUrl = useRef(panel.url)
+  livePageUrl.current = panel.url
   useEffect(() => {
     if (!translation.status || !panel.isVisible || !panel.url) return
     const page = translation.page
@@ -1683,6 +1691,7 @@ export function App() {
     const key = `${panel.url.split('#')[0]}|${translation.target}`
     const plan = autoTranslatePlan({
       enabled: appSettings.autoTranslate,
+      blocked: isNeverTranslated(panel.url, appSettings.neverTranslate),
       detected: page.detected,
       target: translation.target,
       supported: translation.supported,
@@ -1691,12 +1700,14 @@ export function App() {
     })
     if (!plan) return
     autoTried.current.add(key)
-    if (plan.missing.length && !appSettings.autoDownload) {
-      setTranslateOpen(true) // the bar offers the download, with its size
-      return
-    }
+    const url = panel.url
     void (async () => {
-      for (const code of plan.missing) await translation.install(code)
+      const failed = plan.missing.length ? await translation.ensure(plan.missing, { urgent: true }) : []
+      if (livePageUrl.current !== url) return
+      if (failed.length) {
+        setTranslateOpen(true) // the bar says what went wrong and offers to try again
+        return
+      }
       await translation.translatePage(plan.from, plan.to)
     })()
   }, [translation.page, translation.status, translation.target, panel.url, panel.isVisible, appSettings]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -2104,7 +2115,7 @@ export function App() {
         setOldsTranslating(true)
         void (async () => {
           try {
-            await translation.install(model.code)
+            if ((await translation.ensure([model.code])).length) return
             const [english] = await window.intoponet.translate.translate({ from: model.code, to: 'en', texts: [query.text] })
             if (english && english.trim() && english !== query.text) {
               const { lang: _lang, ...rest } = query
@@ -2119,6 +2130,16 @@ export function App() {
       },
     }
   })()
+  // With automatic translation on, a headline matched in its own language is translated and looked up again by itself.
+  const oldsAutoTried = useRef(new Set<string>())
+  const oldsTopQuery = olds?.stack[olds.stack.length - 1]?.query
+  const oldsTopText = oldsTopQuery?.kind === 'headline' ? oldsTopQuery.text : ''
+  useEffect(() => {
+    if (!appSettings.autoTranslate || !oldsTranslateOffer || oldsTranslateOffer.busy || !oldsTopText) return
+    if (oldsAutoTried.current.has(oldsTopText)) return
+    oldsAutoTried.current.add(oldsTopText)
+    oldsTranslateOffer.onTranslate()
+  }, [oldsTopText, !!oldsTranslateOffer, appSettings.autoTranslate]) // eslint-disable-line react-hooks/exhaustive-deps
   const openOldsFor = (signal: GlobeSignal): void => {
     const target = oldsQueryFor(signal)
     if (target) loadOlds([target])
@@ -3486,17 +3507,19 @@ export function App() {
                 const detected = translation.page.status === 'idle' ? translation.page.detected : null
                 const offer = !!detected && detected !== translation.target && translation.supported(detected)
                 const active = translation.page.status === 'translated' || translation.page.status === 'translating'
+                const fetching = translation.status?.downloading ?? null
+                const fetchingForPage = !!fetching && !!detected && (fetching.code === detected || fetching.code === translation.target)
                 return (
                   <button
                     type="button"
                     className={`translate-toggle${translateOpen || active ? ' selected' : ''}${offer ? ' has-offer' : ''}`}
                     aria-label={active ? 'Translation: showing translated page' : offer ? 'Translate this page' : 'Translate'}
                     aria-expanded={translateOpen}
-                    title={offer ? 'This page can be translated on this Mac' : 'Translate (on this Mac)'}
+                    title={fetchingForPage && fetching ? `Getting ${languageName(fetching.code)} to translate this page on this Mac · ${formatMegabytes(fetching.receivedBytes)} of ${formatMegabytes(fetching.totalBytes)}` : offer ? 'This page can be translated on this Mac' : 'Translate (on this Mac)'}
                     onClick={() => setTranslateOpen((open) => !open)}
                   >
-                    <Languages size={15} />
-                    <span className="chrome-label">{active ? 'Translated' : 'Translate'}</span>
+                    {fetchingForPage ? <LoaderCircle size={15} className="tr-spin" /> : <Languages size={15} />}
+                    <span className="chrome-label">{fetchingForPage && fetching ? `Getting ${languageName(fetching.code)} · ${fetching.totalBytes ? Math.round((fetching.receivedBytes / fetching.totalBytes) * 100) : 0}%` : active ? 'Translated' : 'Translate'}</span>
                   </button>
                 )
               })()}
@@ -3612,7 +3635,7 @@ export function App() {
               </button>
             </div>
           </div>
-          {translateOpen && <TranslateBar model={translation} onClose={() => setTranslateOpen(false)} />}
+          {translateOpen && <TranslateBar model={translation} onClose={() => setTranslateOpen(false)} site={pageSite} neverSite={neverThisSite} onNeverSite={setNeverSite} />}
           {pageAccess && pageAccess.url === panel.url && !accessHidden.includes(hostOf(pageAccess.url)) && (
             <FreeCoverageBar
               title={pageAccess.title || panel.title}

@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { normalizeLanguage, type PageTranslationState, type TranslateStatus } from '@intoponet/browser-api'
+import { ModelQueue } from './modelQueue'
 
 const TARGET_KEY = 'intoponet.translate.target.v1'
 
@@ -46,6 +47,7 @@ export function formatMegabytes(bytes: number): string {
   return `${Math.max(1, Math.round(bytes / 1_000_000))} MB`
 }
 
+/** Your preferred language: the one chosen in Settings, else this Mac's language (Electron reports the macOS preferred language). */
 function readTarget(): string {
   try {
     const saved = localStorage.getItem(TARGET_KEY)
@@ -66,6 +68,12 @@ export type TranslateModel = {
   /** True when a model covers the code. */
   supported: (code: string | null) => boolean
   install: (code: string) => Promise<void>
+  /**
+   * Download any of these languages that are missing, quietly and one at a time
+   * (on this Mac; only the pinned model files are fetched). Resolves with the codes
+   * that could not be made ready.
+   */
+  ensure: (codes: string[], options?: { urgent?: boolean }) => Promise<string[]>
   remove: (code: string) => Promise<void>
   translatePage: (from: string, to: string) => Promise<void>
   restorePage: () => Promise<void>
@@ -80,14 +88,19 @@ export function useTranslate(pageUrl: string, pageLoading: boolean): TranslateMo
   const [page, setPage] = useState<PageTranslationState>({ status: 'idle', detected: null })
   const [target, setTargetState] = useState(readTarget)
   const [error, setError] = useState('')
+  const queueRef = useRef<ModelQueue | null>(null)
+  queueRef.current ??= new ModelQueue(api, setStatus)
+  const queue = queueRef.current
 
   useEffect(() => {
-    void api.status().then(setStatus).catch(() => undefined)
+    void api.status().then((next) => { queue.status = next; setStatus(next) }).catch(() => undefined)
     return api.subscribe((event) => {
-      if (event.type === 'status') setStatus(event.status)
-      else setPage(event.state)
+      if (event.type === 'status') {
+        queue.status = event.status
+        setStatus(event.status)
+      } else setPage(event.state)
     })
-  }, [api])
+  }, [api, queue])
 
   const refreshPage = useCallback(() => {
     void api.pageState().then(setPage).catch(() => undefined)
@@ -140,8 +153,14 @@ export function useTranslate(pageUrl: string, pageLoading: boolean): TranslateMo
     setTarget,
     ready,
     supported,
-    install: (code) => guard(async () => setStatus(await api.install(code))),
-    remove: (code) => guard(async () => setStatus(await api.remove(code))),
+    install: (code) => guard(() => queue.install(code)),
+    ensure: (codes, options) => queue.ensure(codes, options),
+    remove: (code) => guard(async () => {
+      const next = await api.remove(code)
+      queue.forget(code)
+      queue.status = next
+      setStatus(next)
+    }),
     translatePage: (from, to) => guard(async () => setPage(await api.translatePage(from, to))),
     restorePage: () => guard(async () => setPage(await api.restorePage())),
     refreshPage,

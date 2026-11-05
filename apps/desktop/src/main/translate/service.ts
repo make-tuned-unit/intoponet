@@ -30,6 +30,8 @@ export class TranslateService {
     engine: Translator & { forget?(keys: string[]): Promise<void> }
     emit: (event: TranslateEvent) => void
     getActivePage: () => TranslatePage | null
+    /** Private tabs translate too (on this Mac), but their text is never kept in the cache. */
+    isPrivatePage?: (page: TranslatePage) => boolean
     catalog?: Catalog
   }) {}
 
@@ -221,12 +223,13 @@ export class TranslateService {
     if (!collected) return this.setState(page, record, { status: 'error', from, to, message: 'This page could not be read yet. Try again once it has loaded.' })
     if (!collected.units.length) return this.setState(page, record, { status: 'error', from, to, message: 'There is no text on this page to translate.' })
     const total = collected.units.length
+    const keep = !this.options.isPrivatePage?.(page)
     let done = 0
     this.setState(page, record, { status: 'translating', from, to, done, total })
     try {
       for (const batch of batches(collected.units)) {
         if (!live()) return record.state
-        const texts = await this.translateRoute(route, from, to, batch.map((unit) => unit.source), batch[0]!.html)
+        const texts = await this.translateRoute(route, from, to, batch.map((unit) => unit.source), batch[0]!.html, keep)
         if (!live()) return record.state
         await page.executeJavaScriptInIsolatedWorld(TRANSLATE_WORLD_ID, [{ code: applyScript(batch.map((unit, i) => ({ id: unit.id, text: texts[i]! }))) }])
         done += batch.length
@@ -240,7 +243,7 @@ export class TranslateService {
     return this.setState(page, record, { status: 'translated', from, to, blocks: total })
   }
 
-  private async translateRoute(route: CatalogPair[], from: string, to: string, texts: string[], html: boolean): Promise<string[]> {
+  private async translateRoute(route: CatalogPair[], from: string, to: string, texts: string[], html: boolean, keep = true): Promise<string[]> {
     const out = new Array<string>(texts.length)
     const missing: number[] = []
     texts.forEach((text, index) => {
@@ -252,7 +255,7 @@ export class TranslateService {
       const results = await this.options.engine.translate(route, missing.map((index) => texts[index]!), html)
       missing.forEach((textIndex, i) => {
         out[textIndex] = results[i]!
-        this.remember(cacheKey(from, to, html, texts[textIndex]!), results[i]!)
+        if (keep) this.remember(cacheKey(from, to, html, texts[textIndex]!), results[i]!)
       })
     }
     return out
