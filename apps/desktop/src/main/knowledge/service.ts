@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { analyze, PREVIEW_SIZES } from './analyze'
-import type { KnowledgeCrypto } from './crypto'
+import { resolveKnowledgeCrypto, type KnowledgeCryptoSource } from './crypto'
 import { EXTRACT_SCRIPT, KNOWLEDGE_WORLD_ID, parseExtraction, selectionParagraphs } from './extract'
 import { pageRefusal, REFUSALS, urlRefusal } from './policy'
 import { KnowledgeIndex } from './searchIndex'
@@ -59,7 +59,8 @@ export class KnowledgeService {
     /** Sites the user chose to leave out (Privacy › Sites to leave out). */
     isExcluded?: (url: string) => boolean
     dir: string
-    crypto: KnowledgeCrypto | Promise<KnowledgeCrypto>
+    /** Pass a function (see retryingKnowledgeCrypto) so a Keychain failure can be retried. */
+    crypto: KnowledgeCryptoSource
     getActivePage: () => KnowledgePage | null
     now?: () => number
     onChange?: (change: KnowledgeChange) => void
@@ -70,7 +71,7 @@ export class KnowledgeService {
   private async load(): Promise<KnowledgeStore> {
     if (this.store) return this.store
     this.ready ??= (async () => {
-      const store = new KnowledgeStore(this.options.dir, await this.options.crypto)
+      const store = new KnowledgeStore(this.options.dir, await resolveKnowledgeCrypto(this.options.crypto))
       for (const record of await store.list()) {
         const document = await store.get(record.id).catch(() => null)
         if (document) this.index.add(record.id, record.url, record.title, document.paragraphs)
@@ -78,7 +79,10 @@ export class KnowledgeService {
       this.store = store
       return store
     })()
-    return this.ready
+    // A failure (e.g. Keychain access denied) is not kept: the next use tries again.
+    const attempt = this.ready
+    attempt.catch(() => { if (this.ready === attempt) this.ready = null })
+    return attempt
   }
 
   handle(command: KnowledgeCommand): Promise<unknown> {

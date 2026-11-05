@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseVaultData, PasswordVault, type VaultCrypto, type VaultFile } from './vault'
+import { parseVaultData, PasswordVault, VAULT_RETRY_MS, type VaultCrypto, type VaultFile } from './vault'
 
 /** Reversible stand-in for safeStorage, so the tests can see that the file is not plaintext. */
 function fakeCrypto(available = true): VaultCrypto & { setAvailable(on: boolean): void } {
@@ -74,6 +74,30 @@ describe('PasswordVault', () => {
     expect(await vault.status()).toMatchObject({ unreadable: true, count: 0 })
     await expect(vault.save('https://example.com', 'ada', 'pw')).rejects.toThrow()
     expect(file.data!.toString()).toBe('not ours')
+  })
+
+  it('opens the file once Keychain access is allowed, without a restart, and never saves over it before', async () => {
+    const crypto = fakeCrypto()
+    const file = memoryFile()
+    await new PasswordVault(crypto, file).save('https://example.com', 'ada', 'pw')
+    const sealed = file.data
+    let denied = true
+    let decrypts = 0
+    const flaky: VaultCrypto = { ...crypto, decrypt: async (data) => { decrypts += 1; if (denied) throw new Error('User canceled'); return crypto.decrypt(data) } }
+    let now = new Date('2026-01-01T00:00:00Z')
+    const vault = new PasswordVault(flaky, file, () => now)
+    expect(await vault.status()).toMatchObject({ unreadable: true, count: 0 })
+    await expect(vault.save('https://example.org', 'bob', 'pw')).rejects.toThrow()
+    expect(file.data).toBe(sealed)
+    // Not asked again straight away (no prompt storm while browsing)…
+    denied = false
+    expect(await vault.forSite('https://example.com')).toEqual([])
+    expect(decrypts).toBe(1)
+    // …but after a short wait the next use opens it.
+    now = new Date(now.getTime() + VAULT_RETRY_MS)
+    expect(await vault.status()).toMatchObject({ unreadable: false, count: 1 })
+    expect(await vault.forSite('https://example.com')).toHaveLength(1)
+    expect(decrypts).toBe(2)
   })
 
   it('only saves https sites and http on localhost', async () => {
