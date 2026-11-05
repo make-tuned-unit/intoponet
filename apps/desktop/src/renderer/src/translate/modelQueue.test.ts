@@ -79,7 +79,7 @@ describe('model queue', () => {
     const page = queue.ensure(['ru'], { urgent: true })
     const manual = queue.install('fr')
     await Promise.all([quiet, page, manual])
-    expect(fake.calls).toEqual(['de', 'ru', 'fr', 'es'])
+    expect(fake.calls).toEqual(['ru', 'fr', 'de', 'es'])
   })
 
   it('treats unknown languages as unavailable without asking the main process', async () => {
@@ -114,30 +114,28 @@ describe('models to fetch', () => {
 })
 
 describe('quiet download allowance', () => {
-  it('holds back quiet languages past the allowance; a page or the reader still gets them', async () => {
+  it('lets one list download its two most used new languages and holds the rest', async () => {
     const fake = fakeApi()
     const queue = new ModelQueue(fake.api, () => undefined, noWait, 2)
     expect(await queue.ensure(['de', 'es', 'fr', 'ru'])).toEqual(['fr', 'ru'])
     expect(fake.calls).toEqual(['de', 'es'])
     expect(queue.isHeld('fr')).toBe(true)
     expect(queue.isHeld('de')).toBe(false)
-    // Asking quietly again does not download it.
-    expect(await queue.ensure(['fr'])).toEqual(['fr'])
-    // The open page needs it: downloads.
-    expect(await queue.ensure(['fr'], { urgent: true })).toEqual([])
+    // Another list, where French is among its own top two, gets it.
+    expect(await queue.ensure(['fr'])).toEqual([])
     expect(queue.isHeld('fr')).toBe(false)
-    // The reader adds it.
+    // The reader adds Russian.
     await queue.install('ru')
     expect(queue.isHeld('ru')).toBe(false)
     expect(fake.calls).toEqual(['de', 'es', 'fr', 'ru'])
   })
 
-  it('does not count languages already on this Mac or urgent downloads', async () => {
+  it('does not count languages already on this Mac, and urgent requests are never held', async () => {
     const fake = fakeApi()
     fake.installed.push('de')
     const queue = new ModelQueue(fake.api, () => undefined, noWait, 1)
-    await queue.ensure(['ru'], { urgent: true })
-    expect(await queue.ensure(['de', 'es'])).toEqual([])
-    expect(await queue.ensure(['fr'])).toEqual(['fr'])
+    expect(await queue.ensure(['de', 'es', 'fr'])).toEqual(['fr'])
+    expect(await queue.ensure(['ru', 'fr'], { urgent: true })).toEqual([])
+    expect(fake.calls).toEqual(['es', 'ru', 'fr'])
   })
 })

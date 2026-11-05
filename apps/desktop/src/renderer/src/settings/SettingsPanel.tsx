@@ -90,7 +90,7 @@ export function SettingsPanel({
             <input type="checkbox" checked={headlinesTranslated} disabled={!settings.autoTranslate} onChange={(event) => onHeadlinesTranslated(event.target.checked)} />
             <span>Show news headlines and story titles in {languageName(target)}</span>
           </label>
-          <p>Translation runs on this Mac with open models (Firefox Translations); no text leaves your device. The first time a page needs a language, it downloads by itself: a one-time 40–140 MB (most are about 70 MB), shown as it goes. Headlines fetch up to three new languages a session on their own; others show a button with their size. Choose “Original” in the translate bar to read a page untranslated; it stays that way for that page. Intoponet’s own menus are in English for now.</p>
+          <p>Translation runs on this Mac with open models (Firefox Translations); no text leaves your device. The first time a page needs a language, it downloads by itself: a one-time 40–140 MB (most are about 70 MB), shown as it goes. Each list of headlines downloads at most two new languages by itself (its most used); others show a button with their size. Choose “Original” in the translate bar to read a page untranslated; it stays that way for that page. Intoponet’s own menus are in English for now.</p>
           {settings.neverTranslate.length > 0 && (
             <>
               <h4>Never translated</h4>
