@@ -190,7 +190,27 @@ async function pdfExport(ctx) {
     const live = await ctx.page('/shop')
     const restored = await live.evaluate(`getComputedStyle(document.getElementById('div-gpt-ad-1')).display !== 'none' && !document.getElementById('div-gpt-ad-1').getAttribute('style')`)
     expect(restored === true, 'Saving as seen left the live page changed.')
-    return `Article: ${pages} pages, ${images} images, tagged with outline, ads/hidden/overlay text left out, bookmarked in "Reading" with the PDF linked; shop page saved as seen without ads.`
+
+    // A private tab: asks where to save (the dialog is answered here), neutral name, no "Where from", no bookmark.
+    const privatePath = join(ctx.profile, 'private-choice.pdf')
+    await ctx.main(`(() => { const d = electron.dialog; d.__asked = null; d.showSaveDialog = async (_w, o) => { d.__asked = o.defaultPath; return { canceled: false, filePath: ${JSON.stringify(privatePath)} } }; return true })()`)
+    await ctx.evaluate(`window.intoponet.browserHost.setPdfSettings({ mode: 'auto', paper: 'a4', textSize: 'medium', images: true, citation: true, groupId: 'pdfgroup' }).then(() => true)`)
+    await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(true).then(() => true)`)
+    await openPage(ctx, `${base}/article?private`, 2500)
+    await ctx.evaluate(`window.intoponet.browserHost.exportPdf().then(() => true)`)
+    const privateSaved = await savedPath(shopPath)
+    const asked = await ctx.main(`electron.dialog.__asked`)
+    expect(privateSaved === privatePath && existsSync(privatePath), `A private tab's PDF did not go where the person chose (${privateSaved}).`)
+    expect(/Saved page \d{4}-\d{2}-\d{2}\.pdf$/.test(asked ?? ''), `A private tab suggested a revealing file name: ${asked}`)
+    expect(text(privatePath).includes('START-SENTINEL'), 'The private PDF is missing the article.')
+    let privateWhereFrom = ''
+    try { privateWhereFrom = execFileSync('/usr/bin/xattr', ['-p', 'com.apple.metadata:kMDItemWhereFroms', privatePath], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }) } catch { /* not set: right */ }
+    expect(!privateWhereFrom, 'A private tab\'s PDF records where it came from in Finder.')
+    await ctx.delay(1500)
+    const after = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.readPrivateLibrary().then((r) => r.payload)`))
+    expect(!after.bookmarks.some((item) => item.url.includes('?private')), 'A private page was bookmarked.')
+    await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
+    return `Article: ${pages} pages, ${images} images, tagged with outline, ads/hidden/overlay text left out, bookmarked in "Reading" with the PDF linked; shop page saved as seen without ads; private tab asked where, neutral name, no Where-from or bookmark.`
   } finally {
     server.close()
   }

@@ -1,192 +1,160 @@
 {
-  "started": "2026-11-05T22:26:26.164Z",
-  "finished": "2026-11-05T22:42:22.783Z",
+  "started": "2026-11-05T23:38:54.616Z",
+  "finished": "2026-11-05T23:39:19.884Z",
   "tier": "network",
-  "only": null,
-  "summary": "35 passed, 0 failed, 0 blocked, 2 skipped",
+  "only": [
+    "PDF_EXPORT"
+  ],
+  "summary": "1 passed, 0 failed, 0 blocked, 0 skipped, 36 assumed",
   "results": {
     "BUILD": {
-      "status": "pass",
-      "notes": "npm run typecheck · npm test · npm run build",
-      "seconds": 26
+      "status": "assumed",
+      "notes": ""
     },
     "APP_BOOT": {
-      "status": "pass",
-      "notes": "Header: Private · Bookmarks · The Olds · Knowledge · My map · Settings",
-      "seconds": 3
+      "status": "assumed",
+      "notes": ""
     },
     "SETTINGS": {
-      "status": "pass",
-      "notes": "Settings and Privacy sections present.",
-      "seconds": 5
+      "status": "assumed",
+      "notes": ""
     },
     "ACCESSIBILITY": {
-      "status": "pass",
-      "notes": "No WCAG 2.2 AA violations (axe); panels open with Enter, close with Escape, focus returns.",
-      "seconds": 17
+      "status": "assumed",
+      "notes": ""
     },
     "TABS": {
-      "status": "pass",
-      "notes": "Moved by command, drag and ⌥⇧↓ (focus kept); pinned tab first, icon-only and saved; speaker muted and unmuted a playing tab; spinner while a slow page loaded; no axe violations in rail or strip.",
-      "seconds": 20
+      "status": "assumed",
+      "notes": ""
     },
     "LIBRARY": {
-      "status": "pass",
-      "notes": "Migrated to encrypted library; pin hidden; beacon consent requires agreement.",
-      "seconds": 10
+      "status": "assumed",
+      "notes": ""
     },
     "COLLECTIONS_IMPORT": {
-      "status": "pass",
-      "notes": "Explained and split into 2. ",
-      "seconds": 9
+      "status": "assumed",
+      "notes": ""
     },
     "FLY_TO": {
-      "status": "pass",
-      "notes": "Charlottetown PEI and \"Fredericto\" flew on the globe, with the locator shown.",
-      "seconds": 10
+      "status": "assumed",
+      "notes": ""
     },
     "GLOBE_MOTION": {
-      "status": "pass",
-      "notes": "Locator 734,473 → 756,490 after zoom.",
-      "seconds": 9
+      "status": "assumed",
+      "notes": ""
     },
     "COUNTRY_NAMES": {
-      "status": "pass",
-      "notes": "16 names at the start; clicked Venezuela → Venezuela; 7 flights named correctly.",
-      "seconds": 55
+      "status": "assumed",
+      "notes": ""
     },
     "GLOBE_LIVE": {
-      "status": "pass",
-      "notes": "730 public signals across 4 active layers. Hover to preview, click to explore, or search a place below.",
-      "seconds": 114
+      "status": "assumed",
+      "notes": ""
     },
     "SOURCE_CAROUSEL": {
-      "status": "pass",
-      "notes": "Cards with 9 images, 1 bylines, 2 summaries. Carousel flipped from KNR (Kalaallit Nunaata Radioa) to TVA Nouvelles; chose \"TVA Nouvelles: Melania Trump calls for ‘lasting’ ceasefire in Ukraine. Press Ent\" and the browser opened  (page was closed before).",
-      "seconds": 88
+      "status": "assumed",
+      "notes": ""
     },
     "WORLD_STORIES": {
-      "status": "pass",
-      "notes": "20 world stories; scrolls 400px.",
-      "seconds": 65
+      "status": "assumed",
+      "notes": ""
     },
     "COUNTRY_PANEL": {
-      "status": "pass",
-      "notes": "Facts ok, recent history 2025, 2024, 2022, 2020, 12 headlines.",
-      "seconds": 100
+      "status": "assumed",
+      "notes": ""
     },
     "OLDS_HEADLINE": {
-      "status": "pass",
-      "notes": "Israel → 2026 Israeli legislative election: 20 dated events from 10 Apr 1973; Ebola, South Africa and Guernsey guards ok; related Judiciary of Israel, Israeli law, Politics of Israel, Elections in Israel. Brazil → 2026 Brazilian general election. Honduras → Honduras.",
-      "seconds": 72
+      "status": "assumed",
+      "notes": ""
     },
     "OLDS_COUNTRY": {
-      "status": "pass",
-      "notes": "Capital Tórshavn; 7 chapters; latest event 2025.",
-      "seconds": 4
+      "status": "assumed",
+      "notes": ""
     },
     "OLDS_DEBATE": {
-      "status": "pass",
-      "notes": "Anthropologist Joseph Henrich, Rodney Stark, Historian Joel Mokyr, Williams, Voltaire, Bob Allen",
-      "seconds": 3
+      "status": "assumed",
+      "notes": ""
     },
     "OLDS_UI": {
-      "status": "pass",
-      "notes": "Views Story/Timeline/List; sections: HOW WE GOT HERE, TOPICS BEHIND THIS STORY.",
-      "seconds": 76
+      "status": "assumed",
+      "notes": ""
     },
     "BROWSE": {
-      "status": "pass",
-      "notes": "Toolbar: Protected, Translate, Capture, PDF, Pin, Absorb, Bookmarks; pages see Chrome/156.0.8078.48; tab closed cleanly; a self-closing page took its tab; ⌘W closed tabs from inside the page, ⌘⇧T reopened one, ⌘= zoom shown and kept for the site, ⌘1/⌘9 picked tabs; the app window stayed on the app.",
-      "seconds": 31
+      "status": "assumed",
+      "notes": ""
     },
     "OMNIBOX": {
-      "status": "pass",
-      "notes": "\"localh\" completed to localhost:62697; history row opened in a background tab with ⌘↵; then \"Switch to tab\" landed on it (1 tab); Backspace removed the completion; \"Fredericton\" flew the globe.",
-      "seconds": 14
+      "status": "assumed",
+      "notes": ""
     },
     "PROTECTION": {
-      "status": "pass",
-      "notes": "Protected · 3 ads · 0 trackers blocked · Block ads · Block trackers · Encrypted DNS · Local IP hidden · No VPN · Pause on this site",
-      "seconds": 13
+      "status": "assumed",
+      "notes": ""
     },
     "PERMISSIONS": {
-      "status": "pass",
-      "notes": "Location allowed via the bar; a pop-up without a click was blocked and opened with \"Allow once\"; a clicked popup kept its opener; a clicked _blank link opened a tab.",
-      "seconds": 13
+      "status": "assumed",
+      "notes": ""
     },
     "EXTERNAL_APPS": {
-      "status": "pass",
-      "notes": "\"Open Mail? 127.0.0.1:64297 wants to open mailto:someone@example.com?subject=Hello\" asked for a mailto: link; the tab stayed on http://127.0.0.1:64297/; Cancel closed it and no prompt storm followed.",
-      "seconds": 7
+      "status": "assumed",
+      "notes": ""
     },
     "ERROR_PAGE": {
-      "status": "pass",
-      "notes": "\"127.0.0.1:64581 refused to connect\" with Retry; toolbar kept http://127.0.0.1:64581/; Retry loaded the page once a server listened; a self-signed site showed \"Connection not secure\" with its certificate and Back returned.",
-      "seconds": 4
+      "status": "assumed",
+      "notes": ""
     },
     "PDF_VIEWER": {
-      "status": "pass",
-      "notes": "doc.pdf opened in the tab in Chromium's viewer; the attachment downloaded as intoponet-e2e-attachment.pdf.",
-      "seconds": 6
+      "status": "assumed",
+      "notes": ""
     },
     "PAGE_APPEARANCE": {
-      "status": "pass",
-      "notes": "Pages: dark→dark, light→light, system→dark (system is dark); Settings shows the choice and default-browser status.",
-      "seconds": 12
+      "status": "assumed",
+      "notes": ""
     },
     "PRIVATE_BROWSING": {
-      "status": "pass",
-      "notes": "Private tab marked, no footprints, closed when private mode ended.",
-      "seconds": 11
+      "status": "assumed",
+      "notes": ""
     },
     "SAVED_PASSWORDS": {
-      "status": "pass",
-      "notes": "Failed sign-in not offered; offered, saved, bookmarked in Accounts (sealed file, no plaintext), filled one account (password only after a real click; a script click did not release it), asked between two, listed in Settings; private tab untouched (localhost:49459).",
-      "seconds": 25
+      "status": "assumed",
+      "notes": ""
     },
     "EXCLUDED_SITES": {
-      "status": "pass",
-      "notes": "Absorb refused; no recent page kept.",
-      "seconds": 10
+      "status": "assumed",
+      "notes": ""
     },
     "DOWNLOADS_HISTORY": {
-      "status": "pass",
-      "notes": "Downloaded 640 KB with progress → done; on disk with quarantine \"0083;6aed05db;Intoponet;D0C79052-077F-4C90-96C4-AEDB9740A946\"; History found and deleted a visit; private visit not kept.",
-      "seconds": 16
+      "status": "assumed",
+      "notes": ""
     },
     "CAPTURE": {
-      "status": "pass",
-      "notes": "Screenshot saved; \"New folder…\" offered.",
-      "seconds": 7
+      "status": "assumed",
+      "notes": ""
     },
     "PDF_EXPORT": {
       "status": "pass",
-      "notes": "Article: 5 pages, 2 images, tagged with outline, ads/hidden/overlay text left out, bookmarked in \"Reading\" with the PDF linked; shop page saved as seen without ads.",
-      "seconds": 16
+      "notes": "Article: 5 pages, 2 images, tagged with outline, ads/hidden/overlay text left out, bookmarked in \"Reading\" with the PDF linked; shop page saved as seen without ads; private tab asked where, neutral name, no Where-from or bookmark.",
+      "seconds": 25
     },
     "PAYWALL_ALTERNATIVES": {
-      "status": "pass",
-      "notes": "nytimes.com section page: paywalled=false (no signals).",
-      "seconds": 72
+      "status": "assumed",
+      "notes": ""
     },
     "ABSORB": {
-      "status": "pass",
-      "notes": "Absorbed 10572 words; 40 claims; selection absorb ok.",
-      "seconds": 10
+      "status": "assumed",
+      "notes": ""
     },
     "BEACONS_REGISTRY": {
-      "status": "pass",
-      "notes": "Live registry healthy, readable from the app, refuses unsigned publishes.",
-      "seconds": 3
+      "status": "assumed",
+      "notes": ""
     },
     "AUTO_TRANSLATE": {
-      "status": "skipped",
-      "notes": "Needs --tier full."
+      "status": "assumed",
+      "notes": ""
     },
     "ROUGH_TRANSLATE": {
-      "status": "skipped",
-      "notes": "Needs --tier full."
+      "status": "assumed",
+      "notes": ""
     }
   }
 }
