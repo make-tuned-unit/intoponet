@@ -1,6 +1,6 @@
 # Feature verification
 
-Run 2026-11-05 04:29 UTC · tier `network` · only SAVED_PASSWORDS · **1 passed, 0 failed, 0 blocked, 0 skipped, 27 assumed**.
+Run 2026-11-05 04:48 UTC · tier `network` · only SOURCE_CAROUSEL · **1 passed, 0 failed, 0 blocked, 0 skipped, 28 assumed**.
 
 Each feature makes a promise to the user; its check drives the built app end to end. Defined in `docs/FEATURE_DAG.json`, checks in `experiments/e2e/checks.mjs`, run with `npm run verify:features`.
 
@@ -16,6 +16,7 @@ Each feature makes a promise to the user; its check drives the built app end to 
 | · | **Globe stays where you put it** (`GLOBE_MOTION`) | Zooming after moving the globe keeps the place in view; it never swings back. | FLY_TO | assumed |
 | · | **Every country named and clickable** (`COUNTRY_NAMES`) | Country names fade in by zoom without overlapping; the country you spin or zoom to is always named, tiny ones included (Vatican, Nauru, Tuvalu); clicking any country, with or without news, opens it. | FLY_TO | assumed |
 | · | **Live public globe** (`GLOBE_LIVE`) | The globe shows live public signals (local news, reading, hazards) with World, Peaks, Rising and Fading highlights. | APP_BOOT | assumed |
+| ✅ | **Sources carousel** (`SOURCE_CAROUSEL`) | A world story with several sources opens a carousel of every outlet's headline to flip through; choosing one grows its card into the browser with that article open. | GLOBE_LIVE | pass · 126 s — Carousel flipped from KNR (Kalaallit Nunaata Radioa) to Le Journal de Montréal; chose "Le Journal de Montréal: EN DIRECT \| Élections de mi-mandat: Trump juge «en grand" and the browser opened https://www.journaldemontreal.com/2026/11/03/en-direct--les-americains-aux-urnes-les-premiers-bureaux-de-vote-ouvrent-pour-des-elections-cruciales (page was open before). |
 | · | **Stories covered across the world** (`WORLD_STORIES`) | The World tab lists stories covered by outlets in many countries, and the whole list can be scrolled. | GLOBE_LIVE | assumed |
 | · | **A country's news and bigger picture** (`COUNTRY_PANEL`) | Opening a country shows key facts, genuinely recent history and its local headlines, without clipping. | GLOBE_LIVE, FLY_TO | assumed |
 | · | **The history behind a headline** (`OLDS_HEADLINE`) | A headline opens the right topic with a dated, ordered chronology quoted from Wikipedia and relevant topics from the right country; broad matches give way to the actual event; no junk for unmatched headlines. | APP_BOOT | assumed |
@@ -26,7 +27,7 @@ Each feature makes a promise to the user; its check drives the built app end to 
 | · | **Ad and tracker protection** (`PROTECTION`) | Ads and trackers are blocked and the protection bar under the toolbar shows what was blocked. | BROWSE | assumed |
 | · | **Site permissions and sign-in popups** (`PERMISSIONS`) | Sites ask for camera, microphone or location in a bar you answer; sign-in popups keep working; new-tab links open as tabs. | BROWSE | assumed |
 | · | **Private browsing** (`PRIVATE_BROWSING`) | Private tabs are marked, leave no footprints, and close with their session when private browsing ends. | BROWSE | assumed |
-| ✅ | **Saved passwords** (`SAVED_PASSWORDS`) | After you sign in, Intoponet offers to save the password, keeps it sealed on this Mac, fills it next time (or asks which account), lists it in Settings, and never saves or fills in a private tab. | SETTINGS | pass · 25 s — Failed sign-in not offered; offered, saved, bookmarked in Accounts (sealed file, no plaintext), filled one account on its own, asked between two, listed in Settings; private tab untouched (localhost:49894). |
+| · | **Saved passwords** (`SAVED_PASSWORDS`) | After you sign in, Intoponet offers to save the password, keeps it sealed on this Mac, fills it next time (or asks which account), lists it in Settings, and never saves or fills in a private tab. | SETTINGS | assumed |
 | · | **Sites to leave out** (`EXCLUDED_SITES`) | Sites you leave out are never absorbed and leave no recent pages. | BROWSE | assumed |
 | · | **Screenshots into folders** (`CAPTURE`) | A screenshot of the page is saved, and you can make a new folder while saving. | BROWSE | assumed |
 | · | **Paywall detection** (`PAYWALL_ALTERNATIVES`) | Paywalled outlets are recognised so free coverage of the same story can be offered (never circumvented). | BROWSE, GLOBE_LIVE | assumed |

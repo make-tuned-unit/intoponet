@@ -111,6 +111,16 @@
       "promise": "The globe shows live public signals (local news, reading, hazards) with World, Peaks, Rising and Fading highlights."
     },
     {
+      "id": "SOURCE_CAROUSEL",
+      "title": "Sources carousel",
+      "deps": [
+        "GLOBE_LIVE"
+      ],
+      "tier": "network",
+      "kind": "e2e",
+      "promise": "A world story with several sources opens a carousel of every outlet's headline to flip through; choosing one grows its card into the browser with that article open."
+    },
+    {
       "id": "WORLD_STORIES",
       "title": "Stories covered across the world",
       "deps": [

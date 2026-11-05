@@ -1,0 +1,276 @@
+/* Sources carousel: every outlet's headline for one world story, over the globe. */
+.sources-carousel {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  outline: none;
+  overflow: hidden;
+  color: var(--warm-white, #f4f1ea);
+}
+
+.sc-backdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 52%, rgba(32, 244, 228, 0.07), transparent 70%),
+    rgba(3, 10, 18, 0.78);
+  backdrop-filter: blur(18px) saturate(1.2);
+}
+
+.sc-header {
+  position: absolute;
+  top: 7vh;
+  left: 0;
+  right: 0;
+  width: min(760px, calc(100% - 120px));
+  margin: 0 auto;
+  text-align: center;
+  pointer-events: none;
+}
+
+.sc-header > * { pointer-events: auto; }
+
+.sc-eyebrow {
+  margin: 0 0 10px;
+  color: var(--teal, #20f4e4);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.sc-header h2 {
+  margin: 0;
+  font-size: clamp(20px, 2.3vw, 30px);
+  font-weight: 500;
+  line-height: 1.22;
+  letter-spacing: -0.02em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.sc-close {
+  position: fixed;
+  top: 22px;
+  right: 24px;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 50%;
+  color: inherit;
+  background: rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition: background 160ms ease, transform 160ms ease;
+}
+
+.sc-close:hover { background: rgba(255, 255, 255, 0.14); transform: rotate(90deg); }
+
+.sc-stage {
+  position: absolute;
+  inset: 0;
+  perspective: 1500px;
+  perspective-origin: 50% 53%;
+  transform-style: preserve-3d;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.sc-card {
+  position: absolute;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 22px 24px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 22px;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  background:
+    radial-gradient(120% 90% at 0% 0%, hsla(var(--sc-hue), 70%, 55%, 0.22), transparent 60%),
+    linear-gradient(160deg, #142a3a, #081420);
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+}
+
+.sc-card.is-front {
+  border-color: rgba(32, 244, 228, 0.45);
+  box-shadow: 0 40px 90px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(32, 244, 228, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.sc-card:focus-visible { outline: 2px solid var(--teal, #20f4e4); outline-offset: 4px; }
+
+.sc-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.sc-outlet {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.sc-outlet .site-icon { border-radius: 4px; flex: none; }
+
+.sc-outlet strong {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sc-where {
+  flex: none;
+  padding: 3px 9px;
+  border-radius: 999px;
+  color: rgba(236, 248, 246, 0.78);
+  background: rgba(255, 255, 255, 0.07);
+  font-size: 11px;
+}
+
+.sc-headline {
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: clamp(18px, 1.6vw, 23px);
+  font-weight: 500;
+  line-height: 1.28;
+  letter-spacing: -0.015em;
+}
+
+.sc-original {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-top: -4px;
+  color: rgba(236, 248, 246, 0.5);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.sc-card-foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: auto;
+  color: rgba(236, 248, 246, 0.55);
+  font-size: 12px;
+}
+
+.sc-paywall { display: inline-flex; align-items: center; gap: 4px; color: #f2c58a; }
+
+.sc-read {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  color: var(--teal, #20f4e4);
+  font-weight: 600;
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+
+.sc-card.is-front .sc-read { opacity: 1; transform: none; }
+
+.sc-footer {
+  position: absolute;
+  bottom: 6vh;
+  left: 0;
+  right: 0;
+  width: max-content;
+  max-width: calc(100% - 48px);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: auto minmax(0, auto) auto;
+  justify-items: center;
+  align-items: center;
+  gap: 8px 16px;
+}
+
+.sc-nav {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 50%;
+  color: inherit;
+  background: rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition: background 160ms ease;
+}
+
+.sc-nav:hover:not(:disabled) { background: rgba(255, 255, 255, 0.14); }
+.sc-nav:disabled { opacity: 0.3; cursor: default; }
+
+.sc-dots { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; max-width: 360px; }
+
+.sc-dots button {
+  width: 7px;
+  height: 7px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  transition: width 260ms cubic-bezier(0.22, 1, 0.36, 1), background 200ms ease;
+}
+
+.sc-dots button.is-on { width: 22px; background: var(--teal, #20f4e4); }
+
+.sc-hint {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: rgba(236, 248, 246, 0.5);
+  font-size: 11.5px;
+}
+
+.sc-nav:focus-visible,
+.sc-dots button:focus-visible,
+.sc-close:focus-visible { outline: 2px solid var(--teal, #20f4e4); outline-offset: 3px; }
+
+/* The chosen card on its way to becoming the page. */
+.sc-morph {
+  position: fixed;
+  z-index: 2;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background:
+    radial-gradient(120% 90% at 0% 0%, hsla(var(--sc-hue), 70%, 55%, 0.22), transparent 60%),
+    linear-gradient(160deg, rgba(20, 42, 58, 0.98), rgba(8, 20, 32, 0.99));
+  box-shadow: 0 40px 90px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
+/* Pages are mostly light: the card settles to the colour the page will paint over it. */
+.sc-morph-page { position: absolute; inset: 0; background: #fbfbf9; }
+
+.sc-morph-content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 22px 24px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sc-close:hover { transform: none; }
+  .sc-read, .sc-dots button { transition: none; }
+}

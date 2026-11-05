@@ -419,11 +419,19 @@ function wireProtectionSession(partition = 'persist:intoponet-default'): void {
   })
 }
 
+/** The shell is drawing over the page (sources carousel): any page shown meanwhile stays hidden. */
+let pageHeld = false
+
+function setPageHeld(held: boolean): void {
+  pageHeld = held
+  if (pageView && pageAttached) pageView.setVisible(!held && !isStartView(pageView))
+}
+
 function attachPageView(): void {
   if (!window || !pageView || pageAttached) return
   window.contentView.addChildView(pageView)
   // A start-page tab keeps its (blank) view hidden so the shell's start page shows and takes input.
-  pageView.setVisible(!isStartView(pageView))
+  pageView.setVisible(!isStartView(pageView) && !pageHeld)
   applyPageViewBounds()
   pageAttached = true
   updateWindowButtons()
@@ -750,7 +758,7 @@ function leaveStartPage(view: WebContentsView): void {
   const tab = openTabs.find((item) => item.view === view)
   if (!tab?.start) return
   tab.start = false
-  if (pageView === view && pageAttached) view.setVisible(true)
+  if (pageView === view && pageAttached && !pageHeld) view.setVisible(true)
   emitTabs()
   if (pageView === view) emitPanelState()
 }
@@ -1402,6 +1410,9 @@ async function handleBrowserCommand(
     case 'set-full-width':
       setBrowserFullWidth(command.enabled)
       return null
+    case 'hold-page':
+      setPageHeld(command.held)
+      return null
     case 'set-chrome-revealed':
       setChromeRevealed(command.revealed, command.hold === true)
       return null
@@ -1495,6 +1506,9 @@ function createWindow(): void {
       sandbox: true,
     },
   })
+
+  // A reloaded shell cannot release a page it held before.
+  window.webContents.on('did-start-navigation', (details) => { if (details.isMainFrame && !details.isSameDocument) setPageHeld(false) })
 
   if (process.env['ELECTRON_RENDERER_URL']) {
     window.webContents.on('console-message', (details) => {

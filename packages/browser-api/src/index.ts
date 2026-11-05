@@ -169,6 +169,8 @@ export interface BrowserHostApi {
   zoom(action: 'in' | 'out' | 'reset'): Promise<void>
   setBounds(bounds: BrowserPanelBounds): Promise<void>
   setFullWidth(enabled: boolean): Promise<void>
+  /** Hide the page view while the shell animates over it; false shows it again. */
+  holdPage(held: boolean): Promise<void>
   /** `hold` keeps the dock open while the pointer crosses the page (e.g. typing in its search). */
   setTabDockOpen(open: boolean, hold?: boolean): Promise<void>
   /** Full-screen toolbar reveal; `hold` keeps it while a control has focus. */
@@ -215,6 +217,8 @@ export type BrowserHostCommand =
   | { type: 'zoom'; action: 'in' | 'out' | 'reset' }
   | { type: 'set-bounds'; bounds: BrowserPanelBounds }
   | { type: 'set-full-width'; enabled: boolean }
+  /** Keep the page view hidden (true) while the shell draws over it, e.g. the sources carousel; false shows it again. */
+  | { type: 'hold-page'; held: boolean }
   | { type: 'set-tab-dock-open'; open: boolean; hold?: boolean }
   | { type: 'set-chrome-revealed'; revealed: boolean; hold?: boolean }
   | { type: 'set-tab-rail-expanded'; expanded: boolean }
@@ -238,6 +242,7 @@ export type BrowserHostCommand =
 const commandTypes = new Set<BrowserHostCommand['type']>([
   'open',
   'new-tab',
+  'hold-page',
   'close',
   'restore',
   'navigate',
@@ -346,6 +351,9 @@ export function parseBrowserHostCommand(value: unknown): BrowserHostCommand {
       return { type, action: value['action'] }
     case 'set-bounds':
       return { type, bounds: parseBounds(value['bounds']) }
+    case 'hold-page':
+      if (typeof value['held'] !== 'boolean') throw new Error('Invalid page hold.')
+      return { type, held: value['held'] }
     case 'set-full-width':
       if (typeof value['enabled'] !== 'boolean') throw new Error('Invalid full-width state.')
       return { type, enabled: value['enabled'] }

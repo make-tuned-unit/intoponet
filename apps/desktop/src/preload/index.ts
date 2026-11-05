@@ -87,6 +87,9 @@ const browserHost: BrowserHostApi = {
   setBounds: async (bounds) => {
     await invoke({ type: 'set-bounds', bounds })
   },
+  holdPage: async (held) => {
+    await invoke({ type: 'hold-page', held })
+  },
   setFullWidth: async (enabled) => {
     await invoke({ type: 'set-full-width', enabled })
   },

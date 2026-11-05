@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { BookOpen, ChevronDown, Globe2, History } from 'lucide-react'
+import { BookOpen, ChevronDown, GalleryHorizontal, Globe2, History } from 'lucide-react'
 import type { GlobalStory } from '../../../shared/news/globalStories'
 import type { NewsHeadline, WikiNewsItem } from '../../../shared/news/newsDigest'
 import { HeadlineList } from '../translate/HeadlineList'
@@ -8,6 +8,8 @@ import type { TranslateModel } from '../translate/useTranslate'
 import { relativeTime } from './globeSignals'
 import { hostIsPaywalled } from '../../../shared/news/paywall'
 import { learnedPaywalls } from '../access/learnedPaywalls'
+import { SourceCarousel, type CarouselLaunch } from './SourceCarousel'
+import './sourceCarousel.css'
 
 const regionNames = (() => {
   try {
@@ -46,6 +48,7 @@ export function WorldStories({
   translation?: TranslateModel | undefined
 }) {
   const [expanded, setExpanded] = useState<string | null>(focusedId)
+  const [carousel, setCarousel] = useState<CarouselLaunch | null>(null)
   // Story titles in your language (same Original ↔ English choice as the headlines inside).
   const titleItems = useMemo(() => stories.map((story) => ({ key: story.id, title: story.title, lang: story.headlines.find((item) => item.url === story.url)?.lang ?? null })), [stories])
   const titles = useTranslatedTitles(titleItems, translation)
@@ -58,6 +61,16 @@ export function WorldStories({
   }
   return (
     <div className="world-stories">
+      {carousel && (
+        <SourceCarousel
+          launch={carousel}
+          now={now}
+          translation={translation}
+          countryName={countryName}
+          onRead={onOpen}
+          onClose={() => setCarousel(null)}
+        />
+      )}
       {stories.length > 0 ? (
         <section aria-label="Covered across the world">
           <h3 title="The same story in headlines from at least 3 countries or international desks and 3 independent outlets in the last 24 hours, across 450 local outlets in 200+ countries and 31 international desks. Ranked by countries whose own outlets covered it, then desks. Breadth of coverage, not importance or truth.">
@@ -92,6 +105,16 @@ export function WorldStories({
                   {open && (
                     <div className="world-detail">
                       <div className="world-actions">
+                        {story.headlines.length >= 3 && (
+                          <button
+                            type="button"
+                            className="globe-history-button world-sources-button"
+                            onClick={(event) => setCarousel({ story, from: event.currentTarget.getBoundingClientRect() })}
+                            title="Flip through how each outlet is covering this story"
+                          >
+                            <GalleryHorizontal size={13} aria-hidden="true" /> See all {story.headlines.length} sources
+                          </button>
+                        )}
                         <button
                           type="button"
                           className="globe-history-button"

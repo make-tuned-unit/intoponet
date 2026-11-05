@@ -92,6 +92,47 @@ export const checks = {
     return summary
   },
 
+  async SOURCE_CAROUSEL(ctx) {
+    await ctx.waitForNews()
+    expect(await ctx.click('.globe-tabs button', 'World'), 'The World tab is missing.')
+    await ctx.wait(`document.querySelectorAll('.world-list .world-row').length > 0`, 90_000, 'stories covered across the world')
+    // Open the first story with at least three sources.
+    const rows = await ctx.evaluate(`document.querySelectorAll('.world-list .world-row').length`)
+    let opened = false
+    for (let i = 0; i < Math.min(rows, 8) && !opened; i += 1) {
+      await ctx.evaluate(`(() => { document.querySelectorAll('.world-list .world-row')[${i}].click(); return true })()`)
+      await ctx.delay(400)
+      opened = await ctx.evaluate(`!!document.querySelector('.world-sources-button')`)
+    }
+    expect(opened, 'No world story has three or more sources to show.')
+    await ctx.delay(1500)
+    await ctx.click('.world-sources-button')
+    await ctx.delay(160)
+    await ctx.shot('launching')
+    await ctx.wait(`document.querySelectorAll('.sc-card').length >= 3`, 5_000, 'the carousel cards')
+    await ctx.delay(900)
+    await ctx.shot('carousel')
+    const state0 = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getState().then((s) => JSON.stringify(s))`))
+    const first = await ctx.evaluate(`document.querySelector('.sc-card.is-front .sc-outlet strong').innerText`)
+    await ctx.evaluate(`(() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })); return true })()`)
+    await ctx.delay(700)
+    const second = await ctx.evaluate(`document.querySelector('.sc-card.is-front .sc-outlet strong').innerText`)
+    expect(first !== second || (await ctx.evaluate(`document.querySelectorAll('.sc-card').length`)) < 2, 'The arrow key did not flip to the next source.')
+    await ctx.shot('flipped')
+    const chosen = await ctx.evaluate(`(() => { const card = document.querySelector('.sc-card.is-front'); return card.getAttribute('aria-label') })()`)
+    await ctx.evaluate(`(() => { document.querySelector('.sc-card.is-front').click(); return true })()`)
+    await ctx.delay(180)
+    await ctx.shot('morph-early')
+    await ctx.delay(180)
+    await ctx.shot('morph-late')
+    await ctx.wait(`!document.querySelector('.sources-carousel')`, 5_000, 'the carousel to hand over to the browser')
+    const state = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getState().then((s) => JSON.stringify(s))`))
+    expect(state.isVisible, 'The browser did not open the chosen source.')
+    await ctx.delay(2500)
+    await ctx.shot('opened')
+    return `Carousel flipped from ${first} to ${second}; chose "${chosen.slice(0, 80)}" and the browser opened ${state.url} (page was ${state0.isVisible ? 'open' : 'closed'} before).`
+  },
+
   async FLY_TO(ctx) {
     await ctx.flyTo('Charlottetown PEI')
     await ctx.wait(`document.querySelector('h1')?.innerText === 'Charlottetown'`, 15_000, 'the title to read Charlottetown')

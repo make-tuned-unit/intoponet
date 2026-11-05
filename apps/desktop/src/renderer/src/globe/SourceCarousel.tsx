@@ -1,0 +1,364 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { motion, useReducedMotion, type Transition } from 'motion/react'
+import { ArrowUpRight, ChevronLeft, ChevronRight, Lock, X } from 'lucide-react'
+import type { GlobalStory, GlobalStoryHeadline } from '../../../shared/news/globalStories'
+import { hostIsPaywalled } from '../../../shared/news/paywall'
+import { learnedPaywalls } from '../access/learnedPaywalls'
+import { SiteIcon } from '../SiteIcon'
+import { useTranslatedTitles } from '../translate/useTranslatedTitles'
+import type { TranslateModel } from '../translate/useTranslate'
+import { relativeTime } from './globeSignals'
+import { carouselSlot, pageRectFrom, stepIndex, VISIBLE_SIDE, type Rect } from './sourceCarouselLayout'
+
+export type CarouselLaunch = { story: GlobalStory; from: DOMRect }
+
+type Phase = 'browse' | 'morph' | 'closing'
+
+const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
+const SPRING: Transition = { type: 'spring', stiffness: 260, damping: 30, mass: 0.9 }
+const MORPH_S = 0.52
+
+/** A soft colour per outlet, so neighbouring cards are easy to tell apart. */
+function hueOf(text: string): number {
+  let hash = 0
+  for (const char of text) hash = (hash * 31 + char.charCodeAt(0)) % 360
+  return hash
+}
+
+function rectOf(box: DOMRect): Rect {
+  return { left: box.left, top: box.top, width: box.width, height: box.height }
+}
+
+/** Where the browser will draw the page: the browser body once the panel is showing (it may be opening now). */
+function waitForPageRect(timeoutMs = 900): Promise<Rect> {
+  const started = performance.now()
+  return new Promise((resolve) => {
+    const look = (): void => {
+      const body = document.querySelector('.browser-body')
+      const box = body?.getBoundingClientRect()
+      if (box && box.width > 0 && box.height > 0) {
+        resolve(pageRectFrom(box, !!document.querySelector('.browser-panel.full-width')))
+        return
+      }
+      if (performance.now() - started > timeoutMs) {
+        resolve({ left: 40, top: 90, width: window.innerWidth - 80, height: window.innerHeight - 180 })
+        return
+      }
+      requestAnimationFrame(look)
+    }
+    look()
+  })
+}
+
+/**
+ * Every outlet's headline for one world story, in a carousel to flip through. Choosing one
+ * opens it in the browser while its card grows into the page's place, so the card becomes the page.
+ */
+export function SourceCarousel({ launch, now, translation, countryName, onRead, onClose }: {
+  launch: CarouselLaunch
+  now: number
+  translation?: TranslateModel | undefined
+  countryName: (code: string) => string
+  /** Open the article in the browser (its page stays hidden until the card lands). */
+  onRead: (url: string) => void
+  onClose: () => void
+}) {
+  const { story, from } = launch
+  const reduced = useReducedMotion() ?? false
+  const headlines = useMemo(() => {
+    const paywalls = learnedPaywalls()
+    // The story's own headline first, then outlets readers can open freely, then the rest.
+    return [...story.headlines].sort((a, b) =>
+      Number(b.url === story.url) - Number(a.url === story.url) ||
+      Number(hostIsPaywalled(a.url, paywalls)) - Number(hostIsPaywalled(b.url, paywalls)))
+  }, [story])
+  const titles = useTranslatedTitles(useMemo(() => headlines.map((item) => ({ key: item.url, title: item.title, lang: item.lang ?? null })), [headlines]), translation)
+  const [index, setIndex] = useState(0)
+  const [phase, setPhase] = useState<Phase>('browse')
+  const [drag, setDrag] = useState(0)
+  const [morph, setMorph] = useState<{ headline: GlobalStoryHeadline; from: Rect; to: Rect | null } | null>(null)
+  const [size, setSize] = useState(() => ({ w: window.innerWidth, h: window.innerHeight }))
+  const cards = useRef<Array<HTMLButtonElement | null>>([])
+  const dialog = useRef<HTMLDivElement>(null)
+  const released = useRef(false)
+  const pointer = useRef<{ x: number; moved: boolean } | null>(null)
+  const wheel = useRef({ sum: 0, lockedUntil: 0 })
+  const suppressClick = useRef(false)
+
+  const cardWidth = Math.round(Math.min(440, Math.max(280, size.w * 0.34)))
+  const cardHeight = Math.round(cardWidth * 0.62)
+  const step = cardWidth * 0.66
+  const centerY = size.h * 0.53
+  const launchX = from.left + from.width / 2 - size.w / 2
+  const launchY = from.top + from.height / 2 - centerY
+
+  // The page view is drawn above the shell: keep it hidden while the carousel is up.
+  useEffect(() => {
+    void window.intoponet.browserHost.holdPage(true)
+    dialog.current?.focus()
+    const onResize = (): void => setSize({ w: window.innerWidth, h: window.innerHeight })
+    window.addEventListener('resize', onResize)
+    return () => {
+      window.removeEventListener('resize', onResize)
+      if (!released.current) void window.intoponet.browserHost.holdPage(false)
+    }
+  }, [])
+
+  const close = useCallback(() => {
+    if (phase !== 'browse') return
+    setPhase('closing')
+    window.setTimeout(onClose, reduced ? 0 : 420)
+  }, [onClose, phase, reduced])
+
+  const read = useCallback((position: number) => {
+    if (phase !== 'browse') return
+    const headline = headlines[position]
+    const card = cards.current[position]
+    if (!headline || !card) return
+    setMorph({ headline, from: rectOf(card.getBoundingClientRect()), to: null })
+    setPhase('morph')
+    onRead(headline.url)
+    void waitForPageRect().then((to) => setMorph((current) => (current ? { ...current, to } : current)))
+  }, [headlines, onRead, phase])
+
+  const landed = (): void => {
+    if (released.current) return
+    released.current = true
+    void window.intoponet.browserHost.holdPage(false)
+    // The page now covers the card; let it paint one frame before the shell lets go.
+    window.setTimeout(onClose, 90)
+  }
+
+  // Keys: flip, read, close. Handled here first so the shell's own shortcuts stay out of the way.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent): void => {
+      if (phase !== 'browse') return
+      let handled = true
+      if (event.key === 'ArrowRight') setIndex((value) => stepIndex(value, 1, headlines.length))
+      else if (event.key === 'ArrowLeft') setIndex((value) => stepIndex(value, -1, headlines.length))
+      else if (event.key === 'Home') setIndex(0)
+      else if (event.key === 'End') setIndex(headlines.length - 1)
+      else if (event.key === 'Enter' && !(event.target instanceof HTMLButtonElement && !event.target.classList.contains('sc-card'))) read(index)
+      else if (event.key === 'Escape') close()
+      else handled = false
+      if (handled) {
+        event.preventDefault()
+        event.stopPropagation()
+      }
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [close, headlines.length, index, phase, read])
+
+  const onWheel = (event: React.WheelEvent): void => {
+    if (phase !== 'browse') return
+    const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY
+    const state = wheel.current
+    if (performance.now() < state.lockedUntil) return
+    state.sum += delta
+    if (Math.abs(state.sum) < 45) return
+    setIndex((value) => stepIndex(value, Math.sign(state.sum), headlines.length))
+    state.sum = 0
+    state.lockedUntil = performance.now() + 170
+  }
+
+  const onPointerDown = (event: React.PointerEvent): void => {
+    if (phase !== 'browse' || event.button !== 0) return
+    pointer.current = { x: event.clientX, moved: false }
+  }
+  const onPointerMove = (event: React.PointerEvent): void => {
+    const start = pointer.current
+    if (!start) return
+    const dx = event.clientX - start.x
+    if (!start.moved && Math.abs(dx) > 6) {
+      start.moved = true
+      ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
+    }
+    if (start.moved) setDrag(dx)
+  }
+  const onPointerUp = (): void => {
+    const start = pointer.current
+    pointer.current = null
+    if (!start?.moved) return
+    const steps = Math.round(-drag / step)
+    setIndex((value) => stepIndex(value, steps, headlines.length))
+    setDrag(0)
+    // The click that ends a drag should not also choose a card.
+    suppressClick.current = true
+    window.setTimeout(() => { suppressClick.current = false }, 0)
+  }
+
+  const countries = story.countries.length
+  const visible = phase === 'browse'
+  const fade: Transition = { duration: reduced ? 0 : 0.32, ease: EASE }
+
+  return createPortal(
+    <div
+      ref={dialog}
+      className="sources-carousel"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${headlines.length} sources for: ${story.title}`}
+      tabIndex={-1}
+    >
+      <motion.div
+        className="sc-backdrop"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: visible ? 1 : 0 }}
+        transition={{ duration: reduced ? 0 : phase === 'morph' ? 0.42 : 0.3, ease: EASE }}
+        onClick={close}
+      />
+      <motion.header
+        className="sc-header"
+        initial={{ opacity: 0, y: -14 }}
+        animate={{ opacity: visible ? 1 : 0, y: visible ? 0 : -10 }}
+        transition={{ ...fade, delay: visible && !reduced ? 0.08 : 0 }}
+      >
+        <p className="sc-eyebrow">
+          Covered in {countries} {countries === 1 ? 'country' : 'countries'}{story.internationalDesks ? ` and ${story.internationalDesks} international desk${story.internationalDesks === 1 ? '' : 's'}` : ''} · {headlines.length} headlines to compare
+        </p>
+        <h2>{titles.get(story.url) ?? story.title}</h2>
+        <button type="button" className="sc-close" aria-label="Close sources" onClick={close}><X size={18} aria-hidden="true" /></button>
+      </motion.header>
+
+      <div
+        className="sc-stage"
+        onWheel={onWheel}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+      >
+        {headlines.map((headline, position) => {
+          const offset = position - index + (drag ? -drag / step : 0)
+          const slot = carouselSlot(offset, cardWidth)
+          const chosen = morph?.headline.url === headline.url
+          const front = position === index
+          const hidden = Math.abs(position - index) > VISIBLE_SIDE + 1
+          const shown = titles.get(headline.url)
+          const paywalled = hostIsPaywalled(headline.url, learnedPaywalls())
+          const hue = hueOf(headline.publisher)
+          const launchDelay = reduced ? 0 : Math.min(Math.abs(position - index), VISIBLE_SIDE + 1) * 0.045
+          const target = phase === 'closing'
+            ? { x: launchX, y: launchY, z: 0, rotateY: 0, scale: 0.12, opacity: 0 }
+            : phase === 'morph'
+              ? chosen
+                ? { x: slot.x, y: 0, z: slot.z, rotateY: slot.rotateY, scale: slot.scale, opacity: 0 }
+                : { x: slot.x * 1.15, y: 24, z: slot.z - 80, rotateY: slot.rotateY, scale: slot.scale * 0.9, opacity: 0 }
+              : { x: slot.x, y: 0, z: slot.z, rotateY: slot.rotateY, scale: slot.scale, opacity: hidden ? 0 : slot.opacity, filter: `brightness(${slot.brightness})` }
+          const transition: Transition = reduced
+            ? { duration: 0 }
+            : drag
+              ? { duration: 0 }
+              : phase === 'morph'
+                ? chosen ? { duration: 0 } : { duration: 0.28, ease: EASE }
+                : phase === 'closing'
+                  ? { duration: 0.36, ease: [0.4, 0, 0.6, 1], delay: launchDelay * 0.6 }
+                  : { ...SPRING, delay: launchDelay }
+          return (
+            <motion.button
+              key={headline.url}
+              ref={(element) => { cards.current[position] = element }}
+              type="button"
+              className={`sc-card${front ? ' is-front' : ''}`}
+              style={{
+                width: cardWidth,
+                height: cardHeight,
+                marginLeft: -cardWidth / 2,
+                marginTop: -cardHeight / 2,
+                top: centerY,
+                zIndex: slot.zIndex,
+                pointerEvents: hidden || !visible ? 'none' : 'auto',
+                ['--sc-hue' as string]: String(hue),
+              }}
+              initial={{ x: launchX, y: launchY, z: 0, rotateY: 0, scale: 0.12, opacity: 0, filter: 'brightness(1)' }}
+              animate={target}
+              transition={transition}
+              tabIndex={front ? 0 : -1}
+              aria-current={front ? 'true' : undefined}
+              aria-label={`${headline.publisher}: ${shown ?? headline.title}${front ? '. Press Enter to read the full story.' : ''}`}
+              onClick={() => {
+                if (suppressClick.current) return
+                if (front) read(position)
+                else setIndex(position)
+              }}
+            >
+              <span className="sc-card-top">
+                <span className="sc-outlet"><SiteIcon url={headline.url} size={18} /><strong>{headline.publisher}</strong></span>
+                <span className="sc-where">{headline.international ? 'International desk' : countryName(headline.countryCode)}</span>
+              </span>
+              <span className="sc-headline" lang={shown ? undefined : headline.lang}>{shown ?? headline.title}</span>
+              {shown && <span className="sc-original" lang={headline.lang}>{headline.title}</span>}
+              <span className="sc-card-foot">
+                <span>{relativeTime(headline.publishedAt, now)}</span>
+                {paywalled && <span className="sc-paywall"><Lock size={11} aria-hidden="true" /> May need a subscription</span>}
+                <span className="sc-read">Read full story <ArrowUpRight size={14} aria-hidden="true" /></span>
+              </span>
+            </motion.button>
+          )
+        })}
+      </div>
+
+      <motion.footer
+        className="sc-footer"
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: visible ? 1 : 0, y: visible ? 0 : 10 }}
+        transition={{ ...fade, delay: visible && !reduced ? 0.14 : 0 }}
+      >
+        <button type="button" className="sc-nav" aria-label="Previous source" disabled={index === 0} onClick={() => setIndex((value) => stepIndex(value, -1, headlines.length))}>
+          <ChevronLeft size={18} aria-hidden="true" />
+        </button>
+        <div className="sc-dots" role="tablist" aria-label="Sources">
+          {headlines.map((headline, position) => (
+            <button
+              key={headline.url}
+              type="button"
+              role="tab"
+              aria-selected={position === index}
+              aria-label={headline.publisher}
+              title={headline.publisher}
+              className={position === index ? 'is-on' : ''}
+              onClick={() => setIndex(position)}
+            />
+          ))}
+        </div>
+        <button type="button" className="sc-nav" aria-label="Next source" disabled={index === headlines.length - 1} onClick={() => setIndex((value) => stepIndex(value, 1, headlines.length))}>
+          <ChevronRight size={18} aria-hidden="true" />
+        </button>
+        <p className="sc-hint">{index + 1} of {headlines.length} · ← → or swipe to flip · Enter to read</p>
+      </motion.footer>
+
+      {morph && (
+        <motion.div
+          className="sc-morph"
+          aria-hidden="true"
+          style={{ ['--sc-hue' as string]: String(hueOf(morph.headline.publisher)) }}
+          initial={{ ...morph.from, borderRadius: 22 }}
+          animate={morph.to ? { ...morph.to, borderRadius: 10 } : { ...morph.from, borderRadius: 22 }}
+          transition={{ duration: reduced ? 0 : MORPH_S, ease: EASE }}
+          onAnimationComplete={() => { if (morph.to) landed() }}
+        >
+          <motion.span
+            className="sc-morph-page"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: morph.to ? 1 : 0 }}
+            transition={{ duration: reduced ? 0 : MORPH_S * 0.7, ease: EASE, delay: reduced ? 0 : MORPH_S * 0.25 }}
+          />
+          <motion.span
+            className="sc-morph-content"
+            initial={{ opacity: 1 }}
+            animate={{ opacity: morph.to ? 0 : 1 }}
+            transition={{ duration: reduced ? 0 : MORPH_S * 0.45, ease: EASE }}
+          >
+            <span className="sc-card-top">
+              <span className="sc-outlet"><SiteIcon url={morph.headline.url} size={18} /><strong>{morph.headline.publisher}</strong></span>
+            </span>
+            <span className="sc-headline">{titles.get(morph.headline.url) ?? morph.headline.title}</span>
+          </motion.span>
+        </motion.div>
+      )}
+    </div>,
+    document.body,
+  )
+}
