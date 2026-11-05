@@ -332,6 +332,15 @@ export const checks = {
       await ctx.shot('offer')
       expect(await ctx.click('.password-bar button', 'Save'), 'The offer has no Save button.')
       await ctx.wait(`window.intoponet.passwords.list().then((l) => l.length === 1 && l[0].username === 'tester@example.com' && l[0].origin === 'http://${site}')`, 10_000, 'the sign-in to be saved')
+      // Saving offers to bookmark the site into a group; "Accounts" is made on first use.
+      await ctx.wait(`(document.querySelector('.bookmark-site-bar')?.innerText ?? '').includes('Bookmark ${site}')`, 5_000, 'the offer to bookmark the site')
+      await ctx.shot('bookmark-offer')
+      expect(await ctx.click('.bookmark-site-bar button', 'Accounts'), 'The bookmark offer has no Accounts button.')
+      await ctx.wait(`!document.querySelector('.bookmark-site-bar') && document.body.innerText.includes('Bookmarked ${site} in Accounts')`, 5_000, 'the site to be bookmarked in Accounts')
+      if (!(await ctx.evaluate(`!!document.querySelector('.bookmark-pane')`))) await ctx.click('.bookmark-library-button', 'Bookmarks')
+      await ctx.wait(`(() => { const text = document.querySelector('.bookmark-pane')?.innerText ?? ''; return text.includes('Accounts') && text.includes('${site}') })()`, 5_000, 'the Bookmarks pane to list the site under Accounts')
+      await ctx.shot('bookmarked')
+      await ctx.click('.bookmark-library-button', 'Bookmarks')
       const listed = await ctx.evaluate(`window.intoponet.passwords.list().then((l) => JSON.stringify(l))`)
       expect(!listed.includes(password), 'The saved list sent the password to the shell.')
       const sealedPath = join(ctx.profile, 'passwords.v1.seal')
@@ -392,7 +401,7 @@ export const checks = {
       await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
       const count = await ctx.evaluate(`window.intoponet.passwords.list().then((l) => l.length)`)
       expect(count === 2, 'A private sign-in was saved.')
-      return `Failed sign-in not offered; offered, saved (sealed file, no plaintext), filled one account on its own, asked between two, listed in Settings; private tab untouched (${site}).`
+      return `Failed sign-in not offered; offered, saved, bookmarked in Accounts (sealed file, no plaintext), filled one account on its own, asked between two, listed in Settings; private tab untouched (${site}).`
     } finally {
       server.close()
     }

@@ -1,6 +1,6 @@
 # Feature verification
 
-Run 2026-11-05 04:26 UTC · tier `network` · only SAVED_PASSWORDS · **1 passed, 0 failed, 0 blocked, 0 skipped, 27 assumed**.
+Run 2026-11-05 04:29 UTC · tier `network` · only SAVED_PASSWORDS · **1 passed, 0 failed, 0 blocked, 0 skipped, 27 assumed**.
 
 Each feature makes a promise to the user; its check drives the built app end to end. Defined in `docs/FEATURE_DAG.json`, checks in `experiments/e2e/checks.mjs`, run with `npm run verify:features`.
 
@@ -26,7 +26,7 @@ Each feature makes a promise to the user; its check drives the built app end to 
 | · | **Ad and tracker protection** (`PROTECTION`) | Ads and trackers are blocked and the protection bar under the toolbar shows what was blocked. | BROWSE | assumed |
 | · | **Site permissions and sign-in popups** (`PERMISSIONS`) | Sites ask for camera, microphone or location in a bar you answer; sign-in popups keep working; new-tab links open as tabs. | BROWSE | assumed |
 | · | **Private browsing** (`PRIVATE_BROWSING`) | Private tabs are marked, leave no footprints, and close with their session when private browsing ends. | BROWSE | assumed |
-| ✅ | **Saved passwords** (`SAVED_PASSWORDS`) | After you sign in, Intoponet offers to save the password, keeps it sealed on this Mac, fills it next time (or asks which account), lists it in Settings, and never saves or fills in a private tab. | SETTINGS | pass · 27 s — Failed sign-in not offered; offered, saved (sealed file, no plaintext), filled one account on its own, asked between two, listed in Settings; private tab untouched (localhost:61770). |
+| ✅ | **Saved passwords** (`SAVED_PASSWORDS`) | After you sign in, Intoponet offers to save the password, keeps it sealed on this Mac, fills it next time (or asks which account), lists it in Settings, and never saves or fills in a private tab. | SETTINGS | pass · 25 s — Failed sign-in not offered; offered, saved, bookmarked in Accounts (sealed file, no plaintext), filled one account on its own, asked between two, listed in Settings; private tab untouched (localhost:49894). |
 | · | **Sites to leave out** (`EXCLUDED_SITES`) | Sites you leave out are never absorbed and leave no recent pages. | BROWSE | assumed |
 | · | **Screenshots into folders** (`CAPTURE`) | A screenshot of the page is saved, and you can make a new folder while saving. | BROWSE | assumed |
 | · | **Paywall detection** (`PAYWALL_ALTERNATIVES`) | Paywalled outlets are recognised so free coverage of the same story can be offered (never circumvented). | BROWSE, GLOBE_LIVE | assumed |

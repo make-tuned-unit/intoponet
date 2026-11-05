@@ -7,19 +7,24 @@ export const PASSWORD_PRIVACY = 'Encrypted on this Mac with a key kept in your m
  * Saved passwords for the page in front, in a bar under the toolbar (pages are drawn above the shell,
  * so this is where the shell can speak): save or update after a sign-in, or pick which account to fill.
  */
-export function PasswordBar({ state, picking, onClosePicker, onError }: {
+export function PasswordBar({ state, picking, onClosePicker, onError, onSaved }: {
   state: PasswordPageState
   /** The toolbar key button asked for the account list. */
   picking: boolean
   onClosePicker: () => void
   onError: (message: string) => void
+  /** A new sign-in was saved for this site (not an update). */
+  onSaved?: (origin: string) => void
 }) {
   const api = window.intoponet.passwords
   const { offer } = state
   if (offer) {
     const site = siteLabel(offer.origin)
     const decide = (decision: 'save' | 'never' | 'dismiss'): void => {
-      void api.decide(offer.id, decision).catch(() => onError('The password could not be saved. On-device encryption may be unavailable.'))
+      void api.decide(offer.id, decision).then(
+        () => { if (decision === 'save' && offer.kind === 'save') onSaved?.(offer.origin) },
+        () => onError('The password could not be saved. On-device encryption may be unavailable.'),
+      )
     }
     return (
       <div className="permission-bar password-bar" role="alertdialog" aria-label={offer.kind === 'update' ? `Update password for ${site}?` : `Save password for ${site}?`}>

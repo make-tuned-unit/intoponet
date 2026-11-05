@@ -185,7 +185,8 @@ import { PrivacyPane } from './privacy/PrivacyPane'
 import { SettingsPanel } from './settings/SettingsPanel'
 import { PermissionBar, SitePermissionChips } from './permissions/PermissionBar'
 import { PasswordBar } from './passwords/PasswordBar'
-import type { PasswordPageState } from '../../shared/passwords'
+import { BookmarkSiteBar, type BookmarkSiteOffer } from './passwords/BookmarkSiteBar'
+import { siteLabel, type PasswordPageState } from '../../shared/passwords'
 import { BeaconConsent } from './beacons/BeaconConsent'
 import type { BeaconDraft } from '@intoponet/browser-api'
 import type { SitePermissionMap, SitePermissionRequest } from '@intoponet/browser-api'
@@ -429,6 +430,7 @@ export function App() {
   const [permissionRequests, setPermissionRequests] = useState<SitePermissionRequest[]>([])
   // Saved passwords for the page in front: a save offer, or accounts to pick from.
   const [passwordState, setPasswordState] = useState<PasswordPageState | null>(null)
+  const [bookmarkSiteOffer, setBookmarkSiteOffer] = useState<BookmarkSiteOffer | null>(null)
   const [passwordPicking, setPasswordPicking] = useState(false)
   const [sitePermissionMap, setSitePermissionMap] = useState<SitePermissionMap>({})
   const [tabs, setTabs] = useState<PageTabSnapshot[]>([])
@@ -738,6 +740,10 @@ export function App() {
     })
   }, [])
   useEffect(() => setPasswordPicking(false), [passwordState?.origin])
+  // The bookmark offer is for the site just signed in to; leaving it drops the offer.
+  useEffect(() => {
+    setBookmarkSiteOffer((current) => (current && passwordState?.origin && !current.url.startsWith(`${passwordState.origin}/`) ? null : current))
+  }, [passwordState?.origin])
   // Sites asking for camera, microphone, location, notifications or the clipboard.
   useEffect(() => {
     void window.intoponet.sitePermissions.pending().then(setPermissionRequests, () => undefined)
@@ -1352,6 +1358,33 @@ export function App() {
     if (groupId !== UNSORTED_GROUP_ID) {
       persistCollections(moveBookmarkToGroup(collections, panel.url, UNSORTED_GROUP_ID, groupId))
     }
+  }
+
+  /** After a password is saved: offer to bookmark the site, unless it already is. */
+  const offerBookmarkForSite = (origin: string): void => {
+    const url = `${origin}/`
+    if (bookmarks.some((bookmark) => bookmark.url === url || (panel.url && bookmark.url === panel.url))) return
+    setBookmarkSiteOffer({ url, title: siteLabel(origin), site: siteLabel(origin) })
+  }
+
+  const bookmarkSiteToGroup = (offer: BookmarkSiteOffer, group: { id: string } | { label: string }): void => {
+    persistBookmarks(upsertBookmark(bookmarks, { url: offer.url, title: offer.title, topic: activeTopic, savedAt: new Date().toISOString() }))
+    let next = collections
+    let groupId: string
+    let label: string
+    if ('id' in group) {
+      groupId = group.id
+      label = collections.find((collection) => collection.id === group.id)?.label ?? 'your bookmarks'
+    } else {
+      const existing = collections.find((collection) => collection.label.trim().toLowerCase() === group.label.toLowerCase())
+      const collection = existing ?? createCollection(group.label)
+      if (!existing) next = [...collections, collection]
+      groupId = collection.id
+      label = collection.label
+    }
+    persistCollections(moveBookmarkToGroup(next, offer.url, UNSORTED_GROUP_ID, groupId))
+    setBookmarkSiteOffer(null)
+    setNotice(`Bookmarked ${offer.site} in ${label}`)
   }
 
   const createBookmarkGroup = (label: string): string | null => {
@@ -3649,6 +3682,15 @@ export function App() {
               picking={passwordPicking}
               onClosePicker={() => setPasswordPicking(false)}
               onError={setNotice}
+              onSaved={offerBookmarkForSite}
+            />
+          )}
+          {bookmarkSiteOffer && !passwordState?.offer && !panel.isPrivate && !onStartPage && (
+            <BookmarkSiteBar
+              offer={bookmarkSiteOffer}
+              groups={collections.map((collection) => ({ id: collection.id, label: collection.label }))}
+              onSave={(group) => bookmarkSiteToGroup(bookmarkSiteOffer, group)}
+              onDismiss={() => setBookmarkSiteOffer(null)}
             />
           )}
           {permissionRequests[0] && (
