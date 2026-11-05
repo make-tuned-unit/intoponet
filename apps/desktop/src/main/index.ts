@@ -34,6 +34,7 @@ import { parsePasswordCommand, passwordChannels, type PasswordEvent } from '../s
 import { parsePasswordPageMessage, passwordPageChannels } from '../shared/passwordPage'
 import { updateChannels, parseUpdateCommand } from '@intoponet/browser-api'
 import { browserUserAgent } from './browserUserAgent'
+import { persistedActiveUrl } from './tabState'
 
 declare const __INTOPONET_MAC_UPDATE_URL__: string
 
@@ -194,18 +195,19 @@ function safeHttpUrl(value: string): URL | null {
 }
 
 function persistentState(): PersistentBrowserState {
-  const currentUrl = pageView && !viewGone(pageView) ? pageView.webContents.getURL() : undefined
+  // Private tabs are never saved or restored; nor are empty new tabs.
+  const tabs = tabSnapshots().filter((tab) => !tab.isPrivate && !tab.isStartPage).map((tab) => ({
+    id: tab.id,
+    url: tab.url,
+    title: tab.title,
+  }))
   return {
     version: 2,
-    url: safeHttpUrl(currentUrl ?? '') ? currentUrl! : lastKnownUrl,
+    // The open page only when it is a saved tab: a private page's address never reaches the disk.
+    url: persistedActiveUrl(tabs, activeTabId, lastKnownUrl),
     bounds: lastBounds,
     wasVisible: pageAttached,
-    // Private tabs are never saved or restored; nor are empty new tabs.
-    tabs: tabSnapshots().filter((tab) => !tab.isPrivate && !tab.isStartPage).map((tab) => ({
-      id: tab.id,
-      url: tab.url,
-      title: tab.title,
-    })),
+    tabs,
   }
 }
 
@@ -1233,7 +1235,8 @@ function buildView(isPrivate = privateMode): WebContentsView {
     if (pageView === view) emitPanelState()
   })
   view.webContents.on('page-favicon-updated', (_event, favicons) => {
-    if (favicons[0]) faviconCache?.remember(view.webContents.getURL(), favicons[0])
+    // Private tabs leave nothing in favicons.json.
+    if (favicons[0] && !privateViews.has(view)) faviconCache?.remember(view.webContents.getURL(), favicons[0])
     const tab = openTabs.find((item) => item.view === view)
     const next = safeFavicon(favicons[0] ?? '')
     if (!tab || tab.favicon === next) return
