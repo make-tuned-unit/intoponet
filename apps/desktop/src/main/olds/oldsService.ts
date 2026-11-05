@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
-import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rm, stat } from 'node:fs/promises'
 import { join } from 'node:path'
+import { writeFileAtomic } from '../atomicFile'
 import {
   isQid,
   OLDS_ATTRIBUTION,
@@ -1569,7 +1570,7 @@ export class OldsService {
     })
     this.currentEventsCache = { at: now, items }
     await mkdir(this.options.cacheDir, { recursive: true }).catch(() => undefined)
-    await writeFile(file, JSON.stringify(this.currentEventsCache)).catch(() => undefined)
+    await writeFileAtomic(file, JSON.stringify(this.currentEventsCache)).catch(() => undefined)
     return items
   }
 
@@ -1626,7 +1627,7 @@ export class OldsService {
     const entries = Object.entries(counts).slice(-2_000)
     this.fame = Object.fromEntries(entries)
     await mkdir(this.options.cacheDir, { recursive: true }).catch(() => undefined)
-    await writeFile(join(this.options.cacheDir, 'fame.json'), JSON.stringify(this.fame), { encoding: 'utf8', mode: 0o600 }).catch(() => undefined)
+    await writeFileAtomic(join(this.options.cacheDir, 'fame.json'), JSON.stringify(this.fame)).catch(() => undefined)
   }
 
   /** A country item's ISO 3166-1 alpha-2 code (P297). */
@@ -1697,7 +1698,7 @@ export class OldsService {
 
   private async writeCache(key: string, thread: OldsThread): Promise<void> {
     await mkdir(this.options.cacheDir, { recursive: true })
-    await writeFile(this.cachePath(key), JSON.stringify(thread), { encoding: 'utf8', mode: 0o600 })
+    await writeFileAtomic(this.cachePath(key), JSON.stringify(thread))
     const files = await readdir(this.options.cacheDir)
     if (files.length <= MAX_CACHE_FILES) return
     const dated = await Promise.all(files.map(async (name) => ({ name, at: (await stat(join(this.options.cacheDir, name)).catch(() => null))?.mtimeMs ?? 0 })))
