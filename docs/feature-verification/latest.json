@@ -1,128 +1,154 @@
 {
-  "started": "2026-11-05T15:59:01.136Z",
-  "finished": "2026-11-05T15:59:12.770Z",
-  "tier": "network",
-  "only": [
-    "BROWSE"
-  ],
-  "summary": "1 passed, 0 failed, 0 blocked, 0 skipped, 28 assumed",
+  "started": "2026-11-05T17:47:19.818Z",
+  "finished": "2026-11-05T18:06:12.996Z",
+  "tier": "full",
+  "only": null,
+  "summary": "29 passed, 0 failed, 0 blocked, 0 skipped",
   "results": {
     "BUILD": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "npm run typecheck · npm test · npm run build",
+      "seconds": 35
     },
     "APP_BOOT": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Header: Private · Bookmarks · The Olds · Knowledge · My map · Settings",
+      "seconds": 3
     },
     "SETTINGS": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Settings and Privacy sections present.",
+      "seconds": 5
     },
     "ACCESSIBILITY": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "No WCAG 2.2 AA violations (axe); panels open with Enter, close with Escape, focus returns.",
+      "seconds": 17
     },
     "LIBRARY": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Migrated to encrypted library; pin hidden; beacon consent requires agreement.",
+      "seconds": 9
     },
     "COLLECTIONS_IMPORT": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Explained and split into 2. ",
+      "seconds": 9
     },
     "FLY_TO": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Charlottetown PEI and \"Fredericto\" flew on the globe, with the locator shown.",
+      "seconds": 11
     },
     "GLOBE_MOTION": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Locator 734,473 → 756,490 after zoom.",
+      "seconds": 9
     },
     "COUNTRY_NAMES": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "16 names at the start; clicked Venezuela → Venezuela; 7 flights named correctly.",
+      "seconds": 56
     },
     "GLOBE_LIVE": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "711 public signals across 4 active layers. Hover to preview, click to explore, or search a place below.",
+      "seconds": 85
     },
     "SOURCE_CAROUSEL": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Cards with 8 images, 1 bylines, 2 summaries. Carousel flipped from KNR (Kalaallit Nunaata Radioa) to TVA Nouvelles; chose \"TVA Nouvelles: Donald Trump plagued by defeat, Democrats in order of work. Press\" and the browser opened  (page was closed before).",
+      "seconds": 81
     },
     "WORLD_STORIES": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "20 world stories; scrolls 400px.",
+      "seconds": 69
     },
     "COUNTRY_PANEL": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Facts ok, recent history 2025, 2024, 2022, 2020, 12 headlines.",
+      "seconds": 116
     },
     "OLDS_HEADLINE": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Israel → 2026 Israeli legislative election: 20 dated events from 10 Apr 1973; Ebola, South Africa and Guernsey guards ok; related Judiciary of Israel, Israeli law, Politics of Israel, Elections in Israel. Brazil → 2026 Brazilian general election. Honduras → Honduras.",
+      "seconds": 100
     },
     "OLDS_COUNTRY": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Capital Tórshavn; 7 chapters; latest event 2025.",
+      "seconds": 5
     },
     "OLDS_DEBATE": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Anthropologist Joseph Henrich, Rodney Stark, Historian Joel Mokyr, Williams, Voltaire, Bob Allen",
+      "seconds": 3
     },
     "OLDS_UI": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Views Story/Timeline/List; sections: HOW WE GOT HERE.",
+      "seconds": 120
     },
     "BROWSE": {
       "status": "pass",
-      "notes": "Toolbar: Protected, Translate, Capture, Pin, Absorb, Bookmarks; pages see Chrome/156.0.8078.48; tab closed cleanly.",
-      "seconds": 8
+      "notes": "Toolbar: Protected, Translate, Capture, Pin, Absorb, Bookmarks; pages see Chrome/156.0.8078.48; tab closed cleanly; a self-closing page took its tab; the app window stayed on the app.",
+      "seconds": 16
     },
     "PROTECTION": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Protected · 3 ads · 0 trackers blocked · Block ads · Block trackers · Encrypted DNS · Local IP hidden · No VPN · Pause on this site",
+      "seconds": 14
     },
     "PERMISSIONS": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Location allowed via the bar; popup kept its opener; _blank opened a tab.",
+      "seconds": 12
     },
     "PRIVATE_BROWSING": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Private tab marked, no footprints, closed when private mode ended.",
+      "seconds": 8
     },
     "SAVED_PASSWORDS": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Failed sign-in not offered; offered, saved, bookmarked in Accounts (sealed file, no plaintext), filled one account (password only after a real click; a script click did not release it), asked between two, listed in Settings; private tab untouched (localhost:63622).",
+      "seconds": 25
     },
     "EXCLUDED_SITES": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Absorb refused; no recent page kept.",
+      "seconds": 10
     },
     "CAPTURE": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Screenshot saved; \"New folder…\" offered.",
+      "seconds": 7
     },
     "PAYWALL_ALTERNATIVES": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "nytimes.com section page: paywalled=false (no signals).",
+      "seconds": 85
     },
     "ABSORB": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Absorbed 10572 words; 40 claims; selection absorb ok.",
+      "seconds": 11
     },
     "BEACONS_REGISTRY": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Live registry healthy, readable from the app, refuses unsigned publishes.",
+      "seconds": 2
     },
     "AUTO_TRANSLATE": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "fontanka.ru translated from Russian with no clicks (Russian downloaded by itself; 3038 Latin vs 0 Cyrillic letters); \"Never translate this site\" sticks.",
+      "seconds": 120
     },
     "ROUGH_TRANSLATE": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Faroese headlines translated roughly via Icelandic, labelled as such.",
+      "seconds": 90
     }
   }
 }
