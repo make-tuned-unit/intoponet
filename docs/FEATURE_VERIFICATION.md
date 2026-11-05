@@ -1,60 +1,6 @@
 # Feature verification
 
-## Historical context audit and delayed layer hover — 2026-10-28
-
-Audited **80 cached headline threads covering all 78 evaluation headlines**, plus two additional stories. Before enrichment, 35 narratives started in 2022 or later and eight had no dated narrative. Ten gained older sourced passages; 47 still have limited coverage and now say so. The others already had at least three distinct older years; that is a screening heuristic, not a completeness guarantee. [Per-story audit and remaining gaps](feature-verification/timeline-context-2026-10-28.json).
-
-The 29 October repeat preserved the same saved topic selections and re-ran historical enrichment on all 80 threads. Thirteen received older sourced passages, zero fetches failed, and **47/80 remained below the three-distinct-older-years screening threshold**. Of those 47, 33 had zero eligible older years, 11 had one and three had two; 18 had broad place roots and remain limited without unrelated place history. A sequential v15 baseline run had ten enriched rows, but Wikipedia content varied between runs; treat the count difference as observational rather than a controlled effect. Root-only exact edition links now contribute for some event pages; the bounded recent-edition bridge path did not change this audit set. The flag counts dates and does not assess relevance of every pre-existing chronology passage. [Repeat audit, per-story older years, input fingerprint and reproduction commands](feature-verification/timeline-context-2026-10-29.json).
-
-The stage-only repeat was bundled and run with `npx esbuild experiments/e2e/olds-history-audit.ts --bundle --platform=node --format=esm --outfile=apps/desktop/.eval-build/history-audit/audit-v18.mjs`, then `node apps/desktop/.eval-build/history-audit/audit-v18.mjs apps/desktop/.eval-build/history-audit/before-cache experiments/e2e/results/timeline-audit-v18.json`. The saved input cache is local/ignored; its sorted SHA-256 manifest is recorded in the audit JSON. The 18 focused Olds tests pass; this audit did not rerun matching or UI tests.
-
-The Israeli election example now includes sourced context from 1949, 1984, 1992, 2014, and 2020 before its recent narrative. Context comes only from explicit subject-article pointers and exact earlier editions of the same documented event series, with bounded lookups. Every added passage names and links its source. General country/city fallbacks are not padded with unrelated national history. The date parser accepts an unambiguous single year in the main clause while rejecting historical dates in reported or subordinate clauses. Cache v15 recomputes old threads.
-
-Compact layer buttons now toggle immediately; hover or focus waits **one second** before expanding. Leaving cancels pending expansion and unmounting clears timers. A built-app pointer check verified click timing, cancellation, and delayed expansion. The history check verified the public API for Israel and Ebola, the rendered election timeline, attribution, and no vertical card clipping. The timeline has more room for source labels.
-
-Typechecking, 540 tests and the production build passed (five registry tests skipped); the final date-guard change also passed its focused tests. The prior 78/78 on/off matching result remains recorded under its own frozen build; it was not rerun after this context-only follow-up.
-
-Reproduce with `node experiments/e2e/layer-hover.mjs` and `node experiments/e2e/olds-history-context.mjs` after building. To audit saved threads, bundle `experiments/e2e/olds-history-audit.ts` with esbuild for Node/ESM and pass a cache directory and output path. This stage audit preserves the earlier topic selections; it does not claim to rerun headline matching.
-
-## Headline matching and RSS trend verification — 2026-10-28
-
-The complete 78-story comparison passed at **78/78 with Laya on and 78/78 off**, sequentially on one frozen build with all 11 installed translation languages. Existing gold labels were unchanged. This meets on ≥ off and off ≥ 71. [Full results, hashes, and all focused attempts](feature-verification/laya-olds-resolution-2026-10-28.json).
-
-The fixes preserve names through translation, reject partial foreign namesakes, search and prefer country-specific holidays and legislatures, resolve otherwise unmatched acronyms only from explicit unambiguous Wikipedia snippet expansions, distinguish film fundraisers from sporting leagues, and prefer a current event at an explicitly named verified location. Cache v14 replaces earlier matches. Typechecking, 525 application/package tests, seven label tests, and the production build passed; five registry tests were skipped.
-
-These scores establish label matches, not complete semantic accuracy or historical depth. Several labels allow broad country fallbacks. A user-requested audit of sparse timeline history is subsequent work, not covered by this result. Live source variability also limits causal comparisons with earlier runs.
-
-RSS already feeds the globe’s Rising and Fading views independently of Wikipedia readership: 451 local feeds across 209 countries/territories plus 31 international feeds. Polling is every 20 minutes; trends compare the last 24 hours with the preceding 24, using comparable coverage. A live digest showed both rising and fading RSS country signals. Three added pipeline regression tests pass for RSS-only trends, missing coverage, and duplicate headlines; desktop typechecking passed again. [RSS observation](feature-verification/rss-news-trends-2026-10-28.json). No feed registry or cadence changes were made.
-
-## Completed full comparison and remaining-match fixes — 2026-10-28
-
-Both 78-story runs completed sequentially against one frozen build and the same translated profile. They initially scored 71/78 each. The on run's FNB Stadium result exposed another false positive; under the corrected FNB label the full scores are **70/78 on, 71/78 off**. For comparison, the original recorded runs score 66/78 on and 62/78 off under these current labels. Live search results vary, so these differences are not a controlled measurement of code changes alone. [All full results, build hashes, focused checks, and remaining failures](feature-verification/laya-olds-full-2026-10-28.json).
-
-The full runs verified better fallbacks for Guam motocross, Peru weather, Zambia's Dakar team, Guyana's signing bonus, and Bernardo's kickbacks story. Bilateral topics now require an actual relationship cue; competition/organiser names must be supported by the headline. Present-tense activity checks guard against deceased namesakes when usable death metadata exists. Cache version v13 makes existing users recompute old matches.
-
-After the full pair, the opening-organisation rule was narrowed to exact names or company/legal suffixes: FNB no longer establishes the identity of FNB Stadium. **FNB passed focused live checks in both modes on the final build.** Nedbank passed off, failed one on check with a broad East Africa result, then passed an on repeat; all outcomes are retained. Diplomatic call/meeting compatibility is covered by the existing regression test. Typechecking, 511 application/package tests, seven label tests, and the build passed; five registry tests were skipped.
-
-**The full quality gate remains unverified for the final patch.** The last complete comparison failed on ≥ off; the full set was not repeated after the organisation-name fix. Shared full-run misses remain: French Mbappé, China National Day, Wilson Neves, BUEI, Assemblée nationale, Jamaica Association, and Oleshky. BUEI now reports no topic rather than selecting Disney; its test input supplies no country context. Wilson still needs investigation despite the date guard.
-
-## Matching fixes and stricter labels — 2026-10-28
-
-The follow-up fixes preserve a recognised opening surname through foreign-name filtering, require exact full-name agreement, exclude spelled-out quantities from subject overlap, and reject funeral topics when the headline provides no death-related cue. On the final frozen build, **5/5 focused stories passed with Laya on and 5/5 with Laya off**, run sequentially: Mbappé, Ethiopia–Russia, Norway–Finland, Dubai Fitness Challenge, and Dominica's student awards. [Focused results and build hash](feature-verification/laya-olds-fixes-2026-10-28.json).
-
-Five gold labels now reject known unrelated topics, with six regression cases included in `npm test`. Rescoring the previous full-run evidence under these stricter labels gives **66/78 on and 62/78 off**; this is reclassification of historical results, not a new full evaluation. The evaluator records the gold-file hash and calls scores “label matches.” Typechecking, 505 application/package tests, six label tests, and the production build passed; five registry tests remain skipped.
-
-The full 78-story run has **not** been repeated on the final fixes. Wilson Neves, Bernardo, and other documented mismatches remain open; the prior full-quality gate remains failed. Ethiopia's live results varied during investigation, although both final focused runs passed.
-
-## Laya / Olds resumed comparison — 2026-10-28
-
-The 78-headline comparison on app commit `0d6aa72` completed sequentially with Laya on, then off: **71/78 on, 66/78 off** under the original regex labels. The requirement that off remain at least 71 **failed**. These results do not establish semantic accuracy: broad labels accept unrelated topics, including a European motocross championship for Guam and Peru–United Kingdom relations for a weather headline. The older off baseline also used older code and live data, so differences cannot all be attributed to code.
-
-Both completed runs used the same frozen build and profile with all 11 supported translation languages from the previous setup (`ar,de,es,fr,id,it,nl,pl,pt,ru,tr`). The former setup silently ignored unavailable `zh`; an initial partial run without translations was discarded. Typechecking, 501 tests, and the production build passed; five registry tests were skipped.
-
-[Full results, differences to investigate, and review caveats](feature-verification/laya-olds-2026-10-28.json) preserve every selected topic. The evaluator now saves partial progress, records installed languages, and supports explicit `OLDS_LANGS` installation with failures surfaced. The next work is to tighten misleading acceptance labels and trace the shared and off-only failures before repeating the full comparison. No application matching changes were made during these runs; the quality gate remains failed.
-
-## Earlier feature checks
-
-Run 2026-10-28 12:59 UTC · tier `full` · only OLDS_HEADLINE, OLDS_UI, OLDS_COUNTRY, OLDS_DEBATE · **4 passed, 0 failed, 0 blocked, 0 skipped, 23 assumed**.
+Run 2026-11-05 02:05 UTC · tier `network` · only SAVED_PASSWORDS · **1 passed, 0 failed, 0 blocked, 0 skipped, 27 assumed**.
 
 Each feature makes a promise to the user; its check drives the built app end to end. Defined in `docs/FEATURE_DAG.json`, checks in `experiments/e2e/checks.mjs`, run with `npm run verify:features`.
 
@@ -72,14 +18,15 @@ Each feature makes a promise to the user; its check drives the built app end to 
 | · | **Live public globe** (`GLOBE_LIVE`) | The globe shows live public signals (local news, reading, hazards) with World, Peaks, Rising and Fading highlights. | APP_BOOT | assumed |
 | · | **Stories covered across the world** (`WORLD_STORIES`) | The World tab lists stories covered by outlets in many countries, and the whole list can be scrolled. | GLOBE_LIVE | assumed |
 | · | **A country's news and bigger picture** (`COUNTRY_PANEL`) | Opening a country shows key facts, genuinely recent history and its local headlines, without clipping. | GLOBE_LIVE, FLY_TO | assumed |
-| ✅ | **The history behind a headline** (`OLDS_HEADLINE`) | A headline opens the right topic with a dated, ordered chronology quoted from Wikipedia and relevant topics from the right country; broad matches give way to the actual event; no junk for unmatched headlines. | APP_BOOT | pass · 99 s — Israel → 2026 Israeli legislative election: 18 dated events from 29 Dec 2022; Ebola, South Africa and Guernsey guards ok; related Judiciary of Israel, Israeli law, Politics of Israel, Elections in Israel. Brazil → 2026 Brazilian general election. Honduras → Honduras. |
-| ✅ | **A country's history** (`OLDS_COUNTRY`) | A country's history has key facts, chapters and events from the last ten years. | APP_BOOT | pass · 6 s — Capital Tórshavn; 7 chapters; latest event 2025. |
-| ✅ | **Competing interpretations** (`OLDS_DEBATE`) | Where Wikipedia attributes competing views, The Olds shows them side by side with who holds each. | APP_BOOT | pass · 3 s — Anthropologist Joseph Henrich, Rodney Stark, Historian Joel Mokyr, Williams, Voltaire, Bob Allen |
-| ✅ | **The Olds panel from a headline** (`OLDS_UI`) | A headline's history button opens The Olds with Story and Timeline views, no clipped timeline cards, and Escape closes it. | COUNTRY_PANEL, OLDS_HEADLINE | pass · 79 s — Views Story/Timeline/List; sections: HOW WE GOT HERE. |
+| · | **The history behind a headline** (`OLDS_HEADLINE`) | A headline opens the right topic with a dated, ordered chronology quoted from Wikipedia and relevant topics from the right country; broad matches give way to the actual event; no junk for unmatched headlines. | APP_BOOT | assumed |
+| · | **A country's history** (`OLDS_COUNTRY`) | A country's history has key facts, chapters and events from the last ten years. | APP_BOOT | assumed |
+| · | **Competing interpretations** (`OLDS_DEBATE`) | Where Wikipedia attributes competing views, The Olds shows them side by side with who holds each. | APP_BOOT | assumed |
+| · | **The Olds panel from a headline** (`OLDS_UI`) | A headline's history button opens The Olds with Story and Timeline views, no clipped timeline cards, and Escape closes it. | COUNTRY_PANEL, OLDS_HEADLINE | assumed |
 | · | **Browse the web** (`BROWSE`) | Pages open in tabs with a named toolbar (Translate, Capture, Pin, Absorb, Bookmarks), and closing tabs never crashes the app. | APP_BOOT | assumed |
 | · | **Ad and tracker protection** (`PROTECTION`) | Ads and trackers are blocked and the protection bar under the toolbar shows what was blocked. | BROWSE | assumed |
 | · | **Site permissions and sign-in popups** (`PERMISSIONS`) | Sites ask for camera, microphone or location in a bar you answer; sign-in popups keep working; new-tab links open as tabs. | BROWSE | assumed |
 | · | **Private browsing** (`PRIVATE_BROWSING`) | Private tabs are marked, leave no footprints, and close with their session when private browsing ends. | BROWSE | assumed |
+| ✅ | **Saved passwords** (`SAVED_PASSWORDS`) | After you sign in, Intoponet offers to save the password, keeps it sealed on this Mac, fills it next time (or asks which account), lists it in Settings, and never saves or fills in a private tab. | SETTINGS | pass · 16 s — Offered, saved (sealed file, no plaintext), filled one account on its own, asked between two, listed in Settings; private tab untouched (localhost:58226). |
 | · | **Sites to leave out** (`EXCLUDED_SITES`) | Sites you leave out are never absorbed and leave no recent pages. | BROWSE | assumed |
 | · | **Screenshots into folders** (`CAPTURE`) | A screenshot of the page is saved, and you can make a new folder while saving. | BROWSE | assumed |
 | · | **Paywall detection** (`PAYWALL_ALTERNATIVES`) | Paywalled outlets are recognised so free coverage of the same story can be offered (never circumvented). | BROWSE, GLOBE_LIVE | assumed |
@@ -87,9 +34,3 @@ Each feature makes a promise to the user; its check drives the built app end to 
 | · | **Beacon registry on Neon** (`BEACONS_REGISTRY`) | The app reaches the live beacon registry, which is healthy and refuses unsigned requests. | LIBRARY | assumed |
 | · | **Automatic page translation** (`AUTO_TRANSLATE`) | With automatic translation on, a Russian page is detected and translated into your language on this Mac. | SETTINGS, BROWSE | assumed |
 | · | **Languages without a model** (`ROUGH_TRANSLATE`) | Faroese headlines translate roughly through Icelandic and say so. | COUNTRY_PANEL | assumed |
-
-## PRD follow-through — 29 October 2026
-
-Final integration passed all typechecks and 606 tests including the release-inventory checks; all database-backed tests ran on an isolated temporary PostgreSQL instance (no skips). See [execution plan](PRD_EXECUTION_PLAN.md) for scope and [integration output](feature-verification/integration-2026-10-29.json). Parent reproduced packaged renderer crash/recovery, eight-screen WCAG 2.2-tagged axe and keyboard checks, native protection edge cases, and reviewed immutable shared-snapshot tests. These checks do not establish general-public release readiness.
-
-The Laya sandbox experiment exposed a real WebRTC TCP egress path despite renderer sandbox/CSP/session controls; strict isolation remains a failing gate. Model buffers now receive point-of-use fingerprint checks. Public signing, automatic updates, independent review, release ownership, licensing, full accessibility/hardware evidence, source approvals and public Beacon safeguards remain open.
