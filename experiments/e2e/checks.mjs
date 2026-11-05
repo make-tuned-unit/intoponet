@@ -556,12 +556,37 @@ export const checks = {
   },
 
   async AUTO_TRANSLATE(ctx) {
+    // A fresh profile, nothing switched on: automatic translation is the default.
     await openPanel(ctx, 'Settings')
-    await ctx.evaluate(`(() => { const boxes = [...document.querySelectorAll('.settings-pane input[type=checkbox]')]; boxes[0].click(); boxes[1].click(); return true })()`)
+    const defaults = await ctx.evaluate(`[...document.querySelectorAll('.settings-pane input[type=checkbox]')].slice(0, 2).map((box) => box.checked)`)
+    expect(defaults.length === 2 && defaults.every(Boolean), `Automatic translation is not on by default (${JSON.stringify(defaults)}).`)
     await ctx.click('[aria-label="Close settings"]')
+    const before = JSON.parse(await ctx.evaluate(`window.intoponet.translate.status().then((s) => JSON.stringify(s.languages.find((l) => l.code === 'ru')))`))
+    expect(before && !before.downloaded, 'Russian is already downloaded in a fresh profile.')
+    // Open a Russian page and press nothing: it downloads Russian (quietly) and translates itself.
     await openPage(ctx, 'https://www.fontanka.ru/', 1000)
-    await ctx.wait(`window.intoponet.translate.pageState().then((s) => s.status === 'translated')`, 240_000, 'a Russian page to translate itself')
-    return 'fontanka.ru detected as Russian and translated automatically.'
+    await ctx.wait(`window.intoponet.translate.status().then((s) => s.downloading?.code === 'ru' || s.languages.find((l) => l.code === 'ru')?.downloaded)`, 180_000, 'Russian to start downloading by itself')
+    await ctx.shot('downloading')
+    await ctx.wait(`window.intoponet.translate.pageState().then((s) => s.status === 'translated' && s.from === 'ru' && s.to === 'en')`, 240_000, 'a Russian page to translate itself')
+    expect(!(await ctx.evaluate(`!!document.querySelector('.translate-bar')`)), 'The translate bar opened: the page should translate without it.')
+    await ctx.wait(`document.querySelector('.translate-toggle')?.innerText.includes('Translated')`, 10_000, 'the toolbar to say Translated')
+    await ctx.shot('translated')
+    const page = await ctx.page('fontanka.ru')
+    const text = await page.evaluate(`document.body.innerText.slice(0, 4000)`)
+    const cyrillic = (text.match(/[\u0400-\u04FF]/g) ?? []).length
+    const latin = (text.match(/[A-Za-z]/g) ?? []).length
+    expect(latin > cyrillic, `The page still reads as Russian (${cyrillic} Cyrillic vs ${latin} Latin letters).`)
+    await ctx.pageShot(page, 'page')
+    // Never translate this site: Original comes back, and the site stays untranslated.
+    await ctx.click('.translate-toggle')
+    await ctx.wait(`!!document.querySelector('.translate-bar')`, 5_000, 'the translate bar')
+    expect(await ctx.click('.translate-bar button', 'Never translate this site'), 'No "Never translate this site" button.')
+    await ctx.wait(`window.intoponet.translate.pageState().then((s) => s.status === 'idle')`, 10_000, 'the original page back')
+    await ctx.shot('never-site')
+    await openPage(ctx, 'https://www.fontanka.ru/', 8000)
+    const state = JSON.parse(await ctx.evaluate(`window.intoponet.translate.pageState().then((s) => JSON.stringify(s))`))
+    expect(state.status === 'idle', `A never-translate site was translated again (${state.status}).`)
+    return `fontanka.ru translated from Russian with no clicks (Russian downloaded by itself; ${latin} Latin vs ${cyrillic} Cyrillic letters); "Never translate this site" sticks.`
   },
 
   async ROUGH_TRANSLATE(ctx) {
@@ -569,10 +594,8 @@ export const checks = {
     await ctx.flyTo('Faroe Islands')
     await ctx.delay(3000)
     await ctx.click('.globe-list .globe-row', 'Faroe')
-    await ctx.wait(`!!document.querySelector('.tr-headline-bar')`, 60_000, 'a translate offer for Faroese headlines')
-    const offer = await ctx.evaluate(`document.querySelector('.tr-headline-bar').innerText`)
-    expect(/Icelandic/.test(offer), `Faroese is not offered via Icelandic: "${offer}"`)
-    await ctx.click('.tr-headline-bar button')
+    // Nothing to press: Icelandic downloads by itself and the Faroese headlines translate through it.
+    await ctx.wait(`!!document.querySelector('.tr-headline-bar')`, 60_000, 'the headline translation bar for Faroese headlines')
     await ctx.wait(`[...document.querySelectorAll('.globe-headlines small')].some((s) => /via Icelandic/.test(s.innerText))`, 240_000, 'headlines labelled "rough, via Icelandic"')
     return 'Faroese headlines translated roughly via Icelandic, labelled as such.'
   },

@@ -5,10 +5,19 @@ import './translate.css'
 
 /**
  * The bar under the page toolbar: detected language → your language, one
- * click to translate, one to flip back. Languages download on request, each
- * with its size shown first.
+ * click to translate, one to flip back. Pages usually translate on their own
+ * (Settings › Your language); this bar shows the original, picks another
+ * language, or turns automatic translation off for one site.
  */
-export function TranslateBar({ model, onClose }: { model: TranslateModel; onClose: () => void }) {
+export function TranslateBar({ model, onClose, site, neverSite, onNeverSite }: {
+  model: TranslateModel
+  onClose: () => void
+  /** The open page's site (host without "www."), when it is a web page. */
+  site?: string | null
+  /** The site is on the "never translate" list. */
+  neverSite?: boolean
+  onNeverSite?: (never: boolean) => void
+}) {
   const { status, page, target } = model
   const [manage, setManage] = useState(false)
   const [sourceOverride, setSourceOverride] = useState<string | null>(null)
@@ -135,6 +144,20 @@ export function TranslateBar({ model, onClose }: { model: TranslateModel; onClos
         <Languages size={14} aria-hidden="true" className="tr-icon" />
         {body}
         <span className="tr-spacer" />
+        {site && onNeverSite && (
+          <button
+            type="button"
+            className="tr-button"
+            aria-pressed={!!neverSite}
+            title={neverSite ? `Pages on ${site} stay in their own language unless you translate them here` : `Stop translating ${site} automatically`}
+            onClick={() => {
+              onNeverSite(!neverSite)
+              if (!neverSite && (page.status === 'translated' || page.status === 'translating')) void model.restorePage()
+            }}
+          >
+            {neverSite ? `Translate ${site} automatically` : 'Never translate this site'}
+          </button>
+        )}
         {(model.error || (page.status === 'error' && page.message)) && (
           <span className="tr-error" role="alert">{model.error || (page.status === 'error' ? page.message : '')}</span>
         )}

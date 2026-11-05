@@ -1,6 +1,6 @@
 # Feature verification
 
-Run 2026-11-05 04:48 UTC · tier `network` · only SOURCE_CAROUSEL · **1 passed, 0 failed, 0 blocked, 0 skipped, 28 assumed**.
+Run 2026-11-05 05:07 UTC · tier `full` · only AUTO_TRANSLATE, SETTINGS, ROUGH_TRANSLATE · **3 passed, 0 failed, 0 blocked, 0 skipped, 26 assumed**.
 
 Each feature makes a promise to the user; its check drives the built app end to end. Defined in `docs/FEATURE_DAG.json`, checks in `experiments/e2e/checks.mjs`, run with `npm run verify:features`.
 
@@ -8,7 +8,7 @@ Each feature makes a promise to the user; its check drives the built app end to 
 | --- | --- | --- | --- | --- |
 | · | **Typecheck, unit tests and production build** (`BUILD`) | The app is built from code that typechecks and passes every unit test. | — | assumed |
 | · | **App starts** (`APP_BOOT`) | Intoponet opens to the globe with Private, Bookmarks, The Olds, Knowledge, My map and Settings in the header. | BUILD | assumed |
-| · | **Settings and Privacy** (`SETTINGS`) | Settings covers language, automatic translation, beacons, credits and privacy; Privacy covers private browsing, footprints, sites to leave out, pins and backups. | APP_BOOT | assumed |
+| ✅ | **Settings and Privacy** (`SETTINGS`) | Settings covers language, automatic translation, beacons, credits and privacy; Privacy covers private browsing, footprints, sites to leave out, pins and backups. | APP_BOOT | pass · 6 s — Settings and Privacy sections present. |
 | · | **Accessible and keyboard friendly** (`ACCESSIBILITY`) | No WCAG 2.1 AA violations; every header panel opens with Enter, closes with Escape and returns focus to its button. | APP_BOOT | assumed |
 | · | **Encrypted private library, pins and beacon consent** (`LIBRARY`) | Saved pages live only in the encrypted library (old plain copies migrate without loss); pins can be hidden; publishing a pin as a beacon needs explicit agreement. | APP_BOOT | assumed |
 | · | **Collections explained and split; tags** (`COLLECTIONS_IMPORT`) | A collection explains what it holds (sites, topics, places) and can be split by site; pins carry several tags. | LIBRARY | assumed |
@@ -16,7 +16,7 @@ Each feature makes a promise to the user; its check drives the built app end to 
 | · | **Globe stays where you put it** (`GLOBE_MOTION`) | Zooming after moving the globe keeps the place in view; it never swings back. | FLY_TO | assumed |
 | · | **Every country named and clickable** (`COUNTRY_NAMES`) | Country names fade in by zoom without overlapping; the country you spin or zoom to is always named, tiny ones included (Vatican, Nauru, Tuvalu); clicking any country, with or without news, opens it. | FLY_TO | assumed |
 | · | **Live public globe** (`GLOBE_LIVE`) | The globe shows live public signals (local news, reading, hazards) with World, Peaks, Rising and Fading highlights. | APP_BOOT | assumed |
-| ✅ | **Sources carousel** (`SOURCE_CAROUSEL`) | A world story with several sources opens a carousel of every outlet's headline to flip through; choosing one grows its card into the browser with that article open. | GLOBE_LIVE | pass · 126 s — Carousel flipped from KNR (Kalaallit Nunaata Radioa) to Le Journal de Montréal; chose "Le Journal de Montréal: EN DIRECT \| Élections de mi-mandat: Trump juge «en grand" and the browser opened https://www.journaldemontreal.com/2026/11/03/en-direct--les-americains-aux-urnes-les-premiers-bureaux-de-vote-ouvrent-pour-des-elections-cruciales (page was open before). |
+| · | **Sources carousel** (`SOURCE_CAROUSEL`) | A world story with several sources opens a carousel of every outlet's headline to flip through; choosing one grows its card into the browser with that article open. | GLOBE_LIVE | assumed |
 | · | **Stories covered across the world** (`WORLD_STORIES`) | The World tab lists stories covered by outlets in many countries, and the whole list can be scrolled. | GLOBE_LIVE | assumed |
 | · | **A country's news and bigger picture** (`COUNTRY_PANEL`) | Opening a country shows key facts, genuinely recent history and its local headlines, without clipping. | GLOBE_LIVE, FLY_TO | assumed |
 | · | **The history behind a headline** (`OLDS_HEADLINE`) | A headline opens the right topic with a dated, ordered chronology quoted from Wikipedia and relevant topics from the right country; broad matches give way to the actual event; no junk for unmatched headlines. | APP_BOOT | assumed |
@@ -33,5 +33,5 @@ Each feature makes a promise to the user; its check drives the built app end to 
 | · | **Paywall detection** (`PAYWALL_ALTERNATIVES`) | Paywalled outlets are recognised so free coverage of the same story can be offered (never circumvented). | BROWSE, GLOBE_LIVE | assumed |
 | · | **Absorb, search and claims** (`ABSORB`) | Absorbing a page (or just a selection) keeps it on this Mac; search returns the cited paragraph; claims are listed without false disputes. | BROWSE | assumed |
 | · | **Beacon registry on Neon** (`BEACONS_REGISTRY`) | The app reaches the live beacon registry, which is healthy and refuses unsigned requests. | LIBRARY | assumed |
-| · | **Automatic page translation** (`AUTO_TRANSLATE`) | With automatic translation on, a Russian page is detected and translated into your language on this Mac. | SETTINGS, BROWSE | assumed |
-| · | **Languages without a model** (`ROUGH_TRANSLATE`) | Faroese headlines translate roughly through Icelandic and say so. | COUNTRY_PANEL | assumed |
+| ✅ | **Automatic page translation** (`AUTO_TRANSLATE`) | With automatic translation on, a Russian page is detected and translated into your language on this Mac. | SETTINGS, BROWSE | pass · 67 s — fontanka.ru translated from Russian with no clicks (Russian downloaded by itself; 3043 Latin vs 0 Cyrillic letters); "Never translate this site" sticks. |
+| ✅ | **Languages without a model** (`ROUGH_TRANSLATE`) | Faroese headlines translate roughly through Icelandic and say so. | COUNTRY_PANEL | pass · 147 s — Faroese headlines translated roughly via Icelandic, labelled as such. |

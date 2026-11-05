@@ -1754,6 +1754,7 @@ app.whenReady().then(async () => {
     engine: openTranslationEngine(translateStore),
     emit: (event) => { if (window && !window.isDestroyed()) window.webContents.send(translateChannels.event, event) },
     getActivePage: () => (pageAttached && pageView && !pageView.webContents.isDestroyed() ? pageView.webContents : null),
+    isPrivatePage: (page) => !!pageView && pageView.webContents.id === page.id && privateViews.has(pageView),
   })
   ipcMain.handle(translateChannels.command, (_event, value: unknown) => translateService!.handle(parseTranslateCommand(value)))
   // Whether the open page declares its article restricted (read-only; used to offer free coverage elsewhere).

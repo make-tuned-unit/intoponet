@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Compass, Languages, LockKeyhole, Play, Settings, Trash2, X } from 'lucide-react'
 import { formatMegabytes, languageName, nativeName, type TranslateModel } from '../translate/useTranslate'
-import type { AppSettings } from './appSettings'
+import { withNeverTranslate, type AppSettings } from './appSettings'
 import { BeaconSettings } from '../beacons/BeaconSettings'
 import { LayaSettings } from './LayaSettings'
 import { UpdatesSettings } from './UpdatesSettings'
@@ -71,7 +71,7 @@ export function SettingsPanel({
 
         <section>
           <h3><Languages size={13} aria-hidden="true" /> Your language</h3>
-          <label className="privacy-select">
+          <label className="privacy-select" title="Your preferred language. It starts as your Mac's language (System Settings › General › Language & Region).">
             <span>Read the web in</span>
             <select value={target} onChange={(event) => void chooseLanguage(event.target.value)} disabled={!!busy}>
               {codes.map((code) => (
@@ -84,17 +84,28 @@ export function SettingsPanel({
           {downloading && <p role="status">Downloading {languageName(downloading.code)} · {formatMegabytes(downloading.receivedBytes)} of {formatMegabytes(downloading.totalBytes)}</p>}
           <label className="privacy-switch">
             <input type="checkbox" checked={settings.autoTranslate} onChange={(event) => onSettings({ ...settings, autoTranslate: event.target.checked })} />
-            <span>Translate pages into {languageName(target)} automatically</span>
+            <span>Translate pages and headlines into {languageName(target)} automatically</span>
           </label>
           <label className="privacy-switch">
-            <input type="checkbox" checked={settings.autoDownload} disabled={!settings.autoTranslate} onChange={(event) => onSettings({ ...settings, autoDownload: event.target.checked })} />
-            <span>Download a language the first time a page needs it</span>
+            <input type="checkbox" checked={headlinesTranslated} disabled={!settings.autoTranslate} onChange={(event) => onHeadlinesTranslated(event.target.checked)} />
+            <span>Show news headlines and story titles in {languageName(target)}</span>
           </label>
-          <label className="privacy-switch">
-            <input type="checkbox" checked={headlinesTranslated} onChange={(event) => onHeadlinesTranslated(event.target.checked)} />
-            <span>Show news headlines in {languageName(target)}</span>
-          </label>
-          <p>Translation runs on this Mac with open models (Firefox Translations); no text leaves your device. Each language is a one-time download of 40–140 MB (most are about 70 MB). Choose “Original” in the translate bar to read a page untranslated; it stays that way for that page. Intoponet’s own menus are in English for now.</p>
+          <p>Translation runs on this Mac with open models (Firefox Translations); no text leaves your device. The first time something needs a language, it downloads by itself: a one-time 40–140 MB (most are about 70 MB), shown as it goes. Choose “Original” in the translate bar to read a page untranslated; it stays that way for that page. Intoponet’s own menus are in English for now.</p>
+          {settings.neverTranslate.length > 0 && (
+            <>
+              <h4>Never translated</h4>
+              <ul className="settings-languages">
+                {settings.neverTranslate.map((site) => (
+                  <li key={site}>
+                    <span>{site}</span>
+                    <button type="button" aria-label={`Translate ${site} automatically again`} title="Translate this site automatically again" onClick={() => onSettings(withNeverTranslate(settings, site, false))}>
+                      <Trash2 size={13} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </section>
 
         <section>

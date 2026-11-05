@@ -1,29 +1,20 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Download, History, Languages, LoaderCircle, Lock } from 'lucide-react'
+import { History, Languages, LoaderCircle, Lock } from 'lucide-react'
 import { hostIsPaywalled } from '../../../shared/news/paywall'
 import { learnedPaywalls } from '../access/learnedPaywalls'
 import '../access/access.css'
-import { normalizeLanguage } from '@intoponet/browser-api'
 import { headlineLanguage } from '../../../shared/translate/detect'
 import type { NewsHeadline } from '../../../shared/news/newsDigest'
 import { relativeTime } from '../globe/globeSignals'
 import { formatMegabytes, languageName, modelFor, nativeName, RELATED_MODEL, type TranslateModel } from './useTranslate'
+import { useHeadlinePref } from './headlinePref'
+import { modelsToFetch } from './modelQueue'
 import './translate.css'
 
-const PREF = 'intoponet.translate.headlines.v1'
-
-function readPref(): boolean {
-  try {
-    return localStorage.getItem(PREF) === '1'
-  } catch {
-    return false
-  }
-}
-
 /**
- * Headlines with an Original ↔ your-language flip. Translation happens on
- * this Mac; headlines in languages without a downloaded model offer the
- * download (with its size) instead.
+ * Headlines shown in your language, with an Original ↔ your-language flip.
+ * Translation happens on this Mac; a language without a downloaded model
+ * downloads the first time it is needed, with a quiet progress note.
  */
 export function HeadlineList({
   headlines,
@@ -43,16 +34,12 @@ export function HeadlineList({
   /** Open the history behind a headline (with its English text when it is shown translated). */
   onHistory?: ((headline: NewsHeadline, englishText: string | null) => void) | undefined
 }) {
-  const [on, setOn] = useState(readPref)
-  // Settings can switch headline translation on or off for every list.
-  useEffect(() => {
-    const onPref = (event: Event): void => setOn((event as CustomEvent<boolean>).detail === true)
-    window.addEventListener('intoponet:headline-pref', onPref)
-    return () => window.removeEventListener('intoponet:headline-pref', onPref)
-  }, [])
+  // One choice for every list (Settings and each list's Original ↔ language flip).
+  const [on, setPref] = useHeadlinePref()
   const paywalled = useMemo(() => learnedPaywalls(), [headlines])
   const [translated, setTranslated] = useState<Map<string, string>>(new Map())
   const target = translation?.target ?? 'en'
+  const supportedKey = translation?.status?.languages.map((language) => language.code).join(',') ?? ''
   const foreign = useMemo(() => {
     const byLang = new Map<string, NewsHeadline[]>()
     for (const headline of headlines) {
@@ -64,7 +51,7 @@ export function HeadlineList({
       byLang.set(code, [...(byLang.get(code) ?? []), headline])
     }
     return byLang
-  }, [headlines, target, translation])
+  }, [headlines, target, supportedKey, !!translation]) // eslint-disable-line react-hooks/exhaustive-deps
   // Headlines in languages no model covers (e.g. Papiamento): say so instead of showing nothing.
   const untranslatable = useMemo(() => {
     const codes = new Set<string>()
@@ -73,9 +60,17 @@ export function HeadlineList({
       if (code && code !== target && translation && !modelFor(code, translation.supported)) codes.add(code)
     }
     return [...codes]
-  }, [headlines, target, translation])
-  const missing = translation ? [...foreign.keys(), target].filter((code) => !translation.ready.has(code) && translation.supported(code)) : []
+  }, [headlines, target, supportedKey, !!translation]) // eslint-disable-line react-hooks/exhaustive-deps
   const readyKey = translation ? [...translation.ready].sort().join(',') : ''
+  // Missing languages download on first need (your language first, then the most used).
+  const wanted = on && translation ? modelsToFetch(foreign, target, translation.ready, translation.supported).join(',') : ''
+  const [failed, setFailed] = useState<string[]>([])
+  useEffect(() => {
+    if (!wanted || !translation) return
+    let cancelled = false
+    void translation.ensure(wanted.split(',')).then((codes) => { if (!cancelled) setFailed(codes) })
+    return () => { cancelled = true }
+  }, [wanted]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!on || !translation) return
@@ -98,89 +93,29 @@ export function HeadlineList({
     // readyKey re-runs after a language finishes downloading.
   }, [on, foreign, target, readyKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const setPref = (next: boolean): void => {
-    setOn(next)
-    try {
-      localStorage.setItem(PREF, next ? '1' : '0')
-    } catch {
-      // ignore
-    }
-  }
-
-  const missingBytes = missing.reduce((sum, code) => {
-    const language = translation?.status?.languages.find((item) => item.code === code)
-    return sum + (language?.bytes ?? 0)
-  }, 0) + (missing.length && translation?.status && !translation.status.engine.downloaded ? translation.status.engine.bytes : 0)
   const downloading = translation?.status?.downloading ?? null
   const sources = [...foreign.keys()]
   const sourceLabel = sources.length === 1 ? nativeName(sources[0]!) : 'Original'
-
-  const bytesOf = (code: string): number => (translation?.status?.languages.find((item) => item.code === code)?.bytes ?? 0)
-    + (translation?.status && !translation.status.engine.downloaded ? translation.status.engine.bytes : 0)
-  // Missing source languages, most headlines first (the target language, if missing, goes first of all).
-  const missingByUse = [
-    ...missing.filter((code) => code === target),
-    ...missing.filter((code) => code !== target).sort((a, b) => (foreign.get(b)?.length ?? 0) - (foreign.get(a)?.length ?? 0)),
-  ]
-  const installOne = (code: string): void => {
-    if (!translation || downloading) return
-    setPref(true)
-    void translation.install(code)
-  }
-
-  /** One click: download whatever is missing (size shown on the button), then translate. */
-  const translateNow = (): void => {
-    if (!translation) return
-    setPref(true)
-    if (!missing.length || downloading) return
-    void (async () => {
-      for (const code of missing) await translation.install(code)
-    })()
-  }
+  const unavailable = on && !downloading ? failed.filter((code) => wanted.split(',').includes(code)) : []
 
   return (
     <>
       {foreign.size > 0 && translation && (
         <div className="tr-headline-bar">
           {downloading && on ? (
-            <span className="tr-inline-status" role="status">
+            <span className="tr-inline-status" role="status" title="A one-time download of the translation model; translation then runs on this Mac and nothing leaves it.">
               <LoaderCircle size={11} className="tr-spin" aria-hidden="true" />
-              Downloading {languageName(downloading.code)} · {formatMegabytes(downloading.receivedBytes)} of {formatMegabytes(downloading.totalBytes)}
+              Getting {languageName(downloading.code)} for translation · {formatMegabytes(downloading.receivedBytes)} of {formatMegabytes(downloading.totalBytes)}
               <span className="tr-meter" aria-hidden="true"><i style={{ width: `${downloading.totalBytes ? (downloading.receivedBytes / downloading.totalBytes) * 100 : 0}%` }} /></span>
             </span>
-          ) : missing.length === 0 || (sources.length > 1 && sources.some((code) => translation.ready.has(code)) && translation.ready.has(target)) ? (
-            <>
-              <div className="tr-flip tr-flip-small" role="group" aria-label="Show headlines in">
-                <button type="button" className={on ? '' : 'is-active'} aria-pressed={!on} onClick={() => setPref(false)}>{sourceLabel}</button>
-                <button type="button" className={on ? 'is-active' : ''} aria-pressed={on} onClick={() => setPref(true)}>{languageName(target)}</button>
-              </div>
-              {missingByUse.slice(0, 3).map((code) => (
-                <button key={code} type="button" className="tr-inline-toggle" onClick={() => installOne(code)} title={`Add ${languageName(code)} (${formatMegabytes(bytesOf(code))}) to also translate its headlines`}>
-                  <Download size={11} aria-hidden="true" /> {languageName(code)} · {formatMegabytes(bytesOf(code))}
-                </button>
-              ))}
-            </>
-          ) : sources.length > 1 ? (
-            <>
-              {/* Several languages, none installed: start with the most used one. */}
-              <button type="button" className="tr-inline-toggle tr-inline-primary" onClick={() => installOne(missingByUse[0]!)} title={`Translate these headlines into ${languageName(target)} on this Mac`}>
-                <Download size={11} aria-hidden="true" /> Translate to {languageName(target)} · add {languageName(missingByUse[0]!)} ({formatMegabytes(bytesOf(missingByUse[0]!))})
-              </button>
-              {missingByUse.slice(1, 3).map((code) => (
-                <button key={code} type="button" className="tr-inline-toggle" onClick={() => installOne(code)}>
-                  <Download size={11} aria-hidden="true" /> {languageName(code)} · {formatMegabytes(bytesOf(code))}
-                </button>
-              ))}
-            </>
           ) : (
-            <>
-              <button type="button" className="tr-inline-toggle tr-inline-primary" onClick={translateNow} title={`Translate these headlines into ${languageName(target)} on this Mac`}>
-                <Download size={11} aria-hidden="true" /> Translate to {languageName(target)} · download {missing.map((code) => languageName(code)).join(' + ')} ({formatMegabytes(missingBytes)})
-              </button>
-              {on && (
-                <button type="button" className="tr-inline-toggle" onClick={() => setPref(false)}>Keep original</button>
-              )}
-            </>
+            <div className="tr-flip tr-flip-small" role="group" aria-label="Show headlines in">
+              <button type="button" className={on ? '' : 'is-active'} aria-pressed={!on} onClick={() => setPref(false)}>{sourceLabel}</button>
+              <button type="button" className={on ? 'is-active' : ''} aria-pressed={on} onClick={() => setPref(true)}>{languageName(target)}</button>
+            </div>
+          )}
+          {unavailable.length > 0 && (
+            <span className="tr-inline-error" role="alert">Could not download {unavailable.map((code) => languageName(code)).join(', ')}; showing the original.</span>
           )}
           {translation.error && <span className="tr-inline-error" role="alert">{translation.error}</span>}
         </div>
