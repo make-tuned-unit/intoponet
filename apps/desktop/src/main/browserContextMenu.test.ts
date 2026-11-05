@@ -15,7 +15,7 @@ const base: BrowserContextMenuInput = {
 describe('native browser context actions', () => {
   it('offers explicit safe HTTP(S) new-tab navigation and link copying', () => {
     expect(browserContextActions({ ...base, linkURL: 'https://example.org/articles?q=1' })).toEqual([
-      'open-link-in-new-tab', 'copy-link-address', 'back', 'reload',
+      'open-link-in-new-tab', 'copy-link-address', 'back', 'reload', 'inspect',
     ])
     expect(browserContextActions({ ...base, linkURL: 'http://example.org/path' })).toContain('open-link-in-new-tab')
   })
@@ -41,7 +41,7 @@ describe('native browser context actions', () => {
       isEditable: true,
       selectionText: 'selected words',
     })
-    expect(actions).toEqual(['copy-selection', 'cut', 'paste', 'select-all', 'back', 'reload'])
+    expect(actions).toEqual(['copy-selection', 'cut', 'paste', 'select-all', 'back', 'reload', 'inspect'])
   })
 
   it('only offers save/copy image address for valid HTTP(S) image sources', () => {
@@ -50,7 +50,7 @@ describe('native browser context actions', () => {
       mediaType: 'image',
       srcURL: 'https://example.org/image.png',
       hasImageContents: true,
-    })).toEqual(['copy-image', 'copy-image-address', 'save-image', 'back', 'reload'])
+    })).toEqual(['copy-image', 'copy-image-address', 'save-image', 'back', 'reload', 'inspect'])
     expect(browserContextActions({
       ...base,
       mediaType: 'image',

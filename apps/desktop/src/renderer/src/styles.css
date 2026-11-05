@@ -1003,6 +1003,26 @@ button.origin-badge,
   color: #ffb876;
 }
 
+/* Page zoom other than 100%: click resets it. */
+button.zoom-indicator {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 0;
+  height: 31px;
+  padding: 0 10px;
+  color: rgba(233, 244, 243, 0.86);
+  border: 1px solid rgba(195, 237, 232, 0.12);
+  border-radius: 10px;
+  background: rgba(3, 12, 18, 0.3);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+button.zoom-indicator:hover {
+  border-color: rgba(195, 237, 232, 0.3);
+}
+
 .find-bar {
   flex: 0 0 40px;
   margin: 0;

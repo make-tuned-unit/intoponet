@@ -38,7 +38,8 @@ async function connect(url) {
 
 /**
  * Run `check(ctx)` against a freshly launched app. Returns notes from the check.
- * ctx: evaluate, send, delay, wait, click, type, press, shot, pageShot(session, label), page(urlPart), profile, env.
+ * ctx: evaluate, send, delay, wait, click, type, press, shot, pageShot(session, label), page(urlPart),
+ * main(expression), keyInPage(urlPart, keyCode, modifiers), profile, env.
  */
 export async function runAppCheck(check, { port = 9400 + Math.floor(Math.random() * 400), env: extraEnv = {}, evidenceDir, name, timeoutMs = 180_000 } = {}) {
   // E2E_PROFILE: a profile kept between runs (e.g. with translation models installed); otherwise a fresh one.
@@ -49,7 +50,10 @@ export async function runAppCheck(check, { port = 9400 + Math.floor(Math.random(
   delete env.ELECTRON_RUN_AS_NODE
   // node_modules/.bin/electron is a launcher that starts Electron as a child: run it in its own process group and
   // stop the whole group, or Electron outlives the check (and a few runs can exhaust the Mac's memory).
-  const app = spawn(join(repo, 'node_modules/.bin/electron'), [`--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, (process.env.E2E_APP_MAIN ?? join(repo, 'apps/desktop/out/main/index.js'))], { env, stdio: 'ignore', detached: true })
+  // The main process also listens for Node's inspector (localhost only), so a check can send keys the way
+  // the OS does: keys sent over CDP reach the page but skip the browser's own key handling.
+  const inspectPort = port + 1000
+  const app = spawn(join(repo, 'node_modules/.bin/electron'), [`--remote-debugging-port=${port}`, `--inspect=127.0.0.1:${inspectPort}`, `--user-data-dir=${profile}`, (process.env.E2E_APP_MAIN ?? join(repo, 'apps/desktop/out/main/index.js'))], { env, stdio: 'ignore', detached: true })
   const stopApp = (signal) => {
     try { process.kill(-app.pid, signal) } catch { /* gone */ }
     // Anything still holding this profile (Electron's helpers re-parent sometimes).
@@ -123,13 +127,34 @@ export async function runAppCheck(check, { port = 9400 + Math.floor(Math.random(
       await delay(900)
       await press('Enter')
     }
+    /** Evaluates an expression in the app's main process (Node inspector); `electron` is in scope. */
+    let mainSession = null
+    const main = async (expression) => {
+      if (!mainSession) {
+        const [target] = await (await fetch(`http://127.0.0.1:${inspectPort}/json/list`)).json()
+        if (!target) throw new CheckFailure('The main process inspector is not available.')
+        mainSession = await connect(target.webSocketDebuggerUrl)
+        sockets.push(mainSession.socket)
+      }
+      return mainSession.evaluate(`((electron) => (${expression}))(process.mainModule.require('electron'))`)
+    }
+    /**
+     * A key chord typed into the web page whose address contains `urlPart`, delivered as keyboard input to
+     * that page (as when it has focus). `keyCode` and `modifiers` as in webContents.sendInputEvent.
+     */
+    const keyInPage = (urlPart, keyCode, modifiers = []) => main(`(() => {
+      const page = electron.webContents.getAllWebContents().find((c) => /^https?:/.test(c.getURL()) && c.getURL().includes(${JSON.stringify(urlPart)}))
+      if (!page) return false
+      for (const type of ['keyDown', 'keyUp']) page.sendInputEvent({ type, keyCode: ${JSON.stringify(keyCode)}, modifiers: ${JSON.stringify(modifiers)} })
+      return true
+    })()`)
     const waitForNews = () => wait(`window.intoponet.browserHost.getNewsDigest().then((raw) => !!raw && JSON.parse(raw).countries.length > 100)`, 300_000, 'the local news digest to load')
     // Every check starts from a ready interface: header, globe and launcher rendered.
     await wait(`!!document.querySelector('.topbar') && !!document.querySelector('.command-input input') && !!document.querySelector('canvas')`, 45_000, 'the app interface to load')
     let timer
     const limit = new Promise((_, reject) => { timer = setTimeout(() => reject(new CheckFailure(`Took longer than ${Math.round(timeoutMs / 1000)} s.`)), timeoutMs) })
     try {
-      const notes = await Promise.race([check({ evaluate, send, delay, wait, click, type, press, shot, pageShot, page, flyTo, waitForNews, profile, port }), limit])
+      const notes = await Promise.race([check({ evaluate, send, delay, wait, click, type, press, shot, pageShot, page, main, keyInPage, flyTo, waitForNews, profile, port }), limit])
       return notes ?? ''
     } finally {
       clearTimeout(timer)

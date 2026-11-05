@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { readFile } from 'node:fs/promises'
 import { appendFileSync, existsSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
@@ -60,7 +60,11 @@ import {
   windowButtonsVisible,
   TAB_DOCK_TWEEN_MS,
 } from './tabDockBounds'
-import { pageShortcutForInput, shellShortcutForInput, tabCycleForInput, type PageShortcut } from './shellShortcuts'
+import { isPlainEscape, pageKeyAction } from './shellShortcuts'
+import { createAppMenuController, routeAppCommand, type AppCommand, type AppMenuState } from './appMenu'
+import { ClosedTabs } from './closedTabs'
+import { stepZoom, ZoomStore } from './zoomStore'
+import { savePageFilename } from './savePage'
 import { TRACKER_STUB_SCRIPT } from './trackerStubs'
 import { addressMenuTemplate, pasteAndGoText } from './addressMenu'
 import { bindPermissionOwnerLifecycle, kindsFor, originOf, SitePermissionBroker, SitePermissionStore } from './sitePermissions'
@@ -105,8 +109,10 @@ import {
   type BrowserHostEvent,
   type BrowserPanelBounds,
   type BrowserPanelSnapshot,
+  type ClosedTabSnapshot,
   type PageTabSnapshot,
   type PrivateLibraryReadResult,
+  type ShellShortcut,
   type ProtectionSnapshot,
   type PublicFieldStatus,
   parseBrowserHostCommand,
@@ -151,6 +157,12 @@ let lastKnownUrl = ''
 let persistenceTimer: ReturnType<typeof setTimeout> | null = null
 const protection = new LocalProtectionEngine()
 const protectionPages = new ProtectionPageContextStore()
+/** Recently closed tabs (⌘⇧T, History › Recently Closed): this session only, never private tabs. */
+const closedTabs = new ClosedTabs(25)
+/** Per-site zoom kept between launches (not for private tabs); null until the app is ready. */
+let zoomStore: ZoomStore | null = null
+/** Reopened tabs whose history is being restored: showing them must not load their address over it. */
+const restoringViews = new WeakSet<WebContentsView>()
 
 type OpenTab = {
   id: string
@@ -331,6 +343,7 @@ function panelState(): BrowserPanelSnapshot {
     isLoading: contents.isLoading(),
     isVisible: pageAttached,
     isPrivate: privateViews.has(pageView),
+    zoomFactor: Number(contents.getZoomFactor().toFixed(3)),
   }
 }
 
@@ -338,6 +351,8 @@ function emit(event: BrowserHostEvent): void {
   if (window && !window.isDestroyed()) {
     window.webContents.send(browserHostChannels.event, event)
   }
+  // The menu bar enables its items from the same state (rebuilt only when that changed).
+  if (event.type === 'panel-state' || event.type === 'tabs') appMenu.schedule()
 }
 
 function emitPanelState(): void {
@@ -924,7 +939,7 @@ function showTab(id: string): WebContentsView | null {
   // A tab that loaded in the background missed its cosmetic rules and tracker stand-ins.
   if (!tab.start && !tab.view.webContents.isLoading()) void applyCosmeticFilters(tab.view.webContents)
   const current = tab.view.webContents.getURL()
-  if ((!current || current === 'about:blank') && safeHttpUrl(tab.url) && crashRecovery.canAutoRecover(tab.id)) {
+  if ((!current || current === 'about:blank') && safeHttpUrl(tab.url) && !restoringViews.has(tab.view) && crashRecovery.canAutoRecover(tab.id)) {
     void tab.view.webContents.loadURL(tab.url)
   }
   return tab.view
@@ -935,6 +950,7 @@ function discardTab(id: string): void {
   if (index < 0) return
   const [tab] = openTabs.splice(index, 1)
   if (!tab) return
+  rememberClosedTab(tab)
   crashRecovery.forget(tab.id)
   if (pageView === tab.view) {
     detachActive()
@@ -1056,6 +1072,7 @@ function contextMenuTemplate(view: WebContentsView, params: Electron.ContextMenu
   if (has('back')) items.push({ label: 'Back', click: () => view.webContents.navigationHistory.goBack() })
   if (has('forward')) items.push({ label: 'Forward', click: () => view.webContents.navigationHistory.goForward() })
   if (has('reload')) items.push({ label: 'Reload', click: () => view.webContents.reload() })
+  if (has('inspect')) items.push({ type: 'separator' }, { label: 'Inspect', click: () => inspectPage(view, { x: params.x, y: params.y }) })
   return items.filter((item, index) => item.type !== 'separator' || (
     index > 0 && index < items.length - 1 && items[index - 1]?.type !== 'separator'
   ))
@@ -1104,26 +1121,21 @@ function buildView(isPrivate = privateMode): WebContentsView {
       emit({ type: 'tab-rail-state', expanded: false })
     }
   })
-  // Shell shortcuts would otherwise be swallowed by the focused page.
+  // Browser keys pressed in a page: carried out here, so a page cannot swallow them. preventDefault
+  // also keeps the menu bar from running the same key a second time.
   view.webContents.on('before-input-event', (event, input) => {
     if (pageView !== view) return
-    const pageAction = pageShortcutForInput(input)
-    if (pageAction) {
-      event.preventDefault()
-      void runPageShortcut(pageAction)
-      return
-    }
-    const cycle = tabCycleForInput(input)
-    if (cycle) {
-      event.preventDefault()
-      void handleBrowserCommand({ type: 'cycle-tabs', direction: cycle === 'next-tab' ? 'next' : 'previous' })
-      return
-    }
-    const action = shellShortcutForInput(input)
+    // Escape stops a page still loading; the page gets the key as well.
+    if (isPlainEscape(input) && view.webContents.isLoading()) view.webContents.stop()
+    const action = pageKeyAction(input, { developer: developerBuild() })
     if (!action) return
     event.preventDefault()
-    window?.webContents.focus()
-    emit({ type: 'shortcut', action })
+    if (action.kind === 'command') runAppCommand(action.command)
+    else showShellShortcut(action.action)
+  })
+  // ⌘/Ctrl + scroll wheel zooms like ⌘+ and ⌘−.
+  view.webContents.on('zoom-changed', (_event, direction) => {
+    if (pageView === view) void handleBrowserCommand({ type: 'zoom', action: direction === 'in' ? 'in' : 'out' })
   })
   view.webContents.on('context-menu', (event, params) => {
     if (viewGone(view) || !window || window.isDestroyed()) return
@@ -1240,6 +1252,7 @@ function buildView(isPrivate = privateMode): WebContentsView {
     void applyCosmeticFilters(view.webContents, { only: view.webContents.mainFrame })
   })
   view.webContents.on('did-navigate', (_event, url) => {
+    applySiteZoom(view, url)
     rememberTab(view)
     protectionPages.commitNavigation(view.webContents.id, url)
     passwords?.navigated(view.webContents.id)
@@ -1374,16 +1387,150 @@ async function runTabMenuAction(action: TabMenuAction, id: string): Promise<void
   }
 }
 
-/** Browser keys pressed inside a page act on it directly, as the toolbar would. */
-function runPageShortcut(action: PageShortcut): Promise<unknown> {
-  switch (action) {
-    case 'reload': return handleBrowserCommand({ type: 'reload' })
-    case 'back': return handleBrowserCommand({ type: 'back' })
-    case 'forward': return handleBrowserCommand({ type: 'forward' })
-    case 'zoom-in': return handleBrowserCommand({ type: 'zoom', action: 'in' })
-    case 'zoom-out': return handleBrowserCommand({ type: 'zoom', action: 'out' })
-    case 'zoom-reset': return handleBrowserCommand({ type: 'zoom', action: 'reset' })
-    case 'print': return handleBrowserCommand({ type: 'print' })
+/** A shell shortcut for the app window's interface: it takes keyboard focus from the page first. */
+function showShellShortcut(action: ShellShortcut): void {
+  if (!window || window.isDestroyed()) return
+  window.webContents.focus()
+  emit({ type: 'shortcut', action })
+}
+
+/** A menu bar command, or the same key pressed inside a page. */
+function runAppCommand(command: AppCommand): void {
+  const route = routeAppCommand(command)
+  if (route.kind === 'shell') return showShellShortcut(route.action)
+  if (route.kind === 'host') {
+    handleBrowserCommand(route.command).catch((error: unknown) => {
+      console.error(`Intoponet: ${command.type} did not finish:`, error)
+    })
+    return
+  }
+  if (route.action === 'inspect-page') {
+    if (pageView && pageAttached && !viewGone(pageView) && !isStartView(pageView)) inspectPage(pageView)
+    return
+  }
+  if (route.action === 'shell-devtools' && developerBuild() && window && !window.isDestroyed()) window.webContents.toggleDevTools()
+}
+
+/** Development runs (not the packaged app) also get the app window's own developer tools. */
+function developerBuild(): boolean {
+  return !app.isPackaged || !!process.env['ELECTRON_RENDERER_URL']
+}
+
+/** The page's developer tools, in their own window; with a point, that element is selected. */
+function inspectPage(view: WebContentsView, at?: { x: number; y: number }): void {
+  if (viewGone(view)) return
+  const contents = view.webContents
+  if (!contents.isDevToolsOpened()) contents.openDevTools({ mode: 'detach' })
+  else if (!at) contents.devToolsWebContents?.focus()
+  if (at) contents.inspectElement(Math.round(at.x), Math.round(at.y))
+}
+
+/** A closing tab joins Recently Closed (with its back/forward list), unless it is private or a start page. */
+function rememberClosedTab(tab: OpenTab): void {
+  if (tab.start || privateViews.has(tab.view)) return
+  const live = !viewGone(tab.view)
+  const liveUrl = live ? tab.view.webContents.getURL() : ''
+  let history: { entries: Electron.NavigationEntry[]; index: number } | undefined
+  if (live) {
+    try {
+      history = { entries: tab.view.webContents.navigationHistory.getAllEntries(), index: tab.view.webContents.navigationHistory.getActiveIndex() }
+    } catch {
+      history = undefined
+    }
+  }
+  closedTabs.remember({
+    url: safeHttpUrl(liveUrl) ? liveUrl : tab.url,
+    title: (live ? tab.view.webContents.getTitle() : '') || tab.title,
+    favicon: tab.favicon,
+    isPrivate: false,
+    ...(history ? { history } : {}),
+  })
+}
+
+/** Reopens the newest closed tab (or the one asked for) with its back/forward list, and shows it. */
+function reopenClosedTab(id?: string): void {
+  const entry = closedTabs.take(id)
+  if (!entry) return
+  const view = createBrowserTab(entry.url, false, false)
+  const tab = view && openTabs.find((item) => item.view === view)
+  if (!view || !tab) return
+  tab.title = entry.title
+  tab.favicon = entry.favicon
+  let loaded: Promise<void>
+  if (entry.history) {
+    restoringViews.add(view)
+    loaded = view.webContents.navigationHistory.restore(entry.history).catch(() => view.webContents.loadURL(entry.url))
+  } else {
+    loaded = view.webContents.loadURL(entry.url)
+  }
+  void loaded.catch(() => undefined).finally(() => restoringViews.delete(view))
+  showTab(tab.id)
+  lastKnownUrl = entry.url
+}
+
+/** ⌘W: closes the tab being shown, then shows the tab that took its place, or the globe when none are left. */
+function closeActiveTab(): void {
+  if (!pageAttached || !activeTabId) return
+  const index = openTabs.findIndex((tab) => tab.id === activeTabId)
+  if (index < 0) return
+  discardTab(activeTabId)
+  const next = openTabs[index] ?? openTabs[index - 1]
+  if (next) showTab(next.id)
+}
+
+/** A normal tab opens each site at the zoom it had last time; pinch-to-zoom works on every page. */
+function applySiteZoom(view: WebContentsView, url: string): void {
+  if (viewGone(view)) return
+  void view.webContents.setVisualZoomLevelLimits(1, 3).catch(() => undefined)
+  if (privateViews.has(view) || !zoomStore) return
+  const factor = zoomStore.get(url)
+  if (Math.abs(view.webContents.getZoomFactor() - factor) > 0.001) view.webContents.setZoomFactor(factor)
+}
+
+/** Save Page As…: the page with its images and styles, into Downloads unless another place is chosen. */
+async function savePageAs(): Promise<void> {
+  const view = pageView
+  if (!view || !pageAttached || viewGone(view) || isStartView(view) || !window || window.isDestroyed()) return
+  const url = view.webContents.getURL()
+  if (!safeHttpUrl(url)) return
+  const filename = savePageFilename(view.webContents.getTitle(), url)
+  const { canceled, filePath } = await dialog.showSaveDialog(window, {
+    title: 'Save Page As',
+    defaultPath: join(app.getPath('downloads'), filename),
+    filters: [{ name: 'Web Page, Complete', extensions: ['html', 'htm'] }],
+    properties: ['createDirectory', 'showOverwriteConfirmation'],
+  })
+  if (canceled || !filePath || viewGone(view)) return
+  const name = basename(filePath)
+  try {
+    await view.webContents.savePage(filePath, 'HTMLComplete')
+    emit({ type: 'download-finished', filename: name, path: filePath, state: 'completed' })
+  } catch {
+    emit({ type: 'download-finished', filename: name, path: '', state: 'interrupted' })
+  }
+}
+
+/** The menu bar: rebuilt (cheaply, only when what it shows changed) as pages, tabs and modes change. */
+const appMenu = createAppMenuController({
+  state: appMenuState,
+  run: runAppCommand,
+  apply: (template) => Menu.setApplicationMenu(Menu.buildFromTemplate(template)),
+})
+
+function appMenuState(): AppMenuState {
+  const view = pageView && !viewGone(pageView) && pageAttached ? pageView : null
+  const hasPage = !!view && !isStartView(view)
+  return {
+    platform: process.platform,
+    tabShowing: !!view && activeTabId !== null,
+    hasPage,
+    canGoBack: hasPage && view.webContents.navigationHistory.canGoBack(),
+    canGoForward: hasPage && view.webContents.navigationHistory.canGoForward(),
+    isLoading: hasPage && view.webContents.isLoading(),
+    tabCount: openTabs.length,
+    privateMode,
+    recentlyClosed: closedTabs.list(),
+    developer: developerBuild(),
   }
 }
 
@@ -1457,6 +1604,7 @@ async function handleBrowserCommand(
   | BrowserPanelSnapshot
   | ProtectionSnapshot
   | PageTabSnapshot[]
+  | ClosedTabSnapshot[]
   | PrivateLibraryReadResult
   | PublicFieldStatus
   | string
@@ -1543,6 +1691,25 @@ async function handleBrowserCommand(
     }
     case 'get-tabs':
       return tabSnapshots()
+    case 'close-active-tab':
+      closeActiveTab()
+      break
+    case 'reopen-closed-tab':
+      reopenClosedTab(command.id)
+      break
+    case 'get-closed-tabs':
+      return closedTabs.list()
+    case 'select-tab': {
+      const tab = command.index === -1 ? openTabs[openTabs.length - 1] : openTabs[command.index]
+      if (tab) showTab(tab.id)
+      break
+    }
+    case 'force-reload':
+      if (pageView && !viewGone(pageView) && !isStartView(pageView)) pageView.webContents.reloadIgnoringCache()
+      break
+    case 'save-page':
+      await savePageAs()
+      return null
     case 'navigate': {
       const target = safeHttpUrl(command.url)
       if (!target) throw new Error('Only HTTP and HTTPS destinations are supported.')
@@ -1598,17 +1765,12 @@ async function handleBrowserCommand(
       pageView?.webContents.print({})
       break
     case 'zoom': {
-      if (!pageView) break
-      if (command.action === 'reset') {
-        pageView.webContents.setZoomFactor(1)
-        break
-      }
-      const current = pageView.webContents.getZoomFactor()
-      const next =
-        command.action === 'in'
-          ? Math.min(3, Number((current + 0.1).toFixed(2)))
-          : Math.max(0.5, Number((current - 0.1).toFixed(2)))
-      pageView.webContents.setZoomFactor(next)
+      if (!pageView || viewGone(pageView) || isStartView(pageView)) break
+      const contents = pageView.webContents
+      const next = command.action === 'reset' ? 1 : stepZoom(contents.getZoomFactor(), command.action)
+      contents.setZoomFactor(next)
+      // Remembered for the site (100% forgets it); private tabs leave nothing behind.
+      if (!privateViews.has(pageView)) zoomStore?.set(contents.getURL(), next)
       break
     }
     case 'set-bounds':
@@ -1682,22 +1844,7 @@ async function handleBrowserCommand(
 }
 
 function installApplicationMenu(): void {
-  const isMac = process.platform === 'darwin'
-  Menu.setApplicationMenu(
-    Menu.buildFromTemplate([
-      ...(isMac ? [{ role: 'appMenu' as const }] : []),
-      { role: 'editMenu' },
-      {
-        label: 'View',
-        submenu: [
-          { role: 'toggleDevTools' },
-          { type: 'separator' },
-          { role: 'togglefullscreen' },
-        ],
-      },
-      { role: 'windowMenu' },
-    ]),
-  )
+  appMenu.refresh()
 }
 
 /** The page the app window must show: the dev server in development, the packaged index.html otherwise. */
@@ -1797,6 +1944,13 @@ function createWindow(): void {
     if (htmlFullScreenView && htmlFullScreenView === pageView) applyPageViewBounds()
   })
   window.on('close', () => { shellClosing = true })
+  // Trackpad swipes between pages, when macOS sends them (Trackpad › More Gestures › "Swipe between
+  // pages" set to swipe with three fingers, or two or three). Two-finger page scrolling is untouched.
+  window.on('swipe', (_event, direction) => {
+    if (!pageAttached || !pageView || viewGone(pageView) || isStartView(pageView)) return
+    if (direction === 'left') void handleBrowserCommand({ type: 'back' })
+    else if (direction === 'right') void handleBrowserCommand({ type: 'forward' })
+  })
   window.on('closed', () => {
     if (persistenceTimer) clearTimeout(persistenceTimer)
     persistenceTimer = null
@@ -1864,6 +2018,13 @@ app.whenReady().then(async () => {
   )
   startup('app session', wireShellSession)
   startup('menu', installApplicationMenu)
+  startup('page zoom', () => {
+    const zoomFile = join(app.getPath('userData'), 'site-zoom.json')
+    zoomStore = new ZoomStore({
+      read: () => (existsSync(zoomFile) ? readFileSync(zoomFile, 'utf8') : null),
+      write: (data) => trackedWrite(zoomFile, data),
+    })
+  })
   startup('saved passwords', wirePasswords)
   startup('site permissions', () => {
     const normalPermissions = new SitePermissionStore(join(app.getPath('userData'), 'site-permissions.json'))
@@ -1995,6 +2156,7 @@ app.whenReady().then(async () => {
           await privateSession.clearCache().catch(() => undefined)
           emitPanelState()
         }
+        appMenu.schedule()
         await emitPrivacy()
       }
       if (command.type === 'set-excluded-sites') {
@@ -2171,6 +2333,8 @@ let quitFlushStarted = false
 app.on('before-quit', (event) => {
   if (!app.isReady()) return
   shellClosing = true
+  // A zoom changed just now is still waiting to be saved: start it so the flush below waits for it.
+  void zoomStore?.flush().catch(() => undefined)
   if (!quitFlushStarted && (libraryWriter.pending || writesInFlight.size > 0)) {
     // Once only: the second before-quit (from app.quit() below) goes straight through.
     quitFlushStarted = true
