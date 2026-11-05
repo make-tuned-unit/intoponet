@@ -126,6 +126,8 @@ export type BrowserHostEvent =
   | { type: 'public-field-status'; status: PublicFieldStatus }
   /** Validated per-country local news digest (JSON). */
   | { type: 'news-digest'; payload: string }
+  /** "Paste and Go" chosen in the address bar's menu: the clipboard text, read in main. */
+  | { type: 'paste-and-go'; text: string }
 
 export type ShellShortcut = 'new-tab' | 'find' | 'bookmark' | 'next-tab' | 'previous-tab' | 'focus-launcher' | 'toggle-bookmarks' | 'capture' | 'toggle-private' | 'absorb-selection'
 
@@ -153,7 +155,7 @@ export type PublicSourceHealth = {
 }
 
 export interface BrowserHostApi {
-  open(intent: NavigationIntent): Promise<void>
+  open(intent: NavigationIntent, disposition?: OpenDisposition): Promise<void>
   /** Open a new tab on the start page and switch to it. */
   newTab(): Promise<void>
   close(): Promise<void>
@@ -193,6 +195,8 @@ export interface BrowserHostApi {
   getNewsDigest(): Promise<string | null>
   /** What is rising and fading in one place's news (JSON), or null before the first digest. */
   getPlaceTrends(place: { countryCode: string; name?: string; aliases?: string[]; geonameId?: string }): Promise<string | null>
+  /** The address bar's context menu (Cut, Copy, Paste, Paste and Go, Select All). */
+  showAddressMenu(hasSelection: boolean): Promise<void>
   subscribe(listener: (event: BrowserHostEvent) => void): () => void
 }
 
@@ -201,8 +205,12 @@ export const browserHostChannels = {
   event: 'browser-host:event',
 } as const
 
+/** Where the address bar opens a result: ⌘↵ a background tab, ⌥↵ a new foreground tab. */
+export type OpenDisposition = 'background-tab' | 'foreground-tab'
+
 export type BrowserHostCommand =
-  | { type: 'open'; intent: NavigationIntent }
+  /** `disposition`: open in a new tab — in the background, or brought to front even from a start page. */
+  | { type: 'open'; intent: NavigationIntent; disposition?: OpenDisposition }
   | { type: 'new-tab' }
   | { type: 'close' }
   | { type: 'restore' }
@@ -238,6 +246,8 @@ export type BrowserHostCommand =
   | { type: 'get-news-digest' }
   /** What is rising and fading in one place's news (a country, or a city by name). */
   | { type: 'get-place-trends'; countryCode: string; name?: string; aliases?: string[]; geonameId?: string }
+  /** Right-click in the address bar: edit items plus "Paste and Go". */
+  | { type: 'address-menu'; hasSelection: boolean }
 
 const commandTypes = new Set<BrowserHostCommand['type']>([
   'open',
@@ -274,6 +284,7 @@ const commandTypes = new Set<BrowserHostCommand['type']>([
   'get-public-field-status',
   'get-news-digest',
   'get-place-trends',
+  'address-menu',
 ])
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -326,8 +337,13 @@ export function parseBrowserHostCommand(value: unknown): BrowserHostCommand {
   }
 
   switch (type) {
-    case 'open':
-      return { type, intent: parseIntent(value['intent']) }
+    case 'open': {
+      const disposition = value['disposition']
+      if (disposition !== undefined && disposition !== 'background-tab' && disposition !== 'foreground-tab') {
+        throw new Error('Invalid open disposition.')
+      }
+      return { type, intent: parseIntent(value['intent']), ...(disposition ? { disposition } : {}) }
+    }
     case 'navigate':
       if (
         typeof value['url'] !== 'string' ||
@@ -409,6 +425,8 @@ export function parseBrowserHostCommand(value: unknown): BrowserHostCommand {
       if (aliases !== undefined && (!Array.isArray(aliases) || aliases.length > 8 || aliases.some((alias) => typeof alias !== 'string' || alias.length > 120))) throw new Error('Invalid place names.')
       return { type, countryCode: code, ...(typeof name === 'string' && name ? { name } : {}), ...(Array.isArray(aliases) ? { aliases: aliases as string[] } : {}), ...(typeof geonameId === 'string' ? { geonameId } : {}) }
     }
+    case 'address-menu':
+      return { type, hasSelection: value['hasSelection'] === true }
     case 'read-private-library':
     case 'delete-private-library':
     case 'get-field-snapshot':

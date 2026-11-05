@@ -40,3 +40,19 @@ export function useFavicon(url: string): string | null {
   }, [host])
   return host ? cache.get(host) ?? null : null
 }
+
+/**
+ * An icon already on hand, without asking for one: the address bar shows
+ * these while typing, and typing must never reach a site (a missing icon is
+ * otherwise fetched from the site's /favicon.ico).
+ */
+export function useKnownFavicon(url: string): string | null {
+  const host = hostOf(url)
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const listener = (): void => setTick((tick) => tick + 1)
+    listeners.add(listener)
+    return () => { listeners.delete(listener) }
+  }, [])
+  return host ? cache.get(host) ?? null : null
+}

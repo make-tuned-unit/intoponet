@@ -11,7 +11,13 @@ export function parsePlaceQuery(raw: string): { text: string; explicit: boolean 
   return match ? { text: trimmed.slice(match[0].length), explicit: true } : { text: trimmed, explicit: false }
 }
 
-export type PlaceMatch = { places: Place[]; /** Index Enter should pick, or -1 to fall through to search. */ preferred: number }
+export type PlaceMatch = {
+  places: Place[]
+  /** Index Enter should pick, or -1 to fall through to search. */
+  preferred: number
+  /** The text names the place outright (or says "fly to"), not just the start of its name. */
+  certain?: boolean
+}
 
 /**
  * Places for the launcher. Enter flies only when the query names a place
@@ -29,7 +35,7 @@ export function placeMatches(raw: string): PlaceMatch {
   const exact = name === typed
   const qualified = typed.startsWith(`${name} `)
   const partial = typed.length >= 4 && name.startsWith(typed)
-  return { places, preferred: explicit || exact || qualified || partial ? 0 : -1 }
+  return { places, preferred: explicit || exact || qualified || partial ? 0 : -1, certain: explicit || exact || qualified }
 }
 
 export function PlaceSuggestions({

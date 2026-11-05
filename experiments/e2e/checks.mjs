@@ -314,6 +314,74 @@ export const checks = {
   },
 
   // ---- Browsing ------------------------------------------------------------
+  async OMNIBOX(ctx) {
+    const server = await new Promise((resolve) => {
+      const site = createServer((_request, response) => { response.setHeader('content-type', 'text/html; charset=utf-8'); response.end('<!doctype html><title>Omnibox landing</title><h1>Omnibox landing</h1>') })
+      site.listen(0, 'localhost', () => resolve(site))
+    })
+    try {
+      const host = `localhost:${server.address().port}`
+      const url = `http://${host}/`
+      const state = () => ctx.evaluate(`window.intoponet.browserHost.getState().then((s) => JSON.stringify(s))`).then(JSON.parse)
+      const tabs = () => ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => JSON.stringify(t.map((x) => x.url)))`).then(JSON.parse)
+      const read = () => ctx.evaluate(`JSON.stringify((() => { const i = document.querySelector('.command-input input'); return { value: i.value, selected: i.value.slice(i.selectionStart, i.selectionEnd), expanded: i.getAttribute('aria-expanded'), active: i.getAttribute('aria-activedescendant'), rows: [...document.querySelectorAll('#omnibox-suggestions [role=option]')].map((r) => ({ id: r.id, kind: r.dataset.kind, text: r.innerText.replace(/\\s+/g, ' '), selected: r.getAttribute('aria-selected') })) } })())`).then(JSON.parse)
+      const typeHost = async (text) => {
+        await ctx.evaluate(`(() => { const i = document.querySelector('.command-input input'); i.focus(); i.select(); return true })()`)
+        await ctx.type(text)
+        await ctx.delay(600)
+        return read()
+      }
+      const enter = async (modifiers = 0) => {
+        await ctx.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, modifiers, text: '\r' })
+        await ctx.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, modifiers })
+        await ctx.delay(2000)
+      }
+      // Visit the page, then close its tab: it is only in history now.
+      await openPage(ctx, url, 2500)
+      for (const id of JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => JSON.stringify(t.map((x) => x.id)))`))) await ctx.evaluate(`window.intoponet.browserHost.closeTab(${JSON.stringify(id)}).then(() => true)`)
+      await ctx.delay(1200)
+      expect((await tabs()).length === 0, 'The test tab did not close.')
+
+      let seen = await typeHost('localh')
+      expect(seen.value === host && seen.selected === host.slice('localh'.length), `Typing "localh" showed "${seen.value}" (selected "${seen.selected}"), not the inline completion "${host}".`)
+      expect(seen.expanded === 'true' && seen.active === seen.rows[0]?.id && seen.rows[0]?.selected === 'true', `The suggestion list is not exposed to assistive tech (expanded ${seen.expanded}, active ${seen.active}).`)
+      expect(seen.rows[0]?.kind === 'history' && seen.rows[0].text.includes(host), `The visited page is not the top suggestion: ${seen.rows.map((r) => `${r.kind}: ${r.text}`).join(' | ')}`)
+      expect(seen.rows.some((r) => r.kind === 'search'), 'No "Search for" row.')
+      await ctx.shot('completion')
+      await axeAudit(ctx, 'the address bar suggestions')
+      // ⌘↵: a background tab; the globe stays in front.
+      await enter(4)
+      let after = await state()
+      let open = await tabs()
+      expect(open.length === 1 && open[0].startsWith(url), `⌘↵ did not open the page in one new tab (tabs: ${open.join(', ') || 'none'}).`)
+      expect(!after.isVisible, '⌘↵ brought the page to the front instead of opening it behind.')
+
+      // Now it is an open tab: offered as "Switch to tab". Backspace removes the completion.
+      seen = await typeHost('localh')
+      expect(seen.rows[0]?.kind === 'tab' && /Switch to tab/.test(seen.rows[0].text), `The open tab is not offered first: ${seen.rows.map((r) => `${r.kind}: ${r.text}`).join(' | ')}`)
+      for (const type of ['keyDown', 'keyUp']) await ctx.send('Input.dispatchKeyEvent', { type, key: 'Backspace', code: 'Backspace', windowsVirtualKeyCode: 8 })
+      await ctx.delay(400)
+      const erased = await read()
+      expect(erased.value === 'localh', `Backspace left "${erased.value}" instead of removing the completion.`)
+      expect(erased.rows[0]?.kind === 'search', `After Backspace the first row is ${erased.rows[0]?.kind}, not what was typed.`)
+      seen = await typeHost('localho')
+      expect(seen.value === host, `Typing on did not complete again ("${seen.value}").`)
+      await enter()
+      after = await state()
+      open = await tabs()
+      expect(after.isVisible && after.url.startsWith(url), `Enter did not land on ${url} (showing ${after.isVisible ? after.url : 'the globe'}).`)
+      expect(open.length === 1, `Switching to the tab opened a duplicate (${open.length} tabs).`)
+
+      // A place name still flies the globe, over the open page.
+      await ctx.flyTo('Fredericton')
+      await ctx.wait(`document.querySelector('h1')?.innerText === 'Fredericton'`, 15_000, 'the globe to fly to Fredericton')
+      expect(!(await state()).isVisible, 'Flying to a place left the page open.')
+      return `"localh" completed to ${host}; history row opened in a background tab with ⌘↵; then "Switch to tab" landed on it (1 tab); Backspace removed the completion; "Fredericton" flew the globe.`
+    } finally {
+      server.close()
+    }
+  },
+
   async BROWSE(ctx) {
     const host = await openAnyPage(ctx)
     const tabs = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => JSON.stringify(t))`))
