@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events'
 import { describe, expect, it, vi } from 'vitest'
 import { parseUpdateCommand } from '@intoponet/browser-api'
-import { UpdateController, validatedUpdateFeedUrl, type UpdateAdapter } from './updates'
+import { sanitizedPreferences, UpdateController, validatedUpdateFeedUrl, type UpdateAdapter } from './updates'
 
 class FakeUpdater extends EventEmitter implements UpdateAdapter {
   feed: { url: string; serverType: 'json' } | null = null
@@ -179,5 +179,25 @@ describe('automatic update checks', () => {
     expect(() => parseUpdateCommand({ type: 'set-automatic', enabled: 'yes' })).toThrow()
     expect(() => parseUpdateCommand({ type: 'set-automatic' })).toThrow()
     expect(() => parseUpdateCommand({ type: 'restart', enabled: true })).toThrow()
+  })
+})
+
+describe('stored update preferences', () => {
+  const now = Date.UTC(2026, 10, 5)
+  it('keeps sensible values', () => {
+    expect(sanitizedPreferences({ automatic: false, lastCheckedAt: now - 1000 }, now)).toEqual({ automatic: false, lastCheckedAt: now - 1000 })
+  })
+  it('drops values that would throw or make no sense instead of stopping the app', () => {
+    for (const lastCheckedAt of [1e20, -5, Number.NaN, Infinity, '2026-01-01', now + 7 * 24 * 60 * 60 * 1000]) {
+      expect(sanitizedPreferences({ automatic: true, lastCheckedAt }, now)).toEqual({ automatic: true })
+    }
+    expect(sanitizedPreferences({ automatic: 'no' }, now)).toEqual({ automatic: true })
+    expect(sanitizedPreferences(null, now)).toEqual({ automatic: true })
+    expect(sanitizedPreferences([1, 2], now)).toEqual({ automatic: true })
+  })
+  it('a controller built from a damaged file still reports its status', () => {
+    const controller = new UpdateController({ enabled: false, packaged: false, platform: 'darwin', currentVersion: '1.0.0', feedUrl: '', adapter: undefined, emit: () => {}, now: () => now, preferences: { load: () => ({ automatic: true, lastCheckedAt: 1e20 }), save: () => {} } })
+    expect(controller.status()).toMatchObject({ automatic: true })
+    expect(controller.status()).not.toHaveProperty('lastCheckedAt')
   })
 })

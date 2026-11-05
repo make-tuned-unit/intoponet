@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
-import { readFile, writeFile } from 'node:fs/promises'
+import { pathToFileURL } from 'node:url'
+import { readFile } from 'node:fs/promises'
 import { appendFileSync, existsSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
 import {
   app,
@@ -18,8 +19,12 @@ import {
   autoUpdater,
   dialog,
   nativeImage,
+  webFrameMain,
 } from 'electron'
-import type { MenuItemConstructorOptions } from 'electron'
+import type { IpcMainInvokeEvent, MenuItemConstructorOptions } from 'electron'
+import { pendingWrite, writeFileAtomic, writeFileAtomicSync } from './atomicFile'
+import { isAppShellUrl, SHELL_PERMISSIONS } from './shellGuard'
+import { LatestWriter } from './latestWriter'
 import { UpdateController } from './updates'
 import { FeedbackService, parseFeedbackCommand } from './feedback'
 import { PasswordVault } from './passwords/vault'
@@ -80,7 +85,7 @@ import { ACCESS_SCRIPT, ACCESS_WORLD_ID, parseAccess } from './access/pageAccess
 import { backupExclusionAvailable, backupExclusionStatus, readBackupExclusionIntent, setBackupExclusion, watchBackupExclusionPaths } from './backupExclusion'
 import { TranslateStore } from './translate/store'
 import { openTranslationEngine } from './translate/openEngine'
-import { loadKnowledgeCrypto } from './knowledge/crypto'
+import { loadKnowledgeCrypto, retryingKnowledgeCrypto } from './knowledge/crypto'
 import { OldsService } from './olds/oldsService'
 
 // Private capture media scheme (served to the app window's default session
@@ -170,6 +175,15 @@ const defaultPanelState = (): BrowserPanelSnapshot => ({
   isVisible: pageAttached,
 })
 
+/**
+ * Whether a view's page is gone. Once its contents is destroyed, `view.webContents` is undefined
+ * (not merely destroyed), so every access must go through this check first.
+ */
+function viewGone(view: WebContentsView): boolean {
+  const contents = view.webContents as Electron.WebContents | undefined
+  return !contents || contents.isDestroyed()
+}
+
 function safeHttpUrl(value: string): URL | null {
   try {
     const url = new URL(value)
@@ -180,7 +194,7 @@ function safeHttpUrl(value: string): URL | null {
 }
 
 function persistentState(): PersistentBrowserState {
-  const currentUrl = pageView?.webContents.getURL()
+  const currentUrl = pageView && !viewGone(pageView) ? pageView.webContents.getURL() : undefined
   return {
     version: 2,
     url: safeHttpUrl(currentUrl ?? '') ? currentUrl! : lastKnownUrl,
@@ -199,19 +213,43 @@ function stateFilePath(): string {
   return join(app.getPath('userData'), 'browser-state.v1.json')
 }
 
+/** Saves still on their way to disk; quitting waits for them (see before-quit). */
+const writesInFlight = new Set<Promise<unknown>>()
+
+/** An atomic save the quit path will wait for. Failures are logged; the next save tries again. */
+function trackedWrite(path: string, data: string): Promise<void> {
+  const write = writeFileAtomic(path, data)
+  writesInFlight.add(write)
+  void write.catch(() => undefined).finally(() => writesInFlight.delete(write))
+  return write
+}
+
+/** Set once the final state is written on quit (and while the window closes): later saves would only be stale. */
+let stateWritesClosed = false
+
 async function savePersistentState(): Promise<void> {
-  await writeFile(stateFilePath(), JSON.stringify(persistentState()), {
-    encoding: 'utf8',
-    mode: 0o600,
-  })
+  if (stateWritesClosed) return
+  await trackedWrite(stateFilePath(), JSON.stringify(persistentState()))
 }
 
 function schedulePersistentStateSave(): void {
+  if (stateWritesClosed) return
   if (persistenceTimer) clearTimeout(persistenceTimer)
   persistenceTimer = setTimeout(() => {
     persistenceTimer = null
-    void savePersistentState()
+    savePersistentState().catch((error: unknown) => console.error('Could not save open tabs:', error))
   }, 150)
+}
+
+/** The last save, on quit: synchronous (the process is ending) and after any async save of the same file. */
+function writeFinalState(): void {
+  if (persistenceTimer) clearTimeout(persistenceTimer)
+  persistenceTimer = null
+  try {
+    writeFileAtomicSync(stateFilePath(), JSON.stringify(persistentState()))
+  } catch (error) {
+    console.error('Could not save open tabs on quit:', error)
+  }
 }
 
 async function loadPersistentState(): Promise<PersistentBrowserState | null> {
@@ -263,7 +301,7 @@ async function loadPersistentState(): Promise<PersistentBrowserState | null> {
 }
 
 function panelState(): BrowserPanelSnapshot {
-  if (!pageView) return defaultPanelState()
+  if (!pageView || viewGone(pageView)) return defaultPanelState()
   const contents = pageView.webContents
   if (isStartView(pageView)) {
     return {
@@ -331,15 +369,14 @@ function emitProtectionState(): void {
 
 function persistExceptions(): void {
   if (!app.isReady()) return
-  writeFileSync(
+  trackedWrite(
     exceptionsFilePath(),
     JSON.stringify({
       version: 1,
       disabledOrigins: protection.disabledOriginList(),
       categories: protection.categoryToggles(),
     }),
-    { encoding: 'utf8', mode: 0o600 },
-  )
+  ).catch((error: unknown) => console.error('Could not save protection settings:', error))
 }
 
 async function loadExceptions(): Promise<void> {
@@ -382,8 +419,35 @@ function cosmeticInjection(css: string): string {
   })()`
 }
 
-async function applyCosmeticFilters(contents: Electron.WebContents): Promise<void> {
+/**
+ * Frames that already have this document's cosmetic rules, per page: `processId:routingId`.
+ * Cleared when a frame navigates, so each frame document is injected once rather than on every
+ * frame load anywhere in the page.
+ */
+const cosmeticFrames = new WeakMap<Electron.WebContents, Set<string>>()
+
+function cosmeticFrameKey(frame: Electron.WebFrameMain): string {
+  return `${frame.processId}:${frame.routingId}`
+}
+
+function forgetCosmeticFrame(contents: Electron.WebContents, isMainFrame: boolean, processId: number, routingId: number): void {
+  const injected = cosmeticFrames.get(contents)
+  if (!injected) return
+  if (isMainFrame) injected.clear()
+  else injected.delete(`${processId}:${routingId}`)
+}
+
+/**
+ * Hide ads and stub blocked trackers. `only` limits it to one frame (the one that just loaded);
+ * `onlyNew` skips frames whose current document already has the rules. With neither, every frame
+ * gets the current rules (the active tab or the protection settings changed).
+ */
+async function applyCosmeticFilters(
+  contents: Electron.WebContents,
+  options: { only?: Electron.WebFrameMain | null; onlyNew?: boolean } = {},
+): Promise<void> {
   try {
+    if (contents.isDestroyed()) return
     const origin = currentOrigin()
     const rules =
       origin && !protection.isSiteEnabled(origin, 'default')
@@ -392,14 +456,21 @@ async function applyCosmeticFilters(contents: Electron.WebContents): Promise<voi
     const css = rules?.cssRules.join('\n') ?? ''
     // With protection on, blocked tracker globals get quiet stand-ins so the page's own buttons don't throw.
     const script = rules ? `${cosmeticInjection(css)};${TRACKER_STUB_SCRIPT}` : cosmeticInjection(css)
-    const frames = contents.mainFrame?.framesInSubtree ?? []
+    const frames = options.only ? [options.only] : contents.mainFrame?.framesInSubtree ?? []
+    let injected = cosmeticFrames.get(contents)
+    if (!injected) cosmeticFrames.set(contents, (injected = new Set()))
+    const done = injected
     await Promise.all(
       frames.map(async (frame) => {
         if (frame.detached) return
+        const key = cosmeticFrameKey(frame)
+        if ((options.onlyNew || options.only) && done.has(key)) return
+        done.add(key)
         try {
           await frame.executeJavaScript(script)
         } catch {
-          // The frame can detach between the snapshot and the injection.
+          // The frame can detach between the snapshot and the injection; a later load may try again.
+          done.delete(key)
         }
       }),
     )
@@ -509,23 +580,23 @@ async function readSealedLibrary(): Promise<PrivateLibraryReadResult> {
   return result
 }
 
-async function writeSealedLibrary(payload: string): Promise<void> {
+/** Library saves run one at a time in the order asked, and only the newest waiting one is written. */
+const libraryWriter = new LatestWriter<string>(async (payload) => {
   if (!(await safeStorage.isAsyncEncryptionAvailable())) {
     throw new Error('On-device encryption is unavailable.')
   }
   const sealed = await safeStorage.encryptStringAsync(payload)
-  const destination = privateLibraryPath()
-  const temporary = `${destination}.${randomUUID()}.tmp`
-  try {
-    writeFileSync(temporary, sealed, { mode: 0o600 })
-    renameSync(temporary, destination)
-  } catch (error) {
-    if (existsSync(temporary)) unlinkSync(temporary)
-    throw error
-  }
+  await writeFileAtomic(privateLibraryPath(), sealed)
+})
+
+function writeSealedLibrary(payload: string): Promise<void> {
+  return libraryWriter.save(payload)
 }
 
-function deleteSealedLibrary(): void {
+async function deleteSealedLibrary(): Promise<void> {
+  // A save still waiting must not bring the library back after it is deleted.
+  await libraryWriter.discard()
+  await pendingWrite(privateLibraryPath())
   if (existsSync(privateLibraryPath())) unlinkSync(privateLibraryPath())
 }
 
@@ -620,14 +691,13 @@ function wirePasswords(): void {
   })
   // Only the top frame of a normal tab may report a sign-in; its origin is read here, not trusted from the page.
   ipcMain.on(passwordPageChannels.report, (event, value: unknown) => {
-    const tab = openTabs.find((item) => !item.view.webContents.isDestroyed() && item.view.webContents === event.sender)
+    const tab = openTabs.find((item) => !viewGone(item.view) && item.view.webContents === event.sender)
     if (!tab || !event.senderFrame || event.senderFrame !== event.sender.mainFrame) return
     const message = parsePasswordPageMessage(value)
     if (!message) return
     void passwords!.report(passwordPage(tab.view), message).catch(() => undefined)
   })
-  ipcMain.handle(passwordChannels.command, async (event, value: unknown) => {
-    if (!window || event.sender !== window.webContents) throw new Error('Not allowed.')
+  handleFromShell(passwordChannels.command, async (_event, value: unknown) => {
     const command = parsePasswordCommand(value)
     const service = passwords!
     const active = pageView && !isStartView(pageView) ? passwordPage(pageView) : null
@@ -735,15 +805,20 @@ function safeFavicon(value: string): string {
 }
 
 function tabSnapshots(): PageTabSnapshot[] {
-  return openTabs.map((tab) => ({
-    id: tab.id,
-    url: tab.start ? '' : safeHttpUrl(tab.view.webContents.getURL()) ? tab.view.webContents.getURL() : tab.url,
-    title: tab.start ? 'New tab' : tab.view.webContents.getTitle() || tab.title || tab.url,
-    favicon: tab.favicon,
-    active: tab.id === activeTabId,
-    isPrivate: privateViews.has(tab.view),
-    ...(tab.start ? { isStartPage: true } : {}),
-  }))
+  return openTabs.map((tab) => {
+    // A page closed underneath us (e.g. while the window closes) keeps what was last known.
+    const live = !viewGone(tab.view)
+    const currentUrl = live ? tab.view.webContents.getURL() : ''
+    return {
+      id: tab.id,
+      url: tab.start ? '' : safeHttpUrl(currentUrl) ? currentUrl : tab.url,
+      title: tab.start ? 'New tab' : (live ? tab.view.webContents.getTitle() : '') || tab.title || tab.url,
+      favicon: tab.favicon,
+      active: tab.id === activeTabId,
+      isPrivate: privateViews.has(tab.view),
+      ...(tab.start ? { isStartPage: true } : {}),
+    }
+  })
 }
 
 function isStartView(view: WebContentsView): boolean {
@@ -801,7 +876,7 @@ function rememberTab(view: WebContentsView): void {
 function detachActive(): void {
   captures?.pageChanged('tab-changed', pageView)
   if (window && pageView && pageAttached) {
-    pageView.webContents.stopFindInPage('clearSelection')
+    if (!viewGone(pageView)) pageView.webContents.stopFindInPage('clearSelection')
     window.contentView.removeChildView(pageView)
     pageAttached = false
     updateWindowButtons()
@@ -842,9 +917,12 @@ function discardTab(id: string): void {
     lastKnownUrl = ''
     tabDockOpen = false
   }
-  protectionPages.remove(tab.view.webContents.id)
-  translateService?.forgetPage(tab.view.webContents.id)
-  if (!tab.view.webContents.isDestroyed()) tab.view.webContents.close()
+  const contentsId = viewContentsIds.get(tab.view)
+  if (contentsId !== undefined) {
+    protectionPages.remove(contentsId)
+    translateService?.forgetPage(contentsId)
+  }
+  if (!viewGone(tab.view)) tab.view.webContents.close()
   emitTabs()
   emitPanelState()
   emitPasswordState()
@@ -858,6 +936,9 @@ function makeRoomForTab(): void {
     discardTab(victim.id)
   }
 }
+
+/** Each view's webContents id, readable after the contents is destroyed. */
+const viewContentsIds = new WeakMap<WebContentsView, number>()
 
 const popupLimiter = new PopupLimiter()
 const crashRecovery = new CrashRecoveryPolicy()
@@ -1019,7 +1100,7 @@ function buildView(isPrivate = privateMode): WebContentsView {
     emit({ type: 'shortcut', action })
   })
   view.webContents.on('context-menu', (event, params) => {
-    if (view.webContents.isDestroyed() || !window || window.isDestroyed()) return
+    if (viewGone(view) || !window || window.isDestroyed()) return
     const template = contextMenuTemplate(view, params)
     if (template.length === 0) return
     event.preventDefault()
@@ -1056,7 +1137,7 @@ function buildView(isPrivate = privateMode): WebContentsView {
       }
       return values.join(' | ').slice(0, 1000);
     })()`).then((rating: unknown) => {
-      if (view.webContents.isDestroyed() || pageView !== view || !frequencyLoadSucceeded || generation !== frequencyNavigation || url !== view.webContents.getURL()) return
+      if (viewGone(view) || pageView !== view || !frequencyLoadSucceeded || generation !== frequencyNavigation || url !== view.webContents.getURL()) return
       // Private tabs and excluded sites leave no footprints and no interest signals.
       if (privateViews.has(view) || isExcludedSite(url, excludedSites)) return
       emit({ type: 'frequency-visit', url, title: view.webContents.getTitle().slice(0, 1000),
@@ -1083,9 +1164,15 @@ function buildView(isPrivate = privateMode): WebContentsView {
   view.webContents.on('did-create-window', (child) => wirePopupWindow(child, view))
   // Capture the id now: by the time 'destroyed' fires, view.webContents is gone.
   const contentsId = view.webContents.id
+  viewContentsIds.set(view, contentsId)
   view.webContents.once('destroyed', () => {
     popupLimiter.forget(contentsId)
     passwords?.forget(contentsId)
+    // The page closed itself (window.close()) or its contents went away: drop its tab, unless the
+    // whole window is closing (then the tabs are kept to be restored next launch).
+    if (shellClosing) return
+    const tab = openTabs.find((item) => item.view === view)
+    if (tab) discardTab(tab.id)
   })
   bindPermissionOwnerLifecycle(view.webContents, (owner) => sitePermissions?.dropOwner(owner))
   view.webContents.on('will-navigate', (event, url) => {
@@ -1098,11 +1185,16 @@ function buildView(isPrivate = privateMode): WebContentsView {
     rememberTab(view)
     if (pageView !== view) return
     emitPanelState()
-    void applyCosmeticFilters(view.webContents)
+    // Any frame the per-frame events missed.
+    void applyCosmeticFilters(view.webContents, { onlyNew: true })
   })
-  view.webContents.on('did-frame-finish-load', () => {
+  view.webContents.on('did-frame-navigate', (_event, _url, _code, _status, isMainFrame, frameProcessId, frameRoutingId) => {
+    forgetCosmeticFrame(view.webContents, isMainFrame, frameProcessId, frameRoutingId)
+  })
+  view.webContents.on('did-frame-finish-load', (_event, _isMainFrame, frameProcessId, frameRoutingId) => {
     if (pageView !== view) return
-    void applyCosmeticFilters(view.webContents)
+    const frame = webFrameMain.fromId(frameProcessId, frameRoutingId)
+    if (frame) void applyCosmeticFilters(view.webContents, { only: frame })
   })
   // HTML fullscreen (video, games): the window goes fullscreen and the page view must fill it.
   view.webContents.on('enter-html-full-screen', () => {
@@ -1116,7 +1208,7 @@ function buildView(isPrivate = privateMode): WebContentsView {
   // Early as well, so a banner clicked before the page finishes loading already works.
   view.webContents.on('dom-ready', () => {
     if (pageView !== view) return
-    void applyCosmeticFilters(view.webContents)
+    void applyCosmeticFilters(view.webContents, { only: view.webContents.mainFrame })
   })
   view.webContents.on('did-navigate', (_event, url) => {
     rememberTab(view)
@@ -1201,6 +1293,9 @@ function buildView(isPrivate = privateMode): WebContentsView {
       if (mayAutoRecover) void replacement.webContents.loadURL(crashedUrl)
     }
     emitTabs()
+    // Close the crashed contents so its 'destroyed' cleanup runs and its listeners go (the tab now
+    // holds the replacement, so this does not close the tab). After this event has finished.
+    setImmediate(() => { if (!viewGone(view)) view.webContents.close() })
   })
 
   return view
@@ -1306,7 +1401,7 @@ async function handleBrowserCommand(
         break
       }
       // Reuse an open tab only when it matches the current mode (private tabs and normal tabs never mix).
-      const existing = openTabs.find((tab) => privateViews.has(tab.view) === privateMode && samePage(tab.view.webContents.getURL() || tab.url, url))
+      const existing = openTabs.find((tab) => !viewGone(tab.view) && privateViews.has(tab.view) === privateMode && samePage(tab.view.webContents.getURL() || tab.url, url))
       if (existing) {
         showTab(existing.id)
         break
@@ -1463,7 +1558,7 @@ async function handleBrowserCommand(
       await writeSealedLibrary(command.payload)
       return null
     case 'delete-private-library':
-      deleteSealedLibrary()
+      await deleteSealedLibrary()
       return null
     case 'get-field-snapshot':
       return cachedPublicField()
@@ -1497,7 +1592,49 @@ function installApplicationMenu(): void {
   )
 }
 
+/** The page the app window must show: the dev server in development, the packaged index.html otherwise. */
+function appShellUrl(): string {
+  return process.env['ELECTRON_RENDERER_URL'] || pathToFileURL(join(__dirname, '../renderer/index.html')).href
+}
+
+/** True only for the app window's own top frame showing the app's page (not a page it was tricked into loading). */
+function isFromShell(event: IpcMainInvokeEvent): boolean {
+  if (!window || window.isDestroyed() || event.sender !== window.webContents) return false
+  const frame = event.senderFrame
+  return !!frame && frame === window.webContents.mainFrame && isAppShellUrl(frame.url, appShellUrl())
+}
+
+/** ipcMain.handle for the app window's API: calls from anywhere else are refused. */
+function handleFromShell(channel: string, handler: (event: IpcMainInvokeEvent, value: unknown) => unknown): void {
+  ipcMain.handle(channel, (event, value: unknown) => {
+    if (!isFromShell(event)) throw new Error('Not allowed.')
+    return handler(event, value)
+  })
+}
+
+/** The app's own session (the shell): copy-to-clipboard and fullscreen for the app page only. */
+function wireShellSession(): void {
+  const shellSession = session.defaultSession
+  const allowed = (permission: string, url: string): boolean => SHELL_PERMISSIONS.has(permission) && isAppShellUrl(url, appShellUrl())
+  shellSession.setPermissionRequestHandler((contents, permission, callback, details) => {
+    callback(allowed(permission, details.requestingUrl || contents.getURL()))
+  })
+  shellSession.setPermissionCheckHandler((contents, permission, requestingOrigin) => {
+    return allowed(permission, contents?.getURL() || requestingOrigin)
+  })
+}
+
+/** While the app window closes (or the app quits), its pages going away is not the user closing tabs. */
+let shellClosing = false
+
 function createWindow(): void {
+  shellClosing = false
+  stateWritesClosed = false
+  // Pages whose contents went away while the last window was closed (macOS keeps the app running).
+  for (const tab of openTabs.filter((item) => viewGone(item.view))) {
+    openTabs.splice(openTabs.indexOf(tab), 1)
+    if (activeTabId === tab.id) activeTabId = null
+  }
   window = new BrowserWindow({
     minWidth: 900,
     minHeight: 620,
@@ -1514,8 +1651,32 @@ function createWindow(): void {
     },
   })
 
-  // A reloaded shell cannot release a page it held before.
-  window.webContents.on('did-start-navigation', (details) => { if (details.isMainFrame && !details.isSameDocument) setPageHeld(false) })
+  // A reloaded shell cannot release a page it held before, nor see a screen recording it started.
+  window.webContents.on('did-start-navigation', (details) => {
+    if (!details.isMainFrame || details.isSameDocument) return
+    setPageHeld(false)
+    captures?.shellReloaded()
+  })
+
+  // The window shows the app and nothing else: a dropped link or file, or a script changing
+  // location, would otherwise load a page with the app's full API (passwords, private library…).
+  const appUrl = appShellUrl()
+  const keepShell = (event: Electron.Event, url: string): void => {
+    if (!isAppShellUrl(url, appUrl)) event.preventDefault()
+  }
+  window.webContents.on('will-navigate', keepShell)
+  window.webContents.on('will-redirect', keepShell)
+  window.webContents.on('will-frame-navigate', (details) => {
+    if (!isAppShellUrl(details.url, appUrl)) details.preventDefault()
+  })
+  // Links the app asks to open in a new window become tabs; nothing gets a window with the app's preload.
+  window.webContents.setWindowOpenHandler(({ url }) => {
+    if (safeHttpUrl(url)) {
+      const tab = createBrowserTab(url)
+      if (tab) void tab.webContents.loadURL(url).catch(() => undefined)
+    }
+    return { action: 'deny' }
+  })
 
   if (process.env['ELECTRON_RENDERER_URL']) {
     window.webContents.on('console-message', (details) => {
@@ -1527,12 +1688,14 @@ function createWindow(): void {
   window.on('resize', () => {
     if (htmlFullScreenView && htmlFullScreenView === pageView) applyPageViewBounds()
   })
+  window.on('close', () => { shellClosing = true })
   window.on('closed', () => {
     if (persistenceTimer) clearTimeout(persistenceTimer)
-    writeFileSync(stateFilePath(), JSON.stringify(persistentState()), {
-      encoding: 'utf8',
-      mode: 0o600,
-    })
+    persistenceTimer = null
+    // On quit, before-quit already wrote the final state; otherwise (macOS keeps running) save now,
+    // in order after any save already on its way.
+    if (!stateWritesClosed) savePersistentState().catch((error: unknown) => console.error('Could not save open tabs:', error))
+    stateWritesClosed = true
     window = null
     pageView = null
     pageAttached = false
@@ -1542,6 +1705,15 @@ function createWindow(): void {
     void window.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
     void window.loadFile(join(__dirname, '../renderer/index.html'))
+  }
+}
+
+/** One part of the app failing to start (a damaged settings file, say) must not keep the window from opening. */
+function startup(part: string, run: () => void): void {
+  try {
+    run()
+  } catch (error) {
+    console.error(`Intoponet: ${part} did not start:`, error)
   }
 }
 
@@ -1560,7 +1732,7 @@ app.whenReady().then(async () => {
   }
   await loadExceptions()
   const restoredState = await loadPersistentState()
-  if (restoredState) {
+  if (restoredState) startup('restoring tabs', () => {
     lastKnownUrl = restoredState.url
     lastBounds = restoredState.bounds
     for (const saved of restoredState.tabs) {
@@ -1574,223 +1746,248 @@ app.whenReady().then(async () => {
       pageView = active.view
       lastKnownUrl = active.url
     }
-  }
-
-  installApplicationMenu()
-  wirePasswords()
-  const normalPermissions = new SitePermissionStore(join(app.getPath('userData'), 'site-permissions.json'))
-  sitePermissions = new SitePermissionBroker({
-    store: (isPrivate) => (isPrivate ? privatePermissions : normalPermissions),
-    emit: (event) => { if (window && !window.isDestroyed()) window.webContents.send(sitePermissionChannels.event, event) },
-    systemAccess: (kind) => (process.platform === 'darwin' ? systemPreferences.askForMediaAccess(kind) : Promise.resolve(true)),
   })
-  ipcMain.handle(sitePermissionChannels.command, async (_event, value: unknown) => {
-    const command = parseSitePermissionCommand(value)
-    const store = pageView && privateViews.has(pageView) ? privatePermissions : normalPermissions
-    if (command.type === 'decide') return sitePermissions!.decide(command.id, command.decision)
-    if (command.type === 'pending') return sitePermissions!.list()
-    if (command.type === 'reset') {
-      sitePermissions!.reset(command.origin, Boolean(pageView && privateViews.has(pageView)), command.kind)
-    }
-    return store.get(command.origin)
-  })
-  wireDownloadSession()
-  wireProtectionSession()
-  // Private tabs get the same protections, permissions and download handling.
-  wireDownloadSession(PRIVATE_PARTITION)
-  wireProtectionSession(PRIVATE_PARTITION)
 
-  const captureLibrary = new CaptureLibrary(
-    join(app.getPath('userData'), 'capture-library'),
-    // Test runs point this at a temporary folder instead of ~/Pictures.
-    process.env['INTOPONET_CAPTURE_ROOT'] || join(app.getPath('pictures'), 'Intoponet'),
-    { trash: (path) => shell.trashItem(path) },
+  // The browser itself first: everything below may fail on its own without leaving the app without a window.
+  handleFromShell(
+    browserHostChannels.command,
+    (_event, value: unknown) => handleBrowserCommand(parseBrowserHostCommand(value)),
   )
-  captures = new CaptureService(captureLibrary, { window: () => window, pageView: () => pageView, pageAttached: () => pageAttached })
-  // Import anything saved by the earlier encrypted store, once.
-  void migrateEncryptedCaptures(join(app.getPath('userData'), 'captures'), captureLibrary, async (sealed) => (await safeStorage.decryptStringAsync(sealed)).result)
-    .catch(() => 0)
-  protocol.handle(CAPTURE_SCHEME, (request) => captures!.respond(request))
-  ipcMain.handle(captureChannels.command, (_event, value: unknown) => captures!.handle(parseCaptureCommand(value)))
-  // The Olds: sourced history threads from Wikidata/Wikipedia (public lookups only).
-  const olds = new OldsService({
-    cacheDir: join(app.getPath('userData'), 'olds-cache'),
-    // Headlines in other languages are translated on this Mac (when that language is installed) before matching.
-    translateToEnglish: async (text, lang) => {
-      const code = normalizeLanguage(lang)
-      if (!code || code === 'en' || !translateService || !(await translateService.isInstalled(code))) return null
-      const [english] = await translateService.translate(code, 'en', [text], false)
-      return english ?? null
-    },
-    // Laya (when on) checks that a history topic means the same thing as the headline.
-    meaning: (query, texts) => laya ? laya.similarities(query, texts) : Promise.resolve(null),
-    embed: (texts) => laya ? laya.embedTexts(texts) : Promise.resolve(null),
-    // Quality checks only: INTOPONET_OLDS_DEBUG=<file> records how each headline's candidates scored.
-    ...(process.env.INTOPONET_OLDS_DEBUG ? { debug: (headline: string, candidates: unknown, searched: unknown) => appendFileSync(process.env.INTOPONET_OLDS_DEBUG!, `${JSON.stringify({ headline, candidates, searched })}\n`) } : {}),
-  })
-  ipcMain.handle(oldsChannels.command, (_event, value: unknown) => olds.thread(parseOldsCommand(value).query))
-  // Absorb + local knowledge: extracted on this device, encrypted with an OS-keychain key, never sent anywhere.
-  const knowledgeDir = join(app.getPath('userData'), 'knowledge')
-  const layaDir = join(app.getPath('userData'), 'laya')
-  const knowledgeCrypto = loadKnowledgeCrypto(knowledgeDir, {
-    available: () => safeStorage.isAsyncEncryptionAvailable(),
-    encrypt: (value) => safeStorage.encryptStringAsync(value),
-    decrypt: (sealed) => safeStorage.decryptStringAsync(sealed),
-  }, { relatedDataDirs: [join(layaDir, 'vectors')] })
-  // Key/decryption failures should surface when Knowledge is used, not become
-  // an unhandled rejection during startup. Keep the original promise rejected.
-  void knowledgeCrypto.catch(() => undefined)
-  let laya: LayaService | null = null
-  const knowledge = new KnowledgeService({
-    dir: knowledgeDir,
-    crypto: knowledgeCrypto,
-    getActivePage: () => (pageAttached && pageView ? pageView.webContents : null),
-    isExcluded: (url) => isExcludedSite(url, excludedSites),
-    onChange: (change) => laya?.onKnowledgeChange(change),
-  })
-  ipcMain.handle(knowledgeChannels.command, (_event, value: unknown) => knowledge.handle(parseKnowledgeCommand(value)))
-  // Laya: optional on-device meaning search over absorbed pages. Its Node worker
-  // guards selected outbound APIs, but it is not OS-level network/filesystem isolated.
-  laya = new LayaService({
-    dir: layaDir,
-    crypto: knowledgeCrypto,
-    knowledge,
-    openEmbedder: openLayaEmbedder,
-    emit: (event) => { if (window && !window.isDestroyed()) window.webContents.send(layaChannels.event, event) },
-  })
-  ipcMain.handle(layaChannels.command, (_event, value: unknown) => laya!.handle(parseLayaCommand(value)))
-  app.once('will-quit', () => { void laya?.close() })
-  setTimeout(() => { void laya?.backfill().catch(() => undefined) }, 15_000).unref?.()
-  // Private browsing and backup exclusion for the private stores (PRD MEM-001, §8.4).
-  const userDataPath = app.getPath('userData')
-  const backupPaths = [privateLibraryPath(), join(userDataPath, 'knowledge'), join(userDataPath, 'laya'), join(userDataPath, 'personal')]
-  const backupExclusionIntentPath = join(userDataPath, 'backup-exclusion.json')
-  const excludedSitesFile = join(app.getPath('userData'), 'excluded-sites.json')
-  try {
-    const raw = JSON.parse(readFileSync(excludedSitesFile, 'utf8')) as unknown
-    if (Array.isArray(raw)) excludedSites = raw.filter((site): site is string => typeof site === 'string').slice(0, 500)
-  } catch {
-    // None yet.
-  }
-  const privacyState = async (): Promise<PrivacyState> => ({
-    excludedSites,
-    privateMode,
-    privateTabs: openTabs.filter((tab) => privateViews.has(tab.view)).length,
-    backupExcluded: await backupExclusionStatus(backupPaths, readBackupExclusionIntent(backupExclusionIntentPath)),
-    backupExclusionAvailable: backupExclusionAvailable(),
-    backupExclusionRequested: readBackupExclusionIntent(backupExclusionIntentPath),
-    backupPaths,
-  })
-  const emitPrivacy = async (): Promise<void> => {
-    if (window && !window.isDestroyed()) window.webContents.send(privacyChannels.event, await privacyState())
-  }
-  const stopBackupExclusionWatch = watchBackupExclusionPaths(userDataPath, backupPaths, backupExclusionIntentPath, () => { void emitPrivacy() })
-  app.once('will-quit', stopBackupExclusionWatch)
-  ipcMain.handle(privacyChannels.command, async (_event, value: unknown) => {
-    const command = parsePrivacyCommand(value)
-    if (command.type === 'set-private-mode') {
-      privateMode = command.on
-      if (!command.on) {
-        // Leaving private browsing closes private tabs and wipes their session.
-        sitePermissions!.clear(true)
-        for (const tab of openTabs.filter((item) => privateViews.has(item.view))) discardTab(tab.id)
-        const privateSession = session.fromPartition(PRIVATE_PARTITION)
-        await privateSession.clearStorageData().catch(() => undefined)
-        await privateSession.clearCache().catch(() => undefined)
-        emitPanelState()
+  startup('app session', wireShellSession)
+  startup('menu', installApplicationMenu)
+  startup('saved passwords', wirePasswords)
+  startup('site permissions', () => {
+    const normalPermissions = new SitePermissionStore(join(app.getPath('userData'), 'site-permissions.json'))
+    sitePermissions = new SitePermissionBroker({
+      store: (isPrivate) => (isPrivate ? privatePermissions : normalPermissions),
+      emit: (event) => { if (window && !window.isDestroyed()) window.webContents.send(sitePermissionChannels.event, event) },
+      systemAccess: (kind) => (process.platform === 'darwin' ? systemPreferences.askForMediaAccess(kind) : Promise.resolve(true)),
+    })
+    handleFromShell(sitePermissionChannels.command, async (_event, value: unknown) => {
+      const command = parseSitePermissionCommand(value)
+      const store = pageView && privateViews.has(pageView) ? privatePermissions : normalPermissions
+      if (command.type === 'decide') return sitePermissions!.decide(command.id, command.decision)
+      if (command.type === 'pending') return sitePermissions!.list()
+      if (command.type === 'reset') {
+        sitePermissions!.reset(command.origin, Boolean(pageView && privateViews.has(pageView)), command.kind)
       }
-      await emitPrivacy()
+      return store.get(command.origin)
+    })
+  })
+  startup('page sessions', () => {
+    wireDownloadSession()
+    wireProtectionSession()
+    // Private tabs get the same protections, permissions and download handling.
+    wireDownloadSession(PRIVATE_PARTITION)
+    wireProtectionSession(PRIVATE_PARTITION)
+  })
+
+  let laya: LayaService | null = null
+  startup('captures', () => {
+    const captureLibrary = new CaptureLibrary(
+      join(app.getPath('userData'), 'capture-library'),
+      // Test runs point this at a temporary folder instead of ~/Pictures.
+      process.env['INTOPONET_CAPTURE_ROOT'] || join(app.getPath('pictures'), 'Intoponet'),
+      { trash: (path) => shell.trashItem(path) },
+    )
+    captures = new CaptureService(captureLibrary, { window: () => window, pageView: () => pageView, pageAttached: () => pageAttached })
+    // Import anything saved by the earlier encrypted store, once.
+    void migrateEncryptedCaptures(join(app.getPath('userData'), 'captures'), captureLibrary, async (sealed) => (await safeStorage.decryptStringAsync(sealed)).result)
+      .catch(() => 0)
+    protocol.handle(CAPTURE_SCHEME, (request) => captures!.respond(request))
+    handleFromShell(captureChannels.command, (_event, value: unknown) => captures!.handle(parseCaptureCommand(value)))
+  })
+  startup('The Olds', () => {
+    // The Olds: sourced history threads from Wikidata/Wikipedia (public lookups only).
+    const olds = new OldsService({
+      cacheDir: join(app.getPath('userData'), 'olds-cache'),
+      // Headlines in other languages are translated on this Mac (when that language is installed) before matching.
+      translateToEnglish: async (text, lang) => {
+        const code = normalizeLanguage(lang)
+        if (!code || code === 'en' || !translateService || !(await translateService.isInstalled(code))) return null
+        const [english] = await translateService.translate(code, 'en', [text], false)
+        return english ?? null
+      },
+      // Laya (when on) checks that a history topic means the same thing as the headline.
+      meaning: (query, texts) => laya ? laya.similarities(query, texts) : Promise.resolve(null),
+      embed: (texts) => laya ? laya.embedTexts(texts) : Promise.resolve(null),
+      // Quality checks only: INTOPONET_OLDS_DEBUG=<file> records how each headline's candidates scored.
+      ...(process.env.INTOPONET_OLDS_DEBUG ? { debug: (headline: string, candidates: unknown, searched: unknown) => appendFileSync(process.env.INTOPONET_OLDS_DEBUG!, `${JSON.stringify({ headline, candidates, searched })}\n`) } : {}),
+    })
+    handleFromShell(oldsChannels.command, (_event, value: unknown) => olds.thread(parseOldsCommand(value).query))
+  })
+  startup('knowledge and Laya', () => {
+    // Absorb + local knowledge: extracted on this device, encrypted with an OS-keychain key, never sent anywhere.
+    const knowledgeDir = join(app.getPath('userData'), 'knowledge')
+    const layaDir = join(app.getPath('userData'), 'laya')
+    // The key loads on first use; a failure (Keychain locked or denied) is asked again next time.
+    const knowledgeCrypto = retryingKnowledgeCrypto(() => loadKnowledgeCrypto(knowledgeDir, {
+      available: () => safeStorage.isAsyncEncryptionAvailable(),
+      encrypt: (value) => safeStorage.encryptStringAsync(value),
+      decrypt: (sealed) => safeStorage.decryptStringAsync(sealed),
+    }, { relatedDataDirs: [join(layaDir, 'vectors')] }))
+    const knowledge = new KnowledgeService({
+      dir: knowledgeDir,
+      crypto: knowledgeCrypto,
+      getActivePage: () => (pageAttached && pageView ? pageView.webContents : null),
+      isExcluded: (url) => isExcludedSite(url, excludedSites),
+      onChange: (change) => laya?.onKnowledgeChange(change),
+    })
+    handleFromShell(knowledgeChannels.command, (_event, value: unknown) => knowledge.handle(parseKnowledgeCommand(value)))
+    // Laya: optional on-device meaning search over absorbed pages. Its Node worker
+    // guards selected outbound APIs, but it is not OS-level network/filesystem isolated.
+    laya = new LayaService({
+      dir: layaDir,
+      crypto: knowledgeCrypto,
+      knowledge,
+      openEmbedder: openLayaEmbedder,
+      emit: (event) => { if (window && !window.isDestroyed()) window.webContents.send(layaChannels.event, event) },
+    })
+    handleFromShell(layaChannels.command, (_event, value: unknown) => laya!.handle(parseLayaCommand(value)))
+    app.once('will-quit', () => { void laya?.close() })
+    setTimeout(() => { void laya?.backfill().catch(() => undefined) }, 15_000).unref?.()
+  })
+  startup('privacy', () => {
+    // Private browsing and backup exclusion for the private stores (PRD MEM-001, §8.4).
+    const userDataPath = app.getPath('userData')
+    const backupPaths = [privateLibraryPath(), join(userDataPath, 'knowledge'), join(userDataPath, 'laya'), join(userDataPath, 'personal')]
+    const backupExclusionIntentPath = join(userDataPath, 'backup-exclusion.json')
+    const excludedSitesFile = join(app.getPath('userData'), 'excluded-sites.json')
+    try {
+      const raw = JSON.parse(readFileSync(excludedSitesFile, 'utf8')) as unknown
+      if (Array.isArray(raw)) excludedSites = raw.filter((site): site is string => typeof site === 'string').slice(0, 500)
+    } catch {
+      // None yet.
     }
-    if (command.type === 'set-excluded-sites') {
-      excludedSites = command.sites
-      try { writeFileSync(excludedSitesFile, JSON.stringify(excludedSites), { mode: 0o600 }) } catch { /* applies this session */ }
-      await emitPrivacy()
+    const privacyState = async (): Promise<PrivacyState> => ({
+      excludedSites,
+      privateMode,
+      privateTabs: openTabs.filter((tab) => privateViews.has(tab.view)).length,
+      backupExcluded: await backupExclusionStatus(backupPaths, readBackupExclusionIntent(backupExclusionIntentPath)),
+      backupExclusionAvailable: backupExclusionAvailable(),
+      backupExclusionRequested: readBackupExclusionIntent(backupExclusionIntentPath),
+      backupPaths,
+    })
+    const emitPrivacy = async (): Promise<void> => {
+      if (window && !window.isDestroyed()) window.webContents.send(privacyChannels.event, await privacyState())
     }
-    if (command.type === 'set-backup-exclusion') {
-      try {
-        await setBackupExclusion(backupPaths, command.on, backupExclusionIntentPath)
-      } finally {
+    const stopBackupExclusionWatch = watchBackupExclusionPaths(userDataPath, backupPaths, backupExclusionIntentPath, () => { void emitPrivacy() })
+    app.once('will-quit', stopBackupExclusionWatch)
+    handleFromShell(privacyChannels.command, async (_event, value: unknown) => {
+      const command = parsePrivacyCommand(value)
+      if (command.type === 'set-private-mode') {
+        privateMode = command.on
+        if (!command.on) {
+          // Leaving private browsing closes private tabs and wipes their session.
+          sitePermissions!.clear(true)
+          for (const tab of openTabs.filter((item) => privateViews.has(item.view))) discardTab(tab.id)
+          const privateSession = session.fromPartition(PRIVATE_PARTITION)
+          await privateSession.clearStorageData().catch(() => undefined)
+          await privateSession.clearCache().catch(() => undefined)
+          emitPanelState()
+        }
         await emitPrivacy()
       }
-    }
-    return privacyState()
+      if (command.type === 'set-excluded-sites') {
+        excludedSites = command.sites
+        try { await trackedWrite(excludedSitesFile, JSON.stringify(excludedSites)) } catch { /* applies this session */ }
+        await emitPrivacy()
+      }
+      if (command.type === 'set-backup-exclusion') {
+        try {
+          await setBackupExclusion(backupPaths, command.on, backupExclusionIntentPath)
+        } finally {
+          await emitPrivacy()
+        }
+      }
+      return privacyState()
+    })
   })
-  // Beacons: the only path by which a user-approved contribution leaves this Mac (PRD §4.6, §7).
-  const beaconDir = join(app.getPath('userData'), 'beacons')
-  const beacons = new BeaconPublisher({
-    files: { key: join(beaconDir, 'device-key.sealed'), settings: join(beaconDir, 'settings.json'), published: join(beaconDir, 'published.json') },
-    box: {
-      available: () => safeStorage.isEncryptionAvailable(),
-      seal: (text) => safeStorage.encryptString(text),
-      open: (sealed) => safeStorage.decryptString(sealed),
-    },
-    defaultRegistry: process.env['INTOPONET_BEACON_REGISTRY'] || DEFAULT_BEACON_REGISTRY,
+  startup('beacons', () => {
+    // Beacons: the only path by which a user-approved contribution leaves this Mac (PRD §4.6, §7).
+    const beaconDir = join(app.getPath('userData'), 'beacons')
+    const beacons = new BeaconPublisher({
+      files: { key: join(beaconDir, 'device-key.sealed'), settings: join(beaconDir, 'settings.json'), published: join(beaconDir, 'published.json') },
+      box: {
+        available: () => safeStorage.isAsyncEncryptionAvailable(),
+        seal: (text) => safeStorage.encryptStringAsync(text),
+        open: async (sealed) => (await safeStorage.decryptStringAsync(sealed)).result,
+      },
+      defaultRegistry: process.env['INTOPONET_BEACON_REGISTRY'] || DEFAULT_BEACON_REGISTRY,
+    })
+    handleFromShell(beaconChannels.command, async (_event, value: unknown) => {
+      const command = parseBeaconCommand(value)
+      switch (command.type) {
+        case 'state': return beacons.state()
+        case 'set-registry': return beacons.setRegistry(command.url)
+        case 'preview': return beacons.preview(command.draft)
+        case 'publish': return beacons.publish(command.draft)
+        case 'withdraw': return beacons.withdraw(command.id)
+        case 'report': return beacons.report(command.url, command.kind, command.text)
+        case 'read': return beacons.read({ ...(command.topic ? { topic: command.topic } : {}), ...(command.bbox ? { bbox: command.bbox } : {}) })
+      }
+    })
   })
-  ipcMain.handle(beaconChannels.command, async (_event, value: unknown) => {
-    const command = parseBeaconCommand(value)
-    switch (command.type) {
-      case 'state': return beacons.state()
-      case 'set-registry': return beacons.setRegistry(command.url)
-      case 'preview': return beacons.preview(command.draft)
-      case 'publish': return beacons.publish(command.draft)
-      case 'withdraw': return beacons.withdraw(command.id)
-      case 'report': return beacons.report(command.url, command.kind, command.text)
-      case 'read': return beacons.read({ ...(command.topic ? { topic: command.topic } : {}), ...(command.bbox ? { bbox: command.bbox } : {}) })
-    }
+  startup('feedback', () => {
+    // Feedback: after an hour of active use the app asks once for a rating or a comment.
+    // Only what the person writes, their rating and the app version are sent, and only when they press Send.
+    const feedback = new FeedbackService(join(app.getPath('userData'), 'feedback.json'), app.getVersion())
+    const feedbackTick = setInterval(() => {
+      const inUse = !!window && !window.isDestroyed() && window.isVisible() && window.isFocused() && powerMonitor.getSystemIdleTime() < 120
+      if (inUse) void feedback.addActiveTime(60_000)
+    }, 60_000)
+    feedbackTick.unref()
+    handleFromShell('intoponet:feedback', (_event, value: unknown) => feedback.handle(parseFeedbackCommand(value)))
   })
-  // Feedback: after an hour of active use the app asks once for a rating or a comment.
-  // Only what the person writes, their rating and the app version are sent, and only when they press Send.
-  const feedback = new FeedbackService(join(app.getPath('userData'), 'feedback.json'), app.getVersion())
-  const feedbackTick = setInterval(() => {
-    const inUse = !!window && !window.isDestroyed() && window.isVisible() && window.isFocused() && powerMonitor.getSystemIdleTime() < 120
-    if (inUse) void feedback.addActiveTime(60_000)
-  }, 60_000)
-  feedbackTick.unref()
-  ipcMain.handle('intoponet:feedback', (_event, value: unknown) => feedback.handle(parseFeedbackCommand(value)))
-  // Site icons for bookmarks: from visited pages or the site's own /favicon.ico, cached on this Mac.
-  faviconCache = new FaviconCache(join(app.getPath('userData'), 'favicons.json'))
-  ipcMain.handle('intoponet:favicons', (_event, value: unknown) => {
-    if (!Array.isArray(value) || value.length > 300) throw new Error('Invalid hosts.')
-    return faviconCache!.get(value.filter((host): host is string => typeof host === 'string' && isIconHost(host)))
+  startup('site icons', () => {
+    // Site icons for bookmarks: from visited pages or the site's own /favicon.ico, cached on this Mac.
+    faviconCache = new FaviconCache(join(app.getPath('userData'), 'favicons.json'))
+    handleFromShell('intoponet:favicons', (_event, value: unknown) => {
+      if (!Array.isArray(value) || value.length > 300) throw new Error('Invalid hosts.')
+      return faviconCache!.get(value.filter((host): host is string => typeof host === 'string' && isIconHost(host)))
+    })
   })
-  // Article previews for the sources carousel: each outlet's own image, writers and dates,
-  // fetched without cookies; images reach the app as small JPEG data URLs.
-  const articlePreviews = new ArticlePreviews((bytes, mime) => {
-    const image = nativeImage.createFromBuffer(bytes)
-    if (image.isEmpty()) return bytes.byteLength < 900_000 ? { data: bytes, mime } : null
-    const { width } = image.getSize()
-    const fitted = width > 880 ? image.resize({ width: 880, quality: 'good' }) : image
-    return { data: fitted.toJPEG(80), mime: 'image/jpeg' }
-  // Through Chromium's own network stack (outlets refuse many plain clients), in an in-memory
-  // profile of its own: no cookies or sign-ins from your browsing are sent.
-  }, async (input, init) => {
-    try {
-      const response = await session.fromPartition('intoponet-article-previews').fetch(String(input), init as RequestInit)
-      if (response.ok) return response
-    } catch {
-      // Fall through to a plain request.
-    }
-    return fetch(input, init)
+  startup('article previews', () => {
+    // Article previews for the sources carousel: each outlet's own image, writers and dates,
+    // fetched without cookies; images reach the app as small JPEG data URLs.
+    const articlePreviews = new ArticlePreviews((bytes, mime) => {
+      const image = nativeImage.createFromBuffer(bytes)
+      if (image.isEmpty()) return bytes.byteLength < 900_000 ? { data: bytes, mime } : null
+      const { width } = image.getSize()
+      const fitted = width > 880 ? image.resize({ width: 880, quality: 'good' }) : image
+      return { data: fitted.toJPEG(80), mime: 'image/jpeg' }
+    // Through Chromium's own network stack (outlets refuse many plain clients), in an in-memory
+    // profile of its own: no cookies or sign-ins from your browsing are sent.
+    }, async (input, init) => {
+      try {
+        const response = await session.fromPartition('intoponet-article-previews').fetch(String(input), init as RequestInit)
+        if (response.ok) return response
+      } catch {
+        // Fall through to a plain request.
+      }
+      return fetch(input, init)
+    })
+    handleFromShell('intoponet:article-preview', (_event, value: unknown) => {
+      if (typeof value !== 'string' || value.length > 2048 || !previewableUrl(value)) return null
+      return articlePreviews.get(value)
+    })
   })
-  ipcMain.handle('intoponet:article-preview', (event, value: unknown) => {
-    if (!window || event.sender !== window.webContents) throw new Error('Not allowed.')
-    if (typeof value !== 'string' || value.length > 2048 || !previewableUrl(value)) return null
-    return articlePreviews.get(value)
+  startup('translation', () => {
+    // Translation: Mozilla's on-device models, downloaded per language on request and pinned by
+    // SHA-256. The engine runs in a worker with no network; text never leaves the device.
+    const translateStore = new TranslateStore(join(app.getPath('userData'), 'translate'), (input, init) => fetch(input, init))
+    translateService = new TranslateService({
+      store: translateStore,
+      engine: openTranslationEngine(translateStore),
+      emit: (event) => { if (window && !window.isDestroyed()) window.webContents.send(translateChannels.event, event) },
+      getActivePage: () => (pageAttached && pageView && !viewGone(pageView) ? pageView.webContents : null),
+      isPrivatePage: (page) => !!pageView && pageView.webContents.id === page.id && privateViews.has(pageView),
+    })
+    handleFromShell(translateChannels.command, (_event, value: unknown) => translateService!.handle(parseTranslateCommand(value)))
   })
-  // Translation: Mozilla's on-device models, downloaded per language on request and pinned by
-  // SHA-256. The engine runs in a worker with no network; text never leaves the device.
-  const translateStore = new TranslateStore(join(app.getPath('userData'), 'translate'), (input, init) => fetch(input, init))
-  translateService = new TranslateService({
-    store: translateStore,
-    engine: openTranslationEngine(translateStore),
-    emit: (event) => { if (window && !window.isDestroyed()) window.webContents.send(translateChannels.event, event) },
-    getActivePage: () => (pageAttached && pageView && !pageView.webContents.isDestroyed() ? pageView.webContents : null),
-    isPrivatePage: (page) => !!pageView && pageView.webContents.id === page.id && privateViews.has(pageView),
-  })
-  ipcMain.handle(translateChannels.command, (_event, value: unknown) => translateService!.handle(parseTranslateCommand(value)))
   // Whether the open page declares its article restricted (read-only; used to offer free coverage elsewhere).
-  ipcMain.handle('intoponet:page-access', async () => {
-    if (!pageAttached || !pageView || pageView.webContents.isDestroyed()) return null
+  handleFromShell('intoponet:page-access', async () => {
+    if (!pageAttached || !pageView || viewGone(pageView)) return null
     const url = pageView.webContents.getURL()
     if (!/^https?:/i.test(url)) return null
     try {
@@ -1799,64 +1996,84 @@ app.whenReady().then(async () => {
       return null
     }
   })
-  const updateController = new UpdateController({
-    enabled: __INTOPONET_MAC_UPDATE_URL__.length > 0,
-    packaged: app.isPackaged,
-    platform: process.platform,
-    currentVersion: app.getVersion(),
-    feedUrl: __INTOPONET_MAC_UPDATE_URL__,
-    adapter: app.isPackaged && process.platform === 'darwin' && __INTOPONET_MAC_UPDATE_URL__.length > 0 ? autoUpdater : undefined,
-    emit: (status) => { if (window && !window.isDestroyed()) window.webContents.send(updateChannels.event, status) },
-    // The automatic-check setting and last check time, kept between launches.
-    preferences: {
-      load: () => JSON.parse(readFileSync(join(app.getPath('userData'), 'updates.json'), 'utf8')) as { automatic: boolean; lastCheckedAt?: number },
-      save: (preferences) => writeFileSync(join(app.getPath('userData'), 'updates.json'), JSON.stringify(preferences), { mode: 0o600 }),
-    },
+  let updateController: UpdateController | null = null
+  startup('updates', () => {
+    const updatesFile = join(app.getPath('userData'), 'updates.json')
+    const controller = new UpdateController({
+      enabled: __INTOPONET_MAC_UPDATE_URL__.length > 0,
+      packaged: app.isPackaged,
+      platform: process.platform,
+      currentVersion: app.getVersion(),
+      feedUrl: __INTOPONET_MAC_UPDATE_URL__,
+      adapter: app.isPackaged && process.platform === 'darwin' && __INTOPONET_MAC_UPDATE_URL__.length > 0 ? autoUpdater : undefined,
+      emit: (status) => { if (window && !window.isDestroyed()) window.webContents.send(updateChannels.event, status) },
+      // The automatic-check setting and last check time, kept between launches.
+      preferences: {
+        // Checked by the controller (a damaged value is dropped, not trusted).
+        load: () => JSON.parse(readFileSync(updatesFile, 'utf8')) as { automatic: boolean; lastCheckedAt?: number },
+        save: (preferences) => { trackedWrite(updatesFile, JSON.stringify(preferences)).catch((error: unknown) => console.error('Could not save update settings:', error)) },
+      },
+    })
+    updateController = controller
+    handleFromShell(updateChannels.command, (_event, value: unknown) => controller.handle(parseUpdateCommand(value)))
   })
-  ipcMain.handle(updateChannels.command, (_event, value: unknown) => updateController.handle(parseUpdateCommand(value)))
   app.once('will-quit', () => { void translateService?.close() })
-  ipcMain.handle(
-    browserHostChannels.command,
-    (_event, value: unknown) => handleBrowserCommand(parseBrowserHostCommand(value)),
-  )
   createWindow()
-  updateController.startAutomatic()
+  startup('automatic updates', () => updateController?.startAutomatic())
   if (restoredState?.wasVisible && pageView && lastKnownUrl) {
     attachPageView()
-    void pageView.webContents.loadURL(lastKnownUrl)
+    void pageView.webContents.loadURL(lastKnownUrl).catch(() => undefined)
   }
   emitTabs()
 
-  // Cached field now, then live refreshes (earthquakes/natural events every
-  // 20 minutes; Wikipedia's daily most-read when a new day is published).
-  const stopPublicField = startPublicFieldRefresh((snapshot) => {
-    emit({ type: 'field-snapshot', payload: JSON.stringify(snapshot) })
-  }, (status) => {
-    emit({ type: 'public-field-status', status })
+  startup('public field', () => {
+    // Cached field now, then live refreshes (earthquakes/natural events every
+    // 20 minutes; Wikipedia's daily most-read when a new day is published).
+    const stopPublicField = startPublicFieldRefresh((snapshot) => {
+      emit({ type: 'field-snapshot', payload: JSON.stringify(snapshot) })
+    }, (status) => {
+      emit({ type: 'public-field-status', status })
+    })
+    app.once('will-quit', stopPublicField)
   })
-  app.once('will-quit', stopPublicField)
 
-  // What each country's own outlets are reporting (headlines and links only).
-  newsService = startNewsService({
-    userData: app.getPath('userData'),
-    emit: (payload) => emit({ type: 'news-digest', payload }),
-    digestBuilder: openDigestBuilder(),
+  startup('news', () => {
+    // What each country's own outlets are reporting (headlines and links only).
+    newsService = startNewsService({
+      userData: app.getPath('userData'),
+      emit: (payload) => emit({ type: 'news-digest', payload }),
+      digestBuilder: openDigestBuilder(),
+    })
+    app.once('will-quit', () => newsService?.stop())
   })
-  app.once('will-quit', () => newsService?.stop())
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
+}).catch((error: unknown) => {
+  console.error('Intoponet did not finish starting:', error)
+  if (!window) createWindow()
 })
 
-app.on('before-quit', () => {
+/** Quitting waits (briefly) for saves already on their way, so the last library edit and tabs are kept. */
+const QUIT_FLUSH_LIMIT_MS = 5_000
+let quitFlushStarted = false
+
+app.on('before-quit', (event) => {
   if (!app.isReady()) return
-  if (persistenceTimer) clearTimeout(persistenceTimer)
-  writeFileSync(stateFilePath(), JSON.stringify(persistentState()), {
-    encoding: 'utf8',
-    mode: 0o600,
-  })
-  persistExceptions()
+  shellClosing = true
+  if (!quitFlushStarted && (libraryWriter.pending || writesInFlight.size > 0)) {
+    // Once only: the second before-quit (from app.quit() below) goes straight through.
+    quitFlushStarted = true
+    event.preventDefault()
+    const flushed = Promise.allSettled([libraryWriter.flush(), ...writesInFlight])
+    const limit = new Promise((resolve) => setTimeout(resolve, QUIT_FLUSH_LIMIT_MS))
+    void Promise.race([flushed, limit]).finally(() => app.quit())
+    return
+  }
+  if (stateWritesClosed) return
+  writeFinalState()
+  stateWritesClosed = true
 })
 
 app.on('window-all-closed', () => {

@@ -19,6 +19,11 @@ type Pending = { image: NativeImage; title: string; sourceUrl: string; createdAt
 const PENDING_TTL_MS = 15 * 60 * 1000
 const FRAME_INTERVAL_MS = 1000 / 30
 const THUMB_WIDTH = 480
+/**
+ * Frames stop on their own after this long even if the app never asks (the app ends recordings at
+ * CAPTURE_LIMITS.recordingMs; this is the backstop if it cannot, e.g. its window reloaded).
+ */
+export const RECORDING_HARD_LIMIT_MS = CAPTURE_LIMITS.recordingMs + 60_000
 
 /** Pixel rectangle for a normalized crop, clamped to the image. */
 export function cropToPixels(crop: CaptureCrop, size: { width: number; height: number }) {
@@ -27,6 +32,12 @@ export function cropToPixels(crop: CaptureCrop, size: { width: number; height: n
   const width = Math.max(1, Math.min(size.width - x, Math.round(crop.width * size.width)))
   const height = Math.max(1, Math.min(size.height - y, Math.round(crop.height * size.height)))
   return { x, y, width, height }
+}
+
+/** A view whose page was destroyed has no webContents at all. */
+function liveContents(view: WebContentsView | null): Electron.WebContents | null {
+  const contents = view?.webContents as Electron.WebContents | undefined
+  return contents && !contents.isDestroyed() ? contents : null
 }
 
 function scaleToWidth(image: NativeImage, maxWidth: number): NativeImage {
@@ -46,6 +57,7 @@ function pixelImage(image: NativeImage): NativeImage {
 export class CaptureService {
   private pending = new Map<string, Pending>()
   private recording: { webContentsId: number; crop: CaptureCrop; lastFrameAt: number } | null = null
+  private recordingLimit: ReturnType<typeof setTimeout> | null = null
 
   constructor(
     private readonly store: CaptureLibrary,
@@ -81,7 +93,7 @@ export class CaptureService {
 
   private async begin(): Promise<PendingCapture> {
     const view = this.host.pageView()
-    if (!view || !this.host.pageAttached() || view.webContents.isDestroyed()) throw new Error('Open a page to capture it.')
+    if (!view || !this.host.pageAttached() || !liveContents(view)) throw new Error('Open a page to capture it.')
     if (this.recording) throw new Error('A recording is already running.')
     const captured = await view.webContents.capturePage()
     if (captured.isEmpty()) throw new Error('This page could not be captured.')
@@ -128,10 +140,17 @@ export class CaptureService {
   private startRecording(pendingId: string, crop: CaptureCrop): void {
     const entry = this.takePending(pendingId, true)
     const view = this.host.pageView()
-    if (!view || view.webContents.isDestroyed()) throw new Error('The page closed before recording started.')
+    if (!view || !liveContents(view)) throw new Error('The page closed before recording started.')
     this.stopFrames()
     this.setPageHidden(false)
     this.recording = { webContentsId: view.webContents.id, crop, lastFrameAt: 0 }
+    this.recordingLimit = setTimeout(() => {
+      this.recordingLimit = null
+      if (!this.recording) return
+      this.stopFrames()
+      this.emit({ type: 'recording-interrupted', reason: 'page-closed' })
+    }, RECORDING_HARD_LIMIT_MS)
+    this.recordingLimit.unref?.()
     // Seed the encoder with the frozen frame so a static page still records.
     this.sendFrame(entry.image, crop)
     view.webContents.beginFrameSubscription(false, (image) => {
@@ -151,24 +170,43 @@ export class CaptureService {
     this.emit({ type: 'frame', jpeg: new Uint8Array(frame.toJPEG(85)), width: size.width, height: size.height })
   }
 
+  private clearRecordingLimit(): void {
+    if (this.recordingLimit) clearTimeout(this.recordingLimit)
+    this.recordingLimit = null
+  }
+
   stopFrames(): void {
+    this.clearRecordingLimit()
     const recording = this.recording
     this.recording = null
     if (!recording) return
     const view = this.host.pageView()
-    if (view && !view.webContents.isDestroyed() && view.webContents.id === recording.webContentsId) {
-      try { view.webContents.endFrameSubscription() } catch { /* already ended */ }
+    const contents = liveContents(view)
+    if (contents && contents.id === recording.webContentsId) {
+      try { contents.endFrameSubscription() } catch { /* already ended */ }
     }
   }
 
   /** Called when the active page view changes or closes. */
   pageChanged(reason: 'tab-changed' | 'page-closed', previous: WebContentsView | null): void {
     if (!this.recording) return
-    if (previous && !previous.webContents.isDestroyed()) {
-      try { previous.webContents.endFrameSubscription() } catch { /* already ended */ }
+    this.clearRecordingLimit()
+    const contents = liveContents(previous)
+    if (contents) {
+      try { contents.endFrameSubscription() } catch { /* already ended */ }
     }
     this.recording = null
     this.emit({ type: 'recording-interrupted', reason })
+  }
+
+  /**
+   * The app window reloaded: any capture it had in progress went with it. Stop sending frames and
+   * forget unsaved captures. (The page is shown again by the caller's setPageHeld(false), which
+   * knows to keep a new tab's blank view hidden.)
+   */
+  shellReloaded(): void {
+    this.stopFrames()
+    this.pending.clear()
   }
 
   private async saveVideo(command: Extract<CaptureCommand, { type: 'save-video' }>): Promise<CaptureRecord> {

@@ -17,6 +17,16 @@ export interface UpdateAdapter {
 
 export type UpdatePreferences = { automatic: boolean; lastCheckedAt?: number }
 
+/** A hand-edited or damaged updates.json must not stop the app: keep only values that make sense. */
+export function sanitizedPreferences(stored: unknown, now: number): UpdatePreferences {
+  const record = typeof stored === 'object' && stored !== null && !Array.isArray(stored) ? stored as Record<string, unknown> : {}
+  const automatic = typeof record['automatic'] === 'boolean' ? record['automatic'] : true
+  const checkedAt = record['lastCheckedAt']
+  // A real past check (with a day of clock slack), never a date Date cannot represent.
+  const valid = typeof checkedAt === 'number' && Number.isFinite(checkedAt) && checkedAt > 0 && checkedAt <= now + 24 * 60 * 60 * 1000
+  return { automatic, ...(valid ? { lastCheckedAt: checkedAt } : {}) }
+}
+
 /** First automatic check after launch, then roughly daily while the app is open. */
 export const AUTO_FIRST_DELAY_MS = 45_000
 export const AUTO_INTERVAL_MS = 24 * 60 * 60 * 1000
@@ -70,7 +80,7 @@ export class UpdateController {
     // Automatic checks are on unless the person turned them off.
     let stored: UpdatePreferences | undefined
     try { stored = this.preferences?.load() } catch { stored = undefined }
-    this.prefs = { automatic: stored?.automatic ?? true, ...(typeof stored?.lastCheckedAt === 'number' ? { lastCheckedAt: stored.lastCheckedAt } : {}) }
+    this.prefs = sanitizedPreferences(stored, this.now())
     const feedUrl = validatedUpdateFeedUrl(options.feedUrl)
     const disabledReason = !options.packaged
       ? 'preview'
