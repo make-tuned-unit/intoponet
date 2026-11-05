@@ -16,6 +16,8 @@ declare global {
       sitePermissions: SitePermissionApi
       beacons: BeaconApi
       favicons: { get(hosts: string[]): Promise<Record<string, string>> }
+      /** An article's own image, writers, dates and summary (null when the page could not be read). */
+      articles: { preview(url: string): Promise<import('../../main/articlePreview').ArticlePreview | null> }
       feedback: {
         status(): Promise<{ due: boolean }>
         later(): Promise<{ due: boolean }>

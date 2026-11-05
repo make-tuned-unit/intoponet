@@ -1,6 +1,6 @@
 # Feature verification
 
-Run 2026-11-05 04:48 UTC · tier `network` · only SOURCE_CAROUSEL · **1 passed, 0 failed, 0 blocked, 0 skipped, 28 assumed**.
+Run 2026-11-05 05:00 UTC · tier `network` · only SOURCE_CAROUSEL · **1 passed, 0 failed, 0 blocked, 0 skipped, 28 assumed**.
 
 Each feature makes a promise to the user; its check drives the built app end to end. Defined in `docs/FEATURE_DAG.json`, checks in `experiments/e2e/checks.mjs`, run with `npm run verify:features`.
 
@@ -16,7 +16,7 @@ Each feature makes a promise to the user; its check drives the built app end to 
 | · | **Globe stays where you put it** (`GLOBE_MOTION`) | Zooming after moving the globe keeps the place in view; it never swings back. | FLY_TO | assumed |
 | · | **Every country named and clickable** (`COUNTRY_NAMES`) | Country names fade in by zoom without overlapping; the country you spin or zoom to is always named, tiny ones included (Vatican, Nauru, Tuvalu); clicking any country, with or without news, opens it. | FLY_TO | assumed |
 | · | **Live public globe** (`GLOBE_LIVE`) | The globe shows live public signals (local news, reading, hazards) with World, Peaks, Rising and Fading highlights. | APP_BOOT | assumed |
-| ✅ | **Sources carousel** (`SOURCE_CAROUSEL`) | A world story with several sources opens a carousel of every outlet's headline to flip through; choosing one grows its card into the browser with that article open. | GLOBE_LIVE | pass · 126 s — Carousel flipped from KNR (Kalaallit Nunaata Radioa) to Le Journal de Montréal; chose "Le Journal de Montréal: EN DIRECT \| Élections de mi-mandat: Trump juge «en grand" and the browser opened https://www.journaldemontreal.com/2026/11/03/en-direct--les-americains-aux-urnes-les-premiers-bureaux-de-vote-ouvrent-pour-des-elections-cruciales (page was open before). |
+| ✅ | **Sources carousel** (`SOURCE_CAROUSEL`) | A world story with several sources opens a carousel of every outlet's headline to flip through; choosing one grows its card into the browser with that article open. | GLOBE_LIVE | pass · 165 s — Cards with 9 images, 1 bylines, 2 summaries. Carousel flipped from Expreso to KNR (Kalaallit Nunaata Radioa); chose "KNR (Kalaallit Nunaata Radioa): Trump: Gevinst ved Grønland-aftale overgår krigs" and the browser opened  (page was open before). |
 | · | **Stories covered across the world** (`WORLD_STORIES`) | The World tab lists stories covered by outlets in many countries, and the whole list can be scrolled. | GLOBE_LIVE | assumed |
 | · | **A country's news and bigger picture** (`COUNTRY_PANEL`) | Opening a country shows key facts, genuinely recent history and its local headlines, without clipping. | GLOBE_LIVE, FLY_TO | assumed |
 | · | **The history behind a headline** (`OLDS_HEADLINE`) | A headline opens the right topic with a dated, ordered chronology quoted from Wikipedia and relevant topics from the right country; broad matches give way to the actual event; no junk for unmatched headlines. | APP_BOOT | assumed |

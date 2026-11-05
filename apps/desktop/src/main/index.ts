@@ -17,6 +17,7 @@ import {
   systemPreferences,
   autoUpdater,
   dialog,
+  nativeImage,
 } from 'electron'
 import type { MenuItemConstructorOptions } from 'electron'
 import { UpdateController } from './updates'
@@ -69,6 +70,7 @@ import { LayaService } from './laya/service'
 import { openLayaEmbedder } from './laya/openEmbedder'
 import { TranslateService } from './translate/service'
 import { FaviconCache, isIconHost } from './faviconCache'
+import { ArticlePreviews, previewableUrl } from './articlePreview'
 import { ACCESS_SCRIPT, ACCESS_WORLD_ID, parseAccess } from './access/pageAccess'
 import { backupExclusionAvailable, backupExclusionStatus, readBackupExclusionIntent, setBackupExclusion, watchBackupExclusionPaths } from './backupExclusion'
 import { TranslateStore } from './translate/store'
@@ -1745,6 +1747,30 @@ app.whenReady().then(async () => {
   ipcMain.handle('intoponet:favicons', (_event, value: unknown) => {
     if (!Array.isArray(value) || value.length > 300) throw new Error('Invalid hosts.')
     return faviconCache!.get(value.filter((host): host is string => typeof host === 'string' && isIconHost(host)))
+  })
+  // Article previews for the sources carousel: each outlet's own image, writers and dates,
+  // fetched without cookies; images reach the app as small JPEG data URLs.
+  const articlePreviews = new ArticlePreviews((bytes, mime) => {
+    const image = nativeImage.createFromBuffer(bytes)
+    if (image.isEmpty()) return bytes.byteLength < 900_000 ? { data: bytes, mime } : null
+    const { width } = image.getSize()
+    const fitted = width > 880 ? image.resize({ width: 880, quality: 'good' }) : image
+    return { data: fitted.toJPEG(80), mime: 'image/jpeg' }
+  // Through Chromium's own network stack (outlets refuse many plain clients), in an in-memory
+  // profile of its own: no cookies or sign-ins from your browsing are sent.
+  }, async (input, init) => {
+    try {
+      const response = await session.fromPartition('intoponet-article-previews').fetch(String(input), init as RequestInit)
+      if (response.ok) return response
+    } catch {
+      // Fall through to a plain request.
+    }
+    return fetch(input, init)
+  })
+  ipcMain.handle('intoponet:article-preview', (event, value: unknown) => {
+    if (!window || event.sender !== window.webContents) throw new Error('Not allowed.')
+    if (typeof value !== 'string' || value.length > 2048 || !previewableUrl(value)) return null
+    return articlePreviews.get(value)
   })
   // Translation: Mozilla's on-device models, downloaded per language on request and pinned by
   // SHA-256. The engine runs in a worker with no network; text never leaves the device.

@@ -110,7 +110,10 @@ export const checks = {
     await ctx.delay(160)
     await ctx.shot('launching')
     await ctx.wait(`document.querySelectorAll('.sc-card').length >= 3`, 5_000, 'the carousel cards')
-    await ctx.delay(900)
+    // Outlets' own pictures and bylines arrive as each article's preview is read.
+    await ctx.wait(`document.querySelectorAll('.sc-card .sc-media img').length >= 1`, 25_000, 'an article image on the cards')
+    await ctx.delay(2500)
+    const enriched = JSON.parse(await ctx.evaluate(`JSON.stringify({ images: document.querySelectorAll('.sc-card .sc-media img').length, bylines: [...document.querySelectorAll('.sc-card .sc-authors')].length, summaries: document.querySelectorAll('.sc-card .sc-summary').length })`))
     await ctx.shot('carousel')
     const state0 = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getState().then((s) => JSON.stringify(s))`))
     const first = await ctx.evaluate(`document.querySelector('.sc-card.is-front .sc-outlet strong').innerText`)
@@ -130,7 +133,7 @@ export const checks = {
     expect(state.isVisible, 'The browser did not open the chosen source.')
     await ctx.delay(2500)
     await ctx.shot('opened')
-    return `Carousel flipped from ${first} to ${second}; chose "${chosen.slice(0, 80)}" and the browser opened ${state.url} (page was ${state0.isVisible ? 'open' : 'closed'} before).`
+    return `Cards with ${enriched.images} images, ${enriched.bylines} bylines, ${enriched.summaries} summaries. Carousel flipped from ${first} to ${second}; chose "${chosen.slice(0, 80)}" and the browser opened ${state.url} (page was ${state0.isVisible ? 'open' : 'closed'} before).`
   },
 
   async FLY_TO(ctx) {

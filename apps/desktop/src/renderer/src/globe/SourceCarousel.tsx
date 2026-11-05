@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, useReducedMotion, type Transition } from 'motion/react'
-import { ArrowUpRight, ChevronLeft, ChevronRight, Lock, X } from 'lucide-react'
+import { ArrowUpRight, ChevronLeft, ChevronRight, Clock3, Lock, Radio, UserRound, X } from 'lucide-react'
 import type { GlobalStory, GlobalStoryHeadline } from '../../../shared/news/globalStories'
 import { hostIsPaywalled } from '../../../shared/news/paywall'
 import { learnedPaywalls } from '../access/learnedPaywalls'
@@ -12,6 +12,85 @@ import { relativeTime } from './globeSignals'
 import { carouselSlot, pageRectFrom, stepIndex, VISIBLE_SIDE, type Rect } from './sourceCarouselLayout'
 
 export type CarouselLaunch = { story: GlobalStory; from: DOMRect }
+
+type Preview = Awaited<ReturnType<Window['intoponet']['articles']['preview']>>
+
+/** Each outlet's own image, writers and dates, asked for front card first and then outwards. */
+function useArticlePreviews(urls: string[], front: number): Map<string, Preview> {
+  const [previews, setPreviews] = useState<Map<string, Preview>>(new Map())
+  const asked = useRef(new Set<string>())
+  useEffect(() => {
+    const order = urls.map((url, position) => ({ url, distance: Math.abs(position - front) })).sort((a, b) => a.distance - b.distance)
+    for (const { url, distance } of order) {
+      if (asked.current.has(url) || distance > 4) continue
+      asked.current.add(url)
+      void window.intoponet.articles.preview(url).then(
+        (preview) => setPreviews((current) => new Map(current).set(url, preview)),
+        () => setPreviews((current) => new Map(current).set(url, null)),
+      )
+    }
+  }, [front, urls])
+  return previews
+}
+
+const dateFormat = (() => {
+  try {
+    return new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
+  } catch {
+    return null
+  }
+})()
+const formatDate = (iso: string): string => {
+  const time = Date.parse(iso)
+  return Number.isFinite(time) && dateFormat ? dateFormat.format(time) : ''
+}
+
+/** What a card shows: the article's image, outlet, place, headline, summary, writers and dates. */
+function SourceCardBody({ headline, preview, loading, title, original, summary, where, now, paywalled }: {
+  headline: GlobalStoryHeadline
+  preview: Preview | undefined
+  loading: boolean
+  title: string
+  original: string | null
+  summary: string | null
+  where: string
+  now: number
+  paywalled: boolean
+}) {
+  const published = preview?.publishedAt ?? headline.publishedAt
+  const authors = preview?.authors ?? []
+  return (
+    <>
+      <span className={`sc-media${preview?.image ? ' has-image' : ''}${loading ? ' is-loading' : ''}`}>
+        {preview?.image && <img src={preview.image} alt={preview.imageAlt ?? ''} draggable={false} />}
+        {!preview?.image && <span className="sc-media-mark"><SiteIcon url={headline.url} size={34} /></span>}
+        <span className="sc-media-tags">
+          {preview?.live && <span className="sc-live"><Radio size={11} aria-hidden="true" /> Live</span>}
+          {preview?.section && <span className="sc-tag">{preview.section}</span>}
+        </span>
+      </span>
+      <span className="sc-body">
+        <span className="sc-card-top">
+          <span className="sc-outlet"><SiteIcon url={headline.url} size={18} /><strong>{preview?.siteName ?? headline.publisher}</strong></span>
+          <span className="sc-where">{where}</span>
+        </span>
+        <span className="sc-headline" lang={original ? undefined : headline.lang}>{title}</span>
+        {original && <span className="sc-original" lang={headline.lang}>{original}</span>}
+        {summary && <span className="sc-summary">{summary}</span>}
+        <span className="sc-byline">
+          {authors.length > 0 && <span className="sc-authors"><UserRound size={12} aria-hidden="true" /> {authors.slice(0, 2).join(', ')}{authors.length > 2 ? ` +${authors.length - 2}` : ''}</span>}
+          <span>{formatDate(published)}</span>
+          {preview?.readingMinutes && <span><Clock3 size={11} aria-hidden="true" /> {preview.readingMinutes} min read</span>}
+        </span>
+        <span className="sc-card-foot">
+          <span>{relativeTime(published, now)}</span>
+          {(paywalled || preview?.paywalled) && <span className="sc-paywall"><Lock size={11} aria-hidden="true" /> May need a subscription</span>}
+          <span className="sc-read">Read full story <ArrowUpRight size={14} aria-hidden="true" /></span>
+        </span>
+      </span>
+    </>
+  )
+}
 
 type Phase = 'browse' | 'morph' | 'closing'
 
@@ -73,8 +152,31 @@ export function SourceCarousel({ launch, now, translation, countryName, onRead, 
       Number(b.url === story.url) - Number(a.url === story.url) ||
       Number(hostIsPaywalled(a.url, paywalls)) - Number(hostIsPaywalled(b.url, paywalls)))
   }, [story])
-  const titles = useTranslatedTitles(useMemo(() => headlines.map((item) => ({ key: item.url, title: item.title, lang: item.lang ?? null })), [headlines]), translation)
   const [index, setIndex] = useState(0)
+  const urls = useMemo(() => headlines.map((item) => item.url), [headlines])
+  const previews = useArticlePreviews(urls, index)
+  // Headlines and summaries in your language.
+  const titleItems = useMemo(() => headlines.flatMap((item) => {
+    const preview = previews.get(item.url)
+    const own = [{ key: item.url, title: item.title, lang: item.lang ?? null }]
+    return preview?.description ? [...own, { key: `summary:${item.url}`, title: preview.description, lang: preview.lang ?? item.lang ?? null }] : own
+  }), [headlines, previews])
+  const titles = useTranslatedTitles(titleItems, translation)
+  const bodyProps = (headline: GlobalStoryHeadline) => {
+    const shown = titles.get(headline.url)
+    const preview = previews.get(headline.url)
+    return {
+      headline,
+      preview,
+      loading: !previews.has(headline.url),
+      title: shown ?? headline.title,
+      original: shown ? headline.title : null,
+      summary: titles.get(`summary:${headline.url}`) ?? preview?.description ?? null,
+      where: headline.international ? 'International desk' : countryName(headline.countryCode),
+      now,
+      paywalled: hostIsPaywalled(headline.url, learnedPaywalls()),
+    }
+  }
   const [phase, setPhase] = useState<Phase>('browse')
   const [drag, setDrag] = useState(0)
   const [morph, setMorph] = useState<{ headline: GlobalStoryHeadline; from: Rect; to: Rect | null } | null>(null)
@@ -87,7 +189,7 @@ export function SourceCarousel({ launch, now, translation, countryName, onRead, 
   const suppressClick = useRef(false)
 
   const cardWidth = Math.round(Math.min(440, Math.max(280, size.w * 0.34)))
-  const cardHeight = Math.round(cardWidth * 0.62)
+  const cardHeight = Math.round(Math.min(cardWidth * 1.12, Math.max(320, Math.min(size.h * 0.53 - 165, size.h * 0.47 - 120) * 2)))
   const step = cardWidth * 0.66
   const centerY = size.h * 0.53
   const launchX = from.left + from.width / 2 - size.w / 2
@@ -237,7 +339,6 @@ export function SourceCarousel({ launch, now, translation, countryName, onRead, 
           const front = position === index
           const hidden = Math.abs(position - index) > VISIBLE_SIDE + 1
           const shown = titles.get(headline.url)
-          const paywalled = hostIsPaywalled(headline.url, learnedPaywalls())
           const hue = hueOf(headline.publisher)
           const launchDelay = reduced ? 0 : Math.min(Math.abs(position - index), VISIBLE_SIDE + 1) * 0.045
           const target = phase === 'closing'
@@ -284,17 +385,7 @@ export function SourceCarousel({ launch, now, translation, countryName, onRead, 
                 else setIndex(position)
               }}
             >
-              <span className="sc-card-top">
-                <span className="sc-outlet"><SiteIcon url={headline.url} size={18} /><strong>{headline.publisher}</strong></span>
-                <span className="sc-where">{headline.international ? 'International desk' : countryName(headline.countryCode)}</span>
-              </span>
-              <span className="sc-headline" lang={shown ? undefined : headline.lang}>{shown ?? headline.title}</span>
-              {shown && <span className="sc-original" lang={headline.lang}>{headline.title}</span>}
-              <span className="sc-card-foot">
-                <span>{relativeTime(headline.publishedAt, now)}</span>
-                {paywalled && <span className="sc-paywall"><Lock size={11} aria-hidden="true" /> May need a subscription</span>}
-                <span className="sc-read">Read full story <ArrowUpRight size={14} aria-hidden="true" /></span>
-              </span>
+              <SourceCardBody {...bodyProps(headline)} />
             </motion.button>
           )
         })}
@@ -351,10 +442,7 @@ export function SourceCarousel({ launch, now, translation, countryName, onRead, 
             animate={{ opacity: morph.to ? 0 : 1 }}
             transition={{ duration: reduced ? 0 : MORPH_S * 0.45, ease: EASE }}
           >
-            <span className="sc-card-top">
-              <span className="sc-outlet"><SiteIcon url={morph.headline.url} size={18} /><strong>{morph.headline.publisher}</strong></span>
-            </span>
-            <span className="sc-headline">{titles.get(morph.headline.url) ?? morph.headline.title}</span>
+            <SourceCardBody {...bodyProps(morph.headline)} />
           </motion.span>
         </motion.div>
       )}

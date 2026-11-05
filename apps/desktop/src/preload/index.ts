@@ -1,3 +1,4 @@
+import type { ArticlePreview } from '../main/articlePreview'
 import { translateChannels, type TranslateApi, type TranslateCommand, type TranslateEvent, type TranslateStatus, type PageTranslationState } from '@intoponet/browser-api'
 import { privacyChannels, type PrivacyApi, type PrivacyCommand, type PrivacyState } from '@intoponet/browser-api'
 import { beaconChannels, type BeaconApi, type BeaconCommand, type BeaconPreview, type BeaconResource, type BeaconState, type PublishedBeacon } from '@intoponet/browser-api'
@@ -275,6 +276,10 @@ const updates: UpdatesApi = {
   },
 }
 
+const articles = {
+  preview: (url: string) => ipcRenderer.invoke('intoponet:article-preview', url) as Promise<ArticlePreview | null>,
+}
+
 const favicons = {
   get: (hosts: string[]) => ipcRenderer.invoke('intoponet:favicons', hosts) as Promise<Record<string, string>>,
 }
@@ -306,4 +311,4 @@ const passwords: PasswordApi = {
   },
 }
 
-contextBridge.exposeInMainWorld('intoponet', Object.freeze({ browserHost, captures, olds, knowledge, laya, translate, privacy, sitePermissions, beacons, favicons, access, updates, feedback, passwords }))
+contextBridge.exposeInMainWorld('intoponet', Object.freeze({ browserHost, captures, olds, knowledge, laya, translate, privacy, sitePermissions, beacons, favicons, articles, access, updates, feedback, passwords }))
