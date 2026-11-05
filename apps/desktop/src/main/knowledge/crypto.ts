@@ -11,6 +11,31 @@ export type KnowledgeCrypto = {
 
 export type KeychainDecryption = string | { result: string; shouldReEncrypt?: boolean }
 
+/** The knowledge key, ready or on its way; a function is asked again after a failure. */
+export type KnowledgeCryptoSource = KnowledgeCrypto | Promise<KnowledgeCrypto> | (() => Promise<KnowledgeCrypto>)
+
+export function resolveKnowledgeCrypto(source: KnowledgeCryptoSource): Promise<KnowledgeCrypto> {
+  return typeof source === 'function' ? source() : Promise.resolve(source)
+}
+
+/**
+ * Load the key on first use. A failure (Keychain access denied, Keychain locked) is not
+ * remembered, so the next use asks again instead of staying broken until a restart.
+ * Concurrent callers share one attempt; once loaded, the key is kept.
+ */
+export function retryingKnowledgeCrypto(load: () => Promise<KnowledgeCrypto>): () => Promise<KnowledgeCrypto> {
+  let loaded: KnowledgeCrypto | null = null
+  let pending: Promise<KnowledgeCrypto> | null = null
+  return () => {
+    if (loaded) return Promise.resolve(loaded)
+    pending ??= load().then((crypto) => {
+      loaded = crypto
+      return crypto
+    }).finally(() => { pending = null })
+    return pending
+  }
+}
+
 /** AES-256-GCM: 12-byte IV, 16-byte tag, then ciphertext. */
 export function createAesGcmCrypto(key: Buffer): KnowledgeCrypto {
   if (key.length !== 32) throw new Error('Knowledge key must be 32 bytes.')

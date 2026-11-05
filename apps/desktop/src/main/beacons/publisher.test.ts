@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createPublicKey, verify } from 'node:crypto'
-import { mkdtempSync, readFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { signingText, type SignedRequest } from '@intoponet/beacon-core'
@@ -10,7 +10,7 @@ import { writeFileSync } from 'node:fs'
 
 const box = { available: () => true, seal: (text: string) => Buffer.from(`sealed:${text}`), open: (sealed: Buffer) => sealed.toString().replace(/^sealed:/, '') }
 
-function setup() {
+function setup(options: { fetchImpl?: typeof fetch } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'beacons-'))
   const sent: Array<{ url: string; body: SignedRequest<unknown> }> = []
   const fetchImpl = (async (url: string, init: { body?: string }) => {
@@ -21,7 +21,7 @@ function setup() {
     return new Response(JSON.stringify(payload), { status: path === '/v1/beacons' && body ? 201 : 200 })
   }) as unknown as typeof fetch
   const files = { key: join(dir, 'key.sealed'), settings: join(dir, 'settings.json'), published: join(dir, 'published.json') }
-  return { dir, sent, files, publisher: new BeaconPublisher({ files, box, fetchImpl }) }
+  return { dir, sent, files, publisher: new BeaconPublisher({ files, box, fetchImpl: options.fetchImpl ?? fetchImpl }) }
 }
 
 describe('beacon publisher', () => {
@@ -50,7 +50,7 @@ describe('beacon publisher', () => {
   })
   it('signs the validated payload with a sealed anonymous key, records it, and withdraws it', async () => {
     const { publisher, sent, files } = setup()
-    publisher.setRegistry('http://localhost:8787')
+    await publisher.setRegistry('http://localhost:8787')
     const record = await publisher.publish({ url: 'https://a.test/x?fbclid=1', title: 'A', topic: 'T', note: 'Good', place: { label: 'Suva', lat: -18.14, lon: 178.44 } })
     expect(record).toMatchObject({ id: 'b-1', url: 'https://a.test/x', title: 'A', registry: 'http://localhost:8787' })
     const request = sent[0]!.body
@@ -58,16 +58,97 @@ describe('beacon publisher', () => {
     const key = createPublicKey({ key: { kty: 'OKP', crv: 'Ed25519', x: request.publisherKey }, format: 'jwk' })
     expect(verify(null, Buffer.from(signingText('publish', request.body, request.publisherKey, request.at, request.nonce)), key, Buffer.from(request.signature, 'base64url'))).toBe(true)
     expect(readFileSync(files.key, 'utf8')).toMatch(/^sealed:-----BEGIN PRIVATE KEY-----/)
-    expect(publisher.state().published).toHaveLength(1)
+    expect((await publisher.state()).published).toHaveLength(1)
     await publisher.withdraw('b-1')
     expect(sent[1]!.url).toBe('http://localhost:8787/v1/beacons/b-1/withdraw')
     expect(sent[1]!.body.publisherKey).toBe(request.publisherKey)
-    expect(publisher.state().published).toEqual([])
+    expect((await publisher.state()).published).toEqual([])
   })
   it('refuses to sign when on-device encryption is unavailable', async () => {
     const { files } = setup()
     const publisher = new BeaconPublisher({ files, box: { ...box, available: () => false } })
-    publisher.setRegistry('https://beacons.example.org')
+    await publisher.setRegistry('https://beacons.example.org')
     await expect(publisher.publish({ url: 'https://a.test/x', title: 'A', topic: 'T' })).rejects.toThrow(/encryption is unavailable/)
+  })
+
+  it('never replaces a key the Keychain will not unlock, and tries again later', async () => {
+    const { files, sent } = setup()
+    const fetchImpl = (async (url: string, init: { body?: string }) => {
+      if (init.body) sent.push({ url, body: JSON.parse(init.body) as SignedRequest<unknown> })
+      return new Response(JSON.stringify({ id: 'b-1' }), { status: 201 })
+    }) as unknown as typeof fetch
+    // Publish once with a working Keychain, so a key exists.
+    const first = new BeaconPublisher({ files, box, fetchImpl })
+    await first.setRegistry('http://localhost:8787')
+    await first.publish({ url: 'https://a.test/x', title: 'A', topic: 'T' })
+    const sealedKey = readFileSync(files.key)
+    const publisherKey = sent[0]!.body.publisherKey
+
+    // Next session: the Keychain refuses (access denied or locked).
+    let allow = false
+    const denied = { ...box, open: async (sealed: Buffer) => { if (!allow) throw new Error('User canceled'); return box.open(sealed) } }
+    const second = new BeaconPublisher({ files, box: denied, fetchImpl })
+    await expect(second.withdraw('b-1')).rejects.toThrow(/Keychain did not unlock/)
+    await expect(second.publish({ url: 'https://a.test/y', title: 'B', topic: 'T' })).rejects.toThrow(/left as it is/)
+    expect(readFileSync(files.key)).toEqual(sealedKey)
+    expect(sent).toHaveLength(1)
+
+    // Once access is allowed, the same key withdraws the beacon.
+    allow = true
+    await second.withdraw('b-1')
+    expect(sent[1]!.body.publisherKey).toBe(publisherKey)
+    expect(readFileSync(files.key)).toEqual(sealedKey)
+  })
+
+  it('makes a key only when there is none, and reports other read errors', async () => {
+    const { files } = setup()
+    mkdirSync(files.key, { recursive: true })
+    const publisher = new BeaconPublisher({ files, box, fetchImpl: (async () => new Response('{"id":"b-1"}', { status: 201 })) as unknown as typeof fetch })
+    await publisher.setRegistry('http://localhost:8787')
+    await expect(publisher.publish({ url: 'https://a.test/x', title: 'A', topic: 'T' })).rejects.toThrow(/could not be read/)
+  })
+
+  it('works with async Keychain calls', async () => {
+    const { files, sent } = setup()
+    const asyncBox = { available: async () => true, seal: async (text: string) => box.seal(text), open: async (sealed: Buffer) => box.open(sealed) }
+    const fetchImpl = (async (url: string, init: { body?: string }) => {
+      if (init.body) sent.push({ url, body: JSON.parse(init.body) as SignedRequest<unknown> })
+      return new Response(JSON.stringify({ id: 'b-1' }), { status: 201 })
+    }) as unknown as typeof fetch
+    const publisher = new BeaconPublisher({ files, box: asyncBox, fetchImpl })
+    await publisher.setRegistry('http://localhost:8787')
+    // Two at once share one new key.
+    await Promise.all([
+      publisher.publish({ url: 'https://a.test/x', title: 'A', topic: 'T' }),
+      publisher.report('https://a.test/x', 'spam'),
+    ])
+    expect(sent[0]!.body.publisherKey).toBe(sent[1]!.body.publisherKey)
+    expect((await publisher.state()).canSign).toBe(true)
+  })
+
+  it('tolerates a damaged published list and checks registry answers', async () => {
+    const { files } = setup()
+    writeFileSync(files.published, JSON.stringify({ not: 'a list' }))
+    let answer: unknown = { id: 'b-2' }
+    let raw: string | null = null
+    const fetchImpl = (async () => new Response(raw ?? JSON.stringify(answer), { status: 200 })) as unknown as typeof fetch
+    const publisher = new BeaconPublisher({ files, box, fetchImpl })
+    await publisher.setRegistry('http://localhost:8787')
+    expect((await publisher.state()).published).toEqual([])
+    await publisher.publish({ url: 'https://a.test/x', title: 'A', topic: 'T' })
+    expect((await publisher.state()).published.map((item) => item.id)).toEqual(['b-2'])
+
+    answer = { id: { evil: true } }
+    await expect(publisher.publish({ url: 'https://a.test/y', title: 'B', topic: 'T' })).rejects.toThrow(/unexpected answer/)
+
+    const good = { url: 'https://a.test/x', title: 'A', topic: 'T', places: [{ label: 'Suva', lat: -18.1, lon: 178.4 }, { label: 'Nowhere', lat: 'x' }], publishers: '1', prominence: 1, firstAt: '2026-01-01T00:00:00.000Z', lastAt: '2026-01-01T00:00:00.000Z', contested: null }
+    answer = { resources: [good, { url: 'javascript:alert(1)', title: 'x' }, 'junk'] }
+    expect(await publisher.read()).toEqual([{ ...good, places: [{ label: 'Suva', lat: -18.1, lon: 178.4 }] }])
+    answer = { resources: 'nope' }
+    expect(await publisher.read()).toEqual([])
+
+    // An oversized answer is not read into memory.
+    raw = JSON.stringify({ resources: [{ ...good, title: 'x'.repeat(2 * 1024 * 1024) }] })
+    expect(await publisher.read()).toEqual([])
   })
 })

@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
-import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rm, stat } from 'node:fs/promises'
 import { join } from 'node:path'
+import { writeFileAtomic } from '../atomicFile'
 import {
   isQid,
   OLDS_ATTRIBUTION,
@@ -39,6 +40,8 @@ const DESCRIPTION_DEMONYMS: Record<string, string> = {
 const FACILITY = /\b(castle|fort|fortress|palace|cathedral|church|mosque|temple|airport|station|stadium|arena|university|college|school|hospital|museum|bridge|port|harbou?r|bay|river|lake|mountain|mount|hill|island|district|ward|dam|prison|tower|park|market|club|fc)\b/
 const TTL_MS = 7 * 24 * 60 * 60 * 1_000
 const MAX_CACHE_FILES = 300
+/** Headlines whose named people's countries are remembered (each entry is a few labels). */
+const MAX_PEOPLE_COUNTRIES = 500
 const MAX_MEMORY = 100
 const ENTITY_BATCH = 50
 const COUNTRY_EVENTS = 30
@@ -984,7 +987,11 @@ export class OldsService {
     // The countries of the people the headline names ("call with Putin" → Russia), from their Wikidata citizenship.
     const headlineWords = new Set(foldAccents(cleanHeadline(text)).toLowerCase().split(/[^\p{L}]+/u).filter((word) => word.length >= 3))
     const peopleQids = [...new Set([...entities.values()].filter((entity) => ids(entity, 'P31').includes('Q5') && headlineWords.has(foldAccents(nodeFromEntity(entity, 'en')?.label ?? '').replace(/\s*\(.*?\)\s*$/, '').toLowerCase().split(/\s+/).at(-1) ?? '-')).flatMap((entity) => ids(entity, 'P27').slice(0, 1)))].slice(0, 4)
-    if (peopleQids.length) this.peopleCountries.set(text, await this.labelsOf(peopleQids).catch(() => []))
+    if (peopleQids.length) {
+      this.peopleCountries.set(text, await this.labelsOf(peopleQids).catch(() => []))
+      // Only recent headlines are looked up again; the oldest are dropped first.
+      while (this.peopleCountries.size > MAX_PEOPLE_COUNTRIES) this.peopleCountries.delete(this.peopleCountries.keys().next().value!)
+    }
     const surnameOnly = !!opening && opening.split(/\s+/).length === 1
     // How widely known people are (Wikipedia editions about them): only for foreign people matched by surname.
     const famous = surnameOnly ? await this.famousAmong([...items.values()].map((item) => entities.get(item.qid)).filter((entity): entity is WikidataEntity => !!entity
@@ -1569,7 +1576,7 @@ export class OldsService {
     })
     this.currentEventsCache = { at: now, items }
     await mkdir(this.options.cacheDir, { recursive: true }).catch(() => undefined)
-    await writeFile(file, JSON.stringify(this.currentEventsCache)).catch(() => undefined)
+    await writeFileAtomic(file, JSON.stringify(this.currentEventsCache)).catch(() => undefined)
     return items
   }
 
@@ -1626,7 +1633,7 @@ export class OldsService {
     const entries = Object.entries(counts).slice(-2_000)
     this.fame = Object.fromEntries(entries)
     await mkdir(this.options.cacheDir, { recursive: true }).catch(() => undefined)
-    await writeFile(join(this.options.cacheDir, 'fame.json'), JSON.stringify(this.fame), { encoding: 'utf8', mode: 0o600 }).catch(() => undefined)
+    await writeFileAtomic(join(this.options.cacheDir, 'fame.json'), JSON.stringify(this.fame)).catch(() => undefined)
   }
 
   /** A country item's ISO 3166-1 alpha-2 code (P297). */
@@ -1697,7 +1704,7 @@ export class OldsService {
 
   private async writeCache(key: string, thread: OldsThread): Promise<void> {
     await mkdir(this.options.cacheDir, { recursive: true })
-    await writeFile(this.cachePath(key), JSON.stringify(thread), { encoding: 'utf8', mode: 0o600 })
+    await writeFileAtomic(this.cachePath(key), JSON.stringify(thread))
     const files = await readdir(this.options.cacheDir)
     if (files.length <= MAX_CACHE_FILES) return
     const dated = await Promise.all(files.map(async (name) => ({ name, at: (await stat(join(this.options.cacheDir, name)).catch(() => null))?.mtimeMs ?? 0 })))

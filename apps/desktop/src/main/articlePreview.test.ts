@@ -82,6 +82,8 @@ describe('helpers', () => {
   })
 })
 
+const publicDns = async () => ['93.184.216.34']
+
 describe('ArticlePreviews', () => {
   it('fetches without cookies, shrinks the image, and caches', async () => {
     const calls: Array<{ url: string; credentials: string | undefined }> = []
@@ -90,12 +92,78 @@ describe('ArticlePreviews', () => {
       if (input.endsWith('.jpg')) return new Response(new Uint8Array([0xff, 0xd8, 1, 2]), { headers: { 'content-type': 'image/jpeg' } })
       return new Response(PAGE, { headers: { 'content-type': 'text/html; charset=utf-8' } })
     }) as typeof fetch
-    const previews = new ArticlePreviews((bytes) => ({ data: bytes.subarray(0, 2), mime: 'image/jpeg' }), fetchImpl)
+    const previews = new ArticlePreviews((bytes) => ({ data: bytes.subarray(0, 2), mime: 'image/jpeg' }), fetchImpl, publicDns)
     const preview = await previews.get('https://www.journaldemontreal.com/a')
     expect(preview?.image).toBe('data:image/jpeg;base64,/9g=')
     expect(preview?.url).toBe('https://www.journaldemontreal.com/a')
     await previews.get('https://www.journaldemontreal.com/a')
     expect(calls.map((call) => call.url)).toEqual(['https://www.journaldemontreal.com/a', 'https://www.journaldemontreal.com/images/hero.jpg'])
     expect(calls.every((call) => call.credentials === 'omit')).toBe(true)
+  })
+
+  describe('redirects', () => {
+    const shrink = (bytes: Buffer) => ({ data: bytes.subarray(0, 2), mime: 'image/jpeg' })
+    const dns = async (host: string) => (host.startsWith('router.') ? ['192.168.1.1'] : host.startsWith('loop.') ? ['127.0.0.1', '93.184.216.34'] : ['93.184.216.34'])
+    const redirect = (location: string) => new Response(null, { status: 302, headers: { location } })
+    const html = (body = PAGE) => new Response(body, { headers: { 'content-type': 'text/html' } })
+
+    it('follows public redirects one hop at a time, checking each address', async () => {
+      const calls: Array<{ url: string; redirect: string | undefined }> = []
+      const fetchImpl = (async (input: string, init?: RequestInit) => {
+        calls.push({ url: input, redirect: init?.redirect })
+        if (input === 'https://news.example.org/a') return redirect('/b')
+        if (input.endsWith('.jpg')) return new Response(new Uint8Array([0xff, 0xd8, 1, 2]), { headers: { 'content-type': 'image/jpeg' } })
+        return html()
+      }) as typeof fetch
+      const preview = await new ArticlePreviews(shrink, fetchImpl, dns).get('https://news.example.org/a')
+      expect(preview?.title).toContain('Élections')
+      expect(preview?.image).toBe('data:image/jpeg;base64,/9g=')
+      expect(calls.map((call) => call.url)).toEqual(['https://news.example.org/a', 'https://news.example.org/b', 'https://news.example.org/images/hero.jpg'])
+      expect(calls.every((call) => call.redirect === 'manual')).toBe(true)
+    })
+
+    it('refuses redirects to the local network, this Mac or literal addresses', async () => {
+      for (const target of ['http://router.example.org/admin', 'https://loop.example.org/', 'http://192.168.1.1/', 'http://127.0.0.1:8080/', 'http://localhost/']) {
+        const calls: string[] = []
+        const fetchImpl = (async (input: string) => {
+          calls.push(input)
+          return input === 'https://news.example.org/a' ? redirect(target) : html()
+        }) as typeof fetch
+        expect(await new ArticlePreviews(shrink, fetchImpl, dns).get('https://news.example.org/a'), target).toBeNull()
+        expect(calls, target).toEqual(['https://news.example.org/a'])
+      }
+    })
+
+    it('refuses a page whose own name resolves to a private address', async () => {
+      const calls: string[] = []
+      const fetchImpl = (async (input: string) => { calls.push(input); return html() }) as typeof fetch
+      expect(await new ArticlePreviews(shrink, fetchImpl, dns).get('https://router.example.org/a')).toBeNull()
+      expect(calls).toEqual([])
+    })
+
+    it('refuses a final address that a transport reached by following redirects itself', async () => {
+      const fetchImpl = (async () => {
+        const response = html()
+        Object.defineProperty(response, 'url', { value: 'https://router.example.org/' })
+        return response
+      }) as typeof fetch
+      expect(await new ArticlePreviews(shrink, fetchImpl, dns).get('https://news.example.org/a')).toBeNull()
+    })
+
+    it('does not fetch an og:image that points or redirects at a private address', async () => {
+      for (const image of ['https://router.example.org/cam.jpg', 'https://news.example.org/redirecting.jpg']) {
+        const calls: string[] = []
+        const fetchImpl = (async (input: string) => {
+          calls.push(input)
+          if (input === 'https://news.example.org/redirecting.jpg') return redirect('http://router.example.org/cam.jpg')
+          if (input.endsWith('.jpg')) return new Response(new Uint8Array([0xff, 0xd8, 1, 2]), { headers: { 'content-type': 'image/jpeg' } })
+          return html(`<meta property="og:title" content="T"><meta property="og:image" content="${image}">`)
+        }) as typeof fetch
+        const preview = await new ArticlePreviews(shrink, fetchImpl, dns).get('https://news.example.org/a')
+        expect(preview?.title).toBe('T')
+        expect(preview?.image).toBeNull()
+        expect(calls.some((url) => url.startsWith('https://router.') || url.startsWith('http://router.'))).toBe(false)
+      }
+    })
   })
 })

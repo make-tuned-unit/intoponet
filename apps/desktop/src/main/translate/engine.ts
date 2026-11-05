@@ -26,6 +26,8 @@ export type Translator = {
 }
 
 const MAX_LOADED_MODELS = 4
+/** A batch that takes longer than this is treated as a hung engine. Loading the engine or a model gets twice as long. */
+export const ENGINE_CALL_TIMEOUT_MS = 60_000
 
 export const pairKey = (pair: CatalogPair): string => `${pair.from}>${pair.to}@${pair.version}`
 
@@ -47,6 +49,7 @@ export class TranslationEngine implements Translator {
     private readonly store: TranslateStore,
     private readonly createWorker: () => TranslateWorker,
     private readonly idleMs = 5 * 60_000,
+    private readonly callTimeoutMs = ENGINE_CALL_TIMEOUT_MS,
   ) {}
 
   translate(route: CatalogPair[], texts: string[], html: boolean): Promise<string[]> {
@@ -108,7 +111,20 @@ export class TranslationEngine implements Translator {
   private call(worker: TranslateWorker, request: DistributiveOmit<WorkerRequest, 'id'>, transfer: ArrayBuffer[] = []): Promise<WorkerResponse & { ok: true }> {
     const id = ++this.seq
     return new Promise((resolve, reject) => {
-      this.pending.set(id, { worker, resolve, reject })
+      // A hung WASM call would stall every later request: stop the worker, fail what it was doing,
+      // and let the next request start a fresh one.
+      const limit = request.type === 'init' || request.type === 'load' ? this.callTimeoutMs * 2 : this.callTimeoutMs
+      const timer = setTimeout(() => {
+        if (!this.pending.has(id)) return
+        this.fail(worker, new Error('The translation engine stopped responding. Try again.'))
+        void worker.terminate().catch(() => 0)
+      }, limit)
+      timer.unref?.()
+      this.pending.set(id, {
+        worker,
+        resolve: (value) => { clearTimeout(timer); resolve(value) },
+        reject: (error) => { clearTimeout(timer); reject(error) },
+      })
       worker.postMessage({ ...request, id } as WorkerRequest, transfer)
     })
   }

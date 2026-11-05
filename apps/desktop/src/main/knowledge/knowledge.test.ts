@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { analyze, extractDates, extractPlaces } from './analyze'
 import { parseKnowledgeCommand, KNOWLEDGE_LIMITS, type AbsorbPreview, type KnowledgeDocument } from './contract'
-import { createAesGcmCrypto, type KnowledgeCrypto } from './crypto'
+import { createAesGcmCrypto, retryingKnowledgeCrypto, type KnowledgeCrypto } from './crypto'
 import { EXTRACT_SCRIPT, parseExtraction, selectionParagraphs } from './extract'
 import { pageRefusal, REFUSALS, urlRefusal } from './policy'
 import { KnowledgeIndex, snippetFor, stem } from './searchIndex'
@@ -233,6 +233,26 @@ describe('KnowledgeService', () => {
     })
 
     await expect(knowledge.handle({ type: 'list' })).rejects.toBe(failure)
+  })
+
+  it('tries the Keychain again after a failure instead of staying broken until restart', async () => {
+    let attempts = 0
+    let allow = false
+    const key = createAesGcmCrypto(randomBytes(32))
+    const crypto = retryingKnowledgeCrypto(async () => {
+      attempts += 1
+      if (!allow) throw new Error('Keychain access was denied.')
+      return key
+    })
+    const knowledge = new KnowledgeService({ dir, crypto, getActivePage: () => null })
+    await expect(knowledge.handle({ type: 'list' })).rejects.toThrow(/denied/)
+    await expect(knowledge.handle({ type: 'list' })).rejects.toThrow(/denied/)
+    expect(attempts).toBe(2)
+    allow = true
+    await expect(knowledge.handle({ type: 'list' })).resolves.toEqual([])
+    await knowledge.handle({ type: 'list' })
+    // Once open, the key is kept.
+    expect(attempts).toBe(3)
   })
 
   it('previews in an isolated world, commits, lists, searches, updates, reindexes and removes', async () => {

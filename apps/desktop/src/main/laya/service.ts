@@ -12,7 +12,7 @@ import {
   type LayaStatus,
   type LayaTheme,
 } from './contract'
-import type { KnowledgeCrypto } from '../knowledge/crypto'
+import { resolveKnowledgeCrypto, type KnowledgeCryptoSource } from '../knowledge/crypto'
 import type { KnowledgeChange } from '../knowledge/service'
 import { deleteModel, downloadModel, LAYA_MODEL, modelPresent, modelSizeBytes, verifyModel } from './model'
 import type { Embedder } from './pool'
@@ -61,7 +61,7 @@ export class LayaService {
   private readonly fetchImpl: typeof fetch
   private readonly openEmbedder: (modelRoot: string) => Promise<Embedder>
   private readonly emit: (event: LayaProgress) => void
-  private readonly cryptoInput: KnowledgeCrypto | Promise<KnowledgeCrypto>
+  private readonly cryptoInput: KnowledgeCryptoSource
   private enabled = false
   private verified = false
   private busy = false
@@ -80,7 +80,7 @@ export class LayaService {
 
   constructor(options: {
     dir: string
-    crypto: KnowledgeCrypto | Promise<KnowledgeCrypto>
+    crypto: KnowledgeCryptoSource
     knowledge: KnowledgeSource
     openEmbedder: (modelRoot: string) => Promise<Embedder>
     emit?: (event: LayaProgress) => void
@@ -135,7 +135,7 @@ export class LayaService {
   }
 
   private async vectors(): Promise<VectorStore> {
-    this.vectorStore ??= new VectorStore(join(this.dir, 'vectors'), await this.cryptoInput)
+    this.vectorStore ??= new VectorStore(join(this.dir, 'vectors'), await resolveKnowledgeCrypto(this.cryptoInput))
     return this.vectorStore
   }
 

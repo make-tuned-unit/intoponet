@@ -28,6 +28,8 @@ type VaultData = { schema: 'intoponet.passwords.v1'; logins: StoredLogin[]; neve
 const SCHEMA = 'intoponet.passwords.v1'
 const MAX_LOGINS = 5_000
 const MAX_NEVER = 1_000
+/** After the file could not be opened (Keychain denied or locked), wait this long before asking again. */
+export const VAULT_RETRY_MS = 30_000
 
 const emptyData = (): VaultData => ({ schema: SCHEMA, logins: [], never: [] })
 
@@ -62,6 +64,7 @@ export class PasswordVault {
   private data: VaultData | null = null
   private unreadable = false
   private loading: Promise<void> | null = null
+  private failedAt: number | null = null
   private queue: Promise<unknown> = Promise.resolve()
 
   constructor(
@@ -70,22 +73,32 @@ export class PasswordVault {
     private readonly now: () => Date = () => new Date(),
   ) {}
 
-  /** Open the file once. A file that cannot be decrypted is left untouched and nothing new is saved. */
+  /**
+   * Open the file once. A file that cannot be decrypted is left untouched and nothing new is saved.
+   * Opening is tried again (at most every VAULT_RETRY_MS) so allowing Keychain access later
+   * works without restarting.
+   */
   load(): Promise<void> {
-    this.loading ??= (async () => {
-      const sealed = this.file.read()
-      if (!sealed) {
-        this.data = emptyData()
-        return
-      }
+    const retry = this.failedAt !== null && this.now().getTime() - this.failedAt >= VAULT_RETRY_MS
+    if (this.loading && !retry) return this.loading
+    this.failedAt = null
+    this.loading = (async () => {
       try {
+        const sealed = this.file.read()
+        if (!sealed) {
+          this.data = emptyData()
+          this.unreadable = false
+          return
+        }
         if (!(await this.crypto.available())) throw new Error('unavailable')
         const { result, shouldReEncrypt } = await this.crypto.decrypt(sealed)
         this.data = parseVaultData(result)
+        this.unreadable = false
         if (shouldReEncrypt) await this.write(this.data).catch(() => undefined)
       } catch {
         this.unreadable = true
         this.data = null
+        this.failedAt = this.now().getTime()
       }
     })()
     return this.loading

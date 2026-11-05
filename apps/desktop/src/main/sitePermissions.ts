@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto'
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
+import { readFileSync, mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 import type { SitePermissionDecision, SitePermissionEvent, SitePermissionKind, SitePermissionMap, SitePermissionRequest } from '@intoponet/browser-api'
 import type { WebContents } from 'electron'
+import { writeFileAtomicSync } from './atomicFile'
 
 /** Page and popup prompts expire with their owning document/process. */
 export function bindPermissionOwnerLifecycle(contents: Pick<WebContents, 'id' | 'on' | 'once'>, dropOwner: (owner: number) => void): void {
@@ -87,7 +88,8 @@ export class SitePermissionStore {
     if (!this.file) return
     try {
       mkdirSync(dirname(this.file), { recursive: true })
-      writeFileSync(this.file, JSON.stringify(this.data), { mode: 0o600 })
+      // Atomic: a crash mid-write keeps the previous answers rather than an empty file.
+      writeFileAtomicSync(this.file, JSON.stringify(this.data))
     } catch {
       // Answers still apply for this session.
     }

@@ -1,8 +1,9 @@
 import { createDecipheriv, randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
-import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, open, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { basename, dirname, extname, join, relative, sep } from 'node:path'
-import { isCaptureId, parseCaptureRecord, type CaptureRecord } from '@intoponet/browser-api'
+import { CAPTURE_LIMITS, isCaptureId, parseCaptureRecord, type CaptureRecord } from '@intoponet/browser-api'
+import { writeFileAtomic } from './atomicFile'
 
 /**
  * Capture library on disk, organized for Finder:
@@ -65,6 +66,42 @@ export function folderNamesFor(groups: GroupLabel[]): Record<string, string> {
   return result
 }
 
+const isMissing = (error: unknown): boolean => typeof error === 'object' && error !== null && (error as { code?: unknown }).code === 'ENOENT'
+
+/** Folders mid-rename are parked under this prefix (then the uuid, then the folder's own name). */
+const STAGED = /^\.renaming-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:-(.+))?$/
+
+/** A folder name in `root` not yet taken: "Research", then "Research 2", … */
+function freeFolder(root: string, name: string): string {
+  let candidate = join(root, name)
+  for (let n = 2; existsSync(candidate); n += 1) candidate = join(root, `${name} ${n}`)
+  return candidate
+}
+
+/** Width and height from a PNG's header, or null. */
+async function pngSize(path: string): Promise<{ width: number; height: number } | null> {
+  const handle = await open(path, 'r').catch(() => null)
+  if (!handle) return null
+  try {
+    const header = Buffer.alloc(24)
+    const { bytesRead } = await handle.read(header, 0, 24, 0)
+    if (bytesRead < 24 || header.readUInt32BE(0) !== 0x89504e47 || header.subarray(12, 16).toString('latin1') !== 'IHDR') return null
+    return { width: header.readUInt32BE(16), height: header.readUInt32BE(20) }
+  } finally {
+    await handle.close()
+  }
+}
+
+/** "Aurora – Wikipedia 2026-10-26 at 11.42.05 (2).png" → title and local time, as captureFileName wrote them. */
+function parseCaptureFileName(fileName: string): { title: string; createdAt: Date | null } {
+  const stem = fileName.replace(/\.(png|webm)$/i, '')
+  const match = /^(.*) (\d{4})-(\d{2})-(\d{2}) at (\d{2})\.(\d{2})\.(\d{2})(?: \(\d+\))?$/.exec(stem)
+  if (!match) return { title: stem, createdAt: null }
+  const [, title, y, mo, d, h, mi, se] = match
+  const date = new Date(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(se))
+  return { title: title!, createdAt: Number.isFinite(date.getTime()) ? date : null }
+}
+
 async function uniquePath(folder: string, fileName: string, ignore?: string): Promise<string> {
   const extension = extname(fileName)
   const stem = fileName.slice(0, fileName.length - extension.length)
@@ -75,6 +112,7 @@ async function uniquePath(folder: string, fileName: string, ignore?: string): Pr
 
 export class CaptureLibrary {
   private index: IndexFile | null = null
+  private loading: Promise<IndexFile> | null = null
   private queue: Promise<unknown> = Promise.resolve()
 
   constructor(
@@ -99,32 +137,106 @@ export class CaptureLibrary {
 
   private async load(): Promise<IndexFile> {
     if (this.index) return this.index
+    // A failed read is not remembered: the next call tries again.
+    this.loading ??= this.readIndex().then((index) => {
+      this.index = index
+      return index
+    }).finally(() => { this.loading = null })
+    return this.loading
+  }
+
+  /**
+   * The index, read once. No file yet means no captures. A file that is not valid JSON is kept
+   * aside (index.json.corrupt-<time>) and the index is rebuilt from the files in the library
+   * folder. Any other read error (permissions, too many open files) is reported, so a later save
+   * cannot replace an index that was only temporarily unreadable.
+   */
+  private async readIndex(): Promise<IndexFile> {
+    await this.recoverStagedFolders()
+    const file = join(this.privateDir, 'index.json')
+    let text: string
     try {
-      const parsed = JSON.parse(await readFile(join(this.privateDir, 'index.json'), 'utf8')) as Partial<IndexFile>
-      const folders: Record<string, string> = {}
-      for (const [id, name] of Object.entries(parsed.folders ?? {})) {
-        if (typeof name === 'string') folders[id] = safeSegment(name, 'Group')
-      }
-      const records = (Array.isArray(parsed.records) ? parsed.records : []).flatMap((value): StoredCapture[] => {
-        const record = parseCaptureRecord(value)
-        const path = (value as { path?: unknown }).path
-        const ino = (value as { ino?: unknown }).ino
-        if (!record || typeof path !== 'string' || path.startsWith('..') || path.includes(`..${sep}`)) return []
-        return [{ ...record, path, ...(typeof ino === 'number' ? { ino } : {}) }]
-      })
-      this.index = { version: 2, folders, records }
-    } catch {
-      this.index = { version: 2, folders: {}, records: [] }
+      text = await readFile(file, 'utf8')
+    } catch (error) {
+      if (isMissing(error)) return { version: 2, folders: {}, records: [] }
+      throw new Error('The capture library could not be read. Nothing was changed; try again.')
     }
-    return this.index
+    let parsed: Partial<IndexFile>
+    try {
+      const value = JSON.parse(text) as unknown
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Not an index.')
+      parsed = value as Partial<IndexFile>
+    } catch {
+      await rename(file, join(this.privateDir, `index.json.corrupt-${this.now().getTime()}`))
+      const rebuilt = await this.rebuild()
+      await this.writeIndex(rebuilt)
+      return rebuilt
+    }
+    const folders: Record<string, string> = {}
+    for (const [id, name] of Object.entries(parsed.folders ?? {})) {
+      if (typeof name === 'string') folders[id] = safeSegment(name, 'Group')
+    }
+    const records = (Array.isArray(parsed.records) ? parsed.records : []).flatMap((value): StoredCapture[] => {
+      const record = parseCaptureRecord(value)
+      const path = (value as { path?: unknown }).path
+      const ino = (value as { ino?: unknown }).ino
+      if (!record || typeof path !== 'string' || path.startsWith('..') || path.includes(`..${sep}`)) return []
+      return [{ ...record, path, ...(typeof ino === 'number' ? { ino } : {}) }]
+    })
+    return { version: 2, folders, records }
+  }
+
+  /** Records for the PNG and WebM files in the library's folders (after the index was lost). */
+  private async rebuild(): Promise<IndexFile> {
+    const records: StoredCapture[] = []
+    const folders = await readdir(this.root, { withFileTypes: true }).catch(() => [])
+    for (const folder of folders) {
+      if (!folder.isDirectory() || folder.name.startsWith('.')) continue
+      const files = await readdir(join(this.root, folder.name), { withFileTypes: true }).catch(() => [])
+      for (const file of files) {
+        const kind = /\.png$/i.test(file.name) ? 'image' : /\.webm$/i.test(file.name) ? 'video' : null
+        if (!file.isFile() || file.name.startsWith('.') || !kind) continue
+        const path = join(this.root, folder.name, file.name)
+        const info = await stat(path).catch(() => null)
+        if (!info) continue
+        const named = parseCaptureFileName(file.name)
+        const size = (kind === 'image' ? await pngSize(path) : null) ?? { width: 1280, height: 720 }
+        const record = parseCaptureRecord({
+          id: randomUUID(),
+          kind,
+          title: named.title.slice(0, CAPTURE_LIMITS.titleLength),
+          sourceUrl: '',
+          createdAt: (named.createdAt ?? info.mtime).toISOString(),
+          width: Math.min(Math.max(size.width, 1), 20_000),
+          height: Math.min(Math.max(size.height, 1), 20_000),
+          byteLength: info.size,
+          groupId: null,
+        })
+        if (record) records.push({ ...record, path: relative(this.root, path), ino: info.ino })
+      }
+    }
+    records.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    return { version: 2, folders: {}, records }
+  }
+
+  /** Put back folders left mid-rename (.renaming-…) by a quit or an error during syncGroups. */
+  private async recoverStagedFolders(): Promise<void> {
+    const entries = await readdir(this.root, { withFileTypes: true }).catch(() => [])
+    for (const entry of entries) {
+      const match = entry.isDirectory() ? STAGED.exec(entry.name) : null
+      if (!match) continue
+      const name = safeSegment(match[1] ?? '', 'Recovered captures')
+      await rename(join(this.root, entry.name), freeFolder(this.root, name)).catch(() => undefined)
+    }
   }
 
   private async save(): Promise<void> {
-    const index = await this.load()
+    await this.writeIndex(await this.load())
+  }
+
+  private async writeIndex(index: IndexFile): Promise<void> {
     await mkdir(this.privateDir, { recursive: true, mode: 0o700 })
-    const temporary = join(this.privateDir, `index.${randomUUID()}.tmp`)
-    await writeFile(temporary, JSON.stringify(index), { mode: 0o600 })
-    await rename(temporary, join(this.privateDir, 'index.json'))
+    await writeFileAtomic(join(this.privateDir, 'index.json'), JSON.stringify(index))
   }
 
   private folderOf(index: IndexFile, groupId: string | null): string {
@@ -220,8 +332,14 @@ export class CaptureLibrary {
   }
 
   async readThumb(id: string): Promise<Buffer> {
-    await this.find(id)
-    return readFile(this.thumbPath(id))
+    const record = await this.find(id)
+    try {
+      return await readFile(this.thumbPath(id))
+    } catch (error) {
+      // Captures found again after the index was rebuilt have no thumbnail: show the image itself.
+      if (isMissing(error) && record.kind === 'image') return readFile(this.absolute(record))
+      throw error
+    }
   }
 
   /** Create (if needed) and return a group's folder. */
@@ -291,30 +409,51 @@ export class CaptureLibrary {
       const index = await this.load()
       const next = folderNamesFor(groups)
       let changed = false
-      // Rename via temporary names so swaps ("A"↔"B") cannot collide.
+      // Rename via temporary names so swaps ("A"↔"B") cannot collide. A temporary name keeps the
+      // folder's own name, so one left behind by a quit is put back on the next start.
       const renames = Object.entries(next).filter(([id, name]) => index.folders[id] && index.folders[id] !== name)
-      const staged: Array<[string, string, string]> = []
-      for (const [id, name] of renames) {
-        const from = join(this.root, index.folders[id]!)
-        if (!existsSync(from)) continue
-        const temporary = join(this.root, `.renaming-${randomUUID()}`)
-        await rename(from, temporary)
-        staged.push([id, temporary, name])
-      }
-      for (const [, temporary, name] of staged) {
-        const target = join(this.root, name)
-        if (existsSync(target)) {
-          // Merge into an existing folder of that name.
-          for (const file of await readdir(temporary)) await rename(join(temporary, file), await uniquePath(target, file))
-          await rm(temporary, { recursive: true, force: true })
-        } else {
-          await rename(temporary, target)
+      const staged: Array<{ temporary: string; name: string; original: string }> = []
+      try {
+        for (const [id, name] of renames) {
+          const original = index.folders[id]!
+          const from = join(this.root, original)
+          if (!existsSync(from)) continue
+          const temporary = join(this.root, `.renaming-${randomUUID()}-${original}`)
+          await rename(from, temporary)
+          staged.push({ temporary, name, original })
         }
-        changed = true
+        while (staged.length) {
+          const { temporary, name } = staged[0]!
+          const target = join(this.root, name)
+          if (existsSync(target)) {
+            // Merge into an existing folder of that name.
+            for (const file of await readdir(temporary)) await rename(join(temporary, file), await uniquePath(target, file))
+            await rm(temporary, { recursive: true, force: true })
+          } else {
+            await rename(temporary, target)
+          }
+          staged.shift()
+          changed = true
+        }
+      } catch (error) {
+        // Never leave a person's folder hidden: put back what was not renamed yet.
+        for (const { temporary, original } of staged) {
+          if (existsSync(temporary)) await rename(temporary, freeFolder(this.root, original)).catch(() => undefined)
+        }
+        throw error
       }
       const previous = index.folders
       index.folders = next
       for (const record of index.records) {
+        if (!record.groupId && dirname(record.path) !== UNSORTED_FOLDER) {
+          // A capture found again in a group's folder (after a rebuilt index) joins that group.
+          const groupId = Object.entries(next).find(([, name]) => name === dirname(record.path))?.[0]
+          if (groupId) {
+            record.groupId = groupId
+            changed = true
+            continue
+          }
+        }
         const oldFolder = (record.groupId && previous[record.groupId]) || UNSORTED_FOLDER
         const newFolder = this.folderOf(index, record.groupId && next[record.groupId] ? record.groupId : null)
         if (record.groupId && !next[record.groupId]) {
