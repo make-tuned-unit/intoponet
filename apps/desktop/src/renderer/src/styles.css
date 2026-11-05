@@ -1219,7 +1219,7 @@ button.origin-badge,
   cursor: pointer;
 }
 
-.page-tab button:first-child {
+.page-tab .page-tab-main {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1234,7 +1234,7 @@ button.origin-badge,
   flex: 0 0 auto;
 }
 
-.page-tab button:last-child {
+.page-tab .page-tab-close {
   display: grid;
   place-items: center;
   width: 24px;
@@ -1242,7 +1242,7 @@ button.origin-badge,
   color: var(--muted);
 }
 
-.page-tab button:last-child:hover {
+.page-tab .page-tab-close:hover {
   color: var(--warm-white);
 }
 

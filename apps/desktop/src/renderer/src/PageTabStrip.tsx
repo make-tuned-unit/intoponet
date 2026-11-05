@@ -1,0 +1,109 @@
+import { EyeOff, X } from 'lucide-react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
+import type { PageTabSnapshot } from '@intoponet/browser-api'
+import { moveTabByKey, openTabMenu, TabAudioButton, TabIcon, tabSoundLabel, useTabDrag } from './tabControls'
+
+export type PageTabStripProps = {
+  tabs: PageTabSnapshot[]
+  stripRef: RefObject<HTMLDivElement | null>
+  /** Short text shown on the tab. */
+  caption: (tab: PageTabSnapshot) => string
+  /** The tab's full name (title or site). */
+  label: (tab: PageTabSnapshot) => string
+}
+
+/**
+ * The horizontal tab strip under the page. Pinned tabs come first and show only their icon;
+ * tabs can be dragged (or moved with ⌥⇧← / ⌥⇧→) into a new order; right-click opens the tab menu.
+ */
+export function PageTabStrip({ tabs, stripRef, caption, label }: PageTabStripProps) {
+  const dragHandlers = useTabDrag('x')
+  const buttons = useRef(new Map<string, HTMLButtonElement>())
+  /** A tab moved from the keyboard keeps focus once the strip shows the new order. */
+  const refocus = useRef<string | null>(null)
+  /** The tab that holds the strip's single Tab stop: the last focused one while it exists, else the active one. */
+  const [focusId, setFocusId] = useState<string | null>(null)
+  const focusedIndex = tabs.findIndex((tab) => tab.id === focusId)
+  const rovingIndex = focusedIndex >= 0 ? focusedIndex : Math.max(0, tabs.findIndex((tab) => tab.active))
+  useEffect(() => {
+    const id = refocus.current
+    if (!id) return
+    refocus.current = null
+    buttons.current.get(id)?.focus()
+  }, [tabs])
+
+  return (
+    <div className="page-tabs" ref={stripRef} role="tablist" aria-label="Open screens">
+      {tabs.map((tab, index) => {
+        const name = label(tab)
+        return (
+          <div
+            key={tab.id}
+            data-tab-id={tab.id}
+            className={`page-tab${tab.active ? ' selected' : ''}${tab.isPrivate ? ' is-private' : ''}${tab.pinned ? ' is-pinned' : ''}`}
+          >
+            <button
+              ref={(element) => { if (element) buttons.current.set(tab.id, element); else buttons.current.delete(tab.id) }}
+              type="button"
+              role="tab"
+              className="page-tab-main"
+              aria-selected={tab.active}
+              aria-busy={tab.loading || undefined}
+              aria-label={tab.pinned ? `${name}, pinned${tabSoundLabel(tab)}` : undefined}
+              aria-keyshortcuts="Alt+Shift+ArrowLeft Alt+Shift+ArrowRight Delete"
+              tabIndex={index === rovingIndex ? 0 : -1}
+              title={`${tab.isPrivate ? 'Private tab · ' : ''}${tab.pinned ? 'Pinned · ' : ''}${name}${tab.loading ? ' · Loading' : ''}`}
+              onFocus={() => setFocusId(tab.id)}
+              onClick={() => void window.intoponet.browserHost.activateTab(tab.id)}
+              onAuxClick={(event) => {
+                if (event.button === 1) void window.intoponet.browserHost.closeTab(tab.id)
+              }}
+              onContextMenu={(event) => openTabMenu(event, tab.id)}
+              onKeyDown={(event) => {
+                if (moveTabByKey(event, tabs, index, 'x') !== null) {
+                  refocus.current = tab.id
+                  return
+                }
+                // One stop in the Tab order; arrows move between tabs, Delete closes one.
+                const focusAt = (at: number): void => {
+                  const next = tabs[Math.max(0, Math.min(tabs.length - 1, at))]
+                  if (next) buttons.current.get(next.id)?.focus()
+                }
+                if (event.key === 'ArrowRight') focusAt(index + 1)
+                else if (event.key === 'ArrowLeft') focusAt(index - 1)
+                else if (event.key === 'Home') focusAt(0)
+                else if (event.key === 'End') focusAt(tabs.length - 1)
+                else if (event.key === 'Delete' || event.key === 'Backspace') {
+                  const neighbour = tabs[index + 1] ?? tabs[index - 1]
+                  refocus.current = neighbour?.id ?? null
+                  void window.intoponet.browserHost.closeTab(tab.id)
+                } else return
+                event.preventDefault()
+              }}
+              {...dragHandlers(tab, index)}
+            >
+              <TabIcon tab={tab} size={14} />
+              {tab.isPrivate && <EyeOff size={11} className="tab-private-mark" aria-label="Private" />}
+              {!tab.pinned && <span>{caption(tab)}</span>}
+              {!tab.pinned && tabSoundLabel(tab) && <span className="sr-only">{tabSoundLabel(tab)}</span>}
+            </button>
+            {/* Out of the Tab order (only tabs belong in a tab list): Delete and the tab menu reach them. */}
+            <TabAudioButton tab={tab} className="page-tab-audio" focusable={false} />
+            {!tab.pinned && (
+              <button
+                type="button"
+                className="page-tab-close"
+                tabIndex={-1}
+                aria-hidden="true"
+                aria-label={`Close ${name}`}
+                onClick={() => void window.intoponet.browserHost.closeTab(tab.id)}
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}

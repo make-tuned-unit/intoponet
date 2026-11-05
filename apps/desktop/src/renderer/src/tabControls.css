@@ -1,0 +1,126 @@
+/* Tab state shared by the tab strip and the tab rail: loading spinner, speaker, dragging, pinned. */
+
+.tab-spinner {
+  display: inline-block;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  border: 2px solid rgba(205, 245, 240, 0.22);
+  border-top-color: var(--teal, #20f4e4);
+  border-radius: 50%;
+  animation: tab-spin 0.8s linear infinite;
+}
+
+@keyframes tab-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-spinner {
+    animation: tab-pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes tab-pulse {
+    50% { opacity: 0.45; }
+  }
+}
+
+/* Dragging a tab: it follows the pointer above its neighbours. */
+[data-tab-id].is-dragging {
+  position: relative;
+  z-index: 5;
+  opacity: 0.88;
+  cursor: grabbing;
+  box-shadow: 0 8px 22px -10px rgba(0, 0, 0, 0.7);
+}
+
+/* ---- Horizontal strip ---------------------------------------------------- */
+
+.page-tab .page-tab-audio {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 30px;
+  padding: 0;
+  color: var(--teal, #20f4e4);
+}
+
+.page-tab .page-tab-audio.is-muted {
+  color: var(--muted);
+}
+
+.page-tab .page-tab-audio:hover {
+  color: var(--warm-white);
+}
+
+.page-tab.is-pinned .page-tab-main {
+  padding: 0 9px;
+}
+
+/* ---- Vertical rail ------------------------------------------------------- */
+
+.tab-rail-pinned {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.tab-rail-pinned .tab-rail-item {
+  flex: 0 0 auto;
+}
+
+.tab-rail-pinned .tab-rail-tab {
+  flex: 0 0 auto;
+  width: 44px;
+}
+
+.tab-rail-pinned + .tab-rail-group {
+  margin-top: 2px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(214, 246, 241, 0.08);
+}
+
+.tab-rail-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tab-rail-audio {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  color: var(--teal, #20f4e4);
+  background: transparent;
+  cursor: pointer;
+}
+
+.tab-rail-audio.is-muted {
+  color: var(--muted);
+}
+
+.tab-rail-audio:hover {
+  background: rgba(205, 245, 240, 0.1);
+}
+
+/* Collapsed rail (and pinned icons): the speaker sits on the icon's corner. */
+.tab-rail:not(.is-open) .tab-rail-audio,
+.tab-rail-pinned .tab-rail-audio {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  background: rgba(6, 19, 32, 0.9);
+}
+
+.tab-rail-pinned .tab-rail-close,
+.tab-rail-pinned .tab-rail-title {
+  display: none;
+}

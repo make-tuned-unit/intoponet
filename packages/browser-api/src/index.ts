@@ -78,6 +78,14 @@ export type PageTabSnapshot = {
   isPrivate?: boolean
   /** A new tab still showing the start page. */
   isStartPage?: boolean
+  /** The page is loading (the tab shows a spinner in place of its icon). */
+  loading?: boolean
+  /** The page is playing sound right now. */
+  audible?: boolean
+  /** The tab's sound is muted. */
+  muted?: boolean
+  /** Pinned tabs sit first, show only their icon and survive "Close Other Tabs". */
+  pinned?: boolean
 }
 
 export type NetworkPrivacySnapshot = {
@@ -187,6 +195,12 @@ export interface BrowserHostApi {
   activateTab(id: string): Promise<void>
   closeTab(id: string): Promise<void>
   cycleTabs(direction: 'next' | 'previous'): Promise<void>
+  /** Move a tab to a new position in the tab order (pinned tabs stay ahead of the others). */
+  moveTab(id: string, toIndex: number): Promise<void>
+  setTabPinned(id: string, pinned: boolean): Promise<void>
+  setTabMuted(id: string, muted: boolean): Promise<void>
+  /** The tab's context menu (a native menu), at a point in the window or at the pointer. */
+  showTabMenu(id: string, at?: { x: number; y: number }): Promise<void>
   readPrivateLibrary(): Promise<PrivateLibraryReadResult>
   writePrivateLibrary(payload: string): Promise<void>
   deletePrivateLibrary(): Promise<void>
@@ -238,6 +252,10 @@ export type BrowserHostCommand =
   | { type: 'activate-tab'; id: string }
   | { type: 'close-tab'; id: string }
   | { type: 'cycle-tabs'; direction: 'next' | 'previous' }
+  | { type: 'move-tab'; id: string; toIndex: number }
+  | { type: 'set-tab-pinned'; id: string; pinned: boolean }
+  | { type: 'set-tab-muted'; id: string; muted: boolean }
+  | { type: 'tab-menu'; id: string; x?: number; y?: number }
   | { type: 'read-private-library' }
   | { type: 'write-private-library'; payload: string }
   | { type: 'delete-private-library' }
@@ -277,6 +295,10 @@ const commandTypes = new Set<BrowserHostCommand['type']>([
   'activate-tab',
   'close-tab',
   'cycle-tabs',
+  'move-tab',
+  'set-tab-pinned',
+  'set-tab-muted',
+  'tab-menu',
   'read-private-library',
   'write-private-library',
   'delete-private-library',
@@ -286,6 +308,11 @@ const commandTypes = new Set<BrowserHostCommand['type']>([
   'get-place-trends',
   'address-menu',
 ])
+
+function parseTabId(value: unknown): string {
+  if (typeof value !== 'string' || value.length === 0 || value.length > 80) throw new Error('Invalid tab.')
+  return value
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -403,6 +430,28 @@ export function parseBrowserHostCommand(value: unknown): BrowserHostCommand {
         throw new Error('Invalid tab.')
       }
       return { type, id: value['id'] }
+    case 'move-tab': {
+      const toIndex = value['toIndex']
+      if (typeof toIndex !== 'number' || !Number.isInteger(toIndex) || toIndex < 0 || toIndex > 1_000) {
+        throw new Error('Invalid tab position.')
+      }
+      return { type, id: parseTabId(value['id']), toIndex }
+    }
+    case 'set-tab-pinned':
+      if (typeof value['pinned'] !== 'boolean') throw new Error('Invalid tab pin.')
+      return { type, id: parseTabId(value['id']), pinned: value['pinned'] }
+    case 'set-tab-muted':
+      if (typeof value['muted'] !== 'boolean') throw new Error('Invalid tab mute.')
+      return { type, id: parseTabId(value['id']), muted: value['muted'] }
+    case 'tab-menu': {
+      const id = parseTabId(value['id'])
+      const x = value['x']
+      const y = value['y']
+      if (x === undefined && y === undefined) return { type, id }
+      const coordinate = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= 32_768
+      if (!coordinate(x) || !coordinate(y)) throw new Error('Invalid menu position.')
+      return { type, id, x: Math.round(x), y: Math.round(y) }
+    }
     case 'cycle-tabs':
       if (value['direction'] !== 'next' && value['direction'] !== 'previous') {
         throw new Error('Invalid tab cycle.')
