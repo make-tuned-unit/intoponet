@@ -40,3 +40,35 @@ The native probe did not touch the user's Downloads directory and is not a
 packaged-release test. This behavior has not been tested on other platforms.
 
 Cleanup is a best-effort inode check followed by unlink, not an atomic conditional deletion. This does not defend against another local process replacing paths between operations or before Chromium writes the download. A failed close is not retried because its descriptor may already have been released and reused.
+
+## Downloads manager (`src/main/downloadManager.ts`, `browsingData.ts`)
+
+Every `will-download` on the normal and private page sessions is tracked: filename, origin (only
+the origin reaches the shell), state, received/total bytes, smoothed speed, start/end time. Progress
+reaches the shell at most four times a second (`intoponet:downloads-event`). The toolbar shows a
+Downloads button once there is anything to list (with a progress ring while files are coming in);
+its list offers pause/resume/cancel, open, Show in Finder, retry for failed downloads, remove from
+list and clear finished. Path reservation above is unchanged.
+
+Finished downloads from normal tabs are remembered in `userData/personal/downloads.v1.json`
+(atomic writes, at most 200; `personal/` is covered by the Time Machine exclusion setting).
+Private-tab downloads are listed only until private browsing ends or the app quits.
+
+Safety:
+
+- **Quarantine.** Electron does not run Chromium's quarantine step, so when a download completes the
+  app checks `com.apple.quarantine` and, if it is missing, sets
+  `0083;<hex seconds>;Intoponet;<UUID>` with `/usr/bin/xattr` (`src/main/quarantine.ts`). The
+  `DOWNLOADS_HISTORY` feature check asserts the flag on a real download.
+- **Dangerous types** (`.command .terminal .tool .app .pkg .mpkg .webloc .inetloc .fileloc .scpt
+  .scptd .applescript .workflow .action .sh .bash .zsh .csh .ksh .jar`) are paused as soon as they
+  start and the list opens asking "This type of file can harm your Mac" — Discard (the default,
+  first button) or Keep. If the file finishes before the answer, Discard deletes it. Disk images
+  (`.dmg`) only get a caution line. Zipped apps are not flagged.
+- **Automatic downloads.** A page may start three downloads within ten seconds on its own; further
+  ones are held and the list asks "This site wants to download multiple files" — Block or Allow
+  (remembered for that tab until it closes). A download within five seconds of a click or key press
+  in the page uses up that gesture and is not counted.
+
+Set `INTOPONET_DOWNLOADS_DIR` to save downloads somewhere other than `~/Downloads` (the feature
+checks point it at their temporary profile).

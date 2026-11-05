@@ -71,6 +71,7 @@ import { bindPermissionOwnerLifecycle, kindsFor, originOf, SitePermissionBroker,
 import { bindPopupCloseWithOwner, nestedPopupDecision, popupDecision, popupWindowOptions, PopupLimiter } from './popups'
 import { rejectCertificateErrorForSession } from './browserCertificatePolicy'
 import { reserveDownloadPath, sanitizeDownloadFilename } from './downloadReservation'
+import { installBrowsingData, type BrowsingData } from './browsingData'
 import { CrashRecoveryPolicy } from './crashRecovery'
 import { BeaconPublisher } from './beacons/publisher'
 import { DEFAULT_BEACON_REGISTRY } from './beacons/defaults'
@@ -769,6 +770,8 @@ function wireDownloadSession(partition = 'persist:intoponet-default'): void {
   app.on('certificate-error', (event, webContents, _url, _error, _certificate, callback) => {
     rejectCertificateErrorForSession(event, webContents, browsing, callback)
   })
+  // Downloads manager (progress, pause/resume, list); the plain handler below only if it failed to start.
+  if (browsingData) return browsingData.wireSession(partition)
   browsing.on('will-download', (_event, item) => {
     const requestedFilename = item.getFilename() || 'download'
     let reservation: ReturnType<typeof reserveDownloadPath> | null = null
@@ -791,6 +794,26 @@ function wireDownloadSession(partition = 'persist:intoponet-default'): void {
         state,
       })
     })
+  })
+}
+
+/** Downloads list and browsing history (see browsingData.ts). */
+let browsingData: BrowsingData | null = null
+function installDownloadsAndHistory(): void {
+  browsingData = installBrowsingData({
+    getWindow: () => window,
+    handle: handleFromShell,
+    excludedSites: () => excludedSites,
+    normalPartition: 'persist:intoponet-default',
+    privatePartition: PRIVATE_PARTITION,
+    seal: {
+      available: () => safeStorage.isAsyncEncryptionAvailable(),
+      encrypt: (text) => safeStorage.encryptStringAsync(text),
+      decrypt: async (sealed) => (await safeStorage.decryptStringAsync(sealed)).result,
+      encryptSync: (text) => safeStorage.encryptString(text),
+      availableSync: () => safeStorage.isEncryptionAvailable(),
+    },
+    onDownloadDone: (entry) => emit({ type: 'download-finished', ...entry }),
   })
 }
 
@@ -1092,6 +1115,7 @@ function buildView(isPrivate = privateMode): WebContentsView {
     },
   })
   if (isPrivate) privateViews.add(view)
+  browsingData?.attachPage(view.webContents, () => privateViews.has(view))
 
   view.setBackgroundColor('#ffffff')
   view.webContents.setWebRTCIPHandlingPolicy(WEBRTC_POLICY)
@@ -1993,6 +2017,7 @@ app.whenReady().then(async () => {
     encryptedDnsActive = false
   }
   await loadExceptions()
+  startup('downloads and history', installDownloadsAndHistory)
   const restoredState = await loadPersistentState()
   if (restoredState) startup('restoring tabs', () => {
     lastKnownUrl = restoredState.url
@@ -2154,6 +2179,7 @@ app.whenReady().then(async () => {
           const privateSession = session.fromPartition(PRIVATE_PARTITION)
           await privateSession.clearStorageData().catch(() => undefined)
           await privateSession.clearCache().catch(() => undefined)
+          browsingData?.privateBrowsingEnded()
           emitPanelState()
         }
         appMenu.schedule()
@@ -2162,6 +2188,7 @@ app.whenReady().then(async () => {
       if (command.type === 'set-excluded-sites') {
         excludedSites = command.sites
         try { await trackedWrite(excludedSitesFile, JSON.stringify(excludedSites)) } catch { /* applies this session */ }
+        browsingData?.excludedSitesChanged()
         await emitPrivacy()
       }
       if (command.type === 'set-backup-exclusion') {

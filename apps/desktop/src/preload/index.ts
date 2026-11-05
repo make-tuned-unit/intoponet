@@ -7,6 +7,7 @@ import { layaChannels, type LayaApi, type LayaCommand, type LayaHit, type LayaPa
 import { knowledgeChannels, oldsChannels, type AbsorbPreview, type AbsorbRefusal, type KnowledgeApi, type KnowledgeCommand, type KnowledgeDocument, type KnowledgeClaim, type KnowledgeHit, type KnowledgeRecord, type OldsApi, type OldsQuery, type OldsThread } from '@intoponet/browser-api'
 import { contextBridge, ipcRenderer } from 'electron'
 import { passwordChannels, type PasswordApi, type PasswordCommand, type PasswordEvent, type PasswordPageState, type PasswordVaultStatus, type SavedLogin } from '../shared/passwords'
+import { downloadChannels, historyChannels, type DownloadCommand, type DownloadEntry, type DownloadEvent, type DownloadsApi, type HistoryApi, type HistoryCommand, type HistoryEvent } from '@intoponet/browser-api'
 import { updateChannels, type UpdatesApi, type UpdateCommand, type UpdateStatus } from '@intoponet/browser-api'
 import {
   CAPTURE_SCHEME,
@@ -344,4 +345,41 @@ const passwords: PasswordApi = {
   },
 }
 
-contextBridge.exposeInMainWorld('intoponet', Object.freeze({ browserHost, captures, olds, knowledge, laya, translate, privacy, sitePermissions, beacons, favicons, articles, access, updates, feedback, passwords }))
+const downloadInvoke = (command: DownloadCommand): Promise<DownloadEntry[]> => ipcRenderer.invoke(downloadChannels.command, command) as Promise<DownloadEntry[]>
+const downloads: DownloadsApi = {
+  list: () => downloadInvoke({ type: 'list' }),
+  pause: (id) => downloadInvoke({ type: 'pause', id }),
+  resume: (id) => downloadInvoke({ type: 'resume', id }),
+  cancel: (id) => downloadInvoke({ type: 'cancel', id }),
+  open: (id) => downloadInvoke({ type: 'open', id }),
+  show: (id) => downloadInvoke({ type: 'show', id }),
+  remove: (id) => downloadInvoke({ type: 'remove', id }),
+  retry: (id) => downloadInvoke({ type: 'retry', id }),
+  keep: (id) => downloadInvoke({ type: 'keep', id }),
+  discard: (id) => downloadInvoke({ type: 'discard', id }),
+  allowMultiple: (id) => downloadInvoke({ type: 'allow-multiple', id }),
+  blockMultiple: (id) => downloadInvoke({ type: 'block-multiple', id }),
+  clearFinished: () => downloadInvoke({ type: 'clear-finished' }),
+  subscribe: (listener) => {
+    const handler = (_event: Electron.IpcRendererEvent, event: DownloadEvent): void => listener(event)
+    ipcRenderer.on(downloadChannels.event, handler)
+    return () => { ipcRenderer.removeListener(downloadChannels.event, handler) }
+  },
+}
+
+const historyInvoke = (command: HistoryCommand): Promise<unknown> => ipcRenderer.invoke(historyChannels.command, command)
+const history: HistoryApi = {
+  search: (query, options) => historyInvoke({ type: 'search', query, cursor: options?.cursor ?? 0, limit: options?.limit ?? 100 }) as ReturnType<HistoryApi['search']>,
+  delete: async (ids) => { await historyInvoke({ type: 'delete', ids }) },
+  deleteDay: async (day) => { await historyInvoke({ type: 'delete-day', day }) },
+  clear: async () => { await historyInvoke({ type: 'clear' }) },
+  setPolicy: async (policy) => { await historyInvoke({ type: 'set-policy', policy }) },
+  clearBrowsingData: (request) => historyInvoke({ type: 'clear-browsing-data', request }) as ReturnType<HistoryApi['clearBrowsingData']>,
+  subscribe: (listener) => {
+    const handler = (_event: Electron.IpcRendererEvent, event: HistoryEvent): void => listener(event)
+    ipcRenderer.on(historyChannels.event, handler)
+    return () => { ipcRenderer.removeListener(historyChannels.event, handler) }
+  },
+}
+
+contextBridge.exposeInMainWorld('intoponet', Object.freeze({ browserHost, captures, olds, knowledge, laya, translate, privacy, sitePermissions, beacons, favicons, articles, access, updates, feedback, passwords, downloads, history }))

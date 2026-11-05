@@ -1,6 +1,7 @@
 // One end-to-end check per feature in docs/FEATURE_DAG.json. Each drives the
 // real built app and fails with a plain sentence when its promise isn't kept.
-import { existsSync, readFileSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { existsSync, readFileSync, statSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { join } from 'node:path'
 import { CheckFailure, expect, repo } from './lib.mjs'
@@ -162,6 +163,31 @@ async function browserKeys(ctx) {
     server.close()
   }
 }
+
+/** A tiny site on this Mac: two titled pages and a file served slowly as an attachment. */
+const DOWNLOAD_BYTES = 640 * 1024
+const startDownloadSite = () => new Promise((resolve) => {
+  const server = createServer((request, response) => {
+    const path = request.url?.split('?')[0] ?? '/'
+    if (path === '/file.bin') {
+      response.writeHead(200, { 'content-type': 'application/octet-stream', 'content-length': String(DOWNLOAD_BYTES), 'content-disposition': 'attachment; filename="intoponet-e2e.bin"' })
+      // 20 chunks over ~3 s, so progress is visible before it completes.
+      let sent = 0
+      const chunk = Buffer.alloc(DOWNLOAD_BYTES / 20, 7)
+      const timer = setInterval(() => {
+        response.write(chunk)
+        sent += chunk.length
+        if (sent >= DOWNLOAD_BYTES) { clearInterval(timer); response.end() }
+      }, 150)
+      request.on('close', () => clearInterval(timer))
+      return
+    }
+    response.setHeader('content-type', 'text/html; charset=utf-8')
+    const title = { '/alpha': 'Alpha history page', '/beta': 'Beta history page', '/gamma': 'Gamma private page' }[path] ?? 'Download test'
+    response.end(`<!doctype html><title>${title}</title><h1>${title}</h1><a id="get" href="/file.bin">Download</a>`)
+  })
+  server.listen(0, 'localhost', () => resolve(server))
+})
 
 /** Fails the check on any WCAG 2.2 AA violation axe finds in the app window right now. */
 async function axeAudit(ctx, where, selector = null) {
@@ -836,6 +862,78 @@ export const checks = {
     const recents = await ctx.evaluate(`window.intoponet.browserHost.readPrivateLibrary().then((r) => r.status === 'ok' && r.payload ? JSON.parse(r.payload).recents.map((p) => p.url).join(' ') : '')`)
     expect(!recents.includes(host.replace(/^www\./, '')), 'An excluded site was kept in recent pages.')
     return 'Absorb refused; no recent page kept.'
+  },
+
+  async DOWNLOADS_HISTORY(ctx) {
+    const server = await startDownloadSite()
+    const base = `http://localhost:${server.address().port}`
+    try {
+      await openPage(ctx, `${base}/alpha`, 2000)
+      await openPage(ctx, `${base}/beta`, 2000)
+      // A link click in the page (a real gesture) starts the download.
+      const page = await ctx.page(`${base}/beta`)
+      const box = JSON.parse(await page.evaluate(`JSON.stringify(document.querySelector('#get').getBoundingClientRect())`))
+      for (const type of ['mousePressed', 'mouseReleased']) await page.send('Input.dispatchMouseEvent', { type, x: box.x + 5, y: box.y + 5, button: 'left', clickCount: 1 })
+      await ctx.wait(`!!document.querySelector('.downloads-toggle')`, 15_000, 'the Downloads button in the toolbar')
+      await ctx.click('.downloads-toggle')
+      await ctx.wait(`!!document.querySelector('#downloads-pane .download-row[data-download-state="progressing"] progress')`, 10_000, 'a progress bar while the file downloads')
+      const ring = await ctx.evaluate(`!!document.querySelector('.downloads-toggle .downloads-ring svg')`)
+      expect(ring, 'The Downloads button shows no progress ring while a download is running.')
+      await ctx.shot('downloading')
+      await axeAudit(ctx, 'the Downloads list', '#downloads-pane')
+      await ctx.wait(`!!document.querySelector('#downloads-pane .download-row[data-download-state="completed"]')`, 30_000, 'the download to finish')
+      const row = await ctx.evaluate(`document.querySelector('#downloads-pane .download-row').innerText`)
+      expect(/intoponet-e2e\.bin/.test(row), `The finished download is listed as "${row}".`)
+      const actions = await ctx.evaluate(`[...document.querySelectorAll('#downloads-pane .download-row button')].map((b) => b.getAttribute('aria-label')).join(' | ')`)
+      expect(/Show intoponet-e2e\.bin in Finder/.test(actions) && /Open intoponet-e2e\.bin/.test(actions), `A finished download cannot be opened or shown in Finder (${actions}).`)
+      const file = join(ctx.profile, 'Downloads', 'intoponet-e2e.bin')
+      expect(existsSync(file) && statSync(file).size === DOWNLOAD_BYTES, `The downloaded file is missing or incomplete at ${file}.`)
+      let quarantine = ''
+      // The flag is set just after the file completes.
+      for (let i = 0; i < 20 && !quarantine; i += 1) {
+        try { quarantine = execFileSync('/usr/bin/xattr', ['-p', 'com.apple.quarantine', file], { encoding: 'utf8' }).trim() } catch { await ctx.delay(250) }
+      }
+      expect(quarantine, 'The downloaded file has no com.apple.quarantine flag (Gatekeeper would not check it).')
+      await ctx.press('Escape')
+      await ctx.delay(500)
+      const focus = await ctx.evaluate(`document.activeElement?.classList.contains('downloads-toggle') ?? false`)
+      expect(focus, 'Closing the Downloads list with Escape did not return focus to its button.')
+
+      // A private tab's visit is never kept.
+      await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(true).then(() => true)`)
+      await openPage(ctx, `${base}/gamma`, 2000)
+      await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
+      await ctx.delay(800)
+
+      // History: opened from the library drawer, searched, one visit deleted.
+      await openPanel(ctx, 'My map')
+      expect(await ctx.click('.library-tools button', 'History'), 'The library drawer has no History button.')
+      await ctx.wait(`!!document.querySelector('.history-pane')`, 5_000, 'the History view')
+      await ctx.wait(`document.querySelectorAll('.history-visit').length >= 2`, 10_000, 'visited pages in History')
+      const today = await ctx.evaluate(`document.querySelector('.history-day h3')?.innerText ?? ''`)
+      expect(today === 'Today', `History's first group is "${today}", expected "Today".`)
+      await axeAudit(ctx, 'History', '.history-pane')
+      await ctx.evaluate(`(() => { const i = document.querySelector('.history-search input'); i.focus(); return true })()`)
+      await ctx.type('Beta history')
+      await ctx.wait(`document.querySelectorAll('.history-visit').length === 1 && document.querySelector('.history-visit').innerText.includes('Beta history page')`, 5_000, 'History search to find the Beta page only')
+      await ctx.shot('history')
+      const gamma = await ctx.evaluate(`window.intoponet.history.search('Gamma').then((r) => r.total)`)
+      expect(gamma === 0, 'A page visited in a private tab was kept in History.')
+      expect(await ctx.click('.history-visit button', 'Remove Beta history page from history'), 'History visits have no delete button.')
+      await ctx.wait(`document.querySelectorAll('.history-visit').length === 0`, 5_000, 'the deleted visit to leave the results')
+      const left = await ctx.evaluate(`window.intoponet.history.search('').then((r) => r.days.flatMap((d) => d.visits.map((v) => v.title)).join(' | '))`)
+      expect(!left.includes('Beta history page') && left.includes('Alpha history page'), `After deleting, History holds: ${left}`)
+      await ctx.click('.history-head button', 'Clear browsing data')
+      await ctx.wait(`!!document.querySelector('.clear-data select')`, 3_000, 'the Clear browsing data choices')
+      await axeAudit(ctx, 'Clear browsing data', '.history-pane')
+      await ctx.press('Escape')
+      await ctx.press('Escape')
+      await ctx.delay(400)
+      expect(!(await ctx.evaluate(`!!document.querySelector('.history-pane')`)), 'Escape did not close History.')
+      return `Downloaded ${DOWNLOAD_BYTES / 1024} KB with progress → done; on disk with quarantine "${quarantine}"; History found and deleted a visit; private visit not kept.`
+    } finally {
+      server.close()
+    }
   },
 
   // ---- Knowledge -----------------------------------------------------------
