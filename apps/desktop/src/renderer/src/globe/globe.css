@@ -1337,10 +1337,22 @@
   list-style: none;
 }
 
+/* The headline (opens the article) and, apart from it, the chevron (sources only). */
+.world-row-wrap {
+  display: grid;
+  grid-template-columns: 1fr 36px;
+  gap: 6px;
+  align-items: stretch;
+  border-radius: 12px;
+}
+
+.world-row-wrap:hover,
+.world-list li.is-open .world-row-wrap { background: var(--lg-hover); }
+
 .world-row {
   display: grid;
   /* The rank sits under the heading's globe icon (12px at 14px in), the title under its label. */
-  grid-template-columns: 12px 1fr 16px;
+  grid-template-columns: 12px 1fr;
   align-items: start;
   gap: 5px;
   width: 100%;
@@ -1354,8 +1366,22 @@
   cursor: pointer;
 }
 
-.world-row:hover,
-.world-list li.is-open .world-row { background: var(--lg-hover); }
+.world-row:focus-visible,
+.world-expand:focus-visible { outline: 2px solid var(--teal, #20f4e4); outline-offset: -2px; }
+
+.world-expand {
+  display: grid;
+  place-items: start center;
+  padding: 9px 0 0;
+  color: var(--muted);
+  border: 0;
+  border-left: 1px solid rgba(214, 236, 233, 0.12);
+  border-radius: 0 12px 12px 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.world-expand:hover { color: var(--warm-white); background: rgba(255, 255, 255, 0.06); }
 
 .world-rank {
   justify-self: center;
@@ -1392,7 +1418,6 @@
 
 .world-chevron {
   margin-top: 2px;
-  color: var(--muted);
   transition: transform 180ms var(--lg-spring);
 }
 

@@ -59,6 +59,12 @@ export function WorldStories({
     // Opening a story also opens its article, so the reader can go straight to the source.
     if (next) onOpen(story.url)
   }
+  /** The chevron: show or hide the sources only, without opening the article. */
+  const toggleDetails = (story: GlobalStory): void => {
+    const next = expanded === story.id ? null : story.id
+    setExpanded(next)
+    onFocus(next ? story : null)
+  }
   return (
     <div className="world-stories">
       {carousel && (
@@ -82,10 +88,10 @@ export function WorldStories({
               const shown = titles.get(story.id)
               return (
                 <li key={story.id} className={open ? 'is-open' : ''}>
+                  <div className="world-row-wrap">
                   <button
                     type="button"
                     className="world-row"
-                    aria-expanded={open}
                     onClick={() => toggle(story)}
                     title={`Open the article and see where it was covered. Local outlets in ${story.countries.length} countries${story.internationalDesks ? ` and ${story.internationalDesks} international desks` : ''} covered it (${story.outletCount} outlets in all). Shared words: ${story.terms.join(', ')}.`}
                   >
@@ -100,8 +106,18 @@ export function WorldStories({
                         {story.countries.length > 7 && <span className="more">+{story.countries.length - 7}</span>}
                       </span>
                     </span>
-                    <ChevronDown size={14} className="world-chevron" aria-hidden="true" />
                   </button>
+                  <button
+                    type="button"
+                    className="world-expand"
+                    aria-expanded={open}
+                    aria-label={`${open ? 'Hide' : 'Show'} sources for: ${shown ?? story.title}`}
+                    title={open ? 'Hide sources' : 'Show sources (without opening the article)'}
+                    onClick={() => toggleDetails(story)}
+                  >
+                    <ChevronDown size={15} className="world-chevron" aria-hidden="true" />
+                  </button>
+                  </div>
                   {open && (
                     <div className="world-detail">
                       <div className="world-actions">
