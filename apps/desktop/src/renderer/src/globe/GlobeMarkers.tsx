@@ -1,6 +1,7 @@
 import { latLonToRender } from '@intoponet/frequency-field'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
+import { useInvalidateOnRender, viewChanged } from '../earth/frameDemand'
 import { AdditiveBlending, BufferAttribute, BufferGeometry, Color, Raycaster, ShaderMaterial, Sphere, Vector2, Vector3 } from 'three'
 
 export type GlobeMarker = {
@@ -14,8 +15,9 @@ export type GlobeMarker = {
 }
 
 /**
- * Screen positions of markers, written every frame by the scene and read by
- * the HTML label layer without React re-renders.
+ * Screen positions of markers, written by the scene whenever the view changes
+ * and read by the HTML label layer without React re-renders. `listeners` are
+ * told when the positions change (during the scene's frame, before it draws).
  */
 export type GlobeProjection = {
   ids: string[]
@@ -29,10 +31,11 @@ export type GlobeProjection = {
   /** The point on the globe at the centre of the view (degrees). */
   centerLat?: number
   centerLon?: number
+  listeners: Set<() => void>
 }
 
 export function createGlobeProjection(): GlobeProjection {
-  return { ids: [], index: new Map(), x: new Float32Array(0), y: new Float32Array(0), facing: new Float32Array(0), width: 0, height: 0 }
+  return { ids: [], index: new Map(), x: new Float32Array(0), y: new Float32Array(0), facing: new Float32Array(0), width: 0, height: 0, listeners: new Set() }
 }
 
 const MARKER_RADIUS = 1.014
@@ -110,7 +113,8 @@ export function GlobeMarkers({
   /** A click on Earth where there is no marker. Return true when it was handled. */
   onSurfaceClick?: ((point: { lat: number; lon: number }) => boolean) | undefined
 }) {
-  const { camera, gl, size } = useThree()
+  const { camera, gl, size, invalidate } = useThree()
+  useInvalidateOnRender()
   const callbacks = useRef({ onHover, onSelect, interactive, onSurfaceHover, onSurfaceClick })
   callbacks.current = { onHover, onSelect, interactive, onSurfaceHover, onSurfaceClick }
   const hoverRef = useRef<string | null>(null)
@@ -160,7 +164,8 @@ export function GlobeMarkers({
       state.setX(i, marker.id === selectedId ? 2 : marker.id === hoveredId ? 1 : emphasis && !emphasis.has(marker.id) ? -1 : 0)
     })
     state.needsUpdate = true
-  }, [geometry, markers, selectedId, hoveredId, emphasis])
+    invalidate()
+  }, [geometry, markers, selectedId, hoveredId, emphasis, invalidate])
 
   // Keep the projection store sized to the marker list.
   useEffect(() => {
@@ -169,12 +174,19 @@ export function GlobeMarkers({
     projection.x = new Float32Array(markers.length)
     projection.y = new Float32Array(markers.length)
     projection.facing = new Float32Array(markers.length)
-  }, [markers, projection])
+    invalidate()
+  }, [markers, projection, invalidate])
 
   const scratch = useMemo(() => new Vector3(), [])
+  const seen = useMemo(() => ({ view: new Float64Array(34), x: null as Float32Array | null, positions: null as Vector3[] | null }), [projection])
   useFrame((state) => {
     material.uniforms['uPixelRatio']!.value = gl.getPixelRatio()
     material.uniforms['uTime']!.value = state.clock.elapsedTime
+    // Re-project only when the view or the markers changed.
+    const moved = viewChanged(camera, size, seen.view)
+    if (!moved && seen.x === projection.x && seen.positions === positions) return
+    seen.x = projection.x
+    seen.positions = positions
     projection.width = size.width
     projection.height = size.height
     const cam = camera.position
@@ -191,6 +203,7 @@ export function GlobeMarkers({
       // Horizon test for a point on a sphere seen from `cam`.
       projection.facing[i] = (p.dot(cam) / MARKER_RADIUS - MARKER_RADIUS) / Math.max(0.001, camLength - MARKER_RADIUS)
     }
+    for (const listener of projection.listeners) listener()
   })
 
   useEffect(() => {

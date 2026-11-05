@@ -1,4 +1,4 @@
-import { useThree } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useRef } from 'react'
 import { PerspectiveCamera, Vector3 } from 'three'
 import { orbitKeepingPointUnderCursor, surfaceUnderCursor, wheelRadius, type Ndc, type Vec3 } from './zoomToCursor'
@@ -20,7 +20,7 @@ export function OrbitRig({
   onDistanceChange?: ((radius: number) => void) | undefined
   onPoseChange?: ((pose: { theta: number; phi: number; radius: number }) => void) | undefined
 }) {
-  const { camera, gl } = useThree()
+  const { camera, gl, invalidate } = useThree()
   const spherical = useRef({ theta, phi, radius: distance })
   const desired = useRef({ theta, phi, radius: distance })
   const dragging = useRef(false)
@@ -62,7 +62,8 @@ export function OrbitRig({
       spherical.current.theta = desired.current.theta
       spherical.current.phi = desired.current.phi
     }
-  }, [distance, phi, reducedMotion, theta])
+    invalidate()
+  }, [distance, invalidate, phi, reducedMotion, theta])
 
   useEffect(() => {
     const element = gl.domElement
@@ -95,6 +96,7 @@ export function OrbitRig({
       )
       desired.current.theta = spherical.current.theta
       desired.current.phi = spherical.current.phi
+      invalidate()
     }
     const onUp = (event: PointerEvent): void => {
       dragging.current = false
@@ -104,6 +106,7 @@ export function OrbitRig({
       // A pause before letting go means no throw.
       if (performance.now() - lastMoveAt.current > 90 || reducedMotion) velocity.current = { theta: 0, phi: 0 }
       if (Math.abs(velocity.current.theta) + Math.abs(velocity.current.phi) < 0.0004) report.current.onPoseChange?.({ ...spherical.current })
+      invalidate()
     }
     const onWheel = (event: WheelEvent): void => {
       if (!enabled) return
@@ -135,6 +138,7 @@ export function OrbitRig({
       }
       reportedRadius.current = next
       report.current.onDistanceChange?.(next)
+      invalidate()
     }
     element.addEventListener('pointerdown', onDown)
     element.addEventListener('pointermove', onMove)
@@ -148,59 +152,64 @@ export function OrbitRig({
       element.removeEventListener('pointercancel', onUp)
       element.removeEventListener('wheel', onWheel)
     }
-  }, [camera, enabled, gl, reducedMotion])
+  }, [camera, enabled, gl, invalidate, reducedMotion])
 
-  useEffect(() => {
-    let frame = 0
-    const tick = (): void => {
-      // Momentum after a throw, easing out; the pose is reported once the globe settles.
-      const spin = velocity.current
-      if (!dragging.current && Math.abs(spin.theta) + Math.abs(spin.phi) >= 0.0004) {
-        spherical.current.theta += spin.theta
-        spherical.current.phi = Math.min(Math.PI - 0.18, Math.max(0.18, spherical.current.phi + spin.phi))
-        desired.current.theta = spherical.current.theta
-        desired.current.phi = spherical.current.phi
-        spin.theta *= 0.94
-        spin.phi *= 0.9
-        if (Math.abs(spin.theta) + Math.abs(spin.phi) < 0.0004) {
-          velocity.current = { theta: 0, phi: 0 }
-          report.current.onPoseChange?.({ ...spherical.current })
-        }
-      }
-      const steer = reducedMotion ? 1 : dragging.current ? 0 : 0.055
-      spherical.current.radius += (desired.current.radius - spherical.current.radius) * (zooming.current && !reducedMotion ? 0.2 : steer)
-      const anchor = zoomAnchor.current
-      if (anchor && !dragging.current) {
-        // Turn the globe just enough that the zoomed-to point stays under the cursor at this radius.
-        const aimed = orbitKeepingPointUnderCursor(spherical.current, spherical.current.radius, anchor.point, anchor.ndc, lensOf(camera))
-        spherical.current.theta = aimed.theta
-        spherical.current.phi = aimed.phi
-        desired.current.theta = aimed.theta
-        desired.current.phi = aimed.phi
-      }
-      if (zooming.current && Math.abs(desired.current.radius - spherical.current.radius) < 1e-3) {
-        spherical.current.radius = desired.current.radius
-        zooming.current = false
-        zoomAnchor.current = null
+  // Runs in the scene's own frame (before it renders), and asks for the next frame while the camera is still moving.
+  useFrame(() => {
+    // Momentum after a throw, easing out; the pose is reported once the globe settles.
+    const spin = velocity.current
+    if (!dragging.current && Math.abs(spin.theta) + Math.abs(spin.phi) >= 0.0004) {
+      spherical.current.theta += spin.theta
+      spherical.current.phi = Math.min(Math.PI - 0.18, Math.max(0.18, spherical.current.phi + spin.phi))
+      desired.current.theta = spherical.current.theta
+      desired.current.phi = spherical.current.phi
+      spin.theta *= 0.94
+      spin.phi *= 0.9
+      if (Math.abs(spin.theta) + Math.abs(spin.phi) < 0.0004) {
+        velocity.current = { theta: 0, phi: 0 }
         report.current.onPoseChange?.({ ...spherical.current })
       }
-      spherical.current.theta += (desired.current.theta - spherical.current.theta) * steer
-      spherical.current.phi += (desired.current.phi - spherical.current.phi) * steer
-      const { theta: currentTheta, phi: currentPhi, radius } = spherical.current
-      camera.position.set(
-        radius * Math.sin(currentPhi) * Math.sin(currentTheta),
-        radius * Math.cos(currentPhi),
-        radius * Math.sin(currentPhi) * Math.cos(currentTheta),
-      )
-      camera.lookAt(look.current)
-      frame = requestAnimationFrame(tick)
     }
-    frame = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(frame)
-  }, [camera, reducedMotion])
+    const steer = reducedMotion ? 1 : dragging.current ? 0 : 0.055
+    spherical.current.radius += (desired.current.radius - spherical.current.radius) * (zooming.current && !reducedMotion ? 0.2 : steer)
+    const anchor = zoomAnchor.current
+    if (anchor && !dragging.current) {
+      // Turn the globe just enough that the zoomed-to point stays under the cursor at this radius.
+      const aimed = orbitKeepingPointUnderCursor(spherical.current, spherical.current.radius, anchor.point, anchor.ndc, lensOf(camera))
+      spherical.current.theta = aimed.theta
+      spherical.current.phi = aimed.phi
+      desired.current.theta = aimed.theta
+      desired.current.phi = aimed.phi
+    }
+    if (zooming.current && Math.abs(desired.current.radius - spherical.current.radius) < 1e-3) {
+      spherical.current.radius = desired.current.radius
+      zooming.current = false
+      zoomAnchor.current = null
+      report.current.onPoseChange?.({ ...spherical.current })
+    }
+    spherical.current.theta += (desired.current.theta - spherical.current.theta) * steer
+    spherical.current.phi += (desired.current.phi - spherical.current.phi) * steer
+    const { theta: currentTheta, phi: currentPhi, radius } = spherical.current
+    camera.position.set(
+      radius * Math.sin(currentPhi) * Math.sin(currentTheta),
+      radius * Math.cos(currentPhi),
+      radius * Math.sin(currentPhi) * Math.cos(currentTheta),
+    )
+    camera.lookAt(look.current)
+    // Projections read this frame (names, labels) use the camera as it is about to be drawn.
+    camera.updateMatrixWorld()
+    if (zooming.current || zoomAnchor.current
+      || (!dragging.current && Math.abs(velocity.current.theta) + Math.abs(velocity.current.phi) >= 0.0004)
+      || Math.abs(desired.current.radius - spherical.current.radius) > SETTLED
+      || Math.abs(desired.current.theta - spherical.current.theta) > SETTLED
+      || Math.abs(desired.current.phi - spherical.current.phi) > SETTLED) invalidate()
+  })
 
   return null
 }
+
+/** Below this (radians, or Earth radii) the remaining ease is far under a pixel. */
+const SETTLED = 1e-5
 
 function lensOf(camera: unknown): { fovDeg: number; aspect: number } {
   return camera instanceof PerspectiveCamera

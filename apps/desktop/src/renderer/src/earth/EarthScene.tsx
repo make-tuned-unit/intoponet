@@ -1,7 +1,7 @@
 import type { FrequencyBand } from '@intoponet/frequency-field'
-import { Canvas, useFrame, useLoader } from '@react-three/fiber'
-import { Suspense, useMemo, useRef, useState } from 'react'
-import { Color, type MeshStandardMaterial, SRGBColorSpace, TextureLoader, Vector3 } from 'three'
+import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { Color, ImageBitmapLoader, type MeshStandardMaterial, SRGBColorSpace, Texture, Vector3 } from 'three'
 import earthDay from '../../assets/earth-day.jpg' // NASA Blue Marble, public domain
 import earthNight from '../../assets/earth-night.jpg' // NASA Black Marble 2016, public domain
 import { sunDirection } from './sun'
@@ -21,6 +21,7 @@ import { FrequencyLighting } from './FrequencyLighting'
 import { Atmosphere } from './Atmosphere'
 import { GlobeMarkers, type GlobeMarker, type GlobeProjection } from '../globe/GlobeMarkers'
 import { CountryProjector, type CountryView } from '../globe/CountryNames'
+import { AMBIENT_FPS, useAmbientFrames, useInvalidateOnRender } from './frameDemand'
 
 const EARTH_TINT = new Color('#74838a')
 const EARTH_FADE_MS = 1_400
@@ -59,11 +60,20 @@ const DAY_NIGHT_GLSL = /* glsl */ `
 `
 
 function EarthSphere({ reducedMotion, dayNight, onSun }: { reducedMotion: boolean; dayNight: boolean; onSun?: (direction: [number, number, number]) => void }) {
-  const textures = useLoader(TextureLoader, [earthDay, earthNight])
-  const texture = textures[0]!
-  const nightTexture = textures[1]!
-  texture.colorSpace = SRGBColorSpace
-  nightTexture.colorSpace = SRGBColorSpace
+  // Decoded off the main thread (createImageBitmap) rather than during the first upload, which
+  // blocked the UI for ~200 ms. Flipped and left unconverted here exactly as WebGL's unpack
+  // settings did for the <img> path (flipY; no colour-space conversion for sRGB textures).
+  const bitmaps = useLoader(ImageBitmapLoader, [earthDay, earthNight], (loader) => {
+    loader.setOptions({ imageOrientation: 'flipY', colorSpaceConversion: 'none', premultiplyAlpha: 'none' })
+  })
+  const [texture, nightTexture] = useMemo(() => bitmaps.map((bitmap) => {
+    const map = new Texture(bitmap)
+    map.flipY = false
+    map.colorSpace = SRGBColorSpace
+    map.needsUpdate = true
+    return map
+  }), [bitmaps]) as [Texture, Texture]
+  useEffect(() => () => { texture.dispose(); nightTexture.dispose() }, [texture, nightTexture])
   const material = useRef<MeshStandardMaterial>(null)
   const shownAt = useRef<number | null>(null)
   const sunWorld = useRef(new Vector3(...sunDirection(new Date())))
@@ -80,9 +90,17 @@ function EarthSphere({ reducedMotion, dayNight, onSun }: { reducedMotion: boolea
       .replace('#include <common>', '#include <common>\nuniform sampler2D uNightMap;\nuniform vec3 uSunView;\nuniform float uDayNight;\nuniform float uFade;')
       .replace('#include <opaque_fragment>', `#include <opaque_fragment>\n${DAY_NIGHT_GLSL}`)
   }, [uniforms])
+  useInvalidateOnRender()
+  // The sun moves on its own; keep the terminator current even when nothing else asks for a frame.
+  const invalidate = useThree((state) => state.invalidate)
+  useEffect(() => {
+    if (!dayNight) return
+    const timer = window.setInterval(() => invalidate(), SUN_REFRESH_MS)
+    return () => window.clearInterval(timer)
+  }, [dayNight, invalidate])
   // Fade the substrate up from black once its texture is ready, so it
   // arrives under the membrane rather than popping in.
-  useFrame(({ camera }, delta) => {
+  useFrame(({ camera, invalidate: next }, delta) => {
     const now = performance.now()
     if (now - sunAt.current > SUN_REFRESH_MS) {
       sunAt.current = now
@@ -93,10 +111,12 @@ function EarthSphere({ reducedMotion, dayNight, onSun }: { reducedMotion: boolea
     uniforms.uSunView.value.copy(sunWorld.current).transformDirection(camera.matrixWorldInverse)
     const target = dayNight ? 1 : 0
     uniforms.uDayNight.value = reducedMotion ? target : uniforms.uDayNight.value + (target - uniforms.uDayNight.value) * Math.min(1, delta * 4)
+    if (Math.abs(target - uniforms.uDayNight.value) > 1e-4) next()
     if (!material.current) return
     if (reducedMotion) { material.current.color.copy(EARTH_TINT); uniforms.uFade.value = 1; return }
     shownAt.current ??= now
     const t = Math.min(1, (now - shownAt.current) / EARTH_FADE_MS)
+    if (t < 1) next()
     const eased = t * t * (3 - 2 * t)
     material.current.color.copy(EARTH_TINT).multiplyScalar(eased)
     uniforms.uFade.value = eased
@@ -114,6 +134,19 @@ function EarthSphere({ reducedMotion, dayNight, onSun }: { reducedMotion: boolea
       />
     </mesh>
   )
+}
+
+/**
+ * Inside the Canvas: a frame for every change from React, and the ambient
+ * frames while something on the globe gently animates by itself.
+ */
+function SceneFrames({ ambientFps }: { ambientFps: number | null }) {
+  // A resize clears the canvas: re-render (and so redraw) when the size or pixel ratio changes.
+  useThree((state) => state.size)
+  useThree((state) => state.viewport.dpr)
+  useInvalidateOnRender()
+  useAmbientFrames(ambientFps)
+  return null
 }
 
 export function EarthScene({
@@ -173,6 +206,11 @@ export function EarthScene({
   onSurfaceClick?: ((point: { lat: number; lon: number }) => boolean) | undefined
 }) {
   const [sun, setSun] = useState<[number, number, number]>(() => sunDirection(new Date()))
+  const organic = signals !== undefined
+  const phaseRunning = !(phasePaused ?? paused) && phaseTimeSeconds === undefined
+  // The membrane shimmers while its phase runs; the selected marker pulses (markers are hidden while a panel is open).
+  const pulsing = !panelOpen && selectedMarkerId !== null && !!markers?.some((marker) => marker.id === selectedMarkerId)
+  const ambientFps = !organic ? null : pulsing ? AMBIENT_FPS.pulse : phaseRunning ? AMBIENT_FPS.shimmer : null
   const aimed = {
     theta: pose?.theta ?? 0.35,
     phi: pose?.phi ?? 1.28,
@@ -183,10 +221,12 @@ export function EarthScene({
       className="frequency-canvas"
       camera={{ position: [0, 0.45, scaleDistance.earth], fov: 38 }}
       dpr={[1, 1.5]}
-      frameloop="always"
+      // The organic globe renders on demand (see frameDemand.ts); the legacy membrane (Field Lab) keeps its continuous loop.
+      frameloop={organic ? 'demand' : 'always'}
       gl={{ antialias: true, powerPreference: 'high-performance', alpha: false }}
     >
       <color attach="background" args={['#061320']} />
+      <SceneFrames ambientFps={ambientFps} />
       <FrequencyLighting profile={signals === undefined ? 'legacy' : 'physical'} />
       <OrbitRig
         distance={pose?.radius ?? scaleDistance[scale]}

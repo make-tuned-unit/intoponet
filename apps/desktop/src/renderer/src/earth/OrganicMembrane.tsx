@@ -14,6 +14,7 @@ import {
   type WebGLRenderer,
 } from 'three'
 import { buildInterestTextureData, INTEREST_FIELD_LIMITS, type InterestSignal } from '../interestField'
+import { useInvalidateOnRender } from './frameDemand'
 import { ORGANIC_SHADER_CACHE_KEY, patchOrganicShader, type OrganicShaderUniforms } from './organicShader'
 
 export type OrganicMembraneSettings = {
@@ -397,7 +398,8 @@ export function OrganicMembrane({ signals, settings, phaseTimeSeconds, onMetrics
   const effectiveQuality = settings.quality === 'auto' ? autoQuality : settings.quality
   const [widthSegments, heightSegments] = geometrySegments(effectiveQuality)
 
-  useFrame((_, delta) => {
+  useInvalidateOnRender()
+  useFrame(({ invalidate }, delta) => {
     const state = resources.current
     const now = performance.now()
     for (const [name, texture] of [['uInterestFrom', state.from], ['uInterestTo', state.to]] as const) {
@@ -435,6 +437,8 @@ export function OrganicMembrane({ signals, settings, phaseTimeSeconds, onMetrics
       uniforms.uOrganicReveal.value = 1 - (1 - t) ** 3
       if (t >= 1) revealStart.current = null
     }
+    // The entrance and data transitions play at the display's full rate.
+    if (state.transition < 1 || revealStart.current !== null) invalidate()
 
     if (settings.quality === 'auto' || onMetrics) advanceRendererRuntime(gl, runtime, now)
     if (settings.quality === 'auto' && autoQuality !== runtime.quality) setAutoQuality(runtime.quality)
