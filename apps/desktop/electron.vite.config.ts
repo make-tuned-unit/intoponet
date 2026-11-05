@@ -32,6 +32,15 @@ export default defineConfig({
   },
   preload: {
     plugins: [externalizeDepsPlugin({ exclude: workspacePackages })],
+    // index: the app shell. page: the sign-in helper for web pages (no shared chunks: sandboxed preloads are one file).
+    build: {
+      rollupOptions: {
+        input: {
+          index: resolve(__dirname, 'src/preload/index.ts'),
+          page: resolve(__dirname, 'src/preload/page.ts'),
+        },
+      },
+    },
   },
   renderer: {
     resolve: {

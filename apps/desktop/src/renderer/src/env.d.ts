@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 
+import type { PasswordApi } from '../../shared/passwords'
 import type { BeaconApi, BrowserHostApi, CaptureApi, KnowledgeApi, LayaApi, OldsApi, PrivacyApi, SitePermissionApi, TranslateApi, UpdatesApi } from '@intoponet/browser-api'
 
 declare global {
@@ -23,6 +24,7 @@ declare global {
       }
       access: { page(): Promise<{ url: string; title: string; paywalled: boolean; signals: string[]; doi: string | null } | null> }
       updates: UpdatesApi
+      passwords: PasswordApi
     }
   }
 }

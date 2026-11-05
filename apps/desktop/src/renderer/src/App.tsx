@@ -32,6 +32,7 @@ import {
   Expand,
   FolderPlus,
   Globe2,
+  KeyRound,
   LockKeyhole,
   EyeOff,
   Library,
@@ -183,6 +184,8 @@ import { isExcludedSite, type PrivacyState } from '@intoponet/browser-api'
 import { PrivacyPane } from './privacy/PrivacyPane'
 import { SettingsPanel } from './settings/SettingsPanel'
 import { PermissionBar, SitePermissionChips } from './permissions/PermissionBar'
+import { PasswordBar } from './passwords/PasswordBar'
+import type { PasswordPageState } from '../../shared/passwords'
 import { BeaconConsent } from './beacons/BeaconConsent'
 import type { BeaconDraft } from '@intoponet/browser-api'
 import type { SitePermissionMap, SitePermissionRequest } from '@intoponet/browser-api'
@@ -424,6 +427,9 @@ export function App() {
   const [protection, setProtection] = useState<ProtectionSnapshot>(emptyProtection)
   const [shieldOpen, setShieldOpen] = useState(false)
   const [permissionRequests, setPermissionRequests] = useState<SitePermissionRequest[]>([])
+  // Saved passwords for the page in front: a save offer, or accounts to pick from.
+  const [passwordState, setPasswordState] = useState<PasswordPageState | null>(null)
+  const [passwordPicking, setPasswordPicking] = useState(false)
   const [sitePermissionMap, setSitePermissionMap] = useState<SitePermissionMap>({})
   const [tabs, setTabs] = useState<PageTabSnapshot[]>([])
   const [fullWidth, setFullWidth] = useState(false)
@@ -725,6 +731,13 @@ export function App() {
     )
   }, [panel.title, panel.url, panel.isPrivate, privacySettings.footprints, privacyState?.excludedSites])
 
+  useEffect(() => {
+    void window.intoponet.passwords.pageState().then(setPasswordState, () => undefined)
+    return window.intoponet.passwords.subscribe((event) => {
+      if (event.type === 'page-state') setPasswordState(event.state)
+    })
+  }, [])
+  useEffect(() => setPasswordPicking(false), [passwordState?.origin])
   // Sites asking for camera, microphone, location, notifications or the clipboard.
   useEffect(() => {
     void window.intoponet.sitePermissions.pending().then(setPermissionRequests, () => undefined)
@@ -3423,6 +3436,19 @@ export function App() {
                     )}
                 </button>
               </div>
+              {passwordState && !panel.isPrivate && (passwordState.accounts.length > 0 || passwordState.offer) && (
+                <button
+                  type="button"
+                  className={`password-toggle${passwordState.offer || passwordState.choose || passwordPicking ? ' selected' : ''}${passwordState.offer ? ' has-offer' : ''}`}
+                  aria-label={passwordState.offer ? 'Save password for this site' : `Saved sign-ins for this site (${passwordState.accounts.length})`}
+                  aria-expanded={!!passwordState.offer || passwordState.choose || passwordPicking}
+                  title={passwordState.offer ? 'Save the password you just used' : 'Fill a saved sign-in'}
+                  onClick={() => setPasswordPicking((open) => !open)}
+                >
+                  <KeyRound size={15} />
+                  <span className="chrome-label">Passwords</span>
+                </button>
+              )}
               {(() => {
                 const detected = translation.page.status === 'idle' ? translation.page.detected : null
                 const offer = !!detected && detected !== translation.target && translation.supported(detected)
@@ -3616,6 +3642,14 @@ export function App() {
                 <X size={14} />
               </button>
             </form>
+          )}
+          {passwordState && !panel.isPrivate && !onStartPage && (
+            <PasswordBar
+              state={passwordState}
+              picking={passwordPicking}
+              onClosePicker={() => setPasswordPicking(false)}
+              onError={setNotice}
+            />
           )}
           {permissionRequests[0] && (
             <PermissionBar

@@ -16,10 +16,16 @@ import {
   shell,
   systemPreferences,
   autoUpdater,
+  dialog,
 } from 'electron'
 import type { MenuItemConstructorOptions } from 'electron'
 import { UpdateController } from './updates'
 import { FeedbackService, parseFeedbackCommand } from './feedback'
+import { PasswordVault } from './passwords/vault'
+import { PasswordService, type PasswordPage } from './passwords/service'
+import { passwordOrigin } from './passwords/origin'
+import { parsePasswordCommand, passwordChannels, type PasswordEvent } from '../shared/passwords'
+import { parsePasswordPageMessage, passwordPageChannels } from '../shared/passwordPage'
 import { updateChannels, parseUpdateCommand } from '@intoponet/browser-api'
 
 declare const __INTOPONET_MAC_UPDATE_URL__: string
@@ -98,6 +104,8 @@ import {
 let window: BrowserWindow | null = null
 let pageView: WebContentsView | null = null
 let translateService: TranslateService | null = null
+/** Saved passwords (sealed on this Mac); null until the app is ready. */
+let passwords: PasswordService | null = null
 /** Private browsing: new tabs use an in-memory session and record nothing. */
 const PRIVATE_PARTITION = 'intoponet-private'
 // Site permissions: asked in a bar, remembered per site (private tabs: in memory until private browsing ends).
@@ -506,6 +514,128 @@ function deleteSealedLibrary(): void {
   if (existsSync(privateLibraryPath())) unlinkSync(privateLibraryPath())
 }
 
+// ---- Saved passwords ----------------------------------------------------------
+
+function passwordVaultPath(): string {
+  return join(app.getPath('userData'), 'passwords.v1.seal')
+}
+
+function openPasswordVault(): PasswordVault {
+  return new PasswordVault(
+    {
+      available: () => safeStorage.isAsyncEncryptionAvailable(),
+      encrypt: (text) => safeStorage.encryptStringAsync(text),
+      decrypt: (data) => safeStorage.decryptStringAsync(data),
+    },
+    {
+      read: () => (existsSync(passwordVaultPath()) ? readFileSync(passwordVaultPath()) : null),
+      write: (data) => {
+        const destination = passwordVaultPath()
+        const temporary = `${destination}.${randomUUID()}.tmp`
+        try {
+          writeFileSync(temporary, data, { mode: 0o600 })
+          renameSync(temporary, destination)
+        } catch (error) {
+          if (existsSync(temporary)) unlinkSync(temporary)
+          throw error
+        }
+      },
+    },
+  )
+}
+
+function passwordPage(view: WebContentsView): PasswordPage {
+  const contents = view.webContents
+  return {
+    id: contents.id,
+    isPrivate: privateViews.has(view),
+    origin: () => (contents.isDestroyed() ? null : passwordOrigin(contents.mainFrame.url)),
+    fill: (message) => {
+      if (!contents.isDestroyed()) contents.mainFrame.send(passwordPageChannels.fill, message)
+    },
+  }
+}
+
+let lastPasswordState = ''
+function emitPasswordState(): void {
+  const view = pageView
+  if (!passwords || !window || window.isDestroyed()) return
+  const state = view && !isStartView(view) ? passwords.pageState(passwordPage(view)) : Promise.resolve(null)
+  void state.then((value) => {
+    if (view !== pageView || !window || window.isDestroyed()) return
+    const event: PasswordEvent = { type: 'page-state', state: value }
+    const key = JSON.stringify(event)
+    if (key === lastPasswordState) return
+    lastPasswordState = key
+    window.webContents.send(passwordChannels.event, event)
+  }, () => undefined)
+}
+
+/** Touch ID when the Mac has it; otherwise a plain confirmation. */
+async function authorizePasswordReveal(origin: string): Promise<boolean> {
+  if (process.platform === 'darwin' && systemPreferences.canPromptTouchID()) {
+    try {
+      await systemPreferences.promptTouchID('reveal your saved password')
+      return true
+    } catch {
+      return false
+    }
+  }
+  const site = origin.replace(/^https?:\/\//, '')
+  const options = {
+    type: 'question' as const,
+    buttons: ['Continue', 'Cancel'],
+    defaultId: 0,
+    cancelId: 1,
+    message: `Use the saved password for ${site}?`,
+    detail: 'It will be shown or copied. Touch ID is not available, so Intoponet asks first.',
+  }
+  const { response } = window && !window.isDestroyed() ? await dialog.showMessageBox(window, options) : await dialog.showMessageBox(options)
+  return response === 0
+}
+
+function wirePasswords(): void {
+  passwords = new PasswordService(openPasswordVault(), {
+    changed: (pageId) => {
+      if (pageId === null && window && !window.isDestroyed()) window.webContents.send(passwordChannels.event, { type: 'changed' } satisfies PasswordEvent)
+      if (pageId === null || pageId === pageView?.webContents.id) emitPasswordState()
+    },
+    authorize: authorizePasswordReveal,
+    clipboard: { read: () => clipboard.readText(), write: (text) => clipboard.writeText(text), clear: () => clipboard.clear() },
+  })
+  // Only the top frame of a normal tab may report a sign-in; its origin is read here, not trusted from the page.
+  ipcMain.on(passwordPageChannels.report, (event, value: unknown) => {
+    const tab = openTabs.find((item) => !item.view.webContents.isDestroyed() && item.view.webContents === event.sender)
+    if (!tab || !event.senderFrame || event.senderFrame !== event.sender.mainFrame) return
+    const message = parsePasswordPageMessage(value)
+    if (!message) return
+    void passwords!.report(passwordPage(tab.view), message).catch(() => undefined)
+  })
+  ipcMain.handle(passwordChannels.command, async (event, value: unknown) => {
+    if (!window || event.sender !== window.webContents) throw new Error('Not allowed.')
+    const command = parsePasswordCommand(value)
+    const service = passwords!
+    const active = pageView && !isStartView(pageView) ? passwordPage(pageView) : null
+    switch (command.type) {
+      case 'page-state': return active ? service.pageState(active) : null
+      case 'decide': return service.decide(command.id, command.decision)
+      case 'fill':
+        if (!active) throw new Error('No page is open.')
+        return service.fill(active, command.id)
+      case 'dismiss-choice':
+        if (active) service.dismissChoice(active.id)
+        return undefined
+      case 'list': return service.list()
+      case 'status': return service.status()
+      case 'reveal': return service.reveal(command.id)
+      case 'copy': return service.copy(command.id)
+      case 'remove': return service.remove(command.id)
+      case 'never-list': return service.neverList()
+      case 'remove-never': return service.removeNever(command.origin)
+    }
+  })
+}
+
 function navigationFailureReason(code: number, description: string): string {
   if (code <= -200 && code >= -219) {
     return `The site certificate was not trusted (${description}). The page was not loaded.`
@@ -674,6 +804,7 @@ function showTab(id: string): WebContentsView | null {
   attachPageView()
   emitTabs()
   emitProtectionState()
+  emitPasswordState()
   // A tab that loaded in the background missed its cosmetic rules and tracker stand-ins.
   if (!tab.start && !tab.view.webContents.isLoading()) void applyCosmeticFilters(tab.view.webContents)
   const current = tab.view.webContents.getURL()
@@ -701,6 +832,7 @@ function discardTab(id: string): void {
   if (!tab.view.webContents.isDestroyed()) tab.view.webContents.close()
   emitTabs()
   emitPanelState()
+  emitPasswordState()
   schedulePersistentStateSave()
 }
 
@@ -816,6 +948,8 @@ function buildView(isPrivate = privateMode): WebContentsView {
       nodeIntegration: false,
       sandbox: true,
       session: session.fromPartition(isPrivate ? PRIVATE_PARTITION : 'persist:intoponet-default'),
+      // The sign-in helper for saved passwords; private tabs never get it.
+      ...(isPrivate ? {} : { preload: join(__dirname, '../preload/page.js') }),
     },
   })
   if (isPrivate) privateViews.add(view)
@@ -934,7 +1068,10 @@ function buildView(isPrivate = privateMode): WebContentsView {
   view.webContents.on('did-create-window', (child) => wirePopupWindow(child, view))
   // Capture the id now: by the time 'destroyed' fires, view.webContents is gone.
   const contentsId = view.webContents.id
-  view.webContents.once('destroyed', () => popupLimiter.forget(contentsId))
+  view.webContents.once('destroyed', () => {
+    popupLimiter.forget(contentsId)
+    passwords?.forget(contentsId)
+  })
   bindPermissionOwnerLifecycle(view.webContents, (owner) => sitePermissions?.dropOwner(owner))
   view.webContents.on('will-navigate', (event, url) => {
     if (!safeHttpUrl(url)) event.preventDefault()
@@ -969,7 +1106,9 @@ function buildView(isPrivate = privateMode): WebContentsView {
   view.webContents.on('did-navigate', (_event, url) => {
     rememberTab(view)
     protectionPages.commitNavigation(view.webContents.id, url)
+    passwords?.navigated(view.webContents.id)
     if (pageView !== view) return
+    emitPasswordState()
     lastKnownUrl = url
     schedulePersistentStateSave()
     emitPanelState()
@@ -1417,6 +1556,7 @@ app.whenReady().then(async () => {
   }
 
   installApplicationMenu()
+  wirePasswords()
   const normalPermissions = new SitePermissionStore(join(app.getPath('userData'), 'site-permissions.json'))
   sitePermissions = new SitePermissionBroker({
     store: (isPrivate) => (isPrivate ? privatePermissions : normalPermissions),
