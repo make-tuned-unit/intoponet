@@ -19,13 +19,14 @@ import {
   autoUpdater,
   dialog,
   nativeImage,
+  net,
   webFrameMain,
 } from 'electron'
 import type { IpcMainInvokeEvent, MenuItemConstructorOptions } from 'electron'
 import { pendingWrite, writeFileAtomic, writeFileAtomicSync } from './atomicFile'
 import { isAppShellUrl, SHELL_PERMISSIONS } from './shellGuard'
 import { LatestWriter } from './latestWriter'
-import { UpdateController } from './updates'
+import { fetchCurrentRelease, UpdateController } from './updates'
 import { FeedbackService, parseFeedbackCommand } from './feedback'
 import { PasswordVault } from './passwords/vault'
 import { PasswordService, type PasswordPage } from './passwords/service'
@@ -2090,6 +2091,8 @@ app.whenReady().then(async () => {
       platform: process.platform,
       currentVersion: app.getVersion(),
       feedUrl: __INTOPONET_MAC_UPDATE_URL__,
+      // Read releases.json through Chromium's network stack (system proxy, like Squirrel itself).
+      latestVersion: (manifestUrl) => fetchCurrentRelease(manifestUrl, (input, init) => net.fetch(String(input), init)),
       adapter: app.isPackaged && process.platform === 'darwin' && __INTOPONET_MAC_UPDATE_URL__.length > 0 ? autoUpdater : undefined,
       emit: (status) => { if (window && !window.isDestroyed()) window.webContents.send(updateChannels.event, status) },
       // The automatic-check setting and last check time, kept between launches.
