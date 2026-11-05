@@ -1,4 +1,6 @@
+import { lookup } from 'node:dns/promises'
 import { isIconHost } from './faviconCache'
+import { isPrivateAddress } from './publicAddress'
 
 /**
  * What a news article says about itself (Open Graph, article: tags and JSON-LD), for the
@@ -214,6 +216,8 @@ const PAGE_BYTES = 700_000
 const IMAGE_BYTES = 4_000_000
 const CACHE_MS = 6 * 3_600_000
 const CONCURRENCY = 4
+const MAX_REDIRECTS = 5
+const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308])
 /** A desktop browser's request, without cookies: some outlets refuse unknown clients. */
 const HEADERS = {
   accept: 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.5',
@@ -252,13 +256,18 @@ async function readCapped(response: Response, limit: number): Promise<Buffer | n
 
 export type ImageShrinker = (bytes: Buffer, mime: string) => { data: Buffer; mime: string } | null
 
+/** A hostname's addresses (all of them), for the public-address check. */
+export type ResolveHost = (hostname: string) => Promise<string[]>
+
+const resolveHost: ResolveHost = async (hostname) => (await lookup(hostname, { all: true, verbatim: true })).map((result) => result.address)
+
 export class ArticlePreviews {
   private readonly cache = new Map<string, { preview: ArticlePreview | null; at: number }>()
   private readonly inflight = new Map<string, Promise<ArticlePreview | null>>()
   private active = 0
   private readonly waiting: Array<() => void> = []
 
-  constructor(private readonly shrink: ImageShrinker, private readonly fetchImpl: typeof fetch = fetch) {}
+  constructor(private readonly shrink: ImageShrinker, private readonly fetchImpl: typeof fetch = fetch, private readonly resolve: ResolveHost = resolveHost) {}
 
   get(url: string): Promise<ArticlePreview | null> {
     if (!previewableUrl(url)) return Promise.resolve(null)
@@ -286,9 +295,53 @@ export class ArticlePreviews {
     }
   }
 
+  /** A public web address whose name resolves only to public addresses (not this Mac or the local network). */
+  private async isPublic(url: string): Promise<boolean> {
+    if (!previewableUrl(url)) return false
+    try {
+      const addresses = await this.resolve(new URL(url).hostname)
+      return addresses.length > 0 && !addresses.some(isPrivateAddress)
+    } catch {
+      return false
+    }
+  }
+
+  /**
+   * Fetch, following redirects one hop at a time so each address is checked: a feed item or an
+   * og:image must not lead the main process to a router page or a service on this Mac.
+   */
+  private async fetchPublic(url: string, init: RequestInit): Promise<{ response: Response; url: string } | null> {
+    let current = url
+    for (let hop = 0; hop <= MAX_REDIRECTS; hop += 1) {
+      if (!(await this.isPublic(current))) return null
+      const response = await this.fetchImpl(current, { ...init, redirect: 'manual' })
+      if (REDIRECT_STATUSES.has(response.status)) {
+        await response.body?.cancel().catch(() => undefined)
+        const location = response.headers.get('location')
+        if (!location) return null
+        try {
+          current = new URL(location, current).toString()
+        } catch {
+          return null
+        }
+        continue
+      }
+      // A transport that followed redirects anyway: its final address must pass the same check.
+      const final = response.url || current
+      if (response.type === 'opaqueredirect' || (final !== current && !(await this.isPublic(final)))) {
+        await response.body?.cancel().catch(() => undefined)
+        return null
+      }
+      return { response, url: final }
+    }
+    return null
+  }
+
   private async load(url: string): Promise<ArticlePreview | null> {
     try {
-      const response = await this.fetchImpl(url, { redirect: 'follow', credentials: 'omit', signal: AbortSignal.timeout(8_000), headers: HEADERS })
+      const fetched = await this.fetchPublic(url, { credentials: 'omit', signal: AbortSignal.timeout(8_000), headers: HEADERS })
+      if (!fetched) return null
+      const { response } = fetched
       if (!response.ok || !/html/i.test(response.headers.get('content-type') ?? 'text/html')) return null
       const bytes = await readCapped(response, PAGE_BYTES)
       if (!bytes) return null
@@ -301,7 +354,7 @@ export class ArticlePreviews {
       } catch {
         html = bytes.toString('utf8')
       }
-      const preview = parseArticlePreview(html, response.url || url)
+      const preview = parseArticlePreview(html, fetched.url)
       preview.url = url
       preview.image = preview.image ? await this.image(preview.image) : null
       return preview
@@ -311,9 +364,10 @@ export class ArticlePreviews {
   }
 
   private async image(url: string): Promise<string | null> {
-    if (!previewableUrl(url)) return null
     try {
-      const response = await this.fetchImpl(url, { redirect: 'follow', credentials: 'omit', signal: AbortSignal.timeout(8_000), headers: { ...HEADERS, accept: 'image/avif,image/webp,image/png,image/jpeg,*/*;q=0.5' } })
+      const fetched = await this.fetchPublic(url, { credentials: 'omit', signal: AbortSignal.timeout(8_000), headers: { ...HEADERS, accept: 'image/avif,image/webp,image/png,image/jpeg,*/*;q=0.5' } })
+      if (!fetched) return null
+      const { response } = fetched
       if (!response.ok) return null
       const mime = (response.headers.get('content-type') ?? '').split(';')[0]!.trim().toLowerCase()
       if (!/^image\/(jpeg|png|webp|gif|avif)$/.test(mime)) return null
