@@ -4,13 +4,15 @@ import { useEffect, useMemo, useRef } from 'react'
 import { Raycaster, Sphere, Vector2, Vector3 } from 'three'
 import { countryInFocus } from '../../../shared/places/countryAt'
 import { COUNTRY_SHAPES, type CountryShape } from '../../../shared/places/countryShapes'
+import { viewChanged, wakeLoop } from '../earth/frameDemand'
 
 /** Every country with a map label (main parts only), in a fixed order shared by the projector and the names. */
 export const LABELLED: CountryShape[] = COUNTRY_SHAPES.filter((shape) => shape.name)
 
 /**
- * Where each country's name sits on screen, written every frame by the scene
- * and read by the name layer without React re-renders.
+ * Where each country's name sits on screen, written by the scene whenever the
+ * view changes and read by the name layer without React re-renders.
+ * `listeners` are told when it changes (during the scene's frame, before it draws).
  */
 export type CountryView = {
   x: Float32Array
@@ -27,16 +29,17 @@ export type CountryView = {
   height: number
   /** The country under the cursor. */
   hovered: string | null
+  listeners: Set<() => void>
 }
 
 export function createCountryView(): CountryView {
   const n = LABELLED.length
-  return { x: new Float32Array(n), y: new Float32Array(n), facing: new Float32Array(n), distance: 4, degPerPx: 0.2, centerLat: 0, centerLon: 0, width: 0, height: 0, hovered: null }
+  return { x: new Float32Array(n), y: new Float32Array(n), facing: new Float32Array(n), distance: 4, degPerPx: 0.2, centerLat: 0, centerLon: 0, width: 0, height: 0, hovered: null, listeners: new Set() }
 }
 
 const LABEL_RADIUS = 1.004
 
-/** Inside the Canvas: projects every country's label point each frame. */
+/** Inside the Canvas: projects every country's label point whenever the view changes. */
 export function CountryProjector({ view }: { view: CountryView }) {
   const { camera, size } = useThree()
   const points = useMemo(() => LABELLED.map((shape) => {
@@ -45,7 +48,9 @@ export function CountryProjector({ view }: { view: CountryView }) {
   }), [])
   const scratch = useMemo(() => new Vector3(), [])
   const pick = useMemo(() => ({ raycaster: new Raycaster(), earth: new Sphere(new Vector3(), 1), centre: new Vector2(0, 0), hit: new Vector3() }), [])
+  const seen = useMemo(() => new Float64Array(34), [view])
   useFrame(() => {
+    if (!viewChanged(camera, size, seen)) return
     const cam = camera.position
     const distance = cam.length()
     view.width = size.width
@@ -70,6 +75,7 @@ export function CountryProjector({ view }: { view: CountryView }) {
       view.y[i] = (1 - scratch.y) * 0.5 * size.height
       view.facing[i] = (p.dot(cam) / LABEL_RADIUS - LABEL_RADIUS) / Math.max(0.001, distance - LABEL_RADIUS)
     }
+    for (const listener of view.listeners) listener()
   })
   return null
 }
@@ -100,27 +106,40 @@ export function CountryNames({ view, hidden }: { view: CountryView; hidden: bool
   const root = useRef<HTMLDivElement>(null)
   const hiddenRef = useRef(hidden)
   hiddenRef.current = hidden
+  const wake = useRef<() => void>(() => {})
 
+  // Placement runs when something it depends on changes: the view (from the
+  // scene's frame), the hovered country, the panels it keeps clear of, or `hidden`.
   useEffect(() => {
-    let frame = 0
     const sizes = new Map<number, [number, number]>()
     let blockers: Array<[number, number, number, number]> = []
     let blockersAt = 0
     let center: { lat: number; lon: number; code: string | null } = { lat: NaN, lon: NaN, code: null }
     const on = new Uint8Array(LABELLED.length)
     const order = LABELLED.map((_, i) => i).sort((a, b) => LABELLED[a]!.rank - LABELLED[b]!.rank)
+    let blockersKey = ''
+    /** True when the panels and labels to keep clear of moved. */
+    const refreshBlockers = (): boolean => {
+      // Panels, and the labels of news markers, keep their space.
+      const next = [...document.querySelectorAll<HTMLElement>('.globe-panel, .globe-layers, .globe-about, .command-dock, .globe-header h1, .globe-header p, .globe-trail, .bookmark-pane, .olds-sheet, .notice-message, .globe-label, .globe-hover-card, .globe-locator-label, .globe-locator-ring, .globe-locator-dot')]
+        .filter((el) => el.style.opacity !== '0')
+        .map((el) => el.getBoundingClientRect())
+        .filter((rect) => rect.width > 0)
+        .map((rect) => [rect.left, rect.top, rect.right, rect.bottom] as [number, number, number, number])
+      const key = next.join(';')
+      if (key === blockersKey) return false
+      blockersKey = key
+      blockers = next
+      return true
+    }
+    let shownHovered: string | null = null
     const tick = (): void => {
-      frame = requestAnimationFrame(tick)
       const now = performance.now()
       if (now - blockersAt > 300) {
         blockersAt = now
-        // Panels, and the labels of news markers, keep their space.
-        blockers = [...document.querySelectorAll<HTMLElement>('.globe-panel, .globe-layers, .globe-about, .command-dock, .globe-header h1, .globe-header p, .globe-trail, .bookmark-pane, .olds-sheet, .notice-message, .globe-label, .globe-hover-card, .globe-locator-label, .globe-locator-ring, .globe-locator-dot')]
-          .filter((el) => el.style.opacity !== '0')
-          .map((el) => el.getBoundingClientRect())
-          .filter((rect) => rect.width > 0)
-          .map((rect) => [rect.left, rect.top, rect.right, rect.bottom] as [number, number, number, number])
+        refreshBlockers()
       }
+      shownHovered = view.hovered
       // The country at the centre of the view (recomputed only when the view moves).
       if (!(Math.abs(view.centerLat - center.lat) <= 0.05 && Math.abs(view.centerLon - center.lon) <= 0.05)) {
         center = { lat: view.centerLat, lon: view.centerLon, code: countryInFocus(view.centerLat, view.centerLon, view.degPerPx * 60)?.code ?? null }
@@ -174,9 +193,30 @@ export function CountryNames({ view, hidden }: { view: CountryView; hidden: bool
         el.classList.toggle('is-hover', code === view.hovered)
       }
     }
-    frame = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(frame)
+    const loop = wakeLoop(tick)
+    wake.current = loop.wake
+    // In the scene's frame, so names move with the globe in the same frame.
+    view.listeners.add(loop.now)
+    const timer = window.setInterval(() => {
+      if (document.hidden) return
+      blockersAt = performance.now()
+      if (refreshBlockers()) loop.wake()
+    }, 300)
+    // The hovered country is set from the globe's pointer handling.
+    const onPointer = (): void => { if (view.hovered !== shownHovered) loop.wake() }
+    window.addEventListener('pointermove', onPointer, { passive: true })
+    window.addEventListener('pointerout', onPointer, { passive: true })
+    loop.wake()
+    return () => {
+      loop.stop()
+      wake.current = () => {}
+      view.listeners.delete(loop.now)
+      window.clearInterval(timer)
+      window.removeEventListener('pointermove', onPointer)
+      window.removeEventListener('pointerout', onPointer)
+    }
   }, [view])
+  useEffect(() => wake.current(), [hidden])
 
   return (
     <div ref={root} className="country-names" aria-hidden="true">

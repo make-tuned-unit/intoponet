@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import type { GlobeProjection } from './GlobeMarkers'
+import { wakeLoop } from '../earth/frameDemand'
 
 export type GlobeLabel = { id: string; text: string; color: string }
 
@@ -7,7 +8,8 @@ const LABEL_GAP = 6
 
 /**
  * Labels for the most prominent visible markers. Positions are written
- * straight to the DOM each frame; greedy placement in priority order drops
+ * straight to the DOM whenever the view, the labels or the panels change
+ * (not every frame); greedy placement in priority order drops
  * labels that would overlap one already placed, so the globe never clutters.
  */
 export function GlobeOverlay({
@@ -38,15 +40,27 @@ export function GlobeOverlay({
   const cardEl = useRef<HTMLDivElement>(null)
   const state = useRef({ labels, hoverId, hidden, locator })
   state.current = { labels, hoverId, hidden, locator }
+  const wake = useRef<() => void>(() => {})
 
   useEffect(() => {
-    let frame = 0
     const placed: Array<[number, number, number, number]> = []
     // Glass panels over the globe; labels never slide underneath them.
     let blockers: Array<[number, number, number, number]> = []
     let blockersAt = 0
+    let blockersKey = ''
+    /** True when the glass panels moved. */
+    const refreshBlockers = (): boolean => {
+      const next = [...document.querySelectorAll<HTMLElement>('.globe-panel, .globe-layers, .globe-about, .command-dock, .globe-header h1, .globe-header p, .globe-trail, .bookmark-pane, .olds-sheet, .notice-message')]
+        .map((el) => el.getBoundingClientRect())
+        .filter((rect) => rect.width > 0)
+        .map((rect) => [rect.left, rect.top, rect.right, rect.bottom] as [number, number, number, number])
+      const key = next.join(';')
+      if (key === blockersKey) return false
+      blockersKey = key
+      blockers = next
+      return true
+    }
     const tick = (): void => {
-      frame = requestAnimationFrame(tick)
       const { labels: list, hoverId: hovered, hidden: off, locator: spot } = state.current
       // The locator sits exactly on the place and fades out as it turns away.
       const pin = locatorEl.current
@@ -63,10 +77,7 @@ export function GlobeOverlay({
       const now = performance.now()
       if (now - blockersAt > 400) {
         blockersAt = now
-        blockers = [...document.querySelectorAll<HTMLElement>('.globe-panel, .globe-layers, .globe-about, .command-dock, .globe-header h1, .globe-header p, .globe-trail, .bookmark-pane, .olds-sheet, .notice-message')]
-          .map((el) => el.getBoundingClientRect())
-          .filter((rect) => rect.width > 0)
-          .map((rect) => [rect.left, rect.top, rect.right, rect.bottom] as [number, number, number, number])
+        refreshBlockers()
       }
       placed.length = 0
       placed.push(...blockers)
@@ -115,9 +126,25 @@ export function GlobeOverlay({
         el.style.pointerEvents = 'auto'
       }
     }
-    frame = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(frame)
+    const loop = wakeLoop(tick)
+    wake.current = loop.wake
+    // In the scene's frame, so labels move with the globe in the same frame.
+    projection.listeners.add(loop.now)
+    const timer = window.setInterval(() => {
+      if (document.hidden) return
+      blockersAt = performance.now()
+      if (refreshBlockers()) loop.wake()
+    }, 400)
+    loop.wake()
+    return () => {
+      loop.stop()
+      wake.current = () => {}
+      projection.listeners.delete(loop.now)
+      window.clearInterval(timer)
+    }
   }, [projection])
+  // Labels, hover and the locator come from props: place again after every render.
+  useEffect(() => wake.current())
 
   return (
     <div className="globe-overlay" aria-hidden="true">
