@@ -42,6 +42,10 @@ import { fetchTabIcon, TabIconMemory } from './tabFavicon'
 
 declare const __INTOPONET_MAC_UPDATE_URL__: string
 
+// Every renderer is sandboxed, whatever its own options say (a backstop: each window and view
+// already asks for it). Must run before the app is ready; worker threads in main are unaffected.
+app.enableSandbox()
+
 // Sites see plain Chrome (some refuse "Electron" as an outdated browser).
 app.userAgentFallback = browserUserAgent(app.userAgentFallback)
 
