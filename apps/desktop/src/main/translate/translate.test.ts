@@ -311,6 +311,8 @@ describe('service and engine', () => {
     await service.install('fr')
     await service.translatePage('fr', 'en')
     expect(calls).toBe(1)
+    // A forgotten page leaves nothing behind (closed tabs must not pile up).
+    expect((service as unknown as { pages: Map<number, unknown> }).pages.has(9)).toBe(false)
   })
 
   it('translates a private page without keeping its text in the cache', async () => {

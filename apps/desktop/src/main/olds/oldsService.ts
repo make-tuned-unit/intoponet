@@ -40,6 +40,8 @@ const DESCRIPTION_DEMONYMS: Record<string, string> = {
 const FACILITY = /\b(castle|fort|fortress|palace|cathedral|church|mosque|temple|airport|station|stadium|arena|university|college|school|hospital|museum|bridge|port|harbou?r|bay|river|lake|mountain|mount|hill|island|district|ward|dam|prison|tower|park|market|club|fc)\b/
 const TTL_MS = 7 * 24 * 60 * 60 * 1_000
 const MAX_CACHE_FILES = 300
+/** Headlines whose named people's countries are remembered (each entry is a few labels). */
+const MAX_PEOPLE_COUNTRIES = 500
 const MAX_MEMORY = 100
 const ENTITY_BATCH = 50
 const COUNTRY_EVENTS = 30
@@ -985,7 +987,11 @@ export class OldsService {
     // The countries of the people the headline names ("call with Putin" → Russia), from their Wikidata citizenship.
     const headlineWords = new Set(foldAccents(cleanHeadline(text)).toLowerCase().split(/[^\p{L}]+/u).filter((word) => word.length >= 3))
     const peopleQids = [...new Set([...entities.values()].filter((entity) => ids(entity, 'P31').includes('Q5') && headlineWords.has(foldAccents(nodeFromEntity(entity, 'en')?.label ?? '').replace(/\s*\(.*?\)\s*$/, '').toLowerCase().split(/\s+/).at(-1) ?? '-')).flatMap((entity) => ids(entity, 'P27').slice(0, 1)))].slice(0, 4)
-    if (peopleQids.length) this.peopleCountries.set(text, await this.labelsOf(peopleQids).catch(() => []))
+    if (peopleQids.length) {
+      this.peopleCountries.set(text, await this.labelsOf(peopleQids).catch(() => []))
+      // Only recent headlines are looked up again; the oldest are dropped first.
+      while (this.peopleCountries.size > MAX_PEOPLE_COUNTRIES) this.peopleCountries.delete(this.peopleCountries.keys().next().value!)
+    }
     const surnameOnly = !!opening && opening.split(/\s+/).length === 1
     // How widely known people are (Wikipedia editions about them): only for foreign people matched by surname.
     const famous = surnameOnly ? await this.famousAmong([...items.values()].map((item) => entities.get(item.qid)).filter((entity): entity is WikidataEntity => !!entity

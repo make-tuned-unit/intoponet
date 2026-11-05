@@ -184,7 +184,9 @@ export class TranslateService {
   forgetPage(id: number): void {
     const record = this.pages.get(id)
     if (!record) return
-    this.pages.set(id, { url: '', generation: record.generation + 1, state: { status: 'idle', detected: null }, detected: null })
+    // Invalidate any translation still running for it, and drop the record (closed tabs must not pile up).
+    record.generation += 1
+    this.pages.delete(id)
     if (this.options.getActivePage()?.id === id) this.options.emit({ type: 'page', url: '', state: { status: 'idle', detected: null } })
   }
 
