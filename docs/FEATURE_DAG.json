@@ -48,7 +48,7 @@
       ],
       "tier": "core",
       "kind": "e2e",
-      "promise": "No WCAG 2.1 AA violations; every header panel opens with Enter, closes with Escape and returns focus to its button."
+      "promise": "No WCAG 2.2 AA violations (axe); every header panel opens with Enter, closes with Escape and returns focus to its button."
     },
     {
       "id": "LIBRARY",

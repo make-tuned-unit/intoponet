@@ -1,17 +1,12 @@
 {
-  "started": "2026-11-05T12:00:42.409Z",
-  "finished": "2026-11-05T12:16:12.153Z",
+  "started": "2026-11-05T15:49:39.418Z",
+  "finished": "2026-11-05T15:54:47.820Z",
   "tier": "full",
   "only": [
-    "GLOBE_LIVE",
-    "SOURCE_CAROUSEL",
-    "WORLD_STORIES",
-    "COUNTRY_PANEL",
-    "OLDS_UI",
-    "PAYWALL_ALTERNATIVES",
-    "ROUGH_TRANSLATE"
+    "ROUGH_TRANSLATE",
+    "AUTO_TRANSLATE"
   ],
-  "summary": "7 passed, 0 failed, 0 blocked, 0 skipped, 22 assumed",
+  "summary": "2 passed, 0 failed, 0 blocked, 0 skipped, 27 assumed",
   "results": {
     "BUILD": {
       "status": "assumed",
@@ -50,24 +45,20 @@
       "notes": ""
     },
     "GLOBE_LIVE": {
-      "status": "pass",
-      "notes": "809 public signals across 4 active layers. Hover to preview, click to explore, or search a place below.",
-      "seconds": 116
+      "status": "assumed",
+      "notes": ""
     },
     "SOURCE_CAROUSEL": {
-      "status": "pass",
-      "notes": "Cards with 11 images, 1 bylines, 3 summaries. Carousel flipped from Expreso to KNR; chose \"KNR (Kalaallit Nunaata Radioa): Trump: Gain at Greenland deal surpasses war spen\" and the browser opened https://www.knr.gl/da/nyheder/trump-gevinst-ved-groenland-aftale-overgaar-krigsudgift-i-iran (page was open before).",
-      "seconds": 126
+      "status": "assumed",
+      "notes": ""
     },
     "WORLD_STORIES": {
-      "status": "pass",
-      "notes": "20 world stories; scrolls 400px.",
-      "seconds": 113
+      "status": "assumed",
+      "notes": ""
     },
     "COUNTRY_PANEL": {
-      "status": "pass",
-      "notes": "Facts ok, recent history 2025, 2024, 2022, 2020, 12 headlines.",
-      "seconds": 159
+      "status": "assumed",
+      "notes": ""
     },
     "OLDS_HEADLINE": {
       "status": "assumed",
@@ -82,9 +73,8 @@
       "notes": ""
     },
     "OLDS_UI": {
-      "status": "pass",
-      "notes": "Views Story/Timeline/List; sections: HOW WE GOT HERE, TOPICS BEHIND THIS STORY.",
-      "seconds": 136
+      "status": "assumed",
+      "notes": ""
     },
     "BROWSE": {
       "status": "assumed",
@@ -115,9 +105,8 @@
       "notes": ""
     },
     "PAYWALL_ALTERNATIVES": {
-      "status": "pass",
-      "notes": "nytimes.com section page: paywalled=false (no signals).",
-      "seconds": 145
+      "status": "assumed",
+      "notes": ""
     },
     "ABSORB": {
       "status": "assumed",
@@ -128,13 +117,14 @@
       "notes": ""
     },
     "AUTO_TRANSLATE": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "fontanka.ru translated from Russian with no clicks (Russian downloaded by itself; 3029 Latin vs 0 Cyrillic letters); \"Never translate this site\" sticks.",
+      "seconds": 186
     },
     "ROUGH_TRANSLATE": {
       "status": "pass",
       "notes": "Faroese headlines translated roughly via Icelandic, labelled as such.",
-      "seconds": 135
+      "seconds": 110
     }
   }
 }

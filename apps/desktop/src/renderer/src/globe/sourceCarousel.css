@@ -220,20 +220,32 @@
 .sc-nav:hover:not(:disabled) { background: rgba(255, 255, 255, 0.14); }
 .sc-nav:disabled { opacity: 0.3; cursor: default; }
 
-.sc-dots { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; max-width: 360px; }
+.sc-dots { display: flex; flex-wrap: wrap; justify-content: center; max-width: 380px; }
 
+/* A 24 px target (WCAG 2.2) around a small dot. */
 .sc-dots button {
-  width: 7px;
-  height: 7px;
-  padding: 0;
+  display: grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 4px;
   border: 0;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.25);
+  background: transparent;
   cursor: pointer;
+}
+
+.sc-dots button::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.25);
   transition: width 260ms cubic-bezier(0.22, 1, 0.36, 1), background 200ms ease;
 }
 
-.sc-dots button.is-on { width: 22px; background: var(--teal, #20f4e4); }
+.sc-dots button:hover::before { background: rgba(255, 255, 255, 0.5); }
+.sc-dots button.is-on::before { width: 22px; background: var(--teal, #20f4e4); }
 
 .sc-hint {
   grid-column: 1 / -1;
@@ -243,8 +255,8 @@
 }
 
 .sc-nav:focus-visible,
-.sc-dots button:focus-visible,
 .sc-close:focus-visible { outline: 2px solid var(--teal, #20f4e4); outline-offset: 3px; }
+.sc-dots button:focus-visible { outline: 2px solid var(--teal, #20f4e4); outline-offset: 0; }
 
 /* The article's own picture, fading into the card. */
 .sc-media {
@@ -370,6 +382,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .sc-close:hover { transform: none; }
-  .sc-read, .sc-dots button { transition: none; }
+  .sc-read, .sc-dots button::before { transition: none; }
   .sc-media img, .sc-media.is-loading::before { animation: none; }
 }

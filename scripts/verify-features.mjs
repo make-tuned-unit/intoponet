@@ -3,7 +3,7 @@
 // in the built app. Usage:
 //   npm run verify:features                 core + network checks
 //   npm run verify:features -- --tier full  also checks that download language models
-//   npm run verify:features -- --only FLY_TO,GLOBE_MOTION   just these (their deps are assumed)
+//   npm run verify:features -- --only FLY_TO,GLOBE_MOTION   just these (their deps are assumed; the app is still rebuilt)
 //   npm run verify:features -- --skip-build                 reuse the current build
 //   npm run verify:features -- --list
 import { execSync } from 'node:child_process'
@@ -55,6 +55,11 @@ const results = new Map()
 const evidenceDir = join(repo, 'experiments/e2e/evidence')
 const started = new Date()
 const timeouts = { core: 150_000, network: 330_000, full: 480_000 }
+// --only assumes BUILD passed, but the app under test must still match the source: rebuild it.
+if (only && !only.includes('BUILD') && !skipBuild) {
+  process.stdout.write('… building the app (npm run build)\n')
+  execSync('npm run build', { cwd: repo, stdio: 'pipe', maxBuffer: 64 * 1024 * 1024 })
+}
 for (const node of order) {
   const wanted = only ? only.includes(node.id) : true
   if (!wanted) { results.set(node.id, { status: only ? 'assumed' : 'skipped', notes: '' }); continue }

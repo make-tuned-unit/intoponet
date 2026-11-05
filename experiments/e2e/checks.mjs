@@ -73,6 +73,13 @@ const signIn = async (ctx, page, username, password) => {
 }
 const pageFields = (page) => page.evaluate(`JSON.stringify([document.querySelector('#username')?.value ?? null, document.querySelector('#password')?.value ?? null])`).then(JSON.parse)
 
+/** Fails the check on any WCAG 2.2 AA violation axe finds in the app window right now. */
+async function axeAudit(ctx, where) {
+  if (!(await ctx.evaluate(`typeof axe !== 'undefined'`))) await ctx.evaluate(`${readFileSync(join(repo, 'node_modules/axe-core/axe.min.js'), 'utf8')}; true`)
+  const raw = JSON.parse(await ctx.evaluate(`axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'] }, resultTypes: ['violations'] }).then((r) => JSON.stringify(r.violations.map((v) => v.id + ' ×' + v.nodes.length + ' (' + v.nodes.slice(0, 2).map((n) => n.target.join(' ')).join('; ') + ')')))`))
+  expect(raw.length === 0, `WCAG violations on ${where}: ${raw.join(', ')}`)
+}
+
 export const checks = {
   // ---- Foundations ---------------------------------------------------------
   async APP_BOOT(ctx) {
@@ -99,15 +106,22 @@ export const checks = {
     await ctx.waitForNews()
     expect(await ctx.click('.globe-tabs button', 'World'), 'The World tab is missing.')
     await ctx.wait(`document.querySelectorAll('.world-list .world-row').length > 0`, 90_000, 'stories covered across the world')
+    await axeAudit(ctx, 'the World stories')
     // Open the first story with at least three sources.
     const rows = await ctx.evaluate(`document.querySelectorAll('.world-list .world-row').length`)
+    // The chevron, set apart from the headline, shows the sources without opening the article.
+    const urlBefore = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getState().then((s) => JSON.stringify(s.isVisible ? s.url : null))`))
     let opened = false
     for (let i = 0; i < Math.min(rows, 8) && !opened; i += 1) {
-      await ctx.evaluate(`(() => { document.querySelectorAll('.world-list .world-row')[${i}].click(); return true })()`)
+      await ctx.evaluate(`(() => { document.querySelectorAll('.world-list .world-expand')[${i}].click(); return true })()`)
       await ctx.delay(400)
       opened = await ctx.evaluate(`!!document.querySelector('.world-sources-button')`)
     }
     expect(opened, 'No world story has three or more sources to show.')
+    const urlAfter = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getState().then((s) => JSON.stringify(s.isVisible ? s.url : null))`))
+    expect(urlAfter === urlBefore, `Expanding a story with its chevron opened ${urlAfter}.`)
+    const chevron = JSON.parse(await ctx.evaluate(`JSON.stringify((() => { const r = document.querySelector('.world-expand').getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)] })())`))
+    expect(chevron[0] >= 32 && chevron[1] >= 32, `The chevron's target is only ${chevron.join('×')} px.`)
     await ctx.delay(1500)
     await ctx.click('.world-sources-button')
     await ctx.delay(160)
@@ -118,6 +132,7 @@ export const checks = {
     await ctx.delay(2500)
     const enriched = JSON.parse(await ctx.evaluate(`JSON.stringify({ images: document.querySelectorAll('.sc-card .sc-media img').length, bylines: [...document.querySelectorAll('.sc-card .sc-authors')].length, summaries: document.querySelectorAll('.sc-card .sc-summary').length })`))
     await ctx.shot('carousel')
+    await axeAudit(ctx, 'the sources carousel')
     const state0 = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getState().then((s) => JSON.stringify(s))`))
     const first = await ctx.evaluate(`document.querySelector('.sc-card.is-front .sc-outlet strong').innerText`)
     await ctx.evaluate(`(() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })); return true })()`)
@@ -620,14 +635,16 @@ export const checks = {
 
   // ---- Accessibility -------------------------------------------------------
   async ACCESSIBILITY(ctx) {
-    const axe = readFileSync(join(repo, 'node_modules/axe-core/axe.min.js'), 'utf8')
     await ctx.delay(3000)
-    await ctx.evaluate(`${axe}; true`)
-    const audit = async (where) => {
-      const raw = JSON.parse(await ctx.evaluate(`axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] }, resultTypes: ['violations'] }).then((r) => JSON.stringify(r.violations.map((v) => v.id + ' ×' + v.nodes.length)))`))
-      expect(raw.length === 0, `WCAG violations on ${where}: ${raw.join(', ')}`)
-    }
+    const audit = (where) => axeAudit(ctx, where)
     await audit('the globe')
+    // Highlights: signal rows (Peaks) and story cards (World).
+    for (const tab of ['Peaks', 'World']) {
+      if (await ctx.click('.globe-tabs button', tab)) {
+        await ctx.delay(1500)
+        await audit(`Highlights › ${tab}`)
+      }
+    }
     for (const label of ['Bookmarks', 'My map', 'Settings', 'Knowledge']) {
       await ctx.evaluate(`document.querySelector('[data-panel]') && [...document.querySelectorAll('.bookmark-library-button')].find((b) => (b.innerText || b.getAttribute('aria-label')).includes(${JSON.stringify(label)})).focus(); true`)
       await ctx.press('Enter')
@@ -638,6 +655,6 @@ export const checks = {
       const focus = await ctx.evaluate(`(document.activeElement?.innerText || document.activeElement?.getAttribute('aria-label') || '').trim()`)
       expect(focus.includes(label), `After closing ${label} with Escape, focus went to "${focus || 'nothing'}" instead of its button.`)
     }
-    return 'No WCAG 2.1 AA violations; panels open with Enter, close with Escape, focus returns.'
+    return 'No WCAG 2.2 AA violations (axe); panels open with Enter, close with Escape, focus returns.'
   },
 }
