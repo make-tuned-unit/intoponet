@@ -876,10 +876,11 @@ export function App() {
     void window.intoponet.browserHost.writePrivateLibrary(payload).then(() => {
       // The encrypted library now holds everything: drop the old plain-text copy (one-time migration).
       if (hasLegacyLibraryStorage()) clearLegacyLibraryStorage()
-    }, () => {
+    }, (error: unknown) => {
       if (sealWarned.current) return
       sealWarned.current = true
-      setNotice('Private library stayed in this window. On-device encryption is unavailable.')
+      const reason = error instanceof Error ? error.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : ''
+      setNotice(`Your private library could not be saved on this Mac${reason ? ` (${reason.replace(/\.$/, '')})` : ''}. Recent changes are only in this window.`)
     })
   }, [absorbed, bookmarks, collections, libraryReady, recents])
 

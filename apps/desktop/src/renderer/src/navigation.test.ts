@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   inferLauncherIntent,
   parseBrowserHostCommand,
+  PRIVATE_LIBRARY_MAX_CHARS,
   resolveNavigationIntent,
 } from '@intoponet/browser-api'
 
@@ -153,5 +154,14 @@ describe('parseBrowserHostCommand', () => {
       'Invalid tab-dock state',
     )
     expect(() => parseBrowserHostCommand({ type: 'close-tab', id: '' })).toThrow('Invalid tab')
+  })
+})
+
+describe('private library size', () => {
+  it('accepts a large library (thousands of excerpts) and names the reason when one is too large', () => {
+    const big = 'x'.repeat(2_000_000)
+    expect(parseBrowserHostCommand({ type: 'write-private-library', payload: big })).toEqual({ type: 'write-private-library', payload: big })
+    expect(() => parseBrowserHostCommand({ type: 'write-private-library', payload: 'x'.repeat(PRIVATE_LIBRARY_MAX_CHARS + 1) })).toThrow(/too large/)
+    expect(() => parseBrowserHostCommand({ type: 'write-private-library', payload: 3 })).toThrow(/Invalid private library/)
   })
 })

@@ -313,6 +313,9 @@ function parseBounds(value: unknown): BrowserPanelBounds {
   }
 }
 
+/** Largest private library payload accepted for saving, in characters. */
+export const PRIVATE_LIBRARY_MAX_CHARS = 32_000_000
+
 export function parseBrowserHostCommand(value: unknown): BrowserHostCommand {
   if (!isRecord(value) || typeof value['type'] !== 'string') {
     throw new Error('Invalid browser-host command.')
@@ -390,8 +393,9 @@ export function parseBrowserHostCommand(value: unknown): BrowserHostCommand {
       }
       return { type, direction: value['direction'] }
     case 'write-private-library':
-      if (typeof value['payload'] !== 'string' || value['payload'].length > 500_000) {
-        throw new Error('Invalid private library.')
+      // The whole library is one sealed payload; 32 MB is ~16,000 absorbed excerpts (500 KB filled up after ~250).
+      if (typeof value['payload'] !== 'string' || value['payload'].length > PRIVATE_LIBRARY_MAX_CHARS) {
+        throw new Error(typeof value['payload'] === 'string' ? 'The private library is too large to save.' : 'Invalid private library.')
       }
       return { type, payload: value['payload'] }
     case 'get-place-trends': {
