@@ -22,6 +22,7 @@ export type BrowserContextAction =
   | 'back'
   | 'forward'
   | 'reload'
+  | 'inspect'
 
 function safeHttpUrl(value: string): boolean {
   try {
@@ -45,6 +46,6 @@ export function browserContextActions(input: BrowserContextMenuInput): BrowserCo
   if (safeImage) actions.push('copy-image-address', 'save-image')
   if (input.canGoBack) actions.push('back')
   if (input.canGoForward) actions.push('forward')
-  actions.push('reload')
+  actions.push('reload', 'inspect')
   return [...new Set(actions)]
 }

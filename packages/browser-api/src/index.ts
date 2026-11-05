@@ -16,6 +16,16 @@ export type BrowserPanelSnapshot = {
   isPrivate?: boolean
   /** The active tab is a new tab that has not loaded a page yet: the shell draws its start page. */
   isStartPage?: boolean
+  /** The page's zoom (1 = 100%); the toolbar shows it when it is not 100%. */
+  zoomFactor?: number
+}
+
+/** A recently closed tab that can be reopened (private tabs are never kept). */
+export type ClosedTabSnapshot = {
+  id: string
+  url: string
+  title: string
+  favicon: string
 }
 
 export type NavigationIntent =
@@ -127,7 +137,7 @@ export type BrowserHostEvent =
   /** Validated per-country local news digest (JSON). */
   | { type: 'news-digest'; payload: string }
 
-export type ShellShortcut = 'new-tab' | 'find' | 'bookmark' | 'next-tab' | 'previous-tab' | 'focus-launcher' | 'toggle-bookmarks' | 'capture' | 'toggle-private' | 'absorb-selection'
+export type ShellShortcut = 'new-tab' | 'find' | 'find-next' | 'find-previous' | 'open-settings' | 'bookmark' | 'next-tab' | 'previous-tab' | 'focus-launcher' | 'toggle-bookmarks' | 'capture' | 'toggle-private' | 'absorb-selection'
 
 export type PublicFieldStatus = {
   mode: 'local' | 'shared'
@@ -185,6 +195,18 @@ export interface BrowserHostApi {
   activateTab(id: string): Promise<void>
   closeTab(id: string): Promise<void>
   cycleTabs(direction: 'next' | 'previous'): Promise<void>
+  /** Close the tab being shown (⌘W) and show the next one, or the globe when none are left. */
+  closeActiveTab(): Promise<void>
+  /** Reopen the most recently closed tab, or the one with this id (⌘⇧T). */
+  reopenClosedTab(id?: string): Promise<void>
+  /** Recently closed tabs, newest first (this session only). */
+  getClosedTabs(): Promise<ClosedTabSnapshot[]>
+  /** Show tab number `index` (0-based); -1 is the last tab. */
+  selectTab(index: number): Promise<void>
+  /** Reload, ignoring cached files. */
+  forceReload(): Promise<void>
+  /** Save the page as HTML with its files (asks where, in Downloads). */
+  savePage(): Promise<void>
   readPrivateLibrary(): Promise<PrivateLibraryReadResult>
   writePrivateLibrary(payload: string): Promise<void>
   deletePrivateLibrary(): Promise<void>
@@ -230,6 +252,12 @@ export type BrowserHostCommand =
   | { type: 'activate-tab'; id: string }
   | { type: 'close-tab'; id: string }
   | { type: 'cycle-tabs'; direction: 'next' | 'previous' }
+  | { type: 'close-active-tab' }
+  | { type: 'reopen-closed-tab'; id?: string }
+  | { type: 'get-closed-tabs' }
+  | { type: 'select-tab'; index: number }
+  | { type: 'force-reload' }
+  | { type: 'save-page' }
   | { type: 'read-private-library' }
   | { type: 'write-private-library'; payload: string }
   | { type: 'delete-private-library' }
@@ -267,6 +295,12 @@ const commandTypes = new Set<BrowserHostCommand['type']>([
   'activate-tab',
   'close-tab',
   'cycle-tabs',
+  'close-active-tab',
+  'reopen-closed-tab',
+  'get-closed-tabs',
+  'select-tab',
+  'force-reload',
+  'save-page',
   'read-private-library',
   'write-private-library',
   'delete-private-library',
@@ -392,6 +426,17 @@ export function parseBrowserHostCommand(value: unknown): BrowserHostCommand {
         throw new Error('Invalid tab cycle.')
       }
       return { type, direction: value['direction'] }
+    case 'reopen-closed-tab':
+      if (value['id'] === undefined) return { type }
+      if (typeof value['id'] !== 'string' || value['id'].length === 0 || value['id'].length > 80) {
+        throw new Error('Invalid closed tab.')
+      }
+      return { type, id: value['id'] }
+    case 'select-tab':
+      if (typeof value['index'] !== 'number' || !Number.isInteger(value['index']) || value['index'] < -1 || value['index'] > 999) {
+        throw new Error('Invalid tab number.')
+      }
+      return { type, index: value['index'] }
     case 'write-private-library':
       // The whole library is one sealed payload; 32 MB is ~16,000 absorbed excerpts (500 KB filled up after ~250).
       if (typeof value['payload'] !== 'string' || value['payload'].length > PRIVATE_LIBRARY_MAX_CHARS) {
@@ -426,6 +471,10 @@ export function parseBrowserHostCommand(value: unknown): BrowserHostCommand {
     case 'get-state':
     case 'get-protection':
     case 'get-tabs':
+    case 'close-active-tab':
+    case 'get-closed-tabs':
+    case 'force-reload':
+    case 'save-page':
       return { type }
     default:
       throw new Error('Unknown browser-host command.')

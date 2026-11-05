@@ -1,44 +1,31 @@
 import type { ShellShortcut } from '@intoponet/browser-api'
+import { appCommandForInput, type AppCommand, type KeyInput } from './appMenu'
 
-type KeyInput = { type: string; key: string; meta: boolean; control: boolean; shift: boolean; alt: boolean }
-
-/** Browser keys the main process carries out on the page itself (the page keeps focus). */
-export type PageShortcut = 'reload' | 'back' | 'forward' | 'zoom-in' | 'zoom-out' | 'zoom-reset' | 'print'
-
-/** Map a page-view keystroke to a shell action. Only keyDown, only exact chords. */
+/**
+ * Shell keys with no menu item, pressed while a page has focus. Everything in the menu bar
+ * (⌘T, ⌘W, ⌘L, ⌘F, ⌘R, ⌘1–9…) is matched by `appCommandForInput` from the menu's own table.
+ */
 export function shellShortcutForInput(input: KeyInput): ShellShortcut | null {
   if (input.type !== 'keyDown' || input.alt) return null
   const command = process.platform === 'darwin' ? input.meta && !input.control : input.control && !input.meta
   if (!command) return null
-  const key = input.key.toLowerCase()
-  if (key === 'l' && !input.shift) return 'focus-launcher'
-  if (key === 't' && !input.shift) return 'new-tab'
-  if (key === 'f' && !input.shift) return 'find'
-  if (key === 'd' && !input.shift) return 'bookmark'
-  if (key === 'b' && input.shift) return 'toggle-bookmarks'
-  if (key === 's' && input.shift) return 'capture'
-  if (key === 'n' && input.shift) return 'toggle-private'
+  if (input.key.toLowerCase() === 's' && input.shift) return 'capture'
   return null
 }
 
-/** ⌃Tab / ⌃⇧Tab switch tabs from inside a page, as in the shell. */
-export function tabCycleForInput(input: KeyInput): ShellShortcut | null {
-  if (input.type !== 'keyDown' || input.alt || input.meta || !input.control || input.key !== 'Tab') return null
-  return input.shift ? 'previous-tab' : 'next-tab'
+/** A plain Escape: stops a page that is still loading (the page also still gets the key). */
+export function isPlainEscape(input: KeyInput): boolean {
+  return input.type === 'keyDown' && input.key === 'Escape' && !input.meta && !input.control && !input.alt && !input.shift
 }
 
-/** ⌘R, ⌘[ ⌘], ⌘= ⌘- ⌘0 and ⌘P pressed inside a page. */
-export function pageShortcutForInput(input: KeyInput): PageShortcut | null {
-  if (input.type !== 'keyDown' || input.alt) return null
-  const command = process.platform === 'darwin' ? input.meta && !input.control : input.control && !input.meta
-  if (!command) return null
-  const key = input.key.toLowerCase()
-  if (key === 'r' && !input.shift) return 'reload'
-  if (key === '[') return 'back'
-  if (key === ']') return 'forward'
-  if (key === '=' || key === '+') return 'zoom-in'
-  if (key === '-' && !input.shift) return 'zoom-out'
-  if (key === '0' && !input.shift) return 'zoom-reset'
-  if (key === 'p' && !input.shift) return 'print'
-  return null
+export type PageKeyAction =
+  | { kind: 'command'; command: AppCommand }
+  | { kind: 'shell'; action: ShellShortcut }
+
+/** What a key pressed inside a page asks of the browser, or null to leave it to the page. */
+export function pageKeyAction(input: KeyInput, options: { developer?: boolean } = {}): PageKeyAction | null {
+  const command = appCommandForInput(input, options)
+  if (command) return { kind: 'command', command }
+  const action = shellShortcutForInput(input)
+  return action ? { kind: 'shell', action } : null
 }

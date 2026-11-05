@@ -440,7 +440,7 @@ export function App() {
   const [error, setError] = useState('')
   const [libraryReadError, setLibraryReadError] = useState('')
   const panelBody = useRef<HTMLDivElement>(null)
-  const shortcutHandlers = useRef({ find: () => {}, bookmark: () => {}, newTab: () => {}, focusAddress: () => {}, toggleBookmarksPane: () => {}, capture: () => {}, togglePrivate: () => {}, absorbSelection: () => {} })
+  const shortcutHandlers = useRef({ find: () => {}, findAgain: (_forward: boolean) => {}, openSettings: () => {}, bookmark: () => {}, newTab: () => {}, focusAddress: () => {}, toggleBookmarksPane: () => {}, capture: () => {}, togglePrivate: () => {}, absorbSelection: () => {} })
   const tabStrip = useRef<HTMLDivElement>(null)
   const [tabEdges, setTabEdges] = useState({ overflow: false, atStart: true, atEnd: true })
   const input = useRef<HTMLInputElement>(null)
@@ -624,6 +624,8 @@ export function App() {
       if (event.type === 'shortcut') {
         if (event.action === 'new-tab') shortcutHandlers.current.newTab()
         else if (event.action === 'find') shortcutHandlers.current.find()
+        else if (event.action === 'find-next' || event.action === 'find-previous') shortcutHandlers.current.findAgain(event.action === 'find-next')
+        else if (event.action === 'open-settings') shortcutHandlers.current.openSettings()
         else if (event.action === 'bookmark') shortcutHandlers.current.bookmark()
         else if (event.action === 'next-tab' || event.action === 'previous-tab') void window.intoponet.browserHost.cycleTabs(event.action === 'next-tab' ? 'next' : 'previous')
         else if (event.action === 'focus-launcher') shortcutHandlers.current.focusAddress()
@@ -973,74 +975,12 @@ export function App() {
         void startCapture('image')
         return
       }
-      if (meta && event.shiftKey && key === 'n') {
-        event.preventDefault()
-        shortcutHandlers.current.togglePrivate()
-        return
-      }
-      if (meta && key === 'l') {
-        event.preventDefault()
-        focusAddress()
-      }
-      if (meta && !event.shiftKey && key === 't') {
-        event.preventDefault()
-        shortcutHandlers.current.newTab()
-        return
-      }
-      if (meta && event.shiftKey && key === 'b') {
-        event.preventDefault()
-        toggleBookmarksPane()
-      }
-      if (meta && !event.shiftKey && key === 'd' && panel.isVisible && panel.url) {
-        event.preventDefault()
-        toggleBookmark()
-      }
-      if (meta && key === 'f' && panel.isVisible) {
-        event.preventDefault()
-        openFind()
-      }
-      if (meta && key === 'p' && panel.isVisible) {
-        event.preventDefault()
-        void window.intoponet.browserHost.print()
-      }
-      if (meta && (event.key === '=' || event.key === '+') && panel.isVisible) {
-        event.preventDefault()
-        void window.intoponet.browserHost.zoom('in')
-      }
-      if (meta && event.key === '-' && panel.isVisible) {
-        event.preventDefault()
-        void window.intoponet.browserHost.zoom('out')
-      }
-      if (meta && event.key === '0' && panel.isVisible) {
-        event.preventDefault()
-        void window.intoponet.browserHost.zoom('reset')
-      }
+      // ⌘T, ⌘W, ⌘L, ⌘F, ⌘G, ⌘D, ⌘P, ⌘R, ⌘[ ⌘], zoom, ⌃Tab, ⌘1–9…: menu bar items (main/appMenu.ts).
       if (meta && event.shiftKey && key === 'c' && panel.url) {
         event.preventDefault()
         void navigator.clipboard.writeText(panel.url).then(() => {
           setNotice('Copied page address')
         })
-      }
-      if (meta && key === 'w' && panel.isVisible) {
-        event.preventDefault()
-        closeFind()
-        void window.intoponet.browserHost.close()
-      }
-      if (meta && key === 'r' && panel.isVisible) {
-        event.preventDefault()
-        void window.intoponet.browserHost.reload()
-      }
-      if (meta && key === '[' && panel.canGoBack) {
-        event.preventDefault()
-        void window.intoponet.browserHost.back()
-      }
-      if (meta && key === ']' && panel.canGoForward) {
-        event.preventDefault()
-        void window.intoponet.browserHost.forward()
-      }
-      if (event.ctrlKey && event.key === 'Tab' && tabs.length > 0) {
-        event.preventDefault()
-        void window.intoponet.browserHost.cycleTabs(event.shiftKey ? 'previous' : 'next')
       }
       if (!meta && !panel.isVisible && event.key === '[') {
         event.preventDefault()
@@ -1347,7 +1287,7 @@ export function App() {
     })
   }
 
-  shortcutHandlers.current = { find: () => { if (panel.isVisible && !panel.isStartPage) openFind() }, bookmark: () => { if (panel.isVisible && panel.url) toggleBookmark() }, newTab: openNewTab, focusAddress, toggleBookmarksPane, capture: () => void startCapture('image'), togglePrivate: () => setPrivateMode(!(privacyState?.privateMode ?? false)), absorbSelection: () => startAbsorb('selection') }
+  shortcutHandlers.current = { find: () => { if (panel.isVisible && !panel.isStartPage) openFind() }, findAgain: (forward) => { if (!panel.isVisible || panel.isStartPage) return; if (findOpen && findQuery.trim()) runFind(true, forward); else openFind() }, openSettings: () => setSettingsOpen(true), bookmark: () => { if (panel.isVisible && panel.url) toggleBookmark() }, newTab: openNewTab, focusAddress, toggleBookmarksPane, capture: () => void startCapture('image'), togglePrivate: () => setPrivateMode(!(privacyState?.privateMode ?? false)), absorbSelection: () => startAbsorb('selection') }
 
   const saveCurrentToGroup = (groupId: string): void => {
     if (!panel.url) return
@@ -3469,6 +3409,17 @@ export function App() {
             </button>}
             {onStartPage && <span className="origin-badge start-origin" aria-label="New tab"><Globe2 size={13} /><span>New tab</span></span>}
             <div className="browser-actions">
+              {!onStartPage && panel.zoomFactor !== undefined && Math.abs(panel.zoomFactor - 1) > 0.005 && (
+                <button
+                  type="button"
+                  className="zoom-indicator"
+                  title="Page zoom. Click to reset to 100%"
+                  aria-label={`Page zoom ${Math.round(panel.zoomFactor * 100)}%. Reset to 100%`}
+                  onClick={() => void window.intoponet.browserHost.zoom('reset')}
+                >
+                  {Math.round(panel.zoomFactor * 100)}%
+                </button>
+              )}
               {!onStartPage && <>
               <div className="shield-control">
                 <button

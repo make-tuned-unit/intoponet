@@ -21,6 +21,7 @@ import {
   type BrowserHostCommand,
   type BrowserHostEvent,
   type BrowserPanelSnapshot,
+  type ClosedTabSnapshot,
   type PageTabSnapshot,
   type PrivateLibraryReadResult,
   type ProtectionSnapshot,
@@ -33,6 +34,7 @@ const invoke = (
   | BrowserPanelSnapshot
   | ProtectionSnapshot
   | PageTabSnapshot[]
+  | ClosedTabSnapshot[]
   | PrivateLibraryReadResult
   | PublicFieldStatus
   | string
@@ -120,6 +122,22 @@ const browserHost: BrowserHostApi = {
   },
   cycleTabs: async (direction) => {
     await invoke({ type: 'cycle-tabs', direction })
+  },
+  closeActiveTab: async () => {
+    await invoke({ type: 'close-active-tab' })
+  },
+  reopenClosedTab: async (id) => {
+    await invoke({ type: 'reopen-closed-tab', ...(id ? { id } : {}) })
+  },
+  getClosedTabs: () => invoke({ type: 'get-closed-tabs' }) as Promise<ClosedTabSnapshot[]>,
+  selectTab: async (index) => {
+    await invoke({ type: 'select-tab', index })
+  },
+  forceReload: async () => {
+    await invoke({ type: 'force-reload' })
+  },
+  savePage: async () => {
+    await invoke({ type: 'save-page' })
   },
   readPrivateLibrary: () =>
     invoke({ type: 'read-private-library' }) as Promise<PrivateLibraryReadResult>,
