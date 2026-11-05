@@ -35,7 +35,7 @@ import { parsePasswordCommand, passwordChannels, type PasswordEvent } from '../s
 import { parsePasswordPageMessage, passwordPageChannels } from '../shared/passwordPage'
 import { updateChannels, parseUpdateCommand } from '@intoponet/browser-api'
 import { browserUserAgent } from './browserUserAgent'
-import { persistedActiveUrl } from './tabState'
+import { capTitle, capUrl, coalesce, persistedActiveUrl } from './tabState'
 import { EXIT_FULLSCREEN_SCRIPT, FULLSCREEN_WORLD_ID, fullscreenSiteName, showFullscreenNotice } from './fullscreenNotice'
 import { bindLeavePrompt, SAFE_DIALOG_PREFERENCES } from './leavePrompt'
 import { fetchTabIcon, TabIconMemory } from './tabFavicon'
@@ -325,8 +325,8 @@ function panelState(): BrowserPanelSnapshot {
     }
   }
   return {
-    url: contents.getURL(),
-    title: contents.getTitle(),
+    url: capUrl(contents.getURL()),
+    title: capTitle(contents.getTitle()),
     canGoBack: contents.navigationHistory.canGoBack(),
     canGoForward: contents.navigationHistory.canGoForward(),
     isLoading: contents.isLoading(),
@@ -341,9 +341,8 @@ function emit(event: BrowserHostEvent): void {
   }
 }
 
-function emitPanelState(): void {
-  emit({ type: 'panel-state', panel: panelState() })
-}
+/** At most about one per frame: a page can fire navigation and title events as fast as it likes. */
+const emitPanelState = coalesce(() => emit({ type: 'panel-state', panel: panelState() }))
 
 function exceptionsFilePath(): string {
   return join(app.getPath('userData'), 'protection-exceptions.json')
@@ -372,9 +371,8 @@ function protectionSnapshot(): ProtectionSnapshot {
   }
 }
 
-function emitProtectionState(): void {
-  emit({ type: 'protection-state', protection: protectionSnapshot() })
-}
+/** Coalesced too: every blocked request of the open page asks for an update. */
+const emitProtectionState = coalesce(() => emit({ type: 'protection-state', protection: protectionSnapshot() }))
 
 function persistExceptions(): void {
   if (!app.isReady()) return
@@ -841,8 +839,9 @@ function tabSnapshots(): PageTabSnapshot[] {
     const currentUrl = live ? tab.view.webContents.getURL() : ''
     return {
       id: tab.id,
-      url: tab.start ? '' : safeHttpUrl(currentUrl) ? currentUrl : tab.url,
-      title: tab.start ? 'New tab' : (live ? tab.view.webContents.getTitle() : '') || tab.title || tab.url,
+      // Bounded: a page's address and title can be made enormous.
+      url: tab.start ? '' : capUrl(safeHttpUrl(currentUrl) ? currentUrl : tab.url),
+      title: tab.start ? 'New tab' : capTitle((live ? tab.view.webContents.getTitle() : '') || tab.title || capUrl(tab.url)),
       favicon: tab.favicon,
       active: tab.id === activeTabId,
       isPrivate: privateViews.has(tab.view),
@@ -875,9 +874,8 @@ function leaveStartPage(view: WebContentsView): void {
   if (pageView === view) emitPanelState()
 }
 
-function emitTabs(): void {
-  emit({ type: 'tabs', tabs: tabSnapshots() })
-}
+/** Coalesced like the panel state (titles, icons and navigations of every tab arrive here). */
+const emitTabs = coalesce(() => emit({ type: 'tabs', tabs: tabSnapshots() }))
 
 function samePage(left: string, right: string): boolean {
   try {
