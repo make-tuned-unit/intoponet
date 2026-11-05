@@ -1,5 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { writeFileAtomic } from './atomicFile'
+import { isIP } from 'node:net'
+import { isPrivateAddress } from './publicAddress'
 
 /**
  * Site icons for bookmarks and lists, stored on this Mac as small data URLs.
@@ -104,7 +106,13 @@ export class FaviconCache {
 
   private async fetchIcon(url: string): Promise<string | null> {
     try {
+      // A page reports its own icon address: never fetch from this Mac or the local network.
+      if (!publicIconUrl(url)) return null
       const response = await this.fetchImpl(url, { redirect: 'follow', credentials: 'omit', signal: AbortSignal.timeout(5_000), headers: { accept: 'image/*' } })
+      if (response.url && !publicIconUrl(response.url)) {
+        await response.body?.cancel().catch(() => undefined)
+        return null
+      }
       if (!response.ok) return null
       const type = (response.headers.get('content-type') ?? '').split(';')[0]!.trim().toLowerCase()
       const bytes = await readAtMost(response, MAX_BYTES)
@@ -177,4 +185,17 @@ function sniff(bytes: Buffer): string | null {
   if (bytes.slice(0, 5).toString() === '<?xml' || bytes.slice(0, 4).toString() === '<svg') return 'image/svg+xml'
   if (bytes.slice(8, 12).toString() === 'WEBP') return 'image/webp'
   return null
+}
+
+/** An http(s) icon address not on this Mac or a local network (literal private IPs, localhost, .local). */
+export function publicIconUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false
+    const host = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, '')
+    if (!host || host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host.endsWith('.internal') || !host.includes('.') && !isIP(host)) return false
+    return !isIP(host) || !isPrivateAddress(host)
+  } catch {
+    return false
+  }
 }

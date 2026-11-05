@@ -86,3 +86,12 @@ describe('favicon cache', () => {
     expect(saved['h51.example.org']).toBeUndefined()
   })
 })
+
+describe('icon addresses', () => {
+  it('refuses this Mac and local networks, allows public hosts', async () => {
+    const { publicIconUrl } = await import('./faviconCache')
+    expect(publicIconUrl('https://example.com/favicon.ico')).toBe(true)
+    expect(publicIconUrl('http://8.8.8.8/x.png')).toBe(true)
+    for (const url of ['http://localhost/x', 'http://127.0.0.1/x', 'http://192.168.1.1/x', 'http://[::1]/x', 'http://router.local/x', 'http://intranet/x', 'file:///etc/x', 'data:image/png;base64,AA']) expect(publicIconUrl(url)).toBe(false)
+  })
+})
