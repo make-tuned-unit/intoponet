@@ -16,6 +16,8 @@ export type SitePermissionRequest = {
   id: string
   /** e.g. "https://meet.google.com" */
   origin: string
+  /** The page's own origin, when the asking site is a frame embedded in it. */
+  topOrigin?: string
   kinds: SitePermissionKind[]
   /** Asked from a private tab: the answer is forgotten when private browsing ends. */
   isPrivate: boolean

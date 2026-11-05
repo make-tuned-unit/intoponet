@@ -10,11 +10,11 @@ const hostOf = (origin: string): string => origin.replace(/^https?:\/\//, '')
 export function PermissionBar({ request, more, onDecide }: { request: SitePermissionRequest; more: number; onDecide: (decision: 'allow' | 'block' | 'dismiss') => void }) {
   const Icon = request.kinds.length === 1 ? ICONS[request.kinds[0]!] : ShieldQuestion
   return (
-    <div className="permission-bar" role="alertdialog" aria-label={`${hostOf(request.origin)} asks for permission`}>
+    <div className="permission-bar" role="alertdialog" aria-label={`${hostOf(request.origin)}${request.topOrigin ? ` on ${hostOf(request.topOrigin)}` : ''} asks for permission`}>
       <span className="permission-bar-ask">
         <Icon size={15} aria-hidden="true" />
         <span>
-          <strong>{hostOf(request.origin)}</strong> wants to {describePermissionKinds(request.kinds)}.
+          <strong>{hostOf(request.origin)}</strong>{request.topOrigin ? <> on <strong>{hostOf(request.topOrigin)}</strong></> : null} wants to {describePermissionKinds(request.kinds)}.
           {request.isPrivate ? ' Private tab: your answer is forgotten when private browsing ends.' : ' Your answer is remembered for this site.'}
           {more > 0 ? ` (${more} more waiting)` : ''}
         </span>

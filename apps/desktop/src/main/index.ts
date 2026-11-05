@@ -740,12 +740,14 @@ function wireDownloadSession(partition = 'persist:intoponet-default'): void {
   browsing.setPermissionRequestHandler((contents, permission, callback, details) => {
     if (!sitePermissions) return callback(false)
     const mediaTypes = (details as { mediaTypes?: string[] }).mediaTypes ?? []
-    sitePermissions.request({ origin: originOf(details.requestingUrl || contents.getURL()), kinds: kindsFor(permission, mediaTypes), isPrivate, owner: contents.id }, callback)
+    // Answers are kept per (asking site, page it is in): an embedded frame is named with its page.
+    sitePermissions.request({ origin: originOf(details.requestingUrl || contents.getURL()), topOrigin: originOf(contents.getURL()), kinds: kindsFor(permission, mediaTypes), isPrivate, owner: contents.id }, callback)
   })
-  browsing.setPermissionCheckHandler((_contents, permission, requestingOrigin, details) => {
+  browsing.setPermissionCheckHandler((contents, permission, requestingOrigin, details) => {
     const mediaType = (details as { mediaType?: string }).mediaType
     const kinds = kindsFor(permission, mediaType === 'video' ? ['video'] : mediaType === 'audio' ? ['audio'] : [])
-    return sitePermissions?.check(originOf(requestingOrigin), kinds, isPrivate) === true
+    const topOrigin = contents ? originOf(contents.getURL()) : originOf((details as { embeddingOrigin?: string }).embeddingOrigin ?? '')
+    return sitePermissions?.check(originOf(requestingOrigin), kinds, isPrivate, topOrigin) === true
   })
   app.on('certificate-error', (event, webContents, _url, _error, _certificate, callback) => {
     rejectCertificateErrorForSession(event, webContents, browsing, callback)

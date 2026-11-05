@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { EventEmitter } from 'node:events'
 import { describePermissionKinds, parseSitePermissionCommand, type SitePermissionEvent } from '@intoponet/browser-api'
-import { bindPermissionOwnerLifecycle, kindsFor, originOf, SitePermissionBroker, SitePermissionStore } from './sitePermissions'
+import { bindPermissionOwnerLifecycle, kindsFor, originOf, permissionKey, SitePermissionBroker, SitePermissionStore } from './sitePermissions'
 import { popupPlan, PopupLimiter } from './popups'
 
 describe('permission mapping', () => {
@@ -48,6 +48,24 @@ describe('permission broker', () => {
     expect(normal.get('https://meet.test')).toEqual({ camera: 'allow', microphone: 'allow' })
     broker.request({ origin: 'https://meet.test', kinds: ['camera'], isPrivate: false, owner: 2 }, (granted) => answers.push(granted))
     expect(answers.at(-1)).toBe(true)
+  })
+  it('keys an embedded frame answer on (frame origin, page origin) and names both', async () => {
+    const { events, normal, broker } = setup()
+    const answers: boolean[] = []
+    // An answer saved before keying (plain origin) applies only to the site as a top-level page.
+    normal.set('https://meet.test', ['camera'], 'allow')
+    expect(broker.check('https://meet.test', ['camera'], false, 'https://meet.test')).toBe(true)
+    expect(broker.check('https://meet.test', ['camera'], false, null)).toBe(true)
+    broker.request({ origin: 'https://meet.test', topOrigin: 'https://evil.test', kinds: ['camera'], isPrivate: false, owner: 1 }, (granted) => answers.push(granted))
+    const request = (events.find((event) => event.type === 'request') as Extract<SitePermissionEvent, { type: 'request' }>).request
+    expect(request).toMatchObject({ origin: 'https://meet.test', topOrigin: 'https://evil.test' })
+    await broker.decide(request.id, 'block')
+    expect(answers).toEqual([false])
+    expect(normal.get(permissionKey('https://meet.test', 'https://evil.test'))).toEqual({ camera: 'block' })
+    // The top-level answer is untouched; the embedded block applies only inside evil.test.
+    expect(broker.check('https://meet.test', ['camera'], false, 'https://meet.test')).toBe(true)
+    expect(broker.check('https://meet.test', ['camera'], false, 'https://evil.test')).toBe(false)
+    expect(broker.check('https://meet.test', ['camera'], false, 'https://other.test')).toBeNull()
   })
   it('Block is remembered; Not now is not; a blocked kind wins', async () => {
     const { events, normal, broker } = setup()
