@@ -71,7 +71,7 @@ import { bindPermissionOwnerLifecycle, kindsFor, originOf, SitePermissionBroker,
 import { bindPopupCloseWithOwner, nestedPopupDecision, popupDecision, popupWindowOptions, PopupLimiter } from './popups'
 import { rejectCertificateErrorForSession } from './browserCertificatePolicy'
 import { reserveDownloadPath, sanitizeDownloadFilename } from './downloadReservation'
-import { installBrowsingData, type BrowsingData } from './browsingData'
+import { installBrowsingData, openHistoryPane, type BrowsingData } from './browsingData'
 import { CrashRecoveryPolicy } from './crashRecovery'
 import { BeaconPublisher } from './beacons/publisher'
 import { DEFAULT_BEACON_REGISTRY } from './beacons/defaults'
@@ -1428,6 +1428,7 @@ function runAppCommand(command: AppCommand): void {
     })
     return
   }
+  if (route.action === 'show-history') return openHistoryPane()
   if (route.action === 'inspect-page') {
     if (pageView && pageAttached && !viewGone(pageView) && !isStartView(pageView)) inspectPage(pageView)
     return

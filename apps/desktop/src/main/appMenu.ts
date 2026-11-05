@@ -25,6 +25,7 @@ export type AppCommand =
   | { type: 'back' }
   | { type: 'forward' }
   | { type: 'home' }
+  | { type: 'show-history' }
   | { type: 'bookmark' }
   | { type: 'show-bookmarks' }
   | { type: 'next-tab' }
@@ -77,6 +78,7 @@ export const APP_SHORTCUTS = {
   back: ['CmdOrCtrl+['],
   forward: ['CmdOrCtrl+]'],
   home: ['CmdOrCtrl+Shift+H'],
+  'show-history': ['CmdOrCtrl+Y'],
   bookmark: ['CmdOrCtrl+D'],
   'show-bookmarks': ['CmdOrCtrl+Shift+B'],
   'next-tab': ['Ctrl+Tab', 'CmdOrCtrl+Shift+]'],
@@ -95,7 +97,7 @@ const TAB_NUMBER_SHORTCUTS: { accelerator: string; index: number }[] = [
 export type AppCommandRoute =
   | { kind: 'shell'; action: ShellShortcut }
   | { kind: 'host'; command: BrowserHostCommand }
-  | { kind: 'native'; action: 'inspect-page' | 'shell-devtools' }
+  | { kind: 'native'; action: 'inspect-page' | 'shell-devtools' | 'show-history' }
 
 export function routeAppCommand(command: AppCommand): AppCommandRoute {
   switch (command.type) {
@@ -127,6 +129,7 @@ export function routeAppCommand(command: AppCommand): AppCommandRoute {
     case 'select-tab': return { kind: 'host', command: { type: 'select-tab', index: command.index } }
     case 'help': return { kind: 'host', command: { type: 'open', intent: { kind: 'url', value: 'https://intoponet.com/' } } }
     case 'inspect-page': return { kind: 'native', action: 'inspect-page' }
+    case 'show-history': return { kind: 'native', action: 'show-history' }
     case 'shell-devtools': return { kind: 'native', action: 'shell-devtools' }
   }
 }
@@ -268,6 +271,7 @@ export function appMenuTemplate(state: AppMenuState, run: (command: AppCommand) 
         ...item('Back', 'back', page && state.canGoBack),
         ...item('Forward', 'forward', page && state.canGoForward),
         ...item('Globe', 'home', state.tabShowing),
+        ...item('Show All History', 'show-history', true),
         { type: 'separator' },
         { label: 'Recently Closed', submenu: recentlyClosed },
       ],
