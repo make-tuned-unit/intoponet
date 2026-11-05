@@ -64,6 +64,7 @@ and each package's `package.json`.
 | dompurify (Export as PDF: cleans the article's HTML) | 3.4.17 | MPL-2.0 OR Apache-2.0 (used under Apache-2.0) | https://github.com/cure53/DOMPurify |
 | @cantoo/pdf-lib (Export as PDF: title, author and compression) | 2.11.1 | MIT | https://github.com/cantoo-scribe/pdf-lib |
 | fflate | 0.8.3 | MIT | https://github.com/101arrowz/fflate |
+| jpeg-js (Export as PDF: photos stored as JPEG) | 0.4.4 | BSD-3-Clause | https://github.com/eugeneware/jpeg-js |
 | culori | 4.0.2 | MIT | https://github.com/Evercoder/culori |
 | node-html-better-parser | 1.5.9 | MIT | https://github.com/Sharcoux/node-html-parser |
 

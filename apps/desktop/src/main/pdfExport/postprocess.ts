@@ -1,4 +1,5 @@
 import { PDFDocument, ParseSpeeds } from '@cantoo/pdf-lib'
+import { recompressImages } from './recompress'
 
 export type PdfInfo = {
   title: string
@@ -25,6 +26,11 @@ export async function postprocessPdf(bytes: Uint8Array, info: PdfInfo, now = new
   doc.setProducer(info.producer)
   doc.setCreationDate(now)
   doc.setModificationDate(now)
+  try {
+    recompressImages(doc)
+  } catch {
+    // Images stay as Chromium wrote them.
+  }
   const out = await doc.save({ useObjectStreams: true, objectsPerTick: Infinity })
   return { bytes: out, pages: doc.getPageCount() }
 }

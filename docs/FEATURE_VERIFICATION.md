@@ -1,6 +1,6 @@
 # Feature verification
 
-Run 2026-11-05 23:38 UTC · tier `network` · only PDF_EXPORT · **1 passed, 0 failed, 0 blocked, 0 skipped, 36 assumed**.
+Run 2026-11-05 23:42 UTC · tier `network` · only PDF_EXPORT · **1 passed, 0 failed, 0 blocked, 0 skipped, 36 assumed**.
 
 Each feature makes a promise to the user; its check drives the built app end to end. Defined in `docs/FEATURE_DAG.json`, checks in `experiments/e2e/checks.mjs`, run with `npm run verify:features`.
 
@@ -37,7 +37,7 @@ Each feature makes a promise to the user; its check drives the built app end to 
 | · | **Sites to leave out** (`EXCLUDED_SITES`) | Sites you leave out are never absorbed and leave no recent pages. | BROWSE | assumed |
 | · | **Downloads and History** (`DOWNLOADS_HISTORY`) | A download shows its progress in the toolbar’s Downloads list until it is done, lands on disk with the macOS quarantine flag, and can be opened or shown in Finder; pages visited in normal tabs appear in History (never private ones), can be searched and deleted. | BROWSE | assumed |
 | · | **Screenshots into folders** (`CAPTURE`) | A screenshot of the page is saved, and you can make a new folder while saving. | BROWSE | assumed |
-| ✅ | **Save page as PDF** (`PDF_EXPORT`) | One click saves the page as a tagged PDF in Downloads, formatted for reading with its source on page one and page numbers, with ads, hidden text and overlays left out, lazy images loaded, an outline of its headings, a Finder "Where from", and, when a bookmark group is chosen, a bookmark in that group linked to the PDF. Pages that are not articles are saved as seen, still without ads. | SETTINGS | pass · 25 s — Article: 5 pages, 2 images, tagged with outline, ads/hidden/overlay text left out, bookmarked in "Reading" with the PDF linked; shop page saved as seen without ads; private tab asked where, neutral name, no Where-from or bookmark. |
+| ✅ | **Save page as PDF** (`PDF_EXPORT`) | One click saves the page as a tagged PDF in Downloads, formatted for reading with its source on page one and page numbers, with ads, hidden text and overlays left out, lazy images loaded, an outline of its headings, a Finder "Where from", and, when a bookmark group is chosen, a bookmark in that group linked to the PDF. Pages that are not articles are saved as seen, still without ads. | SETTINGS | pass · 23 s — Article: 5 pages, 2 images, tagged with outline, ads/hidden/overlay text left out, bookmarked in "Reading" with the PDF linked; shop page saved as seen without ads; private tab asked where, neutral name, no Where-from or bookmark. |
 | · | **Paywall detection** (`PAYWALL_ALTERNATIVES`) | Paywalled outlets are recognised so free coverage of the same story can be offered (never circumvented). | BROWSE, GLOBE_LIVE | assumed |
 | · | **Absorb, search and claims** (`ABSORB`) | Absorbing a page (or just a selection) keeps it on this Mac; search returns the cited paragraph; claims are listed without false disputes. | BROWSE | assumed |
 | · | **Beacon registry on Neon** (`BEACONS_REGISTRY`) | The app reaches the live beacon registry, which is healthy and refuses unsigned requests. | LIBRARY | assumed |
