@@ -18,8 +18,12 @@ export function bindPermissionOwnerLifecycle(contents: Pick<WebContents, 'id' | 
   contents.once('destroyed', () => dropOwner(id))
 }
 
-/** Chromium permissions granted without asking: harmless, and expected by ordinary pages. */
-const ALWAYS_ALLOW = new Set(['fullscreen', 'clipboard-sanitized-write', 'pointerLock', 'keyboardLock'])
+/**
+ * Chromium permissions granted without asking: harmless, and expected by ordinary pages.
+ * Fullscreen comes with a notice naming the site and Esc to leave; pointer and keyboard lock
+ * (which would take the mouse or Esc away from you) are refused.
+ */
+const ALWAYS_ALLOW = new Set(['fullscreen', 'clipboard-sanitized-write'])
 
 /**
  * What a Chromium permission request is asking for, in our terms. null means

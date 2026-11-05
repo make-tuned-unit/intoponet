@@ -13,6 +13,8 @@ describe('permission mapping', () => {
     expect(kindsFor('media', ['audio'])).toEqual(['microphone'])
     expect(kindsFor('geolocation')).toEqual(['location'])
     expect(kindsFor('fullscreen')).toBe('always')
+    expect(kindsFor('pointerLock')).toBeNull()
+    expect(kindsFor('keyboardLock')).toBeNull()
     expect(kindsFor('midiSysex')).toBeNull()
     expect(kindsFor('openExternal')).toBeNull()
     expect(originOf('https://meet.google.com/abc-def')).toBe('https://meet.google.com')

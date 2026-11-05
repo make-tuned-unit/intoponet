@@ -35,6 +35,7 @@ import { parsePasswordPageMessage, passwordPageChannels } from '../shared/passwo
 import { updateChannels, parseUpdateCommand } from '@intoponet/browser-api'
 import { browserUserAgent } from './browserUserAgent'
 import { persistedActiveUrl } from './tabState'
+import { EXIT_FULLSCREEN_SCRIPT, FULLSCREEN_WORLD_ID, fullscreenSiteName, showFullscreenNotice } from './fullscreenNotice'
 import { bindLeavePrompt, SAFE_DIALOG_PREFERENCES } from './leavePrompt'
 import { fetchTabIcon, TabIconMemory } from './tabFavicon'
 
@@ -141,6 +142,7 @@ let chromeHeld = false
 let tabRailExpanded = false
 /** A page that asked for HTML fullscreen (a video, a game): its view fills the window until it leaves. */
 let htmlFullScreenView: WebContentsView | null = null
+let removeFullscreenNotice: (() => void) | null = null
 /** Animated dock reservation; null when resting at its target. */
 let dockReserveNow: number | null = null
 let dockTweenTimer: ReturnType<typeof setTimeout> | null = null
@@ -1141,6 +1143,12 @@ function buildView(isPrivate = privateMode): WebContentsView {
   })
   // Shell shortcuts would otherwise be swallowed by the focused page.
   view.webContents.on('before-input-event', (event, input) => {
+    // Esc always leaves a page's fullscreen (the page cannot keep it for itself).
+    if (htmlFullScreenView === view && input.type === 'keyDown' && input.key === 'Escape') {
+      event.preventDefault()
+      void view.webContents.executeJavaScriptInIsolatedWorld(FULLSCREEN_WORLD_ID, [{ code: EXIT_FULLSCREEN_SCRIPT }]).catch(() => undefined)
+      return
+    }
     if (pageView !== view) return
     const pageAction = pageShortcutForInput(input)
     if (pageAction) {
@@ -1266,9 +1274,14 @@ function buildView(isPrivate = privateMode): WebContentsView {
   view.webContents.on('enter-html-full-screen', () => {
     htmlFullScreenView = view
     applyPageViewBounds()
+    // The page now covers the toolbar: say which site it is and how to leave.
+    removeFullscreenNotice?.()
+    removeFullscreenNotice = window && !window.isDestroyed() ? showFullscreenNotice(window, fullscreenSiteName(view.webContents.getURL())) : null
   })
   view.webContents.on('leave-html-full-screen', () => {
     if (htmlFullScreenView === view) htmlFullScreenView = null
+    removeFullscreenNotice?.()
+    removeFullscreenNotice = null
     applyPageViewBounds()
   })
   // Early as well, so a banner clicked before the page finishes loading already works.
