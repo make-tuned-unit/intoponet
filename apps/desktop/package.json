@@ -1,6 +1,6 @@
 {
   "name": "@intoponet/desktop",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "license": "UNLICENSED",
   "private": true,
   "main": "./out/main/index.js",
