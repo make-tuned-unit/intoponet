@@ -1,6 +1,6 @@
 {
-  "started": "2026-11-05T23:42:45.687Z",
-  "finished": "2026-11-05T23:43:09.086Z",
+  "started": "2026-11-05T23:45:10.136Z",
+  "finished": "2026-11-05T23:45:34.355Z",
   "tier": "network",
   "only": [
     "PDF_EXPORT"
@@ -134,7 +134,7 @@
     "PDF_EXPORT": {
       "status": "pass",
       "notes": "Article: 5 pages, 2 images, tagged with outline, ads/hidden/overlay text left out, bookmarked in \"Reading\" with the PDF linked; shop page saved as seen without ads; private tab asked where, neutral name, no Where-from or bookmark.",
-      "seconds": 23
+      "seconds": 24
     },
     "PAYWALL_ALTERNATIVES": {
       "status": "assumed",

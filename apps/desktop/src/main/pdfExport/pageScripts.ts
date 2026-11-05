@@ -346,8 +346,12 @@ ${purifySource}
     ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|#|data:image\\/(?:png|jpe?g|gif|webp|avif);)/i,
     ALLOW_DATA_ATTR: false,
   });
+  // Direction from the text itself: a right-to-left page translated on this Mac reads left to right.
+  const letters = (text.match(/\\p{L}/gu) || []).length;
+  const rtlLetters = (text.match(/[\\u0590-\\u08ff\\ufb1d-\\ufdff\\ufe70-\\ufefc]/g) || []).length;
+  const textDir = letters && rtlLetters / letters > 0.3 ? 'rtl' : 'ltr';
   return {
-    formatted: { html, title: parsed.title || '', byline: parsed.byline || '', lang: parsed.lang || '', dir: parsed.dir || '', chars: text.length },
+    formatted: { html, title: parsed.title || '', byline: parsed.byline || '', lang: parsed.lang || '', dir: parsed.dir || '', textDir, chars: text.length },
     reason,
   };
 })()`

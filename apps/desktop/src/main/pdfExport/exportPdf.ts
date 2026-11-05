@@ -69,7 +69,7 @@ type PrepareResult = {
 }
 
 type FinalizeResult = {
-  formatted: { html: string; title: string; byline: string; lang: string; dir: string; chars: number } | null
+  formatted: { html: string; title: string; byline: string; lang: string; dir: string; textDir: 'ltr' | 'rtl'; chars: number } | null
   reason: string
 }
 
@@ -259,7 +259,9 @@ export async function exportPagePdf(deps: PdfExportDeps): Promise<PdfExportOutco
         const article = finalized.formatted
         if (!meta.authors.length && article.byline && article.byline.length < 160) meta.authors = [article.byline.replace(/^by\s+/i, '')]
         if (!meta.lang && article.lang) meta.lang = article.lang
-        if (article.dir === 'rtl') meta.dir = 'rtl'
+        // The words decide the direction; when they disagree with the page (translated), its language no longer applies.
+        if ((meta.dir === 'rtl') !== (article.textDir === 'rtl')) meta.lang = ''
+        meta.dir = article.textDir
         const html = buildPrintDocument({ articleHtml: article.html, meta, textSize: settings.textSize, citation: settings.citation, savedAt: new Date() })
         const allowed = new Set(prepared.images.filter((image) => !blocked.includes(image)))
         pdf = await printClean(html, allowed, url, paper, deps.cancelled)
