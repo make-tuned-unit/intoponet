@@ -35,6 +35,7 @@ import { parsePasswordPageMessage, passwordPageChannels } from '../shared/passwo
 import { updateChannels, parseUpdateCommand } from '@intoponet/browser-api'
 import { browserUserAgent } from './browserUserAgent'
 import { persistedActiveUrl } from './tabState'
+import { bindLeavePrompt, SAFE_DIALOG_PREFERENCES } from './leavePrompt'
 import { fetchTabIcon, TabIconMemory } from './tabFavicon'
 
 declare const __INTOPONET_MAC_UPDATE_URL__: string
@@ -969,6 +970,7 @@ const crashRecovery = new CrashRecoveryPolicy()
 function wirePopupWindow(child: BrowserWindow, opener: WebContentsView): void {
   bindPermissionOwnerLifecycle(child.webContents, (owner) => sitePermissions?.dropOwner(owner))
   child.webContents.on('will-navigate', (event, url) => { if (!safeHttpUrl(url)) event.preventDefault() })
+  bindLeavePrompt(child.webContents, () => child, dialog.showMessageBoxSync)
   const childContentsId = child.webContents.id
   child.webContents.setWindowOpenHandler(({ url, disposition, features }) => {
     const plan = nestedPopupDecision({ url, disposition, features }, popupLimiter, childContentsId)
@@ -1065,6 +1067,7 @@ function buildView(isPrivate = privateMode): WebContentsView {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      ...SAFE_DIALOG_PREFERENCES,
       session: session.fromPartition(isPrivate ? PRIVATE_PARTITION : 'persist:intoponet-default'),
       // The sign-in helper for saved passwords; private tabs never get it.
       ...(isPrivate ? {} : { preload: join(__dirname, '../preload/page.js') }),
@@ -1168,6 +1171,7 @@ function buildView(isPrivate = privateMode): WebContentsView {
     }).catch(() => { /* No activity is recorded when rating extraction fails. */ })
   })
   preferReadablePageTheme(view.webContents)
+  bindLeavePrompt(view.webContents, () => window, dialog.showMessageBoxSync)
   view.webContents.setWindowOpenHandler(({ url, disposition, features }) => {
     const plan = popupDecision({ url, disposition, features }, popupLimiter, view.webContents.id)
     if (plan.action === 'deny') {

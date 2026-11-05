@@ -39,7 +39,7 @@ describe('popup policy', () => {
     if (plan.action !== 'window') throw new Error('expected a child window plan')
     const options = popupWindowOptions(plan)
     expect(options).toMatchObject({ width: 1200, height: 320, title: 'Sign-in window' })
-    expect(options.webPreferences).toMatchObject({ sandbox: true, contextIsolation: true, nodeIntegration: false })
+    expect(options.webPreferences).toMatchObject({ sandbox: true, contextIsolation: true, nodeIntegration: false, safeDialogs: true })
   })
 
   it('force-destroys the child when its opener WebContents is destroyed', () => {

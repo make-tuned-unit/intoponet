@@ -1,3 +1,5 @@
+import { SAFE_DIALOG_PREFERENCES } from './leavePrompt'
+
 /**
  * What to do when a page opens a window (PRD WEB-001, WEB-009).
  * - Sized popups (window.open with features, as sign-in flows use) open as a
@@ -96,7 +98,7 @@ export function popupWindowOptions(
     autoHideMenuBar: true,
     backgroundColor: '#ffffff',
     title: 'Sign-in window',
-    webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false },
+    webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, ...SAFE_DIALOG_PREFERENCES },
   }
 }
 
