@@ -207,8 +207,14 @@ export function clusterHeadlines(entries: Array<{ title: string; tokens: string[
       }
     }
   })
-  const candidates = [...pairs.entries()]
-    .flatMap(([key, indices]) => { const rank = score(indices); return rank === null ? [] : [{ key, indices, rank }] })
+  // A story needs headlines from at least two outlets, so a pair seen once can never qualify (most pairs).
+  const candidates: Array<{ key: string; indices: number[]; rank: number }> = []
+  for (const [key, indices] of pairs) {
+    if (indices.length < 2) continue
+    const rank = score(indices)
+    if (rank !== null) candidates.push({ key, indices, rank })
+  }
+  candidates
     .sort((a, b) => b.rank - a.rank)
 
   // Merge pairs that describe the same story (they share most of their headlines).

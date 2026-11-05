@@ -1,14 +1,14 @@
-import { placeTrends, type PlaceQuery, type PlaceTrends } from '../../shared/news/placeTrends'
-import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import type { PlaceQuery, PlaceTrends } from '../../shared/news/placeTrends'
+import { existsSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs'
+import { writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { PublicItem } from '@intoponet/field-snapshot'
 import { createAtomicFeedStorage, FeedFetchService, type FeedRegistry, type FeedRegistrySource } from '../feed-service'
-import { addCoverage, buildNewsDigest, NEWS_COVERAGE_TOLERANCE_MS, parseNewsDigest, type CoverageIntervals, type NewsFeedHealth, type NewsItemInput, type NewsSourceMeta } from '../../shared/news/newsDigest'
+import { addCoverage, NEWS_COVERAGE_TOLERANCE_MS, parseNewsDigest, type CoverageIntervals, type NewsFeedHealth, type NewsItemInput, type NewsSourceMeta } from '../../shared/news/newsDigest'
 import type { FeedFetchResult } from '../feed-service'
 import newsFeeds from './newsFeeds.json'
 import internationalFeeds from './internationalFeeds.json'
-import { buildGlobalStories } from '../../shared/news/globalStories'
-import { buildSpreadingStories } from '../../shared/news/spreadingStories'
+import { inlineDigestBuilder, NeedsFullUpdate, type DigestBuilder, type DigestOutput, type DigestUpdate } from './digestBuild'
 import { fetchInTheNews } from './inTheNews'
 import { localPlaceNames } from './placeNames'
 import type { WikiNewsItem } from '../../shared/news/newsDigest'
@@ -117,7 +117,7 @@ export function newsSourceMeta(feeds: NewsFeedEntry[]): NewsSourceMeta[] {
  * country's outlets are reporting. Runs in the main process; nothing personal
  * is sent, and the renderer only ever receives the validated digest.
  */
-export function startNewsService(options: { userData: string; emit: (payload: string) => void }): { stop: () => void; latest: () => string | null; trends: (place: PlaceQuery & { geonameId?: string }) => Promise<PlaceTrends> } {
+export function startNewsService(options: { userData: string; emit: (payload: string) => void; digestBuilder?: DigestBuilder }): { stop: () => void; latest: () => string | null; trends: (place: PlaceQuery & { geonameId?: string }) => Promise<PlaceTrends> } {
   const feeds = newsFeedEntries()
   const meta = newsSourceMeta(feeds)
   const digestPath = join(options.userData, 'news-digest.json')
@@ -136,10 +136,13 @@ export function startNewsService(options: { userData: string; emit: (payload: st
   if (latest) options.emit(latest)
   if (!feeds.length) return { stop: () => undefined, latest: () => latest, trends: async () => ({ rising: [], fading: [], recentStories: 0, previousStories: 0, outlets: 0, uncompared: 0, latest: [], earlier: [] }) }
 
+  const builder = options.digestBuilder ?? inlineDigestBuilder()
+  // The items array last sent for each feed (feeds replace the array whenever their items change).
+  const sent = new Map<string, readonly PublicItem[]>()
+  let stopped = false
+  let building = false
   let digestTimer: ReturnType<typeof setTimeout> | null = null
   let lastBuildMs = 0
-  // The latest items behind the digest, for place trends (in memory only).
-  let lastItems: NewsItemInput[] = []
   // Wikipedia's "In the news", refreshed every two hours.
   let inTheNews: WikiNewsItem[] = []
   const refreshInTheNews = (): void => {
@@ -163,7 +166,7 @@ export function startNewsService(options: { userData: string; emit: (payload: st
     registry: newsRegistry(feeds),
     storage: createAtomicFeedStorage(join(options.userData, 'news-feed-cache.json'), 192 * 1024 * 1024),
     maxEnabledSources: 6_000,
-    maxConcurrency: 12,
+    maxConcurrency: 20,
     maxCacheBytes: 192 * 1024 * 1024,
     persistDebounceMs: 15_000,
     tolerant: true,
@@ -177,50 +180,62 @@ export function startNewsService(options: { userData: string; emit: (payload: st
     },
   })
 
-  const publish = async (): Promise<void> => {
-    const snapshot = await service.snapshot()
-    const stored: NewsItemInput[] = []
+  const toInput = (sourceId: string, item: PublicItem): NewsItemInput => ({
+    sourceId, title: item.title, url: item.canonicalUrl, publishedAt: item.publishedAt, discoveredAt: item.discoveredAt,
+  })
+  /** What changed since the last build (everything when `full`). */
+  const update = async (full: boolean): Promise<DigestUpdate> => {
+    if (full) sent.clear()
+    const sources = await service.liveSources()
+    const changed: Record<string, NewsItemInput[]> = {}
     const health: Record<string, NewsFeedHealth> = {}
-    const toInput = (sourceId: string, item: PublicItem): NewsItemInput => ({
-      sourceId, title: item.title, url: item.canonicalUrl, publishedAt: item.publishedAt, discoveredAt: item.discoveredAt,
-    })
-    for (const [sourceId, state] of Object.entries(snapshot.sources)) {
+    for (const [sourceId, state] of Object.entries(sources)) {
       health[sourceId] = state.health
-      for (const item of state.items) stored.push(toInput(sourceId, item))
+      if (sent.get(sourceId) === state.items) continue
+      sent.set(sourceId, state.items)
+      changed[sourceId] = state.items.map((item) => toInput(sourceId, item))
     }
     const memoryOnly = [...transient.entries()].flatMap(([sourceId, items]) => items.map((item) => toInput(sourceId, item)))
-    const now = Date.now()
-    const all = [...stored, ...memoryOnly]
-    lastItems = all
-    const started = performance.now()
-    const build = (items: NewsItemInput[]): string => JSON.stringify({
-      coverageSchemaVersion: COVERAGE_SCHEMA_VERSION,
-      ...buildNewsDigest({ sources: meta, items, health, now, coverage }),
-      global: buildGlobalStories({ sources: meta, items, now }),
-      spreading: buildSpreadingStories({ sources: meta, items, now }),
-      inTheNews,
-    })
-    latest = build(all)
-    options.emit(latest)
+    return { full, schemaVersion: COVERAGE_SCHEMA_VERSION, ...(full ? { sources: meta } : {}), changed, memoryOnly, health, coverage, inTheNews, now: Date.now() }
+  }
+  /** Build on the worker thread (the main process stays responsive), sending a full update if it lost its state. */
+  const buildDigest = async (): Promise<DigestOutput> => {
     try {
-      // The on-disk copy (shown at the next launch) excludes no-store feeds; built separately only when there are any.
-      writeFileSync(digestPath, memoryOnly.length ? build(stored) : latest, { encoding: 'utf8', mode: 0o644 })
-      writeFileSync(coveragePath, JSON.stringify({ schemaVersion: COVERAGE_SCHEMA_VERSION, sources: coverage }), { encoding: 'utf8', mode: 0o644 })
-    } catch {
-      // The digest is rebuilt from the feed cache on the next update.
+      return await builder.build(await update(sent.size === 0))
+    } catch (error) {
+      if (!(error instanceof NeedsFullUpdate)) throw error
+      return builder.build(await update(true))
     }
-    lastBuildMs = performance.now() - started
+  }
+
+  const publish = async (): Promise<void> => {
+    const coverageJson = JSON.stringify({ schemaVersion: COVERAGE_SCHEMA_VERSION, sources: coverage })
+    const output = await buildDigest()
+    if (stopped) return
+    latest = output.latest
+    options.emit(latest)
+    lastBuildMs = output.ms
+    if (process.env.INTOPONET_DEBUG_NEWS) console.log(`[news] digest ${Math.round(output.ms)} ms, ${output.items} items, ${Math.round(output.latest.length / 1024)} KB`)
+    // The on-disk copy (shown at the next launch) excludes no-store feeds.
+    await Promise.all([
+      writeFile(digestPath, output.disk ?? output.latest, { encoding: 'utf8', mode: 0o644 }),
+      writeFile(coveragePath, coverageJson, { encoding: 'utf8', mode: 0o644 }),
+    ]).catch(() => undefined) // rebuilt from the feed cache on the next update
   }
 
   function scheduleDigest(): void {
     if (digestTimer) return
     digestTimer = setTimeout(() => {
       digestTimer = null
+      // One build at a time; results arriving meanwhile are picked up by the next one.
+      if (building) return scheduleDigest()
+      building = true
       void publish().catch((error: unknown) => {
-        console.error('News digest failed.', error instanceof Error ? error.message : error)
-      })
-    // Building takes a few seconds with thousands of feeds: leave the main process mostly free between builds.
-    }, Math.max(DIGEST_DEBOUNCE_MS, Math.min(120_000, lastBuildMs * 5)))
+        if (!stopped) console.error('News digest failed.', error instanceof Error ? error.message : error)
+      }).finally(() => { building = false })
+    // Builds run off the main thread, so new headlines can show soon; waiting 3× the last build keeps
+    // the worker idle most of the time (a full build is a few seconds with ~100,000 headlines).
+    }, Math.max(DIGEST_DEBOUNCE_MS, Math.min(90_000, lastBuildMs * 3)))
     digestTimer.unref?.()
   }
 
@@ -230,6 +245,8 @@ export function startNewsService(options: { userData: string; emit: (payload: st
 
   return {
     stop: () => {
+      stopped = true
+      builder.close()
       if (digestTimer) clearTimeout(digestTimer)
       clearInterval(inTheNewsTimer)
       service.stop()
@@ -242,9 +259,14 @@ export function startNewsService(options: { userData: string; emit: (payload: st
       const languages = [...new Set(meta.filter((source) => source.countryCode === place.countryCode && source.language).map((source) => source.language!))]
       const local = place.name && geonameId ? await localPlaceNames(geonameId, languages).catch(() => []) : []
       const aliases = [...new Set([...(place.aliases ?? []), ...local])].filter((alias) => alias !== place.name)
-      const snapshot = await service.snapshot()
-      const health = Object.fromEntries(Object.entries(snapshot.sources).map(([sourceId, state]) => [sourceId, state.health]))
-      return placeTrends({ sources: meta, items: lastItems, coverage, health, now: Date.now(), place: { ...place, ...(aliases.length ? { aliases } : {}) } })
+      const query = { ...place, ...(aliases.length ? { aliases } : {}) }
+      try {
+        return await builder.trends(query, Date.now())
+      } catch (error) {
+        if (!(error instanceof NeedsFullUpdate)) throw error
+        await buildDigest()
+        return builder.trends(query, Date.now())
+      }
     },
   }
 }

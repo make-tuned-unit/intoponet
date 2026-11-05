@@ -3,6 +3,7 @@ import type { GlobalStory } from './globalStories'
 import type { SpreadHeadline, SpreadingStory, SpreadPlace } from './spreadingStories'
 import { countryPlace, normalizePlaceText, placesInCountry, type Place } from '../places/places'
 import { COUNTRY_ROWS } from '../places/placeData'
+import { memoize } from '../memo'
 
 /**
  * News digest: what each country's own outlets are publishing now.
@@ -225,7 +226,7 @@ function matchersFor(countryCode: string): Map<string, Matcher[]> {
 }
 
 /** First city/region of the country named in a headline, matched on word boundaries. */
-export function placeNamedIn(title: string, countryCode: string): Place | null {
+function placeNamedInUncached(title: string, countryCode: string): Place | null {
   const buckets = matchersFor(countryCode)
   const plainWords = normalizePlaceText(title).split(' ')
   const accentWords = accentText(title).split(' ')
@@ -738,3 +739,6 @@ function parseInTheNews(value: unknown): WikiNewsItem[] {
     return [{ date: text(row['date'], 20) ? row['date'] : null, story: row['story'], mainTitle: text(row['mainTitle'], 200) ? row['mainTitle'] : null, links }]
   }).slice(0, 10)
 }
+
+/** Cached: see memo.ts. */
+export const placeNamedIn = memoize(placeNamedInUncached, (title: string, countryCode: string) => `${countryCode}\u0000${title}`)

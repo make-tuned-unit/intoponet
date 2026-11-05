@@ -596,6 +596,15 @@ export class FeedFetchService {
     return Promise.all([...this.sources.keys()].map((sourceId) => this.refreshSource(sourceId)))
   }
 
+  /**
+   * The live per-source state, without copying (snapshot() deep-copies tens of MB). Read only.
+   * A source's `items` array is replaced, never changed in place, whenever its items change.
+   */
+  async liveSources(): Promise<Readonly<Record<string, Readonly<FeedSourceState>>>> {
+    await this.ensureLoaded()
+    return this.cache.sources
+  }
+
   async snapshot(): Promise<FeedCacheSnapshot> {
     await this.ensureLoaded()
     return JSON.parse(JSON.stringify(this.cache)) as FeedCacheSnapshot

@@ -43,6 +43,7 @@ if (!app.isReady()) {
 }
 import { cachedPublicField, publicFieldStatus, startPublicFieldRefresh } from './public-field'
 import { startNewsService } from './news/newsService'
+import { openDigestBuilder } from './news/openDigestBuilder'
 import { readSealedPrivateLibrary } from './privateLibraryStorage'
 import { routeProtectionRequest } from './protectionRequest'
 import {
@@ -1839,6 +1840,7 @@ app.whenReady().then(async () => {
   newsService = startNewsService({
     userData: app.getPath('userData'),
     emit: (payload) => emit({ type: 'news-digest', payload }),
+    digestBuilder: openDigestBuilder(),
   })
   app.once('will-quit', () => newsService?.stop())
 

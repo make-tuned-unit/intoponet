@@ -1,4 +1,5 @@
 import { normalizeLanguage } from '@intoponet/browser-api'
+import { memoize } from '../memo'
 
 /**
  * Small, dependency-free language guess for page text: the page's declared
@@ -190,7 +191,7 @@ const LETTERS: Array<[RegExp, string]> = [
  * letters only one language uses, then common words (two are enough here).
  * Null when it cannot tell; English is returned only on clear evidence.
  */
-export function detectHeadline(text: string): string | null {
+function detectHeadlineUncached(text: string): string | null {
   const sample = text.slice(0, 400)
   const letters = count(sample, /\p{L}/gu)
   if (letters < 8) return null
@@ -228,3 +229,6 @@ export function headlineLanguage(declared: string | null | undefined, title: str
   const letterProof = LETTERS.some(([pattern, code]) => code === found && pattern.test(shared))
   return otherScript || letterProof || tag === 'en' ? found : tag
 }
+
+/** Cached: see memo.ts. */
+export const detectHeadline = memoize(detectHeadlineUncached, (text: string) => text)
