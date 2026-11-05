@@ -21,18 +21,31 @@ type Pending = { code: string; loud: boolean; urgent: boolean; resolve: (ok: boo
  * the first time it is needed, and a language that fails is not retried
  * automatically this session (a manual install() still can). Urgent requests
  * (the open page, or one the reader asked for) go ahead of headline ones.
+ *
+ * Quiet requests (headlines and titles) download at most a few new languages per
+ * session: a World list can hold a dozen languages, about 70 MB each. Past that a
+ * language is held back (isHeld) until the reader adds it or a page needs it.
  */
 export class ModelQueue {
   status: TranslateStatus | null = null
   private readonly jobs = new Map<string, Promise<boolean>>()
   private readonly pending: Pending[] = []
   private running = false
+  private readonly held = new Set<string>()
+  private quietDownloads = 0
 
   constructor(
     private readonly api: ModelApi,
     private readonly onStatus: (status: TranslateStatus) => void,
     private readonly wait: (ms: number) => Promise<void> = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+    /** New languages quiet requests may download per session. */
+    private readonly quietLimit = 3,
   ) {}
+
+  /** Held back from a quiet download (over this session's allowance); the reader can still add it. */
+  isHeld(code: string): boolean {
+    return this.held.has(code)
+  }
 
   private downloaded(code: string): boolean | null {
     if (code === PIVOT_LANGUAGE) return true
@@ -61,6 +74,7 @@ export class ModelQueue {
   /** A language was removed: it can download again later. */
   forget(code: string): void {
     this.jobs.delete(code)
+    this.held.delete(code)
   }
 
   private promote(code: string): void {
@@ -77,6 +91,10 @@ export class ModelQueue {
   }
 
   private job(code: string, loud: boolean, urgent: boolean): Promise<boolean> {
+    if (urgent && this.held.has(code)) {
+      this.held.delete(code)
+      this.jobs.delete(code)
+    }
     const known = this.jobs.get(code)
     if (known) {
       if (urgent) this.promote(code)
@@ -98,7 +116,7 @@ export class ModelQueue {
     try {
       for (let next = this.pending.shift(); next; next = this.pending.shift()) {
         try {
-          next.resolve(await this.run(next.code, next.loud))
+          next.resolve(await this.run(next.code, next.loud, next.urgent))
         } catch (error) {
           next.reject(error)
         }
@@ -108,7 +126,7 @@ export class ModelQueue {
     }
   }
 
-  private async run(code: string, loud: boolean): Promise<boolean> {
+  private async run(code: string, loud: boolean, urgent: boolean): Promise<boolean> {
     if (!this.status) this.status = await this.api.status().catch(() => null)
     // A download started elsewhere holds the main process's one slot: wait for it, up to about 20 minutes.
     for (let attempt = 0; attempt < 600; attempt++) {
@@ -117,6 +135,13 @@ export class ModelQueue {
       if (present === null) {
         if (loud) throw new Error('That language is not available.')
         return false
+      }
+      if (!urgent && attempt === 0) {
+        if (this.quietDownloads >= this.quietLimit) {
+          this.held.add(code)
+          return false
+        }
+        this.quietDownloads += 1
       }
       try {
         this.status = await this.api.install(code)

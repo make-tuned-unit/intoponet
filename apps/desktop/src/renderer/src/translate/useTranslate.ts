@@ -74,6 +74,8 @@ export type TranslateModel = {
    * that could not be made ready.
    */
   ensure: (codes: string[], options?: { urgent?: boolean }) => Promise<string[]>
+  /** Not downloaded on its own: headlines already fetched this session's few languages. The reader can add it. */
+  isHeld: (code: string) => boolean
   remove: (code: string) => Promise<void>
   translatePage: (from: string, to: string) => Promise<void>
   restorePage: () => Promise<void>
@@ -155,6 +157,7 @@ export function useTranslate(pageUrl: string, pageLoading: boolean): TranslateMo
     supported,
     install: (code) => guard(() => queue.install(code)),
     ensure: (codes, options) => queue.ensure(codes, options),
+    isHeld: (code) => queue.isHeld(code),
     remove: (code) => guard(async () => {
       const next = await api.remove(code)
       queue.forget(code)

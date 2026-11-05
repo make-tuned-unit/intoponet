@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { History, Languages, LoaderCircle, Lock } from 'lucide-react'
+import { Download, History, Languages, LoaderCircle, Lock } from 'lucide-react'
 import { hostIsPaywalled } from '../../../shared/news/paywall'
 import { learnedPaywalls } from '../access/learnedPaywalls'
 import '../access/access.css'
@@ -96,7 +96,12 @@ export function HeadlineList({
   const downloading = translation?.status?.downloading ?? null
   const sources = [...foreign.keys()]
   const sourceLabel = sources.length === 1 ? nativeName(sources[0]!) : 'Original'
-  const unavailable = on && !downloading ? failed.filter((code) => wanted.split(',').includes(code)) : []
+  const stillMissing = on && translation ? failed.filter((code) => wanted.split(',').includes(code)) : []
+  // Held back to keep background downloads small: offered with their size instead.
+  const held = translation ? stillMissing.filter((code) => translation.isHeld(code)) : []
+  const unavailable = downloading ? [] : stillMissing.filter((code) => !held.includes(code))
+  const bytesOf = (code: string): number => (translation?.status?.languages.find((item) => item.code === code)?.bytes ?? 0)
+    + (translation?.status && !translation.status.engine.downloaded ? translation.status.engine.bytes : 0)
 
   return (
     <>
@@ -114,6 +119,18 @@ export function HeadlineList({
               <button type="button" className={on ? 'is-active' : ''} aria-pressed={on} onClick={() => setPref(true)}>{languageName(target)}</button>
             </div>
           )}
+          {held.slice(0, 3).map((code) => (
+            <button
+              key={code}
+              type="button"
+              className="tr-inline-toggle"
+              disabled={!!downloading && downloading.code === code}
+              onClick={() => void translation.install(code)}
+              title={`Add ${languageName(code)} (a one-time ${formatMegabytes(bytesOf(code))} download) to translate these headlines on this Mac`}
+            >
+              <Download size={11} aria-hidden="true" /> {languageName(code)} · {formatMegabytes(bytesOf(code))}
+            </button>
+          ))}
           {unavailable.length > 0 && (
             <span className="tr-inline-error" role="alert">Could not download {unavailable.map((code) => languageName(code)).join(', ')}; showing the original.</span>
           )}

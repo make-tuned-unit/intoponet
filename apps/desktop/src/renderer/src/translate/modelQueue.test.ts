@@ -112,3 +112,32 @@ describe('models to fetch', () => {
     expect(modelsToFetch(new Map(), 'de', new Set(['en']), supported)).toEqual([])
   })
 })
+
+describe('quiet download allowance', () => {
+  it('holds back quiet languages past the allowance; a page or the reader still gets them', async () => {
+    const fake = fakeApi()
+    const queue = new ModelQueue(fake.api, () => undefined, noWait, 2)
+    expect(await queue.ensure(['de', 'es', 'fr', 'ru'])).toEqual(['fr', 'ru'])
+    expect(fake.calls).toEqual(['de', 'es'])
+    expect(queue.isHeld('fr')).toBe(true)
+    expect(queue.isHeld('de')).toBe(false)
+    // Asking quietly again does not download it.
+    expect(await queue.ensure(['fr'])).toEqual(['fr'])
+    // The open page needs it: downloads.
+    expect(await queue.ensure(['fr'], { urgent: true })).toEqual([])
+    expect(queue.isHeld('fr')).toBe(false)
+    // The reader adds it.
+    await queue.install('ru')
+    expect(queue.isHeld('ru')).toBe(false)
+    expect(fake.calls).toEqual(['de', 'es', 'fr', 'ru'])
+  })
+
+  it('does not count languages already on this Mac or urgent downloads', async () => {
+    const fake = fakeApi()
+    fake.installed.push('de')
+    const queue = new ModelQueue(fake.api, () => undefined, noWait, 1)
+    await queue.ensure(['ru'], { urgent: true })
+    expect(await queue.ensure(['de', 'es'])).toEqual([])
+    expect(await queue.ensure(['fr'])).toEqual(['fr'])
+  })
+})
