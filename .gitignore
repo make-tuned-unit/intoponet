@@ -19,3 +19,7 @@ apps/desktop/.eval-build/
 .env*
 apps/desktop/out-*/
 website/dist/
+
+# Deep-research working files
+/research_notes/
+/reports/
