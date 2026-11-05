@@ -58,6 +58,8 @@ export class KnowledgeService {
   constructor(private readonly options: {
     /** Sites the user chose to leave out (Privacy › Sites to leave out). */
     isExcluded?: (url: string) => boolean
+    /** Whether the active page is a private tab: those are never absorbed (nor indexed by Laya). */
+    isPrivatePage?: (page: KnowledgePage) => boolean
     dir: string
     /** Pass a function (see retryingKnowledgeCrypto) so a Keychain failure can be retried. */
     crypto: KnowledgeCryptoSource
@@ -111,6 +113,7 @@ export class KnowledgeService {
     this.sweep()
     const page = this.options.getActivePage()
     if (!page) return { refused: true, reason: REFUSALS.noPage }
+    if (this.options.isPrivatePage?.(page)) return { refused: true, reason: REFUSALS.privateTab }
     const before = urlRefusal(page.getURL()) ?? (this.options.isExcluded?.(page.getURL()) ? REFUSALS.excludedSite : null)
     if (before) return { refused: true, reason: before }
     let raw: unknown

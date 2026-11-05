@@ -298,6 +298,13 @@ describe('KnowledgeService', () => {
     expect(await service(fakePage('https://example.com/news', {})).preview('selection')).toEqual({ refused: true, reason: REFUSALS.noSelection })
   })
 
+  it('refuses private tabs, before running any script', async () => {
+    const page = fakePage('https://example.com/news', {})
+    const knowledge = new KnowledgeService({ dir, crypto: createAesGcmCrypto(randomBytes(32)), getActivePage: () => page, isPrivatePage: (active) => active === page })
+    expect(await knowledge.preview('selection')).toEqual({ refused: true, reason: REFUSALS.privateTab })
+    expect(page.calls).toEqual([])
+  })
+
   it('refuses sites you left out, before running any script', async () => {
     const page = fakePage('https://news.leftout.test/story', {})
     const knowledge = new KnowledgeService({ dir, crypto: createAesGcmCrypto(randomBytes(32)), getActivePage: () => page, isExcluded: (url) => url.includes('leftout.test') })

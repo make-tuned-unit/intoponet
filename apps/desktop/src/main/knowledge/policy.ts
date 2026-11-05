@@ -19,6 +19,7 @@ export const REFUSALS = {
   sensitivePage: 'This looks like a sign-in, account, payment or messages page, so it was not absorbed.',
   formFields: 'This page has a password or card field, so it was not absorbed.',
   noPage: 'Open a page in the browser first, then absorb it.',
+  privateTab: 'This is a private tab: nothing from it is absorbed or kept. Open the page in a normal tab to absorb it.',
   excludedSite: 'You left this site out in Privacy, so it is never absorbed. Remove it there to absorb from it.',
   noSelection: 'Select the text you want to keep on the page, then try again.',
   tooLittle: 'There isn’t enough readable text on this page to absorb.',

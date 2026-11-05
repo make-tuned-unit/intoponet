@@ -1071,7 +1071,7 @@ function contextMenuTemplate(view: WebContentsView, params: Electron.ContextMenu
   if (has('open-link-in-new-tab') || has('copy-link-address')) items.push({ type: 'separator' })
 
   // Keep a highlighted passage (a statistic, a quote, a description) in your private knowledge.
-  if (has('copy-selection') && !params.isEditable && params.selectionText.trim().split(/\s+/).length >= 3) {
+  if (has('copy-selection') && !privateViews.has(view) && !params.isEditable && params.selectionText.trim().split(/\s+/).length >= 3) {
     items.push({ label: 'Absorb Selection', click: () => emit({ type: 'shortcut', action: 'absorb-selection' }) })
   }
   if (has('copy-selection')) items.push({ label: 'Copy', role: 'copy' })
@@ -1914,6 +1914,7 @@ app.whenReady().then(async () => {
       dir: knowledgeDir,
       crypto: knowledgeCrypto,
       getActivePage: () => (pageAttached && pageView ? pageView.webContents : null),
+      isPrivatePage: (page) => openTabs.some((tab) => privateViews.has(tab.view) && !viewGone(tab.view) && tab.view.webContents === page),
       isExcluded: (url) => isExcludedSite(url, excludedSites),
       onChange: (change) => laya?.onKnowledgeChange(change),
     })
