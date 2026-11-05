@@ -45,7 +45,9 @@ export async function runAppCheck(check, { port = 9400 + Math.floor(Math.random(
   const keep = process.env.E2E_PROFILE
   if (keep) mkdirSync(keep, { recursive: true })
   const profile = keep ?? mkdtempSync(join(process.env.E2E_TMP ?? tmpdir(), 'intoponet-e2e-'))
-  const env = { ...process.env, INTOPONET_CAPTURE_ROOT: join(profile, 'Pictures', 'Intoponet'), ...extraEnv }
+  // Downloads go to the profile too, never the Downloads folder of the person running the checks.
+  mkdirSync(join(profile, 'Downloads'), { recursive: true })
+  const env = { ...process.env, INTOPONET_CAPTURE_ROOT: join(profile, 'Pictures', 'Intoponet'), INTOPONET_DOWNLOADS_DIR: join(profile, 'Downloads'), ...extraEnv }
   delete env.ELECTRON_RUN_AS_NODE
   // node_modules/.bin/electron is a launcher that starts Electron as a child: run it in its own process group and
   // stop the whole group, or Electron outlives the check (and a few runs can exhaust the Mac's memory).

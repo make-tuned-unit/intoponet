@@ -195,6 +195,10 @@ import { autoTranslatePlan, isNeverTranslated, readAppSettings, siteKey, withNev
 import { useHeadlinePref } from './translate/headlinePref'
 import { readPrivacySettings, writePrivacySettings, type PrivacySettings } from './privacy/privacySettings'
 import { StartPage } from './StartPage'
+import { DownloadsButton } from './browsingData/DownloadsPane'
+import { HistoryHost } from './browsingData/HistoryPane'
+import { openHistory } from './browsingData/historyAccess'
+import { forgetRecentPages } from './browsingData/browsingDataModel'
 import { FeedbackPrompt } from './FeedbackPrompt'
 import { startBookmarks, startNews, startRecents } from './startPageModel'
 import { inferLauncherIntent } from '@intoponet/browser-api'
@@ -1315,7 +1319,8 @@ export function App() {
     setRecents([])
     writeRecents([])
     setPersonalActivity(emptyPersonalActivity)
-    setNotice('Footprints deleted: recent pages and interest signals.')
+    void window.intoponet.history.clear().catch(() => undefined)
+    setNotice('Footprints deleted: recent pages, history and interest signals.')
   }
   const toggleHiddenPin = (url: string): void => {
     setBookmarks((current) => {
@@ -2622,6 +2627,12 @@ export function App() {
           </button>
         </div>
       </header>
+      <HistoryHost
+        policy={privacySettings}
+        onOpenUrl={(url) => openRecent({ url, title: '', visitedAt: '' })}
+        onForget={(forget) => setRecents((current) => forgetRecentPages(current, forget))}
+        onNotice={setNotice}
+      />
       {beaconDraft && (
         <BeaconConsent
           initial={beaconDraft}
@@ -3050,6 +3061,9 @@ export function App() {
             </button>
           </div>
           <div className="library-tools">
+            <button type="button" onClick={openHistory} title="History: every page visited in normal tabs (⌘Y)">
+              History
+            </button>
             <button type="button" onClick={exportLibrary}>
               Export
             </button>
@@ -3603,6 +3617,7 @@ export function App() {
                 </button>
               </div>
               </>}
+              <DownloadsButton onError={setError} />
               <button
                 type="button"
                 className={bookmarksOpen ? 'selected' : ''}

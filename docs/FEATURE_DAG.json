@@ -243,6 +243,16 @@
       "promise": "Sites you leave out are never absorbed and leave no recent pages."
     },
     {
+      "id": "DOWNLOADS_HISTORY",
+      "title": "Downloads and History",
+      "deps": [
+        "BROWSE"
+      ],
+      "tier": "core",
+      "kind": "e2e",
+      "promise": "A download shows its progress in the toolbar’s Downloads list until it is done, lands on disk with the macOS quarantine flag, and can be opened or shown in Finder; pages visited in normal tabs appear in History (never private ones), can be searched and deleted."
+    },
+    {
       "id": "CAPTURE",
       "title": "Screenshots into folders",
       "deps": [
