@@ -16,3 +16,9 @@ export function memoize<A extends unknown[], R>(fn: (...args: A) => R, key: (...
     return value
   }
 }
+
+/**
+ * Entries for per-title caches whose results are larger (token lists): about one and a half
+ * times the headlines live at once, so a long session cannot grow them far past what is in use.
+ */
+export const TITLE_CACHE_LIMIT = 150_000

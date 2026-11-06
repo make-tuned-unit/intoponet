@@ -1,170 +1,202 @@
 {
-  "started": "2026-11-06T14:47:55.903Z",
-  "finished": "2026-11-06T14:48:24.096Z",
+  "started": "2026-11-06T16:46:38.002Z",
+  "finished": "2026-11-06T16:59:38.715Z",
   "tier": "network",
-  "only": [
-    "STORY_MOUNTAINS",
-    "GLOBE_LIVE"
-  ],
-  "summary": "2 passed, 0 failed, 0 blocked, 0 skipped, 37 assumed",
+  "only": null,
+  "summary": "37 passed, 0 failed, 0 blocked, 2 skipped",
   "results": {
     "BUILD": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "npm run typecheck · npm test · npm run build",
+      "seconds": 40
     },
     "APP_BOOT": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Header: Private · Bookmarks · The Olds · Knowledge · My map · Settings",
+      "seconds": 5
     },
     "SETTINGS": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Settings and Privacy sections present.",
+      "seconds": 6
     },
     "ACCESSIBILITY": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "No WCAG 2.2 AA violations (axe); panels open with Enter, close with Escape, focus returns.",
+      "seconds": 19
     },
     "TABS": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Moved by command, drag and ⌥⇧↓ (focus kept); pinned tab first, icon-only and saved; speaker muted and unmuted a playing tab; spinner while a slow page loaded; no axe violations in rail or strip.",
+      "seconds": 23
     },
     "LIBRARY": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Migrated to encrypted library; pin hidden; beacon consent requires agreement.",
+      "seconds": 10
     },
     "COLLECTIONS_IMPORT": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Explained and split into 2. ",
+      "seconds": 9
     },
     "FLY_TO": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Charlottetown PEI and \"Fredericto\" flew on the globe, with the locator shown.",
+      "seconds": 11
     },
     "GLOBE_MOTION": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Locator 735,473 → 756,490 after zoom.",
+      "seconds": 9
     },
     "COUNTRY_NAMES": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "16 names at the start; clicked Venezuela → Venezuela; 7 flights named correctly.",
+      "seconds": 56
     },
     "GLOBE_LIVE": {
       "status": "pass",
-      "notes": "290 public signals across 4 active layers. Hover to preview, click to explore, or search a place below.",
-      "seconds": 13
+      "notes": "334 public signals across 4 active layers. Hover to preview, click to explore, or search a place below.",
+      "seconds": 14
     },
     "SOURCE_CAROUSEL": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Cards with 12 images, 4 bylines, 4 summaries. Carousel flipped from France 24 to Folha de S.Paulo; chose \"Folha Mundo: Adoro meu trabalho e sigo com Trump até o fim do mandato, diz Marco\" and the browser opened  (page was closed before).",
+      "seconds": 28
     },
     "WORLD_STORIES": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "20 world stories; scrolls 400px.",
+      "seconds": 11
     },
     "COUNTRY_PANEL": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Facts ok, recent history 2025, 2024, 2022, 2020, 12 headlines.",
+      "seconds": 34
     },
     "OLDS_HEADLINE": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Israel → 2026 Israeli legislative election: 20 dated events from 10 Apr 1973; Ebola, South Africa and Guernsey guards ok; related Judiciary of Israel, Israeli law, Politics of Israel, Elections in Israel. Brazil → 2026 Brazilian general election. Honduras → Honduras.",
+      "seconds": 93
     },
     "OLDS_COUNTRY": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Capital Tórshavn; 7 chapters; latest event 2025.",
+      "seconds": 8
     },
     "OLDS_DEBATE": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Anthropologist Joseph Henrich, Rodney Stark, Historian Joel Mokyr, Williams, Voltaire, Bob Allen",
+      "seconds": 5
     },
     "OLDS_UI": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Views Story/Timeline/List; sections: HOW WE GOT HERE.",
+      "seconds": 66
     },
     "OLDS_COVERAGE": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "“New bomb threats target European broadcasters, air traffic”: 19 headlines (NOVEMBER 2026 – OCTOBER 2026), then 39 reaching SEPTEMBER 2026; Go further back",
+      "seconds": 60
     },
     "BROWSE": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Toolbar: Protected, Translate, Capture, PDF, Pin, Absorb, Bookmarks; pages see Chrome/156.0.8078.48; tab closed cleanly; a self-closing page took its tab; ⌘W closed tabs from inside the page, ⌘⇧T reopened one, ⌘= zoom shown and kept for the site, ⌘1/⌘9 picked tabs; the app window stayed on the app.",
+      "seconds": 35
     },
     "OMNIBOX": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "\"localh\" completed to localhost:59812; history row opened in a background tab with ⌘↵; then \"Switch to tab\" landed on it (1 tab); Backspace removed the completion; \"Fredericton\" flew the globe.",
+      "seconds": 17
     },
     "PROTECTION": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Protected · 3 ads · 0 trackers blocked · Block ads · Block trackers · Encrypted DNS · Local IP hidden · No VPN · Pause on this site",
+      "seconds": 15
     },
     "PERMISSIONS": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Location allowed via the bar; a pop-up without a click was blocked and opened with \"Allow once\"; a clicked popup kept its opener; a clicked _blank link opened a tab.",
+      "seconds": 13
     },
     "EXTERNAL_APPS": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "\"Open Mail? 127.0.0.1:60867 wants to open mailto:someone@example.com?subject=Hello\" asked for a mailto: link; the tab stayed on http://127.0.0.1:60867/; Cancel closed it and no prompt storm followed.",
+      "seconds": 8
     },
     "ERROR_PAGE": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "\"127.0.0.1:61081 refused to connect\" with Retry; toolbar kept http://127.0.0.1:61081/; Retry loaded the page once a server listened; a self-signed site showed \"Connection not secure\" with its certificate and Back returned.",
+      "seconds": 5
     },
     "PDF_VIEWER": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "doc.pdf opened in the tab in Chromium's viewer; the attachment downloaded as intoponet-e2e-attachment.pdf.",
+      "seconds": 7
     },
     "PAGE_APPEARANCE": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Pages: dark→dark, light→light, system→light, dark mode canvas: plain 255,255,255, dark 18,18,18 (system is light); Settings shows the choice and default-browser status.",
+      "seconds": 19
     },
     "PRIVATE_BROWSING": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Private tab marked, no footprints, closed when private mode ended.",
+      "seconds": 14
     },
     "SAVED_PASSWORDS": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Failed sign-in not offered; offered, saved, bookmarked in Accounts (sealed file, no plaintext), filled one account (password only after a real click; a script click did not release it), asked between two, listed in Settings; private tab untouched (localhost:62139).",
+      "seconds": 27
     },
     "EXCLUDED_SITES": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Absorb refused; no recent page kept.",
+      "seconds": 11
     },
     "DOWNLOADS_HISTORY": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Downloaded 640 KB with progress → done; on disk with quarantine \"0083;6aee071a;Intoponet;1A7AF87F-CA37-44B1-A428-C1519D2DA2C2\"; History found and deleted a visit; private visit not kept.",
+      "seconds": 17
     },
     "CAPTURE": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Screenshot saved; \"New folder…\" offered.",
+      "seconds": 8
     },
     "PDF_EXPORT": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Article: 5 pages, 2 images, tagged with outline, ads/hidden/overlay text left out, bookmarked in \"Reading\" with the PDF linked; shop page saved as seen without ads; private tab asked where, neutral name, no Where-from or bookmark; 2 PDFs in Bookmarks › PDFs (private one not listed), removing one keeps the file.",
+      "seconds": 24
     },
     "PAYWALL_ALTERNATIVES": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "nytimes.com section page: paywalled=false (no signals).",
+      "seconds": 28
     },
     "ABSORB": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Absorbed 10572 words; 40 claims; selection absorb ok.",
+      "seconds": 11
     },
     "BEACONS_REGISTRY": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Live registry healthy, readable from the app, refuses unsigned publishes.",
+      "seconds": 4
     },
     "AUTO_TRANSLATE": {
-      "status": "assumed",
-      "notes": ""
+      "status": "skipped",
+      "notes": "Needs --tier full."
     },
     "ROUGH_TRANSLATE": {
-      "status": "assumed",
-      "notes": ""
+      "status": "skipped",
+      "notes": "Needs --tier full."
     },
     "STORY_MOUNTAINS": {
       "status": "pass",
-      "notes": "60 story mountains; highest \"US midterm elections\" (40 outlets, 17 other countries).",
-      "seconds": 16
+      "notes": "60 story mountains; highest \"US midterm elections\" (41 outlets, 20 other countries).",
+      "seconds": 13
     }
   }
 }

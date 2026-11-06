@@ -4,7 +4,7 @@ import type { SpreadHeadline, SpreadingStory, SpreadPlace } from './spreadingSto
 import type { StoryAnchor, StoryCountryCoverage, StoryMountain } from './storyMountains'
 import { countryPlace, normalizePlaceText, placesInCountry, type Place } from '../places/places'
 import { COUNTRY_ROWS } from '../places/placeData'
-import { memoize } from '../memo'
+import { memoize, TITLE_CACHE_LIMIT } from '../memo'
 
 /**
  * News digest: what each country's own outlets are publishing now.
@@ -458,7 +458,10 @@ function isCountryWord(token: string): boolean {
 }
 
 /** Kept unigrams and adjacent-pair bigrams of a headline. */
-export function headlineTerms(title: string): string[] {
+/** Shared result: do not mutate. */
+export const headlineTerms = memoize(headlineTermsUncached, (title: string) => title, TITLE_CACHE_LIMIT)
+
+function headlineTermsUncached(title: string): string[] {
   const raw = title.normalize('NFKC').toLowerCase().split(/[^\p{L}\p{M}]+/u).filter(Boolean)
   const kept: Array<string | null> = raw.map((token) =>
     [...token].length >= 4 && !NO_SPACE_SCRIPTS.test(token) && !STOPWORDS.has(token) && !isCountryWord(token) ? token : null)

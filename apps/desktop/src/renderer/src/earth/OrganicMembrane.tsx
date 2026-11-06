@@ -1,4 +1,5 @@
 import { useFrame, useThree } from '@react-three/fiber'
+import { maxTextureDelta, ORGANIC_NOOP_DELTA } from './textureDelta'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   Color,
@@ -268,7 +269,7 @@ export function OrganicMembrane({ signals, terrain, settings, phaseTimeSeconds, 
   if (!terrain && signalKind(signals) === 'mixed') {
     throw new Error('OrganicMembrane accepts one signal source type per snapshot.')
   }
-  const { gl, camera } = useThree()
+  const { gl, camera, invalidate } = useThree()
   const materialRef = useRef<MeshPhysicalMaterial | null>(null)
   const ownedMaterials = useRef(new Set<MeshPhysicalMaterial>())
   const transitionRef = useRef(1)
@@ -337,17 +338,20 @@ export function OrganicMembrane({ signals, terrain, settings, phaseTimeSeconds, 
     const next = targetData.data.slice()
     const nextKind = kind
     const crossesSourceBoundary = state.sourceKind !== nextKind
-    state.fromData = crossesSourceBoundary ? next.slice() : visible
+    // A change too small to see (a minute of decay) is applied at once: no seconds of full-rate frames.
+    const settle = crossesSourceBoundary || maxTextureDelta(visible, next) < ORGANIC_NOOP_DELTA
+    state.fromData = settle ? next.slice() : visible
     state.toData = next
     state.sourceKind = nextKind
     state.snapshotKey = key
     state.transitionStart = now
-    state.transition = crossesSourceBoundary ? 1 : 0
+    state.transition = settle ? 1 : 0
     assignTextureData(state.from, state.fromData)
     assignTextureData(state.to, state.toData)
     uniforms.uInterestTransition.value = state.transition
     uniforms.uStoryTerrain.value = nextKind === 'story' ? 1 : 0
-  }, [key, kind, targetData, uniforms])
+    invalidate()
+  }, [key, kind, targetData, uniforms, invalidate])
 
   useEffect(() => {
     lifecycleGeneration.current += 1

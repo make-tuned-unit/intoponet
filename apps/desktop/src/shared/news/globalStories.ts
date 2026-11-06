@@ -1,4 +1,5 @@
 import { headlineLanguage } from '../translate/detect'
+import { memoize, TITLE_CACHE_LIMIT } from '../memo'
 import { capitalEvidence, STOPWORDS, type NewsHeadline, type NewsItemInput, type NewsSourceMeta } from './newsDigest'
 
 /**
@@ -39,8 +40,10 @@ function fold(word: string): string {
   return word.normalize('NFD').replace(/\p{M}+/gu, '').toLowerCase().replace(/['’]s$/, '')
 }
 
-/** Content words of a headline (four letters or more, not stop words), folded. */
-export function storyTokens(title: string): string[] {
+/** Content words of a headline (four letters or more, not stop words), folded. Shared result: do not mutate. */
+export const storyTokens = memoize(storyTokensUncached, (title: string) => title, TITLE_CACHE_LIMIT)
+
+function storyTokensUncached(title: string): string[] {
   const words = title.normalize('NFKC').split(/[^\p{L}\p{M}\d]+/u).filter(Boolean)
   const tokens = new Set<string>()
   for (const word of words) {
@@ -50,6 +53,9 @@ export function storyTokens(title: string): string[] {
   }
   return [...tokens]
 }
+
+/** capitalEvidence with each word folded the way tokens are, remembered per title. */
+const foldedCapitalEvidence = memoize((title: string): Array<[string, boolean]> => [...capitalEvidence(title)].map(([word, capital]) => [fold(word), capital]), (title: string) => title, TITLE_CACHE_LIMIT)
 
 type Entry = {
   index: number
@@ -174,8 +180,7 @@ export function clusterHeadlines(entries: Array<{ title: string; tokens: string[
   // Words that look like names: capitalised mid-sentence most of the time.
   const caps = new Map<string, { cap: number; lower: number }>()
   for (const entry of entries) {
-    for (const [word, capital] of capitalEvidence(entry.title)) {
-      const key = fold(word)
+    for (const [key, capital] of foldedCapitalEvidence(entry.title)) {
       const tally = caps.get(key) ?? { cap: 0, lower: 0 }
       if (capital) tally.cap += 1
       else tally.lower += 1
@@ -193,26 +198,33 @@ export function clusterHeadlines(entries: Array<{ title: string; tokens: string[
   const ceiling = Math.max(25, entries.length * 0.04)
   for (const entry of entries) entry.tokens = entry.tokens.filter((token) => (df.get(token) ?? 0) <= ceiling && (df.get(token) ?? 0) >= 2).slice(0, 10)
 
-  // Pairs of tokens (at least one a name) and the headlines that share them.
-  const pairs = new Map<string, number[]>()
+  // Pairs of tokens (at least one a name) and the headlines that share them. Tokens are numbered
+  // in sorted order so a pair is one number (low id first), with no string built per pair.
+  const vocabulary = [...df.keys()].filter((token) => (df.get(token) ?? 0) <= ceiling && (df.get(token) ?? 0) >= 2).sort()
+  const ids = new Map(vocabulary.map((token, id) => [token, id]))
+  const named = vocabulary.map(isName)
+  const span = vocabulary.length + 1
+  const pairs = new Map<number, number[]>()
   entries.forEach((entry, index) => {
-    const tokens = [...entry.tokens].sort()
+    const tokens = entry.tokens.map((token) => ids.get(token)!).sort((a, b) => a - b)
     for (let i = 0; i < tokens.length; i += 1) {
+      const a = tokens[i]!
       for (let j = i + 1; j < tokens.length; j += 1) {
-        if (!isName(tokens[i]!) && !isName(tokens[j]!)) continue
-        const key = `${tokens[i]} ${tokens[j]}`
-        const list = pairs.get(key) ?? []
-        list.push(index)
-        pairs.set(key, list)
+        const b = tokens[j]!
+        if (!named[a] && !named[b]) continue
+        const key = a * span + b
+        const list = pairs.get(key)
+        if (list) list.push(index)
+        else pairs.set(key, [index])
       }
     }
   })
   // A story needs headlines from at least two outlets, so a pair seen once can never qualify (most pairs).
   const candidates: Array<{ key: string; indices: number[]; rank: number }> = []
-  for (const [key, indices] of pairs) {
+  for (const [pair, indices] of pairs) {
     if (indices.length < 2) continue
     const rank = score(indices)
-    if (rank !== null) candidates.push({ key, indices, rank })
+    if (rank !== null) candidates.push({ key: `${vocabulary[Math.floor(pair / span)]} ${vocabulary[pair % span]}`, indices, rank })
   }
   candidates
     .sort((a, b) => b.rank - a.rank)
