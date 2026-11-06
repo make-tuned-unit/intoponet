@@ -7,6 +7,7 @@ import { layaChannels, type LayaApi, type LayaCommand, type LayaHit, type LayaPa
 import { knowledgeChannels, oldsChannels, type AbsorbPreview, type AbsorbRefusal, type KnowledgeApi, type KnowledgeCommand, type KnowledgeDocument, type KnowledgeClaim, type KnowledgeHit, type KnowledgeRecord, type OldsApi, type OldsCoverage, type OldsCoverageQuery, type OldsQuery, type OldsThread } from '@intoponet/browser-api'
 import { contextBridge, ipcRenderer } from 'electron'
 import { passwordChannels, type PasswordApi, type PasswordCommand, type PasswordEvent, type PasswordPageState, type PasswordVaultStatus, type SavedLogin } from '../shared/passwords'
+import { browserImportChannels, type BrowserImportApi, type BrowserImportCommand, type ImportPreview, type ImportProfile, type ImportRunResult } from '../shared/browserImport'
 import { downloadChannels, historyChannels, type DownloadCommand, type DownloadEntry, type DownloadEvent, type DownloadsApi, type HistoryApi, type HistoryCommand, type HistoryEvent } from '@intoponet/browser-api'
 import { updateChannels, type UpdatesApi, type UpdateCommand, type UpdateStatus } from '@intoponet/browser-api'
 import { browsingChannels, type BrowsingApi, type BrowsingCommand, type BrowsingEvent, type BrowsingSettings, type ExternalOpenRequest } from '@intoponet/browser-api'
@@ -463,4 +464,11 @@ const browsing: BrowsingApi = {
   },
 }
 
-contextBridge.exposeInMainWorld('intoponet', Object.freeze({ browserHost, captures, olds, knowledge, laya, translate, privacy, sitePermissions, beacons, favicons, articles, access, downloads, history, browsing, updates, feedback, passwords }))
+const importInvoke = (command: BrowserImportCommand): Promise<unknown> => ipcRenderer.invoke(browserImportChannels.command, command)
+const browserImport: BrowserImportApi = {
+  detect: () => importInvoke({ type: 'detect' }) as Promise<ImportProfile[]>,
+  preview: (profileId) => importInvoke({ type: 'preview', profileId }) as Promise<ImportPreview>,
+  run: (profileId, categories) => importInvoke({ type: 'run', profileId, categories }) as Promise<ImportRunResult>,
+}
+
+contextBridge.exposeInMainWorld('intoponet', Object.freeze({ browserHost, captures, olds, knowledge, laya, translate, privacy, sitePermissions, beacons, favicons, articles, access, downloads, history, browsing, updates, feedback, passwords, browserImport }))

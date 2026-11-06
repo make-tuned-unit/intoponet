@@ -455,6 +455,18 @@
       "promise": "With vertical tabs on, the tab sidebar stays in both panel and full-width views, shows Pinned and Open sections, collapses to icons or hides fully (⌘⇧S) and slides back in when the pointer rests at the window's edge, keeps its width and state for the next launch, and every tab in it is reachable by keyboard and VoiceOver."
     },
     {
+      "id": "BROWSER_IMPORT",
+      "title": "Bring your browser with you",
+      "deps": [
+        "LIBRARY",
+        "TABS",
+        "SAVED_PASSWORDS"
+      ],
+      "tier": "core",
+      "kind": "e2e",
+      "promise": "Import finds Chromium-based browsers on this Mac, previews what it will bring (bookmarks and folders as collections, pinned tabs, open tabs, optionally history and, only after the Mac asks for keychain permission, passwords) and imports only what was ticked; nothing is uploaded, and running it twice adds no duplicates."
+    },
+    {
       "id": "TOUR",
       "title": "The guided tour shows every feature",
       "deps": [

@@ -118,6 +118,42 @@ export class HistoryStore {
     return true
   }
 
+  /**
+   * Pages from another browser's history. The same rules as for visits apply (footprints on,
+   * sites left out, the retention window), and an address already in history is not added again.
+   */
+  importVisits(entries: ReadonlyArray<{ url: string; title: string; visitedAt: number }>): { added: number; duplicates: number; excluded: number; old: number } {
+    const result = { added: 0, duplicates: 0, excluded: 0, old: 0 }
+    if (!this.policyValue.footprints) return result
+    const known = new Set(this.visits.map((visit) => visit.url))
+    const sites = this.options.excludedSites()
+    const days = this.policyValue.retentionDays
+    const cutoff = days ? this.now() - days * DAY_MS : 0
+    const added: HistoryVisit[] = []
+    for (const entry of entries) {
+      if (!recordable(entry.url) || !Number.isFinite(entry.visitedAt)) continue
+      if (known.has(entry.url)) {
+        result.duplicates += 1
+        continue
+      }
+      if (isExcludedSite(entry.url, sites)) {
+        result.excluded += 1
+        continue
+      }
+      if (entry.visitedAt < cutoff) {
+        result.old += 1
+        continue
+      }
+      known.add(entry.url)
+      added.push({ id: randomUUID(), url: entry.url, title: entry.title.trim().slice(0, 1_000), host: hostOf(entry.url), visitedAt: Math.min(entry.visitedAt, this.now()) })
+    }
+    if (!added.length) return result
+    this.visits = [...this.visits, ...added].sort((a, b) => b.visitedAt - a.visitedAt).slice(0, this.maxVisits)
+    result.added = added.length
+    this.options.onChange?.()
+    return result
+  }
+
   /** A page's title arrived after its visit was recorded. */
   updateTitle(url: string, title: string): void {
     const clean = title.trim().slice(0, 1_000)

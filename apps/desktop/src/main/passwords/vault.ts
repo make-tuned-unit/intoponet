@@ -154,6 +154,33 @@ export class PasswordVault {
     })
   }
 
+  /**
+   * Sign-ins brought from another browser, sealed in one write (all or none). One already saved
+   * for the same site and username is left as it is, so importing twice adds nothing.
+   */
+  importMany(rows: ReadonlyArray<{ origin: string; username: string; password: string }>): Promise<{ added: number; existing: number; invalid: number }> {
+    return this.mutate((data) => {
+      const stamp = this.now().toISOString()
+      let added = 0
+      let existing = 0
+      let invalid = 0
+      for (const row of rows) {
+        if (passwordOrigin(row.origin) !== row.origin || !row.password || row.password.length > PASSWORD_LIMIT || row.username.length > USERNAME_LIMIT) {
+          invalid += 1
+          continue
+        }
+        if (data.logins.some((login) => sameLoginSite(login.origin, row.origin) && login.username === row.username)) {
+          existing += 1
+          continue
+        }
+        if (data.logins.length >= MAX_LOGINS) throw new Error('Too many saved passwords.')
+        data.logins.push({ id: randomUUID(), origin: row.origin, username: row.username, password: row.password, createdAt: stamp, updatedAt: stamp, lastUsedAt: null })
+        added += 1
+      }
+      return { added, existing, invalid }
+    })
+  }
+
   markUsed(id: string): Promise<void> {
     return this.mutate((data) => {
       const login = data.logins.find((item) => item.id === id)

@@ -7,6 +7,8 @@ import { LayaSettings } from './LayaSettings'
 import { UpdatesSettings } from './UpdatesSettings'
 import { PasswordSettings } from '../passwords/PasswordSettings'
 import { BrowsingSettings } from '../browsing/BrowsingSettings'
+import { BrowserImportSettings } from '../browserImport/BrowserImportSettings'
+import type { LibraryImportCounts } from '../browserImport/mergeImport'
 import brandSymbol from '../brand/intoponet-mark-spectrum.svg'
 
 /** Settings: your reading language, automatic translation, downloaded languages, and a way to Privacy. */
@@ -19,6 +21,8 @@ export function SettingsPanel({
   onOpenPrivacy,
   onClose,
   onTour,
+  libraryReady = false,
+  onImportLibrary,
 }: {
   translation: TranslateModel
   settings: AppSettings
@@ -29,6 +33,9 @@ export function SettingsPanel({
   onClose: () => void
   /** Start the guided tour. */
   onTour?: () => void
+  /** Import from another browser: whether the library is open, and how bookmarks are merged into it. */
+  libraryReady?: boolean
+  onImportLibrary?: (payload: string) => LibraryImportCounts | null
 }) {
   const { status, target } = translation
   const [busy, setBusy] = useState('')
@@ -131,6 +138,8 @@ export function SettingsPanel({
         <BrowsingSettings />
 
         <PasswordSettings />
+
+        <BrowserImportSettings libraryReady={libraryReady} {...(onImportLibrary ? { onImportLibrary } : {})} />
 
         <LayaSettings />
 

@@ -183,6 +183,13 @@ export class PasswordService {
     return this.vault.neverList()
   }
 
+  /** Sign-ins from another browser (Settings › Import), sealed in one write. */
+  async importLogins(rows: ReadonlyArray<{ origin: string; username: string; password: string }>): Promise<{ added: number; existing: number; invalid: number }> {
+    const result = await this.vault.importMany(rows)
+    if (result.added) this.deps.changed(null)
+    return result
+  }
+
   async remove(id: string): Promise<void> {
     await this.vault.remove(id)
     this.deps.changed(null)
