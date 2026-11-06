@@ -1,0 +1,887 @@
+{
+  "$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:d7f93fa9-fe87-5b23-b383-07d180c65418",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-11-06T05:26:39.863Z",
+    "lifecycles": [
+      {
+        "phase": "pre-build"
+      }
+    ],
+    "tools": [
+      {
+        "vendor": "npm",
+        "name": "cli",
+        "version": "11.17.0"
+      }
+    ],
+    "component": {
+      "bom-ref": "intoponet@0.1.0",
+      "type": "library",
+      "name": "Intoponet",
+      "version": "0.1.0",
+      "scope": "required",
+      "description": "A privacy-first spatial browser for exploring the living web.",
+      "purl": "pkg:npm/intoponet@0.1.0",
+      "properties": [
+        {
+          "name": "cdx:npm:package:private",
+          "value": "true"
+        }
+      ],
+      "externalReferences": []
+    }
+  },
+  "components": [
+    {
+      "bom-ref": "@intoponet/desktop@0.1.18",
+      "type": "library",
+      "name": "desktop",
+      "version": "0.1.18",
+      "scope": "required",
+      "purl": "pkg:npm/%40intoponet/desktop@0.1.18",
+      "properties": [
+        {
+          "name": "cdx:npm:package:private",
+          "value": "true"
+        }
+      ],
+      "externalReferences": []
+    },
+    {
+      "bom-ref": "@babel/runtime@7.29.10",
+      "type": "library",
+      "name": "@babel/runtime",
+      "version": "7.29.10",
+      "scope": "required",
+      "purl": "pkg:npm/%40babel/runtime@7.29.10",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@babel/runtime/-/runtime-7.29.10.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "369ba04f36ca806acd7b8e548b7d9c37cbc214533156d3fff6bb5fc2fd273f91510c08ef601c4970b569600f66af58f13fa727213ef1f4b533b834db59860d44"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "@react-three/fiber@9.8.2",
+      "type": "library",
+      "name": "@react-three/fiber",
+      "version": "9.8.2",
+      "scope": "required",
+      "purl": "pkg:npm/%40react-three/fiber@9.8.2",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@react-three/fiber/-/fiber-9.8.2.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "eacd1e8f0d1b4f59b243f68b2ee81c8a5f3fcc198d9e71f0fc0212585d727c32cec5f5f7c986934bed089292484c49e6fd248c2edc637ba0890edd22e56bb54b"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "@types/react-reconciler@0.28.9",
+      "type": "library",
+      "name": "@types/react-reconciler",
+      "version": "0.28.9",
+      "scope": "required",
+      "purl": "pkg:npm/%40types/react-reconciler@0.28.9",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@types/react-reconciler/-/react-reconciler-0.28.9.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "1c73379f1c94677cc0ca55fc644cab0cd7765d93a74340f95dfba7245e452d09d96c71d8ab8516bd6d507de950357bf5202364c1885fc63c1f9ea8af601e9b16"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "buffer@6.0.3",
+      "type": "library",
+      "name": "buffer",
+      "version": "6.0.3",
+      "scope": "required",
+      "purl": "pkg:npm/buffer@6.0.3",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/buffer/-/buffer-6.0.3.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "153882a4dc6dc226591c465b71b4c87198c44552029fdcaafe90c591397de7f031cc3d6768172d37b60eebcae233f80b48363bb1dacc6f2f21a1f00362ebaa38"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "framer-motion@12.43.0",
+      "type": "library",
+      "name": "framer-motion",
+      "version": "12.43.0",
+      "scope": "required",
+      "purl": "pkg:npm/framer-motion@12.43.0",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/framer-motion/-/framer-motion-12.43.0.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "d5e68bdd1bd1fe40256c6ed461ca4ca6d132ccfa0434ed1ceb0ed99c1dff861daf480cffeae180167e9f768a93060b8db2d7f732c161247b03ff40c789c946fa"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "ieee754@1.2.1",
+      "type": "library",
+      "name": "ieee754",
+      "version": "1.2.1",
+      "scope": "required",
+      "purl": "pkg:npm/ieee754@1.2.1",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/ieee754/-/ieee754-1.2.1.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "75ccaa843bd7d42e3a95765c56a0a92be16d31141574830debf0dfe63b36ce8b94b2a1bb23ab05c62b480beeca60adbd29d5ce2c776ef732f8b059e85509ea68"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "its-fine@2.1.1",
+      "type": "library",
+      "name": "its-fine",
+      "version": "2.1.1",
+      "scope": "required",
+      "purl": "pkg:npm/its-fine@2.1.1",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/its-fine/-/its-fine-2.1.1.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "0b96685647aa4add008ded2dcc448efa24ff110a4d14d2f7f4690fee60800ada195050fa19cc9eac50abea4a7466d8882385bd1e8624638f12a32e7113fb872b"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "lucide-react@0.468.0",
+      "type": "library",
+      "name": "lucide-react",
+      "version": "0.468.0",
+      "scope": "required",
+      "purl": "pkg:npm/lucide-react@0.468.0",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/lucide-react/-/lucide-react-0.468.0.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "ea4a184619ccd8dd0619921d5f349e88dc20bafd60b7f1408d93a23e5efaae8062df12845dae1699fa71810c134cbe0a8a95e379fae77f7a15e08b18862e0914"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "ISC"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "motion@12.43.0",
+      "type": "library",
+      "name": "motion",
+      "version": "12.43.0",
+      "scope": "required",
+      "purl": "pkg:npm/motion@12.43.0",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/motion/-/motion-12.43.0.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "0508106d26bd1e7dff9ad6e26f430ae77cba25200d6be60a50a95a6275b30150c7e36e11610e4b569577a4d8961f4d01036cf8a23b1274ccea4fb836150c23b9"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "motion-dom@12.43.0",
+      "type": "library",
+      "name": "motion-dom",
+      "version": "12.43.0",
+      "scope": "required",
+      "purl": "pkg:npm/motion-dom@12.43.0",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/motion-dom/-/motion-dom-12.43.0.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "6b328e37877d4bae4f1281548904cc4e03e17849b37f642781d45ce7400a7c9a7d43d9a6701570db673c78cabd93c9313851dd2fbf96658ecdff917f9708836a"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "motion-utils@12.39.0",
+      "type": "library",
+      "name": "motion-utils",
+      "version": "12.39.0",
+      "scope": "required",
+      "purl": "pkg:npm/motion-utils@12.39.0",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/motion-utils/-/motion-utils-12.39.0.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "f2769d2402634eda91926445dfa168253af2c0af679c59a73f09d2332c5a38253b1838cdf514cc248c71f437bc12b33ebe93e131c72bffa7e8e56722c902e731"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "react@19.3.1",
+      "type": "library",
+      "name": "react",
+      "version": "19.3.1",
+      "scope": "required",
+      "purl": "pkg:npm/react@19.3.1",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/react/-/react-19.3.1.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "40d85676dee7ae05565901b9f10b86b004778efdc76dee266f8bf3ef0d9cb271dabdc89926075ad423cd6a5745e9e571bfdd2e7778d45e92a51cbebd80edfccb"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "react-dom@19.3.1",
+      "type": "library",
+      "name": "react-dom",
+      "version": "19.3.1",
+      "scope": "required",
+      "purl": "pkg:npm/react-dom@19.3.1",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/react-dom/-/react-dom-19.3.1.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "6346c0473e77961102d4d302012b34fe3f9f681ff3aaddd1f21a6f8357bcfbad59549e142f451d0b87016d77d931c22e86b7e07882d32def9978109abd03ed29"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "react-use-measure@2.1.7",
+      "type": "library",
+      "name": "react-use-measure",
+      "version": "2.1.7",
+      "scope": "required",
+      "purl": "pkg:npm/react-use-measure@2.1.7",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/react-use-measure/-/react-use-measure-2.1.7.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "2abbdc028d7723feb41e9c063b98e95bb13d0dfbac2b22cf2efb87954c8fe73aa79803e135ceaa4d18d442b7530039749693e90d5536fc6839d5494e1875db76"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "scheduler@0.28.0",
+      "type": "library",
+      "name": "scheduler",
+      "version": "0.28.0",
+      "scope": "required",
+      "purl": "pkg:npm/scheduler@0.28.0",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/scheduler/-/scheduler-0.28.0.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "8eea2b7c2988908c3cb53fa9e415d29ba3c98d017fc9c11898acb3511088b7f45a64884bf8fba56d0f58bb6cf51dd3890dda834e5c40d7ec4a0661d726c73303"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "suspend-react@0.1.3",
+      "type": "library",
+      "name": "suspend-react",
+      "version": "0.1.3",
+      "scope": "required",
+      "purl": "pkg:npm/suspend-react@0.1.3",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/suspend-react/-/suspend-react-0.1.3.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "6aa95d2a05fd699aa9a03a777bcfc167c0e6ef1d69265faa23764ac433748bf2104d6530071fcc6a79a5549df0a30a9b9e8e9cd9b9a221fb3e526e8b6ec8c9c9"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "three@0.172.0",
+      "type": "library",
+      "name": "three",
+      "version": "0.172.0",
+      "scope": "required",
+      "purl": "pkg:npm/three@0.172.0",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/three/-/three-0.172.0.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "e87320325cd4f7b32c57b0ffb58f156b7f1bf37933f18257f8179f2a3b2930d02fd15c7a7713288073ab9d197fb1b308b3704f50a8a33ea0ea27ff94c096c8a3"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "use-sync-external-store@1.7.0",
+      "type": "library",
+      "name": "use-sync-external-store",
+      "version": "1.7.0",
+      "scope": "required",
+      "purl": "pkg:npm/use-sync-external-store@1.7.0",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/use-sync-external-store/-/use-sync-external-store-1.7.0.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "e8bf847a280731085d6883cd20550ac1f5894b058543c8096c9d832ceb39b0321e813c11f5f471be7337b9c8872a3219845cfe280bf67a6856311bc398c718f0"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "zustand@5.0.16",
+      "type": "library",
+      "name": "zustand",
+      "version": "5.0.16",
+      "scope": "required",
+      "purl": "pkg:npm/zustand@5.0.16",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/zustand/-/zustand-5.0.16.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "52fededf6ee286509f6b27e36b784373433ae14a5ebf52d604aa51a1b74ae0dca8bc30cf79e5f88a659773fc330b5c9ce9f9183e8018fe770a54f02cda3aed43"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "@intoponet/beacon-core@0.1.0",
+      "type": "library",
+      "name": "beacon-core",
+      "version": "0.1.0",
+      "scope": "required",
+      "purl": "pkg:npm/%40intoponet/beacon-core@0.1.0",
+      "properties": [
+        {
+          "name": "cdx:npm:package:private",
+          "value": "true"
+        }
+      ],
+      "externalReferences": []
+    },
+    {
+      "bom-ref": "@intoponet/browser-api@0.1.0",
+      "type": "library",
+      "name": "browser-api",
+      "version": "0.1.0",
+      "scope": "required",
+      "purl": "pkg:npm/%40intoponet/browser-api@0.1.0",
+      "properties": [
+        {
+          "name": "cdx:npm:package:private",
+          "value": "true"
+        }
+      ],
+      "externalReferences": []
+    },
+    {
+      "bom-ref": "@intoponet/field-snapshot@0.1.0",
+      "type": "library",
+      "name": "field-snapshot",
+      "version": "0.1.0",
+      "scope": "required",
+      "purl": "pkg:npm/%40intoponet/field-snapshot@0.1.0",
+      "properties": [
+        {
+          "name": "cdx:npm:package:private",
+          "value": "true"
+        }
+      ],
+      "externalReferences": []
+    },
+    {
+      "bom-ref": "@intoponet/frequency-field@0.1.0",
+      "type": "library",
+      "name": "frequency-field",
+      "version": "0.1.0",
+      "scope": "required",
+      "purl": "pkg:npm/%40intoponet/frequency-field@0.1.0",
+      "properties": [
+        {
+          "name": "cdx:npm:package:private",
+          "value": "true"
+        }
+      ],
+      "externalReferences": []
+    },
+    {
+      "bom-ref": "@intoponet/local-knowledge@0.1.0",
+      "type": "library",
+      "name": "local-knowledge",
+      "version": "0.1.0",
+      "scope": "required",
+      "purl": "pkg:npm/%40intoponet/local-knowledge@0.1.0",
+      "properties": [
+        {
+          "name": "cdx:npm:package:private",
+          "value": "true"
+        }
+      ],
+      "externalReferences": []
+    },
+    {
+      "bom-ref": "@intoponet/protection-engine@0.1.0",
+      "type": "library",
+      "name": "protection-engine",
+      "version": "0.1.0",
+      "scope": "required",
+      "purl": "pkg:npm/%40intoponet/protection-engine@0.1.0",
+      "properties": [
+        {
+          "name": "cdx:npm:package:private",
+          "value": "true"
+        }
+      ],
+      "externalReferences": []
+    },
+    {
+      "type": "framework",
+      "bom-ref": "pkg:npm/electron@45.0.0",
+      "name": "electron",
+      "version": "45.0.0",
+      "purl": "pkg:npm/electron@45.0.0",
+      "scope": "required",
+      "description": "Electron runtime shipped in the macOS app bundle."
+    },
+    {
+      "type": "framework",
+      "bom-ref": "pkg:generic/chromium@156.0.8078.48",
+      "name": "Chromium",
+      "version": "156.0.8078.48",
+      "purl": "pkg:generic/chromium@156.0.8078.48",
+      "scope": "required",
+      "description": "Chromium runtime embedded by the shipped Electron version.",
+      "properties": [
+        {
+          "name": "intoponet:version-evidence",
+          "value": "electron-to-chromium@1.5.463 full-versions mapping"
+        },
+        {
+          "name": "intoponet:runtime-component",
+          "value": "bundled with Electron; not a separately installed package"
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "intoponet@0.1.0",
+      "dependsOn": [
+        "@intoponet/beacon-core@0.1.0",
+        "@intoponet/browser-api@0.1.0",
+        "@intoponet/field-snapshot@0.1.0",
+        "@intoponet/frequency-field@0.1.0",
+        "@intoponet/local-knowledge@0.1.0",
+        "@intoponet/protection-engine@0.1.0"
+      ]
+    },
+    {
+      "ref": "@intoponet/desktop@0.1.18",
+      "dependsOn": [
+        "@intoponet/beacon-core@0.1.0",
+        "@intoponet/browser-api@0.1.0",
+        "@intoponet/field-snapshot@0.1.0",
+        "@intoponet/frequency-field@0.1.0",
+        "@intoponet/local-knowledge@0.1.0",
+        "@intoponet/protection-engine@0.1.0",
+        "@react-three/fiber@9.8.2",
+        "lucide-react@0.468.0",
+        "motion@12.43.0",
+        "react@19.3.1",
+        "react-dom@19.3.1",
+        "three@0.172.0",
+        "pkg:npm/electron@45.0.0"
+      ]
+    },
+    {
+      "ref": "@babel/runtime@7.29.10",
+      "dependsOn": []
+    },
+    {
+      "ref": "@react-three/fiber@9.8.2",
+      "dependsOn": [
+        "react@19.3.1",
+        "three@0.172.0",
+        "react-dom@19.3.1",
+        "@babel/runtime@7.29.10",
+        "buffer@6.0.3",
+        "its-fine@2.1.1",
+        "react-use-measure@2.1.7",
+        "scheduler@0.28.0",
+        "suspend-react@0.1.3",
+        "use-sync-external-store@1.7.0",
+        "zustand@5.0.16"
+      ]
+    },
+    {
+      "ref": "@types/react-reconciler@0.28.9",
+      "dependsOn": []
+    },
+    {
+      "ref": "buffer@6.0.3",
+      "dependsOn": [
+        "ieee754@1.2.1"
+      ]
+    },
+    {
+      "ref": "framer-motion@12.43.0",
+      "dependsOn": [
+        "react@19.3.1",
+        "react-dom@19.3.1",
+        "motion-dom@12.43.0",
+        "motion-utils@12.39.0"
+      ]
+    },
+    {
+      "ref": "ieee754@1.2.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "its-fine@2.1.1",
+      "dependsOn": [
+        "react@19.3.1",
+        "@types/react-reconciler@0.28.9"
+      ]
+    },
+    {
+      "ref": "lucide-react@0.468.0",
+      "dependsOn": [
+        "react@19.3.1"
+      ]
+    },
+    {
+      "ref": "motion@12.43.0",
+      "dependsOn": [
+        "react@19.3.1",
+        "react-dom@19.3.1",
+        "framer-motion@12.43.0"
+      ]
+    },
+    {
+      "ref": "motion-dom@12.43.0",
+      "dependsOn": [
+        "motion-utils@12.39.0"
+      ]
+    },
+    {
+      "ref": "motion-utils@12.39.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "react@19.3.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "react-dom@19.3.1",
+      "dependsOn": [
+        "react@19.3.1",
+        "scheduler@0.28.0"
+      ]
+    },
+    {
+      "ref": "react-use-measure@2.1.7",
+      "dependsOn": [
+        "react@19.3.1",
+        "react-dom@19.3.1"
+      ]
+    },
+    {
+      "ref": "scheduler@0.28.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "suspend-react@0.1.3",
+      "dependsOn": [
+        "react@19.3.1"
+      ]
+    },
+    {
+      "ref": "three@0.172.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "use-sync-external-store@1.7.0",
+      "dependsOn": [
+        "react@19.3.1"
+      ]
+    },
+    {
+      "ref": "zustand@5.0.16",
+      "dependsOn": [
+        "react@19.3.1",
+        "use-sync-external-store@1.7.0"
+      ]
+    },
+    {
+      "ref": "@intoponet/beacon-core@0.1.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "@intoponet/browser-api@0.1.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "@intoponet/field-snapshot@0.1.0",
+      "dependsOn": [
+        "@intoponet/frequency-field@0.1.0"
+      ]
+    },
+    {
+      "ref": "@intoponet/frequency-field@0.1.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "@intoponet/local-knowledge@0.1.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "@intoponet/protection-engine@0.1.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/electron@45.0.0",
+      "dependsOn": [
+        "pkg:generic/chromium@156.0.8078.48"
+      ]
+    }
+  ]
+}
