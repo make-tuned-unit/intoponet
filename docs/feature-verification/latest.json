@@ -1,192 +1,257 @@
 {
-  "started": "2026-11-06T19:01:11.624Z",
-  "finished": "2026-11-06T19:02:04.347Z",
+  "started": "2026-11-06T21:09:58.561Z",
+  "finished": "2026-11-06T21:25:11.390Z",
   "tier": "network",
-  "only": [
-    "OLDS_COVERAGE"
-  ],
-  "summary": "1 passed, 0 failed, 0 blocked, 0 skipped, 44 assumed",
+  "only": null,
+  "summary": "48 passed, 0 failed, 0 blocked, 2 skipped",
   "results": {
     "BUILD": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "npm run typecheck · npm test · npm run build",
+      "seconds": 27
     },
     "APP_BOOT": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Header: Private · Bookmarks · The Olds · Knowledge · My map · Settings",
+      "seconds": 2
     },
     "SETTINGS": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Settings and Privacy sections present.",
+      "seconds": 5
     },
     "ACCESSIBILITY": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "No WCAG 2.2 AA violations (axe); panels open with Enter, close with Escape, focus returns.",
+      "seconds": 18
     },
     "TABS": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Moved by command, drag and ⌥⇧↓ (focus kept); pinned tab first, icon-only and saved; speaker muted and unmuted a playing tab; spinner while a slow page loaded; no axe violations in rail or strip.",
+      "seconds": 19
     },
     "LIBRARY": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Migrated to encrypted library; pin hidden; beacon consent requires agreement.",
+      "seconds": 9
     },
     "COLLECTIONS_IMPORT": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Explained and split into 2. ",
+      "seconds": 9
     },
     "FLY_TO": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Charlottetown PEI and \"Fredericto\" flew on the globe, with the locator shown.",
+      "seconds": 10
     },
     "GLOBE_MOTION": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Locator 735,473 → 758,490 after zoom.",
+      "seconds": 9
     },
     "COUNTRY_NAMES": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "16 names at the start; clicked Venezuela → Venezuela; 7 flights named correctly.",
+      "seconds": 56
     },
     "GLOBE_LIVE": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "247 public signals across 4 active layers. Hover to preview, click to explore, or search a place below.",
+      "seconds": 10
     },
     "SOURCE_CAROUSEL": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Cards with 12 images, 4 bylines, 5 summaries. Carousel flipped from the Guardian to CNA; chose \"CNA: Trump names migration hardliner Miller new chief of staff. Press Enter to r\" and the browser opened https://www.channelnewsasia.com/world/trump-miller-new-chief-staff-migration-us-6532261 (page was closed before).",
+      "seconds": 21
     },
     "WORLD_STORIES": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "20 world stories; scrolls 400px.",
+      "seconds": 10
     },
     "COUNTRY_PANEL": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Facts ok, recent history 2025, 2024, 2022, 2020, 12 headlines.",
+      "seconds": 42
     },
     "OLDS_HEADLINE": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Israel → 2026 Israeli legislative election: 20 dated events from 10 Apr 1973; Ebola, South Africa and Guernsey guards ok; related Judiciary of Israel, Israeli law, Politics of Israel, Elections in Israel. Brazil → 2026 Brazilian general election. Honduras → Honduras.",
+      "seconds": 69
     },
     "OLDS_COUNTRY": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Capital Tórshavn; 7 chapters; latest event 2025.",
+      "seconds": 4
     },
     "OLDS_DEBATE": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Anthropologist Joseph Henrich, Rodney Stark, Historian Joel Mokyr, Williams, Voltaire, Bob Allen",
+      "seconds": 2
     },
     "OLDS_UI": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Views Story/Timeline/List; sections: TOPICS BEHIND THIS STORY.",
+      "seconds": 26
     },
     "OLDS_COVERAGE": {
       "status": "pass",
-      "notes": "“Paraguay: Thousands protest banking scandal as president fac”: 27 headlines (SEPTEMBER 2026 – MARCH 2021), then 54 reaching AUGUST 2016; The start of the archive for this topic.",
-      "seconds": 53
+      "notes": "“Stephen Miller named by Trump as new White House chief of st”: 1 headlines (NOVEMBER 2026 – NOVEMBER 2026), then 2 reaching OCTOBER 2026; Go further back",
+      "seconds": 103
     },
     "BROWSE": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Toolbar: Protected, Translate, Capture, PDF, Pin, Absorb, Bookmarks; pages see Chrome/156.0.8078.48; tab closed cleanly; a self-closing page took its tab; ⌘W closed tabs from inside the page, ⌘⇧T reopened one, ⌘= zoom shown and kept for the site, ⌘1/⌘9 picked tabs; the app window stayed on the app.",
+      "seconds": 32
     },
     "OMNIBOX": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "\"localh\" completed to localhost:51260; history row opened in a background tab with ⌘↵; then \"Switch to tab\" landed on it (1 tab); Backspace removed the completion; \"Fredericton\" flew the globe.",
+      "seconds": 14
     },
     "PROTECTION": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Protected · 3 ads · 0 trackers blocked · Block ads · Block trackers · Encrypted DNS · Local IP hidden · No VPN · Pause on this site",
+      "seconds": 17
     },
     "PERMISSIONS": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Location allowed via the bar; a pop-up without a click was blocked and opened with \"Allow once\"; a clicked popup kept its opener; a clicked _blank link opened a tab.",
+      "seconds": 15
     },
     "EXTERNAL_APPS": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "\"Open Mail? 127.0.0.1:52113 wants to open mailto:someone@example.com?subject=Hello\" asked for a mailto: link; the tab stayed on http://127.0.0.1:52113/; Cancel closed it and no prompt storm followed.",
+      "seconds": 7
     },
     "ERROR_PAGE": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "\"127.0.0.1:52266 refused to connect\" with Retry; toolbar kept http://127.0.0.1:52266/; Retry loaded the page once a server listened; a self-signed site showed \"Connection not secure\" with its certificate and Back returned.",
+      "seconds": 4
     },
     "PDF_VIEWER": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "doc.pdf opened in the tab in Chromium's viewer; the attachment downloaded as intoponet-e2e-attachment.pdf.",
+      "seconds": 6
     },
     "PAGE_APPEARANCE": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Pages: dark→dark, light→light, system→dark, dark mode canvas: plain 255,255,255, dark 18,18,18 (system is dark); Settings shows the choice and default-browser status.",
+      "seconds": 18
     },
     "PRIVATE_BROWSING": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Private tab marked, no footprints, closed when private mode ended.",
+      "seconds": 12
     },
     "SAVED_PASSWORDS": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Failed sign-in not offered; offered, saved, bookmarked in Accounts (sealed file, no plaintext), filled one account (password only after a real click; a script click did not release it), asked between two, listed in Settings; private tab untouched (localhost:53067).",
+      "seconds": 25
     },
     "EXCLUDED_SITES": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Absorb refused; no recent page kept.",
+      "seconds": 10
     },
     "DOWNLOADS_HISTORY": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Downloaded 640 KB with progress → done; on disk with quarantine \"0083;6aee448f;Intoponet;58817000-9302-44E5-8089-05EB1B0982D7\"; History found and deleted a visit; private visit not kept.",
+      "seconds": 15
     },
     "CAPTURE": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Screenshot saved; \"New folder…\" offered.",
+      "seconds": 7
     },
     "PDF_EXPORT": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Article: 5 pages, 2 images, tagged with outline, ads/hidden/overlay text left out, bookmarked in \"Reading\" with the PDF linked; shop page saved as seen without ads; private tab asked where, neutral name, no Where-from or bookmark; 2 PDFs in Bookmarks › PDFs (private one not listed), removing one keeps the file.",
+      "seconds": 23
     },
     "PAYWALL_ALTERNATIVES": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "nytimes.com section page: paywalled=false (no signals).",
+      "seconds": 22
     },
     "ABSORB": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Absorbed 10572 words; 40 claims; selection absorb ok.",
+      "seconds": 10
     },
     "BEACONS_REGISTRY": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Live registry healthy, readable from the app, refuses unsigned publishes.",
+      "seconds": 3
     },
     "AUTO_TRANSLATE": {
-      "status": "assumed",
-      "notes": ""
+      "status": "skipped",
+      "notes": "Needs --tier full."
     },
     "ROUGH_TRANSLATE": {
-      "status": "assumed",
-      "notes": ""
+      "status": "skipped",
+      "notes": "Needs --tier full."
     },
     "STORY_MOUNTAINS": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "60 story mountains; highest \"US midterm elections\" (35 outlets, 13 other countries).",
+      "seconds": 13
     },
     "COPY_ADDRESS": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Copied without tracking parameters from the page and the toolbar, exactly with ⌥, and not while a text field had focus.",
+      "seconds": 9
     },
     "PINNED_HOME": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Pinned at home; same-site moves stay home, another site offers the way back; ⌘W unloads it in place and it reopens at home; saved with its home.",
+      "seconds": 13
     },
     "TAB_SLEEP": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "9 background tabs slept (typed text and the front tab stayed awake); their pages' memory 926 MB → 172 MB; woke on the same page, scroll and back list.",
+      "seconds": 19
     },
     "RECENT_TABS": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Hold ⌃, Tab and ⌃⇧Tab step most-recent-first over the page (announced); release shows it, a quick ⌃Tab goes back, Escape keeps the tab; tab-bar order unchanged.",
+      "seconds": 11
     },
     "SIDEBAR_TABS": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "Kept open in full width with Pinned and Open sections (page after it, no tabs twice); resized to 331px and kept; ⌃⌘S hid it, the left edge peeked it back, ⌃⌘S restored it; keyboard and axe clean.",
+      "seconds": 12
+    },
+    "BROWSER_IMPORT": {
+      "status": "pass",
+      "notes": "Found Chrome (Person 1) and Arc; previewed counts with history and passwords off; imported 4 bookmarks as 4 collections, 2 history pages and 1 sealed password from Chrome, and 2 pinned tabs (with homes), 1 open tab and the Work, Home and Work › Reading collections from Arc; a second run added nothing; keyboard and axe clean.",
+      "seconds": 13
     },
     "TOUR": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "All 24 steps shown, each spotlight on what it describes; the tour put everything back at the end.",
+      "seconds": 74
+    },
+    "TAB_ARCHIVE": {
+      "status": "pass",
+      "notes": "Unseen unpinned tabs archived (pinned, typed and private ones stayed); \"2 tabs archived\" with Undo; found from the address bar and reopened with its back list; cleared with history.",
+      "seconds": 16
+    },
+    "COMMAND_MENU": {
+      "status": "pass",
+      "notes": "⌘K from a page shows command mode in 38 ms (p95); \">\" too; no requests while typing; actions, tabs and places ranked; keyboard and Enter run them (copy, zoom, sidebar, protection, Knowledge); axe clean.",
+      "seconds": 19
+    },
+    "TAB_FOLDERS": {
+      "status": "pass",
+      "notes": "Folder named from the sidebar; tab dragged in and moved by command; nested four deep; order follows the sidebar; folded and kept; saved as path-named collections; a collection opened as a folder; delete keeps tabs; axe clean.",
+      "seconds": 12
+    },
+    "AD_SLOTS": {
+      "status": "pass",
+      "notes": "Blocked ad frame, ad picture and empty slot collapsed (0 px); story text kept (19 px box with text stays); left alone with protection paused.",
+      "seconds": 12
     }
   }
 }
