@@ -509,6 +509,16 @@
       "tier": "core",
       "kind": "e2e",
       "promise": "Tabs can be dragged (or moved from the keyboard) into named folders that collapse, nest inside one another, keep their order for the next launch, and can be saved as a private collection or opened from one."
+    },
+    {
+      "id": "AD_SLOTS",
+      "title": "No blank boxes where ads were",
+      "deps": [
+        "PROTECTION"
+      ],
+      "tier": "core",
+      "kind": "e2e",
+      "promise": "With protection on, the space a page kept for a blocked ad (its frame, picture or an empty slot labelled Advertisement) is hidden, while anything holding the page's own text stays; with protection paused for the site, the page is left as it is."
     }
   ]
 }

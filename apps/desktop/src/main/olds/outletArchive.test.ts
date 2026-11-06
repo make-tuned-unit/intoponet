@@ -354,6 +354,29 @@ describe('OutletArchive.coverage', () => {
     expect(third.cursor).toBeNull()
   })
 
+  it('shows only the headlines touching the story from a page mostly about other things (a person\u2019s page)', async () => {
+    const url = 'https://www.aljazeera.com/news/2026/11/6/trump-makes-stephen-miller-chief-of-staff'
+    const title = 'Trump makes adviser Stephen Miller White House chief of staff'
+    const html = '<meta name="keywords" content="News, Donald Trump"><p>Donald Trump said Stephen Miller would replace Susie Wiles as chief of staff.</p>'
+    const page = topicPage([
+      ['/news/2026/11/5/tariffs', 'Trump doubles tariffs on Canadian lumber'],
+      ['/news/2026/11/5/paris', 'What is the Paris Agreement and why does Trump reject it?'],
+      ['/news/2026/11/4/shares', 'Trump says share prices will recover'],
+      ['/news/2026/11/3/wiles', 'Susie Wiles under pressure as Trump weighs staff shake-up'],
+      ['/news/2026/11/2/arch', 'Judge blocks construction of Trump arch'],
+    ])
+    const fetchImpl = (async (input: string | URL) => {
+      const address = String(input)
+      if (address === url) return new Response(html)
+      if (address.startsWith('https://www.aljazeera.com/tag/donald-trump/')) return new Response(page)
+      return new Response('', { status: 404 })
+    }) as typeof fetch
+    const archive = new OutletArchive({ cacheDir: mkdtempSync(join(tmpdir(), 'outlet-archive-')), fetchImpl, spacingMs: 0, now: () => Date.parse('2026-11-06T12:00:00Z') })
+    const coverage = await archive.coverage({ url, headline: title })
+    expect(coverage.topics.map((topic) => topic.label)).toEqual(['Donald Trump'])
+    expect(coverage.items.map((item) => item.title)).toEqual(['Susie Wiles under pressure as Trump weighs staff shake-up'])
+  })
+
   it('reads each capture once', async () => {
     const { archive, requests } = setup()
     const first = await archive.coverage({ url: articleUrl, headline })

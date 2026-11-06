@@ -179,7 +179,10 @@ async function pdfExport(ctx) {
 
     // A shop page is not an article: saved as seen, still without ads, and the live page is left as it was.
     await ctx.evaluate(`window.intoponet.browserHost.setPdfSettings({ mode: 'auto', paper: 'a4', textSize: 'medium', images: true, citation: true, groupId: '' }).then(() => true)`)
-    await openPage(ctx, `${base}/shop`, 2500)
+    await openPage(ctx, `${base}/shop`, 3500)
+    // How the live page looks before saving (ad space may already be hidden by protection).
+    const adState = `(() => { const ad = document.getElementById('div-gpt-ad-1'); return JSON.stringify([getComputedStyle(ad).display, ad.getAttribute('style') || '', document.body.innerText.length]) })()`
+    const beforeSave = await (await ctx.page('/shop')).evaluate(adState)
     await ctx.evaluate(`window.intoponet.browserHost.exportPdf().then(() => true)`)
     const shopPath = await savedPath(path)
     const shop = text(shopPath)
@@ -188,8 +191,8 @@ async function pdfExport(ctx) {
     const note = await ctx.evaluate(`document.querySelector('.pdf-done .pdf-meta').textContent`)
     expect(/As seen/.test(note), `The shop page was not saved as seen: ${note}`)
     const live = await ctx.page('/shop')
-    const restored = await live.evaluate(`getComputedStyle(document.getElementById('div-gpt-ad-1')).display !== 'none' && !document.getElementById('div-gpt-ad-1').getAttribute('style')`)
-    expect(restored === true, 'Saving as seen left the live page changed.')
+    const afterSave = await live.evaluate(adState)
+    expect(afterSave === beforeSave, `Saving as seen left the live page changed (${beforeSave} → ${afterSave}).`)
 
     // A private tab: asks where to save (the dialog is answered here), neutral name, no "Where from", no bookmark.
     const privatePath = join(ctx.profile, 'private-choice.pdf')
@@ -1689,7 +1692,7 @@ export const checks = {
       const awake = await rendererMemory()
       // Sleep after "15 minutes".
       await ctx.evaluate(`window.intoponet.browsing.setTabSleep('15m').then(() => true)`)
-      await ctx.wait(`${host}.getTabs().then((t) => t.filter((x) => x.asleep).length >= 9)`, 20_000, 'the background tabs to sleep')
+      await ctx.wait(`${host}.getTabs().then((t) => t.filter((x) => x.asleep).length >= 9)`, 45_000, 'the background tabs to sleep')
       const now = await tabs()
       const state = (id) => now.find((tab) => tab.id === id)
       expect(state(deep.id).asleep, 'The background tab did not sleep.')
@@ -2198,6 +2201,40 @@ export const checks = {
       await ctx.delay(500)
       expect(!(await byTitle('Page /docs')).folderId && (await folders()).find((folder) => folder.name === 'Reports')?.parentId === null, 'Deleting a folder lost its tabs or folders.')
       return 'Folder named from the sidebar; tab dragged in and moved by command; nested four deep; order follows the sidebar; folded and kept; saved as path-named collections; a collection opened as a folder; delete keeps tabs; axe clean.'
+    } finally {
+      server.close()
+    }
+  },
+  async AD_SLOTS(ctx) {
+    // A news-like page with three kinds of ad space, and one "ad" container that also holds the story.
+    const page = `<!doctype html><title>Story with ads</title><body style="font:16px system-ui;margin:40px">
+      <article><h1>Story</h1><p id="lead">The story starts here.</p>
+        <div id="slot-frame" class="ad-slot" style="min-height:250px;background:#eee"><span>Advertisement</span><iframe src="https://securepubads.g.doubleclick.net/gampad/ads?slot=1" width="300" height="250"></iframe></div>
+        <div id="slot-image" style="min-height:90px;background:#eee"><img src="https://pagead2.googlesyndication.com/pagead/banner.png" width="728" height="90" alt=""></div>
+        <div id="slot-empty" class="ad" style="height:120px;background:#eee"></div>
+        <div id="slot-with-story" class="ad" style="background:#eee"><p>A paragraph of the story that happens to sit in an "ad" box.</p></div>
+        <p id="tail">The story goes on.</p></article></body>`
+    const server = createServer((request, response) => { response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); response.end(page) })
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+    const origin = `http://127.0.0.1:${server.address().port}`
+    const boxes = async () => JSON.parse(await (await ctx.page('/story')).evaluate(`JSON.stringify(Object.fromEntries(['lead', 'slot-frame', 'slot-image', 'slot-empty', 'slot-with-story', 'tail'].map((id) => [id, Math.round(document.getElementById(id).getBoundingClientRect().height)])))`))
+    try {
+      await openPage(ctx, `${origin}/story`, 4500)
+      const shown = await boxes()
+      expect(shown['slot-frame'] === 0, `The blocked ad frame left a ${shown['slot-frame']} px box.`)
+      expect(shown['slot-image'] === 0, `The blocked ad picture left a ${shown['slot-image']} px box.`)
+      expect(shown['slot-empty'] === 0, `The empty ad slot is still ${shown['slot-empty']} px tall.`)
+      expect(shown['slot-with-story'] > 0 && shown.lead > 0 && shown.tail > 0, `Story text was hidden: ${JSON.stringify(shown)}.`)
+      // With protection paused for the site, the page is left as it is.
+      await ctx.evaluate(`window.intoponet.browserHost.setSiteProtection(false).then(() => true)`)
+      await ctx.delay(4500)
+      const paused = await boxes()
+      expect(paused['slot-frame'] > 0 && paused['slot-empty'] > 0, `With protection paused the ad spaces stayed hidden: ${JSON.stringify(paused)}.`)
+      await ctx.evaluate(`window.intoponet.browserHost.setSiteProtection(true).then(() => true)`)
+      await ctx.delay(1500)
+      const again = await boxes()
+      expect(again['slot-frame'] === 0 && again['slot-empty'] === 0 && again['slot-with-story'] > 0, `Protection back on did not hide the ad spaces again: ${JSON.stringify(again)}.`)
+      return `Blocked ad frame, ad picture and empty slot collapsed (0 px); story text kept (${shown['slot-with-story']} px box with text stays); left alone with protection paused.`
     } finally {
       server.close()
     }

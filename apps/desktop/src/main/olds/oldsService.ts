@@ -828,7 +828,10 @@ export class OldsService {
     const payload = await this.getJson(url.toString(), 12_000) as { parse?: { title?: string; wikitext?: string } }
     const wikitext = payload.parse?.wikitext
     if (typeof wikitext !== 'string') return []
+    // A date given without its year ("On November 13, …") is read as this year: never later than today.
+    const today = new Date(this.now()).toISOString().slice(0, 10)
     return chronologyFromWikitext(payload.parse?.title ?? title, wikitext, new Date(this.now()).getUTCFullYear(), lang, limit, focus, yearHint)
+      .filter((entry) => entry.at.iso.slice(0, 10) <= today)
   }
 
   /** Expand a historically sparse narrative through the article's explicit subject
@@ -971,7 +974,9 @@ export class OldsService {
     // The country the story is about: the one the headline names, when the outlet's own country isn't named
     // (a Ghanaian outlet reporting on South Africa).
     const named = headlineCountries(text)
-    const namedCountries = named.length ? named : capitalCountries(text)
+    const capitals = named.length ? [] : capitalCountries(text)
+    // Failing a country or capital, its leader or seat of government ("Trump names…" is a US story wherever it is reported).
+    const namedCountries = named.length ? named : capitals.length ? capitals : impliedCountries(text)
     if (namedCountries.length && (!query.countryCode || !namedCountries.includes(query.countryCode))
       && !(query.countryCode && localLegislativeSubject(text))) {
       query = { ...query, countryCode: namedCountries[0]! }
@@ -1109,7 +1114,8 @@ export class OldsService {
       if (person && !filedThread && !native && !namedPerson && !givenNameMentioned(node.label, `${text} ${query.text}`)
         && !(storyQids.length && storyQids.some((qid) => countries.includes(qid)))
         && Object.keys(entity.sitelinks ?? {}).filter((site) => site.endsWith('wiki')).length < 40) return []
-      if (person && surnameOnly && countries.length && storyQids.length && !storyQids.some((qid) => countries.includes(qid)) && !famous.has(item.qid)) return []
+      // (Only for the person that surname may be: someone named in full elsewhere in the headline is named.)
+      if (person && surnameOnly && !fullPersonNameMentioned(node.label, text) && countries.length && storyQids.length && !storyQids.some((qid) => countries.includes(qid)) && !famous.has(item.qid)) return []
       // Known for something the headline never touches ("Butler says investment return…" is not the actor).
       if (person && !filedThread && lang === 'en' && !fullPersonNameMentioned(node.label, text) && occupationClashes(node.description, text)) return []
       // Partial native-language name overlap is not enough to identify a foreign namesake
@@ -1153,7 +1159,9 @@ export class OldsService {
       const bilateral = !filedThread && !native && /\b(relations|rivalry|trade war|cold war)\b/i.test(node.label)
         && storyQids.some((qid) => countries.includes(qid)) && peopleQids.some((qid) => countries.includes(qid) && !storyQids.includes(qid))
       const kindScore = native ? 0 : eventKindMatches(node.label, text) ? 1.5 : eventKindConflicts(node.label, text) ? -3 : 0
-      const score = filedBonus + (bilateral ? 4 : 0) + (namedPerson ? 2 : 0) + (diedNow ? 4 : 0) + (countryOnly ? -5 : 0) + kindScore + scoreCandidate({
+      // The person the headline opens with ("Stephen Miller will replace Susie Wiles…") is its subject, more than others it names.
+      const opensHeadline = namedPerson && subjectPerson(node.label)
+      const score = filedBonus + (bilateral ? 4 : 0) + (namedPerson ? 2 : 0) + (opensHeadline ? 1.5 : 0) + (diedNow ? 4 : 0) + (countryOnly ? -5 : 0) + kindScore + scoreCandidate({
         ageYears,
         rank,
         eventLike: isEventLike(entity),
@@ -1388,6 +1396,20 @@ export class OldsService {
       const relevant = title ? await this.chronicleAbout(title, text, [], { keep: 14, floor: 0.15 }) : []
       if (relevant.length >= 6) thread.chronicle = relevant
     }
+    // A person in the news: their adult life, not their school years ("…ran for student announcer"), unless
+    // the story is about their life itself (a death, a birth, a biography).
+    const birthTime = (chosen.entity.claims?.['P569'] ?? []).find((claim) => claim.rank !== 'deprecated')?.mainsnak?.datavalue?.value as { time?: string } | undefined
+    const birthYear = Number(birthTime?.time?.match(/^\+?(\d{4})-/)?.[1] ?? NaN)
+    if (ids(chosen.entity, 'P31').includes('Q5') && Number.isFinite(birthYear) && lang === 'en' && !query.topic
+      && !/\b(died|dies|death|born|birth|birthday|childhood|obituary|biograph\w*|memoir)\b/i.test(text)) {
+      const title = titleFromWikipediaUrl(chosen.node.wikipediaUrl)
+      const every = title ? await this.chronicle(title, 'en', [], currentYear, 160).catch(() => [] as OldsChronicleEntry[]) : []
+      const adult = adultLife(every.length ? every : thread.chronicle ?? [], birthYear)
+      const shown = adultLife(thread.chronicle ?? [], birthYear)
+      // Laya's picks, without the childhood ones; otherwise an even spread over the adult life, leaning recent.
+      thread.chronicle = (this.options.embed || this.options.meaning) && shown.length >= 6 ? shown : spreadRecent(adult, 18)
+      if (!thread.chronicle.length) delete thread.chronicle
+    }
     // A broad topic (a country, region or continent): keep only events about this story's subject.
     const description = chosen.node.description ?? ''
     const placeTypeDescription = /^(?:(?:one of the|a|an|the)\s+)?(?:(?:British|administrative|municipal|urban|coastal|inhabited|large|small|capital)\s+)*(?:Crown dependenc(?:y|ies)|island|city|town|village|municipality|borough|district|county)\b/i.test(description)
@@ -1424,7 +1446,9 @@ export class OldsService {
     // A thin timeline for a story between two countries ("Trump" and "Beijing’s soft power"): add the
     // history of their relations as clearly attributed background (rivalry, the Cold War, normalisation).
     let backdropNote = ''
-    if (!query.topic && lang === 'en' && (thread.chronicle?.length ?? 0) < 6 && query.countryCode) {
+    // Only when the headline itself places the story (a country, capital or leader it names): an outlet's own
+    // country is not a party to every story it reports.
+    if (!query.topic && lang === 'en' && (thread.chronicle?.length ?? 0) < 6 && query.countryCode && namedCountries.includes(query.countryCode)) {
       const backdrop = await this.relationsBackdrop(text, query.countryCode, namedCountries).catch(() => null)
       if (backdrop?.entries.length) {
         const seen = new Set((thread.chronicle ?? []).map((entry) => entry.text))
@@ -1928,6 +1952,47 @@ export function capitalCountries(raw: string): string[] {
     if (km <= 40 && !out.includes(row[0])) out.push(row[0])
   }
   return out
+}
+
+/** A person's dated events from the year they turned 18 (their birth line is kept). */
+export function adultLife(entries: readonly OldsChronicleEntry[], birthYear: number): OldsChronicleEntry[] {
+  return entries.filter((entry) => {
+    const year = Number(entry.at.iso.slice(0, 4))
+    return !Number.isFinite(year) || year >= birthYear + 18 || (year === birthYear && /\bborn\b/i.test(entry.text))
+  })
+}
+
+/** At most `limit` entries: the latest half as they are, the rest spread evenly over the earlier ones. */
+export function spreadRecent(entries: readonly OldsChronicleEntry[], limit: number): OldsChronicleEntry[] {
+  if (entries.length <= limit) return [...entries]
+  const recentCount = Math.ceil(limit / 2)
+  const earlier = entries.slice(0, entries.length - recentCount)
+  const picks = Array.from({ length: limit - recentCount }, (_, index) => earlier[Math.round((index * (earlier.length - 1)) / Math.max(1, limit - recentCount - 1))]!)
+  return [...new Set([...picks, ...entries.slice(-recentCount)])]
+}
+
+/**
+ * A country a headline points to without naming it: its leader or seat of government ("Trump names
+ * Stephen Miller…", "White House", "the Kremlin"). Only unambiguous names: "Democrats" or "Republicans"
+ * are parties in many countries.
+ */
+const IMPLIED_COUNTRIES: Array<[RegExp, string]> = [
+  [/\b(Trump|Biden|Obama|Vance|White House|Pentagon|Capitol Hill|Oval Office|GOP|Mar-a-Lago|MAGA)\b/, 'US'],
+  [/\b(Kremlin|Putin)\b/, 'RU'],
+  [/\b(Downing Street|Starmer|Whitehall)\b/, 'GB'],
+  [/\b(Élysée|Elysee|Macron)\b/, 'FR'],
+  [/\b(Knesset|Netanyahu)\b/, 'IL'],
+  [/\b(Zelensky|Zelenskyy)\b/, 'UA'],
+  [/\b(Xi Jinping|Zhongnanhai)\b/, 'CN'],
+  [/\b(Bundestag|Merz)\b/, 'DE'],
+]
+
+export function impliedCountries(raw: string): string[] {
+  const text = cleanHeadline(raw)
+  const found = IMPLIED_COUNTRIES.filter(([pattern]) => pattern.test(text)).map(([, code]) => code)
+  // Democrats and Republicans with the House, the Senate, Congress or the midterms: Congress.
+  if (!found.includes('US') && /\b(Democrats?|Republicans?)\b/.test(text) && /\b(House|Senate|Congress|midterms?)\b/.test(text)) found.push('US')
+  return found
 }
 
 export function headlineCountries(raw: string): string[] {

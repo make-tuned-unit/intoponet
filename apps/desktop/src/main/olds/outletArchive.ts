@@ -259,7 +259,7 @@ export function articleTopics(html: string, pageUrl: string, outlet: OutletProfi
 }
 
 /** Section and format tags that describe how a story is told, not what it is about. */
-const GENERIC_TOPICS = new Set(['news', 'video', 'videos', 'explainer', 'explainers', 'opinion', 'opinions', 'analysis', 'features', 'feature', 'world', 'world news', 'politics', 'world politics', 'economy', 'business', 'human rights', 'science and technology', 'podcast', 'podcasts', 'live', 'live blog', 'interview', 'interviews', 'in pictures', 'media', 'government', 'government and politics', 'elections', 'conflict', 'military', 'society', 'culture', 'health', 'environment', 'crime', 'law', 'courts', 'police', 'sport', 'sports', 'top stories', 'breaking news', 'cna explains', 'middle east', 'europe', 'asia', 'africa', 'americas', 'us & canada', 'us and canada', 'asia pacific', 'latin america', 'south america', 'north america', 'oceania', 'video', 'nocomment', 'the americas', 'war', 'wars', 'president', 'regulation', 'business and economy'])
+const GENERIC_TOPICS = new Set(['news', 'video', 'videos', 'explainer', 'explainers', 'opinion', 'opinions', 'analysis', 'features', 'feature', 'world', 'world news', 'politics', 'world politics', 'economy', 'business', 'human rights', 'science and technology', 'podcast', 'podcasts', 'live', 'live blog', 'interview', 'interviews', 'in pictures', 'media', 'government', 'government and politics', 'elections', 'conflict', 'military', 'society', 'culture', 'health', 'environment', 'crime', 'law', 'courts', 'police', 'sport', 'sports', 'top stories', 'breaking news', 'cna explains', 'middle east', 'europe', 'asia', 'africa', 'americas', 'us & canada', 'us and canada', 'asia pacific', 'latin america', 'south america', 'north america', 'oceania', 'video', 'nocomment', 'the americas', 'war', 'wars', 'president', 'regulation', 'business and economy', 'newsfeed', 'show types', 'shows', 'programmes', 'programs', 'us politics', 'uk politics', 'us news', 'uk news', 'world news', 'latest news', 'news feed'])
 
 /** An article's keywords that say what it is about, not where it is filed ("News", "Asia Pacific"). */
 const storyKeywords = (keywords: string[]): string[] => keywords.filter((item) => !GENERIC_TOPICS.has(item.toLowerCase()))
@@ -631,9 +631,21 @@ export class OutletArchive {
     // only the headlines that share something with this story, not all of that place's news.
     const broad = article.topics.map((topic) => isCountry(topic.label) || /^(us|uk|eu|united states)$/i.test(topic.label) || !!outlet.placePath?.test(new URL(topic.url).pathname))
     const narrowed = article.topics.length > 1
+    // Whether a headline shares anything with this story beyond the topic pages' own names ("Trump" on the
+    // Donald Trump page says nothing; "Miller", "chief of staff" do).
+    const topicStems = new Set(article.topics.flatMap((topic) => stemsOf(topic.label)))
+    const touches = fresh.map((item, index) => relevance[index] === 'story' || storyOverlap(item.title, query.headline, keywords, { ignore: topicStems }).words > 0)
+    // A page that is mostly about other things (a person's or a section's page: tariffs, the Paris Agreement,
+    // share prices beside a staff appointment) is broad: only the headlines touching this story are shown.
+    // A page that follows this story's own thread, where most do, is shown whole.
+    const wide = article.topics.map((_, topic) => {
+      const own = fresh.flatMap((item, index) => (item.topic === topic ? [touches[index]!] : []))
+      return own.length >= 4 && own.filter(Boolean).length / own.length < 0.5
+    })
     fresh.forEach((item, index) => {
       // Off-topic headlines are dropped only from pages read whole, where a sidebar could have supplied them.
       if (relevance[index] === 'unrelated' && !item.framed) return
+      if (wide[item.topic] && !touches[index]) return
       if (narrowed && broad[item.topic] && relevance[index] !== 'story'
         && storyOverlap(item.title, query.headline, keywords, { ignore: new Set(stemsOf(topics[item.topic]?.label ?? '')) }).words === 0) return
       items.push({

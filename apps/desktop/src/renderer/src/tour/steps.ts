@@ -118,6 +118,15 @@ export const TOUR_STEPS: TourStep[] = [
     run: async (controls) => { await controls.typeInAddressBar('wiki') },
   },
   {
+    id: 'commands',
+    chapter: 'The living globe',
+    title: 'Every command, from the keyboard',
+    body: 'Press ⌘K, or type > first, and the bar lists what Intoponet can do — copy a clean link, save a PDF, translate, hide the sidebar, fly to the highest peak — with your tabs and places below. Type a few letters and press Return.',
+    target: '.command-dock',
+    seconds: 9,
+    run: async (controls) => { await controls.typeInAddressBar('> ') },
+  },
+  {
     id: 'world',
     chapter: 'Stories',
     title: 'Stories the whole world is covering',
@@ -210,6 +219,14 @@ export const TOUR_STEPS: TourStep[] = [
     seconds: 10,
   },
   {
+    id: 'tab-folders',
+    chapter: 'Tabs',
+    title: 'Folders, and tabs that tidy away',
+    body: 'Drag tabs into folders that nest and fold, and save a folder as a collection in your library. If you choose, tabs you have not looked at for a while close into Archived tabs: the address bar finds them and reopens them where they were.',
+    target: '.tab-rail',
+    seconds: 10,
+  },
+  {
     id: 'pdf',
     chapter: 'Browsing',
     title: 'Save any page as a clean PDF',
@@ -229,7 +246,7 @@ export const TOUR_STEPS: TourStep[] = [
     id: 'basics',
     chapter: 'Browsing',
     title: 'The everyday things, done carefully',
-    body: 'Saved passwords that fill only when you click, downloads you can pause and check, History (⌘Y), reopening closed tabs (⇧⌘T), per-site zoom, and a real menu bar. Make Intoponet your default browser from Settings.',
+    body: 'Saved passwords that fill only when you click, downloads you can pause and check, History (⌘Y), reopening closed tabs (⇧⌘T), per-site zoom, and a real menu bar. Settings brings your bookmarks, tabs, history and passwords over from Chrome, Arc, Brave, Edge or Vivaldi, on this Mac, and makes Intoponet your default browser.',
     seconds: 10,
   },
   {

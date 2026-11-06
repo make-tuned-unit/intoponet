@@ -20,6 +20,7 @@ import {
   dialog,
   nativeImage,
   net,
+  webContents,
   webFrameMain,
   nativeTheme,
 } from 'electron'
@@ -46,6 +47,7 @@ import { CertificateErrorMemo, classifyLoadError, isCertificateError, showsError
 import { IncomingOpenQueue, LocalFileGrants, incomingFileTarget, incomingTargetsFromArgs, incomingWebUrl, type IncomingTarget } from './incomingOpen'
 import { PageAppearanceController } from './pageAppearance'
 import { SWITCHER_KEYS_SCRIPT, switcherHtml, SWITCHER_ROW_HEIGHT, SWITCHER_ROWS, TabSwitcher, type SwitcherTab } from './tabSwitcher'
+import { collapseAdSlotsScript, UNCOLLAPSE_AD_SLOTS_SCRIPT } from './adCollapse'
 import { archiveAfterMs, DEFAULT_TAB_ARCHIVE, TabArchive, type ArchivedTab } from './tabArchive'
 import { DEFAULT_TAB_SLEEP, parseBrowsingSettingsFile, sleepAfterMs, tabsDueForSleep, TYPED_FORM_SCRIPT } from './tabSleep'
 import { browserContextExtras, searchSelectionLabel } from './browserContextMenu'
@@ -603,7 +605,7 @@ async function applyCosmeticFilters(
         : protection.cosmeticRules(lastKnownUrl, lastKnownUrl)
     const css = rules?.cssRules.join('\n') ?? ''
     // With protection on, blocked tracker globals get quiet stand-ins so the page's own buttons don't throw.
-    const script = rules ? `${cosmeticInjection(css)};${TRACKER_STUB_SCRIPT}` : cosmeticInjection(css)
+    const script = rules ? `${cosmeticInjection(css)};${TRACKER_STUB_SCRIPT}` : `${cosmeticInjection(css)};${UNCOLLAPSE_AD_SLOTS_SCRIPT}`
     const frames = options.only ? [options.only] : contents.mainFrame?.framesInSubtree ?? []
     let injected = cosmeticFrames.get(contents)
     if (!injected) cosmeticFrames.set(contents, (injected = new Set()))
@@ -627,6 +629,32 @@ async function applyCosmeticFilters(
   }
 }
 
+/** Addresses of blocked ad frames, pictures and media, per page, so their empty boxes can be hidden. */
+const blockedAdAddresses = new Map<number, { urls: string[]; timer: ReturnType<typeof setTimeout> | null }>()
+
+/** Hides the space blocked ads leave behind (adCollapse.ts), in every frame, soon (batched). */
+function scheduleAdCollapse(contentsId: number, url?: string, delay = 250): void {
+  let entry = blockedAdAddresses.get(contentsId)
+  if (!entry) blockedAdAddresses.set(contentsId, (entry = { urls: [], timer: null }))
+  if (url && !entry.urls.includes(url)) entry.urls = [...entry.urls, url].slice(-200)
+  if (entry.timer) return
+  const pending = entry
+  pending.timer = setTimeout(() => {
+    pending.timer = null
+    const contents = webContents.fromId(contentsId)
+    if (!contents || contents.isDestroyed()) {
+      blockedAdAddresses.delete(contentsId)
+      return
+    }
+    const origin = (() => { try { return new URL(contents.getURL()).origin } catch { return '' } })()
+    if (!origin.startsWith('http') || !protection.isSiteEnabled(origin, 'default') || !protection.cosmeticRules('', '').hideSelectors.length) return
+    const script = collapseAdSlotsScript(pending.urls)
+    for (const frame of contents.mainFrame?.framesInSubtree ?? []) {
+      if (!frame.detached) void frame.executeJavaScript(script).catch(() => undefined)
+    }
+  }, delay)
+}
+
 function wireProtectionSession(partition = 'persist:intoponet-default'): void {
   const guest = session.fromPartition(partition)
   guest.webRequest.onBeforeRequest((details, callback) => {
@@ -638,6 +666,8 @@ function wireProtectionSession(partition = 'persist:intoponet-default'): void {
     const { webContentsId, decision } = routed
     if (decision.action === 'block') {
       if (pageView?.webContents.id === webContentsId) emitProtectionState()
+      // A blocked ad frame, picture or video leaves an empty box: hide it once it is in the page.
+      if (webContentsId >= 0 && ['subFrame', 'image', 'media', 'object'].includes(details.resourceType)) scheduleAdCollapse(webContentsId, details.url)
       callback({ cancel: true })
       return
     }
@@ -1896,6 +1926,7 @@ function buildView(isPrivate = privateMode): WebContentsView {
   })
   view.webContents.on('did-start-navigation', (_event, _url, inPlace, mainFrame) => {
     if (!mainFrame || inPlace) return
+    blockedAdAddresses.delete(view.webContents.id)
     leaveStartPage(view)
     translateService?.forgetPage(view.webContents.id)
     frequencyNavigation += 1
@@ -1993,6 +2024,9 @@ function buildView(isPrivate = privateMode): WebContentsView {
     emitPanelState()
     // Any frame the per-frame events missed.
     void applyCosmeticFilters(view.webContents, { onlyNew: true })
+    // Empty ad slots, now and once late-loading slots have had time to appear.
+    scheduleAdCollapse(view.webContents.id)
+    scheduleAdCollapse(view.webContents.id, undefined, 2_500)
   })
   view.webContents.on('did-frame-navigate', (_event, _url, _code, _status, isMainFrame, frameProcessId, frameRoutingId) => {
     forgetCosmeticFrame(view.webContents, isMainFrame, frameProcessId, frameRoutingId)
@@ -2829,6 +2863,7 @@ async function handleBrowserCommand(
         persistExceptions()
       }
       if (pageView) void applyCosmeticFilters(pageView.webContents)
+      if (pageView && command.enabled) scheduleAdCollapse(pageView.webContents.id)
       const snapshot = protectionSnapshot()
       emitProtectionState()
       emitPanelState()
