@@ -40,7 +40,7 @@ import { capTitle, capUrl, coalesce, persistedActiveUrl } from './tabState'
 import { EXIT_FULLSCREEN_SCRIPT, FULLSCREEN_WORLD_ID, fullscreenSiteName, showFullscreenNotice } from './fullscreenNotice'
 import { bindLeavePrompt, SAFE_DIALOG_PREFERENCES } from './leavePrompt'
 import { fetchTabIcon, TabIconMemory } from './tabFavicon'
-import { browsingChannels, parseBrowsingCommand, type BrowsingEvent, type ArchivedTabSnapshot, type BrowsingSettings, type PageLoadError, type TabArchiveAfter, type TabSidebarState, type TabSleepAfter, type TabSwitchOrder } from '@intoponet/browser-api'
+import { browsingChannels, parseBrowsingCommand, type BrowsingEvent, type ArchivedTabSnapshot, type TabFolderSnapshot, type BrowsingSettings, type PageLoadError, type TabArchiveAfter, type TabSidebarState, type TabSleepAfter, type TabSwitchOrder } from '@intoponet/browser-api'
 import { ExternalOpenBroker, classifyExternalUrl } from './externalOpen'
 import { CertificateErrorMemo, classifyLoadError, isCertificateError, showsErrorPage, summarizeCertificate } from './errorPage'
 import { IncomingOpenQueue, LocalFileGrants, incomingFileTarget, incomingTargetsFromArgs, incomingWebUrl, type IncomingTarget } from './incomingOpen'
@@ -156,7 +156,7 @@ protocol.registerSchemesAsPrivileged([
 ])
 let captures: CaptureService | null = null
 import { browserContextActions, type BrowserContextAction } from './browserContextMenu'
-import { duplicateIndex, moveTab, otherTabIds, pinnedFirst, setPinned, tabIdsToRight } from './tabOrder'
+import { canNest, deleteFolder, duplicateIndex, folderDepth, folderedOrder, folderTreeOrder, MAX_FOLDERS, moveFolderedTab, moveTab, otherTabIds, pinnedFirst, setPinned, setTabFolder, tabIdsToRight, type TabFolder } from './tabOrder'
 import { tabMenuTemplate, type TabMenuAction } from './tabMenu'
 import { liveTabFlags } from './tabState'
 import {
@@ -246,6 +246,8 @@ type OpenTab = {
   asleep?: { history?: TabHistory }
   /** When the tab was last shown or left (for sleeping background tabs and recent-order switching). */
   lastShownAt?: number
+  /** The sidebar folder it is in (unpinned tabs only). */
+  folderId?: string
 }
 
 /** Asks before a page opens another app (externalOpen.ts); null until the app is ready. */
@@ -260,9 +262,11 @@ type PersistentBrowserState = {
   url: string
   bounds: BrowserPanelBounds
   wasVisible: boolean
-  tabs: { id: string; url: string; title: string; pinned?: boolean; home?: string }[]
+  tabs: { id: string; url: string; title: string; pinned?: boolean; home?: string; folderId?: string }[]
   /** The tab sidebar's mode and width (absent until first changed). */
   sidebar?: TabSidebarState
+  /** Sidebar folders; saved tabs name theirs by folderId. */
+  folders?: TabFolder[]
 }
 
 const defaultPanelState = (): BrowserPanelSnapshot => ({
@@ -300,6 +304,7 @@ function persistentState(): PersistentBrowserState {
     title: tab.title,
     ...(tab.pinned ? { pinned: true } : {}),
     ...(tab.pinned && tab.home ? { home: tab.home } : {}),
+    ...(tab.folderId ? { folderId: tab.folderId } : {}),
   }))
   return {
     version: 2,
@@ -309,6 +314,7 @@ function persistentState(): PersistentBrowserState {
     wasVisible: pageAttached,
     tabs,
     ...(tabSidebar ? { sidebar: tabSidebar } : {}),
+    ...(tabFolders.length ? { folders: tabFolders } : {}),
   }
 }
 
@@ -355,6 +361,29 @@ function writeFinalState(): void {
   }
 }
 
+/** Saved folders: well-formed ones only, parents that exist, no loops, nothing too deep. */
+function parseSavedFolders(value: unknown): TabFolder[] {
+  if (!Array.isArray(value)) return []
+  const folders: TabFolder[] = []
+  for (const entry of value.slice(0, MAX_FOLDERS)) {
+    if (typeof entry !== 'object' || entry === null) continue
+    const record = entry as Record<string, unknown>
+    if (typeof record['id'] !== 'string' || record['id'].length === 0 || record['id'].length > 80 || typeof record['name'] !== 'string') continue
+    const name = record['name'].replace(/[\u0000-\u001f\u007f]+/g, ' ').trim().slice(0, 80)
+    if (!name || folders.some((folder) => folder.id === record['id'])) continue
+    folders.push({
+      id: record['id'],
+      name,
+      parentId: typeof record['parentId'] === 'string' ? record['parentId'] : null,
+      ...(record['collapsed'] === true ? { collapsed: true } : {}),
+    })
+  }
+  // A parent that is missing (or a loop) puts the folder at the top level.
+  const ids = new Set(folders.map((folder) => folder.id))
+  for (const folder of folders) if (folder.parentId && (!ids.has(folder.parentId) || folderDepth(folders, folder.id) > 6 || !folderTreeOrder(folders).includes(folder.id))) folder.parentId = null
+  return folders
+}
+
 async function loadPersistentState(): Promise<PersistentBrowserState | null> {
   try {
     const parsed = JSON.parse(await readFile(stateFilePath(), 'utf8')) as unknown
@@ -386,6 +415,7 @@ async function loadPersistentState(): Promise<PersistentBrowserState | null> {
               url: record['url'],
               title: typeof record['title'] === 'string' ? record['title'].slice(0, 180) : '',
               ...(record['pinned'] === true ? { pinned: true } : {}),
+              ...(record['pinned'] !== true && typeof record['folderId'] === 'string' && record['folderId'].length <= 80 ? { folderId: record['folderId'] } : {}),
               ...(record['pinned'] === true && typeof record['home'] === 'string' && record['home'].length <= 8_192 && safeHttpUrl(record['home']) ? { home: record['home'] } : {}),
             },
           ]
@@ -398,6 +428,7 @@ async function loadPersistentState(): Promise<PersistentBrowserState | null> {
       const parsedSidebar = parseBrowserHostCommand({ type: 'set-tab-sidebar', sidebar: candidate['sidebar'] })
       if (parsedSidebar.type === 'set-tab-sidebar') sidebar = parsedSidebar.sidebar
     } catch { /* never set, or damaged: the default */ }
+    const folders = parseSavedFolders(candidate['folders'])
     return {
       version: 2,
       url,
@@ -405,6 +436,7 @@ async function loadPersistentState(): Promise<PersistentBrowserState | null> {
       wasVisible: candidate['wasVisible'],
       tabs,
       ...(sidebar ? { sidebar } : {}),
+      ...(folders.length ? { folders } : {}),
     }
   } catch {
     return null
@@ -1074,6 +1106,7 @@ function tabSnapshots(): PageTabSnapshot[] {
       ...(tab.pinned && tab.home ? { home: capUrl(tab.home), ...(awayFromHome(safeHttpUrl(currentUrl) ? currentUrl : tab.url, tab.home) ? { awayFromHome: true } : {}) } : {}),
       ...(tab.asleep ? { asleep: true } : {}),
       ...(tab.lastShownAt ? { lastShownAt: tab.lastShownAt } : {}),
+      ...(tab.folderId && !tab.pinned ? { folderId: tab.folderId } : {}),
     }
   })
 }
@@ -1202,6 +1235,34 @@ function awayFromHome(current: string, home: string): boolean {
   if (!here || !there) return false
   const site = (host: string): string => host.replace(/^www\./, '')
   return site(here.hostname) !== site(there.hostname)
+}
+
+/** Folders in the tab sidebar (tabOrder.ts), saved with the tabs. */
+let tabFolders: TabFolder[] = []
+
+function emitTabFolders(rename?: string): void {
+  emit({ type: 'tab-folders', folders: tabFolders.map((folder) => ({ ...folder })), ...(rename ? { rename } : {}) })
+}
+
+function newFolderName(): string {
+  for (let n = 1; ; n += 1) {
+    const name = n === 1 ? 'New folder' : `New folder ${n}`
+    if (!tabFolders.some((folder) => folder.name === name)) return name
+  }
+}
+
+/** A new folder (at the top, or inside `parentId`) holding these tabs. */
+function createTabFolder(name: string, parentId: string | null, tabIds: string[], rename = false): TabFolder | null {
+  if (tabFolders.length >= MAX_FOLDERS) return null
+  const folder: TabFolder = { id: randomUUID(), name, parentId: null }
+  tabFolders.push(folder)
+  if (parentId && canNest(tabFolders, folder.id, parentId)) folder.parentId = parentId
+  for (const id of tabIds) setTabFolder(openTabs, tabFolders, id, folder.id)
+  openTabs.splice(0, openTabs.length, ...folderedOrder(openTabs, tabFolders))
+  emitTabFolders(rename ? folder.id : undefined)
+  emitTabs()
+  schedulePersistentStateSave()
+  return folder
 }
 
 /** The tab sidebar's mode and width, saved with the tabs (null until first changed). */
@@ -2423,6 +2484,8 @@ async function handleBrowserCommand(
 ): Promise<
   | TabSidebarState
   | ArchivedTabSnapshot[]
+  | TabFolderSnapshot
+  | TabFolderSnapshot[]
   | BrowserPanelSnapshot
   | ProtectionSnapshot
   | PageTabSnapshot[]
@@ -2508,7 +2571,7 @@ async function handleBrowserCommand(
       break
     }
     case 'move-tab':
-      if (moveTab(openTabs, command.id, command.toIndex)) {
+      if (moveFolderedTab(openTabs, tabFolders, command.id, command.toIndex)) {
         emitTabs()
         schedulePersistentStateSave()
       }
@@ -2522,6 +2585,9 @@ async function handleBrowserCommand(
           const home = safeHttpUrl(current) ? current : tab.url
           if (safeHttpUrl(home)) tab.home = home
         } else if (tab) delete tab.home
+        // Pinned tabs sit above folders.
+        if (tab && command.pinned) delete tab.folderId
+        openTabs.splice(0, openTabs.length, ...folderedOrder(openTabs, tabFolders))
         emitTabs()
         schedulePersistentStateSave()
       }
@@ -2536,7 +2602,13 @@ async function handleBrowserCommand(
     }
     case 'tab-menu': {
       if (!window || window.isDestroyed() || !openTabs.some((tab) => tab.id === command.id)) break
-      const menu = Menu.buildFromTemplate(tabMenuTemplate(tabSnapshots(), command.id, (action, id) => void runTabMenuAction(action, id)))
+      const target = openTabs.find((tab) => tab.id === command.id)
+      const menu = Menu.buildFromTemplate(tabMenuTemplate(tabSnapshots(), command.id, (action, id) => void runTabMenuAction(action, id), {
+        folders: folderTreeOrder(tabFolders).map((id) => ({ id, name: tabFolders.find((folder) => folder.id === id)!.name, depth: folderDepth(tabFolders, id) })),
+        current: target?.folderId ?? null,
+        move: (folderId) => void handleBrowserCommand({ type: 'move-tab-to-folder', tabId: command.id, folderId }),
+        createFolder: () => { createTabFolder(newFolderName(), null, [command.id], true) },
+      }))
       menu.popup({ window, ...(command.x !== undefined && command.y !== undefined ? { x: command.x, y: command.y } : {}) })
       break
     }
@@ -2672,6 +2744,58 @@ async function handleBrowserCommand(
       return tabSidebar
     case 'get-archived-tabs':
       return tabArchive.list()
+    case 'get-tab-folders':
+      return tabFolders.map((folder) => ({ ...folder }))
+    case 'create-tab-folder': {
+      const folder = createTabFolder(command.name, command.parentId, command.tabIds)
+      if (!folder) throw new Error(`At most ${MAX_FOLDERS} folders.`)
+      return { ...folder }
+    }
+    case 'update-tab-folder': {
+      const folder = tabFolders.find((item) => item.id === command.id)
+      if (!folder) break
+      if (command.name !== undefined) folder.name = command.name
+      if (command.collapsed !== undefined) {
+        if (command.collapsed) folder.collapsed = true
+        else delete folder.collapsed
+      }
+      if (command.parentId !== undefined && canNest(tabFolders, folder.id, command.parentId)) folder.parentId = command.parentId
+      openTabs.splice(0, openTabs.length, ...folderedOrder(openTabs, tabFolders))
+      emitTabFolders()
+      emitTabs()
+      schedulePersistentStateSave()
+      break
+    }
+    case 'delete-tab-folder':
+      if (deleteFolder(openTabs, tabFolders, command.id)) {
+        emitTabFolders()
+        emitTabs()
+        schedulePersistentStateSave()
+      }
+      break
+    case 'move-tab-to-folder':
+      if (setTabFolder(openTabs, tabFolders, command.tabId, command.folderId)) {
+        emitTabs()
+        schedulePersistentStateSave()
+      }
+      break
+    case 'open-tab-folder': {
+      // A collection's pages, as a folder of tabs that load when shown (as many as fit).
+      const urls = [...new Set(command.urls.filter((url) => safeHttpUrl(url)))]
+      const room = Math.max(0, MAX_TABS - openTabs.length)
+      if (!urls.length || room === 0) throw new Error(room === 0 ? `${MAX_TABS} tabs are already open.` : 'The collection has no web pages.')
+      const ids: string[] = []
+      for (const url of urls.slice(0, room)) {
+        const view = createBrowserTab(url, false, false)
+        const tab = view && openTabs.find((item) => item.view === view)
+        if (!tab) continue
+        tab.asleep = {}
+        ids.push(tab.id)
+      }
+      const folder = createTabFolder(command.name, null, ids)
+      if (!folder) throw new Error(`At most ${MAX_FOLDERS} folders.`)
+      return { ...folder }
+    }
     case 'run-menu-command': {
       const chosen = menuCommandById(command.id, { developer: developerBuild() })
       if (!chosen) throw new Error('Unknown menu command.')
@@ -2996,12 +3120,13 @@ app.whenReady().then(async () => {
     lastKnownUrl = restoredState.url
     lastBounds = restoredState.bounds
     tabSidebar = restoredState.sidebar ?? null
+    tabFolders = restoredState.folders ?? []
     for (const saved of restoredState.tabs) {
       const view = buildView(false)
       // Restored tabs are unloaded until shown (their pages load on the first click), and look it.
       openTabs.push({ id: saved.id, url: saved.url, title: saved.title, favicon: '', view, asleep: {}, lastShownAt: Date.now(), ...(saved.pinned ? { pinned: true, home: saved.home ?? saved.url } : {}) })
     }
-    openTabs.splice(0, openTabs.length, ...pinnedFirst(openTabs))
+    openTabs.splice(0, openTabs.length, ...folderedOrder(pinnedFirst(openTabs), tabFolders))
     const active =
       openTabs.find((tab) => samePage(tab.url, restoredState.url)) ?? openTabs[0]
     if (active) {

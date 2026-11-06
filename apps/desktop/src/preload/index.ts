@@ -26,6 +26,7 @@ import {
   type ClosedTabSnapshot,
   type TabSidebarState,
   type ArchivedTabSnapshot,
+  type TabFolderSnapshot,
   type PageTabSnapshot,
   type PdfExportOptions,
   type PrivateLibraryReadResult,
@@ -43,6 +44,8 @@ const invoke = (
   | ClosedTabSnapshot[]
   | TabSidebarState
   | ArchivedTabSnapshot[]
+  | TabFolderSnapshot
+  | TabFolderSnapshot[]
   | PrivateLibraryReadResult
   | PublicFieldStatus
   | PdfExportOptions
@@ -110,6 +113,20 @@ const browserHost: BrowserHostApi = {
   getArchivedTabs: () => invoke({ type: 'get-archived-tabs' }) as Promise<ArchivedTabSnapshot[]>,
   runMenuCommand: async (id) => {
     await invoke({ type: 'run-menu-command', id })
+  },
+  getTabFolders: () => invoke({ type: 'get-tab-folders' }) as Promise<TabFolderSnapshot[]>,
+  createTabFolder: (name, parentId = null, tabIds = []) => invoke({ type: 'create-tab-folder', name, parentId, tabIds }) as Promise<TabFolderSnapshot>,
+  updateTabFolder: async (id, changes) => {
+    await invoke({ type: 'update-tab-folder', id, ...changes })
+  },
+  deleteTabFolder: async (id) => {
+    await invoke({ type: 'delete-tab-folder', id })
+  },
+  moveTabToFolder: async (tabId, folderId) => {
+    await invoke({ type: 'move-tab-to-folder', tabId, folderId })
+  },
+  openTabFolder: async (name, urls) => {
+    await invoke({ type: 'open-tab-folder', name, urls })
   },
   reopenArchivedTabs: async (ids) => {
     await invoke({ type: 'reopen-archived-tabs', ids })

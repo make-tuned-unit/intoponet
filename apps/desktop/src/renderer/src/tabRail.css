@@ -319,6 +319,10 @@
   display: none;
 }
 
+.tab-rail:not(.is-open) .tab-rail-archived:not(:has(button)) {
+  display: none;
+}
+
 .tab-rail-undo {
   display: inline-flex;
   align-items: center;
@@ -339,4 +343,120 @@
 
 .tab-rail-undo:hover {
   background: rgba(205, 245, 240, 0.1);
+}
+
+/* Folders: a header (fold/unfold, name, count, actions) and its tabs, indented by depth. */
+.tab-rail-folder {
+  --folder-indent: calc(var(--folder-depth, 0) * 10px);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tab-rail.is-open .tab-rail-folder-tabs,
+.tab-rail.is-open .tab-rail-folder .tab-rail-folder {
+  padding-left: 10px;
+}
+
+.tab-rail-folder-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: 12px;
+}
+
+.tab-rail-folder-head:hover {
+  background: rgba(205, 245, 240, 0.06);
+}
+
+.tab-rail-folder-toggle {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px;
+  border: 0;
+  border-radius: 12px;
+  color: var(--warm-white);
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tab-rail-folder-toggle .tab-rail-icon {
+  color: #ffd166;
+}
+
+.tab-rail-folder-count {
+  margin-left: auto;
+  padding: 0 6px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.tab-rail:not(.is-open) .tab-rail-folder-count {
+  display: none;
+}
+
+.tab-rail-folder-more {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin-right: 4px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.tab-rail-folder-more:hover,
+.tab-rail-folder-more[aria-expanded="true"] {
+  color: var(--warm-white);
+  background: rgba(205, 245, 240, 0.1);
+}
+
+.tab-rail-folder-name {
+  flex: 1;
+  min-width: 0;
+  margin: 3px 6px;
+  padding: 5px 8px;
+  border: 1px solid rgba(32, 244, 228, 0.5);
+  border-radius: 9px;
+  color: var(--warm-white);
+  background: rgba(3, 12, 18, 0.6);
+  font: inherit;
+  font-size: 13px;
+}
+
+.tab-rail-folder-menu {
+  display: grid;
+  margin: 0 6px 4px calc(10px + var(--folder-indent));
+  padding: 4px;
+  border: 1px solid rgba(195, 237, 232, 0.16);
+  border-radius: 12px;
+  background: rgba(6, 20, 26, 0.96);
+}
+
+.tab-rail-folder-menu button {
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--warm-white);
+  background: transparent;
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tab-rail-folder-menu button:hover,
+.tab-rail-folder-menu button:focus-visible {
+  outline: none;
+  background: rgba(32, 244, 228, 0.14);
 }

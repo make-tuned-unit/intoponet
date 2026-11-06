@@ -10,6 +10,7 @@ import type {
   PublicFieldStatus,
   TabSidebarState,
   ArchivedTabSnapshot,
+  TabFolderSnapshot,
 } from '@intoponet/browser-api'
 import { TAB_SIDEBAR_WIDTH } from '@intoponet/browser-api'
 import { demoFieldSnapshot, parseFieldSnapshot, snapshotLabel } from '@intoponet/field-snapshot'
@@ -167,6 +168,7 @@ import { placeMatches } from './globe/PlaceSuggestions'
 import { OmniboxSuggestions, useOmnibox } from './OmniboxSuggestions'
 import { commandQuery, type OmniboxAction, type OmniboxSuggestion } from './omnibox'
 import { menuActions } from './commandMenu'
+import { saveFolderAsCollections } from './tabFolders'
 import { poseToward, radiusForSpan } from './globe/flyTo'
 import {
   filterGlobeSignals,
@@ -528,6 +530,31 @@ export function App() {
       }
     })
     return () => { mounted = false; unsubscribe(); if (timer !== null) window.clearTimeout(timer) }
+  }, [])
+  /** Tab sidebar folders (kept by main). */
+  const [tabFolders, setTabFolders] = useState<TabFolderSnapshot[]>([])
+  const [renameFolderId, setRenameFolderId] = useState<string | null>(null)
+  const [railMessage, setRailMessage] = useState('')
+  const railMessageTimer = useRef<number | null>(null)
+  /** Said in the sidebar while it shows (a notice would sit under the page), otherwise as a notice. */
+  const sayInRail = (text: string): void => {
+    if (!document.querySelector('.tab-rail')) {
+      setNotice(text)
+      return
+    }
+    setRailMessage(text)
+    if (railMessageTimer.current !== null) window.clearTimeout(railMessageTimer.current)
+    railMessageTimer.current = window.setTimeout(() => setRailMessage(''), 5_000)
+  }
+  useEffect(() => {
+    let mounted = true
+    void window.intoponet.browserHost.getTabFolders().then((list) => { if (mounted) setTabFolders(list) }, () => undefined)
+    const unsubscribe = window.intoponet.browserHost.subscribe((event) => {
+      if (event.type !== 'tab-folders') return
+      setTabFolders(event.folders)
+      if (event.rename) setRenameFolderId(event.rename)
+    })
+    return () => { mounted = false; unsubscribe() }
   }, [])
   const undoArchive = (): void => {
     if (!justArchived) return
@@ -1552,6 +1579,16 @@ export function App() {
     const collection = createCollection(label)
     persistCollections([...collections, collection])
     return collection.id
+  }
+
+  /** A tab folder (and the folders in it) saved as private collections, each page bookmarked. */
+  const saveTabFolder = (folderId: string): void => {
+    const folder = tabFolders.find((item) => item.id === folderId)
+    if (!folder) return
+    const result = saveFolderAsCollections({ folderId, folders: tabFolders, tabs, bookmarks, collections, topic: folder.name })
+    persistBookmarks(result.bookmarks)
+    persistCollections(result.collections)
+    sayInRail(result.saved ? `Saved ${result.saved} ${result.saved === 1 ? 'page' : 'pages'} from “${folder.name}” as a collection.` : `“${folder.name}” is already saved as a collection.`)
   }
 
   const openBookmarkFromPane = (bookmark: SavedBookmark): void => {
@@ -2825,6 +2862,11 @@ export function App() {
         onNewTab={openNewTab}
         archivedCount={justArchived?.ids.length ?? 0}
         onUndoArchive={undoArchive}
+        folders={tabFolders}
+        renameFolderId={renameFolderId}
+        onRenameHandled={() => setRenameFolderId(null)}
+        onSaveFolder={saveTabFolder}
+        message={railMessage}
       />
       <BookmarkPane
         open={bookmarksOpen && !fieldLabOpen}
@@ -2838,6 +2880,13 @@ export function App() {
         onCreateGroup={createBookmarkGroup}
         onRenameGroup={(id, label) => persistCollections(renameCollection(collections, id, label))}
         onDeleteGroup={removeCollection}
+        onOpenGroupAsTabs={(id) => {
+          const collection = collections.find((item) => item.id === id)
+          if (!collection) return
+          void window.intoponet.browserHost.openTabFolder(collection.label, collection.memberUrls)
+            .then(() => setNotice(`Opened “${collection.label}” as a tab folder.`))
+            .catch((reason: unknown) => setError(reason instanceof Error ? reason.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : 'The collection could not be opened as tabs.'))
+        }}
         onMove={(url, from, to) => persistCollections(moveBookmarkToGroup(collections, url, from, to))}
         onClose={() => setBookmarksOpen(false)}
         captures={captureRecords}

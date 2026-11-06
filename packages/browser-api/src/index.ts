@@ -106,7 +106,12 @@ export type PageTabSnapshot = {
   asleep?: boolean
   /** When the tab was last shown or left (ms since 1970; this session only, never saved). */
   lastShownAt?: number
+  /** The sidebar folder it is in. */
+  folderId?: string
 }
+
+/** A folder in the tab sidebar (folders nest through parentId). */
+export type TabFolderSnapshot = { id: string; name: string; parentId: string | null; collapsed?: boolean }
 
 /** The tab sidebar: icons (expands on hover), kept open (also in full width), or hidden (the left edge brings it back). */
 export const TAB_SIDEBAR_MODES = ['icons', 'open', 'hidden'] as const
@@ -246,6 +251,8 @@ export type BrowserHostEvent =
   /** Tabs closed into Archived tabs just now (Undo reopens them), or the archive changed. */
   | { type: 'tabs-archived'; ids: string[]; titles: string[] }
   | { type: 'archived-tabs-changed' }
+  /** The sidebar's folders changed (`rename`: a folder just made from the tab menu, to name now). */
+  | { type: 'tab-folders'; folders: TabFolderSnapshot[]; rename?: string }
   | { type: 'tab-switcher'; open: boolean; selected?: string; position?: number; count?: number }
 
 export type ShellShortcut = 'new-tab' | 'find' | 'find-next' | 'find-previous' | 'open-settings' | 'bookmark' | 'next-tab' | 'previous-tab' | 'focus-launcher' | 'toggle-bookmarks' | 'capture' | 'toggle-private' | 'absorb-selection' | 'toggle-tab-sidebar' | 'command-menu'
@@ -303,6 +310,12 @@ export interface BrowserHostApi {
   getArchivedTabs(): Promise<ArchivedTabSnapshot[]>
   /** Runs a menu-bar command by id (see APP_SHORTCUTS in main/appMenu.ts). */
   runMenuCommand(id: string): Promise<void>
+  getTabFolders(): Promise<TabFolderSnapshot[]>
+  createTabFolder(name: string, parentId?: string | null, tabIds?: string[]): Promise<TabFolderSnapshot>
+  updateTabFolder(id: string, changes: { name?: string; collapsed?: boolean; parentId?: string | null }): Promise<void>
+  deleteTabFolder(id: string): Promise<void>
+  moveTabToFolder(tabId: string, folderId: string | null): Promise<void>
+  openTabFolder(name: string, urls: string[]): Promise<void>
   reopenArchivedTabs(ids: string[]): Promise<void>
   setTabSidebar(sidebar: TabSidebarState): Promise<void>
   getState(): Promise<BrowserPanelSnapshot>
@@ -394,6 +407,14 @@ export type BrowserHostCommand =
   | { type: 'get-archived-tabs' }
   /** A menu-bar command by its id (command mode), carried out as if its menu item were chosen. */
   | { type: 'run-menu-command'; id: string }
+  /** Tab sidebar folders. */
+  | { type: 'get-tab-folders' }
+  | { type: 'create-tab-folder'; name: string; parentId: string | null; tabIds: string[] }
+  | { type: 'update-tab-folder'; id: string; name?: string; collapsed?: boolean; parentId?: string | null }
+  | { type: 'delete-tab-folder'; id: string }
+  | { type: 'move-tab-to-folder'; tabId: string; folderId: string | null }
+  /** A saved collection opened as a folder of (unloaded) tabs. */
+  | { type: 'open-tab-folder'; name: string; urls: string[] }
   /** Reopen archived tabs (shown when one id; all in the background otherwise). */
   | { type: 'reopen-archived-tabs'; ids: string[] }
   | { type: 'set-tab-sidebar'; sidebar: TabSidebarState }
@@ -466,6 +487,12 @@ const commandTypes = new Set<BrowserHostCommand['type']>([
   'get-tab-sidebar',
   'get-archived-tabs',
   'run-menu-command',
+  'get-tab-folders',
+  'create-tab-folder',
+  'update-tab-folder',
+  'delete-tab-folder',
+  'move-tab-to-folder',
+  'open-tab-folder',
   'reopen-archived-tabs',
   'set-tab-sidebar',
   'get-state',
@@ -551,6 +578,24 @@ function parseBounds(value: unknown): BrowserPanelBounds {
 /** Largest private library payload accepted for saving, in characters. */
 export const PRIVATE_LIBRARY_MAX_CHARS = 32_000_000
 
+function isShortId(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0 && value.length <= 80
+}
+
+function nullableId(value: unknown): string | null {
+  if (value === null || value === undefined) return null
+  if (!isShortId(value)) throw new Error('Invalid folder.')
+  return value
+}
+
+/** A folder's name: trimmed, single line, at most 80 characters. */
+function folderName(value: unknown): string {
+  if (typeof value !== 'string') throw new Error('Invalid folder name.')
+  const name = value.replace(/[\u0000-\u001f\u007f]+/g, ' ').trim().slice(0, 80)
+  if (!name) throw new Error('A folder needs a name.')
+  return name
+}
+
 export function parseBrowserHostCommand(value: unknown): BrowserHostCommand {
   if (!isRecord(value) || typeof value['type'] !== 'string') {
     throw new Error('Invalid browser-host command.')
@@ -613,6 +658,35 @@ export function parseBrowserHostCommand(value: unknown): BrowserHostCommand {
     case 'get-tab-sidebar':
     case 'get-archived-tabs':
       return { type }
+    case 'get-tab-folders':
+      return { type }
+    case 'create-tab-folder': {
+      const tabIds = value['tabIds'] ?? []
+      if (!Array.isArray(tabIds) || tabIds.length > 50 || !tabIds.every(isShortId)) throw new Error('Invalid folder tabs.')
+      return { type, name: folderName(value['name']), parentId: nullableId(value['parentId']), tabIds: tabIds as string[] }
+    }
+    case 'update-tab-folder': {
+      if (!isShortId(value['id'])) throw new Error('Invalid folder.')
+      if (value['collapsed'] !== undefined && typeof value['collapsed'] !== 'boolean') throw new Error('Invalid folder.')
+      return {
+        type,
+        id: value['id'],
+        ...(value['name'] !== undefined ? { name: folderName(value['name']) } : {}),
+        ...(value['collapsed'] !== undefined ? { collapsed: value['collapsed'] as boolean } : {}),
+        ...(value['parentId'] !== undefined ? { parentId: nullableId(value['parentId']) } : {}),
+      }
+    }
+    case 'delete-tab-folder':
+      if (!isShortId(value['id'])) throw new Error('Invalid folder.')
+      return { type, id: value['id'] }
+    case 'move-tab-to-folder':
+      if (!isShortId(value['tabId'])) throw new Error('Invalid tab.')
+      return { type, tabId: value['tabId'], folderId: nullableId(value['folderId']) }
+    case 'open-tab-folder': {
+      const urls = value['urls']
+      if (!Array.isArray(urls) || urls.length === 0 || urls.length > 50 || !urls.every((url) => typeof url === 'string' && url.length <= 8_192)) throw new Error('Invalid folder pages.')
+      return { type, name: folderName(value['name']), urls: urls as string[] }
+    }
     case 'run-menu-command':
       if (typeof value['id'] !== 'string' || !/^[a-z][a-z-]{1,40}$/.test(value['id'])) throw new Error('Invalid menu command.')
       return { type, id: value['id'] }

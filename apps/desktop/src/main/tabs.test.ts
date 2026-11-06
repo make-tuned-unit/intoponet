@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { parseBrowserHostCommand } from '@intoponet/browser-api'
 import { allowedRange, duplicateIndex, moveTab, otherTabIds, pinnedFirst, setPinned, tabIdsToRight, type OrderedTab } from './tabOrder'
-import { tabMenuEntries, tabMenuTemplate, type TabMenuTab } from './tabMenu'
+import { folderSubmenu, tabMenuEntries, tabMenuTemplate, type TabMenuTab } from './tabMenu'
 import { liveTabFlags } from './tabState'
 
 const ids = (tabs: OrderedTab[]): string => tabs.map((tab) => `${tab.id}${tab.pinned ? '*' : ''}`).join(' ')
@@ -139,3 +139,35 @@ describe('tab commands', () => {
     expect(() => parseBrowserHostCommand({ type: 'tab-menu', id: 'a', x: Number.NaN, y: 1 })).toThrow()
   })
 })
+
+describe('tab menu: Move to Folder', () => {
+  const tabs: TabMenuTab[] = [{ id: 'p', url: 'https://p.example/', pinned: true }, { id: 'a', url: 'https://a.example/' }]
+  const choices = (current: string | null, moves: Array<string | null>, made: string[]) => ({
+    folders: [{ id: 'w', name: 'Work', depth: 1 }, { id: 'r', name: 'Reports', depth: 2 }],
+    current,
+    move: (folderId: string | null) => { moves.push(folderId) },
+    createFolder: () => { made.push('new') },
+  })
+
+  it('lists folders indented by depth, a new folder, and out of folders when in one', () => {
+    const moves: Array<string | null> = []
+    const made: string[] = []
+    const items = folderSubmenu(choices('r', moves, made))
+    expect(items.map((item) => item.label ?? item.type)).toEqual(['Work', '    Reports', 'separator', 'New Folder', 'Remove from Folder'])
+    expect(items[1]!.checked).toBe(true)
+    items[0]!.click?.({} as never, undefined, {} as never)
+    items[4]!.click?.({} as never, undefined, {} as never)
+    items[3]!.click?.({} as never, undefined, {} as never)
+    expect(moves).toEqual(['w', null])
+    expect(made).toEqual(['new'])
+  })
+
+  it('offers it for unpinned tabs only, after Pin Tab', () => {
+    const run = (): void => undefined
+    const forTab = tabMenuTemplate(tabs, 'a', run, choices(null, [], []))
+    const pinIndex = forTab.findIndex((item) => item.label === 'Pin Tab')
+    expect(forTab[pinIndex + 1]!.label).toBe('Move to Folder')
+    expect(tabMenuTemplate(tabs, 'p', run, choices(null, [], [])).some((item) => item.label === 'Move to Folder')).toBe(false)
+  })
+})
+

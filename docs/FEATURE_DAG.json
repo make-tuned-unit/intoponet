@@ -486,6 +486,17 @@
       "tier": "core",
       "kind": "e2e",
       "promise": "⌘K (or typing > in the address bar) lists browser actions, settings toggles, open, archived and pinned tabs, bookmarks and places, ranked as you type on this Mac; Enter runs the action (copy address, save as PDF, translate, toggle protection, switch workspace, fly to a place, open The Olds), and nothing typed leaves the device."
+    },
+    {
+      "id": "TAB_FOLDERS",
+      "title": "Folders in the tab sidebar",
+      "deps": [
+        "SIDEBAR_TABS",
+        "LIBRARY"
+      ],
+      "tier": "core",
+      "kind": "e2e",
+      "promise": "Tabs can be dragged (or moved from the keyboard) into named folders that collapse, nest inside one another, keep their order for the next launch, and can be saved as a private collection or opened from one."
     }
   ]
 }

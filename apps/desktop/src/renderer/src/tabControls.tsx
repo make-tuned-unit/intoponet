@@ -110,13 +110,20 @@ type Drag = {
   startY: number
   item: HTMLElement
   boxes: TabBox[] | null
+  /** The tab ids of `boxes`, in the same order. */
+  ids: string[]
 }
 
 /**
  * Drag a tab to a new place with the pointer. Spread `handlers(tab, index)` on the tab's button;
  * the element carrying `data-tab-id` (the whole tab) follows the pointer while dragging.
  */
-export function useTabDrag(axis: TabAxis) {
+/**
+ * Drag tabs to reorder them. `indexOf` maps a tab (by id) to its place among all tabs, for lists
+ * that do not show every tab (folders folded away). Dropped on a folder (an element with
+ * data-folder-drop), the tab goes into that folder.
+ */
+export function useTabDrag(axis: TabAxis, options: { indexOf?: (id: string) => number } = {}) {
   const drag = useRef<Drag | null>(null)
   const justDragged = useRef(false)
 
@@ -130,8 +137,18 @@ export function useTabDrag(axis: TabAxis) {
     justDragged.current = true
     window.setTimeout(() => { justDragged.current = false }, 0)
     if (!commit) return
+    const folder = document.elementsFromPoint(event.clientX, event.clientY)
+      .map((element) => element.closest<HTMLElement>('[data-folder-drop]'))
+      .find((element): element is HTMLElement => !!element)
+    if (folder?.dataset['folderDrop']) {
+      void window.intoponet.browserHost.moveTabToFolder(state.id, folder.dataset['folderDrop'] === 'none' ? null : folder.dataset['folderDrop'])
+      return
+    }
     const to = dropIndex(state.boxes, state.index, { x: event.clientX, y: event.clientY }, axis)
-    if (to !== state.index) void window.intoponet.browserHost.moveTab(state.id, to)
+    if (to === state.index) return
+    const target = state.ids[to]
+    const index = target && options.indexOf ? options.indexOf(target) : to
+    void window.intoponet.browserHost.moveTab(state.id, index >= 0 ? index : to)
   }
 
   return (tab: PageTabSnapshot, index: number) => ({
@@ -139,7 +156,7 @@ export function useTabDrag(axis: TabAxis) {
       if (event.button !== 0 || event.pointerType === 'touch') return
       const item = event.currentTarget.closest<HTMLElement>('[data-tab-id]')
       if (!item) return
-      drag.current = { id: tab.id, index, pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, item, boxes: null }
+      drag.current = { id: tab.id, index, pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, item, boxes: null, ids: [] }
     },
     onPointerMove: (event: PointerEvent<HTMLElement>) => {
       const state = drag.current
@@ -148,9 +165,11 @@ export function useTabDrag(axis: TabAxis) {
       const dy = event.clientY - state.startY
       if (!state.boxes) {
         if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return
-        // Where every tab sits before anything moves.
-        const list = state.item.closest('[role="tablist"]')
-        state.boxes = [...(list?.querySelectorAll<HTMLElement>('[data-tab-id]') ?? [])].map((element) => {
+        // Where every tab sits before anything moves (in the whole sidebar, across its folders).
+        const list = state.item.closest('[data-tab-container]') ?? state.item.closest('[role="tablist"]')
+        const elements = [...(list?.querySelectorAll<HTMLElement>('[data-tab-id]') ?? [])]
+        state.ids = elements.map((element) => element.dataset['tabId'] ?? '')
+        state.boxes = elements.map((element) => {
           const rect = element.getBoundingClientRect()
           return { left: rect.left, top: rect.top, width: rect.width, height: rect.height }
         })

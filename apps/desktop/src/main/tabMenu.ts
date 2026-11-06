@@ -49,15 +49,45 @@ export function tabMenuEntries(tabs: readonly TabMenuTab[], id: string): Entry[]
   ]
 }
 
+/** Folders for the "Move to Folder" submenu (indented by depth), and what choosing one does. */
+export type TabMenuFolders = {
+  folders: ReadonlyArray<{ id: string; name: string; depth: number }>
+  current: string | null
+  move: (folderId: string | null) => void
+  createFolder: () => void
+}
+
+/** "Move to Folder": every folder, a new one, and out of folders. Pinned tabs have none. */
+export function folderSubmenu(choices: TabMenuFolders): MenuItemConstructorOptions[] {
+  return [
+    ...choices.folders.map((folder): MenuItemConstructorOptions => ({
+      label: `${'    '.repeat(Math.max(0, folder.depth - 1))}${folder.name}`,
+      type: 'checkbox',
+      checked: folder.id === choices.current,
+      click: () => choices.move(folder.id),
+    })),
+    ...(choices.folders.length ? [{ type: 'separator' as const }] : []),
+    { label: 'New Folder', click: choices.createFolder },
+    ...(choices.current ? [{ label: 'Remove from Folder', click: () => choices.move(null) }] : []),
+  ]
+}
+
 /** The native menu template; `run` performs an action for this tab. */
 export function tabMenuTemplate(
   tabs: readonly TabMenuTab[],
   id: string,
   run: (action: TabMenuAction, id: string) => void,
+  folders?: TabMenuFolders,
 ): MenuItemConstructorOptions[] {
-  return tabMenuEntries(tabs, id).map((entry) =>
+  const items = tabMenuEntries(tabs, id).map((entry): MenuItemConstructorOptions =>
     'separator' in entry
       ? { type: 'separator' as const }
       : { label: entry.label, enabled: entry.enabled, click: () => run(entry.action, id) },
   )
+  const tab = tabs.find((item) => item.id === id)
+  if (!folders || !tab || tab.pinned) return items
+  // After Pin/Unpin.
+  const at = items.findIndex((item) => item.label === 'Pin Tab') + 1
+  items.splice(at > 0 ? at : 3, 0, { label: 'Move to Folder', submenu: folderSubmenu(folders) })
+  return items
 }

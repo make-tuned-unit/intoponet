@@ -1,7 +1,7 @@
 import { useFavicon } from './favicons'
 import { AnimatePresence, motion, useReducedMotion, type Transition } from 'motion/react'
 import type { CaptureRecord, SavedPdfRecord } from '@intoponet/browser-api'
-import { Bookmark, BookmarkPlus, Check, ChevronRight, FolderOpen, FolderPlus, Pencil, Play, Search, Trash2, X } from 'lucide-react'
+import { Bookmark, BookmarkPlus, Check, ChevronRight, FolderOpen, FolderPlus, PanelsTopLeft, Pencil, Play, Search, Trash2, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type KeyboardEvent } from 'react'
 import type { SavedBookmark, SavedCollection } from './localLibrary'
 import { attachCaptures, bookmarkHost, formatDuration, groupBookmarks, groupOf, hostHue, siteLabel, UNSORTED_GROUP_ID } from './bookmarkGroups'
@@ -51,6 +51,8 @@ export type BookmarkPaneProps = {
   onCreateGroup: (label: string) => string | null
   onRenameGroup: (id: string, label: string) => void
   onDeleteGroup: (id: string) => void
+  /** Open a collection's pages as a folder of tabs in the tab sidebar. */
+  onOpenGroupAsTabs?: (id: string) => void
   onMove: (url: string, fromGroupId: string, toGroupId: string) => void
   onClose: () => void
   captures: CaptureRecord[]
@@ -109,6 +111,7 @@ function PaneBody({
   onCreateGroup,
   onRenameGroup,
   onDeleteGroup,
+  onOpenGroupAsTabs,
   onMove,
   onClose,
   captures,
@@ -382,6 +385,11 @@ function PaneBody({
                   )}
                   {group.editable && renaming?.id !== group.id && (
                     <div className="bm-group-actions">
+                      {onOpenGroupAsTabs && group.bookmarks.length > 0 && (
+                        <button type="button" className="lg-icon-button" aria-label={`Open ${group.label} as a tab folder`} title="Open as a folder of tabs" onClick={() => onOpenGroupAsTabs(group.id)}>
+                          <PanelsTopLeft size={13} />
+                        </button>
+                      )}
                       <button type="button" className="lg-icon-button" aria-label={`Rename ${group.label}`} onClick={() => setRenaming({ id: group.id, draft: group.label })}>
                         <Pencil size={13} />
                       </button>

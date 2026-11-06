@@ -1962,6 +1962,91 @@ export const checks = {
       server.close()
     }
   },
+  async TAB_FOLDERS(ctx) {
+    const { server, origin } = await tabSite()
+    const host = 'window.intoponet.browserHost'
+    const tabs = async () => JSON.parse(await ctx.evaluate(`${host}.getTabs().then((t) => JSON.stringify(t))`))
+    const folders = async () => JSON.parse(await ctx.evaluate(`${host}.getTabFolders().then((f) => JSON.stringify(f))`))
+    const byTitle = async (title) => (await tabs()).find((tab) => tab.title === title)
+    const drag = async (fromSelector, toSelector) => {
+      const [from, to] = JSON.parse(await ctx.evaluate(`JSON.stringify([document.querySelector(${JSON.stringify(fromSelector)}).getBoundingClientRect(), document.querySelector(${JSON.stringify(toSelector)}).getBoundingClientRect()])`))
+      const a = { x: from.x + from.width / 2, y: from.y + from.height / 2 }
+      const b = { x: to.x + Math.min(60, to.width / 2), y: to.y + to.height / 2 }
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: a.x, y: a.y })
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: a.x, y: a.y, button: 'left', buttons: 1, clickCount: 1 })
+      for (let step = 1; step <= 10; step += 1) {
+        await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: a.x + (b.x - a.x) * step / 10, y: a.y + (b.y - a.y) * step / 10, button: 'left', buttons: 1 })
+        await ctx.delay(30)
+      }
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: b.x, y: b.y, button: 'left', buttons: 0, clickCount: 1 })
+      await ctx.delay(700)
+    }
+    try {
+      for (const name of ['mail', 'docs', 'notes', 'map', 'news']) await openPage(ctx, `${origin}/${name}`, 800)
+      await ctx.click('button[aria-label="Pin tabs open"]')
+      await ctx.delay(500)
+      // New folder from the sidebar: named at once.
+      await ctx.click('button[aria-label="New folder"]')
+      await ctx.wait(`document.activeElement?.classList.contains('tab-rail-folder-name')`, 3000, 'the new folder to ask for a name')
+      await ctx.evaluate(`document.activeElement.value = ''; true`)
+      await ctx.type('Work')
+      await ctx.press('Enter')
+      await ctx.wait(`${host}.getTabFolders().then((f) => f.some((x) => x.name === 'Work'))`, 3000, 'the folder to be named Work')
+      const work = (await folders()).find((folder) => folder.name === 'Work')
+      // Drag a tab onto the folder.
+      const docs = await byTitle('Page /docs')
+      await drag(`[data-tab-id="${docs.id}"] [role="tab"]`, `[data-folder-drop="${work.id}"]`)
+      expect((await byTitle('Page /docs')).folderId === work.id, 'Dragging a tab onto the folder did not put it there.')
+      // The same from the keyboard path (the tab menu's Move to Folder runs this).
+      const notes = await byTitle('Page /notes')
+      await ctx.evaluate(`${host}.moveTabToFolder(${JSON.stringify(notes.id)}, ${JSON.stringify(work.id)}).then(() => true)`)
+      await ctx.delay(400)
+      // Folders nest four levels deep.
+      let parent = work.id
+      for (const name of ['Reports', 'Q3', 'Drafts']) parent = JSON.parse(await ctx.evaluate(`${host}.createTabFolder(${JSON.stringify(name)}, ${JSON.stringify(parent)}).then((f) => JSON.stringify(f))`)).id
+      const map = await byTitle('Page /map')
+      await ctx.evaluate(`${host}.moveTabToFolder(${JSON.stringify(map.id)}, ${JSON.stringify(parent)}).then(() => true)`)
+      await ctx.delay(600)
+      const nested = await ctx.evaluate(`[...document.querySelectorAll('.tab-rail-folder .tab-rail-folder .tab-rail-folder .tab-rail-folder')].some((e) => e.getAttribute('aria-label') === 'Folder Drafts' && !!e.querySelector('[data-tab-id="${map.id}"]'))`)
+      expect(nested, 'A folder four levels deep is not shown inside its parents with its tab.')
+      await ctx.shot('nested')
+      // The order follows the sidebar: Work's tabs, then its folders' tabs, then the rest.
+      const order = (await tabs()).map((tab) => tab.title.replace('Page /', '')).join(' ')
+      expect(order === 'docs notes map mail news', `Tab order is "${order}".`)
+      // Folding a folder hides its tabs (and its folders); it is kept for the next launch.
+      await ctx.click(`[data-folder-drop="${work.id}"] .tab-rail-folder-toggle`)
+      await ctx.wait(`!document.querySelector('[data-tab-id="${docs.id}"]') && document.querySelector('[data-folder-drop="${work.id}"] .tab-rail-folder-toggle').getAttribute('aria-expanded') === 'false'`, 3000, 'Work to fold')
+      await ctx.delay(500)
+      const saved = JSON.parse(readFileSync(join(ctx.profile, 'browser-state.v1.json'), 'utf8'))
+      expect(saved.folders?.find((folder) => folder.id === work.id)?.collapsed === true && saved.folders.length === 4, `Saved folders: ${JSON.stringify(saved.folders)}.`)
+      expect(saved.tabs.find((tab) => tab.title === 'Page /docs')?.folderId === work.id, 'A tab\'s folder was not saved.')
+      await ctx.click(`[data-folder-drop="${work.id}"] .tab-rail-folder-toggle`)
+      await ctx.delay(500)
+      await axeAudit(ctx, 'the tab sidebar with folders', '.tab-rail')
+      // Saved as a private collection (one per folder, nested ones named by their path).
+      await ctx.click(`[data-folder-drop="${work.id}"] .tab-rail-folder-more`)
+      await ctx.wait(`!!document.querySelector('.tab-rail-folder-menu [role="menuitem"]')`, 2000, 'the folder menu')
+      await ctx.click('.tab-rail-folder-menu [role="menuitem"]', 'Save as collection')
+      await ctx.wait(`window.intoponet.browserHost.readPrivateLibrary().then((r) => { const lib = JSON.parse(r.payload ?? '{}'); return (lib.collections ?? []).some((c) => c.label === 'Work' && c.memberUrls.length === 2) && (lib.collections ?? []).some((c) => c.label === 'Work / Reports / Q3 / Drafts' && c.memberUrls.length === 1) })`, 5000, 'the folder to be saved as collections')
+      await ctx.wait(`[...document.querySelectorAll('.tab-rail-archived')].some((e) => e.textContent.includes('as a collection'))`, 3000, 'the sidebar to say the folder was saved')
+      // A collection opens as a folder of tabs.
+      await ctx.evaluate(`${host}.close().then(() => true)`)
+      await ctx.delay(600)
+      await ctx.click('.topbar-actions button', 'Bookmarks')
+      await ctx.wait(`!!document.querySelector('[aria-label="Open Work as a tab folder"]')`, 4000, 'the collection to offer opening as tabs')
+      const before = (await tabs()).length
+      await ctx.click('[aria-label="Open Work as a tab folder"]')
+      await ctx.wait(`${host}.getTabFolders().then((f) => f.filter((x) => x.name === 'Work').length === 2)`, 4000, 'the collection to open as a folder')
+      expect((await tabs()).length === before + 2, 'Opening the collection did not open its two pages as tabs.')
+      // Deleting a folder keeps its tabs (they move up a level).
+      await ctx.evaluate(`${host}.deleteTabFolder(${JSON.stringify(work.id)}).then(() => true)`)
+      await ctx.delay(500)
+      expect(!(await byTitle('Page /docs')).folderId && (await folders()).find((folder) => folder.name === 'Reports')?.parentId === null, 'Deleting a folder lost its tabs or folders.')
+      return 'Folder named from the sidebar; tab dragged in and moved by command; nested four deep; order follows the sidebar; folded and kept; saved as path-named collections; a collection opened as a folder; delete keeps tabs; axe clean.'
+    } finally {
+      server.close()
+    }
+  },
 }
 
 checks.TAB_SLEEP.env = { INTOPONET_TAB_SLEEP_MINUTE_MS: '200' }
