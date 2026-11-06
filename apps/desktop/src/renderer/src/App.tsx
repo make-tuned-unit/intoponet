@@ -154,6 +154,7 @@ import { GlobeOverlay, type GlobeLabel } from './globe/GlobeOverlay'
 import { labelViewChanged, viewLabelSignals, type LabelView } from './globe/viewLabels'
 import { GlobeHeader, HoverCardContent, LayerCard, SignalPanel, type FieldView, type ListView } from './globe/GlobeHud'
 import { OldsPanel, type OldsState } from './olds/OldsPanel'
+import type { CoverageArticle } from './olds/OldsCoverage'
 import { MinePanel } from './globe/MinePanel'
 import { normalizeLanguage, type AbsorbScope, type KnowledgeRecord, type OldsNode, type OldsQuery } from '@intoponet/browser-api'
 import { AbsorbSheet, type AbsorbState } from './knowledge/AbsorbSheet'
@@ -309,6 +310,9 @@ function tabCaption(tab: PageTabSnapshot): string {
   return raw.slice(0, 10)
 }
 
+/** One thread in the Olds stack; a news headline also carries its article, for the outlet's earlier coverage. */
+type OldsEntry = { query: OldsQuery; label: string; article?: CoverageArticle }
+
 export function App() {
   const [query, setQuery] = useState('')
   const [panel, setPanel] = useState<BrowserPanelSnapshot>(emptyPanel)
@@ -380,7 +384,7 @@ export function App() {
   // World first: what the world is reporting together; Peaks, Rising and Fading are a tab away.
   const [listView, setListView] = useState<ListView>('world')
   const [activeTerm, setActiveTerm] = useState<RisingTerm | null>(null)
-  const [olds, setOlds] = useState<{ stack: Array<{ query: OldsQuery; label: string }>; state: OldsState } | null>(null)
+  const [olds, setOlds] = useState<{ stack: OldsEntry[]; state: OldsState } | null>(null)
   const oldsRequest = useRef(0)
   const [absorb, setAbsorb] = useState<AbsorbState | null>(null)
   const [knowledgeView, setKnowledgeView] = useState<{ focus: string | null } | null>(null)
@@ -2026,7 +2030,7 @@ export function App() {
     return null
   }
 
-  const loadOlds = (stack: Array<{ query: OldsQuery; label: string }>): void => {
+  const loadOlds = (stack: OldsEntry[]): void => {
     const top = stack[stack.length - 1]
     if (!top) return
     const request = ++oldsRequest.current
@@ -2092,6 +2096,8 @@ export function App() {
         ...(localPlace ? { place: localPlace.name, ...(localPlace.geonameId ? { geonameId: localPlace.geonameId } : {}) } : {}),
       },
       label: text.length > 60 ? `${text.slice(0, 57)}…` : text,
+      // The article (a public feed item) leads to its outlet's earlier coverage of the story.
+      article: { url: headline.url, title: headline.title, publisher: headline.publisher },
     }])
   }
   // A headline matched in its own language (no model installed): offer to translate it on this Mac and look again.
@@ -2889,10 +2895,11 @@ export function App() {
             onOpen={(url) => void window.intoponet.browserHost.open({ kind: 'url', value: url })}
             onPickTopic={(topic) => {
               const top = olds.stack[olds.stack.length - 1]
-              if (top?.query.kind === 'headline') loadOlds([...olds.stack.slice(0, -1), { query: { ...top.query, topic }, label: top.label }])
+              if (top?.query.kind === 'headline') loadOlds([...olds.stack.slice(0, -1), { ...top, query: { ...top.query, topic } }])
             }}
             onFollowArticle={(title) => loadOlds([...olds.stack, { query: { kind: 'wikipedia' as const, title }, label: title }].slice(-12))}
             translateOffer={oldsTranslateOffer}
+            article={olds.stack[olds.stack.length - 1]?.article ?? null}
           />
         )}
       </AnimatePresence>

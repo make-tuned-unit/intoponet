@@ -1,11 +1,11 @@
 {
-  "started": "2026-11-06T02:35:11.054Z",
-  "finished": "2026-11-06T02:35:35.407Z",
+  "started": "2026-11-06T06:10:04.761Z",
+  "finished": "2026-11-06T06:13:18.092Z",
   "tier": "network",
   "only": [
-    "PDF_EXPORT"
+    "OLDS_COVERAGE"
   ],
-  "summary": "1 passed, 0 failed, 0 blocked, 0 skipped, 36 assumed",
+  "summary": "1 passed, 0 failed, 0 blocked, 0 skipped, 37 assumed",
   "results": {
     "BUILD": {
       "status": "assumed",
@@ -79,6 +79,11 @@
       "status": "assumed",
       "notes": ""
     },
+    "OLDS_COVERAGE": {
+      "status": "pass",
+      "notes": "“South Korea plans to extend anti-piracy patrols closer to St”: 30 headlines (NOVEMBER 2026 – DECEMBER 2014), then 30 reaching DECEMBER 2014; Go further back",
+      "seconds": 193
+    },
     "BROWSE": {
       "status": "assumed",
       "notes": ""
@@ -132,9 +137,8 @@
       "notes": ""
     },
     "PDF_EXPORT": {
-      "status": "pass",
-      "notes": "Article: 5 pages, 2 images, tagged with outline, ads/hidden/overlay text left out, bookmarked in \"Reading\" with the PDF linked; shop page saved as seen without ads; private tab asked where, neutral name, no Where-from or bookmark; 2 PDFs in Bookmarks › PDFs (private one not listed), removing one keeps the file.",
-      "seconds": 24
+      "status": "assumed",
+      "notes": ""
     },
     "PAYWALL_ALTERNATIVES": {
       "status": "assumed",

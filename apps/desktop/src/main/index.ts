@@ -143,6 +143,7 @@ import { TranslateStore } from './translate/store'
 import { openTranslationEngine } from './translate/openEngine'
 import { loadKnowledgeCrypto, retryingKnowledgeCrypto } from './knowledge/crypto'
 import { OldsService } from './olds/oldsService'
+import { OutletArchive } from './olds/outletArchive'
 
 // Private capture media scheme (served to the app window's default session
 // only; web pages run in a separate partition and cannot reach it).
@@ -2625,7 +2626,12 @@ app.whenReady().then(async () => {
       // Quality checks only: INTOPONET_OLDS_DEBUG=<file> records how each headline's candidates scored.
       ...(process.env.INTOPONET_OLDS_DEBUG ? { debug: (headline: string, candidates: unknown, searched: unknown) => appendFileSync(process.env.INTOPONET_OLDS_DEBUG!, `${JSON.stringify({ headline, candidates, searched })}\n`) } : {}),
     })
-    handleFromShell(oldsChannels.command, (_event, value: unknown) => olds.thread(parseOldsCommand(value).query))
+    // An outlet's earlier coverage: its own topic pages, then Wayback Machine snapshots of them.
+    const outletArchive = new OutletArchive({ cacheDir: join(app.getPath('userData'), 'olds-cache') })
+    handleFromShell(oldsChannels.command, (_event, value: unknown) => {
+      const command = parseOldsCommand(value)
+      return command.type === 'coverage' ? outletArchive.coverage(command.query) : olds.thread(command.query)
+    })
   })
   startup('knowledge and Laya', () => {
     // Absorb + local knowledge: extracted on this device, encrypted with an OS-keychain key, never sent anywhere.

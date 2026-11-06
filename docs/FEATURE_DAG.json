@@ -193,6 +193,16 @@
       "promise": "A headline's history button opens The Olds with Story and Timeline views, no clipped timeline cards, and Escape closes it."
     },
     {
+      "id": "OLDS_COVERAGE",
+      "title": "An outlet's earlier coverage",
+      "deps": [
+        "OLDS_UI"
+      ],
+      "tier": "network",
+      "kind": "e2e",
+      "promise": "From a supported outlet's headline, The Olds shows that outlet's earlier headlines on the story, newest first under the current one, credits the Wayback Machine, and goes further back without losing or reordering headlines."
+    },
+    {
       "id": "BROWSE",
       "title": "Browse the web",
       "deps": [

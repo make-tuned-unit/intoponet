@@ -205,10 +205,65 @@ export type OldsQuery =
   | { kind: 'qid'; qid: string }
   | { kind: 'country'; countryCode: string }
 
-export type OldsCommand = { type: 'thread'; query: OldsQuery }
+/** An outlet's earlier coverage of a story, from its topic pages (live, then Wayback Machine snapshots). */
+export type OldsCoverageQuery = { url: string; headline: string; cursor?: string }
+
+export type OldsCoverageItem = {
+  title: string
+  /** The article on the outlet's site. */
+  url: string
+  /** The Wayback Machine's copy nearest that date. */
+  archiveUrl: string | null
+  /** YYYY-MM-DD: published when the outlet gives it, else the day the topic page listed it. */
+  date: string
+  dated: 'published' | 'seen'
+  /** The topic page it was listed on. */
+  topic: string
+  /** Shares the current story's words, not just its topic. */
+  story: boolean
+}
+
+export type OldsCoverageTopic = { label: string; url: string }
+
+/** Outlets whose earlier coverage can be read back (none has asked the Internet Archive to exclude it). */
+export const COVERAGE_OUTLETS = [
+  { id: 'bbc', name: 'BBC News', host: /(^|\.)bbc\.(co\.uk|com)$/ },
+  { id: 'aljazeera', name: 'Al Jazeera', host: /(^|\.)aljazeera\.com$/ },
+  { id: 'dw', name: 'DW', host: /(^|\.)dw\.com$/ },
+  { id: 'npr', name: 'NPR', host: /(^|\.)npr\.org$/ },
+  { id: 'cna', name: 'CNA', host: /(^|\.)channelnewsasia\.com$/ },
+  { id: 'rfi', name: 'RFI', host: /(^|\.)rfi\.fr$/ },
+  { id: 'euronews', name: 'Euronews', host: /(^|\.)euronews\.com$/ },
+  { id: 'abc-au', name: 'ABC News', host: /(^|\.)abc\.net\.au$/ },
+  { id: 'africanews', name: 'Africanews', host: /(^|\.)africanews\.com$/ },
+  { id: 'mee', name: 'Middle East Eye', host: /(^|\.)middleeasteye\.net$/ },
+] as const
+
+export type CoverageOutletId = typeof COVERAGE_OUTLETS[number]['id']
+
+export function coverageOutlet(url: string): { id: CoverageOutletId; name: string } | null {
+  let host: string
+  try { host = new URL(url).hostname.toLowerCase() } catch { return null }
+  const outlet = COVERAGE_OUTLETS.find((item) => item.host.test(host))
+  return outlet ? { id: outlet.id, name: outlet.name } : null
+}
+
+export type OldsCoverage = {
+  outlet: { id: string; name: string } | null
+  topics: OldsCoverageTopic[]
+  /** Newest first. */
+  items: OldsCoverageItem[]
+  /** Pass back for the next page further back in time; null at the start of the archive. */
+  cursor: string | null
+  status: 'ok' | 'unsupported' | 'no-topics' | 'busy' | 'blocked'
+  note: string
+}
+
+export type OldsCommand = { type: 'thread'; query: OldsQuery } | { type: 'coverage'; query: OldsCoverageQuery }
 
 export interface OldsApi {
   thread(query: OldsQuery): Promise<OldsThread>
+  coverage(query: OldsCoverageQuery): Promise<OldsCoverage>
 }
 
 export const OLDS_NOTE = "Links are Wikidata statements with their references. 'Chronology only' means one came before another — not that it caused it."
@@ -272,7 +327,20 @@ export function parseOldsQuery(value: unknown): OldsQuery {
   }
 }
 
+export function parseOldsCoverageQuery(value: unknown): OldsCoverageQuery {
+  if (!isRecord(value)) throw new Error('Invalid coverage query.')
+  const url = value['url']
+  const headline = value['headline']
+  const cursor = value['cursor']
+  if (typeof url !== 'string' || url.length > 2048 || !/^https?:\/\//i.test(url)) throw new Error('Invalid article URL.')
+  try { new URL(url) } catch { throw new Error('Invalid article URL.') }
+  if (typeof headline !== 'string' || !headline.trim() || headline.length > OLDS_HEADLINE_MAX) throw new Error('Invalid headline.')
+  if (cursor !== undefined && (typeof cursor !== 'string' || !/^(\d@\d{4}-\d{2}-\d{2})(;\d@\d{4}-\d{2}-\d{2}){0,3}$/.test(cursor))) throw new Error('Invalid cursor.')
+  return { url, headline: headline.trim().replace(/\s+/g, ' '), ...(cursor ? { cursor } : {}) }
+}
+
 export function parseOldsCommand(value: unknown): OldsCommand {
+  if (isRecord(value) && value['type'] === 'coverage') return { type: 'coverage', query: parseOldsCoverageQuery(value['query']) }
   if (!isRecord(value) || value['type'] !== 'thread') throw new Error('Invalid Olds command.')
   return { type: 'thread', query: parseOldsQuery(value['query']) }
 }

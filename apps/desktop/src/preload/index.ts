@@ -4,7 +4,7 @@ import { privacyChannels, type PrivacyApi, type PrivacyCommand, type PrivacyStat
 import { beaconChannels, type BeaconApi, type BeaconCommand, type BeaconPreview, type BeaconResource, type BeaconState, type PublishedBeacon } from '@intoponet/browser-api'
 import { sitePermissionChannels, type SitePermissionApi, type SitePermissionCommand, type SitePermissionEvent, type SitePermissionMap, type SitePermissionRequest } from '@intoponet/browser-api'
 import { layaChannels, type LayaApi, type LayaCommand, type LayaHit, type LayaPassage, type LayaProgress, type LayaRelated, type LayaStatus, type LayaTheme } from '@intoponet/browser-api'
-import { knowledgeChannels, oldsChannels, type AbsorbPreview, type AbsorbRefusal, type KnowledgeApi, type KnowledgeCommand, type KnowledgeDocument, type KnowledgeClaim, type KnowledgeHit, type KnowledgeRecord, type OldsApi, type OldsQuery, type OldsThread } from '@intoponet/browser-api'
+import { knowledgeChannels, oldsChannels, type AbsorbPreview, type AbsorbRefusal, type KnowledgeApi, type KnowledgeCommand, type KnowledgeDocument, type KnowledgeClaim, type KnowledgeHit, type KnowledgeRecord, type OldsApi, type OldsCoverage, type OldsCoverageQuery, type OldsQuery, type OldsThread } from '@intoponet/browser-api'
 import { contextBridge, ipcRenderer } from 'electron'
 import { passwordChannels, type PasswordApi, type PasswordCommand, type PasswordEvent, type PasswordPageState, type PasswordVaultStatus, type SavedLogin } from '../shared/passwords'
 import { downloadChannels, historyChannels, type DownloadCommand, type DownloadEntry, type DownloadEvent, type DownloadsApi, type HistoryApi, type HistoryCommand, type HistoryEvent } from '@intoponet/browser-api'
@@ -227,6 +227,7 @@ const captures: CaptureApi = {
 
 const olds: OldsApi = {
   thread: (query: OldsQuery) => ipcRenderer.invoke(oldsChannels.command, { type: 'thread', query }) as Promise<OldsThread>,
+  coverage: (query: OldsCoverageQuery) => ipcRenderer.invoke(oldsChannels.command, { type: 'coverage', query }) as Promise<OldsCoverage>,
 }
 
 const knowledgeInvoke = (command: KnowledgeCommand): Promise<unknown> => ipcRenderer.invoke(knowledgeChannels.command, command)

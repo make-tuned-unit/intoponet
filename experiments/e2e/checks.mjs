@@ -607,6 +607,50 @@ export const checks = {
     return `Views ${views.join('/')}; sections: ${sections.join(', ') || 'path only'}.`
   },
 
+  // An outlet's earlier coverage of a story (its topic pages, then Wayback Machine snapshots), newest first.
+  async OLDS_COVERAGE(ctx) {
+    await ctx.waitForNews()
+    await ctx.click('.globe-tabs button', 'World')
+    await ctx.wait(`document.querySelectorAll('.world-list > li').length > 0`, 90_000, 'world stories')
+    // Open every story's headlines; the international outlets (BBC, Al Jazeera, DW…) are among them.
+    await ctx.evaluate(`[...document.querySelectorAll('.world-list > li:not(.is-open) .world-expand')].forEach((b) => b.click()); true`)
+    await ctx.delay(1500)
+    const OUTLETS = 'BBC|Al Jazeera|DW|Deutsche Welle|NPR|CNA|RFI|Euronews|Africanews|Middle East Eye'
+    const rowsScript = `[...document.querySelectorAll('.world-list li.has-history')].filter((li) => new RegExp('^(${OUTLETS})', 'i').test(li.querySelector('small')?.innerText ?? ''))`
+    // Stories refresh while the list is open: keep opening any that are closed until a supported outlet shows.
+    await ctx.wait(`(() => { document.querySelectorAll('.world-list > li:not(.is-open) .world-expand').forEach((b) => b.click()); return ${rowsScript}.length > 0 })()`, 60_000, 'a headline from a supported outlet')
+    const outletView = `[...document.querySelectorAll('.olds-views button')].find((b) => /covered this story/.test(b.title))`
+    let headline = ''
+    let first = null
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      headline = await ctx.evaluate(`(() => { const li = ${rowsScript}[${attempt}]; if (!li) return ''; li.querySelector('.headline-history').click(); return li.querySelector('strong').innerText })()`)
+      if (!headline) break
+      await ctx.wait(`!!${outletView}`, 60_000, 'the outlet’s coverage view')
+      await ctx.evaluate(`${outletView}.click(); true`)
+      await ctx.wait(`!!document.querySelector('.olds-coverage-list, .olds-coverage-note:not(:has(.olds-spin))')`, 60_000, 'the outlet’s earlier coverage')
+      first = JSON.parse(await ctx.evaluate(`JSON.stringify({ months: [...document.querySelectorAll('.olds-coverage-month h3')].map((h) => h.innerText), items: document.querySelectorAll('.olds-coverage-month li').length, now: document.querySelector('.olds-coverage-now')?.innerText ?? '', note: document.querySelector('.olds-coverage-note')?.innerText ?? '', credit: document.querySelector('.olds-coverage-credit')?.innerText ?? '' })`))
+      if (first.items) break
+      await ctx.press('Escape')
+      await ctx.delay(1200)
+    }
+    expect(first, 'No headline from a supported outlet could be opened.')
+    expect(/Wayback Machine/.test(first.credit), 'The coverage view does not credit the Wayback Machine.')
+    if (!first.items) return `No earlier coverage for “${headline}”: ${first.note}`
+    expect(first.now.includes(headline.slice(0, 30)), 'The current story is not at the top of the coverage.')
+    const monthOrder = (months) => months.map((label) => Date.parse(`1 ${label}`))
+    const ordered = (months) => monthOrder(months).every((value, index, all) => index === 0 || value <= all[index - 1])
+    expect(ordered(first.months), `Months are not newest first: ${first.months.join(', ')}`)
+    await ctx.shot('olds-coverage')
+    // Further back: the archive's snapshots (a few seconds each, paced for the Internet Archive).
+    await ctx.evaluate(`document.querySelector('.olds-coverage-end button')?.click(); true`)
+    await ctx.wait(`!document.querySelector('.olds-coverage-end .olds-spin')`, 120_000, 'older coverage from the archive')
+    const later = JSON.parse(await ctx.evaluate(`JSON.stringify({ months: [...document.querySelectorAll('.olds-coverage-month h3')].map((h) => h.innerText), items: document.querySelectorAll('.olds-coverage-month li').length, end: document.querySelector('.olds-coverage-end')?.innerText ?? '' })`))
+    expect(ordered(later.months), `Months are not newest first after going back: ${later.months.join(', ')}`)
+    expect(later.items >= first.items, 'Going further back lost headlines.')
+    await ctx.press('Escape')
+    return `“${headline.slice(0, 60)}”: ${first.items} headlines (${first.months[0]} – ${first.months.at(-1)}), then ${later.items} reaching ${later.months.at(-1)}; ${later.end}`
+  },
+
   async OLDS_DEBATE(ctx) {
     const thread = JSON.parse(await ctx.evaluate(`window.intoponet.olds.thread({ kind: 'wikipedia', title: 'Industrial Revolution' }).then((t) => JSON.stringify({ interpretations: t.interpretations ?? [], chapters: (t.chapters ?? []).length }))`))
     expect(thread.interpretations.length >= 2, `Only ${thread.interpretations.length} attributed interpretations for the Industrial Revolution.`)

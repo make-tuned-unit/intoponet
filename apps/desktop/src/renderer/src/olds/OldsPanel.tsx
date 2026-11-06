@@ -1,9 +1,10 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { ArrowLeft, BookOpen, ChevronsLeft, ChevronsRight, ExternalLink, GitBranch, History, List, Loader2, Newspaper, Rows3, Scale, X } from 'lucide-react'
+import { Archive, ArrowLeft, BookOpen, ChevronsLeft, ChevronsRight, ExternalLink, GitBranch, History, List, Loader2, Newspaper, Rows3, Scale, X } from 'lucide-react'
 import { OldsStory, SupportBadge, supportWords, type StorySelection } from './OldsStory'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { OLDS_NOTE, type OldsChapter, type OldsChronicleEntry, type OldsDate, type OldsEdge, type OldsNode, type OldsThread } from '@intoponet/browser-api'
+import { OLDS_NOTE, coverageOutlet, type OldsChapter, type OldsChronicleEntry, type OldsDate, type OldsEdge, type OldsNode, type OldsThread } from '@intoponet/browser-api'
 import { useGlassSheen } from '../glass/useGlassSheen'
+import { OldsCoverage, type CoverageArticle } from './OldsCoverage'
 import '../glass/glass.css'
 import './olds.css'
 
@@ -109,6 +110,7 @@ export function OldsPanel({
   onFollowArticle,
   onPickTopic,
   translateOffer,
+  article,
 }: {
   state: OldsState
   /** Labels of the threads followed so far (for the back button). */
@@ -123,6 +125,8 @@ export function OldsPanel({
   onPickTopic?: (topic: string) => void
   /** A headline matched in its own language: translate it on this Mac and look again. */
   translateOffer?: { label: string; detail: string; busy: boolean; onTranslate: () => void } | null
+  /** The news article the thread was opened from: its outlet's earlier coverage is one view. */
+  article?: CoverageArticle | null
 }) {
   const sheen = useGlassSheen<HTMLDivElement>()
   const reduceMotion = useReducedMotion()
@@ -132,7 +136,7 @@ export function OldsPanel({
     const typing = active instanceof HTMLInputElement && active.value !== '' || active instanceof HTMLTextAreaElement
     if (!typing) document.querySelector<HTMLElement>('.olds-sheet')?.focus({ preventScroll: true })
   }, [])
-  const [view, setView] = useState<'story' | 'timeline' | 'list' | 'debate'>('timeline')
+  const [view, setView] = useState<'story' | 'timeline' | 'list' | 'debate' | 'coverage'>('timeline')
   const [story, setStory] = useState<{ key: string; selection: StorySelection } | null>(null)
   const [wellSourced, setWellSourced] = useState(false)
   const [selectedId, setSelectedIdState] = useState<string | null>(null)
@@ -187,7 +191,7 @@ export function OldsPanel({
     setSelectedIdState(null)
     setChapterId(null)
     setStory(null)
-    setView(thread?.context ? 'story' : (current) => (current === 'story' || current === 'debate' ? 'timeline' : current))
+    setView((current) => current === 'coverage' && article ? current : thread?.context ? 'story' : current === 'story' || current === 'debate' || current === 'coverage' ? 'timeline' : current)
   }, [thread?.rootId, thread?.context]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Which way the timeline can still scroll, and which chapter its middle is in.
@@ -266,6 +270,8 @@ export function OldsPanel({
   }, [entries])
 
   const label = state.status === 'ready' ? root?.label ?? 'History' : state.label
+  const outlet = article ? coverageOutlet(article.url) : null
+  const showCoverage = view === 'coverage' && !!article && !!outlet
 
   return (
     <motion.section
@@ -310,6 +316,11 @@ export function OldsPanel({
             <button type="button" role="radio" aria-checked={view === 'list'} className={view === 'list' ? 'is-active' : ''} onClick={() => setView('list')}>
               <List size={13} aria-hidden="true" /> List
             </button>
+            {outlet && (
+              <button type="button" role="radio" aria-checked={view === 'coverage'} className={view === 'coverage' ? 'is-active' : ''} onClick={() => setView('coverage')} title={`How ${outlet.name} covered this story before, from the Wayback Machine`}>
+                <Archive size={13} aria-hidden="true" /> {outlet.name}
+              </button>
+            )}
           </div>
           <button type="button" className="lg-icon-button" aria-label="Close The Olds" onClick={onClose}>
             <X size={15} />
@@ -332,7 +343,7 @@ export function OldsPanel({
         </AnimatePresence>
       </div>
 
-      {thread && allEntries.length > 0 && view !== 'story' && (
+      {thread && allEntries.length > 0 && view !== 'story' && !showCoverage && (
         <div className="olds-sources" aria-label="How well these links are sourced">
           <span className="olds-support is-strong" title="Wikidata cites an outside source, or the link comes from the Wikipedia history article">● {sourceCounts.strong} well sourced</span>
           <span className="olds-support is-medium" title="No outside reference on Wikidata, but the Wikipedia article text names both sides">● {sourceCounts.medium} corroborated by Wikipedia text</span>
@@ -343,12 +354,17 @@ export function OldsPanel({
         </div>
       )}
 
-      {state.status === 'loading' && (
+      {showCoverage && article && (
+        <div className="olds-body">
+          <OldsCoverage article={article} onOpen={onOpen} />
+        </div>
+      )}
+      {!showCoverage && state.status === 'loading' && (
         <div className="olds-status" role="status"><Loader2 size={16} className="olds-spin" aria-hidden="true" /> Looking up sourced history…</div>
       )}
-      {state.status === 'error' && <div className="olds-status is-error" role="alert">{state.message}</div>}
-      {thread?.historyNote && <p className="olds-history-note">{thread.historyNote}</p>}
-      {thread?.context && translateOffer && (
+      {!showCoverage && state.status === 'error' && <div className="olds-status is-error" role="alert">{state.message}</div>}
+      {!showCoverage && thread?.historyNote && <p className="olds-history-note">{thread.historyNote}</p>}
+      {!showCoverage && thread?.context && translateOffer && (
         <div className="olds-translate-offer">
           <span>{translateOffer.detail}</span>
           <button type="button" onClick={translateOffer.onTranslate} disabled={translateOffer.busy}>
@@ -357,11 +373,11 @@ export function OldsPanel({
         </div>
       )}
 
-      {thread && entries.length === 0 && !thread.context && (
+      {!showCoverage && thread && entries.length === 0 && !thread.context && (
         <div className="olds-status">No sourced historical links were found for this yet. That means Wikidata has no statements, not that there is no history.</div>
       )}
 
-      {thread && (entries.length > 0 || thread.context) && (
+      {!showCoverage && thread && (entries.length > 0 || thread.context) && (
         <div className="olds-body">
           {view === 'debate' && thread.interpretations?.length ? (
             <div className="olds-debate" aria-label="Competing interpretations">
@@ -752,7 +768,7 @@ export function OldsPanel({
         </div>
       )}
 
-      <footer className="olds-foot">{thread ? `${thread.attribution}. ` : ''}{OLDS_NOTE}{thread?.chaptersSource ? ` Chapters follow the Wikipedia article “${thread.chaptersSource.title}”.` : ''} Drag, scroll or use ← → to move through time.</footer>
+      {!showCoverage && <footer className="olds-foot">{thread ? `${thread.attribution}. ` : ''}{OLDS_NOTE}{thread?.chaptersSource ? ` Chapters follow the Wikipedia article “${thread.chaptersSource.title}”.` : ''} Drag, scroll or use ← → to move through time.</footer>}
     </motion.section>
   )
 }
