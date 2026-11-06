@@ -1,6 +1,7 @@
 import { buildNewsDigest, type CoverageIntervals, type NewsFeedHealth, type NewsItemInput, type NewsSourceMeta, type WikiNewsItem } from '../../shared/news/newsDigest'
 import { buildGlobalStories } from '../../shared/news/globalStories'
 import { buildSpreadingStories } from '../../shared/news/spreadingStories'
+import { buildStoryMountains, type StoryMemory } from '../../shared/news/storyMountains'
 import { placeTrends, type PlaceQuery, type PlaceTrends } from '../../shared/news/placeTrends'
 
 /**
@@ -42,6 +43,7 @@ export class DigestModel {
   private memoryOnly: NewsItemInput[] = []
   private health: Record<string, NewsFeedHealth> = {}
   private coverage: CoverageIntervals = {}
+  private mountainMemory: StoryMemory[] = []
   private inTheNews: WikiNewsItem[] = []
 
   apply(update: DigestUpdate): void {
@@ -67,16 +69,22 @@ export class DigestModel {
   build(now: number): DigestOutput {
     const started = performance.now()
     const stored = [...this.stored.values()].flat()
-    const build = (items: NewsItemInput[]): string => JSON.stringify({
+    const build = (items: NewsItemInput[], remember: boolean): string => {
+      // The last build's stories keep their ids and summits, so mountains don't jump between updates.
+      const mountains = buildStoryMountains({ sources: this.sources, items, now, previous: this.mountainMemory })
+      if (remember) this.mountainMemory = mountains.memory
+      return JSON.stringify({
       coverageSchemaVersion: this.schemaVersion,
       ...buildNewsDigest({ sources: this.sources, items, health: this.health, now, coverage: this.coverage }),
       global: buildGlobalStories({ sources: this.sources, items, now }),
       spreading: buildSpreadingStories({ sources: this.sources, items, now }),
       inTheNews: this.inTheNews,
-    })
+      mountains: mountains.stories,
+      })
+    }
     const all = this.memoryOnly.length ? [...stored, ...this.memoryOnly] : stored
-    const latest = build(all)
-    const disk = this.memoryOnly.length ? build(stored) : null
+    const latest = build(all, true)
+    const disk = this.memoryOnly.length ? build(stored, false) : null
     return { latest, disk, ms: performance.now() - started, items: all.length }
   }
 

@@ -1,11 +1,12 @@
 {
-  "started": "2026-11-06T06:10:04.761Z",
-  "finished": "2026-11-06T06:13:18.092Z",
+  "started": "2026-11-06T14:47:55.903Z",
+  "finished": "2026-11-06T14:48:24.096Z",
   "tier": "network",
   "only": [
-    "OLDS_COVERAGE"
+    "STORY_MOUNTAINS",
+    "GLOBE_LIVE"
   ],
-  "summary": "1 passed, 0 failed, 0 blocked, 0 skipped, 37 assumed",
+  "summary": "2 passed, 0 failed, 0 blocked, 0 skipped, 37 assumed",
   "results": {
     "BUILD": {
       "status": "assumed",
@@ -48,8 +49,9 @@
       "notes": ""
     },
     "GLOBE_LIVE": {
-      "status": "assumed",
-      "notes": ""
+      "status": "pass",
+      "notes": "290 public signals across 4 active layers. Hover to preview, click to explore, or search a place below.",
+      "seconds": 13
     },
     "SOURCE_CAROUSEL": {
       "status": "assumed",
@@ -80,9 +82,8 @@
       "notes": ""
     },
     "OLDS_COVERAGE": {
-      "status": "pass",
-      "notes": "“South Korea plans to extend anti-piracy patrols closer to St”: 30 headlines (NOVEMBER 2026 – DECEMBER 2014), then 30 reaching DECEMBER 2014; Go further back",
-      "seconds": 193
+      "status": "assumed",
+      "notes": ""
     },
     "BROWSE": {
       "status": "assumed",
@@ -159,6 +160,11 @@
     "ROUGH_TRANSLATE": {
       "status": "assumed",
       "notes": ""
+    },
+    "STORY_MOUNTAINS": {
+      "status": "pass",
+      "notes": "60 story mountains; highest \"US midterm elections\" (40 outlets, 17 other countries).",
+      "seconds": 16
     }
   }
 }

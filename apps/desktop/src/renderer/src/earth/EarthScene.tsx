@@ -14,6 +14,8 @@ import {
 } from '../exploration'
 import { FrequencyMembrane, type MembraneDiagnostics } from './FrequencyMembrane'
 import { DEFAULT_ORGANIC_MEMBRANE_SETTINGS, OrganicMembrane } from './OrganicMembrane'
+import type { StoryTerrain } from '../globe/storyTerrain'
+import { StoryStrands, type StoryStrandsProps } from '../globe/StoryStrands'
 import type { OrganicMembraneMetrics, OrganicMembraneSettings } from './OrganicMembrane'
 import type { InterestSignal } from '../interestField'
 import { OrbitRig } from './OrbitRig'
@@ -160,6 +162,8 @@ export function EarthScene({
   anchor,
   bands,
   signals,
+  terrain,
+  strands,
   markers,
   selectedMarkerId = null,
   hoveredMarkerId = null,
@@ -187,6 +191,10 @@ export function EarthScene({
   pose?: OrbitPose | undefined
   bands?: FrequencyBand[] | undefined
   signals?: InterestSignal[] | undefined
+  /** Story mountains (replaces the signals' field when given). */
+  terrain?: StoryTerrain | null | undefined
+  /** Strands from a hovered or pinned summit. */
+  strands?: StoryStrandsProps | null | undefined
   markers?: GlobeMarker[] | undefined
   selectedMarkerId?: string | null
   hoveredMarkerId?: string | null
@@ -256,6 +264,7 @@ export function EarthScene({
         />
       )}
       {countryView && <CountryProjector view={countryView} />}
+      {strands && !panelOpen && <StoryStrands {...strands} />}
       {signals === undefined ? (
         <FrequencyMembrane
           paused={phasePaused ?? paused}
@@ -270,6 +279,7 @@ export function EarthScene({
       ) : (
         <OrganicMembrane
           signals={signals}
+          terrain={terrain}
           settings={{ ...(membraneSettings ?? DEFAULT_ORGANIC_MEMBRANE_SETTINGS), paused: phasePaused ?? paused }}
           phaseTimeSeconds={phaseTimeSeconds}
           onMetrics={onOrganicMetrics}

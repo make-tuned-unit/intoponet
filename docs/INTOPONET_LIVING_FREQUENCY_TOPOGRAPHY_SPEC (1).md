@@ -15,10 +15,10 @@ Render a recognizable, dark, understated Earth suspended in near-black space. It
 - Colors: obsidian environment, restrained teal/cyan with occasional violet accents; delicate edge lighting and controlled bloom.
 - Field is one continuous shell, not individual peaks or objects above countries.
 - Topography comes from membrane displacement **not** from Earth's physical elevation.
-- No political borders, latitude-longitude grid, labels, pins, heatmap colors or dashboard UI by default.
+- No political borders, latitude-longitude grid, labels, pins, heatmap colors or dashboard UI by default. *(Amended 2026-11-06 for the news layer: story summits carry a label and a gold cap; see §21.)*
 - Premium fluid motion and glass UI, not a video-game HUD.
 
-**Never produce:** geological mountains, cliffs, cones, Google Earth terrain, choropleth maps, glowing heatmap spots, audio equalizer bars, global latitude stripes, particle-only visualization, generic Perlin-noise ocean, or randomly animated waves disconnected from data.
+**Never produce** *(except the news layer's story mountains, §21)***:** geological mountains, cliffs, cones, Google Earth terrain, choropleth maps, glowing heatmap spots, audio equalizer bars, global latitude stripes, particle-only visualization, generic Perlin-noise ocean, or randomly animated waves disconnected from data.
 
 ## 2. Meaning of the field
 
@@ -437,3 +437,17 @@ Response should contain `TileObservation[]`, a source/coverage manifest referenc
 - [ ] Synthetic fixtures and real observations are clearly separated in UI and data contracts.
 
 **Final instruction to Codex:** Build a planet-wide, continuously refreshed, *evidence-backed* frequency field. The field is alive because the world's published information changes, not because the shader invents waves. RSS and local reporting are foundational sensors, and local issues must remain visible at the appropriate scale. Never represent a coverage gap as silence, or media volume as a complete measurement of humanity's interests.
+
+
+## 21. Amendment (2026-11-06): story mountains on the news layer
+
+The product owner amended this spec for the local-news layer. With news on, the terrain shows **story mountains**: each story outlets are covering now is one mountain over the country it is about, with one labelled summit. The user spins the globe to find the highest peak and hovers it to see strands to the other countries that covered the same story. Other layers keep the frequency-field rules above.
+
+Rules that replace §6's shape rules for this layer (code: `shared/news/storyMountains.ts`, `renderer/src/globe/storyTerrain.ts`):
+
+1. **One measure, one fixed scale.** Height is recent independent-outlet coverage: each publisher group counts once per story, weighted by its latest matching headline with a 12-hour half-life. `storyHeight(C) = ln(1+C/4) / (ln(1+C/4) + ln 11)` is strictly increasing and never re-ranked per snapshot, so a quiet day stays low. The shader maps it linearly (no second saturating curve).
+2. **The tallest summit is the most-covered story.** Stories combine by their upper envelope (the taller wins at each point, never a sum or union). Summit neighbourhoods carry no decorative relief or warp.
+3. **Where a mountain stands.** The country a story is about: its own outlets count once, other countries' headlines naming it count double. The footprint is the places in that country its headlines name or its outlets are based in; national stories stand at the country's anchor (an illustrative position). Countries without working feeds are not quiet: no mountain is drawn where nothing was observed.
+4. **Crest.** The top ~15% of each story's own summit is gold (#FFD166) on mountains of about three or more outlets; the #1 summit also carries "▲" in its label. Rising/easing is shown in words and arrows, never by recolouring height.
+5. **Strands.** Hovering a summit (or its flank) draws strands to up to 8 other countries that covered the story (16 when pinned by a click), drawn once in the order coverage first appeared there. They show that both covered the same story, not that one copied the other, so they carry no flowing particles. Reduced motion draws them complete.
+6. **Wording.** "Height is how many independent outlets in the monitored feeds carried the story, newer coverage counting more. It is not a measure of importance."

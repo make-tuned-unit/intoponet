@@ -25,6 +25,7 @@ function uniforms(): OrganicShaderUniforms {
     uOrganicReveal: { value: 1 },
     uOrganicLineGlow: { value: 1 },
     uOrganicWarp: { value: 1 },
+    uStoryTerrain: { value: 0 },
   }
 }
 

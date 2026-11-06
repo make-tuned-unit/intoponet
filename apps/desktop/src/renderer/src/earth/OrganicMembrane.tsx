@@ -14,6 +14,7 @@ import {
   type WebGLRenderer,
 } from 'three'
 import { buildInterestTextureData, INTEREST_FIELD_LIMITS, type InterestSignal } from '../interestField'
+import type { StoryTerrain } from '../globe/storyTerrain'
 import { useInvalidateOnRender } from './frameDemand'
 import { ORGANIC_SHADER_CACHE_KEY, patchOrganicShader, type OrganicShaderUniforms } from './organicShader'
 
@@ -48,13 +49,15 @@ export type OrganicMembraneMetrics = {
 
 export type OrganicMembraneProps = {
   signals: InterestSignal[]
+  /** Story terrain (storyTerrain.ts). When given it is the field, and `signals` is ignored. */
+  terrain?: StoryTerrain | null | undefined
   settings: OrganicMembraneSettings
   phaseTimeSeconds?: number | undefined
   onMetrics?: ((metrics: OrganicMembraneMetrics) => void) | undefined
 }
 
 type InterestTextureData = ReturnType<typeof buildInterestTextureData>
-type SignalKind = 'none' | 'synthetic' | 'public-aggregate' | 'private-local' | 'mixed'
+type SignalKind = 'none' | 'synthetic' | 'public-aggregate' | 'private-local' | 'mixed' | 'story'
 type TextureState = {
   from: DataTexture
   to: DataTexture
@@ -81,6 +84,8 @@ type RendererRuntime = {
 }
 
 export const ORGANIC_SNAPSHOT_TRANSITION_MS = 12_500
+/** Story terrain eases to each digest in a few seconds; its own measure (12 h half-life) already smooths it. */
+export const STORY_TERRAIN_TRANSITION_MS = 3_000
 /** Entrance: relief grows from the flat sphere so contour rings bloom outward from data peaks. */
 export const ORGANIC_REVEAL_MS = 5_500
 
@@ -259,8 +264,8 @@ function stepGpuTimer(renderer: WebGLRenderer, extension: TimerExtension | null,
   }
 }
 
-export function OrganicMembrane({ signals, settings, phaseTimeSeconds, onMetrics }: OrganicMembraneProps) {
-  if (signalKind(signals) === 'mixed') {
+export function OrganicMembrane({ signals, terrain, settings, phaseTimeSeconds, onMetrics }: OrganicMembraneProps) {
+  if (!terrain && signalKind(signals) === 'mixed') {
     throw new Error('OrganicMembrane accepts one signal source type per snapshot.')
   }
   const { gl, camera } = useThree()
@@ -274,9 +279,12 @@ export function OrganicMembrane({ signals, settings, phaseTimeSeconds, onMetrics
   const runtime = useMemo(() => getRendererRuntime(gl), [gl])
   const rendererLease = useMemo(() => ({}), [])
 
-  const key = useMemo(() => snapshotKey(signals), [signals])
+  const key = useMemo(() => (terrain ? `story:${terrain.key}` : snapshotKey(signals)), [signals, terrain])
+  const kind: SignalKind = terrain ? 'story' : signalKind(signals)
+  const transitionMs = kind === 'story' ? STORY_TERRAIN_TRANSITION_MS : ORGANIC_SNAPSHOT_TRANSITION_MS
   // Never let an oversized input take the globe down: keep the strongest that fit the budget.
   const targetData = useMemo(() => {
+    if (terrain && terrain.width === 512 && terrain.height === 256) return { data: terrain.data, width: terrain.width, height: terrain.height, pixelWidthKm: 78, undersampledSignalIds: [] }
     const budget = Math.floor(INTEREST_FIELD_LIMITS.rasterWork / (512 * 256))
     const fitted = signals.length > budget ? [...signals].sort((a, b) => b.intensity - a.intensity).slice(0, budget) : signals
     return buildInterestTextureData(fitted, 512, 256)
@@ -292,7 +300,7 @@ export function OrganicMembrane({ signals, settings, phaseTimeSeconds, onMetrics
       width: targetData.width,
       height: targetData.height,
       snapshotKey: key,
-      sourceKind: signalKind(signals),
+      sourceKind: kind,
       transition: 1,
       transitionStart: 0,
     } satisfies TextureState
@@ -311,6 +319,7 @@ export function OrganicMembrane({ signals, settings, phaseTimeSeconds, onMetrics
     uOrganicReveal: { value: 1 },
     uOrganicWarp: { value: 1 },
     uOrganicLineGlow: { value: clamp(settings.lineGlow ?? 1, 0, 1.5) },
+    uStoryTerrain: { value: kind === 'story' ? 1 : 0 },
   }), [])
   // Reduced motion and fixed-clock captures start fully formed. Otherwise the
   // entrance starts on the first rendered frame (after shader compile and
@@ -323,10 +332,10 @@ export function OrganicMembrane({ signals, settings, phaseTimeSeconds, onMetrics
     const now = performance.now()
     const linear = state.transition >= 1
       ? 1
-      : clamp((now - state.transitionStart) / ORGANIC_SNAPSHOT_TRANSITION_MS, 0, 1)
+      : clamp((now - state.transitionStart) / transitionMs, 0, 1)
     const visible = mixSnapshotData(state.fromData, state.toData, smoothstep(linear))
     const next = targetData.data.slice()
-    const nextKind = signalKind(signals)
+    const nextKind = kind
     const crossesSourceBoundary = state.sourceKind !== nextKind
     state.fromData = crossesSourceBoundary ? next.slice() : visible
     state.toData = next
@@ -337,7 +346,8 @@ export function OrganicMembrane({ signals, settings, phaseTimeSeconds, onMetrics
     assignTextureData(state.from, state.fromData)
     assignTextureData(state.to, state.toData)
     uniforms.uInterestTransition.value = state.transition
-  }, [key, signals, targetData, uniforms])
+    uniforms.uStoryTerrain.value = nextKind === 'story' ? 1 : 0
+  }, [key, kind, targetData, uniforms])
 
   useEffect(() => {
     lifecycleGeneration.current += 1
@@ -410,7 +420,7 @@ export function OrganicMembrane({ signals, settings, phaseTimeSeconds, onMetrics
     uniforms.uOrganicTime.value = phaseClockRef.current
     const linear = state.transition >= 1
       ? 1
-      : clamp((now - state.transitionStart) / ORGANIC_SNAPSHOT_TRANSITION_MS, 0, 1)
+      : clamp((now - state.transitionStart) / transitionMs, 0, 1)
     state.transition = smoothstep(linear)
     transitionRef.current = state.transition
     uniforms.uInterestTransition.value = state.transition
@@ -419,7 +429,8 @@ export function OrganicMembrane({ signals, settings, phaseTimeSeconds, onMetrics
     const easedZoom = smoothstep(zoom)
     uniforms.uVisualExaggeration.value = 0.62 + 0.38 * easedZoom
     // Planet-scale meander only; city views stay close to measured geometry.
-    uniforms.uOrganicWarp.value = 0.3 + 0.7 * easedZoom
+    // Story summits stay where they are measured: no meander.
+    uniforms.uOrganicWarp.value = state.sourceKind === 'story' ? 0 : 0.3 + 0.7 * easedZoom
     uniforms.uMacroAmount.value = clamp(settings.macro, 0, 2)
     uniforms.uMesoAmount.value = clamp(settings.meso, 0, 2)
     uniforms.uMicroAmount.value = clamp(settings.micro, 0, 2)

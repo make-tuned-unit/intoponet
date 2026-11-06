@@ -555,6 +555,26 @@ export const checks = {
     return `${stories} world stories; scrolls ${scroll.moved}px.`
   },
 
+  async STORY_MOUNTAINS(ctx) {
+    await ctx.waitForNews()
+    await ctx.wait(`window.intoponet.browserHost.getNewsDigest().then((raw) => (JSON.parse(raw).mountains ?? []).length >= 5)`, 120_000, 'story mountains in the news digest')
+    const digest = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getNewsDigest()`))
+    const heights = digest.mountains.map((m) => m.height)
+    expect(heights.every((h, i) => i === 0 || heights[i - 1] >= h), `Story mountains are not ordered tallest first: ${JSON.stringify(digest.mountains.map((m, i) => [i, m.coverage, m.height]).filter(([i], _, all) => i > 0 && all[i - 1][2] < all[i][2]))}`)
+    expect(digest.mountains.every((m) => m.height > 0 && m.height < 1 && m.outlets >= 2), 'A story mountain has an out-of-range height or fewer than two outlets.')
+    await ctx.wait(`!!document.querySelector('.story-highest')`, 30_000, 'the highest-peak control')
+    await ctx.click('.story-highest')
+    await ctx.wait(`!!document.querySelector('.story-panel h2')`, 10_000, 'the pinned story panel')
+    const panel = await ctx.evaluate(`document.querySelector('.story-panel h2').innerText`)
+    const top = digest.mountains[0]
+    expect(panel === (top.label ?? top.title), `The highest-peak control pinned "${panel}", not the tallest story "${top.label ?? top.title}".`)
+    await ctx.delay(2500)
+    await ctx.shot('story-mountains')
+    await ctx.press('Escape')
+    await ctx.wait(`!document.querySelector('.story-panel')`, 5_000, 'the story panel to close on Escape')
+    return `${digest.mountains.length} story mountains; highest "${panel}" (${top.outlets} outlets, ${top.countries.length} other countries).`
+  },
+
   async OLDS_HEADLINE(ctx) {
     const thread = JSON.parse(await ctx.evaluate(`window.intoponet.olds.thread({ kind: 'headline', text: 'Israel to give verdict on Netanyahu in pivotal election' }).then((t) => JSON.stringify({ root: t.nodes.find((n) => n.id === t.rootId), chronicle: t.chronicle ?? [], related: t.context?.related ?? [] }))`))
     // The voters' "verdict" is the election itself; Netanyahu is also a fair match.

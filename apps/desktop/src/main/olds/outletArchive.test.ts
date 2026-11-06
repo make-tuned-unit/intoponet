@@ -93,6 +93,109 @@ describe('topic choice edge cases', () => {
   })
 })
 
+describe('stress-test regressions: topic choice', () => {
+  const abc = outletFor('https://www.abc.net.au/news/2026-11-06/x/1')!
+  const npr = outletFor('https://www.npr.org/2026/11/05/nx-s1-1/x')!
+
+  it('takes ABC’s own tag chips, not the chips on related-story cards', () => {
+    // A murder-trial story: its "Related topics" chips and headline chip, then cards for other stories with their own chips.
+    const html = `<a data-component="SubjectTag" class="Tag_link ArticleHeadlineTitle_tag CardTag_pill" href="/news/topic/homicide">Homicide</a>
+      <p>Beau Lamarre-Condon told the jury in Paddington that the first shot was intentional, in the Paddington murder trial.</p>
+      <a href="/news/2026-11-06/us-midterms/1">Trump moves to protect Oval Office after midterms</a><a data-component="SubjectTag" class="Tag_link CardTag_slim" href="/news/topic/us-elections">US Elections</a>
+      <a href="/news/2026-11-06/bondi/2">Woman shot in Bondi attack dies</a><a data-component="SubjectTag" class="Tag_link CardTag_slim" href="/news/topic/terrorism">Terrorism</a>
+      <h2>Related topics</h2><a data-component="Tag" href="/news/topic/paddington-2021">Paddington</a><a data-component="Tag" href="/news/topic/courts">Courts</a>`
+    const candidates = articleTopics(html, 'https://www.abc.net.au/news/2026-11-06/x/1', abc, [])
+    expect(candidates.find((item) => item.label === 'US Elections')?.fromKeyword).toBe(false)
+    expect(candidates.find((item) => item.label === 'Terrorism')?.fromKeyword).toBe(false)
+    expect(candidates.find((item) => item.label === 'Homicide')?.fromKeyword).toBe(true)
+    expect(candidates.find((item) => item.label === 'Paddington')?.fromKeyword).toBe(true)
+    const chosen = chooseTopics(candidates, "Lamarre-Condon tells jury first shot at ex-partner was 'intentional'", 'Beau Lamarre-Condon told the jury in Paddington that the first shot was intentional, in the Paddington murder trial.', [])
+    expect(chosen.map((topic) => topic.label)).not.toContain('US Elections')
+    expect(chosen.map((topic) => topic.label)).not.toContain('Terrorism')
+  })
+
+  it('reads NPR’s newer tag addresses and its story tags, and capitalises lower-case labels', () => {
+    const html = '<div class="tags"><ul><li><a class="tag tag--story"href="https://www.npr.org/tags/g-s1-100949/2026-midterms">2026 midterms</a></li><li><a class="tag tag--story"href="https://www.npr.org/tags/134965593/redistricting">redistricting</a></li></ul></div>'
+    const candidates = articleTopics(html, 'https://www.npr.org/2026/11/05/nx-s1-1/x', npr, [])
+    expect(candidates.map((item) => [item.url, item.fromKeyword])).toEqual([['https://www.npr.org/tags/g-s1-100949/2026-midterms', true], ['https://www.npr.org/tags/134965593/redistricting', true]])
+    const chosen = chooseTopics(candidates, 'How North Carolina Democrats flipped House seats in redrawn districts', 'Redistricting gave Democrats a chance. The 2026 midterms were a wave. Redistricting in North Carolina.', [])
+    expect(chosen.map((topic) => topic.label)).toEqual(['2026 midterms', 'Redistricting'])
+  })
+
+  it('does not put a running story the text merely links to ahead of the story’s own subjects', () => {
+    // DW: a Ukraine ceasefire piece mentions the US midterms once; "war" in a headline does not name "War on Iran".
+    const html = '<p>The ceasefire in Oleshky was brokered by <a href="/en/melania-trump/t-1">Melania Trump</a>, days after the <a href="/en/us-midterm-elections-2026/t-2">US midterms</a>, as the <a href="/en/russias-war-in-ukraine/t-3">war in Ukraine</a> goes on.</p><p>Melania Trump hosted the talks on the ceasefire. Melania Trump said the war in Ukraine must end and that Ukraine needs peace.</p>'
+    const chosen = chooseTopics(articleTopics(html, 'https://www.dw.com/en/x/a-1', dw, []), 'Does the Oleshky ceasefire signal progress to come in Ukraine?', html.replace(/<[^>]+>/g, ' '), [])
+    expect(chosen.map((topic) => topic.label)).toEqual(['War in Ukraine', 'Melania Trump'])
+    const mee = outletFor('https://www.middleeasteye.net/news/x')!
+    const sahara = '<nav><a href="/topics/war-on-iran">War on Iran</a></nav><p>The Polisario Front said the collapse of the UN mission in <a href="/topics/western-sahara">Western Sahara</a> left war as the alternative. Western Sahara has been contested since 1975, and Western Sahara talks have stalled.</p>'
+    expect(chooseTopics(articleTopics(sahara, 'https://www.middleeasteye.net/news/x', mee, []), "'The alternative to diplomacy is war': Polisario warns after collapse of Western Sahara UN mission", sahara.replace(/<[^>]+>/g, ' '), [])[0]?.label).toBe('Western Sahara')
+  })
+
+  it('skips a bare "War" tag and counts a person’s surname as a mention', () => {
+    const rfi = outletFor('https://www.rfi.fr/en/africa/20261101-x')!
+    const keywords = ['Sudan', 'War', 'War crimes']
+    const chosen = chooseTopics(articleTopics('', 'https://www.rfi.fr/en/africa/20261101-x', rfi, keywords), "A year after the fall of El Fasher, Sudan's war has left a ghost town", 'Sudan has been at war since 2023. War crimes were reported in El Fasher, Sudan.', keywords)
+    expect(chosen.map((topic) => topic.label)).not.toContain('War')
+    const page = '<p>Police arrested allies of <a href="/en/aleksandar-vucic/t-1">Former President Aleksandar Vucic</a> as <a href="/en/serbia/t-2">Serbia</a> began its clean-up. Officials in <a href="/en/moscow/t-3">Moscow</a> said nothing.</p><p>Vucic lost the election. Vucic allies face charges, and Vucic himself may be questioned next week by prosecutors.</p>'
+    const serbia = chooseTopics(articleTopics(page, 'https://www.dw.com/en/x/a-1', dw, []), 'Arrests and investigations as Serbia begins post-election clean-up', page.replace(/<[^>]+>/g, ' '), [])
+    expect(serbia.map((topic) => topic.label)).toEqual(['Serbia', 'Former President Aleksandar Vucic'])
+  })
+})
+
+describe('stress-test regressions: same story or not', () => {
+  it('does not call a headline the same story for sharing only places, offices or keyword names', () => {
+    const headline = 'MPs unanimously reject 2027 French budget as political deadlock continues'
+    const keywords = ['Budget', 'Parliament', 'French politics', 'Sébastien Lecornu', 'National Rally', 'Socialist Party', 'France']
+    expect(classifyHeadlines([
+      'Orléans tightens security ahead of far-right National Rally party congress',
+      'French Socialist party primary vote extended due to cyberattack',
+      'MPs reject French budget again as deadlock over spending deepens',
+    ], headline, keywords, ['French politics'])).toEqual(['related', 'related', 'story'])
+    // "Asian" and Japan (a keyword) are places, not this story about a tech-stock rout.
+    expect(classifyHeadlines(['Wrong national anthems played three times at Asian Para Games in Japan'], 'Tech stock rout, driven by US AI fears, continues in Asian trading', ['Financial Markets', 'Japan', 'South Korea'], ['South Korea'])).toEqual(['related'])
+  })
+
+  it('on a broad running-story tag, needs more than the country in common', () => {
+    const headline = '‘Helpless’: The families facing winter in tents on the beach in Gaza'
+    expect(classifyHeadlines([
+      'Could the US midterms further isolate Israel in Washington?',
+      'Former Israeli generals help Palestinian olive farmers',
+      'Israel restricting treatment for 1,100 child amputees in Gaza: NGO',
+    ], headline, ['Gaza', 'Israel', 'Palestine'], ['Israel-Palestine conflict'], [true, true, true])).toEqual(['related', 'related', 'story'])
+    // On a war's own page, the war itself is the story.
+    expect(classifyHeadlines(['Russian bombing kills 31 people at Ukraine aid centre, Kyiv says'], 'Melania Trump calls for lasting Ukraine truce as she hosts Russian and Ukrainian officials', [], ['War in Ukraine'], [true])).toEqual(['story'])
+    expect(isStoryTag('Israeli Elections')).toBe(true)
+  })
+
+  it('does not halve the story’s own name when the page is full of it', () => {
+    const titles = Array.from({ length: 8 }, (_, i) => `Lamarre-Condon trial hears from witness number ${i + 1} on the stand`)
+    titles.push('Lamarre-Condon told ex-colleague goodbye before handing himself in, jury told')
+    expect(classifyHeadlines(titles, "Lamarre-Condon tells jury first shot at ex-partner was 'intentional'", [], ['Paddington']).at(-1)).toBe('story')
+  })
+})
+
+describe('stress-test regressions: pages', () => {
+  it('reads dotted day-first dates and keeps them out of the title (DW’s older cards)', () => {
+    const html = '<div><a href="/en/melania-trump-lawsuit-threat-forces-billboards-down/a-40600000">Melania Trump lawsuit threat forces Zagreb language school to remove billboards 20.09.2017</a></div>'
+    expect(extractHeadlines(html, 'https://www.dw.com/en/melania-trump/t-19414296', dw, '2020-08-28')).toEqual([
+      { title: 'Melania Trump lawsuit threat forces Zagreb language school to remove billboards', url: 'https://www.dw.com/en/melania-trump-lawsuit-threat-forces-billboards-down/a-40600000', date: '2017-09-20', dated: 'published' },
+    ])
+    expect(cardDate('<span>05.11.2026</span>', '2026-11-06')).toBe('2026-11-05')
+  })
+
+  it('does not tie headlines together by a common verb', () => {
+    expect(classifyHeadlines(['Russia in Africa: What does the Kremlin hope to achieve?'], 'Does the Oleshky ceasefire signal progress to come in Ukraine?', [], ['Ukraine war'], [true])).toEqual(['unrelated'])
+  })
+
+
+  it('drops guide cards whose own heading is short instead of reading the whole card', () => {
+    const html = `<a href="/news/world-asia-pacific-20425530"><div><h2 data-testid="card-headline">Macau profile</h2><p data-testid="card-description">Provides an overview Macau, including key facts about this region of China.</p><span data-testid="card-metadata-lastupdated">7 Jan 2025</span></div></a>
+      <a href="/news/articles/c0abc123def"><h2 data-testid="card-headline">Macau facing increased restrictions under new law</h2></a>`
+    expect(extractHeadlines(html, 'https://www.bbc.com/news/topics/clm1wxp5pp7t', bbc, '2026-11-06').map((item) => item.title)).toEqual(['Macau facing increased restrictions under new law'])
+  })
+})
+
 describe('cardDate', () => {
   it('reads datetime, written dates and relative dates against the page date', () => {
     expect(cardDate('<time datetime="2024-03-19T10:00:00Z">', '2024-04-01')).toBe('2024-03-19')
@@ -303,6 +406,40 @@ describe('OutletArchive.coverage', () => {
     expect(second.items).toEqual([])
     expect(second.cursor).toBeNull()
     expect(second.status).toBe('blocked')
+  })
+
+  it('rejects when the article cannot be read, rather than saying it has no topics', async () => {
+    const fetchImpl = (async () => new Response('', { status: 406 })) as unknown as typeof fetch
+    const archive = new OutletArchive({ cacheDir: mkdtempSync(join(tmpdir(), 'outlet-archive-')), fetchImpl, spacingMs: 0 })
+    await expect(archive.coverage({ url: articleUrl, headline })).rejects.toThrow()
+  })
+
+  it('keeps only this story’s headlines from a suburb or city page beside another topic', async () => {
+    const url = 'https://www.abc.net.au/news/2026-11-06/lamarre-condon-trial/107353670'
+    const story = "Lamarre-Condon tells jury first shot at ex-partner was 'intentional'"
+    const html = '<h2>Related topics</h2><a data-component="Tag" href="/news/topic/paddington-2021">Paddington</a><a data-component="Tag" href="/news/topic/sydney-2000">Sydney</a><p>Beau Lamarre-Condon told the jury in Sydney he shot his ex-partner in Paddington, Sydney.</p>'
+    const pages: Record<string, string> = {
+      'https://www.abc.net.au/news/topic/paddington-2021': '<main><a href="/news/2026-11-05/a/1"><h3>Lamarre-Condon tells jury he went through Baird’s phone</h3></a><a href="/news/2026-11-01/b/2"><h3>Sale of Victoria Barracks in Paddington is mind-boggling</h3></a></main>',
+      'https://www.abc.net.au/news/topic/sydney-2000': '<main><a href="/news/2026-11-04/c/3"><h3>Sydney Mardi Gras party returns for a queer celebration</h3></a><a href="/news/2026-10-20/d/4"><h3>Lamarre-Condon took photos of Jesse Baird, jury told</h3></a></main>',
+    }
+    const fetchImpl = (async (input: string | URL) => new Response(String(input) === url ? html : pages[String(input)] ?? '', { status: String(input) === url || pages[String(input)] ? 200 : 404 })) as typeof fetch
+    const archive = new OutletArchive({ cacheDir: mkdtempSync(join(tmpdir(), 'outlet-archive-')), fetchImpl, spacingMs: 0, now: () => Date.parse('2026-11-06T12:00:00Z') })
+    const result = await archive.coverage({ url, headline: story })
+    expect(result.topics.map((topic) => topic.label).sort()).toEqual(['Paddington', 'Sydney'])
+    expect(result.items.map((item) => [item.title, item.story])).toEqual([
+      ['Lamarre-Condon tells jury he went through Baird’s phone', true],
+      ['Lamarre-Condon took photos of Jesse Baird, jury told', true],
+    ])
+  })
+
+  it('shows a report filed twice under different addresses once', async () => {
+    const url = 'https://www.rfi.fr/en/africa/20261101-el-fasher-ghost-town'
+    const html = '<meta name="keywords" content="Sudan war"><p>The Sudan war has left El Fasher a ghost town, a year after it fell to the RSF.</p>'
+    const tag = '<main><a href="/en/video/20260423-sudan-three-years-of-war"><h3>Sudan: Three years of war and new reports of meddling by Ethiopia</h3></a><a href="/en/podcasts/spotlight-on-africa/20260414-sudan-three-years-of-war"><h3>Sudan: Three years of war and new reports of meddling by Ethiopia</h3></a></main>'
+    const fetchImpl = (async (input: string | URL) => new Response(String(input) === url ? html : String(input).includes('/en/tag/sudan-war/') ? tag : '', { status: String(input) === url || String(input).includes('/en/tag/') ? 200 : 404 })) as typeof fetch
+    const archive = new OutletArchive({ cacheDir: mkdtempSync(join(tmpdir(), 'outlet-archive-')), fetchImpl, spacingMs: 0, now: () => Date.parse('2026-11-06T12:00:00Z') })
+    const result = await archive.coverage({ url, headline: "A year after the fall of El Fasher, Sudan's war has left a ghost town" })
+    expect(result.items.map((item) => item.date)).toEqual(['2026-04-23'])
   })
 
   it('does nothing for outlets it does not know', async () => {

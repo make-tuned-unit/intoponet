@@ -1,6 +1,7 @@
 import { headlineLanguage } from '../translate/detect'
 import type { GlobalStory } from './globalStories'
 import type { SpreadHeadline, SpreadingStory, SpreadPlace } from './spreadingStories'
+import type { StoryAnchor, StoryCountryCoverage, StoryMountain } from './storyMountains'
 import { countryPlace, normalizePlaceText, placesInCountry, type Place } from '../places/places'
 import { COUNTRY_ROWS } from '../places/placeData'
 import { memoize } from '../memo'
@@ -111,6 +112,8 @@ export type NewsDigest = {
   spreading?: SpreadingStory[]
   /** Wikipedia's editor-curated "In the news". */
   inTheNews?: WikiNewsItem[]
+  /** Stories raised as terrain, most covered first (see storyMountains.ts). */
+  mountains?: StoryMountain[]
 }
 
 export type WikiNewsItem = {
@@ -676,7 +679,44 @@ export function parseNewsDigest(raw: string | null): NewsDigest | null {
     ...(Array.isArray(value['global']) ? { global: parseGlobal(value['global']) } : {}),
     ...(Array.isArray(value['spreading']) ? { spreading: parseSpreading(value['spreading']) } : {}),
     ...(Array.isArray(value['inTheNews']) ? { inTheNews: parseInTheNews(value['inTheNews']) } : {}),
+    ...(Array.isArray(value['mountains']) ? { mountains: parseMountains(value['mountains']) } : {}),
   }
+}
+
+const latLon = (row: Record<string, unknown>): boolean => finite(row['lat']) && finite(row['lon']) && Math.abs(row['lat']) <= 90 && Math.abs(row['lon']) <= 180
+const unit = (value: unknown): value is number => finite(value) && value >= 0 && value <= 1
+
+function parseMountains(value: unknown[]): StoryMountain[] {
+  return value.flatMap((row): StoryMountain[] => {
+    if (!isRecord(row) || !text(row['id'], 80) || !text(row['title'], 400) || !httpsOrHttp(row['url']) || !text(row['publisher'], 200) ||
+      !finite(row['coverage']) || !finite(row['outlets']) || !finite(row['articles']) || !unit(row['height']) || !text(row['countryCode'], 3) ||
+      !text(row['firstAt'], 40) || !text(row['latestAt'], 40) || !isRecord(row['summit']) || !latLon(row['summit']) || !text(row['summit']['name'], 120)) return []
+    const summit = row['summit']
+    const footprint = Array.isArray(row['footprint']) ? row['footprint'].flatMap((anchor): StoryAnchor[] => (
+      isRecord(anchor) && latLon(anchor) && finite(anchor['radiusKm']) && anchor['radiusKm'] > 0 && anchor['radiusKm'] <= 2_000 && unit(anchor['weight']) && text(anchor['name'], 120)
+        ? [{ lat: anchor['lat'] as number, lon: anchor['lon'] as number, radiusKm: anchor['radiusKm'], weight: anchor['weight'], name: anchor['name'] }] : []
+    )).slice(0, 32) : []
+    const countries = Array.isArray(row['countries']) ? row['countries'].flatMap((item): StoryCountryCoverage[] => {
+      if (!isRecord(item) || !text(item['countryCode'], 3) || !finite(item['outlets']) || !finite(item['articles']) || !text(item['firstAt'], 40) || !isRecord(item['headline'])) return []
+      const headline = item['headline']
+      if (!text(headline['title'], 400) || !httpsOrHttp(headline['url']) || !text(headline['publisher'], 200) || !text(headline['publishedAt'], 40)) return []
+      return [{
+        countryCode: item['countryCode'], outlets: item['outlets'], articles: item['articles'], firstAt: item['firstAt'],
+        headline: { title: headline['title'], url: headline['url'], publisher: headline['publisher'], publishedAt: headline['publishedAt'], ...(text(headline['lang'], 20) ? { lang: headline['lang'] } : {}) },
+      }]
+    }).slice(0, 60) : []
+    if (!footprint.length) return []
+    const momentum = finite(row['momentum']) && row['momentum'] >= -1 && row['momentum'] <= 1 ? row['momentum'] : null
+    return [{
+      id: row['id'], label: text(row['label'], 80) ? row['label'] : null, title: row['title'], url: row['url'], publisher: row['publisher'],
+      terms: Array.isArray(row['terms']) ? row['terms'].filter((term): term is string => text(term, 60)).slice(0, 6) : [],
+      coverage: row['coverage'], outlets: row['outlets'], internationalDesks: finite(row['internationalDesks']) ? row['internationalDesks'] : 0,
+      articles: row['articles'], height: row['height'], momentum, countryCode: row['countryCode'],
+      summit: { lat: summit['lat'] as number, lon: summit['lon'] as number, name: summit['name'] as string },
+      footprint, countries, homeOutlets: finite(row['homeOutlets']) ? row['homeOutlets'] : 0,
+      firstAt: row['firstAt'], latestAt: row['latestAt'],
+    }]
+  }).slice(0, 80)
 }
 
 function parseGlobal(value: unknown): GlobalStory[] {

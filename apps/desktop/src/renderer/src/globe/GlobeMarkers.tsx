@@ -12,6 +12,8 @@ export type GlobeMarker = {
   /** 0..1 prominence inside the marker's own layer. */
   size: number
   kind: 'signal' | 'pin'
+  /** Distance from the centre in globe radii (a story summit stands on its raised terrain). Default 1.014. */
+  radius?: number
 }
 
 /**
@@ -121,7 +123,8 @@ export function GlobeMarkers({
 
   const positions = useMemo(() => markers.map((marker) => {
     const p = latLonToRender(marker.lat, marker.lon)
-    return new Vector3(p.x * MARKER_RADIUS, p.y * MARKER_RADIUS, p.z * MARKER_RADIUS)
+    const radius = marker.radius ?? MARKER_RADIUS
+    return new Vector3(p.x * radius, p.y * radius, p.z * radius)
   }), [markers])
 
   const geometry = useMemo(() => {
@@ -201,7 +204,9 @@ export function GlobeMarkers({
       projection.x[i] = (scratch.x + 1) * 0.5 * size.width
       projection.y[i] = (1 - scratch.y) * 0.5 * size.height
       // Horizon test for a point on a sphere seen from `cam`.
-      projection.facing[i] = (p.dot(cam) / MARKER_RADIUS - MARKER_RADIUS) / Math.max(0.001, camLength - MARKER_RADIUS)
+      // A raised summit is visible a little past the limb, so it is tested at its own radius.
+      const radius = p.length()
+      projection.facing[i] = (p.dot(cam) / radius - MARKER_RADIUS) / Math.max(0.001, camLength - MARKER_RADIUS)
     }
     for (const listener of projection.listeners) listener()
   })

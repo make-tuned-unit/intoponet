@@ -40,6 +40,7 @@ const COVERAGE_KEEP_MS = 4 * 24 * 60 * 60 * 1000
 const COVERAGE_SCHEMA_VERSION = 2
 const MAX_COVERAGE_CONTINUITY_MS = Math.max(POLL_SECONDS * 3 * 1_000, NEWS_COVERAGE_TOLERANCE_MS)
 const DIGEST_DEBOUNCE_MS = 4_000
+const DIGEST_REFRESH_MS = 60_000
 
 /** Record only continuous successful observation; an RSS item's publication date is not a fetch observation. */
 export function observeNewsCoverage(
@@ -83,8 +84,35 @@ export function newsFeedEntries(): NewsFeedEntry[] {
   })
 }
 
+/**
+ * Fetch order: international desks, then one feed per country in turn, so every
+ * country has some coverage within the first minute instead of the alphabet's
+ * first few (the US was ~2,800th, over four minutes into a cold start).
+ */
+export function fetchOrder(feeds: NewsFeedEntry[]): NewsFeedEntry[] {
+  const desks = feeds.filter((feed) => feed.geographicScope === 'international')
+  const byCountry = new Map<string, NewsFeedEntry[]>()
+  for (const feed of feeds) {
+    if (feed.geographicScope === 'international') continue
+    const list = byCountry.get(feed.countryCode)
+    if (list) list.push(feed)
+    else byCountry.set(feed.countryCode, [feed])
+  }
+  // National desks lead each country's turn: they carry the stories the whole country is reading.
+  const queues = [...byCountry.values()].map((list) => [...list.filter((feed) => feed.geographicScope === 'national'), ...list.filter((feed) => feed.geographicScope !== 'national')])
+  const result = [...desks]
+  for (let i = 0; result.length < feeds.length; i += 1) {
+    let added = false
+    for (const queue of queues) {
+      if (queue[i]) { result.push(queue[i]!); added = true }
+    }
+    if (!added) break
+  }
+  return result
+}
+
 export function newsRegistry(feeds: NewsFeedEntry[]): FeedRegistry {
-  const sources: FeedRegistrySource[] = feeds.map((feed) => ({
+  const sources: FeedRegistrySource[] = fetchOrder(feeds).map((feed) => ({
     sourceId: feed.sourceId,
     kind: feed.format,
     url: feed.url,
@@ -118,7 +146,7 @@ export function newsSourceMeta(feeds: NewsFeedEntry[]): NewsSourceMeta[] {
  * country's outlets are reporting. Runs in the main process; nothing personal
  * is sent, and the renderer only ever receives the validated digest.
  */
-export function startNewsService(options: { userData: string; emit: (payload: string) => void; digestBuilder?: DigestBuilder }): { stop: () => void; latest: () => string | null; trends: (place: PlaceQuery & { geonameId?: string }) => Promise<PlaceTrends> } {
+export function startNewsService(options: { userData: string; emit: (payload: string) => void; digestBuilder?: DigestBuilder }): { stop: () => Promise<void>; latest: () => string | null; trends: (place: PlaceQuery & { geonameId?: string }) => Promise<PlaceTrends> } {
   const feeds = newsFeedEntries()
   const meta = newsSourceMeta(feeds)
   const digestPath = join(options.userData, 'news-digest.json')
@@ -135,7 +163,7 @@ export function startNewsService(options: { userData: string; emit: (payload: st
   let latest: string | null = null
   latest = readCachedNewsDigest(digestPath)
   if (latest) options.emit(latest)
-  if (!feeds.length) return { stop: () => undefined, latest: () => latest, trends: async () => ({ rising: [], fading: [], recentStories: 0, previousStories: 0, outlets: 0, uncompared: 0, latest: [], earlier: [] }) }
+  if (!feeds.length) return { stop: async () => undefined, latest: () => latest, trends: async () => ({ rising: [], fading: [], recentStories: 0, previousStories: 0, outlets: 0, uncompared: 0, latest: [], earlier: [] }) }
 
   const builder = options.digestBuilder ?? inlineDigestBuilder()
   // The items array last sent for each feed (feeds replace the array whenever their items change).
@@ -144,6 +172,7 @@ export function startNewsService(options: { userData: string; emit: (payload: st
   let building = false
   let digestTimer: ReturnType<typeof setTimeout> | null = null
   let lastBuildMs = 0
+  const startedAt = Date.now()
   // Wikipedia's "In the news", refreshed every two hours.
   let inTheNews: WikiNewsItem[] = []
   const refreshInTheNews = (): void => {
@@ -236,9 +265,11 @@ export function startNewsService(options: { userData: string; emit: (payload: st
       void publish().catch((error: unknown) => {
         if (!stopped) console.error('News digest failed.', error instanceof Error ? error.message : error)
       }).finally(() => { building = false })
-    // Builds run off the main thread, so new headlines can show soon; waiting 3× the last build keeps
-    // the worker idle most of the time (a full build is a few seconds with ~100,000 headlines).
-    }, Math.max(DIGEST_DEBOUNCE_MS, Math.min(90_000, lastBuildMs * 3)))
+    // The first digest comes quickly. After that, rebuild at most once a minute: feeds arrive every
+    // fraction of a second while polling, and each build (a few seconds of worker CPU) also restarts
+    // the globe's terrain transition.
+    // While the first pass over every feed is still arriving (about five minutes), every 20 s.
+    }, latest && lastBuildMs ? Math.max(Date.now() - startedAt < 5 * 60_000 ? 20_000 : DIGEST_REFRESH_MS, lastBuildMs * 3) : DIGEST_DEBOUNCE_MS)
     digestTimer.unref?.()
   }
 
@@ -253,7 +284,8 @@ export function startNewsService(options: { userData: string; emit: (payload: st
       if (digestTimer) clearTimeout(digestTimer)
       clearInterval(inTheNewsTimer)
       service.stop()
-      void service.flush()
+      // Quitting waits for this (see before-quit): an unsaved cache means the next launch starts from nothing.
+      return service.flush()
     },
     latest: () => latest,
     /** What is rising and fading in one place's news, from the latest feeds. */

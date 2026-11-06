@@ -36,6 +36,8 @@ export const ORGANIC_MACRO_SATURATION = 1.6
 /** Contour levels across the macro relief budget at full exaggeration. */
 export const ORGANIC_CONTOUR_LEVELS = 44
 export const ORGANIC_STANDOFF = 1.025
+/** Story height that reaches the full relief budget (about 500 outlets on storyHeight's curve). */
+export const STORY_HEIGHT_FULL = 0.68
 
 const glslFloat = (value: number) => (Number.isInteger(value) ? value.toFixed(1) : String(value))
 
@@ -106,12 +108,16 @@ uniform float uOrganicGlass;
 uniform float uOrganicReveal;
 uniform float uOrganicLineGlow;
 uniform float uOrganicWarp;
+// 1: the field is story terrain (storyTerrain.ts): R is the measured height on a fixed scale, mapped
+// linearly; B is height relative to the owning story's summit (for the crest cap), not confidence.
+uniform float uStoryTerrain;
 
 const float ORGANIC_MACRO_DMAX = ${glslFloat(ORGANIC_MACRO_DMAX)};
 const float ORGANIC_MESO_AMPLITUDE = ${glslFloat(ORGANIC_MESO_AMPLITUDE)};
 const float ORGANIC_MICRO_AMPLITUDE = ${glslFloat(ORGANIC_MICRO_AMPLITUDE)};
 const float ORGANIC_MACRO_SATURATION = ${glslFloat(ORGANIC_MACRO_SATURATION)};
 const float ORGANIC_STANDOFF = ${glslFloat(ORGANIC_STANDOFF)};
+const float STORY_HEIGHT_FULL = ${glslFloat(STORY_HEIGHT_FULL)};
 
 vec2 organicUv(vec3 n) {
   float lon = atan(-n.z, n.x);
@@ -181,6 +187,8 @@ vec4 organicSignal(vec3 n) {
 // Bounded, monotonic macro swell. Intensity is already kernel-weighted by
 // anchor support, so zero intensity is exactly zero relief.
 float organicMacro(float field) {
+  // Story heights are already on their own fixed curve: a second, saturating one would flatten the tallest.
+  if (uStoryTerrain > 0.5) return ORGANIC_MACRO_DMAX * field / STORY_HEIGHT_FULL;
   return ORGANIC_MACRO_DMAX * (1.0 - exp(-ORGANIC_MACRO_SATURATION * field))
     / (1.0 - exp(-ORGANIC_MACRO_SATURATION));
 }
@@ -218,6 +226,8 @@ float organicRelief(vec3 n, vec4 signal, float microWeight) {
       float islandsFine = snoise(q * 6.3 - drift * 2.2);
       float meso = 0.58 * islands + 0.22 * islandsFine + 0.20 * 0.5 * (sin(foldA) + sin(foldB));
       mesoRelief = ORGANIC_MESO_AMPLITUDE * uMesoAmount * field * detailSupport * meso;
+      // Story terrain keeps a little texture on the shoulders, none near a summit, so summit heights stay exact.
+      if (uStoryTerrain > 0.5) mesoRelief *= 0.3 * (1.0 - smoothstep(0.55, 0.8, clamp(signal.b, 0.0, 1.0)));
     }
     if (uMicroAmount * microWeight > 0.0001) {
       // Two detuned interference fields. Signed momentum shifts phase within a
@@ -231,6 +241,7 @@ float organicRelief(vec3 n, vec4 signal, float microWeight) {
         + uOrganicTime * 0.47 + signal.g * 1.5 * sin(uOrganicTime * 0.13 + 1.0);
       float micro = 0.5 * (sin(phaseA) + sin(phaseB));
       microRelief = ORGANIC_MICRO_AMPLITUDE * uMicroAmount * microWeight * field * detailSupport * (0.75 + 0.25 * momentum) * micro;
+      if (uStoryTerrain > 0.5) microRelief *= 0.5;
     }
   }
   return uOrganicReveal * max(0.0, macroRelief + mesoRelief + microRelief);
@@ -310,6 +321,8 @@ export type OrganicShaderUniforms = {
   uOrganicLineGlow: { value: number }
   /** 0–1 scale on the static, support-gated geographic meander. */
   uOrganicWarp: { value: number }
+  /** 1 when the field is story terrain (see storyTerrain.ts). */
+  uStoryTerrain: { value: number }
 }
 
 export type OrganicShaderProgram = {
@@ -333,7 +346,13 @@ const contourFragment = /* glsl */ `
   float oSupport = smoothstep(0.01, 0.10, clamp(oSignal.a, 0.0, 1.0));
   float oIntensity = clamp(oSignal.r, 0.0, 1.0);
   float oMomentum = clamp(oSignal.g, -1.0, 1.0);
-  float oConfidence = mix(0.62, 1.0, clamp(oSignal.b, 0.0, 1.0));
+  float oConfidence = uStoryTerrain > 0.5 ? 1.0 : mix(0.62, 1.0, clamp(oSignal.b, 0.0, 1.0));
+  // Crest cap: the top of each story's own summit, on mountains tall enough to be one (about 3+ outlets).
+  float oSummitRatio = clamp(oSignal.b, 0.0, 1.0);
+  float oOwnerHeight = oIntensity / max(oSummitRatio, 0.02);
+  float oCap = uStoryTerrain * smoothstep(0.84, 0.95, oSummitRatio) * smoothstep(0.15, 0.21, oOwnerHeight) * oSupport;
+  float oCapRing = uStoryTerrain * smoothstep(0.15, 0.21, oOwnerHeight) * oSupport
+    * (1.0 - smoothstep(0.0, 1.6 * max(fwidth(oSummitRatio), 1e-4), abs(oSummitRatio - 0.86)));
   float oRelief = uVisualExaggeration * organicRelief(oDir, oSignal, 0.0);
   // Contour spacing is fixed in relief units (not per-swell), so line density
   // reads as slope and count reads as height across the whole globe.
@@ -398,11 +417,16 @@ const contourFragment = /* glsl */ `
   float oHueField = smoothstep(0.35, 0.95, sin(dot(oDir, vec3(1.9, 1.2, -1.6)) * 1.7 + 1.3 * sin(dot(oDir, vec3(-1.1, 2.2, 0.9)) * 1.9)));
   vec3 oLineColor = mix(oTeal, oCyan, smoothstep(0.08, 0.7, oHeight));
   oLineColor = mix(oLineColor, oCrest, 0.45 * smoothstep(0.7, 1.05, oHeight) * oIndex);
-  oLineColor = mix(oLineColor, oViolet, clamp(0.55 * oHueField + 0.65 * oFresnel + 0.45 * smoothstep(0.0, -0.45, oMomentum), 0.0, 0.85));
+  // Story terrain: violet only at the limb; momentum is shown by labels, never by recolouring height.
+  float oVioletMix = uStoryTerrain > 0.5 ? 0.45 * oFresnel : 0.55 * oHueField + 0.65 * oFresnel + 0.45 * smoothstep(0.0, -0.45, oMomentum);
+  oLineColor = mix(oLineColor, oViolet, clamp(oVioletMix, 0.0, 0.85));
+  // Gold summit (#FFD166, linear light).
+  vec3 oGold = vec3(1.0, 0.637, 0.133);
+  oLineColor = mix(oLineColor, oGold, max(oCap, oCapRing));
   oLineColor = mix(oLineColor, oCrest, 0.55 * oChange);
 
   float oLight = mix(0.30, 1.0, oTerminator) * (0.70 + 0.45 * oLambert);
-  float oStroke = (0.55 * oMinor + 0.85 * oIndex) * oConfidence;
+  float oStroke = (0.55 * oMinor + 0.85 * oIndex) * oConfidence + 0.9 * oCapRing;
   float oGlowStroke = oStroke * oShimmer * (1.0 + 1.35 * oPulse + 1.1 * oChange);
   float oHaloStrength = oHalo * (0.10 + 0.22 * oPulse + 0.35 * oChange) * oConfidence;
 
@@ -410,6 +434,8 @@ const contourFragment = /* glsl */ `
   // volume; the rim is restrained so the linework stays primary.
   vec3 oFill = vec3(0.004, 0.014, 0.024) + oTeal * (0.035 * oHeight + 0.05 * oFresnel) * oSupport;
   float oFillAlpha = 0.035 + (0.10 * clamp(oHeight, 0.0, 1.0) + 0.12 * oFresnel) * oSupport;
+  oFill = mix(oFill, oGold * 0.55, 0.85 * oCap);
+  oFillAlpha = max(oFillAlpha, 0.62 * oCap);
 
   float oStrokeAlpha = clamp(oStroke * (0.78 + 0.22 * oPulse) + oHaloStrength, 0.0, 1.0);
   float oAlpha = oFillAlpha + (1.0 - oFillAlpha) * oStrokeAlpha;
@@ -454,4 +480,4 @@ function hashSource(source: string): string {
   return hash.toString(16).padStart(8, '0')
 }
 
-export const ORGANIC_SHADER_CACHE_KEY = hashSource(`${simplexNoise3D}\n${organicFieldFunctions}\n${organicVertexFunctions}\n${organicFragmentFunctions}\n${contourFragment}\norganic-contours-v14`)
+export const ORGANIC_SHADER_CACHE_KEY = hashSource(`${simplexNoise3D}\n${organicFieldFunctions}\n${organicVertexFunctions}\n${organicFragmentFunctions}\n${contourFragment}\norganic-contours-v15`)

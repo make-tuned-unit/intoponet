@@ -213,6 +213,8 @@ import { openHistory } from './browsingData/historyAccess'
 import { forgetRecentPages } from './browsingData/browsingDataModel'
 import { FeedbackPrompt } from './FeedbackPrompt'
 import { startBookmarks, startNews, startRecents } from './startPageModel'
+import { buildStoryTerrain, storyAt, storyTerrainKey } from './globe/storyTerrain'
+import { HighestPeakButton, STORY_MARKER_PREFIX, StoryCardContent, StoryPanel, SUMMIT_COLOR, storyLabel, storyMarkerId, storyMarkers, strandEnds } from './globe/StoryPeaks'
 import { inferLauncherIntent } from '@intoponet/browser-api'
 
 const bookmarkPaneOpenKey = 'intoponet.bookmark-pane.open.v1'
@@ -577,6 +579,16 @@ export function App() {
     const ridges = globeLayerSet.has('news') ? spreadRidgeSignals(newsDigest?.spreading ?? [], selectedSignalId, eligiblePublicSnapshot.createdAt) : []
     return [...membraneSignals(visibleGlobeSignals, eligiblePublicSnapshot.createdAt, MEMBRANE_MAX_SIGNALS - ridges.length), ...ridges]
   }, [designPreview, previewTopic, previewIntensity, previewRadiusScale, fieldView, personalActivity, eligiblePublicSnapshot, visibleGlobeSignals, newsDigest, selectedSignalId, globeLayerSet])
+  // Story mountains: with local news on, the terrain is the stories outlets are covering (storyMountains.ts).
+  const storyStories = useMemo(() => newsDigest?.mountains ?? [], [newsDigest])
+  const storyMode = fieldView === 'public' && !designPreview && globeLayerSet.has('news') && storyStories.length > 0
+  const storyKey = storyMode ? storyTerrainKey(storyStories) : ''
+  // Rebuilt only when a height or story changes, not on every digest.
+  const storyTerrain = useMemo(() => (storyMode ? buildStoryTerrain(storyStories) : null), [storyKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  const zoomCommit = useRef(0)
+  const [pinnedStoryId, setPinnedStoryId] = useState<string | null>(null)
+  const [peakIndex, setPeakIndex] = useState(-1)
+  const storyRank = (id: string): number => storyStories.findIndex((story) => story.id === id) + 1
   const topicLocationOptions = useMemo<TopicLocationOption[]>(() => {
     const seen = new Set<string>()
     const sourceAnchors = (eligiblePublicSnapshot?.sources ?? []).filter((source) => {
@@ -1926,7 +1938,8 @@ export function App() {
     })))
     : [], [fieldView, knowledgeRecords])
   const globeMarkers = useMemo<GlobeMarker[]>(() => [
-    ...(publicGlobe ? visibleGlobeSignals.map((signal) => ({
+    // With story mountains, a country's news dot would sit on its summits: countries open by clicking the land instead.
+    ...(publicGlobe ? visibleGlobeSignals.filter((signal) => !(storyMode && signal.id.startsWith('news:country:'))).map((signal) => ({
       id: signal.id,
       lat: signal.lat,
       lon: signal.lon,
@@ -1934,11 +1947,12 @@ export function App() {
       size: signal.intensity,
       kind: 'signal' as const,
     })) : []),
+    ...(storyMode ? storyMarkers(storyStories) : []),
     ...pinMarkers,
     ...knowledgeMarkers,
     // The place you flew to: projected like any marker so the locator can sit exactly on it.
     ...(focusedPlace ? [{ id: `locator:${focusedPlace.id}`, lat: focusedPlace.lat, lon: focusedPlace.lon, color: '#ffffff', size: 0, kind: 'pin' as const }] : []),
-  ], [publicGlobe, visibleGlobeSignals, pinMarkers, knowledgeMarkers, focusedPlace])
+  ], [publicGlobe, visibleGlobeSignals, pinMarkers, knowledgeMarkers, focusedPlace, storyMode, storyStories])
   // What part of Earth is in view, sampled a few times a second: labels follow it as you zoom and turn.
   const [labelView, setLabelView] = useState<LabelView | null>(null)
   useEffect(() => {
@@ -1954,6 +1968,8 @@ export function App() {
     const signals = publicGlobe ? visibleGlobeSignals : []
     const ordered = viewLabelSignals(signals, labelView, selectedSignal?.id ?? null)
     return [
+      // Summits first: the label layer places in order, so the tallest peaks always keep theirs.
+      ...(storyMode ? storyStories.slice(0, 8).map((story, index) => ({ id: storyMarkerId(story), text: `${index === 0 ? '▲ ' : ''}${storyLabel(story)}`, color: SUMMIT_COLOR })) : []),
       ...ordered.map((signal) => ({ id: signal.id, text: short(signal.title), color: GLOBE_LAYERS[signal.layer].color })),
       ...bookmarks.filter((bookmark) => bookmark.fieldAnchor).slice(0, 12)
         .map((bookmark) => ({ id: `pin:${bookmark.url}`, text: short(bookmark.title || bookmark.url), color: PIN_COLOR })),
@@ -1962,9 +1978,16 @@ export function App() {
           .sort((a, b) => b.count - a.count).slice(0, 14).map(({ count: _count, ...label }) => label)
         : []),
     ]
-  }, [publicGlobe, visibleGlobeSignals, selectedSignal, labelView, bookmarks, globePrefs.pins, fieldView, knowledgeRecords])
+  }, [publicGlobe, visibleGlobeSignals, selectedSignal, labelView, bookmarks, globePrefs.pins, fieldView, knowledgeRecords, storyMode, storyStories])
+  const hoveredStory = hoveredMarkerId?.startsWith(STORY_MARKER_PREFIX) ? storyStories.find((story) => storyMarkerId(story) === hoveredMarkerId) ?? null : null
+  const pinnedStory = storyMode && pinnedStoryId ? storyStories.find((story) => story.id === pinnedStoryId) ?? null : null
+  const strandStory = pinnedStory ?? hoveredStory
+  const storyStrands = useMemo(() => (storyMode && strandStory
+    ? { summit: { ...strandStory.summit, height: strandStory.height }, ends: strandEnds(strandStory, pinnedStory ? 16 : 8), still: reduceMotion, terrain: storyTerrain }
+    : null), [storyMode, strandStory, pinnedStory, reduceMotion, storyTerrain])
   const hoverCard = useMemo(() => {
     if (!hoveredMarkerId) return null
+    if (hoveredStory) return <StoryCardContent story={hoveredStory} rank={storyRank(hoveredStory.id)} />
     if (hoveredMarkerId.startsWith('know:')) {
       const [, recordId, index] = hoveredMarkerId.split(':')
       const record = knowledgeRecords.find((item) => item.id === recordId)
@@ -1985,7 +2008,7 @@ export function App() {
         sun={dayPhaseText(signal.lat, signal.lon, new Date(clock))}
       />
     ) : null
-  }, [hoveredMarkerId, bookmarks, allGlobeSignals, clock, knowledgeRecords])
+  }, [hoveredMarkerId, hoveredStory, bookmarks, allGlobeSignals, clock, knowledgeRecords]) // eslint-disable-line react-hooks/exhaustive-deps
   const panelSignals = useMemo(() => {
     const base = focusedPlace
       ? nearbySignals(visibleGlobeSignals, focusedPlace, Math.max(1_200, focusedPlace.radiusKm * 3), 400)
@@ -2187,9 +2210,39 @@ export function App() {
     flyToPoint(signal.lat, signal.lon, Math.min(pose.radius, 3.1))
   }
 
+  /** Fly to the n-th highest summit and pin it (H: the highest, then each next). */
+  const findPeak = (index: number): void => {
+    const story = storyStories[index]
+    if (!story) return
+    setPeakIndex(index)
+    setPinnedStoryId(story.id)
+    flyToPoint(story.summit.lat, story.summit.lon, Math.max(2.4, Math.min(pose.radius, 3.2)))
+  }
+  const findPeakRef = useRef(findPeak)
+  findPeakRef.current = findPeak
+  const peakIndexRef = useRef(peakIndex)
+  peakIndexRef.current = peakIndex
+  useEffect(() => {
+    if (!storyMode || panel.isVisible) return
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key.toLowerCase() !== 'h' || event.metaKey || event.ctrlKey || event.altKey || isTypingTarget(event.target)) return
+      event.preventDefault()
+      const count = Math.min(storyStories.length, 10)
+      const current = peakIndexRef.current
+      findPeakRef.current(event.shiftKey ? (current <= 0 ? count - 1 : current - 1) : current < 0 ? 0 : (current + 1) % count)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [storyMode, panel.isVisible, storyStories.length])
+
   const selectGlobeMarker = (id: string | null): void => {
     if (!id) {
       setSelectedSignalId(null)
+      setPinnedStoryId(null)
+      return
+    }
+    if (id.startsWith(STORY_MARKER_PREFIX)) {
+      setPinnedStoryId(id.slice(STORY_MARKER_PREFIX.length))
       return
     }
     if (id.startsWith('pin:')) {
@@ -2454,6 +2507,8 @@ export function App() {
         anchor={selectedTopicLocation ? { lat: selectedTopicLocation.lat, lon: selectedTopicLocation.lon } : null}
         pose={pose}
         signals={fieldSignals}
+        terrain={storyTerrain}
+        strands={storyStrands}
         markers={globeMarkers}
         selectedMarkerId={selectedSignalId}
         hoveredMarkerId={hoveredMarkerId}
@@ -2462,10 +2517,26 @@ export function App() {
         onMarkerSelect={selectGlobeMarker}
         countryView={countryView}
         onSurfaceHover={(point) => {
+          // Over a mountain's flank, the mountain is what's under the cursor: its card and strands show.
+          const story = point && storyTerrain ? storyAt(storyTerrain, point.lat, point.lon) : null
+          const current = storyStories.find((item) => item.id === story?.id)
+          if (current) {
+            const id = storyMarkerId(current)
+            if (hoveredMarkerId !== id) setHoveredMarkerId(id)
+            countryView.hovered = null
+            return true
+          }
+          if (hoveredMarkerId?.startsWith(STORY_MARKER_PREFIX)) setHoveredMarkerId(null)
           countryView.hovered = point ? surfaceCountry(point)?.code ?? null : null
           return countryView.hovered !== null
         }}
         onSurfaceClick={(point) => {
+          // A click on a mountain pins its story: strands stay, and the coverage list opens.
+          const story = storyTerrain ? storyAt(storyTerrain, point.lat, point.lon) : null
+          if (story) {
+            setPinnedStoryId(story.id)
+            return true
+          }
           // A click on or around the city you flew to stays with that city; elsewhere opens the country.
           if (focusedPlace && focusedPlace.kind !== 'country'
             && placeDistanceKm(point.lat, point.lon, focusedPlace.lat, focusedPlace.lon) <= Math.max(40, focusedPlace.radiusKm * 1.5)) {
@@ -2482,7 +2553,13 @@ export function App() {
         membraneSettings={activityMembraneSettings}
         onOrganicMetrics={diagnosticsOpen ? setOrganicMetrics : undefined}
         onDistanceChange={(radius) => {
-          setPose((current) => ({ ...current, radius }))
+          // Commit the radius when the wheel settles: setting it on every tick re-rendered the whole
+          // app (~6 ms a tick). The camera already moved; OrbitRig ignores the echo of its own radius.
+          if (zoomCommit.current) window.clearTimeout(zoomCommit.current)
+          zoomCommit.current = window.setTimeout(() => {
+            zoomCommit.current = 0
+            setPose((current) => (current.radius === radius ? current : { ...current, radius }))
+          }, 160)
           const next = scaleFromDistance(radius)
           // A wheel zoom only changes the scale label: the globe stays turned to wherever the cursor
           // zoomed it. rememberScale would aim at the topic's anchor (or restore a saved pose) and
@@ -2915,6 +2992,17 @@ export function App() {
           locator={focusedPlace ? { id: `locator:${focusedPlace.id}`, label: focusedPlace.name } : null}
           onLocatorSelect={() => setSelectedSignalId(null)}
           onLabelSelect={selectGlobeMarker}
+        />
+      )}
+      {!fieldLabOpen && storyMode && !panel.isVisible && (
+        <HighestPeakButton stories={storyStories} index={peakIndex} onFind={findPeak} />
+      )}
+      {!fieldLabOpen && pinnedStory && !panel.isVisible && (
+        <StoryPanel
+          story={pinnedStory}
+          rank={storyRank(pinnedStory.id)}
+          onClose={() => { setPinnedStoryId(null); setPeakIndex(-1) }}
+          onOpen={(url) => void window.intoponet.browserHost.open({ kind: 'url', value: url })}
         />
       )}
       {!fieldLabOpen && import.meta.env.DEV && designPreview && <aside className="coverage-note">

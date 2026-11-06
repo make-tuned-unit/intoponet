@@ -1,6 +1,6 @@
 # Feature verification
 
-Run 2026-11-06 06:10 UTC · tier `network` · only OLDS_COVERAGE · **1 passed, 0 failed, 0 blocked, 0 skipped, 37 assumed**.
+Run 2026-11-06 14:47 UTC · tier `network` · only STORY_MOUNTAINS, GLOBE_LIVE · **2 passed, 0 failed, 0 blocked, 0 skipped, 37 assumed**.
 
 Each feature makes a promise to the user; its check drives the built app end to end. Defined in `docs/FEATURE_DAG.json`, checks in `experiments/e2e/checks.mjs`, run with `npm run verify:features`.
 
@@ -16,7 +16,7 @@ Each feature makes a promise to the user; its check drives the built app end to 
 | · | **Fly to a place** (`FLY_TO`) | Typing a place (even "Charlottetown PEI" or "Fredericto") and pressing Enter spins the globe there, closes any open page and marks the exact spot. | APP_BOOT | assumed |
 | · | **Globe stays where you put it** (`GLOBE_MOTION`) | Zooming after moving the globe keeps the place in view; it never swings back. | FLY_TO | assumed |
 | · | **Every country named and clickable** (`COUNTRY_NAMES`) | Country names fade in by zoom without overlapping; the country you spin or zoom to is always named, tiny ones included (Vatican, Nauru, Tuvalu); clicking any country, with or without news, opens it. | FLY_TO | assumed |
-| · | **Live public globe** (`GLOBE_LIVE`) | The globe shows live public signals (local news, reading, hazards) with World, Peaks, Rising and Fading highlights. | APP_BOOT | assumed |
+| ✅ | **Live public globe** (`GLOBE_LIVE`) | The globe shows live public signals (local news, reading, hazards) with World, Peaks, Rising and Fading highlights. | APP_BOOT | pass · 13 s — 290 public signals across 4 active layers. Hover to preview, click to explore, or search a place below. |
 | · | **Sources carousel** (`SOURCE_CAROUSEL`) | A world story with several sources opens a carousel of every outlet's headline to flip through; choosing one grows its card into the browser with that article open. | GLOBE_LIVE | assumed |
 | · | **Stories covered across the world** (`WORLD_STORIES`) | The World tab lists stories covered by outlets in many countries, and the whole list can be scrolled. | GLOBE_LIVE | assumed |
 | · | **A country's news and bigger picture** (`COUNTRY_PANEL`) | Opening a country shows key facts, genuinely recent history and its local headlines, without clipping. | GLOBE_LIVE, FLY_TO | assumed |
@@ -24,7 +24,7 @@ Each feature makes a promise to the user; its check drives the built app end to 
 | · | **A country's history** (`OLDS_COUNTRY`) | A country's history has key facts, chapters and events from the last ten years. | APP_BOOT | assumed |
 | · | **Competing interpretations** (`OLDS_DEBATE`) | Where Wikipedia attributes competing views, The Olds shows them side by side with who holds each. | APP_BOOT | assumed |
 | · | **The Olds panel from a headline** (`OLDS_UI`) | A headline's history button opens The Olds with Story and Timeline views, no clipped timeline cards, and Escape closes it. | COUNTRY_PANEL, OLDS_HEADLINE | assumed |
-| ✅ | **An outlet's earlier coverage** (`OLDS_COVERAGE`) | From a supported outlet's headline, The Olds shows that outlet's earlier headlines on the story, newest first under the current one, credits the Wayback Machine, and goes further back without losing or reordering headlines. | OLDS_UI | pass · 193 s — “South Korea plans to extend anti-piracy patrols closer to St”: 30 headlines (NOVEMBER 2026 – DECEMBER 2014), then 30 reaching DECEMBER 2014; Go further back |
+| · | **An outlet's earlier coverage** (`OLDS_COVERAGE`) | From a supported outlet's headline, The Olds shows that outlet's earlier headlines on the story, newest first under the current one, credits the Wayback Machine, and goes further back without losing or reordering headlines. | OLDS_UI | assumed |
 | · | **Browse the web** (`BROWSE`) | Pages open in tabs with a named toolbar (Translate, Capture, Pin, Absorb, Bookmarks), and closing tabs never crashes the app. | APP_BOOT | assumed |
 | · | **Address bar suggestions** (`OMNIBOX`) | Typing the start of a visited site's host completes it inline (Backspace removes the completion) and offers that page first, from history or as "Switch to tab"; Enter lands on it without a duplicate tab, ⌘↵ opens it in a background tab, and a typed place name still flies the globe. | BROWSE | assumed |
 | · | **Ad and tracker protection** (`PROTECTION`) | Ads and trackers are blocked and the protection bar under the toolbar shows what was blocked. | BROWSE | assumed |
@@ -44,3 +44,4 @@ Each feature makes a promise to the user; its check drives the built app end to 
 | · | **Beacon registry on Neon** (`BEACONS_REGISTRY`) | The app reaches the live beacon registry, which is healthy and refuses unsigned requests. | LIBRARY | assumed |
 | · | **Automatic page translation** (`AUTO_TRANSLATE`) | With automatic translation on, a Russian page is detected and translated into your language on this Mac. | SETTINGS, BROWSE | assumed |
 | · | **Languages without a model** (`ROUGH_TRANSLATE`) | Faroese headlines translate roughly through Icelandic and say so. | COUNTRY_PANEL | assumed |
+| ✅ | **Story mountains and their strands** (`STORY_MOUNTAINS`) | With local news on, the tallest story raises the highest summit; the highest-peak control flies to it and pins its coverage, and Escape closes it. | GLOBE_LIVE | pass · 16 s — 60 story mountains; highest "US midterm elections" (40 outlets, 17 other countries). |

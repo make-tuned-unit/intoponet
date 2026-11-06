@@ -393,6 +393,16 @@
       "tier": "full",
       "kind": "e2e",
       "promise": "Faroese headlines translate roughly through Icelandic and say so."
+    },
+    {
+      "id": "STORY_MOUNTAINS",
+      "title": "Story mountains and their strands",
+      "deps": [
+        "GLOBE_LIVE"
+      ],
+      "tier": "network",
+      "kind": "e2e",
+      "promise": "With local news on, the tallest story raises the highest summit; the highest-peak control flies to it and pins its coverage, and Escape closes it."
     }
   ]
 }

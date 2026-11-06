@@ -2873,7 +2873,7 @@ app.whenReady().then(async () => {
       emit: (payload) => emit({ type: 'news-digest', payload }),
       digestBuilder: openDigestBuilder(),
     })
-    app.once('will-quit', () => newsService?.stop())
+    app.once('will-quit', () => { void newsService?.stop() })
   })
 
   app.on('activate', () => {
@@ -2893,11 +2893,15 @@ app.on('before-quit', (event) => {
   shellClosing = true
   // A zoom changed just now is still waiting to be saved: start it so the flush below waits for it.
   void zoomStore?.flush().catch(() => undefined)
-  if (!quitFlushStarted && (libraryWriter.pending || writesInFlight.size > 0)) {
+  // The news feed cache is saved once a minute; save the rest now so the next launch starts with today's news.
+  const news = newsService
+  newsService = null
+  const newsFlush = news?.stop()
+  if (!quitFlushStarted && (libraryWriter.pending || writesInFlight.size > 0 || newsFlush)) {
     // Once only: the second before-quit (from app.quit() below) goes straight through.
     quitFlushStarted = true
     event.preventDefault()
-    const flushed = Promise.allSettled([libraryWriter.flush(), ...writesInFlight])
+    const flushed = Promise.allSettled([libraryWriter.flush(), ...writesInFlight, ...(newsFlush ? [newsFlush] : [])])
     const limit = new Promise((resolve) => setTimeout(resolve, QUIT_FLUSH_LIMIT_MS))
     void Promise.race([flushed, limit]).finally(() => app.quit())
     return

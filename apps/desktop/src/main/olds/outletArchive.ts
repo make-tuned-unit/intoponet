@@ -32,6 +32,8 @@ type OutletPages = {
    * site's featured stories, "most read" and recommendations sit outside it.
    */
   region?: { from?: RegExp; to?: RegExp; skipMain?: boolean }
+  /** Topic pages for a place below a country (ABC: /news/topic/sydney-2000, a suburb or city by its postcode). */
+  placePath?: RegExp
 }
 
 const MONTHS: Record<string, string> = { jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06', jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12' }
@@ -70,7 +72,8 @@ const PAGES: OutletPages[] = [
   },
   {
     id: 'npr',
-    topicPath: /^\/tags\/\d+\/[a-z0-9-]+\/?$/,
+    // Older tags are numbered (/tags/1014/sudan), newer ones are not (/tags/g-s1-100949/2026-midterms).
+    topicPath: /^\/tags\/(\d+|g-s1-\d+)\/[a-z0-9-]+\/?$/,
     articlePath: /^\/(sections\/[a-z0-9-]+\/)?\d{4}\/\d{2}\/\d{2}\/[a-z0-9-]+\/[a-z0-9-]+\/?$/,
     pathDate: ymdSlash,
   },
@@ -104,6 +107,7 @@ const PAGES: OutletPages[] = [
   {
     id: 'abc-au',
     topicPath: /^\/news\/topic\/[a-z0-9-]+$/,
+    placePath: /^\/news\/topic\/[a-z-]+-\d{4}$/,
     articlePath: /^\/news\/(\d{4}-\d{2}-\d{2})\/[a-z0-9-]+\/\d+$/,
     pathDate: (path) => path.match(/^\/news\/(\d{4}-\d{2}-\d{2})\//)?.[1] ?? null,
   },
@@ -223,8 +227,11 @@ export function articleTopics(html: string, pageUrl: string, outlet: OutletProfi
     const label = named
       ? anchorText && anchorText.split(' ').length <= 5 && agrees() ? anchorText : fromSlug.split(' ').slice(0, 5).join(' ')
       : anchorText || fromSlug
-    // Tag chips the outlet marks as the article's own (ABC: data-component="SubjectTag").
-    const tagChip = /data-component\s*=\s*["'](?:Subject)?Tag["']/i.test(anchor.attrs)
+    // Tag chips the outlet marks as the article's own: ABC's "Related topics" (data-component="Tag") and the
+    // subject chip by its headline; NPR's class="tag tag--story". ABC's related-story cards carry SubjectTag chips too.
+    const tagChip = /data-component\s*=\s*["']Tag["']/i.test(anchor.attrs)
+      || /data-component\s*=\s*["']SubjectTag["']/i.test(anchor.attrs) && /ArticleHeadline/.test(anchor.attrs)
+      || /class\s*=\s*["'][^"']*\btag--story\b/i.test(anchor.attrs)
     const existing = byUrl.get(key)
     if (!existing || !named && existing.label.length < label.length && label.length < 60) byUrl.set(key, { label, url: key, fromKeyword: tagChip || !!existing?.fromKeyword, ...(named ? { inText: true } : {}) })
     else if (tagChip) existing.fromKeyword = true
@@ -252,9 +259,22 @@ export function articleTopics(html: string, pageUrl: string, outlet: OutletProfi
 }
 
 /** Section and format tags that describe how a story is told, not what it is about. */
-const GENERIC_TOPICS = new Set(['news', 'video', 'videos', 'explainer', 'explainers', 'opinion', 'opinions', 'analysis', 'features', 'feature', 'world', 'world news', 'politics', 'world politics', 'economy', 'business', 'human rights', 'science and technology', 'podcast', 'podcasts', 'live', 'live blog', 'interview', 'interviews', 'in pictures', 'media', 'government', 'government and politics', 'elections', 'conflict', 'military', 'society', 'culture', 'health', 'environment', 'crime', 'law', 'courts', 'police', 'sport', 'sports', 'top stories', 'breaking news', 'cna explains', 'middle east', 'europe', 'asia', 'africa', 'americas', 'us & canada', 'us and canada', 'asia pacific', 'latin america', 'south america', 'north america', 'oceania', 'video', 'nocomment', 'the americas'])
+const GENERIC_TOPICS = new Set(['news', 'video', 'videos', 'explainer', 'explainers', 'opinion', 'opinions', 'analysis', 'features', 'feature', 'world', 'world news', 'politics', 'world politics', 'economy', 'business', 'human rights', 'science and technology', 'podcast', 'podcasts', 'live', 'live blog', 'interview', 'interviews', 'in pictures', 'media', 'government', 'government and politics', 'elections', 'conflict', 'military', 'society', 'culture', 'health', 'environment', 'crime', 'law', 'courts', 'police', 'sport', 'sports', 'top stories', 'breaking news', 'cna explains', 'middle east', 'europe', 'asia', 'africa', 'americas', 'us & canada', 'us and canada', 'asia pacific', 'latin america', 'south america', 'north america', 'oceania', 'video', 'nocomment', 'the americas', 'war', 'wars', 'president', 'regulation', 'business and economy'])
+
+/** An article's keywords that say what it is about, not where it is filed ("News", "Asia Pacific"). */
+const storyKeywords = (keywords: string[]): string[] => keywords.filter((item) => !GENERIC_TOPICS.has(item.toLowerCase()))
 
 const stemsOf = (value: string): string[] => [...terms(value).keys()]
+/** Countries, their peoples and regions: shared by many stories, so they never tie a headline to this one alone. */
+const COUNTRY_STEMS = new Set(COUNTRY_ROWS.filter((row) => !row[1].includes(' ')).flatMap((row) => stemsOf(row[1])))
+const PLACES = new Set([
+  ...COUNTRY_STEMS,
+  ...stemsOf('palestine palestinian korea korean saudi arabia zealand lanka hong kong congo french british american chinese iranian iraqi turkish spanish italian polish greek dutch swiss irish filipino thai danish swedish finnish emirati qatari english scottish welsh european asian african arab western eastern northern southern asia europe africa america latin pacific middle east west north south global world international gulf'),
+])
+/** Common verbs the shared stop list keeps ("Does the ceasefire…", "What does the Kremlin…"): they tie nothing together. */
+const FILLER = new Set(stemsOf('does doing done come comes coming came goes going gone gets getting make makes making made take takes taking took give gives giving gave tell tells telling show shows showing shown look looks looking want wants need needs keep keeps call calls back next ahead amid behind still'))
+/** Offices and institutions ("transport minister", "court"): the same in every story about a country. */
+const OFFICES = new Set(stemsOf('minister ministers president prime government court parliament party police army official officials state national congress senate'))
 
 export type ScoredTopic = TopicCandidate & { score: number; specific: boolean }
 
@@ -282,7 +302,10 @@ export function chooseTopics(candidates: TopicCandidate[], headline: string, bod
     if (!tagged && shortNames.some((name) => !new RegExp(`\\b${name}\\b`).test(story))) continue
     const inHeadline = stems.filter((stem) => headlineStems.has(stem)).length / stems.length
     const inBody = stems.filter((stem) => bodyStems.has(stem)).length / stems.length
-    const mentions = lower.length >= 4 ? Math.min(3, bodyLower.split(lower).length - 1) : 0
+    // Mentions of the whole name, or of its last long word ("Vucic" for "Former President Aleksandar Vucic").
+    const count = (phrase: string): number => phrase.length >= 4 ? bodyLower.split(phrase).length - 1 : 0
+    const last = stems.length > 1 ? lower.split(/[^\p{L}\d]+/u).filter((word) => word.length >= 5).pop() : undefined
+    const mentions = Math.min(3, Math.max(count(lower), last ? count(last) : 0))
     const own = keywordSet.has(lower) || candidate.fromKeyword || !!candidate.inText
     const ownWeight = keywordSet.has(lower) || candidate.fromKeyword ? 3 : candidate.inText ? 2 : 0
     const specific = !isCountry(label) && stems.length >= 1 && !/^(united states|us|uk|eu)$/i.test(label)
@@ -290,10 +313,13 @@ export function chooseTopics(candidates: TopicCandidate[], headline: string, bod
     // A link the article does not tag itself with must be named by the headline or repeated in the text.
     if (!own && inHeadline < 0.5 && mentions < 2) continue
     if (score < 3) continue
-    scored.push({ ...candidate, label, score, specific })
+    // Keywords and links written in lower case ("paraguay", "war in Ukraine") are names on screen.
+    scored.push({ ...candidate, label: /^\p{Ll}+\b/u.test(label) ? label.replace(/^\p{L}/u, (c) => c.toUpperCase()) : label, score, specific })
   }
-  // The article's own running-story tags ("US-Israel war on Iran") before its countries and broad subjects.
-  const storyTag = (topic: ScoredTopic): boolean => (topic.event || isStoryTag(topic.label)) && (topic.fromKeyword || !!topic.inText || topic.score >= 6)
+  // The article's own running-story tags ("US-Israel war on Iran") before its countries and broad subjects;
+  // one its text merely links to ("US midterms" in a Ukraine story) must be named by the headline or score well.
+  const storyTag = (topic: ScoredTopic): boolean => (topic.event || isStoryTag(topic.label))
+    && (topic.fromKeyword || topic.score >= 6 || topic.label.split(/[^\p{L}\d]+/u).some((word) => !EVENT_WORDS.test(word) && stemsOf(word).some((stem) => headlineStems.has(stem) && !PLACES.has(stem))))
   scored.sort((a, b) => Number(storyTag(b)) - Number(storyTag(a)) || b.score - a.score)
   const out: ScoredTopic[] = []
   for (const topic of scored) {
@@ -320,7 +346,8 @@ export function cardDate(cardHtml: string, pageDate: string, dayFirst = false): 
   const stamp = cardHtml.match(/\bdata-(?:lastupdated|timestamp|published|date)\s*=\s*["'](1\d{9})["']/i)?.[1]
   if (stamp) return new Date(Number(stamp) * 1000).toISOString().slice(0, 10)
   const plain = text(cardHtml)
-  const numeric = dayFirst ? plain.match(/\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/) : null
+  // Dotted dates are day first everywhere (DW's older cards: "26.08.2020").
+  const numeric = plain.match(/\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b/) ?? (dayFirst ? plain.match(/\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/) : null)
   if (numeric && Number(numeric[2]) <= 12 && Number(numeric[1]) <= 31) return `${numeric[3]}-${pad(numeric[2]!)}-${pad(numeric[1]!)}`
   const written = plain.match(DATE_IN_CARD)
   if (written) {
@@ -381,8 +408,13 @@ export function extractHeadlines(html: string, pageUrl: string, outlet: OutletPr
     if (!url) continue
     const heading = anchor.inner.match(HEADING)
     let title = text(heading ? heading[2] ?? heading[3] ?? '' : anchor.inner)
+    // A card whose own heading is short ("Macau profile", "Macau media guide") is a guide, not a headline;
+    // read whole, it would run into its date and summary.
+    if (heading && (heading[1] || /data-testid\s*=\s*["'][^"']*headline/i.test(heading[0])) && title.split(' ').length < 4) continue
     if (title.split(' ').length < 4 || title.length < 20) title = text(anchor.inner)
     title = title.replace(/^(video|watch|live|analysis|explainer|opinion|exclusive|update[sd]?)\s*[:|-]\s*/i, '')
+      // A date written after the headline in the same link (DW's older cards) is the card's date, not its title.
+      .replace(/\s+\d{1,2}\.\d{1,2}\.\d{4}$/, '')
     if (title.split(' ').length < 4 || title.length < 20 || title.length > 220) continue
     const key = url.pathname.replace(/\/$/, '')
     // The card is the anchor plus what follows it up to the next headline link (where dates usually sit).
@@ -403,18 +435,26 @@ export function extractHeadlines(html: string, pageUrl: string, outlet: OutletPr
  * How closely an earlier headline tells the same story: words shared with the
  * current headline and the article's keywords, names counting double. Words
  * every headline on the page shares (the topic's own name) say little.
+ * Anchors: shared headline words that are not a place or an office; the
+ * topic's own name anchors (without scoring) when the headline names it too.
  */
-export function storyOverlap(title: string, headline: string, keywords: string[], options: { ignore?: Set<string>; common?: Set<string> } = {}): { score: number; words: number } {
+export function storyOverlap(title: string, headline: string, keywords: string[], options: { ignore?: Set<string>; common?: Set<string> } = {}): { score: number; words: number; anchors: number } {
   const wanted = terms(`${headline} ${keywords.join(' ')}`)
+  const inHeadline = terms(headline)
   let score = 0
   let words = 0
+  let anchors = 0
   for (const [stem, weight] of terms(title)) {
     const want = wanted.get(stem)
-    if (!want || options.ignore?.has(stem)) continue
+    if (!want) continue
+    const anchor = inHeadline.has(stem) && !PLACES.has(stem) && !OFFICES.has(stem) && !FILLER.has(stem)
+    if (anchor) anchors += 1
+    if (options.ignore?.has(stem)) continue
     words += 1
-    score += Math.max(want, weight) * (options.common?.has(stem) ? 0.5 : 1)
+    // A name the page shares because the page follows this story ("Lamarre-Condon") is not halved.
+    score += Math.max(want, weight) * (options.common?.has(stem) && !anchor ? 0.5 : 1)
   }
-  return { score, words }
+  return { score, words, anchors }
 }
 
 const EVENT_WORDS = /\b(wars?|conflict|crisis|elections?|midterms?|protests?|invasion|attacks?|ceasefire|talks|trial|summit|referendum|earthquake|floods?|hurricane|typhoon|cyclone|wildfires?|bushfires?|pandemic|outbreak|coup|siege|genocide|strikes?|shutdown|tariffs?|negotiations|deal|uprising|occupation|blockade|famine|drought|olympics|world cup|cop\d+)\b/i
@@ -429,7 +469,8 @@ export function isStoryTag(label: string): boolean {
   const lower = label.toLowerCase()
   if (!EVENT_WORDS.test(lower) || lower.split(/[\s-]+/).length < 2) return false
   const words = lower.split(/[^a-z0-9]+/).filter(Boolean)
-  const named = /\b(19|20)\d{2}\b/.test(lower) || [...COUNTRY_NAMES].some((country) => new RegExp(`\\b${country}\\b`).test(lower))
+  // A country by name or by its people ("Israeli elections").
+  const named = /\b(19|20)\d{2}\b/.test(lower) || [...COUNTRY_NAMES].some((country) => new RegExp(`\\b${country}\\b`).test(lower)) || stemsOf(label).some((stem) => COUNTRY_STEMS.has(stem))
     || words.some((word) => ACTORS.has(word)) || [...ACTORS].some((actor) => actor.includes(' ') && lower.includes(actor))
   return named
 }
@@ -438,8 +479,9 @@ export type Relevance = 'story' | 'related' | 'unrelated'
 
 /**
  * Sorts a page of earlier headlines: the same story (two or more telling
- * words in common), related (shares a word with the topic or the story), or
- * unrelated (a sidebar's "most read" list).
+ * words in common, one of them a headline word that is not a place or an
+ * office), related (shares a word with the topic or the story), or unrelated
+ * (a sidebar's "most read" list).
  */
 export function classifyHeadlines(titles: string[], headline: string, keywords: string[], topicLabels: string[], fromStoryTag: boolean[] = [], topicOf: number[] = []): Relevance[] {
   const ignore = new Set(topicLabels.flatMap(stemsOf))
@@ -448,14 +490,18 @@ export function classifyHeadlines(titles: string[], headline: string, keywords: 
   const each = titles.map((title) => new Set(stemsOf(title)))
   for (const stems of each) for (const stem of stems) counts.set(stem, (counts.get(stem) ?? 0) + 1)
   const common = new Set([...counts].filter(([, count]) => titles.length >= 8 && count / titles.length > 0.2).map(([stem]) => stem))
-  const near = new Set([...ignore, ...stemsOf(headline), ...keywords.flatMap(stemsOf)])
+  const headlineStems = new Set(stemsOf(headline))
+  const near = new Set([...ignore, ...headlineStems, ...keywords.flatMap(stemsOf)])
   return titles.map((title, index) => {
     // A headline's own topic page says nothing about it; the other topic's words still count.
     const overlap = storyOverlap(title, headline, keywords, { ignore: topicOf[index] !== undefined ? ownTopic[topicOf[index]!] ?? ignore : ignore, common })
-    if (overlap.words >= 2 && overlap.score >= 3) return 'story'
-    const related = [...each[index]!].some((stem) => near.has(stem))
-    // On the outlet's own page for this running story, every related headline is part of it.
-    return related ? fromStoryTag[index] ? 'story' : 'related' : 'unrelated'
+    if (overlap.words >= 2 && overlap.score >= 3 && overlap.anchors >= 1) return 'story'
+    const related = [...each[index]!].some((stem) => near.has(stem) && !FILLER.has(stem))
+    // On the outlet's own page for this running story, a related headline is part of it when it shares a word
+    // with the headline, or more than a place with the tag ("Gaza", "midterms"; not only "Israel" on the
+    // Israel-Palestine page, where US politics and olive harvests are filed too).
+    const told = [...each[index]!].some((stem) => !OFFICES.has(stem) && !FILLER.has(stem) && (headlineStems.has(stem) || near.has(stem) && !PLACES.has(stem)))
+    return related ? fromStoryTag[index] && told ? 'story' : 'related' : 'unrelated'
   })
 }
 
@@ -469,7 +515,7 @@ const ARCHIVE_SPACING_MS = 8_000
 /** At most this many archive requests in any ten minutes (it refuses connections well before that pace is sustained). */
 const ARCHIVE_WINDOW = { requests: 25, ms: 10 * 60_000 }
 /** Bumped when reading pages changes, so captures read the old way are read again. */
-const PARSER_VERSION = 2
+const PARSER_VERSION = 4
 /** Archive reads one "further back" may make in all (topic pages × skipped captures). */
 const READS_PER_PAGE = 3
 const ARCHIVE_PAUSE_MS = 5 * 60_000
@@ -531,8 +577,9 @@ export class OutletArchive {
     const outlet = outletFor(query.url)
     const base = { note: COVERAGE_NOTE }
     if (!outlet) return { ...base, outlet: null, topics: [], items: [], cursor: null, status: 'unsupported' }
-    const article = await this.article(query.url, query.headline, outlet).catch(() => null)
-    if (!article?.topics.length) return { ...base, outlet: { id: outlet.id, name: outlet.name }, topics: [], items: [], cursor: null, status: 'no-topics' }
+    // An article that cannot be read is an error (the reader can try again), not a story without topics.
+    const article = await this.article(query.url, query.headline, outlet)
+    if (!article.topics.length) return { ...base, outlet: { id: outlet.id, name: outlet.name }, topics: [], items: [], cursor: null, status: 'no-topics' }
     const topics: OldsCoverageTopic[] = article.topics.map((topic) => ({ label: topic.label, url: topic.url }))
     const current = new URL(query.url).pathname.replace(/\/$/, '')
     const steps = decodeCursor(query.cursor)
@@ -569,22 +616,26 @@ export class OutletArchive {
     const fresh: typeof found = []
     for (const item of found.sort((a, b) => b.date.localeCompare(a.date))) {
       const key = new URL(item.url).pathname.replace(/\/$/, '')
-      if (shown.has(key)) continue
+      // The same report filed twice (RFI: as a video and as a podcast) is shown once.
+      const title = `title:${item.title.toLowerCase()}`
+      if (shown.has(key) || shown.has(title)) continue
       shown.add(key)
+      shown.add(title)
       fresh.push(item)
     }
     const storyTags = article.topics.map((topic) => !!topic.event || isStoryTag(topic.label))
-    const relevance = classifyHeadlines(fresh.map((item) => item.title), query.headline, article.keywords, topics.map((topic) => topic.label), fresh.map((item) => storyTags[item.topic] ?? false), fresh.map((item) => item.topic))
+    const keywords = storyKeywords(article.keywords)
+    const relevance = classifyHeadlines(fresh.map((item) => item.title), query.headline, keywords, topics.map((topic) => topic.label), fresh.map((item) => storyTags[item.topic] ?? false), fresh.map((item) => item.topic))
     const items: OldsCoverageItem[] = []
-    // A country page beside a more specific topic ("Death Penalty" and "United States") gives only
-    // the headlines that share something with this story, not all of that country's news.
-    const broad = article.topics.map((topic) => isCountry(topic.label) || /^(us|uk|eu|united states)$/i.test(topic.label))
-    const narrowed = broad.some((value) => !value)
+    // A place's page (a country, a city) beside another topic ("Death Penalty" and "United States") gives
+    // only the headlines that share something with this story, not all of that place's news.
+    const broad = article.topics.map((topic) => isCountry(topic.label) || /^(us|uk|eu|united states)$/i.test(topic.label) || !!outlet.placePath?.test(new URL(topic.url).pathname))
+    const narrowed = article.topics.length > 1
     fresh.forEach((item, index) => {
       // Off-topic headlines are dropped only from pages read whole, where a sidebar could have supplied them.
       if (relevance[index] === 'unrelated' && !item.framed) return
       if (narrowed && broad[item.topic] && relevance[index] !== 'story'
-        && storyOverlap(item.title, query.headline, article.keywords, { ignore: new Set(stemsOf(topics[item.topic]?.label ?? '')) }).words === 0) return
+        && storyOverlap(item.title, query.headline, keywords, { ignore: new Set(stemsOf(topics[item.topic]?.label ?? '')) }).words === 0) return
       items.push({
         title: item.title,
         url: item.url,

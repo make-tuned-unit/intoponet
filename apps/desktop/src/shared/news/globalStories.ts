@@ -170,7 +170,7 @@ export type HeadlineCluster = { terms: Map<string, number>; indices: Set<number>
  * share them (higher scores merge first), then merged when they share most headlines.
  * Mutates each entry's tokens down to its distinctive ones.
  */
-export function clusterHeadlines(entries: Array<{ title: string; tokens: string[] }>, score: (indices: number[]) => number | null, maxClusters: number): HeadlineCluster[] {
+export function clusterHeadlines(entries: Array<{ title: string; tokens: string[] }>, score: (indices: number[]) => number | null, maxClusters: number, options: { mergeLeadingNames?: boolean } = {}): HeadlineCluster[] {
   // Words that look like names: capitalised mid-sentence most of the time.
   const caps = new Map<string, { cap: number; lower: number }>()
   for (const entry of entries) {
@@ -238,6 +238,8 @@ export function clusterHeadlines(entries: Array<{ title: string; tokens: string[
   }
 
   // Second pass: clusters led by the same name are one story told several ways ("lula bolsonaro", "lula silva").
+  // Off for story mountains: one name in common does not make two events one story.
+  if (options.mergeLeadingNames === false) return clusters
   const top2 = (cluster: HeadlineCluster): string[] => [...cluster.terms.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2).map(([term]) => term)
   for (let i = 0; i < clusters.length; i += 1) {
     for (let j = clusters.length - 1; j > i; j -= 1) {

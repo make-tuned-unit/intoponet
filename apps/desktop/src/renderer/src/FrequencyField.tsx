@@ -7,6 +7,8 @@ import { useEffect, useState } from 'react'
 import { EarthScene } from './earth/EarthScene'
 import type { GlobeMarker, GlobeProjection } from './globe/GlobeMarkers'
 import type { CountryView } from './globe/CountryNames'
+import type { StoryTerrain } from './globe/storyTerrain'
+import type { StoryStrandsProps } from './globe/StoryStrands'
 
 export function FrequencyField({
   paused = false,
@@ -16,6 +18,8 @@ export function FrequencyField({
   pose,
   bands,
   signals,
+  terrain,
+  strands,
   markers,
   selectedMarkerId,
   hoveredMarkerId,
@@ -41,6 +45,8 @@ export function FrequencyField({
   pose?: OrbitPose | undefined
   bands?: FrequencyBand[] | undefined
   signals?: InterestSignal[] | undefined
+  terrain?: StoryTerrain | null | undefined
+  strands?: StoryStrandsProps | null | undefined
   markers?: GlobeMarker[] | undefined
   selectedMarkerId?: string | null
   hoveredMarkerId?: string | null
@@ -76,6 +82,8 @@ export function FrequencyField({
       pose={pose}
       bands={bands}
       signals={signals}
+      terrain={terrain}
+      strands={strands}
       markers={markers}
       selectedMarkerId={selectedMarkerId ?? null}
       hoveredMarkerId={hoveredMarkerId ?? null}

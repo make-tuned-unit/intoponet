@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { observeNewsCoverage, readCachedNewsDigest, readCoverage } from './newsService'
+import { fetchOrder, newsFeedEntries, observeNewsCoverage, readCachedNewsDigest, readCoverage } from './newsService'
 import { NEWS_COVERAGE_TOLERANCE_MS, type CoverageIntervals } from '../../shared/news/newsDigest'
 
 const h = 60 * 60 * 1000
@@ -111,5 +111,22 @@ describe('news observation coverage', () => {
     } finally {
       rmSync(directory, { recursive: true, force: true })
     }
+  })
+})
+
+describe('news fetch order', () => {
+  it('reaches every country early instead of going through the alphabet', () => {
+    const feeds = newsFeedEntries()
+    const order = fetchOrder(feeds)
+    expect(order).toHaveLength(feeds.length)
+    expect(new Set(order.map((feed) => feed.sourceId)).size).toBe(feeds.length)
+    const countries = new Set(feeds.filter((feed) => feed.geographicScope !== 'international').map((feed) => feed.countryCode))
+    const desks = feeds.filter((feed) => feed.geographicScope === 'international').length
+    // One full turn: every country's first feed comes before any country's second.
+    const firstTurn = new Set(order.slice(desks, desks + countries.size).map((feed) => feed.countryCode))
+    expect(firstTurn.size).toBe(countries.size)
+    const us = order.findIndex((feed) => feed.countryCode === 'US' && feed.geographicScope !== 'international')
+    expect(us).toBeLessThan(desks + countries.size)
+    expect(order[us]!.geographicScope).toBe('national')
   })
 })
