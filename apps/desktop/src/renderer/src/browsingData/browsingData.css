@@ -12,22 +12,23 @@
 }
 .downloads-ring {
   position: relative;
+  flex: none;
   display: inline-grid;
   place-items: center;
   width: 22px;
   height: 22px;
 }
-.downloads-ring svg {
+.downloads-ring svg.downloads-progress {
   position: absolute;
   inset: 0;
   transform: rotate(-90deg);
 }
-.downloads-ring svg.is-indeterminate { animation: downloads-spin 1.1s linear infinite; }
+.downloads-ring svg.downloads-progress.is-indeterminate { animation: downloads-spin 1.1s linear infinite; }
 .downloads-ring-track { fill: none; stroke: rgba(213, 244, 241, 0.18); stroke-width: 2; }
 .downloads-ring-value { fill: none; stroke: var(--teal); stroke-width: 2; stroke-linecap: round; transition: stroke-dashoffset 240ms linear; }
 @keyframes downloads-spin { to { transform: rotate(270deg); } }
 @media (prefers-reduced-motion: reduce) {
-  .downloads-ring svg.is-indeterminate { animation: none; }
+  .downloads-ring svg.downloads-progress.is-indeterminate { animation: none; }
   .downloads-ring-value { transition: none; }
 }
 

@@ -210,7 +210,19 @@ async function pdfExport(ctx) {
     const after = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.readPrivateLibrary().then((r) => r.payload)`))
     expect(!after.bookmarks.some((item) => item.url.includes('?private')), 'A private page was bookmarked.')
     await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
-    return `Article: ${pages} pages, ${images} images, tagged with outline, ads/hidden/overlay text left out, bookmarked in "Reading" with the PDF linked; shop page saved as seen without ads; private tab asked where, neutral name, no Where-from or bookmark.`
+    // Every saved PDF is listed in Bookmarks › PDFs (newest first); never the private one.
+    const listed = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.listSavedPdfs().then((list) => JSON.stringify(list))`))
+    expect(listed.some((item) => item.path === path), `The saved article is not in the saved PDF list: ${JSON.stringify(listed.map((item) => item.path))}`)
+    expect(!listed.some((item) => item.path === privatePath), 'The private tab\'s PDF is in the saved PDF list.')
+    await ctx.evaluate(`(() => { if (!document.querySelector('.bm-surface')) (document.querySelector('button[data-panel="bookmarks"]') ?? document.querySelector('button[aria-label^="Show bookmarks"]'))?.click(); return true })()`)
+    await ctx.wait(`!!document.querySelector('.bm-filter')`, 10_000, 'the Bookmarks pane')
+    await ctx.evaluate(`(() => { [...document.querySelectorAll('.bm-filter button')].find((b) => b.textContent.trim() === 'PDFs')?.click(); return true })()`)
+    await ctx.wait(`document.querySelectorAll('.bm-pdfs .bm-item').length > 0`, 10_000, 'Bookmarks › PDFs to list the saved PDFs')
+    const forgetId = listed.find((item) => item.path === path).id
+    await ctx.evaluate(`window.intoponet.browserHost.forgetSavedPdf(${JSON.stringify(forgetId)}).then(() => true)`)
+    const afterForget = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.listSavedPdfs().then((list) => JSON.stringify(list))`))
+    expect(!afterForget.some((item) => item.id === forgetId) && existsSync(path), 'Removing a PDF from the list did not work, or deleted the file.')
+    return `Article: ${pages} pages, ${images} images, tagged with outline, ads/hidden/overlay text left out, bookmarked in "Reading" with the PDF linked; shop page saved as seen without ads; private tab asked where, neutral name, no Where-from or bookmark; ${listed.length} PDFs in Bookmarks › PDFs (private one not listed), removing one keeps the file.`
   } finally {
     server.close()
   }
@@ -343,6 +355,9 @@ const startBrowsingSite = (port = 0) => new Promise((resolve, reject) => {
       return
     }
     response.setHeader('content-type', 'text/html; charset=utf-8')
+    // A page that sets no background or colour scheme: it expects the browser's white canvas.
+    if (request.url?.startsWith('/plain')) { response.end('<!doctype html><title>Plain page</title><p style="font: 40px serif">Plain black text</p>'); return }
+    if (request.url?.startsWith('/darkpage')) { response.end('<!doctype html><title>Dark page</title><meta name="color-scheme" content="dark"><p>Dark by choice</p>'); return }
     response.end(`<!doctype html><title>Browsing test</title><meta name="color-scheme" content="light dark">
 <p><a id="mail" href="mailto:someone@example.com?subject=Hello">Write to us</a> · <a id="pdf" href="/doc.pdf">Read the PDF</a></p>
 <p id="scheme"></p><script>const s = document.getElementById('scheme'); const q = matchMedia('(prefers-color-scheme: dark)'); const set = () => { s.textContent = q.matches ? 'dark' : 'light' }; set(); q.addEventListener('change', set)</script>`)
@@ -891,6 +906,23 @@ export const checks = {
         expect((await page.evaluate(`document.getElementById('scheme')?.textContent`)) === want, `After a reload with "${choice}" the page renders ${want === 'dark' ? 'light' : 'dark'}.`)
         seen.push(`${choice}→${want}`)
       }
+      // Pages in dark mode: one with no background of its own is white (black text stays readable), one that chooses dark is dark.
+      await ctx.evaluate(`window.intoponet.browsing.setPageAppearance('dark').then(() => true)`)
+      const canvas = async (path) => {
+        await ctx.evaluate(`window.intoponet.browserHost.newTab().then(() => true)`)
+        await ctx.delay(800)
+        await openPage(ctx, `http://${host}${path}`, 2000)
+        const session = await ctx.page(`${host}${path}`)
+        const { data } = await session.send('Page.captureScreenshot', { format: 'png', clip: { x: 0, y: 300, width: 4, height: 4, scale: 1 } })
+        // The pixel in the middle of an uncompressed-enough PNG: decode via the page itself.
+        return session.evaluate(`new Promise((resolve) => { const i = new Image(); i.onload = () => { const c = document.createElement('canvas'); c.width = c.height = 4; const g = c.getContext('2d'); g.drawImage(i, 0, 0); resolve([...g.getImageData(1, 1, 1, 1).data.slice(0, 3)].join(',')) }; i.src = 'data:image/png;base64,${data}' })`)
+      }
+      const plain = await canvas('/plain')
+      expect(plain.split(',').every((v) => Number(v) > 240), `In dark mode a page with no background shows ${plain} behind its black text (should be white).`)
+      const dark = await canvas('/darkpage')
+      expect(dark.split(',').every((v) => Number(v) < 80), `A page that chooses dark shows ${dark} (should be dark).`)
+      await ctx.evaluate(`window.intoponet.browsing.setPageAppearance('system').then(() => true)`)
+      seen.push(`dark mode canvas: plain ${plain}, dark ${dark}`)
       await openPanel(ctx, 'Settings')
       const text = await ctx.evaluate(`document.querySelector('.settings-pane')?.innerText ?? ''`)
       for (const piece of ['Match system', 'Light', 'Dark', 'default browser']) expect(text.includes(piece), `Settings is missing "${piece}".`)

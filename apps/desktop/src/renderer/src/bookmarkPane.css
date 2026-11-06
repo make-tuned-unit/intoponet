@@ -632,3 +632,15 @@ li:hover > .bm-move, .bm-move:focus-visible, li:focus-within > .bm-move { opacit
   text-decoration: line-through;
   opacity: 0.55;
 }
+
+/* Bookmarks › PDFs: every PDF saved with Export as PDF. */
+.bm-pdfs {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0 -4px;
+  padding: 2px 4px 6px;
+  scrollbar-width: thin;
+}
+.bm-pdfs ul { margin: 0; padding: 0 4px 6px; list-style: none; }
+.bm-pdfs .bm-item { position: relative; }

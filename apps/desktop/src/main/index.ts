@@ -120,6 +120,7 @@ import { CLIENT_CERTIFICATE_NOTICE, declineClientCertificate, rejectCertificateE
 import { reserveDownloadPath, sanitizeDownloadFilename } from './downloadReservation'
 import { downloadsDirectory, installBrowsingData, openHistoryPane, type BrowsingData } from './browsingData'
 import { exportPagePdf } from './pdfExport/exportPdf'
+import { SavedPdfList } from './pdfExport/savedPdfs'
 import { DEFAULT_PDF_SETTINGS, parsePdfSettings, type PdfExportSettings } from './pdfExport/settings'
 import { CrashRecoveryPolicy } from './crashRecovery'
 import { BeaconPublisher } from './beacons/publisher'
@@ -161,6 +162,7 @@ import {
   type BrowserPanelSnapshot,
   type ClosedTabSnapshot,
   type PageTabSnapshot,
+  type SavedPdfRecord,
   type PrivateLibraryReadResult,
   type ShellShortcut,
   type ProtectionSnapshot,
@@ -1396,6 +1398,9 @@ function buildView(isPrivate = privateMode): WebContentsView {
 
   // Behind a page before it paints: light, or dark when pages are dark (no white flash at night).
   view.setBackgroundColor(pageAppearance.current === 'dark' || (pageAppearance.current === 'system' && nativeTheme.shouldUseDarkColors) ? '#202124' : '#ffffff')
+  // Once a page is there, the canvas behind it is white as in any browser: a page that sets no
+  // background of its own expects white, and one that is dark (color-scheme) gets a dark canvas from Chromium.
+  view.webContents.once('dom-ready', () => { if (!view.webContents.isDestroyed()) view.setBackgroundColor('#ffffff') })
   view.webContents.setWebRTCIPHandlingPolicy(WEBRTC_POLICY)
   view.webContents.on('before-mouse-event', (_event, input) => {
     if (shouldCloseTabDockFromNativeMouse({
@@ -1835,6 +1840,9 @@ const zoomedWhileLoading = new WeakSet<WebContentsView>()
 let pdfSettings: PdfExportSettings | null = null
 let pdfJob: { cancelled: boolean } | null = null
 const pdfSettingsFile = (): string => join(app.getPath('userData'), 'pdf-export.json')
+/** PDFs saved here, listed under Bookmarks › PDFs (created on first use, after app is ready). */
+let savedPdfList: SavedPdfList | null = null
+const savedPdfs = (): SavedPdfList => (savedPdfList ??= new SavedPdfList(join(app.getPath('userData'), 'saved-pdfs.json'), trackedWrite))
 
 function currentPdfSettings(): PdfExportSettings {
   if (pdfSettings) return pdfSettings
@@ -1895,6 +1903,7 @@ async function runPdfExport(view: WebContentsView | null = pageView, options?: P
     })
     if (outcome.status === 'saved') {
       browsingData?.downloads.recordSaved({ filename: outcome.filename, url: outcome.url, path: outcome.path, bytes: outcome.bytes, isPrivate })
+      if (!isPrivate) await savedPdfs().add({ path: outcome.path, filename: outcome.filename, title: outcome.title, url: outcome.url, pages: outcome.pages, bytes: outcome.bytes, mode: outcome.mode }).catch(() => undefined)
       emit({ type: 'pdf-export', event: { ...outcome, state: 'saved', groupId: isPrivate ? '' : settings.groupId, isPrivate } })
     } else if (outcome.status === 'cancelled') {
       emit({ type: 'pdf-export', event: { state: 'cancelled' } })
@@ -2040,6 +2049,7 @@ async function handleBrowserCommand(
   | PrivateLibraryReadResult
   | PublicFieldStatus
   | PdfExportSettings
+  | SavedPdfRecord[]
   | string
   | null
 > {
@@ -2156,6 +2166,11 @@ async function handleBrowserCommand(
       return null
     case 'open-saved-file':
       await openSavedFile(command.path, command.reveal)
+      return null
+    case 'list-saved-pdfs':
+      return savedPdfs().list()
+    case 'forget-saved-pdf':
+      await savedPdfs().forget(command.id)
       return null
     case 'navigate': {
       const target = safeHttpUrl(command.url)

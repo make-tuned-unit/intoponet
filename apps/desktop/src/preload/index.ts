@@ -29,6 +29,7 @@ import {
   type PrivateLibraryReadResult,
   type ProtectionSnapshot,
   type PublicFieldStatus,
+  type SavedPdfRecord,
 } from '@intoponet/browser-api'
 
 const invoke = (
@@ -41,6 +42,7 @@ const invoke = (
   | PrivateLibraryReadResult
   | PublicFieldStatus
   | PdfExportOptions
+  | SavedPdfRecord[]
   | string
   | null
 > =>
@@ -167,6 +169,10 @@ const browserHost: BrowserHostApi = {
   },
   openSavedFile: async (path, reveal) => {
     await invoke({ type: 'open-saved-file', path, reveal })
+  },
+  listSavedPdfs: () => invoke({ type: 'list-saved-pdfs' }) as Promise<SavedPdfRecord[]>,
+  forgetSavedPdf: async (id) => {
+    await invoke({ type: 'forget-saved-pdf', id })
   },
   readPrivateLibrary: () =>
     invoke({ type: 'read-private-library' }) as Promise<PrivateLibraryReadResult>,

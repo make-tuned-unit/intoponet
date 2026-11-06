@@ -186,6 +186,19 @@ export type PdfExportEvent =
   | { state: 'failed'; reason: string }
   | { state: 'cancelled' }
 
+/** A PDF saved with Export as PDF (not from private tabs), listed under Bookmarks › PDFs. */
+export type SavedPdfRecord = {
+  id: string
+  path: string
+  filename: string
+  title: string
+  url: string
+  savedAt: string
+  pages: number | null
+  bytes: number
+  mode: 'formatted' | 'asSeen'
+}
+
 export type BrowserHostEvent =
   | { type: 'frequency-visit'; url: string; title: string; rating: string | null; navigationId: string }
   | { type: 'panel-state'; panel: BrowserPanelSnapshot }
@@ -291,6 +304,8 @@ export interface BrowserHostApi {
   getPdfSettings(): Promise<PdfExportOptions>
   setPdfSettings(options: PdfExportOptions): Promise<void>
   openSavedFile(path: string, reveal: boolean): Promise<void>
+  listSavedPdfs(): Promise<SavedPdfRecord[]>
+  forgetSavedPdf(id: string): Promise<void>
   readPrivateLibrary(): Promise<PrivateLibraryReadResult>
   writePrivateLibrary(payload: string): Promise<void>
   deletePrivateLibrary(): Promise<void>
@@ -359,6 +374,10 @@ export type BrowserHostCommand =
   | { type: 'set-pdf-settings'; options: PdfExportOptions }
   /** A PDF this app saved: open it, or show it in Finder. */
   | { type: 'open-saved-file'; path: string; reveal: boolean }
+  /** Every PDF saved here whose file is still there, newest first. */
+  | { type: 'list-saved-pdfs' }
+  /** Take a PDF off that list (the file stays where it is). */
+  | { type: 'forget-saved-pdf'; id: string }
   | { type: 'read-private-library' }
   | { type: 'write-private-library'; payload: string }
   | { type: 'delete-private-library' }
@@ -413,6 +432,8 @@ const commandTypes = new Set<BrowserHostCommand['type']>([
   'get-pdf-settings',
   'set-pdf-settings',
   'open-saved-file',
+  'list-saved-pdfs',
+  'forget-saved-pdf',
   'read-private-library',
   'write-private-library',
   'delete-private-library',
@@ -624,7 +645,13 @@ export function parseBrowserHostCommand(value: unknown): BrowserHostCommand {
     case 'save-page':
     case 'cancel-pdf-export':
     case 'get-pdf-settings':
+    case 'list-saved-pdfs':
       return { type }
+    case 'forget-saved-pdf': {
+      const id = value['id']
+      if (typeof id !== 'string' || !/^[a-z0-9-]{1,64}$/i.test(id)) throw new Error('Invalid saved PDF.')
+      return { type, id }
+    }
     case 'export-pdf':
       return value['options'] === undefined ? { type } : { type, options: parsePdfExportOptions(value['options']) }
     case 'set-pdf-settings':

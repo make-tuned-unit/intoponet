@@ -133,7 +133,7 @@ import { TabDock } from './TabDock'
 import { TabRail } from './TabRail'
 import { PageTabStrip } from './PageTabStrip'
 import './shellChrome.css'
-import { BookmarkPane } from './BookmarkPane'
+import { BookmarkPane, type PaneFilter } from './BookmarkPane'
 import { groupOf, moveBookmarkToGroup, UNSORTED_GROUP_ID } from './bookmarkGroups'
 import { AnimatePresence } from 'motion/react'
 import type { CaptureCrop, CaptureRecord, PendingCapture } from '@intoponet/browser-api'
@@ -445,6 +445,8 @@ export function App() {
   const [pdfStatus, setPdfStatus] = useState<PdfExportEvent | null>(null)
   const [pdfOptionsOpen, setPdfOptionsOpen] = useState(false)
   /** Files a saved PDF into its bookmark group (kept current each render: the event listener is long-lived). */
+  const [bookmarkFilterRequest, setBookmarkFilterRequest] = useState<{ filter: PaneFilter; at: number } | null>(null)
+  const [savedPdfVersion, setSavedPdfVersion] = useState(0)
   const pdfSavedRef = useRef<(event: Extract<PdfExportEvent, { state: 'saved' }>) => void>(() => undefined)
   const [findQuery, setFindQuery] = useState('')
   const [findResult, setFindResult] = useState<FindInPageResult | null>(null)
@@ -695,7 +697,7 @@ export function App() {
       }
       if (event.type === 'pdf-export') {
         setPdfStatus(event.event)
-        if (event.event.state === 'saved') pdfSavedRef.current(event.event)
+        if (event.event.state === 'saved') { pdfSavedRef.current(event.event); setSavedPdfVersion((value) => value + 1) }
         return
       }
       if (event.type === 'download-finished') {
@@ -2533,6 +2535,8 @@ export function App() {
         onOpenCapture={setViewerId}
         onMoveCapture={moveCapture}
         onOpenFolder={(groupId) => void window.intoponet.captures.openFolder(groupId).catch(() => setError('The capture folder could not be opened.'))}
+        requestedFilter={bookmarkFilterRequest}
+        savedPdfVersion={savedPdfVersion}
       />
       <AnimatePresence>
         {captureSession && (
@@ -3727,6 +3731,7 @@ export function App() {
             onClose={() => setPdfStatus((current) => (current?.state === 'working' ? current : null))}
             onCloseOptions={() => setPdfOptionsOpen(false)}
             onError={setError}
+            onShowAll={() => { setBookmarkFilterRequest({ filter: 'pdfs', at: Date.now() }); setBookmarksOpen(true) }}
           />
           {translateOpen && <TranslateBar model={translation} onClose={() => setTranslateOpen(false)} site={pageSite} neverSite={neverThisSite} onNeverSite={setNeverSite} />}
           {pageAccess && pageAccess.url === panel.url && !accessHidden.includes(hostOf(pageAccess.url)) && (

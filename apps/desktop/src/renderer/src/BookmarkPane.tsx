@@ -1,6 +1,6 @@
 import { useFavicon } from './favicons'
 import { AnimatePresence, motion, useReducedMotion, type Transition } from 'motion/react'
-import type { CaptureRecord } from '@intoponet/browser-api'
+import type { CaptureRecord, SavedPdfRecord } from '@intoponet/browser-api'
 import { Bookmark, BookmarkPlus, Check, ChevronRight, FolderOpen, FolderPlus, Pencil, Play, Search, Trash2, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type KeyboardEvent } from 'react'
 import type { SavedBookmark, SavedCollection } from './localLibrary'
@@ -13,8 +13,8 @@ import './captures/captures.css'
 // Groups are open unless collapsed, so new and freshly loaded groups start open.
 const collapsedKey = 'intoponet.bookmark-pane.collapsed.v2'
 const filterKey = 'intoponet.bookmark-pane.filter.v1'
-type PaneFilter = 'all' | 'pages' | 'captures'
-const filters: Array<[PaneFilter, string]> = [['all', 'All'], ['pages', 'Pages'], ['captures', 'Captures']]
+export type PaneFilter = 'all' | 'pages' | 'captures' | 'pdfs'
+const filters: Array<[PaneFilter, string]> = [['all', 'All'], ['pages', 'Pages'], ['captures', 'Captures'], ['pdfs', 'PDFs']]
 const dragType = 'application/x-intoponet-bookmark'
 export const BOOKMARK_PANE_WIDTH_PX = 328
 
@@ -58,6 +58,10 @@ export type BookmarkPaneProps = {
   freshCaptureId: string | null
   onOpenCapture: (id: string) => void
   onMoveCapture: (id: string, groupId: string | null) => void
+  /** Show this view when it changes (the PDF bar's "All saved PDFs"). */
+  requestedFilter?: { filter: PaneFilter; at: number } | null
+  /** Changes when a PDF is saved, so the PDFs view refreshes. */
+  savedPdfVersion?: number
   /** Open the group's capture folder in Finder. */
   onOpenFolder: (groupId: string | null) => void
 }
@@ -112,18 +116,24 @@ function PaneBody({
   onOpenCapture,
   onMoveCapture,
   onOpenFolder,
+  requestedFilter,
+  savedPdfVersion = 0,
 }: BookmarkPaneProps) {
   const reduceMotion = useReducedMotion()
   const [filter, setFilterState] = useState<PaneFilter>(() => {
     try {
       const stored = localStorage.getItem(filterKey)
-      return stored === 'pages' || stored === 'captures' ? stored : 'all'
+      return stored === 'pages' || stored === 'captures' || stored === 'pdfs' ? stored : 'all'
     } catch { return 'all' }
   })
   const setFilter = (next: PaneFilter): void => {
     setFilterState(next)
     try { localStorage.setItem(filterKey, next) } catch { /* convenience only */ }
   }
+  useEffect(() => {
+    if (requestedFilter) setFilter(requestedFilter.filter)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestedFilter])
   const surface = useGlassSheen<HTMLDivElement>()
   const searchInput = useRef<HTMLInputElement>(null)
   const [query, setQuery] = useState('')
@@ -300,6 +310,7 @@ function PaneBody({
         </motion.section>
       )}
 
+      {filter === 'pdfs' ? <SavedPdfsView query={query} version={savedPdfVersion} /> : (
       <div className="bm-groups-wrap">
         <div className="bm-groups" aria-label="Bookmark groups" onPointerLeave={() => setHovered(null)}>
           {groups.map((group) => {
@@ -509,8 +520,9 @@ function PaneBody({
           })}
         </div>
       </div>
+      )}
 
-      <footer className="bm-footer">
+      {filter !== 'pdfs' && <footer className="bm-footer">
         <AnimatePresence mode="wait" initial={false}>
           {creating === null ? (
             <motion.button key="new" type="button" className="bm-new-group" onClick={() => setCreating('')} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={softSpring}>
@@ -542,7 +554,7 @@ function PaneBody({
             </motion.form>
           )}
         </AnimatePresence>
-      </footer>
+      </footer>}
     </div>
   )
 }
@@ -592,5 +604,67 @@ function SavedPdf({ path, title }: { path: string; title: string }) {
         <FolderOpen size={12} />
       </button>
     </span>
+  )
+}
+
+const savedDay = (iso: string): string => {
+  const date = new Date(iso)
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: date.getFullYear() === new Date().getFullYear() ? undefined : 'numeric' })
+}
+const pdfSize = (bytes: number): string => (bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`)
+
+/** Every PDF saved with Export as PDF, newest first: open it, show it in Finder, or take it off the list. */
+function SavedPdfsView({ query, version }: { query: string; version: number }) {
+  const [items, setItems] = useState<SavedPdfRecord[] | null>(null)
+  const [failed, setFailed] = useState('')
+  useEffect(() => {
+    let live = true
+    const load = () => window.intoponet.browserHost.listSavedPdfs().then((list) => { if (live) setItems(list) }, () => { if (live) setItems([]) })
+    void load()
+    window.addEventListener('focus', load)
+    return () => { live = false; window.removeEventListener('focus', load) }
+  }, [version])
+  const needle = query.trim().toLowerCase()
+  const shown = (items ?? []).filter((item) => !needle || `${item.title} ${item.filename} ${item.url}`.toLowerCase().includes(needle))
+  const open = (item: SavedPdfRecord, reveal: boolean): void => {
+    setFailed('')
+    window.intoponet.browserHost.openSavedFile(item.path, reveal).catch(() => {
+      setFailed(`“${item.filename}” was moved or deleted.`)
+      setItems((current) => current?.filter((entry) => entry.id !== item.id) ?? null)
+    })
+  }
+  const forget = (item: SavedPdfRecord): void => {
+    setItems((current) => current?.filter((entry) => entry.id !== item.id) ?? null)
+    void window.intoponet.browserHost.forgetSavedPdf(item.id).catch(() => undefined)
+  }
+  return (
+    <div className="bm-groups-wrap">
+      <section className="bm-pdfs" aria-label="Saved PDFs">
+        {failed && <p className="bm-empty" role="status">{failed}</p>}
+        {items === null ? null : shown.length === 0 ? (
+          <p className="bm-empty">{needle ? 'No matches' : 'PDFs you save with Export as PDF (⌥⌘E) appear here.'}</p>
+        ) : (
+          <ul>
+            {shown.map((item) => (
+              <li key={item.id} className="bm-item">
+                <button type="button" className="bm-item-open" title={item.path} onClick={() => open(item, false)} aria-label={`Open ${item.filename}`}>
+                  <Monogram url={item.url} />
+                  <span className="bm-item-text">
+                    <strong>{item.title || item.filename}</strong>
+                    <small>{[bookmarkHost(item.url), savedDay(item.savedAt), item.pages ? `${item.pages} page${item.pages === 1 ? '' : 's'}` : '', pdfSize(item.bytes)].filter(Boolean).join(' · ')}</small>
+                  </span>
+                </button>
+                <button type="button" className="lg-icon-button bm-pdf-reveal" aria-label={`Show ${item.filename} in Finder`} title="Show in Finder" onClick={() => open(item, true)}>
+                  <FolderOpen size={12} />
+                </button>
+                <button type="button" className="lg-icon-button bm-item-remove" aria-label={`Remove ${item.filename} from this list`} title="Remove from this list (the file stays)" onClick={() => forget(item)}>
+                  <X size={13} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
   )
 }

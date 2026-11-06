@@ -1,6 +1,7 @@
 import type { DownloadEntry } from '@intoponet/browser-api'
 import { Download, FolderOpen, Pause, Play, RotateCw, TriangleAlert, X } from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { downloadFraction, downloadStatus, overallProgress } from './browsingDataModel'
 import { holdPage } from './pageHold'
 import './browsingData.css'
@@ -60,7 +61,7 @@ export function DownloadsButton({ onError }: { onError?: (message: string) => vo
       >
         <span className="downloads-ring" aria-hidden="true">
           {active > 0 && (
-            <svg viewBox="0 0 22 22" className={fraction === null ? 'is-indeterminate' : ''}>
+            <svg viewBox="0 0 22 22" className={`downloads-progress${fraction === null ? ' is-indeterminate' : ''}`}>
               <circle cx="11" cy="11" r="9" className="downloads-ring-track" />
               <circle
                 cx="11"
@@ -76,7 +77,8 @@ export function DownloadsButton({ onError }: { onError?: (message: string) => vo
         </span>
         <span className="chrome-label">Downloads</span>
       </button>
-      {open && <DownloadsPane anchor={button.current} downloads={downloads} run={run} onClose={close} />}
+      {/* On the page body, not inside the toolbar, so the toolbar's button styles never reach the list. */}
+      {open && createPortal(<DownloadsPane anchor={button.current} downloads={downloads} run={run} onClose={close} />, document.body)}
     </>
   )
 }

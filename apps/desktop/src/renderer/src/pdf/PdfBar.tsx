@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactElement } from 'react'
-import { Check, FileDown, FolderOpen, LoaderCircle, RotateCcw, X } from 'lucide-react'
+import { Check, FileDown, FolderOpen, Library, LoaderCircle, RotateCcw, X } from 'lucide-react'
 import type { PdfExportEvent, PdfExportOptions } from '@intoponet/browser-api'
 import './pdf.css'
 
@@ -59,7 +59,7 @@ function Segmented<T extends string>({ label, value, options, onChange }: {
  * The bar under the page toolbar for Export as PDF: progress while it is being made, then where it
  * went (Open, Show in Finder). With options open it also sets how the next PDFs are made.
  */
-export function PdfBar({ status, optionsOpen, groups, isPrivate, onClose, onCloseOptions, onError }: {
+export function PdfBar({ status, optionsOpen, groups, isPrivate, onClose, onCloseOptions, onError, onShowAll }: {
   status: PdfExportEvent | null
   optionsOpen: boolean
   groups: PdfGroupChoice[]
@@ -68,6 +68,8 @@ export function PdfBar({ status, optionsOpen, groups, isPrivate, onClose, onClos
   onClose: () => void
   onCloseOptions: () => void
   onError: (message: string) => void
+  /** Open Bookmarks › PDFs, the list of every saved PDF. */
+  onShowAll?: () => void
 }): ReactElement | null {
   const [options, setOptions] = useState<PdfExportOptions | null>(null)
 
@@ -126,6 +128,11 @@ export function PdfBar({ status, optionsOpen, groups, isPrivate, onClose, onClos
         <button type="button" className="pdf-button" onClick={() => open(status.path, true)}>
           <FolderOpen size={13} aria-hidden="true" /> Show in Finder
         </button>
+        {!status.isPrivate && onShowAll && (
+          <button type="button" className="pdf-button" title="Every PDF you have saved, in Bookmarks" onClick={onShowAll}>
+            <Library size={13} aria-hidden="true" /> All PDFs
+          </button>
+        )}
         <button type="button" className="pdf-close" aria-label="Close" onClick={onClose}><X size={14} /></button>
       </div>
     )

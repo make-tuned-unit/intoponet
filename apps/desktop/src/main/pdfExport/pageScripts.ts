@@ -385,7 +385,8 @@ export function cleanLiveScript(extraAdSelectors: string[]): string {
   for (const el of document.querySelectorAll('body *')) {
     const cs = getComputedStyle(el);
     if (cs.position !== 'fixed' && cs.position !== 'sticky') continue;
-    if (cs.position === 'sticky') { set(el, 'position', 'static'); continue; }
+    // Relative, not static: a sticky bar's absolutely placed layers (Apple's frosted scrim) must stay inside it, not spread over the page.
+    if (cs.position === 'sticky') { set(el, 'position', 'relative'); set(el, 'top', 'auto'); set(el, 'bottom', 'auto'); continue; }
     const r = el.getBoundingClientRect();
     const cover = (Math.max(0, Math.min(r.right, vw) - Math.max(r.left, 0)) * Math.max(0, Math.min(r.bottom, vh) - Math.max(r.top, 0))) / (vw * vh);
     const label = ((el.id || '') + ' ' + (typeof el.className === 'string' ? el.className : '') + ' ' + (el.getAttribute('role') || '') + ' ' + (el.getAttribute('aria-label') || '')).toLowerCase();
