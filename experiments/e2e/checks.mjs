@@ -1872,6 +1872,96 @@ export const checks = {
       server.close()
     }
   },
+  async COMMAND_MENU(ctx) {
+    const { server, origin } = await tabSite()
+    const host = 'window.intoponet.browserHost'
+    const rows = () => ctx.evaluate(`JSON.stringify([...document.querySelectorAll('[role="listbox"] [role="option"]')].map((e) => e.innerText.replace(/\\s+/g, ' ').trim()))`).then(JSON.parse)
+    const typeCommand = async (text) => {
+      await ctx.evaluate(`(() => { const input = document.querySelector('.command-input input'); input.focus(); input.select(); return true })()`)
+      await ctx.type(text)
+      await ctx.delay(250)
+    }
+    const pick = async (text) => {
+      await typeCommand(text)
+      await ctx.press('Enter')
+      await ctx.delay(700)
+    }
+    try {
+      await openPage(ctx, `${origin}/article?id=7&utm_campaign=spring`, 1500)
+      await openPage(ctx, `${origin}/second`, 1500)
+      // ⌘K from inside the page opens the address bar in command mode, quickly (p95 under 150 ms).
+      const times = []
+      for (let run = 0; run < 10; run += 1) {
+        await ctx.evaluate(`(() => { window.__shown = 0; const done = () => { if (document.querySelector('[role="listbox"] [role="option"]') && document.querySelector('.command-input input').value.startsWith('>')) { window.__shown = performance.now(); return true } return false }; const watch = new MutationObserver(() => { if (done()) watch.disconnect() }); watch.observe(document.body, { subtree: true, childList: true, attributes: true }); window.__asked = performance.now(); return true })()`)
+        await ctx.keyInPage('/second', 'K', ['meta'])
+        await ctx.wait(`window.__shown > 0`, 3000, 'the command menu to show')
+        times.push(await ctx.evaluate(`window.__shown - window.__asked`))
+        // Escape in the bar leaves command mode (and clears it).
+        await ctx.evaluate(`document.querySelector('.command-input input').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); true`)
+        await ctx.delay(200)
+        expect(await ctx.evaluate(`document.querySelector('.command-input input').value === ''`), 'Escape did not leave command mode.')
+      }
+      const [, shownTab] = JSON.parse(await ctx.evaluate(`${host}.getTabs().then((t) => JSON.stringify(t))`))
+      await ctx.evaluate(`${host}.activateTab(${JSON.stringify(shownTab.id)}).then(() => true)`)
+      await ctx.delay(600)
+      times.sort((a, b) => a - b)
+      const p95 = times[Math.ceil(times.length * 0.95) - 1]
+      expect(p95 < 150, `⌘K took ${Math.round(p95)} ms to show its list (p95; must be under 150 ms, including the round trip from the page).`)
+      // Typing ">" first does the same; with nothing typed after it, actions only.
+      await typeCommand('>')
+      const all = await rows()
+      expect(all.length >= 10 && all.some((row) => row.includes('Copy page address')), `With ">" the list was: ${all.join(' | ')}.`)
+      await axeAudit(ctx, 'the command menu', '[role="listbox"]')
+      // Nothing typed leaves this Mac: no request at all while typing commands.
+      const before = await ctx.evaluate(`performance.getEntriesByType('resource').length`)
+      await typeCommand('> zoom in save page translate lisbon')
+      const after = await ctx.evaluate(`performance.getEntriesByType('resource').length`)
+      expect(after === before, `Typing in command mode made ${after - before} request(s).`)
+      // Ranked as you type: actions first, then the tabs and places the words match.
+      await typeCommand('> pdf')
+      expect((await rows())[0]?.includes('Save page as PDF'), `"> pdf" first offered: ${(await rows())[0]}.`)
+      await typeCommand('> second')
+      expect((await rows()).some((row) => row.includes('Page /second') && row.includes('Switch to tab')), `"> second" did not offer the open tab: ${(await rows()).join(' | ')}.`)
+      await typeCommand('> lisbon')
+      expect((await rows()).some((row) => row.includes('Fly to Lisbon')), `"> lisbon" did not offer the place: ${(await rows()).join(' | ')}.`)
+      // Keyboard: ↓ moves the highlight, Enter runs it.
+      await typeCommand('> copy page')
+      await ctx.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', key: 'ArrowDown', code: 'ArrowDown', windowsVirtualKeyCode: 40 })
+      await ctx.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'ArrowDown', code: 'ArrowDown', windowsVirtualKeyCode: 40 })
+      await ctx.delay(200)
+      const highlighted = await ctx.evaluate(`document.getElementById(document.querySelector('.command-input input').getAttribute('aria-activedescendant'))?.innerText ?? ''`)
+      expect(highlighted.includes('exactly'), `↓ highlighted "${highlighted}".`)
+      await ctx.main(`electron.clipboard.writeText('before')`)
+      await ctx.press('Enter')
+      await ctx.delay(700)
+      expect(await ctx.main('electron.clipboard.readText()') === `${origin}/second`, 'Enter on "Copy page address exactly" did not copy it.')
+      // Actions run: a menu command, the shell's own tools, and a toggle.
+      const [first] = JSON.parse(await ctx.evaluate(`${host}.getTabs().then((t) => JSON.stringify(t))`))
+      await ctx.evaluate(`${host}.activateTab(${JSON.stringify(first.id)}).then(() => true)`)
+      await ctx.delay(800)
+      await ctx.main(`electron.clipboard.writeText('before')`)
+      await pick('> copy page address')
+      expect(await ctx.main('electron.clipboard.readText()') === `${origin}/article?id=7`, `"Copy page address" copied ${await ctx.main('electron.clipboard.readText()')}.`)
+      await pick('> zoom in')
+      expect(JSON.parse(await ctx.evaluate(`${host}.getState().then((s) => JSON.stringify(s))`)).zoomFactor > 1, '"Zoom in" did not zoom the page.')
+      await pick('> actual size')
+      expect(Math.abs(JSON.parse(await ctx.evaluate(`${host}.getState().then((s) => JSON.stringify(s))`)).zoomFactor - 1) < 0.01, '"Actual size" did not reset the zoom.')
+      await pick('> hide tab sidebar')
+      await ctx.wait(`!document.querySelector('.tab-rail')`, 3000, '"Hide tab sidebar" to hide it')
+      await pick('> show tab sidebar')
+      await ctx.wait(`!!document.querySelector('.tab-rail')`, 3000, '"Show tab sidebar" to show it')
+      await pick('> turn protection off')
+      await ctx.wait(`!!document.querySelector('.shield-control button[aria-label^="Protection paused"]')`, 3000, 'protection to be paused from the command menu')
+      await pick('> turn protection on')
+      await ctx.wait(`!!document.querySelector('.shield-control button[aria-label^="Protection on"]')`, 3000, 'protection to be back on')
+      await pick('> open knowledge')
+      await ctx.wait(`!!document.querySelector('.knowledge-sheet')`, 3000, '"Open Knowledge" to open it')
+      await ctx.press('Escape')
+      return `⌘K from a page shows command mode in ${Math.round(p95)} ms (p95); ">" too; no requests while typing; actions, tabs and places ranked; keyboard and Enter run them (copy, zoom, sidebar, protection, Knowledge); axe clean.`
+    } finally {
+      server.close()
+    }
+  },
 }
 
 checks.TAB_SLEEP.env = { INTOPONET_TAB_SLEEP_MINUTE_MS: '200' }

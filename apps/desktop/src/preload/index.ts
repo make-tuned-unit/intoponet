@@ -108,6 +108,9 @@ const browserHost: BrowserHostApi = {
   },
   getTabSidebar: () => invoke({ type: 'get-tab-sidebar' }) as Promise<TabSidebarState | null>,
   getArchivedTabs: () => invoke({ type: 'get-archived-tabs' }) as Promise<ArchivedTabSnapshot[]>,
+  runMenuCommand: async (id) => {
+    await invoke({ type: 'run-menu-command', id })
+  },
   reopenArchivedTabs: async (ids) => {
     await invoke({ type: 'reopen-archived-tabs', ids })
   },

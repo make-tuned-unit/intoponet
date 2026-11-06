@@ -6,6 +6,7 @@ import {
   appMenuStateKey,
   appMenuTemplate,
   createAppMenuController,
+  menuCommandById,
   parseAccelerator,
   routeAppCommand,
   templateAccelerators,
@@ -147,5 +148,14 @@ describe('menu refreshes', () => {
     expect(apply).toHaveBeenCalledTimes(2)
     // Tab counts past nine change nothing in the menu.
     expect(appMenuStateKey(state({ tabCount: 10 }))).toBe(appMenuStateKey(state({ tabCount: 12 })))
+  })
+
+  it('offers every menu command in the command menu (⌘K)', async () => {
+    const { menuActions, COMMAND_MENU_LEFT_OUT } = await import('../renderer/src/commandMenu')
+    const offered = menuActions({ hasPage: true, pageShown: true, canGoBack: true, canGoForward: true, loading: true, tabCount: 3, privateMode: false, sidebarHidden: false }).map((action) => action.id)
+    expect([...offered, ...COMMAND_MENU_LEFT_OUT].sort()).toEqual(Object.keys(APP_SHORTCUTS).sort())
+    for (const id of offered) expect(menuCommandById(id)).toEqual({ type: id })
+    expect(menuCommandById('shell-devtools')).toBeNull()
+    expect(menuCommandById('toString')).toBeNull()
   })
 })

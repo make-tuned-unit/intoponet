@@ -248,7 +248,7 @@ export type BrowserHostEvent =
   | { type: 'archived-tabs-changed' }
   | { type: 'tab-switcher'; open: boolean; selected?: string; position?: number; count?: number }
 
-export type ShellShortcut = 'new-tab' | 'find' | 'find-next' | 'find-previous' | 'open-settings' | 'bookmark' | 'next-tab' | 'previous-tab' | 'focus-launcher' | 'toggle-bookmarks' | 'capture' | 'toggle-private' | 'absorb-selection' | 'toggle-tab-sidebar'
+export type ShellShortcut = 'new-tab' | 'find' | 'find-next' | 'find-previous' | 'open-settings' | 'bookmark' | 'next-tab' | 'previous-tab' | 'focus-launcher' | 'toggle-bookmarks' | 'capture' | 'toggle-private' | 'absorb-selection' | 'toggle-tab-sidebar' | 'command-menu'
 
 export type PublicFieldStatus = {
   mode: 'local' | 'shared'
@@ -301,6 +301,8 @@ export interface BrowserHostApi {
   /** The saved tab sidebar mode and width (null when never set). */
   getTabSidebar(): Promise<TabSidebarState | null>
   getArchivedTabs(): Promise<ArchivedTabSnapshot[]>
+  /** Runs a menu-bar command by id (see APP_SHORTCUTS in main/appMenu.ts). */
+  runMenuCommand(id: string): Promise<void>
   reopenArchivedTabs(ids: string[]): Promise<void>
   setTabSidebar(sidebar: TabSidebarState): Promise<void>
   getState(): Promise<BrowserPanelSnapshot>
@@ -390,6 +392,8 @@ export type BrowserHostCommand =
   | { type: 'get-tab-sidebar' }
   /** Archived tabs, newest first. */
   | { type: 'get-archived-tabs' }
+  /** A menu-bar command by its id (command mode), carried out as if its menu item were chosen. */
+  | { type: 'run-menu-command'; id: string }
   /** Reopen archived tabs (shown when one id; all in the background otherwise). */
   | { type: 'reopen-archived-tabs'; ids: string[] }
   | { type: 'set-tab-sidebar'; sidebar: TabSidebarState }
@@ -461,6 +465,7 @@ const commandTypes = new Set<BrowserHostCommand['type']>([
   'set-tab-rail-expanded',
   'get-tab-sidebar',
   'get-archived-tabs',
+  'run-menu-command',
   'reopen-archived-tabs',
   'set-tab-sidebar',
   'get-state',
@@ -608,6 +613,9 @@ export function parseBrowserHostCommand(value: unknown): BrowserHostCommand {
     case 'get-tab-sidebar':
     case 'get-archived-tabs':
       return { type }
+    case 'run-menu-command':
+      if (typeof value['id'] !== 'string' || !/^[a-z][a-z-]{1,40}$/.test(value['id'])) throw new Error('Invalid menu command.')
+      return { type, id: value['id'] }
     case 'reopen-archived-tabs': {
       const ids = value['ids']
       if (!Array.isArray(ids) || ids.length === 0 || ids.length > 300 || !ids.every((id) => typeof id === 'string' && id.length > 0 && id.length <= 80)) throw new Error('Invalid archived tabs.')

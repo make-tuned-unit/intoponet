@@ -165,7 +165,8 @@ import { AbsorbSheet, type AbsorbState } from './knowledge/AbsorbSheet'
 import { KnowledgeSheet } from './knowledge/KnowledgeSheet'
 import { placeMatches } from './globe/PlaceSuggestions'
 import { OmniboxSuggestions, useOmnibox } from './OmniboxSuggestions'
-import type { OmniboxSuggestion } from './omnibox'
+import { commandQuery, type OmniboxAction, type OmniboxSuggestion } from './omnibox'
+import { menuActions } from './commandMenu'
 import { poseToward, radiusForSpan } from './globe/flyTo'
 import {
   filterGlobeSignals,
@@ -520,7 +521,8 @@ export function App() {
       if (event.type === 'archived-tabs-changed') refresh()
       if (event.type === 'tabs-archived') {
         refresh()
-        setJustArchived({ ids: event.ids, titles: event.titles })
+        // Tabs archived a moment apart join the same notice (Undo reopens them all).
+        setJustArchived((current) => current ? { ids: [...current.ids, ...event.ids], titles: [...current.titles, ...event.titles] } : { ids: event.ids, titles: event.titles })
         if (timer !== null) window.clearTimeout(timer)
         timer = window.setTimeout(() => setJustArchived(null), 10_000)
       }
@@ -544,7 +546,7 @@ export function App() {
   const [error, setError] = useState('')
   const [libraryReadError, setLibraryReadError] = useState('')
   const panelBody = useRef<HTMLDivElement>(null)
-  const shortcutHandlers = useRef({ find: () => {}, findAgain: (_forward: boolean) => {}, openSettings: () => {}, bookmark: () => {}, newTab: () => {}, focusAddress: () => {}, toggleBookmarksPane: () => {}, capture: () => {}, togglePrivate: () => {}, absorbSelection: () => {}, toggleSidebar: () => {} })
+  const shortcutHandlers = useRef({ find: () => {}, findAgain: (_forward: boolean) => {}, openSettings: () => {}, bookmark: () => {}, newTab: () => {}, focusAddress: () => {}, toggleBookmarksPane: () => {}, capture: () => {}, togglePrivate: () => {}, absorbSelection: () => {}, toggleSidebar: () => {}, commandMenu: () => {} })
   const tabStrip = useRef<HTMLDivElement>(null)
   const [tabEdges, setTabEdges] = useState({ overflow: false, atStart: true, atEnd: true })
   const input = useRef<HTMLInputElement>(null)
@@ -770,6 +772,7 @@ export function App() {
         else if (event.action === 'toggle-private') shortcutHandlers.current.togglePrivate()
         else if (event.action === 'absorb-selection') shortcutHandlers.current.absorbSelection()
         else if (event.action === 'toggle-tab-sidebar') shortcutHandlers.current.toggleSidebar()
+        else if (event.action === 'command-menu') shortcutHandlers.current.commandMenu()
         else shortcutHandlers.current.toggleBookmarksPane()
         return
       }
@@ -1502,7 +1505,7 @@ export function App() {
     })
   }
 
-  shortcutHandlers.current = { find: () => { if (panel.isVisible && !panel.isStartPage) openFind() }, findAgain: (forward) => { if (!panel.isVisible || panel.isStartPage) return; if (findOpen && findQuery.trim()) runFind(true, forward); else openFind() }, openSettings: () => setSettingsOpen(true), bookmark: () => { if (panel.isVisible && panel.url) toggleBookmark() }, newTab: openNewTab, focusAddress, toggleBookmarksPane, capture: () => void startCapture('image'), togglePrivate: () => setPrivateMode(!(privacyState?.privateMode ?? false)), absorbSelection: () => startAbsorb('selection'), toggleSidebar }
+  shortcutHandlers.current = { find: () => { if (panel.isVisible && !panel.isStartPage) openFind() }, findAgain: (forward) => { if (!panel.isVisible || panel.isStartPage) return; if (findOpen && findQuery.trim()) runFind(true, forward); else openFind() }, openSettings: () => setSettingsOpen(true), bookmark: () => { if (panel.isVisible && panel.url) toggleBookmark() }, newTab: openNewTab, focusAddress, toggleBookmarksPane, capture: () => void startCapture('image'), togglePrivate: () => setPrivateMode(!(privacyState?.privateMode ?? false)), absorbSelection: () => startAbsorb('selection'), toggleSidebar, commandMenu: () => openCommandMenu() }
 
   const saveCurrentToGroup = (groupId: string): void => {
     if (!panel.url) return
@@ -2325,7 +2328,7 @@ export function App() {
   const fieldFreshness = freshness(eligiblePublicSnapshot, clock)
   const placeMatch = useMemo(
     // Places are offered even while a page is open: Enter on a place spins the globe there.
-    () => (placesDismissed ? { places: [], preferred: -1 } : placeMatches(query)),
+    () => (placesDismissed ? { places: [], preferred: -1 } : placeMatches(commandQuery(query) ?? query)),
     [query, placesDismissed],
   )
 
@@ -2428,6 +2431,12 @@ export function App() {
       flyToPlace(row.place)
       return
     }
+    if (row.kind === 'action') {
+      setQuery('')
+      input.current?.blur()
+      commandActionsRef.current.find((action) => action.id === row.id)?.run()
+      return
+    }
     if (row.kind === 'archived' && row.archivedId) {
       setQuery('')
       input.current?.blur()
@@ -2451,6 +2460,42 @@ export function App() {
     }).catch(() => undefined)
   }
   const omniboxTabs = useMemo(() => tabs.filter((tab) => !tab.isStartPage), [tabs])
+  /**
+   * Command mode (⌘K, or ">" typed first): every menu-bar command (run through the menu's own
+   * table in main) and the app's own tools, offered when they apply.
+   */
+  const hasPage = panel.isVisible && !panel.isStartPage && !!panel.url
+  const commandActions = useMemo((): Array<OmniboxAction & { run: () => void }> => {
+    const app = (id: string, label: string, run: () => void, shortcut = '', keywords = ''): OmniboxAction & { run: () => void } => ({ id, label, shortcut, keywords, run })
+    const list: Array<(OmniboxAction & { run: () => void }) | false> = [
+      ...menuActions({ hasPage, pageShown: panel.isVisible, canGoBack: panel.canGoBack, canGoForward: panel.canGoForward, loading: panel.isLoading, tabCount: tabs.length, privateMode: privacyState?.privateMode ?? false, sidebarHidden: sidebar.mode === 'hidden' })
+        .map((action) => ({ ...action, run: () => void window.intoponet.browserHost.runMenuCommand(action.id) })),
+      hasPage && app('protection', protection.enabled ? 'Turn protection off for this site' : 'Turn protection on for this site', () => setSiteProtection(!protection.enabled), '', 'ads trackers block shield'),
+      hasPage && app('translate', 'Translate this page', () => setTranslateOpen(true), '', 'language'),
+      hasPage && app('capture', 'Capture a screenshot or recording', () => void startCapture('image'), '⇧⌘S', 'screenshot record video'),
+      hasPage && app('absorb', 'Absorb this page into Knowledge', () => startAbsorb('article'), '', 'save read'),
+      app('olds', 'Open The Olds', openOldsHere, '', 'history past timeline'),
+      app('knowledge', 'Open Knowledge', () => openKnowledge(null), '', 'absorbed laya ask'),
+      app('my-map', 'Open My map', showLibrary, '', 'pins places'),
+      hasPage && app('full-width', fullWidth ? 'Exit full width' : 'Full width', () => setBrowserFullWidth(!fullWidth), '', 'maximise'),
+      storyStories.length > 0 && app('highest-peak', 'Fly to the highest story peak', () => findPeak(0), 'H', 'mountain news story'),
+      app('tour', 'Take the tour', () => setTourOpen(true), '', 'help guide'),
+    ]
+    return list.filter((item): item is OmniboxAction & { run: () => void } => !!item)
+  }, [hasPage, panel.canGoBack, panel.canGoForward, panel.isVisible, panel.isLoading, tabs.length, privacyState?.privateMode, sidebar.mode, protection.enabled, fullWidth, storyStories.length]) // eslint-disable-line react-hooks/exhaustive-deps
+  const commandActionsRef = useRef(commandActions)
+  commandActionsRef.current = commandActions
+  /** ⌘K: the address bar in command mode (out of full width, where it is hidden). */
+  const openCommandMenu = (): void => {
+    if (fullWidth) setBrowserFullWidth(false)
+    setQuery('> ')
+    requestAnimationFrame(() => {
+      input.current?.focus()
+      const end = input.current?.value.length ?? 0
+      input.current?.setSelectionRange(end, end)
+    })
+  }
+
   const omnibox = useOmnibox({
     query,
     setQuery: (value) => { setQuery(value); setPlacesDismissed(false) },
@@ -2463,6 +2508,7 @@ export function App() {
     privateMode: (privacyState?.privateMode ?? false) || panel.isPrivate === true,
     recentTabs: tabSwitchOrder === 'recent',
     archived: archivedTabs,
+    actions: commandActions,
     onPick: pickOmnibox,
     onDismiss: () => setPlacesDismissed(true),
     onPasteAndGo: (text) => {

@@ -476,6 +476,16 @@
       "tier": "core",
       "kind": "e2e",
       "promise": "Unpinned tabs not looked at for the chosen time (Off, 12 hours, a day, a week, a month) close into Archived tabs, which can be searched and reopened with their back/forward list; pinned, playing, sharing and form-holding tabs are never archived, private tabs never reach the archive, and the sidebar says how many tabs were tidied."
+    },
+    {
+      "id": "COMMAND_MENU",
+      "title": "Commands from the address bar",
+      "deps": [
+        "OMNIBOX"
+      ],
+      "tier": "core",
+      "kind": "e2e",
+      "promise": "⌘K (or typing > in the address bar) lists browser actions, settings toggles, open, archived and pinned tabs, bookmarks and places, ranked as you type on this Mac; Enter runs the action (copy address, save as PDF, translate, toggle protection, switch workspace, fly to a place, open The Olds), and nothing typed leaves the device."
     }
   ]
 }

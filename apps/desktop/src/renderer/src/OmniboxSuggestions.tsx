@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { AppWindow, Archive, ArrowUpRight, Clock, Compass, Globe2, MapPin, Search, Star } from 'lucide-react'
+import { AppWindow, Archive, ArrowUpRight, ChevronRight, Clock, Compass, Globe2, MapPin, Search, Star } from 'lucide-react'
 import {
   useEffect,
   useLayoutEffect,
@@ -15,7 +15,7 @@ import type { OpenDisposition } from '@intoponet/browser-api'
 import { placeLabel } from '../../shared/places/places'
 import type { PlaceMatch } from './globe/PlaceSuggestions'
 import type { ExploreTopic } from './launcherIntent'
-import { rankOmnibox, type OmniboxRecent, type OmniboxPage, type OmniboxSources, type OmniboxSuggestion, type OmniboxTab } from './omnibox'
+import { commandQuery, rankOmnibox, type OmniboxRecent, type OmniboxPage, type OmniboxSources, type OmniboxSuggestion, type OmniboxTab } from './omnibox'
 import { useKnownFavicon } from './favicons'
 import './omnibox.css'
 
@@ -42,6 +42,7 @@ type OmniboxOptions = {
   /** Recently used tabs first (Settings › ⌃Tab). */
   recentTabs?: boolean
   archived?: OmniboxSources['archived']
+  actions?: OmniboxSources['actions']
   onPick: (row: OmniboxSuggestion, disposition?: OpenDisposition) => void
   /** Escape closed the list (places are hidden until the text changes). */
   onDismiss: () => void
@@ -56,7 +57,7 @@ type OmniboxOptions = {
  * spreads `omnibox.inputProps` on its input.
  */
 export function useOmnibox(options: OmniboxOptions) {
-  const { query, setQuery, inputRef, tabs, bookmarks, recents, places, topics, privateMode, recentTabs = false, archived } = options
+  const { query, setQuery, inputRef, tabs, bookmarks, recents, places, topics, privateMode, recentTabs = false, archived, actions } = options
   // Inline completion only for text typed forward at the end (not pasted, deleted or composed).
   const [inlineFor, setInlineFor] = useState<string | null>(null)
   const [activeKey, setActiveKey] = useState<string | null>(null)
@@ -65,8 +66,8 @@ export function useOmnibox(options: OmniboxOptions) {
   const allowInline = inlineFor !== null && inlineFor === query
 
   const result = useMemo(
-    () => rankOmnibox(query, { tabs, bookmarks, recents, places, topics, privateMode, recentTabs, ...(archived ? { archived } : {}) }, { allowInline }),
-    [query, tabs, bookmarks, recents, places, topics, privateMode, recentTabs, archived, allowInline],
+    () => rankOmnibox(query, { tabs, bookmarks, recents, places, topics, privateMode, recentTabs, ...(archived ? { archived } : {}), ...(actions ? { actions } : {}) }, { allowInline }),
+    [query, tabs, bookmarks, recents, places, topics, privateMode, recentTabs, archived, actions, allowInline],
   )
   const rows = result.suggestions
   const activeIndex = Math.max(0, rows.findIndex((row) => row.key === activeKey))
@@ -160,6 +161,13 @@ export function useOmnibox(options: OmniboxOptions) {
           event.preventDefault()
           event.stopPropagation()
           setInlineFor(null)
+        } else if (commandQuery(query) !== null) {
+          // Escape leaves command mode altogether (⌘K opens it afresh).
+          event.preventDefault()
+          event.stopPropagation()
+          setActiveKey(null)
+          setQuery('')
+          inputRef.current?.blur()
         } else if (open) {
           event.preventDefault()
           event.stopPropagation()
@@ -264,6 +272,7 @@ function RowIcon({ row }: { row: OmniboxSuggestion }) {
   else if (row.kind === 'search') glyph = <Search size={15} />
   else if (row.kind === 'topic') glyph = <Compass size={15} />
   else if (row.kind === 'url') glyph = <ArrowUpRight size={15} />
+  else if (row.kind === 'action') glyph = <ChevronRight size={15} />
   else if (row.kind === 'tab') glyph = <AppWindow size={15} />
   else if (row.kind === 'archived') glyph = <Archive size={15} />
   else if (row.kind === 'bookmark') glyph = <Star size={15} />
@@ -297,6 +306,13 @@ function RowText({ row }: { row: OmniboxSuggestion }) {
         <span className="omnibox-text">
           <strong>Explore {row.value}</strong>
           <small>On the globe</small>
+        </span>
+      )
+    case 'action':
+      return (
+        <span className="omnibox-text omnibox-action">
+          <strong>{row.label}</strong>
+          {row.shortcut && <kbd>{row.shortcut}</kbd>}
         </span>
       )
     case 'url':

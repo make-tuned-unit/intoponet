@@ -87,3 +87,20 @@
   font: inherit;
   font-size: 10.5px;
 }
+
+/* Command mode: an action and its key chord. */
+.omnibox-text.omnibox-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.omnibox-action kbd {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border: 1px solid rgba(195, 237, 232, 0.18);
+  border-radius: 6px;
+  color: var(--muted);
+  font: 500 11px/1.5 inherit;
+}

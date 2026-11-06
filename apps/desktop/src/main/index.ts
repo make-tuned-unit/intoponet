@@ -112,7 +112,7 @@ import {
 } from './tabDockBounds'
 import { FOCUS_TAKES_TYPING_SCRIPT, isPlainEscape, pageKeyAction, TEXT_FIELD_FIRST } from './shellShortcuts'
 import { cleanAddress } from '../shared/cleanAddress'
-import { createAppMenuController, routeAppCommand, type AppCommand, type AppMenuState } from './appMenu'
+import { createAppMenuController, menuCommandById, routeAppCommand, type AppCommand, type AppMenuState } from './appMenu'
 import { boundedHistory, ClosedTabs, type TabHistory } from './closedTabs'
 import { stepZoom, ZoomStore } from './zoomStore'
 import { savePageFilename } from './savePage'
@@ -2672,6 +2672,12 @@ async function handleBrowserCommand(
       return tabSidebar
     case 'get-archived-tabs':
       return tabArchive.list()
+    case 'run-menu-command': {
+      const chosen = menuCommandById(command.id, { developer: developerBuild() })
+      if (!chosen) throw new Error('Unknown menu command.')
+      runAppCommand(chosen)
+      break
+    }
     case 'reopen-archived-tabs':
       reopenArchivedTabs(command.ids)
       break

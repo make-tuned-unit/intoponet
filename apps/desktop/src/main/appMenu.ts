@@ -38,6 +38,7 @@ export type AppCommand =
   | { type: 'copy-address' }
   | { type: 'copy-address-raw' }
   | { type: 'toggle-tab-sidebar' }
+  | { type: 'command-menu' }
 
 /** What the menu needs to know to enable its items. */
 export type AppMenuState = {
@@ -93,6 +94,7 @@ export const APP_SHORTCUTS = {
   'copy-address-raw': ['CmdOrCtrl+Alt+Shift+C'],
   // The Mac's own "Show Sidebar" key (⇧⌘S is Capture).
   'toggle-tab-sidebar': ['Ctrl+Cmd+S'],
+  'command-menu': ['CmdOrCtrl+K'],
 } as const satisfies Partial<Record<AppCommand['type'], readonly string[]>>
 
 type SimpleCommandType = keyof typeof APP_SHORTCUTS
@@ -138,6 +140,7 @@ export function routeAppCommand(command: AppCommand): AppCommandRoute {
     case 'next-tab': return { kind: 'host', command: { type: 'cycle-tabs', direction: 'next' } }
     case 'previous-tab': return { kind: 'host', command: { type: 'cycle-tabs', direction: 'previous' } }
     case 'select-tab': return { kind: 'host', command: { type: 'select-tab', index: command.index } }
+    case 'command-menu': return { kind: 'shell', action: 'command-menu' }
     case 'toggle-tab-sidebar': return { kind: 'shell', action: 'toggle-tab-sidebar' }
     case 'copy-address': return { kind: 'host', command: { type: 'copy-page-address', clean: true } }
     case 'copy-address-raw': return { kind: 'host', command: { type: 'copy-page-address', clean: false } }
@@ -224,6 +227,7 @@ export function appMenuTemplate(state: AppMenuState, run: (command: AppCommand) 
         ...item('New Tab', 'new-tab'),
         { ...item('Private Browsing', 'toggle-private')[0], type: 'checkbox', checked: state.privateMode },
         ...item('Open Location…', 'open-location'),
+        ...item('Commands…', 'command-menu'),
         { type: 'separator' },
         ...item('Close Tab', 'close-tab', state.tabShowing),
         ...item('Reopen Closed Tab', 'reopen-closed-tab', state.recentlyClosed.length > 0),
@@ -438,6 +442,13 @@ export function appCommandForInput(input: KeyInput, options: { developer?: boole
     if (matches(parseAccelerator(accelerator, platform), input, keys)) return { type: 'select-tab', index }
   }
   return null
+}
+
+/** A menu command chosen by id from command mode, or null when there is no such simple command. */
+export function menuCommandById(id: string, options: { developer?: boolean } = {}): AppCommand | null {
+  if (!Object.prototype.hasOwnProperty.call(APP_SHORTCUTS, id)) return null
+  if (id === 'shell-devtools' && !options.developer) return null
+  return { type: id } as AppCommand
 }
 
 /** Every accelerator the menu bar declares (for checking that none is used twice). */

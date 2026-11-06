@@ -21,6 +21,22 @@ export type OmniboxTab = {
 export type OmniboxPage = { url: string; title: string }
 export type OmniboxRecent = { url: string; title: string; visitedAt: string }
 
+/** A browser action offered in command mode (⌘K, or ">" typed first). */
+export type OmniboxAction = {
+  id: string
+  label: string
+  /** Other words it answers to ("pdf", "screenshot"…). */
+  keywords?: string
+  /** The key chord shown beside it, e.g. "⇧⌘C". */
+  shortcut?: string
+}
+
+/** Command mode: the text starts with ">" (what follows is matched against actions). */
+export function commandQuery(text: string): string | null {
+  const match = /^\s*>\s*(.*)$/s.exec(text)
+  return match ? match[1]!.trim() : null
+}
+
 export type OmniboxSources = {
   tabs: readonly OmniboxTab[]
   bookmarks: readonly OmniboxPage[]
@@ -31,6 +47,8 @@ export type OmniboxSources = {
   privateMode?: boolean
   /** Settings › ⌃Tab "Recently used first": among equally good matches, recently used tabs come first. */
   recentTabs?: boolean
+  /** Browser actions for command mode. */
+  actions?: readonly OmniboxAction[]
   /** Tabs that tidied themselves away (Archived tabs): offered to reopen. */
   archived?: readonly { id: string; url: string; title: string; favicon?: string; archivedAt: number }[]
   now?: number
@@ -56,6 +74,7 @@ export type OmniboxSuggestion =
   | { kind: 'url'; key: string; value: string; url: string; display: string }
   | { kind: 'search'; key: string; value: string }
   | { kind: 'topic'; key: string; value: string }
+  | { kind: 'action'; key: string; id: string; label: string; shortcut?: string }
 
 export type OmniboxResult = {
   /** Best first: Enter (with nothing highlighted) takes row 0. */
@@ -218,7 +237,42 @@ export function rankSites(text: string, sources: OmniboxSources): Array<{ sugges
  * completed inline and goes first; a place named outright still wins, so
  * "Canada" + Enter flies the globe.
  */
+/** Rows shown in command mode (actions first, then matching tabs, archived tabs, bookmarks and places). */
+export const COMMAND_LIMIT = 12
+
+/** Actions matching `query`: every word typed starts a word of the action's name or keywords. */
+export function rankActions(query: string, actions: readonly OmniboxAction[]): OmniboxAction[] {
+  const tokens = query.toLocaleLowerCase('en').split(/\s+/).filter(Boolean)
+  if (!tokens.length) return [...actions]
+  const scored = actions.flatMap((action, order) => {
+    const label = action.label.toLocaleLowerCase('en')
+    const words = `${label} ${action.keywords ?? ''}`.toLocaleLowerCase('en').split(/[^\p{L}\p{N}]+/u).filter(Boolean)
+    const joined = tokens.join(' ')
+    let score: number
+    if (label.startsWith(joined)) score = 1000
+    else if (tokens.every((token) => words.some((word) => word.startsWith(token)))) score = 600 + (label.split(/[^\p{L}\p{N}]+/u).some((word) => word.startsWith(tokens[0]!)) ? 100 : 0)
+    else if (joined.length >= 3 && words.join(' ').includes(joined)) score = 300
+    else return []
+    return [{ action, score, order }]
+  })
+  return scored.sort((a, b) => b.score - a.score || a.order - b.order).map((item) => item.action)
+}
+
+function rankCommands(query: string, sources: OmniboxSources): OmniboxResult {
+  const actions = rankActions(query, sources.actions ?? []).map((action): OmniboxSuggestion => ({
+    kind: 'action', key: `action:${action.id}`, id: action.id, label: action.label, ...(action.shortcut ? { shortcut: action.shortcut } : {}),
+  }))
+  // With words typed, the tabs, archived tabs, bookmarks and places they match follow the actions.
+  const sites = query ? rankSites(query, sources).map((site) => site.suggestion) : []
+  const places: OmniboxSuggestion[] = query ? sources.places.places.slice(0, PLACE_LIMIT).map((place) => ({ kind: 'place', key: `place:${place.id}`, place })) : []
+  const siteRows = sites.slice(0, SITE_LIMIT)
+  const actionRows = actions.slice(0, Math.max(COMMAND_LIMIT - siteRows.length - places.length, 4))
+  return { suggestions: [...actionRows, ...siteRows, ...places].slice(0, COMMAND_LIMIT), inlineCompletion: '' }
+}
+
 export function rankOmnibox(text: string, sources: OmniboxSources, options: { allowInline?: boolean } = {}): OmniboxResult {
+  const command = commandQuery(text)
+  if (command !== null) return rankCommands(command, sources)
   const value = text.trim()
   if (!value) return { suggestions: [], inlineCompletion: '' }
   let intent: ReturnType<typeof inferUnifiedLauncherIntent> | null

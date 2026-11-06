@@ -17,7 +17,7 @@ const sources = (overrides: Partial<OmniboxSources> = {}): OmniboxSources => ({
 })
 
 const keys = (text: string, input: OmniboxSources, allowInline = true) =>
-  rankOmnibox(text, input, { allowInline }).suggestions.map((row) => row.kind === 'place' ? `place:${row.place.name}` : row.kind === 'search' || row.kind === 'topic' ? `${row.kind}:${row.value}` : `${row.kind}:${row.url}`)
+  rankOmnibox(text, input, { allowInline }).suggestions.map((row) => row.kind === 'place' ? `place:${row.place.name}` : row.kind === 'search' || row.kind === 'topic' ? `${row.kind}:${row.value}` : row.kind === 'action' ? `action:${row.id}` : `${row.kind}:${row.url}`)
 
 describe('address helpers', () => {
   it('normalizes typed text and addresses alike', () => {
@@ -258,5 +258,21 @@ describe('omnibox rows', () => {
     expect(story.kind).toBe('archived')
     expect(story.archivedId).toBe('x1')
     expect(rows.find((row) => row.suggestion.url === 'https://open.example/')!.suggestion.kind).toBe('tab')
+  })
+
+  it('lists actions in command mode, then the tabs and places the words match', () => {
+    const actions = [
+      { id: 'copy-address', label: 'Copy page address', keywords: 'link url', shortcut: '⇧⌘C' },
+      { id: 'export-pdf', label: 'Save page as PDF', keywords: 'pdf export' },
+      { id: 'new-tab', label: 'New tab' },
+    ]
+    const tabs = [{ id: 't', url: 'https://pdf.example/', title: 'PDF tools' }]
+    const ids = (text: string) => rankOmnibox(text, sources({ actions, tabs })).suggestions.map((row) => row.kind === 'action' ? row.id : row.kind === 'tab' ? `tab:${row.tabId}` : row.kind)
+    expect(ids('>')).toEqual(['copy-address', 'export-pdf', 'new-tab'])
+    expect(ids('> pdf')).toEqual(['export-pdf', 'tab:t'])
+    expect(ids('>link')).toEqual(['copy-address'])
+    expect(ids('> new')).toEqual(['new-tab'])
+    // No search row and no web address in command mode: nothing typed is sent anywhere.
+    expect(ids('> nothing like it').every((id) => id !== 'search' && id !== 'url')).toBe(true)
   })
 })
