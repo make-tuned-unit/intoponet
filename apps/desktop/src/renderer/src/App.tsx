@@ -9,6 +9,7 @@ import type {
   ProtectionSnapshot,
   PublicFieldStatus,
   TabSidebarState,
+  ArchivedTabSnapshot,
 } from '@intoponet/browser-api'
 import { TAB_SIDEBAR_WIDTH } from '@intoponet/browser-api'
 import { demoFieldSnapshot, parseFieldSnapshot, snapshotLabel } from '@intoponet/field-snapshot'
@@ -507,6 +508,30 @@ export function App() {
   /** The recent-tabs switcher (drawn by main over the page): announced here, and ended by ⌃ or Escape from the shell. */
   const [tabSwitcherAnnouncement, setTabSwitcherAnnouncement] = useState('')
   const tabSwitcherOpen = useRef(false)
+  /** Archived tabs (offered in the address bar), and the tabs just archived (Undo for 10 seconds). */
+  const [archivedTabs, setArchivedTabs] = useState<ArchivedTabSnapshot[]>([])
+  const [justArchived, setJustArchived] = useState<{ ids: string[]; titles: string[] } | null>(null)
+  useEffect(() => {
+    let mounted = true
+    const refresh = (): void => { void window.intoponet.browserHost.getArchivedTabs().then((list) => { if (mounted) setArchivedTabs(list) }, () => undefined) }
+    refresh()
+    let timer: number | null = null
+    const unsubscribe = window.intoponet.browserHost.subscribe((event) => {
+      if (event.type === 'archived-tabs-changed') refresh()
+      if (event.type === 'tabs-archived') {
+        refresh()
+        setJustArchived({ ids: event.ids, titles: event.titles })
+        if (timer !== null) window.clearTimeout(timer)
+        timer = window.setTimeout(() => setJustArchived(null), 10_000)
+      }
+    })
+    return () => { mounted = false; unsubscribe(); if (timer !== null) window.clearTimeout(timer) }
+  }, [])
+  const undoArchive = (): void => {
+    if (!justArchived) return
+    void window.intoponet.browserHost.reopenArchivedTabs(justArchived.ids)
+    setJustArchived(null)
+  }
   /** Settings › ⌃Tab order (also orders open tabs in the address bar). */
   const [tabSwitchOrder, setTabSwitchOrder] = useState<'strip' | 'recent'>('strip')
   useEffect(() => {
@@ -2403,6 +2428,12 @@ export function App() {
       flyToPlace(row.place)
       return
     }
+    if (row.kind === 'archived' && row.archivedId) {
+      setQuery('')
+      input.current?.blur()
+      void window.intoponet.browserHost.reopenArchivedTabs([row.archivedId]).catch(() => setError('That archived tab could not be reopened.'))
+      return
+    }
     if (row.kind === 'tab' && row.tabId) {
       setQuery('')
       input.current?.blur()
@@ -2431,6 +2462,7 @@ export function App() {
     topics: launcherTopics,
     privateMode: (privacyState?.privateMode ?? false) || panel.isPrivate === true,
     recentTabs: tabSwitchOrder === 'recent',
+    archived: archivedTabs,
     onPick: pickOmnibox,
     onDismiss: () => setPlacesDismissed(true),
     onPasteAndGo: (text) => {
@@ -2745,6 +2777,8 @@ export function App() {
         onHide={toggleSidebar}
         onWidthChange={(width) => setSidebar({ ...sidebar, width })}
         onNewTab={openNewTab}
+        archivedCount={justArchived?.ids.length ?? 0}
+        onUndoArchive={undoArchive}
       />
       <BookmarkPane
         open={bookmarksOpen && !fieldLabOpen}
@@ -4211,6 +4245,13 @@ export function App() {
       <UpdateBanner />
       {/* Never over a web page (it would sit under it) or The Olds. */}
       <FeedbackPrompt hidden={panel.isVisible || !!olds || fieldLabOpen} />
+      {/* Tabs just tidied away, when the sidebar is not there to say so (it is drawn under a page otherwise). */}
+      {justArchived && !railVisible && !panel.isVisible && (
+        <div className="notice-message tab-archive-notice" role="status">
+          {justArchived.ids.length === 1 ? `Archived “${justArchived.titles[0]}”` : `${justArchived.ids.length} tabs archived`}
+          <button type="button" className="notice-undo" onClick={undoArchive}>Undo</button>
+        </div>
+      )}
       {notice && (
         <div className="notice-message" role="status">
           {notice}

@@ -1815,6 +1815,64 @@ export const checks = {
     await ctx.wait(`!document.querySelector('.tour-card') && !document.querySelector('.story-panel')`, 5000, 'the tour to finish and tidy up')
     return `All ${total} steps shown, each spotlight on what it describes; the tour put everything back at the end.`
   },
+  async TAB_ARCHIVE(ctx) {
+    // Started with an "hour" of 200 ms (TAB_ARCHIVE.env below), so "12 hours" is 2.4 seconds.
+    const { server, origin } = await tabSite()
+    const host = 'window.intoponet.browserHost'
+    const tabs = async () => JSON.parse(await ctx.evaluate(`${host}.getTabs().then((t) => JSON.stringify(t))`))
+    const archived = async () => JSON.parse(await ctx.evaluate(`${host}.getArchivedTabs().then((t) => JSON.stringify(t))`))
+    const titles = async () => (await tabs()).map((tab) => tab.title).sort().join(', ')
+    try {
+      await openPage(ctx, `${origin}/pinned`, 900)
+      await openPage(ctx, `${origin}/typed`, 900)
+      await (await ctx.page('/typed')).evaluate(`document.getElementById('field').value = 'not sent yet'; true`)
+      await openPage(ctx, `${origin}/old-a`, 900)
+      await (await ctx.page('/old-a')).evaluate(`location.href = '${origin}/old-b'`)
+      await ctx.delay(1000)
+      await openPage(ctx, `${origin}/old-c`, 900)
+      const [pinned] = await tabs()
+      await ctx.evaluate(`${host}.setTabPinned(${JSON.stringify(pinned.id)}, true).then(() => true)`)
+      // Private tabs: one in the background, one in front.
+      await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(true).then(() => true)`)
+      await openPage(ctx, `${origin}/private-bg`, 900)
+      await openPage(ctx, `${origin}/private-front`, 1200)
+      // Archive after "12 hours": the two plain tabs go; pinned, typed and private tabs stay.
+      await ctx.evaluate(`window.intoponet.browsing.setTabArchive('12h').then(() => true)`)
+      await ctx.wait(`${host}.getArchivedTabs().then((t) => t.length >= 2)`, 20_000, 'the unseen tabs to be archived')
+      await ctx.delay(800)
+      const left = await titles()
+      expect(left === 'Page /pinned, Page /private-bg, Page /private-front, Page /typed', `Left open after archiving: ${left}.`)
+      const list = await archived()
+      expect(list.map((tab) => tab.title).sort().join(', ') === 'Page /old-b, Page /old-c', `Archived: ${list.map((tab) => tab.title).join(', ')}.`)
+      expect(!list.some((tab) => tab.url.includes('private')), 'A private tab reached the archive.')
+      await ctx.wait(`[...document.querySelectorAll('.tab-rail-archived')].some((e) => e.textContent.includes('2 tabs archived'))`, 3000, 'the sidebar to say 2 tabs were archived')
+      // Undo brings them back.
+      await ctx.click('.tab-rail-undo')
+      await ctx.wait(`${host}.getTabs().then((t) => t.some((x) => x.title === 'Page /old-b') && t.some((x) => x.title === 'Page /old-c'))`, 4000, 'Undo to reopen them')
+      expect((await archived()).length === 0, 'Undo left the tabs in the archive.')
+      // Archived again, then found from the address bar and reopened with its back list.
+      await ctx.wait(`${host}.getArchivedTabs().then((t) => t.length >= 2)`, 20_000, 'the tabs to be archived again')
+      await ctx.evaluate(`window.intoponet.browsing.setTabArchive('off').then(() => true)`)
+      await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
+      await ctx.delay(600)
+      await ctx.evaluate(`(() => { const input = document.querySelector('.command-input input'); input.focus(); return true })()`)
+      await ctx.type('old-b')
+      await ctx.wait(`[...document.querySelectorAll('[role="option"]')].some((e) => e.textContent.includes('Reopen archived tab'))`, 4000, 'the address bar to offer the archived tab')
+      await ctx.evaluate(`[...document.querySelectorAll('[role="option"]')].find((e) => e.textContent.includes('Reopen archived tab')).dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); [...document.querySelectorAll('[role="option"]')].find((e) => e.textContent.includes('Reopen archived tab'))?.click(); true`)
+      await ctx.wait(`${host}.getTabs().then((t) => t.some((x) => x.active && x.title === 'Page /old-b'))`, 6000, 'the archived tab to reopen in front')
+      await ctx.delay(1500)
+      const panel = JSON.parse(await ctx.evaluate(`${host}.getState().then((s) => JSON.stringify(s))`))
+      expect(panel.canGoBack, 'The reopened tab lost its back list.')
+      // Clearing history clears the archive too.
+      expect((await archived()).length === 1, 'The reopened tab is still in the archive.')
+      await ctx.evaluate(`window.intoponet.history.clearBrowsingData({ range: 'all', history: true, siteData: false, cache: false, downloads: false }).then(() => true)`)
+      await ctx.wait(`${host}.getArchivedTabs().then((t) => t.length === 0)`, 4000, 'clearing history to clear the archive')
+      return 'Unseen unpinned tabs archived (pinned, typed and private ones stayed); "2 tabs archived" with Undo; found from the address bar and reopened with its back list; cleared with history.'
+    } finally {
+      server.close()
+    }
+  },
 }
 
 checks.TAB_SLEEP.env = { INTOPONET_TAB_SLEEP_MINUTE_MS: '200' }
+checks.TAB_ARCHIVE.env = { INTOPONET_TAB_ARCHIVE_HOUR_MS: '200' }

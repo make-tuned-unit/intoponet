@@ -25,6 +25,7 @@ import {
   type BrowserPanelSnapshot,
   type ClosedTabSnapshot,
   type TabSidebarState,
+  type ArchivedTabSnapshot,
   type PageTabSnapshot,
   type PdfExportOptions,
   type PrivateLibraryReadResult,
@@ -41,6 +42,7 @@ const invoke = (
   | PageTabSnapshot[]
   | ClosedTabSnapshot[]
   | TabSidebarState
+  | ArchivedTabSnapshot[]
   | PrivateLibraryReadResult
   | PublicFieldStatus
   | PdfExportOptions
@@ -105,6 +107,10 @@ const browserHost: BrowserHostApi = {
     await invoke({ type: 'set-full-width', enabled })
   },
   getTabSidebar: () => invoke({ type: 'get-tab-sidebar' }) as Promise<TabSidebarState | null>,
+  getArchivedTabs: () => invoke({ type: 'get-archived-tabs' }) as Promise<ArchivedTabSnapshot[]>,
+  reopenArchivedTabs: async (ids) => {
+    await invoke({ type: 'reopen-archived-tabs', ids })
+  },
   setTabSidebar: async (sidebar) => {
     await invoke({ type: 'set-tab-sidebar', sidebar })
   },
@@ -428,6 +434,7 @@ const browsing: BrowsingApi = {
   setPageAppearance: (appearance) => browsingInvoke({ type: 'set-page-appearance', appearance }) as Promise<BrowsingSettings>,
   setTabSleep: (after) => browsingInvoke({ type: 'set-tab-sleep', after }) as Promise<BrowsingSettings>,
   setTabSwitchOrder: (order) => browsingInvoke({ type: 'set-tab-switch-order', order }) as Promise<BrowsingSettings>,
+  setTabArchive: (after) => browsingInvoke({ type: 'set-tab-archive', after }) as Promise<BrowsingSettings>,
   makeDefaultBrowser: () => browsingInvoke({ type: 'make-default-browser' }) as Promise<BrowsingSettings>,
   subscribe: (listener) => {
     const handler = (_event: Electron.IpcRendererEvent, event: BrowsingEvent): void => listener(event)

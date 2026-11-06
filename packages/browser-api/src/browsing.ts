@@ -27,11 +27,16 @@ export type TabSleepAfter = (typeof TAB_SLEEP_AFTER)[number]
 export const TAB_SWITCH_ORDERS = ['strip', 'recent'] as const
 export type TabSwitchOrder = (typeof TAB_SWITCH_ORDERS)[number]
 
+/** How long an unpinned tab goes unseen before it closes into Archived tabs (off by default). */
+export const TAB_ARCHIVE_AFTER = ['off', '12h', '1d', '1w', '30d'] as const
+export type TabArchiveAfter = (typeof TAB_ARCHIVE_AFTER)[number]
+
 export type BrowsingSettings = {
   pageAppearance: PageAppearance
   defaultBrowser: DefaultBrowserStatus
   tabSleep: TabSleepAfter
   tabSwitchOrder: TabSwitchOrder
+  tabArchive: TabArchiveAfter
 }
 
 /** A page asked to open another app. Shown as "Open <appName>?" in the shell. */
@@ -62,6 +67,7 @@ export type BrowsingCommand =
   | { type: 'make-default-browser' }
   | { type: 'set-tab-sleep'; after: TabSleepAfter }
   | { type: 'set-tab-switch-order'; order: TabSwitchOrder }
+  | { type: 'set-tab-archive'; after: TabArchiveAfter }
 
 export interface BrowsingApi {
   decideExternal(id: string, decision: 'open' | 'cancel', always?: boolean): Promise<void>
@@ -72,6 +78,7 @@ export interface BrowsingApi {
   makeDefaultBrowser(): Promise<BrowsingSettings>
   setTabSleep(after: TabSleepAfter): Promise<BrowsingSettings>
   setTabSwitchOrder(order: TabSwitchOrder): Promise<BrowsingSettings>
+  setTabArchive(after: TabArchiveAfter): Promise<BrowsingSettings>
   subscribe(listener: (event: BrowsingEvent) => void): () => void
 }
 
@@ -97,6 +104,9 @@ export function parseBrowsingCommand(value: unknown): BrowsingCommand {
     case 'set-tab-switch-order':
       if (typeof v['order'] !== 'string' || !(TAB_SWITCH_ORDERS as readonly string[]).includes(v['order'])) break
       return { type: 'set-tab-switch-order', order: v['order'] as TabSwitchOrder }
+    case 'set-tab-archive':
+      if (typeof v['after'] !== 'string' || !(TAB_ARCHIVE_AFTER as readonly string[]).includes(v['after'])) break
+      return { type: 'set-tab-archive', after: v['after'] as TabArchiveAfter }
     case 'external-pending':
     case 'settings':
     case 'make-default-browser':

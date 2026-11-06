@@ -1,4 +1,5 @@
-import { TAB_SLEEP_AFTER, TAB_SWITCH_ORDERS, type TabSleepAfter, type TabSwitchOrder } from '@intoponet/browser-api'
+import { TAB_SLEEP_AFTER, TAB_SWITCH_ORDERS, type TabArchiveAfter, type TabSleepAfter, type TabSwitchOrder } from '@intoponet/browser-api'
+import { DEFAULT_TAB_ARCHIVE, isTabArchiveAfter } from './tabArchive'
 import { parsePageAppearanceFile } from './pageAppearance'
 
 /**
@@ -54,7 +55,7 @@ export const TYPED_FORM_SCRIPT = `(() => {
   return !!active && active.isContentEditable
 })()`
 
-export type BrowsingSettingsFile = { pageAppearance: ReturnType<typeof parsePageAppearanceFile>; tabSleep: TabSleepAfter; tabSwitchOrder: TabSwitchOrder }
+export type BrowsingSettingsFile = { pageAppearance: ReturnType<typeof parsePageAppearanceFile>; tabSleep: TabSleepAfter; tabSwitchOrder: TabSwitchOrder; tabArchive: TabArchiveAfter }
 
 /** browsing-settings.json, with defaults for anything missing or damaged. */
 export function parseBrowsingSettingsFile(raw: unknown): BrowsingSettingsFile {
@@ -65,5 +66,6 @@ export function parseBrowsingSettingsFile(raw: unknown): BrowsingSettingsFile {
     pageAppearance: parsePageAppearanceFile(raw),
     tabSleep: typeof sleep === 'string' && (TAB_SLEEP_AFTER as readonly string[]).includes(sleep) ? sleep as TabSleepAfter : DEFAULT_TAB_SLEEP,
     tabSwitchOrder: typeof order === 'string' && (TAB_SWITCH_ORDERS as readonly string[]).includes(order) ? order as TabSwitchOrder : 'strip',
+    tabArchive: isTabArchiveAfter(record['tabArchive']) ? record['tabArchive'] : DEFAULT_TAB_ARCHIVE,
   }
 }

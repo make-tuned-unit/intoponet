@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { AppWindow, ArrowUpRight, Clock, Compass, Globe2, MapPin, Search, Star } from 'lucide-react'
+import { AppWindow, Archive, ArrowUpRight, Clock, Compass, Globe2, MapPin, Search, Star } from 'lucide-react'
 import {
   useEffect,
   useLayoutEffect,
@@ -15,7 +15,7 @@ import type { OpenDisposition } from '@intoponet/browser-api'
 import { placeLabel } from '../../shared/places/places'
 import type { PlaceMatch } from './globe/PlaceSuggestions'
 import type { ExploreTopic } from './launcherIntent'
-import { rankOmnibox, type OmniboxRecent, type OmniboxPage, type OmniboxSuggestion, type OmniboxTab } from './omnibox'
+import { rankOmnibox, type OmniboxRecent, type OmniboxPage, type OmniboxSources, type OmniboxSuggestion, type OmniboxTab } from './omnibox'
 import { useKnownFavicon } from './favicons'
 import './omnibox.css'
 
@@ -41,6 +41,7 @@ type OmniboxOptions = {
   privateMode: boolean
   /** Recently used tabs first (Settings › ⌃Tab). */
   recentTabs?: boolean
+  archived?: OmniboxSources['archived']
   onPick: (row: OmniboxSuggestion, disposition?: OpenDisposition) => void
   /** Escape closed the list (places are hidden until the text changes). */
   onDismiss: () => void
@@ -55,7 +56,7 @@ type OmniboxOptions = {
  * spreads `omnibox.inputProps` on its input.
  */
 export function useOmnibox(options: OmniboxOptions) {
-  const { query, setQuery, inputRef, tabs, bookmarks, recents, places, topics, privateMode, recentTabs = false } = options
+  const { query, setQuery, inputRef, tabs, bookmarks, recents, places, topics, privateMode, recentTabs = false, archived } = options
   // Inline completion only for text typed forward at the end (not pasted, deleted or composed).
   const [inlineFor, setInlineFor] = useState<string | null>(null)
   const [activeKey, setActiveKey] = useState<string | null>(null)
@@ -64,8 +65,8 @@ export function useOmnibox(options: OmniboxOptions) {
   const allowInline = inlineFor !== null && inlineFor === query
 
   const result = useMemo(
-    () => rankOmnibox(query, { tabs, bookmarks, recents, places, topics, privateMode, recentTabs }, { allowInline }),
-    [query, tabs, bookmarks, recents, places, topics, privateMode, recentTabs, allowInline],
+    () => rankOmnibox(query, { tabs, bookmarks, recents, places, topics, privateMode, recentTabs, ...(archived ? { archived } : {}) }, { allowInline }),
+    [query, tabs, bookmarks, recents, places, topics, privateMode, recentTabs, archived, allowInline],
   )
   const rows = result.suggestions
   const activeIndex = Math.max(0, rows.findIndex((row) => row.key === activeKey))
@@ -252,11 +253,11 @@ export function OmniboxSuggestions({
 }
 
 function RowIcon({ row }: { row: OmniboxSuggestion }) {
-  const siteUrl = row.kind === 'tab' || row.kind === 'bookmark' || row.kind === 'history' || row.kind === 'url' ? row.url : ''
+  const siteUrl = row.kind === 'tab' || row.kind === 'archived' || row.kind === 'bookmark' || row.kind === 'history' || row.kind === 'url' ? row.url : ''
   // Only icons already cached: typing must not make a request to any site.
   const cached = useKnownFavicon(row.kind === 'url' ? '' : siteUrl)
-  const favicon = (row.kind === 'tab' ? row.favicon : undefined) || cached
-  const badge = row.kind === 'tab' ? <AppWindow size={10} /> : row.kind === 'bookmark' ? <Star size={10} /> : row.kind === 'history' ? <Clock size={10} /> : null
+  const favicon = (row.kind === 'tab' || row.kind === 'archived' ? row.favicon : undefined) || cached
+  const badge = row.kind === 'tab' ? <AppWindow size={10} /> : row.kind === 'archived' ? <Archive size={10} /> : row.kind === 'bookmark' ? <Star size={10} /> : row.kind === 'history' ? <Clock size={10} /> : null
   let glyph
   if (favicon) glyph = <img src={favicon} alt="" width={16} height={16} />
   else if (row.kind === 'place') glyph = row.place.kind === 'country' ? <Globe2 size={15} /> : <MapPin size={15} />
@@ -264,6 +265,7 @@ function RowIcon({ row }: { row: OmniboxSuggestion }) {
   else if (row.kind === 'topic') glyph = <Compass size={15} />
   else if (row.kind === 'url') glyph = <ArrowUpRight size={15} />
   else if (row.kind === 'tab') glyph = <AppWindow size={15} />
+  else if (row.kind === 'archived') glyph = <Archive size={15} />
   else if (row.kind === 'bookmark') glyph = <Star size={15} />
   else glyph = <Clock size={15} />
   return (
@@ -311,7 +313,7 @@ function RowText({ row }: { row: OmniboxSuggestion }) {
           <small>
             <span className="omnibox-url">{row.display}</span>
             {' · '}
-            {row.kind === 'tab' ? 'Switch to tab' : row.kind === 'bookmark' ? 'Bookmark' : 'Visited'}
+            {row.kind === 'tab' ? 'Switch to tab' : row.kind === 'archived' ? 'Reopen archived tab' : row.kind === 'bookmark' ? 'Bookmark' : 'Visited'}
           </small>
         </span>
       )

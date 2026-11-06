@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion, type Transition } from 'motion/react'
-import { PanelLeftClose, PanelLeftDashed, PanelLeftOpen, Plus, X } from 'lucide-react'
+import { PanelLeftClose, PanelLeftDashed, PanelLeftOpen, Plus, Undo2, X } from 'lucide-react'
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { TAB_SIDEBAR_WIDTH, type PageTabSnapshot } from '@intoponet/browser-api'
 import { useGlassSheen } from './glass/useGlassSheen'
@@ -24,6 +24,9 @@ export type TabRailProps = {
   /** Hide the sidebar (⌃⌘S); the window's left edge brings it back. */
   onHide: () => void
   onNewTab: () => void
+  /** Tabs tidied away just now (Undo for 10 seconds). */
+  archivedCount?: number
+  onUndoArchive?: () => void
 }
 
 /**
@@ -33,7 +36,7 @@ export type TabRailProps = {
  * keeps it expanded as vertical tabs. Pinned tabs sit first as icons; tabs
  * can be dragged (or moved with ⌥⇧↑ / ⌥⇧↓) into a new order.
  */
-export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange, onHide, onExpandedChange, onPinnedChange, onNewTab }: TabRailProps) {
+export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange, onHide, onExpandedChange, onPinnedChange, onNewTab, archivedCount = 0, onUndoArchive }: TabRailProps) {
   const reduceMotion = useReducedMotion()
   const surface = useGlassSheen<HTMLDivElement>()
   const list = useRef<HTMLDivElement>(null)
@@ -197,6 +200,17 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
               <div className="tab-rail-group" role="none">
                 <AnimatePresence initial={false}>{otherTabs.map((tab, index) => renderTab(tab, pinnedTabs.length + index))}</AnimatePresence>
               </div>
+            </div>
+            <div className="tab-rail-archived" role="status">
+              {archivedCount > 0 && (
+                <>
+                  <span className="tab-rail-title" aria-hidden={!open}>{archivedCount} {archivedCount === 1 ? 'tab' : 'tabs'} archived</span>
+                  <button type="button" className="tab-rail-undo" onClick={onUndoArchive} aria-label={`Undo: reopen ${archivedCount} archived ${archivedCount === 1 ? 'tab' : 'tabs'}`} title="Reopen them">
+                    <Undo2 size={14} aria-hidden="true" />
+                    <span className="tab-rail-title" aria-hidden={!open}>Undo</span>
+                  </button>
+                </>
+              )}
             </div>
             <div className="tab-rail-footer">
               <button type="button" className="tab-rail-action" aria-label="New tab" title="New tab (⌘T)" onClick={onNewTab}>

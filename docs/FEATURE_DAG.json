@@ -465,6 +465,17 @@
       "tier": "network",
       "kind": "e2e",
       "promise": "Take the tour from Settings and every step lights up the part of the app it describes, from story mountains and their strands to the tab sidebar, PDF export and Knowledge, then puts everything back as it was."
+    },
+    {
+      "id": "TAB_ARCHIVE",
+      "title": "Tabs tidy themselves away",
+      "deps": [
+        "TABS",
+        "DOWNLOADS_HISTORY"
+      ],
+      "tier": "core",
+      "kind": "e2e",
+      "promise": "Unpinned tabs not looked at for the chosen time (Off, 12 hours, a day, a week, a month) close into Archived tabs, which can be searched and reopened with their back/forward list; pinned, playing, sharing and form-holding tabs are never archived, private tabs never reach the archive, and the sidebar says how many tabs were tidied."
     }
   ]
 }

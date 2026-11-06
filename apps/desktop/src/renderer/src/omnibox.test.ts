@@ -247,4 +247,16 @@ describe('omnibox rows', () => {
     expect(ids(true)).toEqual(['b', 'c', 'a'])
     expect(ids(false)).toEqual(['a', 'b', 'c'])
   })
+
+  it('offers archived tabs to reopen, but an open tab wins for the same page', () => {
+    const archived = [
+      { id: 'x1', url: 'https://old.example/story', title: 'Old story', archivedAt: 5 },
+      { id: 'x2', url: 'https://open.example/', title: 'Open one', archivedAt: 5 },
+    ]
+    const rows = rankSites('o', sources({ archived, tabs: [{ id: 't', url: 'https://open.example/', title: 'Open one' }] }))
+    const story = rows.find((row) => row.suggestion.url === 'https://old.example/story')!.suggestion
+    expect(story.kind).toBe('archived')
+    expect(story.archivedId).toBe('x1')
+    expect(rows.find((row) => row.suggestion.url === 'https://open.example/')!.suggestion.kind).toBe('tab')
+  })
 })

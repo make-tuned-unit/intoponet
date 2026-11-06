@@ -114,6 +114,9 @@ export type TabSidebarMode = (typeof TAB_SIDEBAR_MODES)[number]
 export type TabSidebarState = { mode: TabSidebarMode; width: number }
 export const TAB_SIDEBAR_WIDTH = { min: 180, max: 420, initial: 240 } as const
 
+/** A tab that tidied itself away (Archived tabs): reopened with its back/forward list. */
+export type ArchivedTabSnapshot = { id: string; url: string; title: string; favicon: string; archivedAt: number }
+
 export type NetworkPrivacySnapshot = {
   /** DNS-over-HTTPS configured for all lookups. */
   encryptedDns: boolean
@@ -240,6 +243,9 @@ export type BrowserHostEvent =
   /** The recent-tabs switcher opened, moved (selected: the highlighted tab's title) or closed. */
   /** Full width, sidebar hidden: the pointer rested at the window's left edge (over the page). */
   | { type: 'tab-sidebar-edge' }
+  /** Tabs closed into Archived tabs just now (Undo reopens them), or the archive changed. */
+  | { type: 'tabs-archived'; ids: string[]; titles: string[] }
+  | { type: 'archived-tabs-changed' }
   | { type: 'tab-switcher'; open: boolean; selected?: string; position?: number; count?: number }
 
 export type ShellShortcut = 'new-tab' | 'find' | 'find-next' | 'find-previous' | 'open-settings' | 'bookmark' | 'next-tab' | 'previous-tab' | 'focus-launcher' | 'toggle-bookmarks' | 'capture' | 'toggle-private' | 'absorb-selection' | 'toggle-tab-sidebar'
@@ -294,6 +300,8 @@ export interface BrowserHostApi {
   setTabRailExpanded(expanded: boolean): Promise<void>
   /** The saved tab sidebar mode and width (null when never set). */
   getTabSidebar(): Promise<TabSidebarState | null>
+  getArchivedTabs(): Promise<ArchivedTabSnapshot[]>
+  reopenArchivedTabs(ids: string[]): Promise<void>
   setTabSidebar(sidebar: TabSidebarState): Promise<void>
   getState(): Promise<BrowserPanelSnapshot>
   getProtection(): Promise<ProtectionSnapshot>
@@ -380,6 +388,10 @@ export type BrowserHostCommand =
   | { type: 'set-tab-rail-expanded'; expanded: boolean }
   /** The tab sidebar's mode and width, kept with the open tabs (null until first set). */
   | { type: 'get-tab-sidebar' }
+  /** Archived tabs, newest first. */
+  | { type: 'get-archived-tabs' }
+  /** Reopen archived tabs (shown when one id; all in the background otherwise). */
+  | { type: 'reopen-archived-tabs'; ids: string[] }
   | { type: 'set-tab-sidebar'; sidebar: TabSidebarState }
   | { type: 'get-state' }
   | { type: 'get-protection' }
@@ -448,6 +460,8 @@ const commandTypes = new Set<BrowserHostCommand['type']>([
   'set-chrome-revealed',
   'set-tab-rail-expanded',
   'get-tab-sidebar',
+  'get-archived-tabs',
+  'reopen-archived-tabs',
   'set-tab-sidebar',
   'get-state',
   'get-protection',
@@ -592,7 +606,13 @@ export function parseBrowserHostCommand(value: unknown): BrowserHostCommand {
       return { type, sidebar: { mode: sidebar['mode'] as TabSidebarMode, width: Math.round(Math.min(TAB_SIDEBAR_WIDTH.max, Math.max(TAB_SIDEBAR_WIDTH.min, sidebar['width']))) } }
     }
     case 'get-tab-sidebar':
+    case 'get-archived-tabs':
       return { type }
+    case 'reopen-archived-tabs': {
+      const ids = value['ids']
+      if (!Array.isArray(ids) || ids.length === 0 || ids.length > 300 || !ids.every((id) => typeof id === 'string' && id.length > 0 && id.length <= 80)) throw new Error('Invalid archived tabs.')
+      return { type, ids: ids as string[] }
+    }
     case 'set-tab-rail-expanded':
       if (typeof value['expanded'] !== 'boolean') throw new Error('Invalid tab rail state.')
       return { type, expanded: value['expanded'] }

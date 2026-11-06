@@ -292,3 +292,51 @@
     transition: none;
   }
 }
+
+/* "N tabs archived · Undo" for ten seconds after tabs tidy themselves away. */
+.tab-rail-archived:empty {
+  display: none;
+}
+
+.tab-rail-archived {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 6px 4px 6px 12px;
+  border-radius: 12px;
+  color: var(--warm-white);
+  background: rgba(32, 244, 228, 0.1);
+  font-size: 12px;
+}
+
+.tab-rail:not(.is-open) .tab-rail-archived {
+  justify-content: center;
+  padding: 4px 0;
+}
+
+.tab-rail:not(.is-open) .tab-rail-archived > .tab-rail-title {
+  display: none;
+}
+
+.tab-rail-undo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--teal, #20f4e4);
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.tab-rail:not(.is-open) .tab-rail-undo {
+  margin: 0;
+}
+
+.tab-rail-undo:hover {
+  background: rgba(205, 245, 240, 0.1);
+}

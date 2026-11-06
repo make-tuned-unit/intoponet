@@ -38,6 +38,8 @@ export type BrowsingDataOptions = {
     encryptSync: (text: string) => Buffer
     availableSync: () => boolean
   }
+  /** History was cleared from `since` (ms): things kept with it (Archived tabs) go too. */
+  onHistoryCleared?: (since: number) => void
   /** Each finished download (for the "Saved … to Downloads" notice). */
   onDownloadDone?: (entry: { filename: string; path: string; state: 'completed' | 'cancelled' | 'interrupted' }) => void
 }
@@ -208,6 +210,7 @@ export function installBrowsingData(options: BrowsingDataOptions): BrowsingData 
     }
     if (request.history) {
       history.deleteSince(since)
+      options.onHistoryCleared?.(since)
       cleared.push('history')
     }
     if (request.downloads) {

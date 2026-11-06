@@ -31,17 +31,21 @@ export type OmniboxSources = {
   privateMode?: boolean
   /** Settings › ⌃Tab "Recently used first": among equally good matches, recently used tabs come first. */
   recentTabs?: boolean
+  /** Tabs that tidied themselves away (Archived tabs): offered to reopen. */
+  archived?: readonly { id: string; url: string; title: string; favicon?: string; archivedAt: number }[]
   now?: number
 }
 
 export type OmniboxSiteSuggestion = {
-  kind: 'tab' | 'bookmark' | 'history'
+  kind: 'tab' | 'archived' | 'bookmark' | 'history'
   key: string
   url: string
   title: string
   /** The address as shown: host without www., then path. */
   display: string
   tabId?: string
+  /** An archived tab: reopened (with its back/forward list) rather than loaded afresh. */
+  archivedId?: string
   favicon?: string
   bookmarked: boolean
 }
@@ -125,6 +129,16 @@ function gatherCandidates(sources: OmniboxSources): Candidate[] {
       candidate.url = tab.url
       if (tab.favicon) candidate.favicon ??= tab.favicon
       if (tab.title.trim()) candidate.title = tab.title.trim()
+    })
+  }
+  for (const entry of sources.archived ?? []) {
+    add(entry.url, entry.title, (candidate) => {
+      if (candidate.kind === 'tab') return
+      candidate.kind = 'archived'
+      candidate.archivedId ??= entry.id
+      candidate.visitedAt = Math.max(candidate.visitedAt, entry.archivedAt)
+      if (entry.favicon) candidate.favicon ??= entry.favicon
+      if (entry.title.trim()) candidate.title = entry.title.trim()
     })
   }
   for (const bookmark of sources.bookmarks) {

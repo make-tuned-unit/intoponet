@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto'
-import { basename, join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { readFile } from 'node:fs/promises'
-import { appendFileSync, existsSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
+import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import {
   app,
   BrowserWindow,
@@ -40,12 +40,13 @@ import { capTitle, capUrl, coalesce, persistedActiveUrl } from './tabState'
 import { EXIT_FULLSCREEN_SCRIPT, FULLSCREEN_WORLD_ID, fullscreenSiteName, showFullscreenNotice } from './fullscreenNotice'
 import { bindLeavePrompt, SAFE_DIALOG_PREFERENCES } from './leavePrompt'
 import { fetchTabIcon, TabIconMemory } from './tabFavicon'
-import { browsingChannels, parseBrowsingCommand, type BrowsingEvent, type BrowsingSettings, type PageLoadError, type TabSidebarState, type TabSleepAfter, type TabSwitchOrder } from '@intoponet/browser-api'
+import { browsingChannels, parseBrowsingCommand, type BrowsingEvent, type ArchivedTabSnapshot, type BrowsingSettings, type PageLoadError, type TabArchiveAfter, type TabSidebarState, type TabSleepAfter, type TabSwitchOrder } from '@intoponet/browser-api'
 import { ExternalOpenBroker, classifyExternalUrl } from './externalOpen'
 import { CertificateErrorMemo, classifyLoadError, isCertificateError, showsErrorPage, summarizeCertificate } from './errorPage'
 import { IncomingOpenQueue, LocalFileGrants, incomingFileTarget, incomingTargetsFromArgs, incomingWebUrl, type IncomingTarget } from './incomingOpen'
 import { PageAppearanceController } from './pageAppearance'
 import { SWITCHER_KEYS_SCRIPT, switcherHtml, SWITCHER_ROW_HEIGHT, SWITCHER_ROWS, TabSwitcher, type SwitcherTab } from './tabSwitcher'
+import { archiveAfterMs, DEFAULT_TAB_ARCHIVE, TabArchive, type ArchivedTab } from './tabArchive'
 import { DEFAULT_TAB_SLEEP, parseBrowsingSettingsFile, sleepAfterMs, tabsDueForSleep, TYPED_FORM_SCRIPT } from './tabSleep'
 import { browserContextExtras, searchSelectionLabel } from './browserContextMenu'
 
@@ -1018,6 +1019,10 @@ function installDownloadsAndHistory(): void {
       availableSync: () => safeStorage.isEncryptionAvailable(),
     },
     onDownloadDone: (entry) => emit({ type: 'download-finished', ...entry }),
+    onHistoryCleared: (since) => {
+      tabArchive.deleteSince(since)
+      saveTabArchive()
+    },
   })
 }
 
@@ -1204,6 +1209,75 @@ let tabSidebar: TabSidebarState | null = null
 /** Full width with the sidebar hidden: the pointer resting at the left edge of the page brings it back. */
 let sidebarEdgeTimer: ReturnType<typeof setTimeout> | null = null
 
+/** How long an unpinned tab goes unseen before it closes into Archived tabs (off unless chosen). */
+let tabArchiveAfter: TabArchiveAfter = DEFAULT_TAB_ARCHIVE
+const tabArchive = new TabArchive()
+/** Archived tabs are kept like history: sealed on disk (in memory only when the Mac cannot seal). */
+const tabArchiveFile = (): string => join(app.getPath('userData'), 'personal', 'tab-archive.v1.seal')
+let tabArchiveLoaded = false
+const tabArchiveWriter = new LatestWriter<string>(async (payload) => {
+  if (!safeStorage.isEncryptionAvailable()) return
+  mkdirSync(dirname(tabArchiveFile()), { recursive: true })
+  await writeFileAtomic(tabArchiveFile(), safeStorage.encryptString(payload))
+})
+function saveTabArchive(): void {
+  emit({ type: 'archived-tabs-changed' })
+  if (!tabArchiveLoaded) return
+  void tabArchiveWriter.save(tabArchive.serialize()).catch((error: unknown) => console.error('Could not save archived tabs:', error))
+}
+function loadTabArchive(): void {
+  try {
+    if (existsSync(tabArchiveFile()) && safeStorage.isEncryptionAvailable()) tabArchive.load(safeStorage.decryptString(readFileSync(tabArchiveFile())))
+  } catch (error) {
+    console.error('Could not read archived tabs:', error)
+  } finally {
+    tabArchiveLoaded = true
+  }
+}
+/** Checks may shorten an "hour" so archiving can be seen in seconds; the app itself never sets this. */
+const TAB_ARCHIVE_HOUR_MS = Math.max(50, Number(process.env['INTOPONET_TAB_ARCHIVE_HOUR_MS']) || 3_600_000)
+
+/** Closes a tab into Archived tabs with its back/forward list (it does not go to Recently closed). */
+function archiveTab(tab: OpenTab): ArchivedTab | null {
+  let history: TabHistory | undefined = tab.asleep?.history
+  const live = !viewGone(tab.view)
+  const liveUrl = live ? tab.view.webContents.getURL() : ''
+  if (live && !tab.asleep) {
+    try {
+      history = { entries: tab.view.webContents.navigationHistory.getAllEntries(), index: tab.view.webContents.navigationHistory.getActiveIndex() }
+    } catch {
+      history = undefined
+    }
+  }
+  const entry = tabArchive.add({
+    url: safeHttpUrl(liveUrl) ? liveUrl : tab.url,
+    title: (live ? tab.view.webContents.getTitle() : '') || tab.title,
+    favicon: tab.favicon,
+    ...(history ? { history } : {}),
+  })
+  if (entry) discardTab(tab.id, false)
+  return entry
+}
+
+/** Reopens archived tabs: one is shown where it was; several come back asleep, in the background. */
+function reopenArchivedTabs(ids: string[]): void {
+  const show = ids.length === 1
+  for (const id of ids) {
+    const entry = tabArchive.take(id)
+    if (!entry) continue
+    const view = createBrowserTab(entry.url, false, false)
+    const tab = view && openTabs.find((item) => item.view === view)
+    if (!view || !tab) continue
+    tab.title = entry.title
+    tab.favicon = entry.favicon
+    tab.asleep = entry.history ? { history: entry.history } : {}
+    if (show) showTab(tab.id)
+  }
+  emitTabs()
+  saveTabArchive()
+  schedulePersistentStateSave()
+}
+
 /** How long a background tab waits before sleeping (Settings › Browsing). */
 let tabSleepAfter: TabSleepAfter = DEFAULT_TAB_SLEEP
 /** The order ⌃Tab steps through tabs. */
@@ -1293,6 +1367,29 @@ async function sleepIdleTabs(): Promise<void> {
   sleepingNow = true
   try {
     const now = Date.now()
+    // Tidy away: unpinned tabs unseen for the archive time close into Archived tabs (never private ones,
+    // never with sound, a call, a download or typed text; history footprints must be on).
+    const archiveMs = archiveAfterMs(tabArchiveAfter, TAB_ARCHIVE_HOUR_MS)
+    if (archiveMs !== null && (browsingData?.history.policy.footprints ?? true)) {
+      const archived: ArchivedTab[] = []
+      for (const tab of [...openTabs]) {
+        if (tab.id === activeTabId || tab.pinned || tab.start || tab.loadError || privateViews.has(tab.view) || now - (tab.lastShownAt ?? now) < archiveMs) continue
+        const live = !viewGone(tab.view) && !tab.asleep
+        if (live) {
+          const contents = tab.view.webContents
+          if (contents.isCurrentlyAudible() || capturingContents.has(contents.id) || browsingData?.downloads.activeForPage(String(contents.id))) continue
+          const typed = await contents.executeJavaScriptInIsolatedWorld(KEYS_WORLD_ID, [{ code: TYPED_FORM_SCRIPT }]).catch(() => true)
+          if (typed !== false) continue
+        }
+        if (tab.id === activeTabId || !openTabs.includes(tab)) continue
+        const entry = archiveTab(tab)
+        if (entry) archived.push(entry)
+      }
+      if (archived.length) {
+        emit({ type: 'tabs-archived', ids: archived.map((entry) => entry.id), titles: archived.map((entry) => entry.title || entry.url) })
+        saveTabArchive()
+      }
+    }
     const due = tabsDueForSleep(openTabs.map((tab) => {
       const live = !viewGone(tab.view)
       const contentsId = live ? tab.view.webContents.id : -1
@@ -1384,12 +1481,12 @@ function closeTab(id: string): void {
   emitPanelState()
 }
 
-function discardTab(id: string): void {
+function discardTab(id: string, remember = true): void {
   const index = openTabs.findIndex((tab) => tab.id === id)
   if (index < 0) return
   const [tab] = openTabs.splice(index, 1)
   if (!tab) return
-  rememberClosedTab(tab)
+  if (remember) rememberClosedTab(tab)
   crashRecovery.forget(tab.id)
   if (pageView === tab.view) {
     detachActive()
@@ -2325,6 +2422,7 @@ async function handleBrowserCommand(
   command: BrowserHostCommand,
 ): Promise<
   | TabSidebarState
+  | ArchivedTabSnapshot[]
   | BrowserPanelSnapshot
   | ProtectionSnapshot
   | PageTabSnapshot[]
@@ -2572,6 +2670,11 @@ async function handleBrowserCommand(
       return null
     case 'get-tab-sidebar':
       return tabSidebar
+    case 'get-archived-tabs':
+      return tabArchive.list()
+    case 'reopen-archived-tabs':
+      reopenArchivedTabs(command.ids)
+      break
     case 'set-tab-sidebar':
       tabSidebar = command.sidebar
       schedulePersistentStateSave()
@@ -2774,6 +2877,7 @@ function browsingSettings(): BrowsingSettings {
     pageAppearance: pageAppearance.current,
     tabSleep: tabSleepAfter,
     tabSwitchOrder,
+    tabArchive: tabArchiveAfter,
     defaultBrowser: {
       isDefault: app.isDefaultProtocolClient('http') && app.isDefaultProtocolClient('https'),
       // Only the installed app: from a development build macOS would register Electron itself.
@@ -2792,7 +2896,8 @@ function wireBrowsing(): void {
   pageAppearance.set(stored.pageAppearance)
   tabSleepAfter = stored.tabSleep
   tabSwitchOrder = stored.tabSwitchOrder
-  const saveSettings = (): Promise<void> => trackedWrite(settingsFile, JSON.stringify({ pageAppearance: pageAppearance.current, tabSleep: tabSleepAfter, tabSwitchOrder })).catch(() => undefined)
+  tabArchiveAfter = stored.tabArchive
+  const saveSettings = (): Promise<void> => trackedWrite(settingsFile, JSON.stringify({ pageAppearance: pageAppearance.current, tabSleep: tabSleepAfter, tabSwitchOrder, tabArchive: tabArchiveAfter })).catch(() => undefined)
   externalOpener = new ExternalOpenBroker({
     emit: emitBrowsing,
     openExternal: (href) => shell.openExternal(href, { activate: true }),
@@ -2819,6 +2924,11 @@ function wireBrowsing(): void {
         return browsingSettings()
       case 'set-tab-sleep':
         tabSleepAfter = command.after
+        await saveSettings()
+        emitBrowsing({ type: 'settings', settings: browsingSettings() })
+        return browsingSettings()
+      case 'set-tab-archive':
+        tabArchiveAfter = command.after
         await saveSettings()
         emitBrowsing({ type: 'settings', settings: browsingSettings() })
         return browsingSettings()
@@ -3215,8 +3325,9 @@ app.whenReady().then(async () => {
   })
 
   startup('tab sleep', () => {
+    loadTabArchive()
     // Checked twice a minute (more often when a check shortens minutes).
-    const timer = setInterval(() => { void sleepIdleTabs() }, Math.min(30_000, Math.max(250, TAB_SLEEP_MINUTE_MS / 2)))
+    const timer = setInterval(() => { void sleepIdleTabs() }, Math.max(250, Math.min(30_000, TAB_SLEEP_MINUTE_MS / 2, TAB_ARCHIVE_HOUR_MS / 2)))
     timer.unref?.()
     app.once('will-quit', () => clearInterval(timer))
   })

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Globe2 } from 'lucide-react'
-import type { BrowsingSettings as Settings, PageAppearance, TabSleepAfter, TabSwitchOrder } from '@intoponet/browser-api'
+import type { BrowsingSettings as Settings, PageAppearance, TabArchiveAfter, TabSleepAfter, TabSwitchOrder } from '@intoponet/browser-api'
 import './browsing.css'
 
 const APPEARANCES: Array<{ value: PageAppearance; label: string }> = [
@@ -14,6 +14,14 @@ const SLEEP_AFTER: Array<{ value: TabSleepAfter; label: string }> = [
   { value: '15m', label: '15 minutes' },
   { value: '1h', label: '1 hour' },
   { value: '4h', label: '4 hours' },
+]
+
+const ARCHIVE_AFTER: Array<{ value: TabArchiveAfter; label: string }> = [
+  { value: 'off', label: 'Off' },
+  { value: '12h', label: '12 hours' },
+  { value: '1d', label: 'A day' },
+  { value: '1w', label: 'A week' },
+  { value: '30d', label: 'A month' },
 ]
 
 const SWITCH_ORDERS: Array<{ value: TabSwitchOrder; label: string }> = [
@@ -44,6 +52,10 @@ export function BrowsingSettings() {
     setError('')
     void window.intoponet.browsing.setTabSleep(after).then(setSettings, () => setError('The tab sleep setting could not be changed.'))
   }
+  const chooseArchive = (after: TabArchiveAfter): void => {
+    setError('')
+    void window.intoponet.browsing.setTabArchive(after).then(setSettings, () => setError('The tab archive setting could not be changed.'))
+  }
   const chooseOrder = (order: TabSwitchOrder): void => {
     setError('')
     void window.intoponet.browsing.setTabSwitchOrder(order).then(setSettings, () => setError('The tab order setting could not be changed.'))
@@ -68,6 +80,14 @@ export function BrowsingSettings() {
       <div className="browsing-appearance" role="group" aria-labelledby="tab-sleep-label">
         {SLEEP_AFTER.map((item) => (
           <button key={item.value} type="button" aria-pressed={settings?.tabSleep === item.value} disabled={!settings} onClick={() => chooseSleep(item.value)}>
+            {item.label}
+          </button>
+        ))}
+      </div>
+      <p id="tab-archive-label">Archive unpinned tabs not looked at for: they close into Archived tabs, which the address bar finds and reopens where they were. Pinned tabs, and tabs playing sound, in a call, downloading or holding typed text, stay. Private tabs are never archived; clearing history clears the archive.</p>
+      <div className="browsing-appearance" role="group" aria-labelledby="tab-archive-label">
+        {ARCHIVE_AFTER.map((item) => (
+          <button key={item.value} type="button" aria-pressed={settings?.tabArchive === item.value} disabled={!settings} onClick={() => chooseArchive(item.value)}>
             {item.label}
           </button>
         ))}
