@@ -25,7 +25,7 @@ import { countryPlace, placeNames, placesNamedIn } from '../../shared/places/pla
 import { COUNTRY_ROWS } from '../../shared/places/placeData'
 import { figuresIn, withoutCitations } from '../knowledge/claims'
 import type { OldsChronicleEntry, OldsRelatedTopic } from '@intoponet/browser-api'
-import { cleanHeadline, foreignNamesIn, isRelevantCandidate, mentions, properPhrases, personNameAtStart, explicitPlacePhrases, fullPersonNameMentioned, officeHolderNamed, outletIsSubject, MEDIA_OUTLET_CLASSES, entityNameAtStart, personActivityConflicts, NOT_A_TOPIC, PATH_PROPERTIES, foldAccents, scoreCandidate, searchQueries, localLegislativeSubject, scopedSubjectMatches, titleContentWords, titleWordsIn, topicAge, eventNameConflicts, eventKindConflicts, eventKindMatches, eventKindNamed, unmentionedEditions, namedEvents, namesASport, eventKindsIn } from './headline'
+import { cleanHeadline, foreignNamesIn, isRelevantCandidate, mentions, properPhrases, personNameAtStart, explicitPlacePhrases, fullPersonNameMentioned, officeHolderNamed, outletIsSubject, MEDIA_OUTLET_CLASSES, entityNameAtStart, personActivityConflicts, NOT_A_TOPIC, PATH_PROPERTIES, foldAccents, scoreCandidate, searchQueries, localLegislativeSubject, scopedSubjectMatches, titleContentWords, titleWordsIn, topicAge, eventNameConflicts, eventKindConflicts, eventKindMatches, eventKindNamed, unmentionedEditions, namedEvents, namesASport, eventKindsIn, occupationClashes, unusedQualifier } from './headline'
 
 const USER_AGENT = 'Intoponet/0.1 (+https://github.com/make-tuned-unit/intoponet; The Olds)'
 const TIMEOUT_MS = 15_000
@@ -43,6 +43,11 @@ const MAX_CACHE_FILES = 300
 /** Headlines whose named people's countries are remembered (each entry is a few labels). */
 const MAX_PEOPLE_COUNTRIES = 500
 const MAX_MEMORY = 100
+/** Answers reused for a while: one headline asks for its country's item several times, and a page of headlines shares it. */
+const RESPONSE_TTL_MS = 10 * 60_000
+const RESPONSE_CACHE_BYTES = 48 * 1024 * 1024
+/** Requests in flight to one Wikimedia host at once (bursts of eight searches drew 429s and 20 s waits). */
+const HOST_CONCURRENCY = 4
 const ENTITY_BATCH = 50
 const COUNTRY_EVENTS = 30
 
@@ -107,6 +112,9 @@ export class OldsService {
   private readonly fetchImpl: typeof fetch
   private readonly now: () => number
   private readonly memory = new Map<string, OldsThread>()
+  private readonly responses = new Map<string, { at: number; bytes: number; value: Promise<unknown> }>()
+  private responseBytes = 0
+  private readonly slots = new Map<string, { active: number; waiting: Array<() => void> }>()
 
   constructor(private readonly options: OldsServiceOptions) {
     this.fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis)
@@ -145,7 +153,58 @@ export class OldsService {
 
   // ---- Network -----------------------------------------------------------
 
-  private async getJson(url: string, timeoutMs = TIMEOUT_MS): Promise<unknown> {
+  /** A JSON answer, shared with any identical request made in the last few minutes (or still on its way). */
+  private getJson(url: string, timeoutMs = TIMEOUT_MS): Promise<unknown> {
+    const now = this.now()
+    const hit = this.responses.get(url)
+    if (hit && now - hit.at < RESPONSE_TTL_MS) return hit.value
+    if (hit) this.forgetResponse(url)
+    const entry = { at: now, bytes: 0, value: Promise.resolve<unknown>(null) }
+    entry.value = this.fetchJson(url, timeoutMs, (bytes) => {
+      entry.bytes = bytes
+      this.responseBytes += bytes
+      // Oldest first, until the answers kept fit.
+      for (const [key] of this.responses) {
+        if (this.responseBytes <= RESPONSE_CACHE_BYTES) break
+        if (key !== url) this.forgetResponse(key)
+      }
+    })
+    // Failures are not kept: the next ask tries again.
+    entry.value.catch(() => { if (this.responses.get(url) === entry) this.forgetResponse(url) })
+    this.responses.set(url, entry)
+    return entry.value
+  }
+
+  private forgetResponse(url: string): void {
+    const entry = this.responses.get(url)
+    if (!entry) return
+    this.responseBytes -= entry.bytes
+    this.responses.delete(url)
+  }
+
+  private async slot(host: string): Promise<() => void> {
+    let state = this.slots.get(host)
+    if (!state) this.slots.set(host, state = { active: 0, waiting: [] })
+    if (state.active >= HOST_CONCURRENCY) await new Promise<void>((resolve) => state!.waiting.push(resolve))
+    state.active += 1
+    return () => {
+      state!.active -= 1
+      state!.waiting.shift()?.()
+    }
+  }
+
+  private async fetchJson(url: string, timeoutMs: number, sized: (bytes: number) => void): Promise<unknown> {
+    const release = await this.slot(new URL(url).host)
+    try {
+      const text = await this.fetchText(url, timeoutMs)
+      sized(text.length)
+      return JSON.parse(text) as unknown
+    } finally {
+      release()
+    }
+  }
+
+  private async fetchText(url: string, timeoutMs: number): Promise<string> {
     for (let attempt = 0; attempt < 5; attempt += 1) {
       let response: Response
       try {
@@ -172,7 +231,7 @@ export class OldsService {
         continue
       }
       if (!response.ok) throw new Error(`Wikidata responded ${response.status}.`)
-      return response.json() as Promise<unknown>
+      return response.text()
     }
     throw new Error('Wikidata is rate limiting requests.')
   }
@@ -1051,6 +1110,8 @@ export class OldsService {
         && !(storyQids.length && storyQids.some((qid) => countries.includes(qid)))
         && Object.keys(entity.sitelinks ?? {}).filter((site) => site.endsWith('wiki')).length < 40) return []
       if (person && surnameOnly && countries.length && storyQids.length && !storyQids.some((qid) => countries.includes(qid)) && !famous.has(item.qid)) return []
+      // Known for something the headline never touches ("Butler says investment return…" is not the actor).
+      if (person && !filedThread && lang === 'en' && !fullPersonNameMentioned(node.label, text) && occupationClashes(node.description, text)) return []
       // Partial native-language name overlap is not enough to identify a foreign namesake
       // when translation was unavailable (Wilson Neves in Angola ≠ Wilson das Neves in Brazil).
       if (person && !filedThread && countries.length && storyQids.length
@@ -1118,7 +1179,7 @@ export class OldsService {
       // headline names ("RAF Abu Dhabi", a wrestling show, for an Abu Dhabi summit).
       const headlineKinds = eventKindsIn(text)
       // A named incident ("2026 South Cotabato school shooting") is another story unless the headline names that kind of incident.
-      const incident = String(node.label).match(/\b(shooting|attack|bombing|crash|collision|derailment|fire|flood|floods|earthquake|explosion|massacre|stampede|riot|riots|landslide|storm)\b/i)?.[1]
+      const incident = String(node.label).match(/\b(shooting|attack|bombing|crash|collision|derailment|fire|flood|floods|earthquake|explosion|massacre|stampede|riot|riots|landslide|storm|heatwaves?|heat waves?|drought|wildfires?|blizzard|avalanche|tsunami|eruption)\b/i)?.[1]
       const placeLikeEvent = isEventLike(entity) && ((ageYears !== null && ageYears >= 2)
         || (headlineKinds.length > 0 && !eventKindsIn(node.label).some((kind) => headlineKinds.includes(kind)))
         || (!!incident && !new RegExp(`\\b${incident.slice(0, 5)}`, 'i').test(text)))
@@ -1128,7 +1189,7 @@ export class OldsService {
       // Words for the same kind of incident count as the same ("train crash" is the "train collision").
       const INCIDENT_FAMILIES = [/\b(crash|collision|collid|derail|accident|wreck|pile-?up)/i, /\b(fire|blaze|wildfire|bushfire|inferno|arson)/i,
         /\b(flood|deluge|inundat)/i, /\b(storm|cyclone|hurricane|typhoon|tornado)/i, /\b(shoot|gunman|gunfire|gunmen)/i,
-        /\b(attack|bomb|blast|explosion|explod|massacre|terror)/i, /\b(earthquake|quake|tremor)/i, /\b(riot|unrest|clash)/i, /\b(landslide|mudslide)/i, /\b(stampede|crush)/i]
+        /\b(attack|bomb|blast|explosion|explod|massacre|terror)/i, /\b(earthquake|quake|tremor)/i, /\b(riot|unrest|clash)/i, /\b(landslide|mudslide)/i, /\b(stampede|crush)/i, /\b(heat ?wave|heat|temperature)/i, /\b(drought|dry spell)/i, /\b(eruption|volcan)/i]
       const family = incident ? INCIDENT_FAMILIES.find((pattern) => pattern.test(incident)) : undefined
       const otherIncident = !filedThread && lang === 'en' && isEventLike(entity) && !!incident
         && !(family ? family.test(text) : new RegExp(`\\b${incident.slice(0, 5)}`, 'i').test(text))
@@ -1141,7 +1202,8 @@ export class OldsService {
         && matchTitle.split(/[^\p{L}\d]+/u).filter((word) => word.length >= 2).length >= 2 && titleWordsIn(matchTitle.replace(/[()]/g, ' '), text) < 2
       // A general concept ("Software development process") is the topic only when the headline names all of it, not one
       // of its words ("infrastructure development" for saffron exports).
-      const partialConcept = !isEventLike(entity) && ids(entity, 'P17').length === 0 && !person && !filedThread && !native && titleWordsIn(node.label, text) < titleContentWords(node.label).length
+      // (Linked from the Current events item telling this story, it was chosen by Wikipedia's editors: "Bomb threat" for bomb hoaxes.)
+      const partialConcept = !isEventLike(entity) && ids(entity, 'P17').length === 0 && !person && !filedThread && !filedLink && !native && titleWordsIn(node.label, text) < titleContentWords(node.label).length
       const weakOnly = otherIncident || nativeThin || partialConcept || ((countryOnly || placeOnly) && !(leadingYear >= currentYear - 1 && eventKindMatches(node.label, text)))
       // A general concept with no country ("Soldier") is a poor starting point for one country's news.
       const general = !isEventLike(entity) && ids(entity, 'P17').length === 0 && !ids(entity, 'P31').includes('Q5')
@@ -1197,6 +1259,11 @@ export class OldsService {
     const SETTLEMENT = /\b(city|town|village|municipality|commune|settlement|borough|county seat|capital|suburb|locality)\b/i
     const FEATURE = /\b(river|lake|mountain|mount|hill|island|bay|creek|stream|valley|glacier|forest|cape|peninsula)\b/i
     const unique = deduped.map((candidate) => {
+      // "Long March (rocket family)" beside plain "Long March": the qualified one only when the headline says "rocket".
+      if (!candidate.weakOnly && unusedQualifier(candidate.node.label, text)
+        && deduped.some((other) => other !== candidate && baseName(other.node.label) === baseName(candidate.node.label) && !/\(/.test(other.node.label))) {
+        return { ...candidate, weakOnly: true }
+      }
       const feature = (candidate.node.description ?? '').match(FEATURE)?.[1] ?? candidate.node.label.match(/\((river|lake|mountain|island|bay)\)/i)?.[1]
       if (!feature || new RegExp(`\\b${feature}`, 'i').test(text)) return candidate
       const town = deduped.find((other) => other !== candidate && !other.weakOnly && baseName(other.node.label) === baseName(candidate.node.label) && SETTLEMENT.test(other.node.description ?? ''))
@@ -1865,8 +1932,9 @@ export function capitalCountries(raw: string): string[] {
 
 export function headlineCountries(raw: string): string[] {
   const text = cleanHeadline(raw)
+  // Named countries first, then ones named by adjective ("US, UK back Lebanese state…" is also about Lebanon).
   const found = countriesByName(text)
-  return found.length ? found : countriesByAdjective(text)
+  return [...new Set([...found, ...countriesByAdjective(text)])]
 }
 
 /** "Ukrainian City of Oleshky" → UA; "Brazilian", "Israeli", "Chinese". Short stems ("Indian": Ocean or India?) are skipped. */
@@ -1874,7 +1942,7 @@ export function countriesByAdjective(text: string): string[] {
   const out: string[] = []
   for (const word of text.split(/[^\p{L}]+/u)) {
     if (!/^\p{Lu}/u.test(word)) continue
-    const stem = word.replace(/(?<=i)s$/, '').replace(/(ian|ean|an|ese|ish|i)$/, '') // "Israelis" → "Israel"
+    const stem = word.replace(/(?<=[in])s$/, '').replace(/(ian|ean|an|ese|ish|i)$/, '') // "Israelis" → "Israel", "Canadians" → "Canad"
     if (stem.length < 4 || stem === word) continue
     // A one-word name or alias ("Palestinian" → "Palestine", an alias of the Palestinian Territory).
     const lower = stem.toLowerCase()

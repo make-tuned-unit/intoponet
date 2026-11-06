@@ -39,3 +39,15 @@ describe('two countries in one story', () => {
     expect(titles).toContain('Norway–Russia relations')
   })
 })
+
+describe('topic families (2026-11-06 stress test)', () => {
+  it('reads the subject, not institutions named after one', () => {
+    const ageing = relatedQueries('Bhutan projected to become an ageing society by 2028: World Bank', 'Bhutan').titles
+    expect(ageing).toContain('Demographics of Bhutan')
+    expect(ageing).not.toContain('Banking in Bhutan')
+    expect(relatedQueries('Pineapple farming transforms livelihoods in Pema Gatshel', 'Bhutan').titles[0]).toBe('Agriculture in Bhutan')
+    // A treaty between states is not about Indigenous peoples, and Canada's schools are not Fiji's.
+    expect(relatedQueries('Solicitor-General’s no-show raises treaty concerns', 'Fiji').titles).not.toContain('Indigenous rights')
+    expect(relatedQueries('First Nations sign land rights agreement', 'Fiji').titles).not.toContain('Canadian Indian residential school system')
+  })
+})

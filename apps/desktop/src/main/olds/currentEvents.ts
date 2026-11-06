@@ -95,6 +95,9 @@ export function parseDayPage(wikitext: string, date: string, title = ''): Curren
 // Institution words are capitalised but name no one in particular.
 const INSTITUTIONAL = new Set('president presid national natio assembly assem ministry minis minister secretary secre state government gover parliament parli parliamentary council counc court party union army police polic department depar office agency agenc commission commi committee bureau authority autho division divis senate house chamber federal republic republ democratic democ people peopl'.split(' '))
 
+/** Stems of words any story might use ("federal", "make", "urge"): they do not say what it is about. */
+const GENERIC_STEMS = new Set(['feder', 'make', 'take', 'give', 'call', 'urge', 'seek', 'plan', 'move', 'hold', 'back', 'push', 'help', 'get', 'set', 'begin', 'start', 'launc', 'annou', 'repor', 'warn', 'year', 'month', 'week', 'today'])
+
 const STOP = new Set('but yet so the a an and or of in on at to for from by with as is are was were be been it its this that these those after before over into about says said say new will could would may might has have had not no up out more than how why what who when where amid against his her their our we they he she you i over under during while also just still into onto upon via per one two three four five six seven eight nine ten first last year years day days week weeks month months people killed dead report reports reported according least more most some many'.split(' '))
 
 /** Content words of a text, as stems ("evacuates" ~ "evacuate", "votes" ~ "vote"), with names marked 2. */
@@ -179,7 +182,13 @@ export function matchHeadline(items: CurrentEventItem[], headline: string, today
     const coverage = Math.min(1, weight / (total + names))
     // An item that never mentions the story's country (a local paper's story) needs a much closer match.
     const mentionsCountry = !country || `${item.text} ${item.links.join(' ')} ${item.threads.join(' ')}`.toLowerCase().includes(country.toLowerCase().slice(0, Math.max(4, country.length - 2)))
-    const byWords = matched.length >= 2 && (names >= 1 || matched.length >= 3) && names >= minNames && coverage >= 0.45 && (mentionsCountry || (coverage >= 0.7 && names >= 2))
+    // Some of what the story is about must match, not only its country and offices: "Federal government to
+    // expand Canadians' access to … mortgages" is not the item about the federal government investing in an AI company.
+    const countryStem = country ? stemOf(country.toLowerCase().split(/\s+/)[0]!) : ''
+    const distinctive = [...wanted.keys()].filter((stem) => !INSTITUTIONAL.has(stem) && !GENERIC_STEMS.has(stem) && stem !== countryStem)
+    const distinctiveMatched = matched.filter((stem) => distinctive.includes(stem)).length
+    const aboutTheSubject = distinctive.length === 0 || distinctiveMatched >= Math.max(1, Math.ceil(distinctive.length * 0.3))
+    const byWords = aboutTheSubject && matched.length >= 2 && (names >= 1 || matched.length >= 3) && names >= minNames && coverage >= 0.45 && (mentionsCountry || (coverage >= 0.7 && names >= 2 && matched.length >= wanted.size * 0.75))
     const ageDays = Math.max(0, (todayMs - Date.parse(item.date)) / 86_400_000)
     const cosine = meaning?.[index]
     if (cosine === undefined || cosine === null) {

@@ -541,3 +541,48 @@ export const PATH_PROPERTIES = [
   { property: 'P155', relation: 'came after' },
   { property: 'P1365', relation: 'replaced' },
 ] as const
+
+/** What a person is known for (from their Wikidata description) → words a headline about that work would use. */
+const OCCUPATION_WORDS: Array<[RegExp, RegExp]> = [
+  [/\b(actor|actress|film(maker)?|director|screenwriter|producer|comedian|television presenter)\b/i, /\b(film|films|movie|movies|cinema|actor|actress|star|stars|role|cast|series|show|tv|television|hollywood|oscars?|bafta|emmys?|premiere|trailer|director|comedy|comedian|stand-?up|box office|netflix|stage|theatre|theater|play)\b/i],
+  [/\b(singer|musician|rapper|songwriter|composer|guitarist|drummer|band|disc jockey|dj)\b/i, /\b(song|songs|album|single|music|musician|concert|tour|singer|rapper|band|gig|festival|grammys?|chart|record|stage|perform\w*|hit)\b/i],
+  [/\b(footballer|soccer player|goalkeeper|striker|midfielder|defender)\b/i, /\b(football|soccer|goal|goals|club|match|league|cup|transfer|coach|striker|keeper|squad|fifa|uefa|scores?|signs?|injury|penalty)\b/i],
+  [/\b(cricketer)\b/i, /\b(cricket|wicket|wickets|innings|test|odi|t20|bowl\w*|bat\w*|century|squad)\b/i],
+  [/\b(basketball|baseball|tennis|golf|ice hockey|rugby|boxer|wrestler|racing driver|cyclist|swimmer|sprinter|athlete|martial artist|jiu-jitsu|judoka)\b/i, /\b(match|game|games|title|champion\w*|win|wins|won|gold|medal|race|season|team|coach|tournament|final|fight|bout|record|olympic\w*|league|cup|open|sport\w*)\b/i],
+  [/\b(painter|sculptor|photographer|novelist|poet|writer|author|journalist)\b/i, /\b(book|novel|poem|poetry|art|artist|painting|exhibition|gallery|prize|author|writer|wrote|memoir|publish\w*|journalist|column|reporter|story)\b/i],
+  [/\b(model|fashion designer|influencer|youtuber)\b/i, /\b(fashion|model|runway|brand|style|instagram|youtube|tiktok|influencer|video)\b/i],
+]
+
+/**
+ * A famous person matched only by a surname must fit the headline: "Butler says investment return coming soon"
+ * (American Samoa) is not about the actor Gerard Butler. Only judged when the description names an occupation
+ * listed above; politicians, officials and business people are left to the other checks.
+ */
+const SPORT_NAMES = ['football', 'soccer', 'cricket', 'netball', 'basketball', 'baseball', 'tennis', 'golf', 'rugby', 'hockey', 'boxing', 'boxer',
+  'wrestl', 'jiu-jitsu', 'jiu jitsu', 'judo', 'karate', 'taekwondo', 'athletic', 'sprint', 'swim', 'cycl', 'volleyball', 'handball', 'darts',
+  'snooker', 'chess', 'mixed martial', 'mma', 'badminton', 'table tennis', 'squash', 'rowing', 'sailing', 'skiing', 'skater', 'skating', 'gymnast', 'weightlift']
+
+export function occupationClashes(description: string | null | undefined, headline: string): boolean {
+  if (!description) return false
+  // A player of one sport is not the story of another ("Blackman wins gold at … Jiu-Jitsu Championships" vs a netball player).
+  const lowerDescription = description.toLowerCase()
+  const lowerHeadline = headline.toLowerCase()
+  const theirs = SPORT_NAMES.filter((sport) => lowerDescription.includes(sport))
+  const told = SPORT_NAMES.filter((sport) => lowerHeadline.includes(sport))
+  if (theirs.length && told.length) return !theirs.some((sport) => told.includes(sport))
+  const known = OCCUPATION_WORDS.filter(([who]) => who.test(description))
+  if (!known.length) return false
+  return !known.some(([, words]) => words.test(headline))
+}
+
+/**
+ * "Long March (rocket family)" when plain "Long March" is also a candidate: the qualified one is the story only
+ * when the headline uses its qualifier ("rocket"). Returns the qualifier's words the headline never uses.
+ */
+export function unusedQualifier(label: string, headline: string): boolean {
+  const qualifier = label.match(/\(([^)]+)\)\s*$/)?.[1]
+  if (!qualifier) return false
+  const text = foldAccents(cleanHeadline(headline)).toLowerCase()
+  const words = foldAccents(qualifier).toLowerCase().split(/[^\p{L}\d]+/u).filter((word) => word.length >= 3 && !['the', 'and', 'of'].includes(word))
+  return words.length > 0 && !words.some((word) => new RegExp(`\\b${word.slice(0, Math.max(4, word.length - 2))}`).test(text))
+}

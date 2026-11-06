@@ -429,3 +429,20 @@ describe('local headlines from the November 2026 sample', () => {
     expect(eventKindConflicts('2026 New Mexico gubernatorial election', 'Haaland wins New Mexico governor race')).toBe(false)
   })
 })
+
+describe('stress-test guards (2026-11-06)', () => {
+  it('a famous person matched by surname must fit the headline', async () => {
+    const { occupationClashes } = await import('./headline')
+    expect(occupationClashes('Scottish actor and film producer', 'Butler says investment return coming soon')).toBe(true)
+    expect(occupationClashes('Scottish actor and film producer', 'Butler to star in new action film')).toBe(false)
+    expect(occupationClashes('Barbadian netball player', 'Blackman wins gold at European Jiu-Jitsu Championships')).toBe(true)
+    expect(occupationClashes('French footballer', 'Mbappe apologises after Real Madrid defeat in league match')).toBe(false)
+    expect(occupationClashes('President of Eritrea', 'Isaias meets Chinese envoy')).toBe(false)
+  })
+  it('a qualified title needs its qualifier in the headline', async () => {
+    const { unusedQualifier } = await import('./headline')
+    expect(unusedQualifier('Long March (rocket family)', 'Foreign military attachés pay tribute to Long March martyrs')).toBe(true)
+    expect(unusedQualifier('Long March (rocket family)', 'China launches Long March rocket with new satellite')).toBe(false)
+    expect(unusedQualifier('Long March', 'anything')).toBe(false)
+  })
+})

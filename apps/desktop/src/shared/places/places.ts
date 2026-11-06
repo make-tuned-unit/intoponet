@@ -231,6 +231,9 @@ const TITLE_STOP_PLACES = new Set([
   'wells', 'bath', 'march', 'may', 'police', 'mission', 'surprise', 'central', 'capital', 'eastern', 'western', 'northern', 'southern',
   'north', 'south', 'east', 'west', 'santa', 'san', 'leon', 'bar', 'mons', 'aba', 'ede', 'bo', 'goes', 'hof', 'sur', 'kids', 'home',
   'wikipedia', 'news', 'history', 'live', 'media', 'university', 'world', 'national', 'republic', 'city', 'about', 'many', 'best',
+  // Districts named for an idea ("Commonwealth", Quezon City): in a headline they are the idea.
+  'commonwealth', 'liberty', 'freedom', 'progress', 'justice', 'unity', 'harmony', 'triumph', 'faith', 'charity', 'friendship',
+  'opportunity', 'success', 'welcome', 'energy', 'commerce', 'industry', 'security', 'plenty', 'prosperity', 'peace', 'victory',
 ])
 
 /** Every name a place is known by (its name and aliases), normalised as matching sees them. */

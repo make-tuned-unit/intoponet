@@ -2,6 +2,7 @@ import type { PlaceQuery, PlaceTrends } from '../../shared/news/placeTrends'
 import { existsSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs'
 import { writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { decodeEntities } from '../articlePreview'
 import type { PublicItem } from '@intoponet/field-snapshot'
 import { createAtomicFeedStorage, FeedFetchService, type FeedRegistry, type FeedRegistrySource } from '../feed-service'
 import { addCoverage, NEWS_COVERAGE_TOLERANCE_MS, parseNewsDigest, type CoverageIntervals, type NewsFeedHealth, type NewsItemInput, type NewsSourceMeta } from '../../shared/news/newsDigest'
@@ -182,7 +183,8 @@ export function startNewsService(options: { userData: string; emit: (payload: st
   })
 
   const toInput = (sourceId: string, item: PublicItem): NewsItemInput => ({
-    sourceId, title: item.title, url: item.canonicalUrl, publishedAt: item.publishedAt, discoveredAt: item.discoveredAt,
+    // Some feeds encode their titles twice ("Iran&#039;s IRGC…"): what is left after parsing is decoded here.
+    sourceId, title: /&(#\d+|#x[\da-f]+|[a-z]+);/i.test(item.title) ? decodeEntities(item.title) : item.title, url: item.canonicalUrl, publishedAt: item.publishedAt, discoveredAt: item.discoveredAt,
   })
   /** What changed since the last build (everything when `full`). */
   const update = async (full: boolean): Promise<DigestUpdate> => {

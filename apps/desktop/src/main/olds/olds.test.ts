@@ -319,3 +319,12 @@ describe('names a headline must say', () => {
     expect(givenNameMentioned('Madonna', 'Madonna tours again')).toBe(true)
   })
 })
+
+describe('story countries (2026-11-06 stress test)', () => {
+  it('counts adjectives and plurals beside named countries, and ideas are not districts', async () => {
+    const { headlineCountries, capitalCountries } = await import('./oldsService')
+    expect(headlineCountries('US, UK, and allies back Lebanese state monopoly on arms')).toEqual(['US', 'GB', 'LB'])
+    expect(headlineCountries('Canadians face higher mortgage rates')).toEqual(['CA'])
+    expect(capitalCountries('Commonwealth ministers call for financing')).toEqual([])
+  })
+})

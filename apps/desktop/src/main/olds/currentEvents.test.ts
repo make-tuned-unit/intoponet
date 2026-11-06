@@ -60,3 +60,10 @@ describe('merging the deep past with recent steps', () => {
     expect(merged.map((e) => e.at.iso)).toEqual([...merged.map((e) => e.at.iso)].sort())
   })
 })
+
+describe('matching needs the story’s own words (2026-11-06 stress test)', () => {
+  it('does not match on country, offices and generic verbs alone', () => {
+    const cohere = parseDayPage("*[[Artificial intelligence industry in Canada]]\n**[[Canada]]'s federal government invests up to C$1.6 billion in Toronto-based artificial intelligence company [[Cohere]], taking an equity stake.", '2026-11-04', 'Portal:Current events/2026 November 4')
+    expect(matchHeadline(cohere, "Federal government to expand Canadians' access to 30-year insured mortgages and make rates easier to compare", '2026-11-06', 0, 'Canada')).toEqual([])
+  })
+})

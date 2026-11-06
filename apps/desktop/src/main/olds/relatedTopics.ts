@@ -24,14 +24,18 @@ export const TOPIC_FAMILIES: Array<{ triggers: RegExp; topics: string[] }> = [
   { triggers: /\b(xenophob|anti-immigra|foreigners)/i, topics: ['Xenophobia in {C}', 'Immigration to {C}'] },
   { triggers: /\b(immigra|refugee|migrant|asylum|deport|citizenship)/i, topics: ['Immigration to {C}', 'Refugees in {C}', 'Xenophobia in {C}'] },
   { triggers: /\b(bank|banking|card issu|payment|fintech|mastercard|mobile money|lender|lending|loan|credit|central bank|currency|stock exchange|investor)/i, topics: ['Banking in {C}', 'Economy of {C}', 'Financial services in {C}'] },
-  { triggers: /\b(indigenous|first nation|aboriginal|métis|metis|inuit|native|reserve|treaty|residential school)/i, topics: ['Indigenous peoples in {C}', 'Indigenous rights', 'Canadian Indian residential school system'] },
+  // Not "treaty", "native" or "reserve" alone: a treaty is usually between states, a reserve a bank's or a park's.
+  { triggers: /\b(indigenous|first nations?|aboriginal|métis|metis|inuit|native title|treaty rights|land rights)/i, topics: ['Indigenous peoples in {C}', 'Indigenous rights'] },
+  { triggers: /\bresidential schools?\b/i, topics: ['Canadian Indian residential school system', 'American Indian boarding schools'] },
   { triggers: /\b(wildfire|flood|hurricane|cyclone|typhoon|tornado|landslide|tsunami|monsoon|storm|drought|heat wave|earthquake|climate|emission|carbon)/i, topics: ['Climate change in {C}', 'Natural disasters in {C}', 'Environment of {C}'] },
   { triggers: /\b(renewable|solar|wind power|wind farm|green hydrogen|clean energy)/i, topics: ['Renewable energy in {C}', 'Energy in {C}'] },
   // Lowercase only: "Monster Energy" is a sponsor, not a subject.
   { triggers: /\b(oil|gas|pipeline|energy|electricity|electric grid|power plant|nuclear power|hydro|mining|mine)\b/, topics: ['Energy in {C}', 'Energy policy of {C}', 'Mining in {C}'] },
   { triggers: /\b(army|military|soldier|defence|defense|navy|air force|veteran|nato|troops)/i, topics: ['Military of {C}', 'Armed Forces of {C}', 'Foreign relations of {C}'] },
   { triggers: /\b(touris|tourist|visitor arrivals|cruise|hotel|airlift|winter seats|bookings)/i, topics: ['Tourism in {C}'] },
-  { triggers: /\b(fish|fisher|lobster|farm|agricultur|crop|harvest)/i, topics: ['Fishing in {C}', 'Agriculture in {C}'] },
+  { triggers: /\b(fish|fisher|lobster|trawler|aquacultur)/i, topics: ['Fishing in {C}'] },
+  { triggers: /\b(farm|agricultur|crop|harvest|livestock|cattle|irrigat|fertili[sz]er|rice|wheat|maize|coffee|cocoa)/i, topics: ['Agriculture in {C}'] },
+  { triggers: /\b(ageing|aging|elderly|older people|pension|retire|birth ?rate|fertility rate|population|demograph|census)/i, topics: ['Demographics of {C}', 'Aging of {C}', 'Population ageing'] },
   { triggers: /\b(child|children|youth|foster|daycare|child care)/i, topics: ['Child welfare in {C}', 'Child care in {C}'] },
   { triggers: /\b(women|gender|domestic violence|intimate partner|femicide|sexual assault)/i, topics: ['Women in {C}', 'Domestic violence in {C}'] },
 ]
@@ -68,10 +72,12 @@ export function otherCountries(headline: string, country: string | null, named: 
 /** Title candidates to look up, most specific first. */
 export function relatedQueries(headline: string, country: string | null, exclude: string[] = [], regions: string[] = [], others: string[] = []): { titles: string[]; searches: string[]; stems: string[] } {
   const titles: string[] = []
+  // Institutions named for a subject are not that subject: "World Bank" says nothing about banking.
+  const subjectText = headline.replace(/\b(World|Asian Development|African Development|Inter-American Development|European Investment|European Central|Islamic Development|West Bank|Gaza)\s+Bank\b|\bWest Bank\b/gi, ' ')
   // Province or state first (the story's own level), then the country.
   for (const scope of [...regions.slice(0, 1), country]) {
     for (const family of TOPIC_FAMILIES) {
-      if (!family.triggers.test(headline)) continue
+      if (!family.triggers.test(subjectText)) continue
       for (const pattern of family.topics) {
         if (pattern.includes('{C}') && !scope) continue
         if (!pattern.includes('{C}') && scope !== country) continue
