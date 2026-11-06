@@ -47,11 +47,36 @@ function componentsOf(doc: PDFDocument, space: PDFObject | undefined): number | 
   return null
 }
 
+/** Pixels this opaque or more count as solid (a fade-in caught at 99% leaves masks of 253-254). */
+const SOLID = 250
+
+/**
+ * True when an image's soft mask hides nothing: photos decoded from WebP or PNG often carry an
+ * alpha channel that is solid everywhere, and the mask can then be dropped.
+ */
+function opaqueMask(doc: PDFDocument, ref: PDFObject | undefined): boolean {
+  const mask = ref instanceof PDFRef ? doc.context.lookup(ref) : ref
+  if (!(mask instanceof PDFRawStream)) return false
+  const dict = mask.dict
+  if (dict.get(PDFName.of('Filter')) !== PDFName.of('FlateDecode') || dict.has(PDFName.of('DecodeParms')) || dict.has(PDFName.of('Decode'))) return false
+  const bits = dict.get(PDFName.of('BitsPerComponent'))
+  if (!(bits instanceof PDFNumber) || bits.asNumber() !== 8) return false
+  let alpha: Uint8Array
+  try {
+    alpha = unzlibSync(mask.contents)
+  } catch {
+    return false
+  }
+  if (alpha.byteLength === 0) return false
+  for (let index = 0; index < alpha.byteLength; index += 1) if (alpha[index]! < SOLID) return false
+  return true
+}
+
 /**
  * Chromium stores every image that was not already a JPEG (WebP, AVIF, PNG photos) as raw pixels,
  * so a page of photos makes a PDF of tens of megabytes. Large opaque 8-bit RGB or grey images are
- * re-encoded as JPEG here (and scaled to print size); images with transparency or anything
- * unusual are left exactly as they are. Returns how many were changed.
+ * re-encoded as JPEG here (and scaled to print size), dropping alpha that is solid everywhere;
+ * images with any transparency or anything unusual are left exactly as they are. Returns how many were changed.
  */
 export function recompressImages(doc: PDFDocument): number {
   let changed = 0
@@ -60,7 +85,8 @@ export function recompressImages(doc: PDFDocument): number {
     const dict = object.dict
     if (dict.get(PDFName.of('Subtype')) !== PDFName.of('Image')) continue
     if (dict.get(PDFName.of('Filter')) !== PDFName.of('FlateDecode')) continue
-    if (dict.has(PDFName.of('SMask')) || dict.has(PDFName.of('Mask')) || dict.has(PDFName.of('DecodeParms')) || dict.has(PDFName.of('Decode'))) continue
+    if (dict.has(PDFName.of('Mask')) || dict.has(PDFName.of('DecodeParms')) || dict.has(PDFName.of('Decode'))) continue
+    if (dict.has(PDFName.of('SMask')) && !opaqueMask(doc, dict.get(PDFName.of('SMask')))) continue
     if (object.contents.byteLength < MIN_BYTES) continue
     const bits = dict.get(PDFName.of('BitsPerComponent'))
     const widthValue = dict.get(PDFName.of('Width'))

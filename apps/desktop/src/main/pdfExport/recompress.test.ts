@@ -29,6 +29,24 @@ describe('PDF image recompression', () => {
     rawImage(doc, 20, 20)
     expect(recompressImages(doc)).toBe(0)
   })
+  it('drops an alpha mask that is solid everywhere, and keeps one that hides anything', async () => {
+    const grey = (doc: PDFDocument, values: Uint8Array) => {
+      const data = zlibSync(values)
+      return doc.context.register(PDFRawStream.of(doc.context.obj({ Type: 'XObject', Subtype: 'Image', Width: 800, Height: 300, ColorSpace: 'DeviceGray', BitsPerComponent: 8, Filter: 'FlateDecode', Length: data.byteLength }), data))
+    }
+    const doc = await PDFDocument.create()
+    const solid = rawImage(doc, 800, 300, { SMask: grey(doc, new Uint8Array(800 * 300).fill(254)) })
+    const cutout = new Uint8Array(800 * 300).fill(255)
+    cutout.fill(0, 0, 800)
+    const shaped = rawImage(doc, 800, 300, { SMask: grey(doc, cutout) })
+    expect(recompressImages(doc)).toBe(1)
+    const photo = doc.context.lookup(solid) as PDFRawStream
+    expect(photo.dict.get(PDFName.of('Filter'))).toBe(PDFName.of('DCTDecode'))
+    expect(photo.dict.has(PDFName.of('SMask'))).toBe(false)
+    const kept = doc.context.lookup(shaped) as PDFRawStream
+    expect(kept.dict.get(PDFName.of('Filter'))).toBe(PDFName.of('FlateDecode'))
+    expect(kept.dict.has(PDFName.of('SMask'))).toBe(true)
+  })
   it('scales by averaging', () => {
     const data = new Uint8Array(4 * 4 * 4).fill(200)
     const out = shrinkRgba(data, 4, 4, 2)

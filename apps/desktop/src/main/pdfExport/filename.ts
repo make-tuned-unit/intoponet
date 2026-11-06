@@ -14,11 +14,21 @@ export function pdfFilename(input: { title: string; site: string; url: string; i
   const title = clean(input.title)
   const site = clean(input.site) || host
   const parts = [title || host || 'Page']
-  // The site is left out when the title already names it ("BBC News – BBC News").
-  if (site && !parts[0]!.toLowerCase().includes(site.toLowerCase())) parts.push(site)
+  // The site is left out when the title already names it ("BBC News – BBC News", "BBC News - Home – bbc.com").
+  if (site && !namesSite(parts[0]!, site)) parts.push(site)
   let base = parts.join(' – ')
   if (base.length > 120) base = `${base.slice(0, 119).trimEnd()}…`
   return `${base} – ${day}.pdf`
+}
+
+function namesSite(title: string, site: string): boolean {
+  const lower = title.toLowerCase()
+  if (lower.includes(site.toLowerCase())) return true
+  // A host ("bbc.co.uk") is named by its main label ("bbc").
+  if (!/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(site)) return false
+  const labels = site.toLowerCase().split('.')
+  const main = labels.length > 2 && labels[labels.length - 2]!.length <= 3 ? labels[labels.length - 3]! : labels[labels.length - 2]!
+  return main.length >= 3 && new RegExp(`(^|[^a-z0-9])${main}([^a-z0-9]|$)`).test(lower)
 }
 
 function isoDay(date: Date): string {

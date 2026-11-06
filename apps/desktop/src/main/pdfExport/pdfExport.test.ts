@@ -25,6 +25,8 @@ describe('PDF file names', () => {
   })
   it('leaves the site out when the title already names it, and falls back to the host', () => {
     expect(pdfFilename({ title: 'BBC News', site: 'BBC News', url: 'https://bbc.com/', isPrivate: false, date: day })).toBe('BBC News – 2026-11-05.pdf')
+    expect(pdfFilename({ title: 'BBC News - Home', site: '', url: 'https://www.bbc.co.uk/news', isPrivate: false, date: day })).toBe('BBC News - Home – 2026-11-05.pdf')
+    expect(pdfFilename({ title: 'Kebbcake recipes', site: '', url: 'https://bbc.com/food', isPrivate: false, date: day })).toBe('Kebbcake recipes – bbc.com – 2026-11-05.pdf')
     expect(pdfFilename({ title: '', site: '', url: 'https://www.example.org/x', isPrivate: false, date: day })).toBe('example.org – 2026-11-05.pdf')
   })
   it('strips characters Finder handles badly, bidi tricks and leading dots, and caps the length', () => {
