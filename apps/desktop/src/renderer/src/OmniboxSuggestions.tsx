@@ -39,6 +39,8 @@ type OmniboxOptions = {
   places: PlaceMatch
   topics: readonly ExploreTopic[]
   privateMode: boolean
+  /** Recently used tabs first (Settings › ⌃Tab). */
+  recentTabs?: boolean
   onPick: (row: OmniboxSuggestion, disposition?: OpenDisposition) => void
   /** Escape closed the list (places are hidden until the text changes). */
   onDismiss: () => void
@@ -53,7 +55,7 @@ type OmniboxOptions = {
  * spreads `omnibox.inputProps` on its input.
  */
 export function useOmnibox(options: OmniboxOptions) {
-  const { query, setQuery, inputRef, tabs, bookmarks, recents, places, topics, privateMode } = options
+  const { query, setQuery, inputRef, tabs, bookmarks, recents, places, topics, privateMode, recentTabs = false } = options
   // Inline completion only for text typed forward at the end (not pasted, deleted or composed).
   const [inlineFor, setInlineFor] = useState<string | null>(null)
   const [activeKey, setActiveKey] = useState<string | null>(null)
@@ -62,8 +64,8 @@ export function useOmnibox(options: OmniboxOptions) {
   const allowInline = inlineFor !== null && inlineFor === query
 
   const result = useMemo(
-    () => rankOmnibox(query, { tabs, bookmarks, recents, places, topics, privateMode }, { allowInline }),
-    [query, tabs, bookmarks, recents, places, topics, privateMode, allowInline],
+    () => rankOmnibox(query, { tabs, bookmarks, recents, places, topics, privateMode, recentTabs }, { allowInline }),
+    [query, tabs, bookmarks, recents, places, topics, privateMode, recentTabs, allowInline],
   )
   const rows = result.suggestions
   const activeIndex = Math.max(0, rows.findIndex((row) => row.key === activeKey))

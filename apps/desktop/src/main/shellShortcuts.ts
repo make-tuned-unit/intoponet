@@ -18,6 +18,17 @@ export function isPlainEscape(input: KeyInput): boolean {
   return input.type === 'keyDown' && input.key === 'Escape' && !input.meta && !input.control && !input.alt && !input.shift
 }
 
+/** Commands a focused text field in the page gets first (a document editor's own ⇧⌘C keeps working). */
+export const TEXT_FIELD_FIRST: ReadonlySet<AppCommand['type']> = new Set(['copy-address', 'copy-address-raw'])
+
+/** Run in the page (isolated world): is keyboard focus in something that takes typing? Frames count as yes. */
+export const FOCUS_TAKES_TYPING_SCRIPT = `(() => {
+  let element = document.activeElement
+  while (element && element.shadowRoot && element.shadowRoot.activeElement) element = element.shadowRoot.activeElement
+  if (!element || element === document.body) return false
+  return element.isContentEditable || /^(INPUT|TEXTAREA|SELECT|IFRAME)$/.test(element.tagName)
+})()`
+
 export type PageKeyAction =
   | { kind: 'command'; command: AppCommand }
   | { kind: 'shell'; action: ShellShortcut }

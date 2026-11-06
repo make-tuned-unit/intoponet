@@ -34,6 +34,10 @@ export type AppCommand =
   /** 0-based; -1 is the last tab (⌘9). */
   | { type: 'select-tab'; index: number }
   | { type: 'help' }
+  /** The open page's address, tracking parameters removed (raw: exactly as it is). */
+  | { type: 'copy-address' }
+  | { type: 'copy-address-raw' }
+  | { type: 'toggle-tab-sidebar' }
 
 /** What the menu needs to know to enable its items. */
 export type AppMenuState = {
@@ -85,6 +89,10 @@ export const APP_SHORTCUTS = {
   'show-bookmarks': ['CmdOrCtrl+Shift+B'],
   'next-tab': ['Ctrl+Tab', 'CmdOrCtrl+Shift+]'],
   'previous-tab': ['Ctrl+Shift+Tab', 'CmdOrCtrl+Shift+['],
+  'copy-address': ['CmdOrCtrl+Shift+C'],
+  'copy-address-raw': ['CmdOrCtrl+Alt+Shift+C'],
+  // The Mac's own "Show Sidebar" key (⇧⌘S is Capture).
+  'toggle-tab-sidebar': ['Ctrl+Cmd+S'],
 } as const satisfies Partial<Record<AppCommand['type'], readonly string[]>>
 
 type SimpleCommandType = keyof typeof APP_SHORTCUTS
@@ -130,6 +138,9 @@ export function routeAppCommand(command: AppCommand): AppCommandRoute {
     case 'next-tab': return { kind: 'host', command: { type: 'cycle-tabs', direction: 'next' } }
     case 'previous-tab': return { kind: 'host', command: { type: 'cycle-tabs', direction: 'previous' } }
     case 'select-tab': return { kind: 'host', command: { type: 'select-tab', index: command.index } }
+    case 'toggle-tab-sidebar': return { kind: 'shell', action: 'toggle-tab-sidebar' }
+    case 'copy-address': return { kind: 'host', command: { type: 'copy-page-address', clean: true } }
+    case 'copy-address-raw': return { kind: 'host', command: { type: 'copy-page-address', clean: false } }
     case 'help': return { kind: 'host', command: { type: 'open', intent: { kind: 'url', value: 'https://intoponet.com/' } } }
     case 'inspect-page': return { kind: 'native', action: 'inspect-page' }
     case 'show-history': return { kind: 'native', action: 'show-history' }
@@ -237,6 +248,11 @@ export function appMenuTemplate(state: AppMenuState, run: (command: AppCommand) 
         { role: 'delete' },
         { role: 'selectAll' },
         { type: 'separator' },
+        // Shown, not registered: in a page the key goes to a focused text field first (main/index.ts),
+        // and the shell handles it itself, so the menu never runs it a second time.
+        ...item('Copy Page Address', 'copy-address', page).map((entry) => ({ ...entry, registerAccelerator: false })),
+        ...item('Copy Page Address Exactly', 'copy-address-raw', page).map((entry) => ({ ...entry, registerAccelerator: false, visible: false })),
+        { type: 'separator' },
         {
           label: 'Find',
           submenu: [
@@ -250,6 +266,8 @@ export function appMenuTemplate(state: AppMenuState, run: (command: AppCommand) 
     {
       label: 'View',
       submenu: [
+        ...item('Show or Hide Tab Sidebar', 'toggle-tab-sidebar'),
+        { type: 'separator' },
         ...item('Reload Page', 'reload', page),
         ...item('Reload Page Ignoring Cache', 'force-reload', page),
         ...item('Stop Loading', 'stop', page && state.isLoading),

@@ -65,7 +65,7 @@ export function SettingsPanel({
         {onTour && (
           <section className="settings-tour">
             <h3><Compass size={13} aria-hidden="true" /> Tour</h3>
-            <p>A guided tour of the globe, stories, The Olds, your library, captures, Knowledge and beacons, using the app itself. About two minutes; replay it any time.</p>
+            <p>A guided tour of the globe, story mountains, The Olds, your library, tabs and page tools, Knowledge and beacons, using the app itself. About three minutes; replay it any time.</p>
             <button type="button" className="settings-primary" onClick={onTour}><Play size={13} aria-hidden="true" /> Take the tour</button>
           </section>
         )}

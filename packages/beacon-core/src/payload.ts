@@ -13,7 +13,7 @@ export type BeaconPayload = {
 export const BEACON_LIMITS = { title: 180, topic: 80, note: 280, placeLabel: 160, url: 2_048 } as const
 
 /** Query parameters that only track people; they are removed before anything is published. */
-const TRACKING = /^(utm_\w+|fbclid|gclid|dclid|gbraid|wbraid|msclkid|mc_cid|mc_eid|igshid|yclid|_hsenc|_hsmi|ref_src|ref_url|s_cid|cmpid|ocid|smid|sr_share|share|at_medium|at_campaign|ncid|ito|spm)$/i
+export const TRACKING_PARAMETER = /^(utm_\w+|fbclid|gclid|dclid|gbraid|wbraid|msclkid|mc_cid|mc_eid|igshid|yclid|_hsenc|_hsmi|ref_src|ref_url|s_cid|cmpid|ocid|smid|sr_share|share|at_medium|at_campaign|ncid|ito|spm)$/i
 
 /** Hosts that should never be pointed at publicly (personal accounts, banking, health, local network). */
 const PRIVATE_HOST = /(^|\.)(localhost|local|internal|lan|home\.arpa)$|^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|0\.|\[?::1\]?$|\[?f[cd][0-9a-f]{2}:)/i
@@ -31,7 +31,7 @@ export function canonicalBeaconUrl(value: string): string | null {
   if (PRIVATE_HOST.test(url.hostname)) return null
   if (SENSITIVE_PATH.test(url.pathname)) return null
   url.hash = ''
-  for (const key of [...url.searchParams.keys()]) if (TRACKING.test(key)) url.searchParams.delete(key)
+  for (const key of [...url.searchParams.keys()]) if (TRACKING_PARAMETER.test(key)) url.searchParams.delete(key)
   url.hostname = url.hostname.toLowerCase()
   const text = url.toString()
   return text.length <= BEACON_LIMITS.url ? text : null

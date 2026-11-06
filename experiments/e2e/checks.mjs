@@ -388,6 +388,17 @@ async function axeAudit(ctx, where, selector = null) {
   expect(raw.length === 0, `WCAG violations on ${where}: ${raw.join(', ')}`)
 }
 
+/** A local test site: every path answers with a page titled after its path, with a text field. */
+async function tabSite(extra = '') {
+  const server = createServer((request, response) => {
+    const path = new URL(request.url, 'http://localhost').pathname
+    response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
+    response.end(`<!doctype html><title>Page ${path}</title><body style="font:16px system-ui;margin:40px;min-height:3000px"><h1>Page ${path}</h1><input id="field" aria-label="Field">${extra}</body>`)
+  })
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  return { server, origin: `http://127.0.0.1:${server.address().port}` }
+}
+
 export const checks = {
   // ---- Foundations ---------------------------------------------------------
   async APP_BOOT(ctx) {
@@ -632,19 +643,29 @@ export const checks = {
     await ctx.waitForNews()
     await ctx.click('.globe-tabs button', 'World')
     await ctx.wait(`document.querySelectorAll('.world-list > li').length > 0`, 90_000, 'world stories')
-    // Open every story's headlines; the international outlets (BBC, Al Jazeera, DW…) are among them.
-    await ctx.evaluate(`[...document.querySelectorAll('.world-list > li:not(.is-open) .world-expand')].forEach((b) => b.click()); true`)
-    await ctx.delay(1500)
     const OUTLETS = 'BBC|Al Jazeera|DW|Deutsche Welle|NPR|CNA|RFI|Euronews|Africanews|Middle East Eye'
     const rowsScript = `[...document.querySelectorAll('.world-list li.has-history')].filter((li) => new RegExp('^(${OUTLETS})', 'i').test(li.querySelector('small')?.innerText ?? ''))`
     // Stories refresh while the list is open: keep opening any that are closed until a supported outlet shows.
-    await ctx.wait(`(() => { document.querySelectorAll('.world-list > li:not(.is-open) .world-expand').forEach((b) => b.click()); return ${rowsScript}.length > 0 })()`, 60_000, 'a headline from a supported outlet')
+    // One story's sources show at a time: open the stories one by one until one has a supported outlet's headline.
+    const openNext = (need) => `(() => {
+      if (${rowsScript}.length > ${need}) return true
+      const next = [...document.querySelectorAll('.world-list > li:not(.is-open)')].find((li) => !li.dataset.tried)
+      if (next) { next.dataset.tried = '1'; next.querySelector('.world-expand')?.click() }
+      else document.querySelectorAll('.world-list > li').forEach((li) => delete li.dataset.tried)
+      return false
+    })()`
+    await ctx.wait(openNext(0), 90_000, 'a headline from a supported outlet')
     const outletView = `[...document.querySelectorAll('.olds-views button')].find((b) => /covered this story/.test(b.title))`
     let headline = ''
     let first = null
-    for (let attempt = 0; attempt < 4; attempt += 1) {
-      headline = await ctx.evaluate(`(() => { const li = ${rowsScript}[${attempt}]; if (!li) return ''; li.querySelector('.headline-history').click(); return li.querySelector('strong').innerText })()`)
-      if (!headline) break
+    for (let attempt = 0, row = 0; attempt < 6 && row < 4; attempt += 1) {
+      headline = await ctx.evaluate(`(() => { const li = ${rowsScript}[${row}]; if (!li) return ''; li.querySelector('.headline-history').click(); return li.querySelector('strong').innerText })()`)
+      if (!headline) {
+        // The list refreshed between finding the row and clicking it: wait for it again.
+        await ctx.wait(openNext(row), 60_000, 'the supported outlet\'s headline again')
+        continue
+      }
+      row += 1
       await ctx.wait(`!!${outletView}`, 60_000, 'the outlet’s coverage view')
       await ctx.evaluate(`${outletView}.click(); true`)
       await ctx.wait(`!!document.querySelector('.olds-coverage-list, .olds-coverage-note:not(:has(.olds-spin))')`, 60_000, 'the outlet’s earlier coverage')
@@ -1488,4 +1509,312 @@ export const checks = {
     }
     return 'No WCAG 2.2 AA violations (axe); panels open with Enter, close with Escape, focus returns.'
   },
+  async COPY_ADDRESS(ctx) {
+    const { server, origin } = await tabSite()
+    try {
+      const clip = () => ctx.main('electron.clipboard.readText()')
+      const setClip = (text) => ctx.main(`electron.clipboard.writeText(${JSON.stringify(text)})`)
+      await openPage(ctx, `${origin}/article?id=3&utm_source=news&fbclid=xyz#part`, 2500)
+      // In the page, focus on the page itself: ⇧⌘C copies the address without its tracking parameters.
+      await setClip('before')
+      await ctx.keyInPage('/article', 'C', ['meta', 'shift'])
+      await ctx.wait(`window.intoponet.browserHost.getTabs().then(() => true)`, 2000, 'the app')
+      await ctx.delay(600)
+      const cleaned = await clip()
+      expect(cleaned === `${origin}/article?id=3#part`, `⇧⌘C in the page copied "${cleaned}".`)
+      await ctx.wait(`document.querySelector('.origin-copied')?.textContent.includes('tracking removed') && [...document.querySelectorAll('[role=status]')].some((e) => e.textContent.includes('Address copied'))`, 3000, 'the address field to say it was copied')
+      await ctx.wait(`!document.querySelector('.origin-copied')`, 4000, 'the confirmation to go away')
+      // A text field in the page keeps the key (an editor's own ⇧⌘C is not broken).
+      const site = await ctx.page('/article')
+      await site.evaluate(`document.getElementById('field').focus()`)
+      await setClip('before')
+      await ctx.keyInPage('/article', 'C', ['meta', 'shift'])
+      await ctx.delay(800)
+      expect(await clip() === 'before', 'With a text field focused, ⇧⌘C still copied the page address.')
+      await site.evaluate(`document.activeElement.blur()`)
+      // ⌥⇧⌘C copies it exactly as it is.
+      await ctx.keyInPage('/article', 'C', ['meta', 'shift', 'alt'])
+      await ctx.delay(800)
+      const raw = await clip()
+      expect(raw === `${origin}/article?id=3&utm_source=news&fbclid=xyz#part`, `⌥⇧⌘C copied "${raw}".`)
+      // With the app's own interface focused, the same key works.
+      await setClip('before')
+      await ctx.evaluate(`document.activeElement?.blur(); true`)
+      for (const type of ['rawKeyDown', 'keyUp']) await ctx.send('Input.dispatchKeyEvent', { type, key: 'C', code: 'KeyC', windowsVirtualKeyCode: 67, modifiers: 4 | 8 })
+      await ctx.delay(800)
+      expect(await clip() === `${origin}/article?id=3#part`, `⇧⌘C in the app interface copied "${await clip()}".`)
+      return 'Copied without tracking parameters from the page and the toolbar, exactly with ⌥, and not while a text field had focus.'
+    } finally {
+      server.close()
+    }
+  },
+  async PINNED_HOME(ctx) {
+    const { server, origin } = await tabSite()
+    // The same site under another host name: leaving home means another site, not another page.
+    const elsewhere = origin.replace('127.0.0.1', 'localhost')
+    const host = 'window.intoponet.browserHost'
+    const tabs = async () => JSON.parse(await ctx.evaluate(`${host}.getTabs().then((t) => JSON.stringify(t))`))
+    try {
+      for (const name of ['mail', 'news', 'notes']) await openPage(ctx, `${origin}/${name}`, 1200)
+      const [mail] = await tabs()
+      await ctx.evaluate(`${host}.setTabPinned(${JSON.stringify(mail.id)}, true).then(() => ${host}.activateTab(${JSON.stringify(mail.id)})).then(() => true)`)
+      await ctx.delay(600)
+      let pinned = (await tabs()).find((tab) => tab.id === mail.id)
+      expect(pinned.pinned && pinned.home === `${origin}/mail`, `Pinning did not record the home (${pinned.home}).`)
+      expect(!pinned.awayFromHome, 'A pinned tab at home says it is away.')
+      // Another page of the same site is still home; another site is away.
+      await (await ctx.page('/mail')).evaluate(`location.href = '${origin}/mail/inbox?id=2'`)
+      await ctx.delay(1200)
+      expect(!(await tabs()).find((tab) => tab.id === mail.id).awayFromHome, 'Moving within the home site counted as leaving it.')
+      await (await ctx.page('/mail/inbox')).evaluate(`location.href = '${elsewhere}/article'`)
+      await ctx.wait(`${host}.getTabs().then((t) => t.find((x) => x.id === ${JSON.stringify(mail.id)})?.awayFromHome === true)`, 5000, 'the pinned tab to know it left home')
+      await ctx.wait(`!!document.querySelector('.tab-rail-home')`, 3000, 'the way back home to show')
+      await ctx.click('.tab-rail-home')
+      await ctx.wait(`${host}.getTabs().then((t) => t.find((x) => x.id === ${JSON.stringify(mail.id)})?.url === ${JSON.stringify(`${origin}/mail`)})`, 5000, 'the pinned tab to go home')
+      // ⌘W on a pinned tab unloads it: it stays in place, asleep, back at home; the next tab shows.
+      await (await ctx.page('/mail')).evaluate(`location.href = '${elsewhere}/elsewhere'`)
+      await ctx.delay(1500)
+      const before = (await tabs()).length
+      await ctx.keyInPage('/elsewhere', 'W', ['meta'])
+      await ctx.delay(1200)
+      const after = await tabs()
+      pinned = after.find((tab) => tab.id === mail.id)
+      expect(after.length === before, `⌘W on a pinned tab closed it (${before} → ${after.length} tabs).`)
+      expect(pinned.asleep && !pinned.active && pinned.url === `${origin}/mail`, `After ⌘W the pinned tab is ${JSON.stringify(pinned)}.`)
+      expect(!(await ctx.main(`electron.webContents.getAllWebContents().some((c) => c.getURL().includes('/elsewhere'))`)), 'The pinned tab\'s page is still loaded after ⌘W.')
+      await ctx.wait(`!!document.querySelector('.tab-rail-item.is-asleep')`, 3000, 'the unloaded tab to look asleep')
+      // Its next click opens it at home.
+      await ctx.evaluate(`${host}.activateTab(${JSON.stringify(mail.id)}).then(() => true)`)
+      await ctx.wait(`${host}.getTabs().then((t) => { const x = t.find((y) => y.id === ${JSON.stringify(mail.id)}); return x.active && !x.asleep })`, 5000, 'the pinned tab to wake')
+      await ctx.wait(`true`, 100, '')
+      await ctx.delay(1200)
+      expect(await ctx.main(`electron.webContents.getAllWebContents().some((c) => c.getURL() === ${JSON.stringify(`${origin}/mail`)})`), 'The pinned tab did not load its home when clicked.')
+      // Saved for the next launch with its home.
+      await ctx.delay(500)
+      const saved = JSON.parse(readFileSync(join(ctx.profile, 'browser-state.v1.json'), 'utf8'))
+      expect(saved.tabs.some((tab) => tab.pinned && tab.home === `${origin}/mail`), 'The pinned tab\'s home was not saved.')
+      await axeAudit(ctx, 'the tab rail with a pinned tab', '.tab-rail')
+      // Unpinning forgets the home.
+      await ctx.evaluate(`${host}.setTabPinned(${JSON.stringify(mail.id)}, false).then(() => true)`)
+      await ctx.delay(400)
+      expect(!(await tabs()).find((tab) => tab.id === mail.id).home, 'Unpinning kept the home.')
+      return 'Pinned at home; same-site moves stay home, another site offers the way back; ⌘W unloads it in place and it reopens at home; saved with its home.'
+    } finally {
+      server.close()
+    }
+  },
+  async TAB_SLEEP(ctx) {
+    // Started with a "minute" of 200 ms (TAB_SLEEP.env below), so "15 minutes" is 3 seconds.
+    const { server, origin } = await tabSite()
+    const host = 'window.intoponet.browserHost'
+    const tabs = async () => JSON.parse(await ctx.evaluate(`${host}.getTabs().then((t) => JSON.stringify(t))`))
+    const rendererMemory = () => ctx.main(`(() => {
+      const pids = new Set(electron.webContents.getAllWebContents().filter((c) => /^https?:/.test(c.getURL()) && c.getURL().includes('127.0.0.1')).map((c) => c.getOSProcessId()))
+      return electron.app.getAppMetrics().filter((m) => pids.has(m.pid)).reduce((sum, m) => sum + m.memory.workingSetSize, 0)
+    })()`)
+    try {
+      await ctx.evaluate(`window.intoponet.browsing.setTabSleep('never').then(() => true)`)
+      // A tab two pages deep, scrolled down; a tab with typed text; eight more; and the one in front.
+      await openPage(ctx, `${origin}/first`, 1500)
+      await (await ctx.page('/first')).evaluate(`location.href = '${origin}/second'`)
+      await ctx.delay(1500)
+      await (await ctx.page('/second')).evaluate(`window.scrollTo(0, 1400); true`)
+      await openPage(ctx, `${origin}/typed`, 1500)
+      await (await ctx.page('/typed')).evaluate(`document.getElementById('field').value = 'half a sentence'; true`)
+      for (let i = 0; i < 8; i += 1) await openPage(ctx, `${origin}/other-${i}`, 700)
+      await openPage(ctx, `${origin}/front`, 2000)
+      const [deep, typed] = await tabs()
+      const awake = await rendererMemory()
+      // Sleep after "15 minutes".
+      await ctx.evaluate(`window.intoponet.browsing.setTabSleep('15m').then(() => true)`)
+      await ctx.wait(`${host}.getTabs().then((t) => t.filter((x) => x.asleep).length >= 9)`, 20_000, 'the background tabs to sleep')
+      const now = await tabs()
+      const state = (id) => now.find((tab) => tab.id === id)
+      expect(state(deep.id).asleep, 'The background tab did not sleep.')
+      expect(!state(typed.id).asleep, 'A tab with typed text was put to sleep.')
+      expect(!now.find((tab) => tab.active).asleep, 'The tab in front was put to sleep.')
+      expect(!(await ctx.main(`electron.webContents.getAllWebContents().some((c) => c.getURL().includes('/second'))`)), 'A sleeping tab\'s page is still loaded.')
+      await ctx.wait(`document.querySelectorAll('.tab-rail-item.is-asleep').length >= 9`, 3000, 'sleeping tabs to look asleep')
+      await ctx.delay(1500)
+      const asleep = await rendererMemory()
+      expect(asleep <= awake / 2, `Memory of the tabs' pages went from ${Math.round(awake / 1024)} MB to ${Math.round(asleep / 1024)} MB, not half.`)
+      // Shown again, it wakes where it was: same page, back list and scroll position.
+      await ctx.evaluate(`${host}.activateTab(${JSON.stringify(deep.id)}).then(() => true)`)
+      await ctx.wait(`${host}.getTabs().then((t) => { const x = t.find((y) => y.id === ${JSON.stringify(deep.id)}); return x.active && !x.asleep && x.url.endsWith('/second') })`, 8000, 'the tab to wake on its page')
+      await ctx.delay(1500)
+      const page = await ctx.page('/second')
+      const scroll = await page.evaluate('window.scrollY')
+      expect(Math.abs(scroll - 1400) < 60, `The woken tab is scrolled to ${scroll}, not where it was (1400).`)
+      const panel = JSON.parse(await ctx.evaluate(`${host}.getState().then((s) => JSON.stringify(s))`))
+      expect(panel.canGoBack, 'The woken tab lost its back history.')
+      await ctx.evaluate(`window.intoponet.browsing.setTabSleep('never').then(() => true)`)
+      return `9 background tabs slept (typed text and the front tab stayed awake); their pages' memory ${Math.round(awake / 1024)} MB → ${Math.round(asleep / 1024)} MB; woke on the same page, scroll and back list.`
+    } finally {
+      server.close()
+    }
+  },
+  async RECENT_TABS(ctx) {
+    const { server, origin } = await tabSite()
+    const host = 'window.intoponet.browserHost'
+    const tabs = async () => JSON.parse(await ctx.evaluate(`${host}.getTabs().then((t) => JSON.stringify(t))`))
+    const activeTitle = async () => (await tabs()).find((tab) => tab.active)?.title
+    const inPage = (urlPart, input) => ctx.main(`(() => {
+      const page = electron.webContents.getAllWebContents().find((c) => c.getURL().includes(${JSON.stringify(urlPart)}))
+      if (!page) return false
+      page.sendInputEvent(${JSON.stringify(input)})
+      return true
+    })()`)
+    const ctrlTab = (urlPart, shift = false) => inPage(urlPart, { type: 'keyDown', keyCode: 'Tab', modifiers: shift ? ['control', 'shift'] : ['control'] })
+    // ⌃'s release as the page sees it (the browser's own key events are not sent for a lone modifier).
+    const releaseCtrl = async (urlPart) => (await ctx.page(urlPart)).evaluate(`dispatchEvent(new KeyboardEvent('keyup', { key: 'Control', code: 'ControlLeft' })); true`)
+    const switcherShowing = () => ctx.main(`electron.BrowserWindow.getAllWindows()[0].contentView.children.some((v) => v.webContents?.getURL().startsWith('data:text/html'))`)
+    const announced = () => ctx.evaluate(`[...document.querySelectorAll('[aria-live=assertive]')].map((e) => e.textContent).join(' ')`)
+    try {
+      await ctx.evaluate(`window.intoponet.browsing.setTabSwitchOrder('recent').then(() => true)`)
+      for (const name of ['a', 'b', 'c', 'd']) await openPage(ctx, `${origin}/${name}`, 900)
+      const [a, b] = await tabs()
+      // Use b, then d again: most recent first is now d, b, c, a.
+      await ctx.evaluate(`${host}.activateTab(${JSON.stringify(b.id)}).then(() => true)`)
+      await ctx.delay(400)
+      const d = (await tabs())[3]
+      await ctx.evaluate(`${host}.activateTab(${JSON.stringify(d.id)}).then(() => true)`)
+      await ctx.delay(600)
+      // Hold ⌃ and press Tab: the switcher opens on b (the last tab used), shown over the page and announced.
+      await ctrlTab('/d')
+      await ctx.wait(`[...document.querySelectorAll('[aria-live=assertive]')].some((e) => e.textContent.includes('Page /b'))`, 3000, 'the switcher to announce the previous tab')
+      for (let i = 0; i < 20 && !(await switcherShowing()); i += 1) await ctx.delay(100)
+      expect(await switcherShowing(), 'The switcher is not drawn over the page.')
+      expect(await activeTitle() === 'Page /d', 'The tab changed before ⌃ was released.')
+      await ctrlTab('/d')
+      await ctx.wait(`[...document.querySelectorAll('[aria-live=assertive]')].some((e) => e.textContent.includes('Page /c, tab 3 of 4'))`, 3000, 'Tab to move to the next most recent')
+      await ctrlTab('/d', true)
+      await ctx.wait(`[...document.querySelectorAll('[aria-live=assertive]')].some((e) => e.textContent.includes('Page /b'))`, 3000, '⌃⇧Tab to move back')
+      // Releasing ⌃ shows it.
+      await releaseCtrl('/d')
+      await ctx.delay(700)
+      expect(await activeTitle() === 'Page /b', `Releasing ⌃ showed ${await activeTitle()}, not the highlighted tab.`)
+      expect(!(await switcherShowing()), 'The switcher stayed after ⌃ was released.')
+      // A quick ⌃Tab goes back to the tab used just before.
+      await ctrlTab('/b')
+      await releaseCtrl('/b')
+      await ctx.delay(700)
+      expect(await activeTitle() === 'Page /d', `A quick ⌃Tab went to ${await activeTitle()}, not the previous tab.`)
+      // Escape keeps the current tab.
+      await ctrlTab('/d')
+      await ctx.delay(300)
+      await inPage('/d', { type: 'keyDown', keyCode: 'Escape', modifiers: ['control'] })
+      await ctx.delay(300)
+      await releaseCtrl('/d')
+      await ctx.delay(600)
+      expect(await activeTitle() === 'Page /d', `After Escape the tab is ${await activeTitle()}.`)
+      expect(!(await switcherShowing()), 'Escape did not close the switcher.')
+      // With the app's own interface focused, releasing ⌃ there lands too.
+      await ctx.evaluate(`${host}.cycleTabs('next').then(() => true)`)
+      await ctx.delay(300)
+      await ctx.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Control', code: 'ControlLeft', windowsVirtualKeyCode: 17, modifiers: 0 })
+      await ctx.delay(700)
+      expect(await activeTitle() === 'Page /b', `Releasing ⌃ in the app interface showed ${await activeTitle()}.`)
+      // In tab-bar order, ⌃Tab moves to the neighbour at once.
+      await ctx.evaluate(`window.intoponet.browsing.setTabSwitchOrder('strip').then(() => true)`)
+      await ctrlTab('/b')
+      await ctx.delay(600)
+      expect(await activeTitle() === 'Page /c', `In tab-bar order ⌃Tab went to ${await activeTitle()}.`)
+      expect(!(await switcherShowing()), 'The switcher opened in tab-bar order.')
+      void a
+      return 'Hold ⌃, Tab and ⌃⇧Tab step most-recent-first over the page (announced); release shows it, a quick ⌃Tab goes back, Escape keeps the tab; tab-bar order unchanged.'
+    } finally {
+      server.close()
+    }
+  },
+  async SIDEBAR_TABS(ctx) {
+    const { server, origin } = await tabSite()
+    const host = 'window.intoponet.browserHost'
+    const tabs = async () => JSON.parse(await ctx.evaluate(`${host}.getTabs().then((t) => JSON.stringify(t))`))
+    const pageBounds = async () => JSON.parse(await ctx.main(`JSON.stringify(electron.BrowserWindow.getAllWindows()[0].contentView.children.find((v) => v.webContents?.getURL().startsWith('http'))?.getBounds() ?? null)`))
+    const sidebar = async () => JSON.parse(await ctx.evaluate(`${host}.getTabSidebar().then((s) => JSON.stringify(s))`))
+    const railShown = () => ctx.evaluate(`!!document.querySelector('.tab-rail')`)
+    try {
+      for (const name of ['mail', 'news', 'notes']) await openPage(ctx, `${origin}/${name}`, 1000)
+      const [mail] = await tabs()
+      await ctx.evaluate(`${host}.setTabPinned(${JSON.stringify(mail.id)}, true).then(() => true)`)
+      // Kept open: Pinned and Open sections, the New tab row at the end.
+      await ctx.click('button[aria-label="Pin tabs open"]')
+      await ctx.wait(`document.querySelector('.tab-rail.is-pinned') && [...document.querySelectorAll('.tab-rail-section')].map((e) => e.textContent).join(',') === 'Pinned,Open'`, 3000, 'the sidebar to show Pinned and Open sections')
+      // It stays in full width, and the page starts after it; the bottom dock lists no tabs.
+      await ctx.click('button[aria-label="Full width"]')
+      await ctx.delay(1200)
+      expect(await railShown(), 'The tab sidebar went away in full width.')
+      const rail = JSON.parse(await ctx.evaluate(`JSON.stringify(document.querySelector('.tab-rail').getBoundingClientRect())`))
+      let bounds = await pageBounds()
+      expect(bounds && bounds.x >= rail.right, `In full width the page (x ${bounds?.x}) is under the sidebar (right ${rail.right}).`)
+      expect(!(await ctx.evaluate(`!!document.querySelector('.tab-dock [role="tab"]')`)), 'Tabs are shown twice (sidebar and dock).')
+      // Its edge resizes it, and the width is kept.
+      const edge = JSON.parse(await ctx.evaluate(`JSON.stringify(document.querySelector('.tab-rail-resize').getBoundingClientRect())`))
+      const at = { x: edge.x + edge.width / 2, y: edge.y + 80 }
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: at.x, y: at.y })
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: at.x, y: at.y, button: 'left', buttons: 1, clickCount: 1 })
+      for (let step = 1; step <= 6; step += 1) {
+        await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: at.x + step * 15, y: at.y, button: 'left', buttons: 1 })
+        await ctx.delay(30)
+      }
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: at.x + 90, y: at.y, button: 'left', buttons: 0, clickCount: 1 })
+      await ctx.delay(900)
+      const resized = await sidebar()
+      expect(resized.mode === 'open' && resized.width >= 310, `Dragging the edge left the sidebar ${JSON.stringify(resized)}.`)
+      expect((await pageBounds()).x > bounds.x + 60, 'The page did not make room for the wider sidebar.')
+      // ⌃⌘S hides it (the page takes the whole width)…
+      await ctx.keyInPage('/notes', 'S', ['control', 'meta'])
+      await ctx.wait(`!document.querySelector('.tab-rail')`, 3000, '⌃⌘S to hide the sidebar')
+      await ctx.delay(900)
+      expect((await sidebar()).mode === 'hidden', 'The hidden sidebar was not saved.')
+      expect((await pageBounds()).x <= 2, 'With the sidebar hidden the page does not start at the window edge.')
+      // …and resting the pointer at the left edge brings it back over the page, until the pointer leaves.
+      await ctx.main(`(() => { const p = electron.webContents.getAllWebContents().find((c) => c.getURL().includes('/notes')); for (const x of [40, 3, 2]) p.sendInputEvent({ type: 'mouseMove', x, y: 300 }); return true })()`)
+      await ctx.wait(`!!document.querySelector('.tab-rail.is-open')`, 3000, 'the left edge to bring the sidebar back')
+      await ctx.delay(600)
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 1100, y: 400 })
+      await ctx.wait(`!document.querySelector('.tab-rail')`, 3000, 'the sidebar to go once the pointer left')
+      // ⌃⌘S shows it again as it was; it is kept for the next launch.
+      await ctx.keyInPage('/notes', 'S', ['control', 'meta'])
+      await ctx.wait(`!!document.querySelector('.tab-rail.is-pinned')`, 3000, '⌃⌘S to show the sidebar again')
+      await ctx.delay(700)
+      const saved = JSON.parse(readFileSync(join(ctx.profile, 'browser-state.v1.json'), 'utf8'))
+      expect(saved.sidebar?.mode === 'open' && saved.sidebar.width === resized.width, `Saved sidebar: ${JSON.stringify(saved.sidebar)}.`)
+      // Keyboard: arrows move between tabs in it.
+      await ctx.evaluate(`document.querySelector('.tab-rail [role="tab"][tabindex="0"]').focus(); true`)
+      await ctx.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', key: 'ArrowDown', code: 'ArrowDown', windowsVirtualKeyCode: 40 })
+      await ctx.delay(200)
+      expect(await ctx.evaluate(`document.activeElement?.getAttribute('role') === 'tab'`), 'Arrow keys do not move between tabs in the sidebar.')
+      await axeAudit(ctx, 'the tab sidebar in full width', '.tab-rail')
+      await ctx.click('button[aria-label="Exit full width"]').catch(() => undefined)
+      return `Kept open in full width with Pinned and Open sections (page after it, no tabs twice); resized to ${resized.width}px and kept; ⌃⌘S hid it, the left edge peeked it back, ⌃⌘S restored it; keyboard and axe clean.`
+    } finally {
+      server.close()
+    }
+  },
+  async TOUR(ctx) {
+    // Every step's spotlight must find what it shows (a renamed button would leave the tour pointing at nothing).
+    await ctx.waitForNews()
+    await ctx.wait(`!!document.querySelector('.story-highest')`, 60_000, 'story mountains to rise')
+    await ctx.click('.settings-button')
+    await ctx.click('button', 'Take the tour')
+    await ctx.wait(`!!document.querySelector('.tour-card')`, 5000, 'the tour to start')
+    const total = Number((await ctx.evaluate(`document.querySelector('.tour-count').textContent`)).split(' of ')[1])
+    const missed = []
+    for (let step = 1; step <= total; step += 1) {
+      await ctx.wait(`document.querySelector('.tour-count')?.textContent.startsWith('${step} of') && !document.querySelector('.tour-next')?.textContent.includes('Showing')`, 45_000, `tour step ${step} to finish showing`)
+      await ctx.delay(700)
+      const state = JSON.parse(await ctx.evaluate(`JSON.stringify({ title: document.getElementById('tour-title').textContent, lit: !!document.querySelector('.tour-spotlight'), centred: !!document.querySelector('.tour-dim') })`))
+      const centred = ['A browser with the whole world in view', 'The everyday things, done carefully'].includes(state.title)
+      if (!centred && !state.lit) missed.push(`${step}. ${state.title}`)
+      if (['The news rises as mountains', 'Follow a story around the world', 'Tabs down the side, in every view', 'Save any page as a clean PDF'].includes(state.title)) await ctx.shot(`step-${step}`)
+      if (step < total) await ctx.click('.tour-next')
+    }
+    expect(missed.length === 0, `These tour steps point at nothing: ${missed.join('; ')}.`)
+    await ctx.click('.tour-next')
+    await ctx.wait(`!document.querySelector('.tour-card') && !document.querySelector('.story-panel')`, 5000, 'the tour to finish and tidy up')
+    return `All ${total} steps shown, each spotlight on what it describes; the tour put everything back at the end.`
+  },
 }
+
+checks.TAB_SLEEP.env = { INTOPONET_TAB_SLEEP_MINUTE_MS: '200' }

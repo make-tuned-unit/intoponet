@@ -8,7 +8,9 @@ import type {
   PageTabSnapshot,
   ProtectionSnapshot,
   PublicFieldStatus,
+  TabSidebarState,
 } from '@intoponet/browser-api'
+import { TAB_SIDEBAR_WIDTH } from '@intoponet/browser-api'
 import { demoFieldSnapshot, parseFieldSnapshot, snapshotLabel } from '@intoponet/field-snapshot'
 import type { FieldSnapshot } from '@intoponet/field-snapshot'
 import { latLonToOrbit, syntheticTopicGraph } from '@intoponet/frequency-field'
@@ -35,6 +37,7 @@ import {
   FolderPlus,
   Globe2,
   KeyRound,
+  Check,
   LockKeyhole,
   EyeOff,
   Library,
@@ -69,7 +72,7 @@ import { learnedPaywalls, mayRememberSite, rememberPaywall } from './access/lear
 import { hostIsPaywalled } from '../../shared/news/paywall'
 import { hostOf } from './favicons'
 import { formatMegabytes, languageName, modelFor, useTranslate } from './translate/useTranslate'
-import { FormEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { FormEvent, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import {
   defaultAnchor,
   readExplorationState,
@@ -425,14 +428,44 @@ export function App() {
   const [chromeHeld, setChromeHeld] = useState(false)
   const [moreToolsOpen, setMoreToolsOpen] = useState(false)
   const [railExpanded, setRailExpanded] = useState(false)
-  const [railPinned, setRailPinnedState] = useState(() => {
-    try { return localStorage.getItem('intoponet.tab-rail.pinned.v1') === '1' } catch { return false }
-  })
-  const setRailPinned = (pinned: boolean): void => {
-    setRailPinnedState(pinned)
-    if (!pinned) setRailExpanded(false)
-    try { localStorage.setItem('intoponet.tab-rail.pinned.v1', pinned ? '1' : '0') } catch { /* convenience only */ }
+  /**
+   * The tab sidebar: icons (expanding on hover), kept open (also in full width), or hidden (resting the
+   * pointer at the window's left edge brings it back over the page until the pointer leaves). Kept by main.
+   */
+  const [sidebar, setSidebarState] = useState<TabSidebarState>({ mode: 'icons', width: TAB_SIDEBAR_WIDTH.initial })
+  /** The mode to return to when ⌃⌘S shows a hidden sidebar again. */
+  const sidebarShownMode = useRef<'icons' | 'open'>('icons')
+  const [railPeek, setRailPeek] = useState(false)
+  const railPinned = sidebar.mode === 'open'
+  const setSidebar = (next: TabSidebarState): void => {
+    setSidebarState(next)
+    if (next.mode !== 'hidden') sidebarShownMode.current = next.mode
+    if (next.mode !== 'open') setRailExpanded(false)
+    setRailPeek(false)
+    void window.intoponet.browserHost.setTabSidebar(next)
   }
+  const setRailPinned = (pinned: boolean): void => setSidebar({ ...sidebar, mode: pinned ? 'open' : 'icons' })
+  const toggleSidebar = (): void => setSidebar({ ...sidebar, mode: sidebar.mode === 'hidden' ? sidebarShownMode.current : 'hidden' })
+  useEffect(() => {
+    let mounted = true
+    void window.intoponet.browserHost.getTabSidebar().then((saved) => {
+      if (!mounted) return
+      if (saved) {
+        setSidebarState(saved)
+        if (saved.mode !== 'hidden') sidebarShownMode.current = saved.mode
+        return
+      }
+      // Earlier builds kept only "Keep open" in this window's storage: carried over once.
+      let pinned = false
+      try { pinned = localStorage.getItem('intoponet.tab-rail.pinned.v1') === '1' } catch { /* none */ }
+      if (pinned) {
+        setSidebarState({ mode: 'open', width: TAB_SIDEBAR_WIDTH.initial })
+        sidebarShownMode.current = 'open'
+        void window.intoponet.browserHost.setTabSidebar({ mode: 'open', width: TAB_SIDEBAR_WIDTH.initial })
+      }
+    }, () => undefined)
+    return () => { mounted = false }
+  }, [])
   const { records: captureRecords, error: captureStoreError } = useCaptures()
   const [captureSession, setCaptureSession] = useState<{ pending: PendingCapture; mode: CaptureMode } | null>(null)
   const [viewerId, setViewerId] = useState<string | null>(null)
@@ -469,10 +502,24 @@ export function App() {
   const [tabs, setTabs] = useState<PageTabSnapshot[]>([])
   const [fullWidth, setFullWidth] = useState(false)
   const [notice, setNotice] = useState('')
+  /** Shown in the address field for a moment after the page address is copied (a notice would sit under the page). */
+  const [addressCopied, setAddressCopied] = useState('')
+  /** The recent-tabs switcher (drawn by main over the page): announced here, and ended by ⌃ or Escape from the shell. */
+  const [tabSwitcherAnnouncement, setTabSwitcherAnnouncement] = useState('')
+  const tabSwitcherOpen = useRef(false)
+  /** Settings › ⌃Tab order (also orders open tabs in the address bar). */
+  const [tabSwitchOrder, setTabSwitchOrder] = useState<'strip' | 'recent'>('strip')
+  useEffect(() => {
+    let mounted = true
+    void window.intoponet.browsing.settings().then((settings) => { if (mounted) setTabSwitchOrder(settings.tabSwitchOrder) }, () => undefined)
+    const unsubscribe = window.intoponet.browsing.subscribe((event) => { if (event.type === 'settings' && mounted) setTabSwitchOrder(event.settings.tabSwitchOrder) })
+    return () => { mounted = false; unsubscribe() }
+  }, [])
+  const addressCopiedTimer = useRef<number | null>(null)
   const [error, setError] = useState('')
   const [libraryReadError, setLibraryReadError] = useState('')
   const panelBody = useRef<HTMLDivElement>(null)
-  const shortcutHandlers = useRef({ find: () => {}, findAgain: (_forward: boolean) => {}, openSettings: () => {}, bookmark: () => {}, newTab: () => {}, focusAddress: () => {}, toggleBookmarksPane: () => {}, capture: () => {}, togglePrivate: () => {}, absorbSelection: () => {} })
+  const shortcutHandlers = useRef({ find: () => {}, findAgain: (_forward: boolean) => {}, openSettings: () => {}, bookmark: () => {}, newTab: () => {}, focusAddress: () => {}, toggleBookmarksPane: () => {}, capture: () => {}, togglePrivate: () => {}, absorbSelection: () => {}, toggleSidebar: () => {} })
   const tabStrip = useRef<HTMLDivElement>(null)
   const [tabEdges, setTabEdges] = useState({ overflow: false, atStart: true, atEnd: true })
   const input = useRef<HTMLInputElement>(null)
@@ -652,7 +699,30 @@ export function App() {
   useEffect(() => {
     const unsubscribe = window.intoponet.browserHost.subscribe((event) => {
       if (event.type === 'tab-rail-state') {
-        if (!event.expanded) setRailExpanded(false)
+        if (!event.expanded) {
+          setRailExpanded(false)
+          setRailPeek(false)
+        }
+        return
+      }
+      if (event.type === 'tab-sidebar-edge') {
+        setRailPeek(true)
+        return
+      }
+      if (event.type === 'tab-switcher') {
+        tabSwitcherOpen.current = event.open
+        setTabSwitcherAnnouncement(event.open && event.selected ? `${event.selected}, tab ${event.position ?? 1} of ${event.count ?? 1}` : '')
+        return
+      }
+      if (event.type === 'address-copied') {
+        setAddressCopied(event.cleaned ? 'Address copied · tracking removed' : 'Address copied')
+        if (addressCopiedTimer.current !== null) window.clearTimeout(addressCopiedTimer.current)
+        // In full width the toolbar is tucked away: bring it out so the confirmation is seen, then tuck it again.
+        setChromeRevealed(true)
+        addressCopiedTimer.current = window.setTimeout(() => {
+          setAddressCopied('')
+          if (!document.querySelector('.browser-chrome:hover, .browser-chrome:focus-within')) setChromeRevealed(false)
+        }, 1_800)
         return
       }
       if (event.type === 'chrome-state') {
@@ -674,6 +744,7 @@ export function App() {
         else if (event.action === 'capture') shortcutHandlers.current.capture()
         else if (event.action === 'toggle-private') shortcutHandlers.current.togglePrivate()
         else if (event.action === 'absorb-selection') shortcutHandlers.current.absorbSelection()
+        else if (event.action === 'toggle-tab-sidebar') shortcutHandlers.current.toggleSidebar()
         else shortcutHandlers.current.toggleBookmarksPane()
         return
       }
@@ -904,8 +975,33 @@ export function App() {
 
   // An expanded (unpinned) tab rail collapses when the pointer enters the page.
   useEffect(() => {
-    void window.intoponet.browserHost.setTabRailExpanded(railExpanded && !railPinned)
-  }, [railExpanded, railPinned])
+    void window.intoponet.browserHost.setTabRailExpanded((railExpanded || railPeek) && !railPinned)
+  }, [railExpanded, railPeek, railPinned])
+
+  // A hidden sidebar comes back when the pointer rests at the window's left edge (main watches the
+  // edge when a full-width page covers it), and goes again once the pointer moves well away from it.
+  useEffect(() => {
+    if (sidebar.mode !== 'hidden' || !panel.isVisible || tabs.length === 0) return
+    let timer: number | null = null
+    const onMove = (event: MouseEvent): void => {
+      if (railPeek) {
+        const rail = document.querySelector('.tab-rail')?.getBoundingClientRect()
+        if (rail && event.clientX > rail.right + 24) setRailPeek(false)
+        return
+      }
+      if (event.clientX <= 6) {
+        timer ??= window.setTimeout(() => setRailPeek(true), 300)
+      } else if (timer !== null) {
+        window.clearTimeout(timer)
+        timer = null
+      }
+    }
+    document.addEventListener('mousemove', onMove)
+    return () => {
+      document.removeEventListener('mousemove', onMove)
+      if (timer !== null) window.clearTimeout(timer)
+    }
+  }, [sidebar.mode, panel.isVisible, tabs.length, railPeek])
 
   // Keep Finder capture folders named after the bookmark groups.
   useEffect(() => {
@@ -1012,6 +1108,26 @@ export function App() {
     requestAnimationFrame(() => findInput.current?.focus())
   }
 
+  // The recent-tabs switcher with the shell focused: releasing ⌃ shows the highlighted tab, Escape keeps this one.
+  useEffect(() => {
+    const onKeyUp = (event: KeyboardEvent): void => {
+      if (tabSwitcherOpen.current && event.key === 'Control') void window.intoponet.browserHost.tabSwitcher('commit')
+    }
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (tabSwitcherOpen.current && event.key === 'Escape') {
+        event.preventDefault()
+        event.stopImmediatePropagation()
+        void window.intoponet.browserHost.tabSwitcher('cancel')
+      }
+    }
+    window.addEventListener('keyup', onKeyUp)
+    window.addEventListener('keydown', onKeyDown, true)
+    return () => {
+      window.removeEventListener('keyup', onKeyUp)
+      window.removeEventListener('keydown', onKeyDown, true)
+    }
+  }, [])
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
       if (pinEditor || captureSession || viewerId) return
@@ -1023,11 +1139,10 @@ export function App() {
         return
       }
       // ⌘T, ⌘W, ⌘L, ⌘F, ⌘G, ⌘D, ⌘P, ⌘R, ⌘[ ⌘], zoom, ⌃Tab, ⌘1–9…: menu bar items (main/appMenu.ts).
-      if (meta && event.shiftKey && key === 'c' && panel.url) {
+      // ⇧⌘C (⌥⇧⌘C: exactly as it is) while the shell has focus; in a page, main handles the key.
+      if (meta && event.shiftKey && event.code === 'KeyC' && panel.url && !isTypingTarget(event.target)) {
         event.preventDefault()
-        void navigator.clipboard.writeText(panel.url).then(() => {
-          setNotice('Copied page address')
-        })
+        void window.intoponet.browserHost.copyPageAddress(!event.altKey)
       }
       if (!meta && !panel.isVisible && event.key === '[') {
         event.preventDefault()
@@ -1362,7 +1477,7 @@ export function App() {
     })
   }
 
-  shortcutHandlers.current = { find: () => { if (panel.isVisible && !panel.isStartPage) openFind() }, findAgain: (forward) => { if (!panel.isVisible || panel.isStartPage) return; if (findOpen && findQuery.trim()) runFind(true, forward); else openFind() }, openSettings: () => setSettingsOpen(true), bookmark: () => { if (panel.isVisible && panel.url) toggleBookmark() }, newTab: openNewTab, focusAddress, toggleBookmarksPane, capture: () => void startCapture('image'), togglePrivate: () => setPrivateMode(!(privacyState?.privateMode ?? false)), absorbSelection: () => startAbsorb('selection') }
+  shortcutHandlers.current = { find: () => { if (panel.isVisible && !panel.isStartPage) openFind() }, findAgain: (forward) => { if (!panel.isVisible || panel.isStartPage) return; if (findOpen && findQuery.trim()) runFind(true, forward); else openFind() }, openSettings: () => setSettingsOpen(true), bookmark: () => { if (panel.isVisible && panel.url) toggleBookmark() }, newTab: openNewTab, focusAddress, toggleBookmarksPane, capture: () => void startCapture('image'), togglePrivate: () => setPrivateMode(!(privacyState?.privateMode ?? false)), absorbSelection: () => startAbsorb('selection'), toggleSidebar }
 
   const saveCurrentToGroup = (groupId: string): void => {
     if (!panel.url) return
@@ -1847,9 +1962,7 @@ export function App() {
 
   const copyPageAddress = (): void => {
     if (!panel.url) return
-    void navigator.clipboard.writeText(panel.url).then(() => {
-      setNotice('Copied page address')
-    })
+    void window.intoponet.browserHost.copyPageAddress(true)
   }
 
   const setSiteProtection = (enabled: boolean): void => {
@@ -2317,6 +2430,7 @@ export function App() {
     places: placeMatch,
     topics: launcherTopics,
     privateMode: (privacyState?.privateMode ?? false) || panel.isPrivate === true,
+    recentTabs: tabSwitchOrder === 'recent',
     onPick: pickOmnibox,
     onDismiss: () => setPlacesDismissed(true),
     onPasteAndGo: (text) => {
@@ -2408,6 +2522,8 @@ export function App() {
   // What the tour can do with the app. Nothing here saves, shares or absorbs anything.
   const tourControls: TourControls = {
     reset: () => {
+      setPinnedStoryId(null)
+      setPeakIndex(-1)
       if (olds) closeOlds()
       setBookmarksOpen(false)
       setKnowledgeView(null)
@@ -2444,6 +2560,25 @@ export function App() {
       flyToPlace(place)
       input.current?.blur()
       return true
+    },
+    findHighestPeak: async () => {
+      if (!storyMode || !storyStories.length) return false
+      findPeak(0)
+      for (let i = 0; i < 30 && !document.querySelector('.story-panel'); i += 1) await new Promise((resolve) => setTimeout(resolve, 100))
+      return true
+    },
+    closeStory: () => { setPinnedStoryId(null); setPeakIndex(-1) },
+    typeInAddressBar: async (text) => {
+      if (!text) {
+        setQuery('')
+        input.current?.blur()
+        return
+      }
+      input.current?.focus()
+      for (let i = 1; i <= text.length; i += 1) {
+        setQuery(text.slice(0, i))
+        await new Promise((resolve) => setTimeout(resolve, 120))
+      }
     },
     showList: (view) => setListView(view),
     openWorldStory: async () => {
@@ -2483,11 +2618,17 @@ export function App() {
       setBookmarksOpen(false)
       setKnowledgeView(null)
       setLibraryOpen(false)
+      setPinnedStoryId(null)
+      setPeakIndex(-1)
+      setQuery('')
       setWorldStory(null)
     },
   }
 
-  const railVisible = panel.isVisible && !fullWidth && tabs.length > 0 && !fieldLabOpen
+  // Kept open, the sidebar stays in full width too (the bottom dock then shows no tabs); hidden, only a peek shows it.
+  const railShown = sidebar.mode === 'hidden' ? railPeek : !fullWidth || sidebar.mode === 'open' || railPeek
+  const railVisible = panel.isVisible && tabs.length > 0 && !fieldLabOpen && railShown
+  const railOpen = railVisible && (railExpanded || railPinned || railPeek)
   const startPageBookmarks = useMemo(() => startBookmarks(bookmarks, recents), [bookmarks, recents])
   const startPageRecents = useMemo(() => startRecents(recents, { isPrivate: panel.isPrivate === true }), [recents, panel.isPrivate])
   const startPageNews = useMemo(() => startNews(newsDigest), [newsDigest])
@@ -2498,7 +2639,7 @@ export function App() {
   }
 
   return (
-    <main className={`app-shell${panel.isVisible ? ' page-open' : ''}${fullWidth && panel.isVisible ? ' browser-full' : ''}${tabs.length > 0 ? ' tabs-open' : ''}${bookmarksOpen ? ' bookmarks-open' : ''}${railVisible ? ' rail-on' : ''}${railVisible && (railExpanded || railPinned) ? ' rail-open' : ''}`}>
+    <main className={`app-shell${panel.isVisible ? ' page-open' : ''}${fullWidth && panel.isVisible ? ' browser-full' : ''}${tabs.length > 0 ? ' tabs-open' : ''}${bookmarksOpen ? ' bookmarks-open' : ''}${railVisible ? ' rail-on' : ''}${railOpen ? ' rail-open' : ''}`} style={{ '--rail-open-width': `${sidebar.width}px` } as CSSProperties}>
       {!fieldLabOpen && <FrequencyField
         paused={reduceMotion || (fullWidth && panel.isVisible)}
         panelOpen={panel.isVisible}
@@ -2581,7 +2722,7 @@ export function App() {
         }}
       />}
       <TabDock
-        tabs={tabs}
+        tabs={railVisible ? [] : tabs}
         fullWidth={fullWidth}
         visible={panel.isVisible}
         currentUrl={panel.url}
@@ -2593,10 +2734,16 @@ export function App() {
       <TabRail
         tabs={tabs}
         visible={railVisible}
-        expanded={railExpanded}
+        expanded={railExpanded || railPeek}
         pinned={railPinned}
-        onExpandedChange={setRailExpanded}
+        width={sidebar.width}
+        onExpandedChange={(expanded) => {
+          setRailExpanded(expanded)
+          if (!expanded) setRailPeek(false)
+        }}
         onPinnedChange={setRailPinned}
+        onHide={toggleSidebar}
+        onWidthChange={(width) => setSidebar({ ...sidebar, width })}
         onNewTab={openNewTab}
       />
       <BookmarkPane
@@ -3606,10 +3753,17 @@ export function App() {
               }
               onClick={fillLauncherFromPage}
             >
-              {isSecureOrigin ? <LockKeyhole size={13} /> : <ShieldAlert size={13} />}
-              {!isSecureOrigin && <strong>Not secure</strong>}
-              <span>{originLabel(panel.url)}</span>
+              {addressCopied ? <>
+                <Check size={13} />
+                <span className="origin-copied">{addressCopied}</span>
+              </> : <>
+                {isSecureOrigin ? <LockKeyhole size={13} /> : <ShieldAlert size={13} />}
+                {!isSecureOrigin && <strong>Not secure</strong>}
+                <span>{originLabel(panel.url)}</span>
+              </>}
             </button>}
+            <span className="sr-only" role="status">{addressCopied}</span>
+            <span className="sr-only" aria-live="assertive">{tabSwitcherAnnouncement}</span>
             {onStartPage && <span className="origin-badge start-origin" aria-label="New tab"><Globe2 size={13} /><span>New tab</span></span>}
             <div className="browser-actions">
               {!onStartPage && panel.zoomFactor !== undefined && Math.abs(panel.zoomFactor - 1) > 0.005 && (

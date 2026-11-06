@@ -289,6 +289,11 @@ export class DownloadManager {
     return this.entries.map((entry) => this.view(entry))
   }
 
+  /** A download started from this page is still under way (the page must not be unloaded). */
+  activeForPage(pageKey: string): boolean {
+    return this.entries.some((entry) => entry.pageKey === pageKey && (entry.state === 'progressing' || entry.state === 'paused'))
+  }
+
   /** Re-check which finished files are still on disk (when the list is opened). */
   refresh(): DownloadEntry[] {
     for (const entry of this.entries) if (entry.state === 'completed') entry.exists = this.deps.exists(entry.path)

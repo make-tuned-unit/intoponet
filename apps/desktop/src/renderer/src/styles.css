@@ -977,6 +977,11 @@ button.origin-badge,
   cursor: pointer;
 }
 
+.origin-badge .origin-copied {
+  color: #9ff5e6;
+  font-weight: 600;
+}
+
 .origin-badge span {
   overflow: hidden;
   text-overflow: ellipsis;

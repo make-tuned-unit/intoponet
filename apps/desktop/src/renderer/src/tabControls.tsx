@@ -1,6 +1,6 @@
 // Pieces shared by the horizontal tab strip and the vertical tab rail: the tab's icon (or a
 // loading spinner), its speaker button, its context menu, and drag / keyboard reordering.
-import { Globe2, Volume2, VolumeX } from 'lucide-react'
+import { Globe2, House, Volume2, VolumeX } from 'lucide-react'
 import { useRef, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react'
 import type { PageTabSnapshot } from '@intoponet/browser-api'
 import { dropIndex, reorderDelta, type TabBox, type TabAxis } from './tabReorder'
@@ -12,6 +12,34 @@ export function TabIcon({ tab, size }: { tab: PageTabSnapshot; size: number }) {
   // Only data: icons (main fetched them through the page's own session): the shell never loads a page-chosen URL.
   if (tab.favicon?.startsWith('data:image/')) return <img src={tab.favicon} alt="" width={size} height={size} />
   return <Globe2 size={size - 2} aria-hidden="true" />
+}
+
+/** A tab's state beyond its sound, as assistive technology reads it. */
+export function tabStateLabel(tab: PageTabSnapshot): string {
+  return `${tab.asleep ? ', asleep' : ''}${tab.awayFromHome ? ', away from its pinned page' : ''}`
+}
+
+/**
+ * A pinned tab now on another site: a way back to the page it was pinned at. Like the speaker it is a
+ * pointer shortcut, out of the tab list for assistive technology; the tab menu has "Go to Pinned Page".
+ */
+export function TabHomeButton({ tab, className }: { tab: PageTabSnapshot; className: string }) {
+  if (!tab.awayFromHome) return null
+  return (
+    <button
+      type="button"
+      className={className}
+      tabIndex={-1}
+      aria-hidden="true"
+      title="Back to the pinned page"
+      onClick={(event) => {
+        event.stopPropagation()
+        void window.intoponet.browserHost.goTabHome(tab.id)
+      }}
+    >
+      <House size={12} />
+    </button>
+  )
 }
 
 /** How a tab's sound reads to assistive technology (the speaker button itself is a pointer shortcut). */

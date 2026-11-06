@@ -124,3 +124,11 @@
 .tab-rail-pinned .tab-rail-title {
   display: none;
 }
+
+.page-tab.is-asleep .page-tab-main {
+  opacity: 0.55;
+}
+
+.page-tab .page-tab-home {
+  color: var(--teal, #20f4e4);
+}

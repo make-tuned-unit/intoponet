@@ -32,7 +32,7 @@ function httpUrl(value: string): boolean {
 }
 
 /** Only web entries, at most the 50 around the current one; the index follows them. */
-function boundedHistory(history: TabHistory | undefined): TabHistory | undefined {
+export function boundedHistory(history: TabHistory | undefined): TabHistory | undefined {
   if (!history || !Array.isArray(history.entries) || history.entries.length === 0) return undefined
   let index = Math.min(Math.max(0, Math.trunc(history.index)), history.entries.length - 1)
   const kept: TabHistory['entries'] = []

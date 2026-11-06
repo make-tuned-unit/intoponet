@@ -12,6 +12,12 @@ export type TourControls = {
   spin(degrees: number, ms: number): Promise<void>
   /** Fly to a place by name, typing it into the search first so you see how. */
   flyTo(name: string): Promise<boolean>
+  /** Fly to the tallest story mountain and pin its coverage; false when no news has loaded. */
+  findHighestPeak(): Promise<boolean>
+  /** Unpin a story mountain. */
+  closeStory(): void
+  /** Type into the address bar a letter at a time (without going anywhere), or clear it with ''. */
+  typeInAddressBar(text: string): Promise<void>
   /** Show the globe's list: World stories, Peaks… */
   showList(view: 'world' | 'top' | 'rising'): void
   /** Open the most widely covered story in the World list; its headline, if any. */
@@ -70,22 +76,56 @@ export const TOUR_STEPS: TourStep[] = [
     run: (controls) => controls.showList('top'),
   },
   {
+    id: 'peaks',
+    chapter: 'Story mountains',
+    title: 'The news rises as mountains',
+    body: 'Every story outlets are covering becomes terrain: the more independent outlets carry it, the higher it stands, with a gold crest on top. Peaks rise and wear down as the news ebbs and flows. Spin the globe to find the highest, or press H.',
+    target: '.story-highest',
+    seconds: 10,
+    run: async (controls) => {
+      controls.reset()
+      await controls.spin(40, 3_500)
+    },
+  },
+  {
+    id: 'strands',
+    chapter: 'Story mountains',
+    title: 'Follow a story around the world',
+    body: 'Hover a summit and strands run over the Earth to every country that covered it. Click to pin it: each country’s first headline, in the order coverage appeared. Height counts outlets, not importance.',
+    target: '.story-panel',
+    seconds: 11,
+    run: async (controls) => { await controls.findHighestPeak() },
+  },
+  {
     id: 'fly',
     chapter: 'The living globe',
     title: 'Fly anywhere by name',
     body: 'Type a city, region or country into the search — even misspelled — and the globe turns to it and marks the exact spot. Every country is named as you reach it, and you can click any of them.',
     target: '.command-dock',
     seconds: 9,
-    run: async (controls) => { await controls.flyTo('Lisbon') },
+    run: async (controls) => {
+      controls.closeStory()
+      await controls.flyTo('Lisbon')
+    },
+  },
+  {
+    id: 'address',
+    chapter: 'The living globe',
+    title: 'One bar for places, pages and tabs',
+    body: 'The same bar completes what you type from your open tabs, bookmarks, history and places, all ranked on this Mac. Nothing you type is sent anywhere until you choose a search.',
+    target: '.command-dock',
+    seconds: 9,
+    run: async (controls) => { await controls.typeInAddressBar('wiki') },
   },
   {
     id: 'world',
     chapter: 'Stories',
     title: 'Stories the whole world is covering',
-    body: 'World ranks the stories that local outlets in many countries are covering at once. Open one to read every country’s headline side by side, translated on this Mac.',
+    body: 'World ranks the stories that local outlets in many countries are covering at once. Open one and its sources line up as cards — each with the article’s own picture, writers and summary — translated on this Mac, and a card grows into the page itself.',
     target: '.globe-panel',
-    seconds: 10,
+    seconds: 11,
     run: async (controls, context) => {
+      await controls.typeInAddressBar('')
       controls.reset()
       context.headline = await controls.openWorldStory()
       if (context.headline) controls.prepareOlds(context.headline)
@@ -103,16 +143,16 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: 'olds-views',
     chapter: 'The Olds',
-    title: 'Story, Timeline and List',
-    body: 'Read it as a story, drag through it as a timeline, or scan it as a list. Pick any step to follow its own history. Links say whether they are a cause, a part, or only a sequence.',
+    title: 'Story, Timeline, List — and the outlet’s own past',
+    body: 'Read it as a story, drag through it as a timeline, or scan it as a list. Pick any step to follow its own history. For a headline you open, The Olds also shows what that outlet wrote about the story before, from its topic pages and the Wayback Machine.',
     target: '.olds-sheet',
-    seconds: 9,
+    seconds: 11,
   },
   {
     id: 'bookmarks',
     chapter: 'Your library',
     title: 'Bookmarks that remember where things are',
-    body: 'Everything you save keeps its place on Earth and its collection. The library is encrypted on this Mac and never leaves it.',
+    body: 'Everything you save keeps its place on Earth and its collection, including the PDFs you save. The library is encrypted on this Mac and never leaves it.',
     target: '.bookmark-pane',
     seconds: 9,
     run: (controls) => {
@@ -136,7 +176,7 @@ export const TOUR_STEPS: TourStep[] = [
     id: 'browse',
     chapter: 'Browsing',
     title: 'Every page, with tools built in',
-    body: 'Open any site and the toolbar gives you protection from ads and trackers, translation on this Mac, capture, pins and Absorb. The page is paused behind the tour while we look at them.',
+    body: 'Open any site and the toolbar gives you protection from ads and trackers, translation, capture, PDF, pins and Absorb. The page is paused behind the tour while we look at them.',
     target: '.browser-actions',
     seconds: 10,
     run: async (controls) => {
@@ -146,12 +186,51 @@ export const TOUR_STEPS: TourStep[] = [
     },
   },
   {
+    id: 'translate',
+    chapter: 'Browsing',
+    title: 'Pages in your language, translated here',
+    body: 'Pages and headlines in other languages translate themselves into yours, on this Mac: no text is sent to a translation service. Turn it off, or never translate a language, in Settings.',
+    target: '.browser-actions [aria-label^="Translat"]',
+    seconds: 9,
+  },
+  {
+    id: 'tabs',
+    chapter: 'Tabs',
+    title: 'Tabs down the side, in every view',
+    body: 'Keep the sidebar open, even full width, with pinned tabs on top. A pinned tab remembers its home and offers the way back; closing it only puts it to sleep. ⌃⌘S hides the sidebar — rest the pointer at the left edge to bring it back.',
+    target: '.tab-rail',
+    seconds: 11,
+  },
+  {
+    id: 'tab-care',
+    chapter: 'Tabs',
+    title: 'Tabs that look after themselves',
+    body: 'Tabs you have not looked at for an hour sleep to save memory and wake where you left them. ⌃Tab can go most-recently-used first, and ⇧⌘C copies a page’s address without its tracking codes. All in Settings › Browsing.',
+    target: '.tab-rail',
+    seconds: 10,
+  },
+  {
+    id: 'pdf',
+    chapter: 'Browsing',
+    title: 'Save any page as a clean PDF',
+    body: 'One click keeps a page as a tidy, searchable PDF without the ads and pop-ups, with links that still work. Add it to your bookmarks to find it on the map later.',
+    target: '[aria-label="Save this page as PDF"]',
+    seconds: 9,
+  },
+  {
     id: 'capture',
     chapter: 'Browsing',
     title: 'Screenshots and recordings, kept in folders',
     body: 'Capture a part of any page as an image, or record it as a video. Captures go into folders you name, on this Mac.',
     target: '[aria-label="Capture this page: screenshot or recording"]',
     seconds: 8,
+  },
+  {
+    id: 'basics',
+    chapter: 'Browsing',
+    title: 'The everyday things, done carefully',
+    body: 'Saved passwords that fill only when you click, downloads you can pause and check, History (⌘Y), reopening closed tabs (⇧⌘T), per-site zoom, and a real menu bar. Make Intoponet your default browser from Settings.',
+    seconds: 10,
   },
   {
     id: 'absorb',
@@ -186,7 +265,7 @@ export const TOUR_STEPS: TourStep[] = [
     id: 'done',
     chapter: 'That’s the tour',
     title: 'The world is your start page',
-    body: 'Fly somewhere, open a story, follow its history. You can replay this tour any time from Settings.',
+    body: 'Find the highest peak, open a story, follow its history. You can replay this tour any time from Settings.',
     target: '.settings-button',
     seconds: 9,
     run: (controls) => controls.finish(),

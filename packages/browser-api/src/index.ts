@@ -98,7 +98,21 @@ export type PageTabSnapshot = {
   muted?: boolean
   /** Pinned tabs sit first, show only their icon and survive "Close Other Tabs". */
   pinned?: boolean
+  /** A pinned tab's home: the address it was pinned at. */
+  home?: string
+  /** A pinned tab now on another site than its home (it offers a way back). */
+  awayFromHome?: boolean
+  /** The page is unloaded to save memory; it loads again (where it was) when shown. */
+  asleep?: boolean
+  /** When the tab was last shown or left (ms since 1970; this session only, never saved). */
+  lastShownAt?: number
 }
+
+/** The tab sidebar: icons (expands on hover), kept open (also in full width), or hidden (the left edge brings it back). */
+export const TAB_SIDEBAR_MODES = ['icons', 'open', 'hidden'] as const
+export type TabSidebarMode = (typeof TAB_SIDEBAR_MODES)[number]
+export type TabSidebarState = { mode: TabSidebarMode; width: number }
+export const TAB_SIDEBAR_WIDTH = { min: 180, max: 420, initial: 240 } as const
 
 export type NetworkPrivacySnapshot = {
   /** DNS-over-HTTPS configured for all lookups. */
@@ -221,8 +235,14 @@ export type BrowserHostEvent =
   | { type: 'news-digest'; payload: string }
   /** "Paste and Go" chosen in the address bar's menu: the clipboard text, read in main. */
   | { type: 'paste-and-go'; text: string }
+  /** The open page's address was copied (`cleaned`: tracking parameters were removed). */
+  | { type: 'address-copied'; cleaned: boolean }
+  /** The recent-tabs switcher opened, moved (selected: the highlighted tab's title) or closed. */
+  /** Full width, sidebar hidden: the pointer rested at the window's left edge (over the page). */
+  | { type: 'tab-sidebar-edge' }
+  | { type: 'tab-switcher'; open: boolean; selected?: string; position?: number; count?: number }
 
-export type ShellShortcut = 'new-tab' | 'find' | 'find-next' | 'find-previous' | 'open-settings' | 'bookmark' | 'next-tab' | 'previous-tab' | 'focus-launcher' | 'toggle-bookmarks' | 'capture' | 'toggle-private' | 'absorb-selection'
+export type ShellShortcut = 'new-tab' | 'find' | 'find-next' | 'find-previous' | 'open-settings' | 'bookmark' | 'next-tab' | 'previous-tab' | 'focus-launcher' | 'toggle-bookmarks' | 'capture' | 'toggle-private' | 'absorb-selection' | 'toggle-tab-sidebar'
 
 export type PublicFieldStatus = {
   mode: 'local' | 'shared'
@@ -272,6 +292,9 @@ export interface BrowserHostApi {
   setChromeRevealed(revealed: boolean, hold?: boolean): Promise<void>
   /** Expanded (unpinned) tab rail collapses when the pointer enters the page. */
   setTabRailExpanded(expanded: boolean): Promise<void>
+  /** The saved tab sidebar mode and width (null when never set). */
+  getTabSidebar(): Promise<TabSidebarState | null>
+  setTabSidebar(sidebar: TabSidebarState): Promise<void>
   getState(): Promise<BrowserPanelSnapshot>
   getProtection(): Promise<ProtectionSnapshot>
   setSiteProtection(enabled: boolean): Promise<void>
@@ -294,6 +317,12 @@ export interface BrowserHostApi {
   getClosedTabs(): Promise<ClosedTabSnapshot[]>
   /** Show tab number `index` (0-based); -1 is the last tab. */
   selectTab(index: number): Promise<void>
+  /** Copies the open page's address (tracking parameters removed unless `clean` is false). */
+  copyPageAddress(clean?: boolean): Promise<void>
+  /** Takes a pinned tab back to the address it was pinned at. */
+  goTabHome(id: string): Promise<void>
+  /** Ends the recent-tabs switcher: show the highlighted tab, or keep the current one. */
+  tabSwitcher(action: 'commit' | 'cancel'): Promise<void>
   /** Reload, ignoring cached files. */
   forceReload(): Promise<void>
   /** Save the page as HTML with its files (asks where, in Downloads). */
@@ -349,6 +378,9 @@ export type BrowserHostCommand =
   | { type: 'set-tab-dock-open'; open: boolean; hold?: boolean }
   | { type: 'set-chrome-revealed'; revealed: boolean; hold?: boolean }
   | { type: 'set-tab-rail-expanded'; expanded: boolean }
+  /** The tab sidebar's mode and width, kept with the open tabs (null until first set). */
+  | { type: 'get-tab-sidebar' }
+  | { type: 'set-tab-sidebar'; sidebar: TabSidebarState }
   | { type: 'get-state' }
   | { type: 'get-protection' }
   | { type: 'set-site-protection'; enabled: boolean }
@@ -365,6 +397,12 @@ export type BrowserHostCommand =
   | { type: 'reopen-closed-tab'; id?: string }
   | { type: 'get-closed-tabs' }
   | { type: 'select-tab'; index: number }
+  /** Copy the open page's address; `clean` removes known tracking parameters. */
+  | { type: 'copy-page-address'; clean: boolean }
+  /** A pinned tab goes back to its home address (and is shown). */
+  | { type: 'tab-home'; id: string }
+  /** ⌃ released (commit: show the highlighted tab) or Escape (cancel) while the recent-tabs switcher is open. */
+  | { type: 'tab-switcher'; action: 'commit' | 'cancel' }
   | { type: 'force-reload' }
   | { type: 'save-page' }
   /** Save the page as a PDF in one click (options: also remembered for the next click). */
@@ -409,6 +447,8 @@ const commandTypes = new Set<BrowserHostCommand['type']>([
   'set-tab-dock-open',
   'set-chrome-revealed',
   'set-tab-rail-expanded',
+  'get-tab-sidebar',
+  'set-tab-sidebar',
   'get-state',
   'get-protection',
   'set-site-protection',
@@ -425,6 +465,9 @@ const commandTypes = new Set<BrowserHostCommand['type']>([
   'reopen-closed-tab',
   'get-closed-tabs',
   'select-tab',
+  'copy-page-address',
+  'tab-home',
+  'tab-switcher',
   'force-reload',
   'save-page',
   'export-pdf',
@@ -542,6 +585,14 @@ export function parseBrowserHostCommand(value: unknown): BrowserHostCommand {
       if (typeof value['open'] !== 'boolean') throw new Error('Invalid tab-dock state.')
       if (value['hold'] !== undefined && typeof value['hold'] !== 'boolean') throw new Error('Invalid tab-dock hold.')
       return { type, open: value['open'], ...(value['hold'] === true ? { hold: true } : {}) }
+    case 'set-tab-sidebar': {
+      const sidebar = value['sidebar'] as Record<string, unknown> | null
+      if (typeof sidebar !== 'object' || sidebar === null || !(TAB_SIDEBAR_MODES as readonly unknown[]).includes(sidebar['mode']) ||
+          typeof sidebar['width'] !== 'number' || !Number.isFinite(sidebar['width'])) throw new Error('Invalid tab sidebar.')
+      return { type, sidebar: { mode: sidebar['mode'] as TabSidebarMode, width: Math.round(Math.min(TAB_SIDEBAR_WIDTH.max, Math.max(TAB_SIDEBAR_WIDTH.min, sidebar['width']))) } }
+    }
+    case 'get-tab-sidebar':
+      return { type }
     case 'set-tab-rail-expanded':
       if (typeof value['expanded'] !== 'boolean') throw new Error('Invalid tab rail state.')
       return { type, expanded: value['expanded'] }
@@ -598,6 +649,15 @@ export function parseBrowserHostCommand(value: unknown): BrowserHostCommand {
         throw new Error('Invalid closed tab.')
       }
       return { type, id: value['id'] }
+    case 'tab-switcher':
+      if (value['action'] !== 'commit' && value['action'] !== 'cancel') throw new Error('Invalid switcher action.')
+      return { type, action: value['action'] }
+    case 'tab-home':
+      if (typeof value['id'] !== 'string' || value['id'].length === 0 || value['id'].length > 80) throw new Error('Invalid tab.')
+      return { type, id: value['id'] }
+    case 'copy-page-address':
+      if (typeof value['clean'] !== 'boolean') throw new Error('Invalid copy request.')
+      return { type, clean: value['clean'] }
     case 'select-tab':
       if (typeof value['index'] !== 'number' || !Number.isInteger(value['index']) || value['index'] < -1 || value['index'] > 999) {
         throw new Error('Invalid tab number.')

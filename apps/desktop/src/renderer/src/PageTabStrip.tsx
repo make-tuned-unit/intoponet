@@ -1,7 +1,7 @@
 import { EyeOff, X } from 'lucide-react'
 import { useEffect, useRef, useState, type RefObject } from 'react'
 import type { PageTabSnapshot } from '@intoponet/browser-api'
-import { moveTabByKey, openTabMenu, TabAudioButton, TabIcon, tabSoundLabel, useTabDrag } from './tabControls'
+import { moveTabByKey, openTabMenu, TabAudioButton, TabHomeButton, TabIcon, tabSoundLabel, tabStateLabel, useTabDrag } from './tabControls'
 
 export type PageTabStripProps = {
   tabs: PageTabSnapshot[]
@@ -40,7 +40,7 @@ export function PageTabStrip({ tabs, stripRef, caption, label }: PageTabStripPro
           <div
             key={tab.id}
             data-tab-id={tab.id}
-            className={`page-tab${tab.active ? ' selected' : ''}${tab.isPrivate ? ' is-private' : ''}${tab.pinned ? ' is-pinned' : ''}`}
+            className={`page-tab${tab.active ? ' selected' : ''}${tab.isPrivate ? ' is-private' : ''}${tab.pinned ? ' is-pinned' : ''}${tab.asleep ? ' is-asleep' : ''}`}
           >
             <button
               ref={(element) => { if (element) buttons.current.set(tab.id, element); else buttons.current.delete(tab.id) }}
@@ -49,7 +49,7 @@ export function PageTabStrip({ tabs, stripRef, caption, label }: PageTabStripPro
               className="page-tab-main"
               aria-selected={tab.active}
               aria-busy={tab.loading || undefined}
-              aria-label={tab.pinned ? `${name}, pinned${tabSoundLabel(tab)}` : undefined}
+              aria-label={tab.pinned ? `${name}, pinned${tabStateLabel(tab)}${tabSoundLabel(tab)}` : undefined}
               aria-keyshortcuts="Alt+Shift+ArrowLeft Alt+Shift+ArrowRight Delete"
               tabIndex={index === rovingIndex ? 0 : -1}
               title={`${tab.isPrivate ? 'Private tab · ' : ''}${tab.pinned ? 'Pinned · ' : ''}${name}${tab.loading ? ' · Loading' : ''}`}
@@ -85,9 +85,10 @@ export function PageTabStrip({ tabs, stripRef, caption, label }: PageTabStripPro
               <TabIcon tab={tab} size={14} />
               {tab.isPrivate && <EyeOff size={11} className="tab-private-mark" aria-label="Private" />}
               {!tab.pinned && <span>{caption(tab)}</span>}
-              {!tab.pinned && tabSoundLabel(tab) && <span className="sr-only">{tabSoundLabel(tab)}</span>}
+              {!tab.pinned && (tabSoundLabel(tab) || tabStateLabel(tab)) && <span className="sr-only">{tabStateLabel(tab)}{tabSoundLabel(tab)}</span>}
             </button>
             {/* Out of the Tab order (only tabs belong in a tab list): Delete and the tab menu reach them. */}
+            <TabHomeButton tab={tab} className="page-tab-audio page-tab-home" />
             <TabAudioButton tab={tab} className="page-tab-audio" focusable={false} />
             {!tab.pinned && (
               <button

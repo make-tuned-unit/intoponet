@@ -75,7 +75,7 @@ for (const node of order) {
       else for (const command of node.run) execSync(command, { cwd: repo, stdio: 'pipe', maxBuffer: 64 * 1024 * 1024 })
       notes ||= node.run.join(' · ')
     } else {
-      notes = await runAppCheck(checks[node.id], { evidenceDir, name: node.id, timeoutMs: timeouts[node.tier] })
+      notes = await runAppCheck(checks[node.id], { evidenceDir, name: node.id, timeoutMs: timeouts[node.tier], env: checks[node.id].env ?? {} })
     }
     results.set(node.id, { status: 'pass', notes, seconds: Math.round((Date.now() - t0) / 1000) })
     console.log(`PASS    ${node.id} (${Math.round((Date.now() - t0) / 1000)} s) ${notes}`)

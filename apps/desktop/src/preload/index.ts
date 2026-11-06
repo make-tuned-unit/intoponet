@@ -24,6 +24,7 @@ import {
   type BrowserHostEvent,
   type BrowserPanelSnapshot,
   type ClosedTabSnapshot,
+  type TabSidebarState,
   type PageTabSnapshot,
   type PdfExportOptions,
   type PrivateLibraryReadResult,
@@ -39,6 +40,7 @@ const invoke = (
   | ProtectionSnapshot
   | PageTabSnapshot[]
   | ClosedTabSnapshot[]
+  | TabSidebarState
   | PrivateLibraryReadResult
   | PublicFieldStatus
   | PdfExportOptions
@@ -102,6 +104,10 @@ const browserHost: BrowserHostApi = {
   setFullWidth: async (enabled) => {
     await invoke({ type: 'set-full-width', enabled })
   },
+  getTabSidebar: () => invoke({ type: 'get-tab-sidebar' }) as Promise<TabSidebarState | null>,
+  setTabSidebar: async (sidebar) => {
+    await invoke({ type: 'set-tab-sidebar', sidebar })
+  },
   setTabRailExpanded: async (expanded) => {
     await invoke({ type: 'set-tab-rail-expanded', expanded })
   },
@@ -150,6 +156,15 @@ const browserHost: BrowserHostApi = {
   getClosedTabs: () => invoke({ type: 'get-closed-tabs' }) as Promise<ClosedTabSnapshot[]>,
   selectTab: async (index) => {
     await invoke({ type: 'select-tab', index })
+  },
+  tabSwitcher: async (action) => {
+    await invoke({ type: 'tab-switcher', action })
+  },
+  goTabHome: async (id) => {
+    await invoke({ type: 'tab-home', id })
+  },
+  copyPageAddress: async (clean = true) => {
+    await invoke({ type: 'copy-page-address', clean })
   },
   forceReload: async () => {
     await invoke({ type: 'force-reload' })
@@ -411,6 +426,8 @@ const browsing: BrowsingApi = {
   pendingExternal: () => browsingInvoke({ type: 'external-pending' }) as Promise<ExternalOpenRequest[]>,
   settings: () => browsingInvoke({ type: 'settings' }) as Promise<BrowsingSettings>,
   setPageAppearance: (appearance) => browsingInvoke({ type: 'set-page-appearance', appearance }) as Promise<BrowsingSettings>,
+  setTabSleep: (after) => browsingInvoke({ type: 'set-tab-sleep', after }) as Promise<BrowsingSettings>,
+  setTabSwitchOrder: (order) => browsingInvoke({ type: 'set-tab-switch-order', order }) as Promise<BrowsingSettings>,
   makeDefaultBrowser: () => browsingInvoke({ type: 'make-default-browser' }) as Promise<BrowsingSettings>,
   subscribe: (listener) => {
     const handler = (_event: Electron.IpcRendererEvent, event: BrowsingEvent): void => listener(event)

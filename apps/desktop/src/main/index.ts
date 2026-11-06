@@ -40,11 +40,13 @@ import { capTitle, capUrl, coalesce, persistedActiveUrl } from './tabState'
 import { EXIT_FULLSCREEN_SCRIPT, FULLSCREEN_WORLD_ID, fullscreenSiteName, showFullscreenNotice } from './fullscreenNotice'
 import { bindLeavePrompt, SAFE_DIALOG_PREFERENCES } from './leavePrompt'
 import { fetchTabIcon, TabIconMemory } from './tabFavicon'
-import { browsingChannels, parseBrowsingCommand, type BrowsingEvent, type BrowsingSettings, type PageLoadError } from '@intoponet/browser-api'
+import { browsingChannels, parseBrowsingCommand, type BrowsingEvent, type BrowsingSettings, type PageLoadError, type TabSidebarState, type TabSleepAfter, type TabSwitchOrder } from '@intoponet/browser-api'
 import { ExternalOpenBroker, classifyExternalUrl } from './externalOpen'
 import { CertificateErrorMemo, classifyLoadError, isCertificateError, showsErrorPage, summarizeCertificate } from './errorPage'
 import { IncomingOpenQueue, LocalFileGrants, incomingFileTarget, incomingTargetsFromArgs, incomingWebUrl, type IncomingTarget } from './incomingOpen'
-import { PageAppearanceController, parsePageAppearanceFile } from './pageAppearance'
+import { PageAppearanceController } from './pageAppearance'
+import { SWITCHER_KEYS_SCRIPT, switcherHtml, SWITCHER_ROW_HEIGHT, SWITCHER_ROWS, TabSwitcher, type SwitcherTab } from './tabSwitcher'
+import { DEFAULT_TAB_SLEEP, parseBrowsingSettingsFile, sleepAfterMs, tabsDueForSleep, TYPED_FORM_SCRIPT } from './tabSleep'
 import { browserContextExtras, searchSelectionLabel } from './browserContextMenu'
 
 declare const __INTOPONET_MAC_UPDATE_URL__: string
@@ -107,9 +109,10 @@ import {
   windowButtonsVisible,
   TAB_DOCK_TWEEN_MS,
 } from './tabDockBounds'
-import { isPlainEscape, pageKeyAction } from './shellShortcuts'
+import { FOCUS_TAKES_TYPING_SCRIPT, isPlainEscape, pageKeyAction, TEXT_FIELD_FIRST } from './shellShortcuts'
+import { cleanAddress } from '../shared/cleanAddress'
 import { createAppMenuController, routeAppCommand, type AppCommand, type AppMenuState } from './appMenu'
-import { ClosedTabs } from './closedTabs'
+import { boundedHistory, ClosedTabs, type TabHistory } from './closedTabs'
 import { stepZoom, ZoomStore } from './zoomStore'
 import { savePageFilename } from './savePage'
 import { TRACKER_STUB_SCRIPT } from './trackerStubs'
@@ -202,6 +205,8 @@ let tabRailExpanded = false
 /** A page that asked for HTML fullscreen (a video, a game): its view fills the window until it leaves. */
 /** Isolated world for reading a page's rating declarations (others: translate, knowledge, access). */
 const RATING_WORLD_ID = 1305
+/** Isolated world for asking where keyboard focus is (text fields get some keys first). */
+const KEYS_WORLD_ID = 1311
 let htmlFullScreenView: WebContentsView | null = null
 let removeFullscreenNotice: (() => void) | null = null
 /** Animated dock reservation; null when resting at its target. */
@@ -234,6 +239,12 @@ type OpenTab = {
   loadError?: PageLoadError
   /** An offline error already retried once by itself (reset when a page loads). */
   autoRetried?: boolean
+  /** A pinned tab's home: the address it was pinned at. */
+  home?: string
+  /** Unloaded (pinned tab closed, or asleep): the view is blank until shown; `history` is where it was. */
+  asleep?: { history?: TabHistory }
+  /** When the tab was last shown or left (for sleeping background tabs and recent-order switching). */
+  lastShownAt?: number
 }
 
 /** Asks before a page opens another app (externalOpen.ts); null until the app is ready. */
@@ -248,7 +259,9 @@ type PersistentBrowserState = {
   url: string
   bounds: BrowserPanelBounds
   wasVisible: boolean
-  tabs: { id: string; url: string; title: string; pinned?: boolean }[]
+  tabs: { id: string; url: string; title: string; pinned?: boolean; home?: string }[]
+  /** The tab sidebar's mode and width (absent until first changed). */
+  sidebar?: TabSidebarState
 }
 
 const defaultPanelState = (): BrowserPanelSnapshot => ({
@@ -285,6 +298,7 @@ function persistentState(): PersistentBrowserState {
     url: tab.url,
     title: tab.title,
     ...(tab.pinned ? { pinned: true } : {}),
+    ...(tab.pinned && tab.home ? { home: tab.home } : {}),
   }))
   return {
     version: 2,
@@ -293,6 +307,7 @@ function persistentState(): PersistentBrowserState {
     bounds: lastBounds,
     wasVisible: pageAttached,
     tabs,
+    ...(tabSidebar ? { sidebar: tabSidebar } : {}),
   }
 }
 
@@ -370,18 +385,25 @@ async function loadPersistentState(): Promise<PersistentBrowserState | null> {
               url: record['url'],
               title: typeof record['title'] === 'string' ? record['title'].slice(0, 180) : '',
               ...(record['pinned'] === true ? { pinned: true } : {}),
+              ...(record['pinned'] === true && typeof record['home'] === 'string' && record['home'].length <= 8_192 && safeHttpUrl(record['home']) ? { home: record['home'] } : {}),
             },
           ]
         })
       : url
         ? [{ id: randomUUID(), url, title: '' }]
         : []
+    let sidebar: TabSidebarState | undefined
+    try {
+      const parsedSidebar = parseBrowserHostCommand({ type: 'set-tab-sidebar', sidebar: candidate['sidebar'] })
+      if (parsedSidebar.type === 'set-tab-sidebar') sidebar = parsedSidebar.sidebar
+    } catch { /* never set, or damaged: the default */ }
     return {
       version: 2,
       url,
       bounds: boundsCommand.bounds,
       wasVisible: candidate['wasVisible'],
       tabs,
+      ...(sidebar ? { sidebar } : {}),
     }
   } catch {
     return null
@@ -887,6 +909,11 @@ function wireDownloadSession(partition = 'persist:intoponet-default'): void {
     }
     if (!sitePermissions) return callback(false)
     const mediaTypes = (details as { mediaTypes?: string[] }).mediaTypes ?? []
+    if (permission === 'media' && !capturingContents.has(contents.id)) {
+      const id = contents.id
+      capturingContents.add(id)
+      contents.once('destroyed', () => capturingContents.delete(id))
+    }
     // Answers are kept per (asking site, page it is in): an embedded frame is named with its page.
     sitePermissions.request({ origin: originOf(details.requestingUrl || contents.getURL()), topOrigin: originOf(contents.getURL()), kinds: kindsFor(permission, mediaTypes), isPrivate, owner: contents.id }, callback)
   })
@@ -1039,6 +1066,9 @@ function tabSnapshots(): PageTabSnapshot[] {
       isPrivate: privateViews.has(tab.view),
       ...(tab.start ? { isStartPage: true } : {}),
       ...liveTabFlags(live ? tab.view.webContents : null, tab),
+      ...(tab.pinned && tab.home ? { home: capUrl(tab.home), ...(awayFromHome(safeHttpUrl(currentUrl) ? currentUrl : tab.url, tab.home) ? { awayFromHome: true } : {}) } : {}),
+      ...(tab.asleep ? { asleep: true } : {}),
+      ...(tab.lastShownAt ? { lastShownAt: tab.lastShownAt } : {}),
     }
   })
 }
@@ -1052,6 +1082,7 @@ function createStartTab(): void {
   makeRoomForTab()
   const view = buildView(privateMode)
   const tab: OpenTab = { id: randomUUID(), url: '', title: '', favicon: '', view, start: true }
+  tab.lastShownAt = Date.now()
   openTabs.push(tab)
   showTab(tab.id)
   emitPanelState()
@@ -1125,6 +1156,10 @@ function showTab(id: string): WebContentsView | null {
   const tab = openTabs.find((item) => item.id === id)
   if (!tab) return null
   if (pageView && pageView !== tab.view) detachActive()
+  const now = Date.now()
+  const previous = openTabs.find((item) => item.id === activeTabId)
+  if (previous) previous.lastShownAt = now
+  tab.lastShownAt = now
   activeTabId = tab.id
   pageView = tab.view
   const selectedUrl = tab.view.webContents.getURL()
@@ -1136,10 +1171,217 @@ function showTab(id: string): WebContentsView | null {
   // A tab that loaded in the background missed its cosmetic rules and tracker stand-ins.
   if (!tab.start && !tab.view.webContents.isLoading()) void applyCosmeticFilters(tab.view.webContents)
   const current = tab.view.webContents.getURL()
-  if ((!current || current === 'about:blank') && safeHttpUrl(tab.url) && !restoringViews.has(tab.view) && crashRecovery.canAutoRecover(tab.id)) {
+  const sleep = tab.asleep
+  if (sleep) {
+    delete tab.asleep
+    emitTabs()
+  }
+  if (sleep?.history && (!current || current === 'about:blank')) {
+    // Woken where it was: back/forward list and scroll position (page state) restored.
+    const view = tab.view
+    restoringViews.add(view)
+    void view.webContents.navigationHistory.restore(sleep.history)
+      .catch(() => view.webContents.loadURL(tab.url))
+      .catch(() => undefined)
+      .finally(() => restoringViews.delete(view))
+  } else if ((!current || current === 'about:blank') && safeHttpUrl(tab.url) && !restoringViews.has(tab.view) && crashRecovery.canAutoRecover(tab.id)) {
     void tab.view.webContents.loadURL(tab.url)
   }
   return tab.view
+}
+
+/** A pinned tab is away from home once it is on another site (moving around the same site is not leaving). */
+function awayFromHome(current: string, home: string): boolean {
+  const here = safeHttpUrl(current)
+  const there = safeHttpUrl(home)
+  if (!here || !there) return false
+  const site = (host: string): string => host.replace(/^www\./, '')
+  return site(here.hostname) !== site(there.hostname)
+}
+
+/** The tab sidebar's mode and width, saved with the tabs (null until first changed). */
+let tabSidebar: TabSidebarState | null = null
+/** Full width with the sidebar hidden: the pointer resting at the left edge of the page brings it back. */
+let sidebarEdgeTimer: ReturnType<typeof setTimeout> | null = null
+
+/** How long a background tab waits before sleeping (Settings › Browsing). */
+let tabSleepAfter: TabSleepAfter = DEFAULT_TAB_SLEEP
+/** The order ⌃Tab steps through tabs. */
+let tabSwitchOrder: TabSwitchOrder = 'strip'
+/** Pages that asked for the camera or microphone: they never sleep (a call in a background tab). */
+const capturingContents = new Set<number>()
+/** Checks may shorten a "minute" so sleeping can be seen in seconds; the app itself never sets this. */
+const TAB_SLEEP_MINUTE_MS = Math.max(50, Number(process.env['INTOPONET_TAB_SLEEP_MINUTE_MS']) || 60_000)
+let sleepingNow = false
+
+/** ⌃Tab in recently-used order (tabSwitcher.ts); its list is a small native view over the page. */
+const tabSwitcher = new TabSwitcher()
+let switcherView: WebContentsView | null = null
+let switcherIdle: ReturnType<typeof setTimeout> | null = null
+
+function switcherTabs(): SwitcherTab[] {
+  return openTabs.map((tab) => {
+    const live = !viewGone(tab.view)
+    return {
+      id: tab.id,
+      title: tab.start ? 'New tab' : (live ? tab.view.webContents.getTitle() : '') || tab.title,
+      url: tab.start ? '' : (live && safeHttpUrl(tab.view.webContents.getURL()) ? tab.view.webContents.getURL() : tab.url),
+      favicon: tab.favicon,
+      lastShownAt: tab.lastShownAt ?? 0,
+      isPrivate: privateViews.has(tab.view),
+    }
+  })
+}
+
+function hideSwitcher(): void {
+  if (switcherIdle) clearTimeout(switcherIdle)
+  switcherIdle = null
+  if (switcherView && window && !window.isDestroyed()) window.contentView.removeChildView(switcherView)
+  emit({ type: 'tab-switcher', open: false })
+}
+
+function stepTabSwitcher(direction: 'next' | 'previous'): void {
+  if (!window || window.isDestroyed()) return
+  const tabs = switcherTabs()
+  const opening = !tabSwitcher.open
+  const step = tabSwitcher.step(tabs, activeTabId, direction)
+  if (!step) {
+    hideSwitcher()
+    return
+  }
+  if (!switcherView || viewGone(switcherView)) {
+    // A static page: no script, no navigation, never focused (keys stay with the page or the shell).
+    switcherView = new WebContentsView({ webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, javascript: false, spellcheck: false } })
+    switcherView.setBackgroundColor('#00000000')
+    switcherView.webContents.on('will-navigate', (event) => event.preventDefault())
+    switcherView.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  }
+  const view = switcherView
+  const { width, height } = window.getContentBounds()
+  const rows = Math.min(step.order.length, SWITCHER_ROWS)
+  const boxWidth = Math.min(520, width - 80)
+  const boxHeight = rows * SWITCHER_ROW_HEIGHT + 18
+  view.setBounds({ x: Math.round((width - boxWidth) / 2), y: Math.max(80, Math.round((height - boxHeight) / 2) - 40), width: boxWidth, height: boxHeight })
+  void view.webContents.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(switcherHtml(tabs, step.order, step.index))}`).catch(() => undefined)
+  // On top of everything (adding again moves it to the front).
+  window.contentView.addChildView(view)
+  const chosen = tabs.find((tab) => tab.id === step.order[step.index])
+  emit({ type: 'tab-switcher', open: true, selected: chosen?.title || chosen?.url || 'Untitled page', position: step.index + 1, count: step.order.length })
+  // Keys are with the page: it tells when ⌃ is released (or Escape pressed).
+  const page = pageView
+  if (opening && page && pageAttached && !viewGone(page)) {
+    void page.webContents.executeJavaScriptInIsolatedWorld(KEYS_WORLD_ID, [{ code: SWITCHER_KEYS_SCRIPT }])
+      .then((result: unknown) => { if (result === 'commit' || result === 'cancel') endTabSwitcher(result) })
+      .catch(() => undefined)
+  }
+  // If ⌃'s release is never seen (the key went to another app), finish on its own.
+  if (switcherIdle) clearTimeout(switcherIdle)
+  switcherIdle = setTimeout(() => endTabSwitcher('commit'), 4_000)
+}
+
+function endTabSwitcher(action: 'commit' | 'cancel'): void {
+  if (!tabSwitcher.open) return
+  const chosen = action === 'commit' ? tabSwitcher.commit() : (tabSwitcher.cancel(), null)
+  hideSwitcher()
+  if (chosen && chosen !== activeTabId) showTab(chosen)
+  else if (chosen && !pageAttached) showTab(chosen)
+}
+
+/** Puts background tabs that have been out of sight long enough to sleep (see tabSleep.ts). */
+async function sleepIdleTabs(): Promise<void> {
+  if (sleepingNow) return
+  sleepingNow = true
+  try {
+    const now = Date.now()
+    const due = tabsDueForSleep(openTabs.map((tab) => {
+      const live = !viewGone(tab.view)
+      const contentsId = live ? tab.view.webContents.id : -1
+      return {
+        id: tab.id,
+        active: tab.id === activeTabId,
+        asleep: !!tab.asleep || !live,
+        start: !!tab.start || !!tab.loadError,
+        lastShownAt: tab.lastShownAt ?? now,
+        audible: live && tab.view.webContents.isCurrentlyAudible(),
+        capturing: capturingContents.has(contentsId),
+        downloading: live && (browsingData?.downloads.activeForPage(String(contentsId)) ?? false),
+      }
+    }), now, sleepAfterMs(tabSleepAfter, TAB_SLEEP_MINUTE_MS))
+    for (const id of due) {
+      const tab = openTabs.find((item) => item.id === id)
+      if (!tab || viewGone(tab.view)) continue
+      // Typed text not yet sent keeps a tab awake (it would be lost); so does a page that will not answer.
+      const typed = await tab.view.webContents.executeJavaScriptInIsolatedWorld(KEYS_WORLD_ID, [{ code: TYPED_FORM_SCRIPT }]).catch(() => true)
+      if (typed !== false || tab.id === activeTabId || tab.asleep) continue
+      unloadTab(tab, { keepHistory: true })
+    }
+  } finally {
+    sleepingNow = false
+  }
+}
+
+/**
+ * Unloads a tab but keeps it in place: its page is closed and a blank view takes its place, loaded
+ * again when the tab is next shown. With `keepHistory` it wakes where it was (back/forward list and
+ * scroll); without, it starts again at `url`. The tab must not be the one showing.
+ */
+function unloadTab(tab: OpenTab, options: { keepHistory: boolean; url?: string }): void {
+  if (tab.start || tab.asleep || viewGone(tab.view) || pageView === tab.view) return
+  const old = tab.view
+  const liveUrl = old.webContents.getURL()
+  let history: TabHistory | undefined
+  if (options.keepHistory) {
+    try {
+      history = boundedHistory({ entries: old.webContents.navigationHistory.getAllEntries(), index: old.webContents.navigationHistory.getActiveIndex() })
+    } catch {
+      history = undefined
+    }
+  }
+  tab.url = options.url ?? (safeHttpUrl(liveUrl) ? liveUrl : tab.url)
+  tab.title = old.webContents.getTitle() || tab.title
+  delete tab.loadError
+  // The tab holds the replacement first, so closing the old page does not close the tab.
+  tab.view = buildView(privateViews.has(old))
+  tab.asleep = history ? { history } : {}
+  const contentsId = viewContentsIds.get(old)
+  if (contentsId !== undefined) {
+    protectionPages.remove(contentsId)
+    translateService?.forgetPage(contentsId)
+  }
+  setImmediate(() => { if (!viewGone(old)) old.webContents.close() })
+  emitTabs()
+  schedulePersistentStateSave()
+}
+
+/**
+ * Closing a tab (⌘W, its close button, middle-click). A pinned tab is only unloaded, back at its
+ * home, and stays in place; any other tab closes. The tab showing hands over to its neighbour.
+ */
+function closeTab(id: string): void {
+  const index = openTabs.findIndex((tab) => tab.id === id)
+  const tab = openTabs[index]
+  if (!tab) return
+  const showing = pageAttached && activeTabId === id
+  if (!tab.pinned || !tab.home) {
+    discardTab(id)
+    if (showing) {
+      const next = openTabs[index] ?? openTabs[index - 1]
+      if (next) showTab(next.id)
+    }
+    return
+  }
+  if (tab.asleep) return
+  if (activeTabId === id) {
+    const next = openTabs.find((other, at) => at > index && other.id !== id) ?? [...openTabs].reverse().find((other) => other.id !== id)
+    if (showing && next) showTab(next.id)
+    else {
+      detachActive()
+      pageView = null
+      activeTabId = null
+    }
+  }
+  unloadTab(tab, { keepHistory: false, url: tab.home })
+  emitPanelState()
 }
 
 function discardTab(id: string): void {
@@ -1246,7 +1488,8 @@ function createBrowserTab(urlValue: string, activate = true, isPrivate = private
   }
   makeRoomForTab()
   const view = buildView(isPrivate)
-  const tab = { id: randomUUID(), url: url.toString(), title: '', favicon: '', view }
+  const tab: OpenTab = { id: randomUUID(), url: url.toString(), title: '', favicon: '', view }
+  tab.lastShownAt = Date.now()
   openTabs.push(tab)
   if (activate) {
     showTab(tab.id)
@@ -1424,6 +1667,18 @@ function buildView(isPrivate = privateMode): WebContentsView {
       setChromeRevealed(false)
       emit({ type: 'chrome-state', revealed: false })
     }
+    if (pageView === view && input.type === 'mouseMove' && browserFullWidth && tabSidebar?.mode === 'hidden') {
+      const atEdge = (input as { x?: number }).x !== undefined && ((input as { x: number }).x <= 4)
+      if (!atEdge && sidebarEdgeTimer) {
+        clearTimeout(sidebarEdgeTimer)
+        sidebarEdgeTimer = null
+      } else if (atEdge && !sidebarEdgeTimer) {
+        sidebarEdgeTimer = setTimeout(() => {
+          sidebarEdgeTimer = null
+          emit({ type: 'tab-sidebar-edge' })
+        }, 300)
+      }
+    }
     if (tabRailExpanded && pageView === view && (input.type === 'mouseMove' || input.type === 'mouseDown')) {
       tabRailExpanded = false
       emit({ type: 'tab-rail-state', expanded: false })
@@ -1438,11 +1693,31 @@ function buildView(isPrivate = privateMode): WebContentsView {
       void view.webContents.executeJavaScriptInIsolatedWorld(FULLSCREEN_WORLD_ID, [{ code: EXIT_FULLSCREEN_SCRIPT }]).catch(() => undefined)
       return
     }
+    if (tabSwitcher.open) {
+      // Releasing ⌃ shows the highlighted tab; Escape keeps the current one.
+      if (input.type === 'keyUp' && input.key === 'Control') {
+        endTabSwitcher('commit')
+        return
+      }
+      if (input.type === 'keyDown' && input.key === 'Escape') {
+        event.preventDefault()
+        endTabSwitcher('cancel')
+        return
+      }
+    }
     if (pageView !== view) return
     // Escape stops a page still loading; the page gets the key as well.
     if (isPlainEscape(input) && view.webContents.isLoading()) view.webContents.stop()
     const action = pageKeyAction(input, { developer: developerBuild() })
     if (!action) return
+    if (action.kind === 'command' && TEXT_FIELD_FIRST.has(action.command.type)) {
+      // The page keeps the key; the browser acts only when no text field (or editor frame) has focus.
+      const command = action.command
+      void view.webContents.executeJavaScriptInIsolatedWorld(KEYS_WORLD_ID, [{ code: FOCUS_TAKES_TYPING_SCRIPT }])
+        .then((typing: unknown) => { if (typing !== true && pageView === view) runAppCommand(command) })
+        .catch(() => undefined)
+      return
+    }
     event.preventDefault()
     if (action.kind === 'command') runAppCommand(action.command)
     else showShellShortcut(action.action)
@@ -1714,8 +1989,17 @@ async function runTabMenuAction(action: TabMenuAction, id: string): Promise<void
     case 'copy-link':
       if (safeHttpUrl(url)) clipboard.writeText(url)
       break
-    case 'close':
-      await handleBrowserCommand({ type: 'close-tab', id })
+    case 'close': {
+      // From the menu, a pinned tab is removed (its close button only unloads it).
+      const showing = pageAttached && activeTabId === id
+      const index = openTabs.findIndex((item) => item.id === id)
+      discardTab(id)
+      const next = openTabs[index] ?? openTabs[index - 1]
+      if (showing && next) showTab(next.id)
+      break
+    }
+    case 'go-home':
+      await handleBrowserCommand({ type: 'tab-home', id })
       break
     case 'close-others':
     case 'close-right':
@@ -1811,11 +2095,7 @@ function reopenClosedTab(id?: string): void {
 /** ⌘W: closes the tab being shown, then shows the tab that took its place, or the globe when none are left. */
 function closeActiveTab(): void {
   if (!pageAttached || !activeTabId) return
-  const index = openTabs.findIndex((tab) => tab.id === activeTabId)
-  if (index < 0) return
-  discardTab(activeTabId)
-  const next = openTabs[index] ?? openTabs[index - 1]
-  if (next) showTab(next.id)
+  closeTab(activeTabId)
 }
 
 /** A normal tab opens each site at the zoom it had last time; pinch-to-zoom works on every page. */
@@ -1979,7 +2259,8 @@ function appMenuState(): AppMenuState {
 function createPageView(attach = true): WebContentsView {
   if (pageView) return pageView
   const view = buildView()
-  const tab = { id: randomUUID(), url: lastKnownUrl, title: '', favicon: '', view }
+  const tab: OpenTab = { id: randomUUID(), url: lastKnownUrl, title: '', favicon: '', view }
+  tab.lastShownAt = Date.now()
   openTabs.push(tab)
   activeTabId = tab.id
   pageView = view
@@ -2043,6 +2324,7 @@ function setBrowserTabDockOpen(open: boolean, hold = false): void {
 async function handleBrowserCommand(
   command: BrowserHostCommand,
 ): Promise<
+  | TabSidebarState
   | BrowserPanelSnapshot
   | ProtectionSnapshot
   | PageTabSnapshot[]
@@ -2097,10 +2379,30 @@ async function handleBrowserCommand(
       showTab(command.id)
       break
     case 'close-tab':
-      discardTab(command.id)
+      closeTab(command.id)
+      break
+    case 'tab-home': {
+      const tab = openTabs.find((item) => item.id === command.id)
+      if (!tab?.home) break
+      if (tab.asleep) {
+        delete tab.asleep
+        tab.url = tab.home
+        showTab(tab.id)
+      } else {
+        showTab(tab.id)
+        if (!viewGone(tab.view)) void tab.view.webContents.loadURL(tab.home).catch(() => undefined)
+      }
+      break
+    }
+    case 'tab-switcher':
+      endTabSwitcher(command.action)
       break
     case 'cycle-tabs': {
       if (openTabs.length === 0) break
+      if (tabSwitchOrder === 'recent') {
+        stepTabSwitcher(command.direction)
+        break
+      }
       const index = Math.max(0, openTabs.findIndex((tab) => tab.id === activeTabId))
       const delta = command.direction === 'previous' ? -1 : 1
       const next = openTabs[(index + delta + openTabs.length) % openTabs.length]
@@ -2115,6 +2417,13 @@ async function handleBrowserCommand(
       break
     case 'set-tab-pinned':
       if (setPinned(openTabs, command.id, command.pinned)) {
+        // Pinning records where the tab is as its home; unpinning forgets it.
+        const tab = openTabs.find((item) => item.id === command.id)
+        if (tab && command.pinned) {
+          const current = viewGone(tab.view) ? '' : tab.view.webContents.getURL()
+          const home = safeHttpUrl(current) ? current : tab.url
+          if (safeHttpUrl(home)) tab.home = home
+        } else if (tab) delete tab.home
         emitTabs()
         schedulePersistentStateSave()
       }
@@ -2143,6 +2452,18 @@ async function handleBrowserCommand(
       break
     case 'get-closed-tabs':
       return closedTabs.list()
+    case 'copy-page-address': {
+      if (!pageView || viewGone(pageView) || isStartView(pageView)) break
+      // The address the page is at; an error page shows the address that failed, not its own.
+      const current = pageView.webContents.getURL()
+      const tab = openTabs.find((entry) => entry.view === pageView)
+      const address = /^https?:/i.test(current) ? current : tab?.url ?? current
+      if (!/^(https?|file):/i.test(address)) break
+      const text = command.clean ? cleanAddress(address) : address
+      clipboard.writeText(text)
+      emit({ type: 'address-copied', cleaned: text !== address })
+      break
+    }
     case 'select-tab': {
       const tab = command.index === -1 ? openTabs[openTabs.length - 1] : openTabs[command.index]
       if (tab) showTab(tab.id)
@@ -2249,6 +2570,12 @@ async function handleBrowserCommand(
     case 'set-chrome-revealed':
       setChromeRevealed(command.revealed, command.hold === true)
       return null
+    case 'get-tab-sidebar':
+      return tabSidebar
+    case 'set-tab-sidebar':
+      tabSidebar = command.sidebar
+      schedulePersistentStateSave()
+      break
     case 'set-tab-rail-expanded':
       tabRailExpanded = command.expanded
       return null
@@ -2408,6 +2735,8 @@ function createWindow(): void {
     if (htmlFullScreenView && htmlFullScreenView === pageView) applyPageViewBounds()
   })
   window.on('close', () => { shellClosing = true })
+  // Leaving the window (⌘Tab to another app) while switching tabs: go to the highlighted one.
+  window.on('blur', () => endTabSwitcher('commit'))
   // Trackpad swipes between pages, when macOS sends them (Trackpad › More Gestures › "Swipe between
   // pages" set to swipe with three fingers, or two or three). Two-finger page scrolling is untouched.
   window.on('swipe', (_event, direction) => {
@@ -2443,6 +2772,8 @@ function emitBrowsing(event: BrowsingEvent): void {
 function browsingSettings(): BrowsingSettings {
   return {
     pageAppearance: pageAppearance.current,
+    tabSleep: tabSleepAfter,
+    tabSwitchOrder,
     defaultBrowser: {
       isDefault: app.isDefaultProtocolClient('http') && app.isDefaultProtocolClient('https'),
       // Only the installed app: from a development build macOS would register Electron itself.
@@ -2457,7 +2788,11 @@ function wireBrowsing(): void {
   const readJson = (path: string): unknown => {
     try { return JSON.parse(readFileSync(path, 'utf8')) as unknown } catch { return null }
   }
-  pageAppearance.set(parsePageAppearanceFile(readJson(settingsFile)))
+  const stored = parseBrowsingSettingsFile(readJson(settingsFile))
+  pageAppearance.set(stored.pageAppearance)
+  tabSleepAfter = stored.tabSleep
+  tabSwitchOrder = stored.tabSwitchOrder
+  const saveSettings = (): Promise<void> => trackedWrite(settingsFile, JSON.stringify({ pageAppearance: pageAppearance.current, tabSleep: tabSleepAfter, tabSwitchOrder })).catch(() => undefined)
   externalOpener = new ExternalOpenBroker({
     emit: emitBrowsing,
     openExternal: (href) => shell.openExternal(href, { activate: true }),
@@ -2479,7 +2814,17 @@ function wireBrowsing(): void {
         return browsingSettings()
       case 'set-page-appearance':
         pageAppearance.set(command.appearance)
-        await trackedWrite(settingsFile, JSON.stringify({ pageAppearance: command.appearance })).catch(() => undefined)
+        await saveSettings()
+        emitBrowsing({ type: 'settings', settings: browsingSettings() })
+        return browsingSettings()
+      case 'set-tab-sleep':
+        tabSleepAfter = command.after
+        await saveSettings()
+        emitBrowsing({ type: 'settings', settings: browsingSettings() })
+        return browsingSettings()
+      case 'set-tab-switch-order':
+        tabSwitchOrder = command.order
+        await saveSettings()
         emitBrowsing({ type: 'settings', settings: browsingSettings() })
         return browsingSettings()
       case 'make-default-browser':
@@ -2534,14 +2879,17 @@ app.whenReady().then(async () => {
   if (restoredState) startup('restoring tabs', () => {
     lastKnownUrl = restoredState.url
     lastBounds = restoredState.bounds
+    tabSidebar = restoredState.sidebar ?? null
     for (const saved of restoredState.tabs) {
       const view = buildView(false)
-      openTabs.push({ id: saved.id, url: saved.url, title: saved.title, favicon: '', view, ...(saved.pinned ? { pinned: true } : {}) })
+      // Restored tabs are unloaded until shown (their pages load on the first click), and look it.
+      openTabs.push({ id: saved.id, url: saved.url, title: saved.title, favicon: '', view, asleep: {}, lastShownAt: Date.now(), ...(saved.pinned ? { pinned: true, home: saved.home ?? saved.url } : {}) })
     }
     openTabs.splice(0, openTabs.length, ...pinnedFirst(openTabs))
     const active =
       openTabs.find((tab) => samePage(tab.url, restoredState.url)) ?? openTabs[0]
     if (active) {
+      delete active.asleep
       activeTabId = active.id
       pageView = active.view
       lastKnownUrl = active.url
@@ -2864,6 +3212,13 @@ app.whenReady().then(async () => {
       emit({ type: 'public-field-status', status })
     })
     app.once('will-quit', stopPublicField)
+  })
+
+  startup('tab sleep', () => {
+    // Checked twice a minute (more often when a check shortens minutes).
+    const timer = setInterval(() => { void sleepIdleTabs() }, Math.min(30_000, Math.max(250, TAB_SLEEP_MINUTE_MS / 2)))
+    timer.unref?.()
+    app.once('will-quit', () => clearInterval(timer))
   })
 
   startup('news', () => {

@@ -16,6 +16,7 @@ export type OmniboxTab = {
   favicon?: string
   isPrivate?: boolean
   isStartPage?: boolean
+  lastShownAt?: number
 }
 export type OmniboxPage = { url: string; title: string }
 export type OmniboxRecent = { url: string; title: string; visitedAt: string }
@@ -28,6 +29,8 @@ export type OmniboxSources = {
   topics: readonly ExploreTopic[]
   /** Private browsing is on: private tabs may be offered (they are this session's own). */
   privateMode?: boolean
+  /** Settings › ⌃Tab "Recently used first": among equally good matches, recently used tabs come first. */
+  recentTabs?: boolean
   now?: number
 }
 
@@ -86,7 +89,7 @@ export function pageKey(url: string): string {
 const isWebUrl = (url: string): boolean => /^https?:\/\//i.test(url)
 const words = (text: string): string[] => text.toLocaleLowerCase('en').split(/[^\p{L}\p{N}]+/u).filter(Boolean)
 
-type Candidate = OmniboxSiteSuggestion & { visitedAt: number; isRoot: boolean; host: string }
+type Candidate = OmniboxSiteSuggestion & { visitedAt: number; isRoot: boolean; host: string; tabRecency?: number }
 
 function gatherCandidates(sources: OmniboxSources): Candidate[] {
   const byKey = new Map<string, Candidate>()
@@ -109,9 +112,14 @@ function gatherCandidates(sources: OmniboxSources): Candidate[] {
     if (!candidate.title && title.trim()) candidate.title = title.trim()
     update(candidate)
   }
+  const recent = sources.recentTabs
+    ? [...sources.tabs].sort((a, b) => (b.lastShownAt ?? 0) - (a.lastShownAt ?? 0)).map((tab) => tab.id)
+    : []
   for (const tab of sources.tabs) {
     if (tab.isStartPage || (tab.isPrivate && !sources.privateMode)) continue
+    const rank = recent.indexOf(tab.id)
     add(tab.url, tab.title, (candidate) => {
+      if (rank >= 0) candidate.tabRecency = Math.max(candidate.tabRecency ?? 0, 1 - rank / recent.length)
       candidate.kind = 'tab'
       candidate.tabId ??= tab.id
       candidate.url = tab.url
@@ -158,7 +166,7 @@ function scoreCandidate(candidate: Candidate, typed: string, hostVisits: Map<str
     return null
   }
   if (candidate.bookmarked) score += 40
-  if (candidate.kind === 'tab') score += 30
+  if (candidate.kind === 'tab') score += 30 + 25 * (candidate.tabRecency ?? 0)
   if (candidate.visitedAt) {
     const hours = Math.max(0, now - candidate.visitedAt) / 3_600_000
     score += 80 * Math.exp(-hours / 48)
@@ -169,7 +177,7 @@ function scoreCandidate(candidate: Candidate, typed: string, hostVisits: Map<str
 }
 
 function strip(candidate: Candidate): OmniboxSiteSuggestion {
-  const { visitedAt: _visitedAt, isRoot: _isRoot, host: _host, ...suggestion } = candidate
+  const { visitedAt: _visitedAt, isRoot: _isRoot, host: _host, tabRecency: _tabRecency, ...suggestion } = candidate
   return suggestion
 }
 

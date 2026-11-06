@@ -236,4 +236,15 @@ describe('omnibox rows', () => {
     const result = rankOmnibox('x'.repeat(9000), visited, { allowInline: true })
     expect(result.suggestions[0]?.kind).toBe('search')
   })
+
+  it('lists open tabs most recently used first when ⌃Tab uses that order', () => {
+    const tabs = [
+      { id: 'a', url: 'https://news.example/a', title: 'News a', lastShownAt: 1 },
+      { id: 'b', url: 'https://news.example/b', title: 'News b', lastShownAt: 3 },
+      { id: 'c', url: 'https://news.example/c', title: 'News c', lastShownAt: 2 },
+    ]
+    const ids = (recentTabs: boolean) => rankSites('news', sources({ tabs, recentTabs })).map((row) => row.suggestion.tabId)
+    expect(ids(true)).toEqual(['b', 'c', 'a'])
+    expect(ids(false)).toEqual(['a', 'b', 'c'])
+  })
 })

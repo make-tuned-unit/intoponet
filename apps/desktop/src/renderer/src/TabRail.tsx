@@ -1,9 +1,9 @@
 import { AnimatePresence, motion, useReducedMotion, type Transition } from 'motion/react'
-import { PanelLeftClose, PanelLeftOpen, Plus, X } from 'lucide-react'
+import { PanelLeftClose, PanelLeftDashed, PanelLeftOpen, Plus, X } from 'lucide-react'
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
-import type { PageTabSnapshot } from '@intoponet/browser-api'
+import { TAB_SIDEBAR_WIDTH, type PageTabSnapshot } from '@intoponet/browser-api'
 import { useGlassSheen } from './glass/useGlassSheen'
-import { moveTabByKey, openTabMenu, TabAudioButton, TabIcon, tabSoundLabel, useTabDrag } from './tabControls'
+import { moveTabByKey, openTabMenu, TabAudioButton, TabHomeButton, TabIcon, tabSoundLabel, tabStateLabel, useTabDrag } from './tabControls'
 import './glass/glass.css'
 import './tabRail.css'
 
@@ -18,6 +18,11 @@ export type TabRailProps = {
   pinned: boolean
   onExpandedChange: (expanded: boolean) => void
   onPinnedChange: (pinned: boolean) => void
+  /** Kept-open width in pixels (resizable from the rail's edge). */
+  width: number
+  onWidthChange: (width: number) => void
+  /** Hide the sidebar (⌃⌘S); the window's left edge brings it back. */
+  onHide: () => void
   onNewTab: () => void
 }
 
@@ -28,7 +33,7 @@ export type TabRailProps = {
  * keeps it expanded as vertical tabs. Pinned tabs sit first as icons; tabs
  * can be dragged (or moved with ⌥⇧↑ / ⌥⇧↓) into a new order.
  */
-export function TabRail({ tabs, visible, expanded, pinned, onExpandedChange, onPinnedChange, onNewTab }: TabRailProps) {
+export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange, onHide, onExpandedChange, onPinnedChange, onNewTab }: TabRailProps) {
   const reduceMotion = useReducedMotion()
   const surface = useGlassSheen<HTMLDivElement>()
   const list = useRef<HTMLDivElement>(null)
@@ -79,18 +84,27 @@ export function TabRail({ tabs, visible, expanded, pinned, onExpandedChange, onP
     event.preventDefault()
   }
 
+  /** Dragging the edge resizes the kept-open sidebar; saved when the drag ends. */
+  const [dragWidth, setDragWidth] = useState<number | null>(null)
+  const clampWidth = (value: number): number => Math.round(Math.min(TAB_SIDEBAR_WIDTH.max, Math.max(TAB_SIDEBAR_WIDTH.min, value)))
+  useEffect(() => {
+    if (dragWidth === null) return
+    document.documentElement.style.setProperty('--rail-drag-width', `${dragWidth}px`)
+    return () => { document.documentElement.style.removeProperty('--rail-drag-width') }
+  }, [dragWidth])
+
   const pinnedTabs = tabs.filter((tab) => tab.pinned)
   const otherTabs = tabs.filter((tab) => !tab.pinned)
 
   const renderTab = (tab: PageTabSnapshot, index: number) => {
     const title = tab.title || tab.url || 'Untitled page'
-    const label = `${title}${tab.pinned ? ', pinned' : ''}${tabSoundLabel(tab)}${tab.loading ? ', loading' : ''}`
+    const label = `${title}${tab.pinned ? ', pinned' : ''}${tabStateLabel(tab)}${tabSoundLabel(tab)}${tab.loading ? ', loading' : ''}`
     return (
       <motion.div
         key={tab.id}
         data-tab-id={tab.id}
         layout="position"
-        className={`tab-rail-item${tab.active ? ' is-active' : ''}${tab.pinned ? ' is-pinned-tab' : ''}`}
+        className={`tab-rail-item${tab.active ? ' is-active' : ''}${tab.pinned ? ' is-pinned-tab' : ''}${tab.asleep ? ' is-asleep' : ''}`}
         initial={{ opacity: 0, scale: 0.7 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.7, transition: { duration: 0.14 } }}
@@ -122,6 +136,7 @@ export function TabRail({ tabs, visible, expanded, pinned, onExpandedChange, onP
           </span>
           <span className="tab-rail-title" aria-hidden={!open}>{title}</span>
         </button>
+        <TabHomeButton tab={tab} className="tab-rail-home" />
         <TabAudioButton tab={tab} className="tab-rail-audio" focusable={false} />
         <button
           type="button"
@@ -172,11 +187,13 @@ export function TabRail({ tabs, visible, expanded, pinned, onExpandedChange, onP
         >
           <div ref={surface} className="tab-rail-surface lg-surface lg-sheen">
             <div ref={list} className="tab-rail-list" role="tablist" aria-orientation="vertical" aria-label="Open tabs" onKeyDown={onKeyDown}>
+              {pinnedTabs.length > 0 && open && <span className="tab-rail-section" aria-hidden="true">Pinned</span>}
               {pinnedTabs.length > 0 && (
                 <div className="tab-rail-pinned" role="none">
                   <AnimatePresence initial={false}>{pinnedTabs.map((tab, index) => renderTab(tab, index))}</AnimatePresence>
                 </div>
               )}
+              {pinnedTabs.length > 0 && otherTabs.length > 0 && open && <span className="tab-rail-section" aria-hidden="true">Open</span>}
               <div className="tab-rail-group" role="none">
                 <AnimatePresence initial={false}>{otherTabs.map((tab, index) => renderTab(tab, pinnedTabs.length + index))}</AnimatePresence>
               </div>
@@ -197,8 +214,46 @@ export function TabRail({ tabs, visible, expanded, pinned, onExpandedChange, onP
                 {pinned ? <PanelLeftClose size={15} /> : <PanelLeftOpen size={15} />}
                 <span className="tab-rail-title" aria-hidden={!open}>{pinned ? 'Collapse' : 'Keep open'}</span>
               </button>
+              <button type="button" className="tab-rail-action" aria-label="Hide tab sidebar" title="Hide (⌃⌘S). Rest the pointer at the window’s left edge to bring it back." onClick={onHide}>
+                <PanelLeftDashed size={15} />
+                <span className="tab-rail-title" aria-hidden={!open}>Hide</span>
+              </button>
             </div>
           </div>
+          {pinned && (
+            <div
+              className="tab-rail-resize"
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Tab sidebar width"
+              aria-valuemin={TAB_SIDEBAR_WIDTH.min}
+              aria-valuemax={TAB_SIDEBAR_WIDTH.max}
+              aria-valuenow={dragWidth ?? width}
+              tabIndex={0}
+              onPointerDown={(event) => {
+                event.preventDefault()
+                event.currentTarget.setPointerCapture(event.pointerId)
+                const left = event.currentTarget.parentElement?.getBoundingClientRect().left ?? 0
+                setDragWidth(clampWidth(event.clientX - left))
+              }}
+              onPointerMove={(event) => {
+                if (dragWidth === null) return
+                const left = event.currentTarget.parentElement?.getBoundingClientRect().left ?? 0
+                setDragWidth(clampWidth(event.clientX - left))
+              }}
+              onPointerUp={() => {
+                if (dragWidth !== null) onWidthChange(dragWidth)
+                setDragWidth(null)
+              }}
+              onKeyDown={(event) => {
+                const step = event.shiftKey ? 48 : 16
+                if (event.key === 'ArrowLeft') onWidthChange(clampWidth(width - step))
+                else if (event.key === 'ArrowRight') onWidthChange(clampWidth(width + step))
+                else return
+                event.preventDefault()
+              }}
+            />
+          )}
         </motion.nav>
       )}
     </AnimatePresence>

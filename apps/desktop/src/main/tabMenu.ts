@@ -10,6 +10,7 @@ export type TabMenuAction =
   | 'mute'
   | 'unmute'
   | 'copy-link'
+  | 'go-home'
   | 'close'
   | 'close-others'
   | 'close-right'
@@ -18,6 +19,7 @@ export type TabMenuTab = OrderedTab & {
   url: string
   isStartPage?: boolean
   muted?: boolean
+  awayFromHome?: boolean
 }
 
 type Entry = { action: TabMenuAction; label: string; enabled: boolean } | { separator: true }
@@ -38,8 +40,10 @@ export function tabMenuEntries(tabs: readonly TabMenuTab[], id: string): Entry[]
       : { action: 'mute', label: 'Mute Site', enabled: hasPage },
     { separator: true },
     { action: 'copy-link', label: 'Copy Link', enabled: hasPage },
+    ...(tab.pinned ? [{ action: 'go-home' as const, label: 'Go to Pinned Page', enabled: tab.awayFromHome === true }] : []),
     { separator: true },
-    { action: 'close', label: 'Close Tab', enabled: true },
+    // A pinned tab's close button only unloads it; this removes it.
+    { action: 'close', label: tab.pinned ? 'Close Pinned Tab' : 'Close Tab', enabled: true },
     { action: 'close-others', label: 'Close Other Tabs', enabled: otherTabIds(tabs, id).length > 0 },
     { action: 'close-right', label: 'Close Tabs to the Right', enabled: tabIdsToRight(tabs, id).length > 0 },
   ]

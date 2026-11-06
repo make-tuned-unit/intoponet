@@ -403,6 +403,68 @@
       "tier": "network",
       "kind": "e2e",
       "promise": "With local news on, the tallest story raises the highest summit; the highest-peak control flies to it and pins its coverage, and Escape closes it."
+    },
+    {
+      "id": "COPY_ADDRESS",
+      "title": "Copy the page address from the keyboard",
+      "deps": [
+        "BROWSE"
+      ],
+      "tier": "core",
+      "kind": "e2e",
+      "promise": "⌘⇧C copies the open page's address, with known tracking parameters removed, in panel and full-width views (private tabs included) and a short notice says it was copied; a page that uses ⌘⇧C itself is not broken while a text field has focus."
+    },
+    {
+      "id": "PINNED_HOME",
+      "title": "Pinned tabs keep their home",
+      "deps": [
+        "TABS"
+      ],
+      "tier": "core",
+      "kind": "e2e",
+      "promise": "A pinned tab remembers the address it was pinned at; after wandering off it shows a way back home; closing a pinned tab unloads it but keeps it in place, and it reopens at home on the next click or launch."
+    },
+    {
+      "id": "TAB_SLEEP",
+      "title": "Background tabs sleep",
+      "deps": [
+        "TABS"
+      ],
+      "tier": "core",
+      "kind": "e2e",
+      "promise": "Tabs left in the background longer than the chosen time are unloaded to save memory and wake where they were (scroll and back/forward kept); tabs playing sound, sharing camera or microphone, or holding typed form text never sleep."
+    },
+    {
+      "id": "RECENT_TABS",
+      "title": "Switch tabs in the order you used them",
+      "deps": [
+        "TABS"
+      ],
+      "tier": "core",
+      "kind": "e2e",
+      "promise": "With the setting on, ⌃Tab steps through tabs most-recently-used first, holding ⌃ shows a switcher with each tab's icon and title, and releasing lands on the chosen tab; tab search in the address bar and command menu lists open tabs in the same recent order."
+    },
+    {
+      "id": "SIDEBAR_TABS",
+      "title": "Vertical tabs in every view",
+      "deps": [
+        "TABS"
+      ],
+      "tier": "core",
+      "kind": "e2e",
+      "promise": "With vertical tabs on, the tab sidebar stays in both panel and full-width views, shows Pinned and Open sections, collapses to icons or hides fully (⌘⇧S) and slides back in when the pointer rests at the window's edge, keeps its width and state for the next launch, and every tab in it is reachable by keyboard and VoiceOver."
+    },
+    {
+      "id": "TOUR",
+      "title": "The guided tour shows every feature",
+      "deps": [
+        "SETTINGS",
+        "STORY_MOUNTAINS",
+        "SIDEBAR_TABS"
+      ],
+      "tier": "network",
+      "kind": "e2e",
+      "promise": "Take the tour from Settings and every step lights up the part of the app it describes, from story mountains and their strands to the tab sidebar, PDF export and Knowledge, then puts everything back as it was."
     }
   ]
 }
