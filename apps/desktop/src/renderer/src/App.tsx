@@ -197,6 +197,7 @@ import type { GlobalStory } from '../../shared/news/globalStories'
 import { isExcludedSite, type PrivacyState } from '@intoponet/browser-api'
 import { PrivacyPane } from './privacy/PrivacyPane'
 import { SettingsPanel } from './settings/SettingsPanel'
+import { mergeImportedLibrary } from './browserImport/mergeImport'
 import { PermissionBar, SitePermissionChips } from './permissions/PermissionBar'
 import { ExternalOpenBar, useExternalOpenRequests } from './browsing/ExternalOpenBar'
 import { ErrorPage, navigationErrorMessage } from './browsing/ErrorPage'
@@ -1589,6 +1590,16 @@ export function App() {
     setNotice(parts.length ? `Imported ${parts.join(', ')}. Pages you already had were kept, with any new tags added.` : 'Everything in that file was already in your library.')
   }
 
+  /** Bookmarks from another browser (Settings › Import), merged like an imported library file. */
+  const importBrowserLibrary = (payload: string) => {
+    if (!libraryReady) return null
+    const merged = mergeImportedLibrary({ schema: privateLibrarySchema, bookmarks, collections, recents, absorbed }, payload)
+    if (!merged) return null
+    setBookmarks(merged.library.bookmarks)
+    setCollections(merged.library.collections)
+    return merged.added
+  }
+
   const exportLibrary = (): void => {
     const json = serializePrivateLibrary({
       schema: privateLibrarySchema,
@@ -2921,6 +2932,8 @@ export function App() {
             showLibrary()
           }}
           onClose={() => setSettingsOpen(false)}
+          libraryReady={libraryReady}
+          onImportLibrary={importBrowserLibrary}
         />
       )}
 

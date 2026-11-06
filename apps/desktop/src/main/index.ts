@@ -158,6 +158,9 @@ import { browserContextActions, type BrowserContextAction } from './browserConte
 import { duplicateIndex, moveTab, otherTabIds, pinnedFirst, setPinned, tabIdsToRight } from './tabOrder'
 import { tabMenuTemplate, type TabMenuAction } from './tabMenu'
 import { liveTabFlags } from './tabState'
+import { BrowserImportService, wireBrowserImport } from './browserImport/service'
+import type { ImportedTab } from './browserImport/plan'
+import { importRoot } from './browserImport/sources'
 import {
   browserHostChannels,
   type BrowserHostCommand,
@@ -2852,6 +2855,27 @@ function openIncoming(target: IncomingTarget): void {
 }
 
 /** One part of the app failing to start (a damaged settings file, say) must not keep the window from opening. */
+/** Settings › Import from another browser (browserImport/service.ts). */
+function wireImportFromBrowsers(): void {
+  const addImportedTabs = (tabs: ImportedTab[]): void => {
+    // Unloaded, like restored tabs: each page loads when it is first shown. Never in private mode.
+    for (const tab of tabs) {
+      if (openTabs.length >= MAX_TABS || !safeHttpUrl(tab.url)) continue
+      openTabs.push({ id: randomUUID(), url: tab.url, title: tab.title, favicon: '', view: buildView(false), asleep: {}, lastShownAt: Date.now(), ...(tab.pinned ? { pinned: true, home: tab.url } : {}) })
+    }
+    openTabs.splice(0, openTabs.length, ...pinnedFirst(openTabs))
+    emitTabs()
+    schedulePersistentStateSave()
+  }
+  wireBrowserImport(handleFromShell, new BrowserImportService({
+    root: () => importRoot(process.env, app.getPath('userData')),
+    tabs: { urls: () => openTabs.map((tab) => tab.url), room: () => MAX_TABS - openTabs.length, limit: MAX_TABS, add: addImportedTabs },
+    history: () => browsingData?.history ?? null,
+    passwords: () => passwords,
+    toOrigin: passwordOrigin,
+  }))
+}
+
 function startup(part: string, run: () => void): void {
   try {
     run()
@@ -2911,6 +2935,7 @@ app.whenReady().then(async () => {
     })
   })
   startup('saved passwords', wirePasswords)
+  startup('browser import', wireImportFromBrowsers)
   startup('site permissions', () => {
     const normalPermissions = new SitePermissionStore(join(app.getPath('userData'), 'site-permissions.json'))
     sitePermissions = new SitePermissionBroker({

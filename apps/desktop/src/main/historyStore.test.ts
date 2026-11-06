@@ -165,4 +165,28 @@ describe('history command validation', () => {
     expect(clearRangeStart('week', NOON)).toBe(NOON - 7 * DAY)
     expect(clearRangeStart('all', NOON)).toBe(0)
   })
+
+  it('imports pages from another browser once, by address, under the same rules', () => {
+    const { history, onChange, setExcluded } = store()
+    history.record({ url: 'https://example.com/a', title: 'A', isPrivate: false })
+    setExcluded(['left-out.example'])
+    const entries = [
+      { url: 'https://example.com/a', title: 'A again', visitedAt: NOON - DAY },
+      { url: 'https://example.com/b', title: 'B', visitedAt: NOON - 2 * DAY },
+      { url: 'https://left-out.example/x', title: 'X', visitedAt: NOON - DAY },
+      { url: 'chrome://settings', title: 'S', visitedAt: NOON - DAY },
+    ]
+    expect(history.importVisits(entries)).toEqual({ added: 1, duplicates: 1, excluded: 1, old: 0 })
+    expect(history.search('').days.flatMap((day) => day.visits.map((visit) => visit.url))).toEqual(['https://example.com/a', 'https://example.com/b'])
+    expect(onChange).toHaveBeenCalled()
+    expect(history.importVisits(entries)).toEqual({ added: 0, duplicates: 2, excluded: 1, old: 0 })
+  })
+
+  it('imports no history while footprints are off, and nothing older than the retention window', () => {
+    const { history } = store()
+    history.setPolicy({ footprints: false, retentionDays: 0 })
+    expect(history.importVisits([{ url: 'https://example.com/', title: '', visitedAt: NOON }]).added).toBe(0)
+    history.setPolicy({ footprints: true, retentionDays: 7 })
+    expect(history.importVisits([{ url: 'https://example.com/', title: '', visitedAt: NOON - 30 * DAY }])).toEqual({ added: 0, duplicates: 0, excluded: 0, old: 1 })
+  })
 })

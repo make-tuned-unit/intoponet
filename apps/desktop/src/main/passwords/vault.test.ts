@@ -155,4 +155,33 @@ describe('parseVaultData', () => {
   it('rejects a file of another kind', () => {
     expect(() => parseVaultData('{"schema":"other"}')).toThrow()
   })
+
+  it('imports sign-ins in one sealed write and skips ones already saved for the site and username', async () => {
+    const crypto = fakeCrypto()
+    const file = memoryFile()
+    const vault = new PasswordVault(crypto, file)
+    await vault.save('https://example.com', 'ada', 'mine')
+    const writes = file.writes
+    const rows = [
+      { origin: 'https://www.example.com', username: 'ada', password: 'theirs' },
+      { origin: 'https://other.example', username: 'bob', password: 'pw' },
+      { origin: 'http://insecure.example', username: 'x', password: 'pw' },
+    ]
+    expect(await vault.importMany(rows)).toEqual({ added: 1, existing: 1, invalid: 1 })
+    expect(file.writes).toBe(writes + 1)
+    expect((await vault.find('https://example.com', 'ada'))!.password).toBe('mine')
+    expect(await vault.importMany(rows)).toEqual({ added: 0, existing: 2, invalid: 1 })
+    expect(file.data!.toString()).not.toContain('pw')
+  })
+
+  it('writes nothing from an import when the file cannot be sealed', async () => {
+    const crypto = fakeCrypto()
+    const file = memoryFile()
+    const vault = new PasswordVault(crypto, file)
+    await vault.load()
+    crypto.setAvailable(false)
+    await expect(vault.importMany([{ origin: 'https://a.example', username: 'a', password: 'b' }])).rejects.toThrow()
+    crypto.setAvailable(true)
+    expect(await vault.list()).toEqual([])
+  })
 })

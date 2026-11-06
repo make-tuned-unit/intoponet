@@ -1,7 +1,7 @@
 // One end-to-end check per feature in docs/FEATURE_DAG.json. Each drives the
 // real built app and fails with a plain sentence when its promise isn't kept.
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { createServer as createHttpsServer } from 'node:https'
 import { tmpdir } from 'node:os'
 import { createServer } from 'node:http'
@@ -397,6 +397,68 @@ async function tabSite(extra = '') {
   })
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
   return { server, origin: `http://127.0.0.1:${server.address().port}` }
+}
+
+// ---- Import from another browser: fixture profiles ---------------------------
+// Built in a temporary folder the app is pointed at (BROWSER_IMPORT.env below); the real
+// ~/Library of the person running the checks is never read.
+const IMPORT_ROOT = join(tmpdir(), `intoponet-import-e2e-${process.pid}`)
+const IMPORT_TEST_KEY = 'e2e-safe-storage-secret'
+const IMPORT_PASSWORD = 'Imported-Pa55word!e2e'
+const chromiumMicros = (ms) => (BigInt(Math.round(ms)) + 11_644_473_600_000n) * 1000n
+async function buildImportFixtures(root) {
+  const { DatabaseSync } = await import('node:sqlite')
+  const { createCipheriv, pbkdf2Sync } = await import('node:crypto')
+  rmSync(root, { recursive: true, force: true })
+  const chrome = join(root, 'Google', 'Chrome')
+  const profile = join(chrome, 'Default')
+  mkdirSync(profile, { recursive: true })
+  writeFileSync(join(chrome, 'Local State'), JSON.stringify({ profile: { info_cache: { Default: { name: 'Person 1' } } } }))
+  writeFileSync(join(profile, 'Bookmarks'), JSON.stringify({ version: 1, roots: {
+    bookmark_bar: { type: 'folder', name: 'Bookmarks bar', children: [
+      { type: 'url', name: 'Wikipedia', url: 'https://en.wikipedia.org/wiki/Main_Page' },
+      { type: 'folder', name: 'Travel', children: [
+        { type: 'url', name: 'Fiji', url: 'https://en.wikipedia.org/wiki/Fiji' },
+        { type: 'folder', name: 'Japan', children: [{ type: 'url', name: 'Kyoto', url: 'https://en.wikipedia.org/wiki/Kyoto' }] },
+      ] },
+    ] },
+    other: { type: 'folder', name: 'Other bookmarks', children: [{ type: 'url', name: 'RNZ', url: 'https://www.rnz.co.nz/pacific' }] },
+  } }))
+  const history = new DatabaseSync(join(profile, 'History'))
+  history.exec(`CREATE TABLE urls(id INTEGER PRIMARY KEY AUTOINCREMENT, url LONGVARCHAR, title LONGVARCHAR, visit_count INTEGER DEFAULT 0 NOT NULL, typed_count INTEGER DEFAULT 0 NOT NULL, last_visit_time INTEGER NOT NULL, hidden INTEGER DEFAULT 0 NOT NULL);
+    CREATE TABLE visits(id INTEGER PRIMARY KEY, url INTEGER NOT NULL, visit_time INTEGER NOT NULL, from_visit INTEGER, transition INTEGER DEFAULT 0 NOT NULL);`)
+  for (const [index, path] of ['imported-one', 'imported-two'].entries()) {
+    const at = Date.now() - (index + 1) * 3_600_000
+    const { lastInsertRowid } = history.prepare('INSERT INTO urls(url, title, last_visit_time) VALUES (?, ?, ?)').run(`https://example.org/${path}`, `Imported ${index + 1}`, chromiumMicros(at))
+    history.prepare('INSERT INTO visits(url, visit_time) VALUES (?, ?)').run(lastInsertRowid, chromiumMicros(at))
+  }
+  history.close()
+  const key = pbkdf2Sync(IMPORT_TEST_KEY, 'saltysalt', 1003, 16, 'sha1')
+  const cipher = createCipheriv('aes-128-cbc', key, Buffer.alloc(16, 0x20))
+  const sealed = Buffer.concat([Buffer.from('v10'), cipher.update(IMPORT_PASSWORD, 'utf8'), cipher.final()])
+  const logins = new DatabaseSync(join(profile, 'Login Data'))
+  logins.exec('CREATE TABLE logins(origin_url VARCHAR NOT NULL, action_url VARCHAR, username_value VARCHAR, password_value BLOB, signon_realm VARCHAR NOT NULL, blacklisted_by_user INTEGER NOT NULL DEFAULT 0)')
+  logins.prepare('INSERT INTO logins(origin_url, username_value, password_value, signon_realm) VALUES (?, ?, ?, ?)').run('https://accounts.example.com/', 'tester@example.com', sealed, 'https://accounts.example.com/')
+  logins.close()
+  // Arc: two spaces with pinned tabs, a folder in one, and an open tab.
+  const arcProfile = join(root, 'Arc', 'User Data', 'Default')
+  mkdirSync(arcProfile, { recursive: true })
+  writeFileSync(join(arcProfile, 'Bookmarks'), JSON.stringify({ version: 1, roots: { bookmark_bar: { type: 'folder', name: 'Bookmarks bar', children: [] } } }))
+  const tab = (id, parentID, url, title) => [id, { id, parentID, childrenIds: [], title: null, data: { tab: { savedURL: url, savedTitle: title } } }]
+  writeFileSync(join(root, 'Arc', 'StorableSidebar.json'), JSON.stringify({ sidebar: { containers: [{ global: {} }, {
+    spaces: ['S1', { id: 'S1', title: 'Work', profile: { default: true }, newContainerIDs: [{ pinned: {} }, 'P1', { unpinned: {} }, 'U1'] }, 'S2', { id: 'S2', title: 'Home', profile: { default: true }, newContainerIDs: [{ pinned: {} }, 'P2', { unpinned: {} }, 'U2'] }],
+    items: [
+      'P1', { id: 'P1', parentID: null, childrenIds: ['T1', 'F1'], data: { itemContainer: {} } },
+      ...tab('T1', 'P1', 'https://docs.example.com/', 'Docs'),
+      'F1', { id: 'F1', parentID: 'P1', childrenIds: ['T2'], title: 'Reading', data: { list: {} } },
+      ...tab('T2', 'F1', 'https://en.wikipedia.org/wiki/Tonga', 'Tonga'),
+      'U1', { id: 'U1', parentID: null, childrenIds: ['T3'], data: { itemContainer: {} } },
+      ...tab('T3', 'U1', 'https://news.example.com/today', 'Today'),
+      'P2', { id: 'P2', parentID: null, childrenIds: ['T4'], data: { itemContainer: {} } },
+      ...tab('T4', 'P2', 'https://recipes.example.com/', 'Recipes'),
+      'U2', { id: 'U2', parentID: null, childrenIds: [], data: { itemContainer: {} } },
+    ],
+  }] } }))
 }
 
 export const checks = {
@@ -1792,6 +1854,99 @@ export const checks = {
       server.close()
     }
   },
+  async BROWSER_IMPORT(ctx) {
+    await buildImportFixtures(IMPORT_ROOT)
+    const host = 'window.intoponet.browserHost'
+    const section = `document.querySelector('.browser-import')`
+    const sectionText = () => ctx.evaluate(`${section}?.innerText ?? ''`)
+    const library = async () => JSON.parse(await ctx.evaluate(`${host}.readPrivateLibrary().then((r) => r.status === 'ok' && r.payload ? r.payload : '{"bookmarks":[],"collections":[]}')`))
+    const tabs = async () => JSON.parse(await ctx.evaluate(`${host}.getTabs().then((t) => JSON.stringify(t))`))
+    const historyTotal = () => ctx.evaluate(`window.intoponet.history.search('example.org/imported').then((r) => r.total)`)
+    const passwordCount = () => ctx.evaluate(`window.intoponet.passwords.list().then((l) => l.length)`)
+    const choose = async (label) => {
+      expect(await ctx.evaluate(`(() => { const input = [...document.querySelectorAll('.browser-import input[type=radio]')].find((i) => i.parentElement.innerText.includes(${JSON.stringify(label)})); if (!input) return false; input.focus(); input.click(); return true })()`), `${label} is not listed under Import.`)
+      await ctx.wait(`(${section}?.innerText ?? '').includes('What to bring') && !(${section}?.innerText ?? '').includes('Looking at')`, 15_000, `the preview for ${label}`)
+    }
+    const ticked = () => ctx.evaluate(`Object.fromEntries([...document.querySelectorAll('.browser-import-choice input')].map((i) => [i.parentElement.innerText.split(' ')[0], i.checked]))`)
+    const tick = (name) => ctx.evaluate(`(() => { const input = [...document.querySelectorAll('.browser-import-choice input')].find((i) => i.parentElement.innerText.startsWith(${JSON.stringify(name)})); if (!input.checked) input.click(); return true })()`)
+    /** Import with the keyboard: focus the button and press Enter. */
+    const importNow = async (browser) => {
+      await ctx.evaluate(`(() => { [...document.querySelectorAll('.browser-import button')].find((b) => b.innerText.trim() === 'Import').focus(); return true })()`)
+      await ctx.press('Enter')
+      await ctx.wait(`!!document.querySelector('.browser-import-result') || !!document.querySelector('.browser-import .settings-error')`, 30_000, `the import from ${browser} to finish`)
+      const error = await ctx.evaluate(`document.querySelector('.browser-import .settings-error')?.innerText ?? ''`)
+      expect(!error, `The import from ${browser} failed: ${error}`)
+      await ctx.delay(1500)
+      return ctx.evaluate(`document.querySelector('.browser-import-result').innerText`)
+    }
+    try {
+      await openPanel(ctx, 'Settings')
+      await ctx.wait(`!!${section}`, 5000, 'the Import from another browser section in Settings')
+      await ctx.evaluate(`(() => { ${section}.scrollIntoView({ block: 'start' }); return true })()`)
+      expect(await ctx.click('.browser-import button', 'Find browsers'), 'Import has no way to look for browsers.')
+      await ctx.wait(`document.querySelectorAll('.browser-import input[type=radio]').length >= 2`, 10_000, 'the browsers found on this Mac')
+      const listed = await sectionText()
+      expect(listed.includes('Google Chrome · Person 1 (Default)') && listed.includes('Arc · Default'), `The detected profiles are not listed: ${listed}`)
+
+      // Chrome: the preview counts every category before anything is written.
+      await choose('Google Chrome')
+      const preview = await sectionText()
+      for (const piece of ['4 pages in 4 collections', 'History 2 pages', 'Passwords 1 sign-in', 'session files']) expect(preview.includes(piece), `The Chrome preview is missing "${piece}": ${preview}`)
+      const defaults = await ticked()
+      expect(defaults.Bookmarks && !defaults.History && !defaults.Passwords, `History and passwords must be off until ticked (${JSON.stringify(defaults)}).`)
+      expect((await library()).bookmarks.length === 0 && (await passwordCount()) === 0 && (await historyTotal()) === 0, 'Something was written before Import was pressed.')
+      await tick('History')
+      await tick('Passwords')
+      expect((await sectionText()).includes('Chrome Safe Storage'), 'Ticking Passwords does not say macOS will ask for Keychain access.')
+      await ctx.shot('chrome-preview')
+      await axeAudit(ctx, 'Settings › Import (preview)', '.browser-import')
+      const chromeResult = await importNow('Chrome')
+      await ctx.shot('chrome-imported')
+      expect(chromeResult.includes('4 pages into your library') && chromeResult.includes('2 history pages') && chromeResult.includes('1 password'), `Unexpected Chrome result: ${chromeResult}`)
+      const afterChrome = await library()
+      const labels = afterChrome.collections.map((c) => c.label)
+      for (const label of ['Bookmarks bar', 'Travel', 'Travel › Japan', 'Other bookmarks']) expect(labels.includes(label), `No "${label}" collection after importing (have ${labels.join(', ')}).`)
+      expect(await historyTotal() === 2, 'The imported history pages are not in History.')
+      const logins = JSON.parse(await ctx.evaluate(`window.intoponet.passwords.list().then((l) => JSON.stringify(l))`))
+      expect(logins.length === 1 && logins[0].origin === 'https://accounts.example.com' && logins[0].username === 'tester@example.com', `The imported password is not saved (${JSON.stringify(logins)}).`)
+      expect(!readFileSync(join(ctx.profile, 'passwords.v1.seal')).includes(IMPORT_PASSWORD), 'The password file holds the imported password as plain text.')
+      await ctx.wait(`(document.querySelector('.password-settings')?.innerText ?? '').includes('accounts.example.com')`, 5000, 'Settings › Passwords to list the imported sign-in')
+
+      // Arc: spaces' pinned tabs become pinned tabs with their home; folders and spaces become collections.
+      await choose('Arc')
+      const arcPreview = await sectionText()
+      expect(arcPreview.includes('Pinned tabs 2 tabs') && arcPreview.includes('Open tabs 1 tab'), `The Arc preview is wrong: ${arcPreview}`)
+      const arcResult = await importNow('Arc')
+      expect(arcResult.includes('2 pinned tabs') && arcResult.includes('1 open tab'), `Unexpected Arc result: ${arcResult}`)
+      const open = await tabs()
+      const pinned = open.filter((tab) => tab.pinned)
+      expect(pinned.length === 2 && pinned.every((tab) => tab.home === tab.url && tab.asleep), `Pinned tabs did not come over with their home, unloaded: ${JSON.stringify(pinned)}`)
+      expect(open.some((tab) => !tab.pinned && tab.url === 'https://news.example.com/today'), 'The open tab did not come over.')
+      const arcLabels = (await library()).collections.map((c) => c.label)
+      for (const label of ['Work', 'Home', 'Work › Reading']) expect(arcLabels.includes(label), `No "${label}" collection from Arc (have ${arcLabels.join(', ')}).`)
+      await ctx.shot('arc-imported')
+
+      // Twice: nothing doubles.
+      const before = { library: await library(), tabs: (await tabs()).length, history: await historyTotal(), passwords: await passwordCount() }
+      const again = await importNow('Arc again')
+      expect(again.includes('Nothing new'), `A second Arc import added something: ${again}`)
+      await choose('Google Chrome')
+      await tick('History')
+      await tick('Passwords')
+      const againChrome = await importNow('Chrome again')
+      expect(againChrome.includes('Nothing new') && againChrome.includes('already'), `A second Chrome import added something: ${againChrome}`)
+      const after = { library: await library(), tabs: (await tabs()).length, history: await historyTotal(), passwords: await passwordCount() }
+      expect(after.library.bookmarks.length === before.library.bookmarks.length && after.library.collections.length === before.library.collections.length, 'A second import added bookmarks or collections.')
+      expect(after.library.collections.every((c) => new Set(c.memberUrls).size === c.memberUrls.length), 'A collection lists a page twice.')
+      expect(after.tabs === before.tabs && after.history === before.history && after.passwords === before.passwords, `A second import doubled something: ${JSON.stringify({ before: { ...before, library: undefined }, after: { ...after, library: undefined } })}`)
+      await ctx.shot('second-run')
+      await axeAudit(ctx, 'Settings › Import (results)', '.browser-import')
+      return 'Found Chrome (Person 1) and Arc; previewed counts with history and passwords off; imported 4 bookmarks as 4 collections, 2 history pages and 1 sealed password from Chrome, and 2 pinned tabs (with homes), 1 open tab and the Work, Home and Work › Reading collections from Arc; a second run added nothing; keyboard and axe clean.'
+    } finally {
+      rmSync(IMPORT_ROOT, { recursive: true, force: true })
+    }
+  },
+
   async TOUR(ctx) {
     // Every step's spotlight must find what it shows (a renamed button would leave the tour pointing at nothing).
     await ctx.waitForNews()
@@ -1818,3 +1973,4 @@ export const checks = {
 }
 
 checks.TAB_SLEEP.env = { INTOPONET_TAB_SLEEP_MINUTE_MS: '200' }
+checks.BROWSER_IMPORT.env = { INTOPONET_IMPORT_ROOT: IMPORT_ROOT, INTOPONET_IMPORT_TEST_KEY: IMPORT_TEST_KEY }

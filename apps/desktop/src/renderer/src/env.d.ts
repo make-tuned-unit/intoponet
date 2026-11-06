@@ -27,6 +27,8 @@ declare global {
       access: { page(): Promise<{ url: string; title: string; paywalled: boolean; signals: string[]; doi: string | null } | null> }
       updates: UpdatesApi
       passwords: PasswordApi
+      /** Settings › Import from another browser. */
+      browserImport: import('../../shared/browserImport').BrowserImportApi
       downloads: DownloadsApi
       history: HistoryApi
       /** Links to other apps, default browser, page appearance. */
