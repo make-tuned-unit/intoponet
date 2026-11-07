@@ -383,6 +383,12 @@ const selfSignedSite = async () => {
   }
 }
 const panelState = (ctx) => ctx.evaluate(`window.intoponet.browserHost.getState().then((s) => JSON.stringify(s))`).then(JSON.parse)
+/**
+ * Checks run side by side open their windows in the same place, so one can be covered by another. A covered shell is
+ * hidden: its animation frames stop, a closing panel's exit never ends and the panel that should replace it never
+ * mounts (a check then times out). The app catches up once shown; keep the shell drawing while covered instead.
+ */
+const keepDrawing = (ctx) => ctx.main(`(() => { electron.BrowserWindow.getAllWindows()[0]?.webContents.setBackgroundThrottling(false); return true })()`)
 
 /** Fails the check on any WCAG 2.2 AA violation axe finds in the app window right now. */
 async function axeAudit(ctx, where, selector = null) {
@@ -627,6 +633,7 @@ export const checks = {
   },
 
   async GLOBE_LIVE(ctx) {
+    await keepDrawing(ctx)
     await ctx.waitForNews()
     // Highlights open on World (story cards); signal rows are under Peaks.
     expect(await ctx.click('.globe-tabs button', 'Peaks'), 'Highlights tab "Peaks" is missing.')
@@ -640,6 +647,7 @@ export const checks = {
   },
 
   async SOURCE_CAROUSEL(ctx) {
+    await keepDrawing(ctx)
     await ctx.waitForNews()
     expect(await ctx.click('.globe-tabs button', 'World'), 'The World tab is missing.')
     await ctx.wait(`document.querySelectorAll('.world-list .world-row').length > 0`, 90_000, 'stories covered across the world')
@@ -660,7 +668,7 @@ export const checks = {
     const chevron = JSON.parse(await ctx.evaluate(`JSON.stringify((() => { const r = document.querySelector('.world-expand').getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)] })())`))
     expect(chevron[0] >= 32 && chevron[1] >= 32, `The chevron's target is only ${chevron.join('×')} px.`)
     await ctx.delay(1500)
-    await ctx.click('.world-sources-button')
+    await ctx.evaluate(`(() => { const b = document.querySelector('.world-sources-button'); b.focus(); b.click(); return true })()`)
     await ctx.delay(160)
     await ctx.shot('launching')
     await ctx.wait(`document.querySelectorAll('.sc-card').length >= 3`, 5_000, 'the carousel cards')
@@ -670,6 +678,9 @@ export const checks = {
     const enriched = JSON.parse(await ctx.evaluate(`JSON.stringify({ images: document.querySelectorAll('.sc-card .sc-media img').length, bylines: [...document.querySelectorAll('.sc-card .sc-authors')].length, summaries: document.querySelectorAll('.sc-card .sc-summary').length })`))
     await ctx.shot('carousel')
     await axeAudit(ctx, 'the sources carousel')
+    // Each headline is laid out in its own direction (Arabic, Persian and Hebrew ones right to left, punctuation in place).
+    const misdirected = JSON.parse(await ctx.evaluate(`JSON.stringify([...document.querySelectorAll('.sc-card .sc-headline, .sc-card .sc-original, .sc-card .sc-summary')].filter((el) => el.dir !== 'auto' || (/^[\\u0590-\\u08FF]/.test(el.textContent.trim()) && getComputedStyle(el).direction !== 'rtl')).map((el) => el.textContent.slice(0, 40)))`))
+    expect(!misdirected.length, `These card texts are not laid out in their own direction: ${misdirected.join(' | ')}`)
     const state0 = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getState().then((s) => JSON.stringify(s))`))
     const first = await ctx.evaluate(`document.querySelector('.sc-card.is-front .sc-outlet strong').innerText`)
     await ctx.evaluate(`(() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })); return true })()`)
@@ -677,6 +688,22 @@ export const checks = {
     const second = await ctx.evaluate(`document.querySelector('.sc-card.is-front .sc-outlet strong').innerText`)
     expect(first !== second || (await ctx.evaluate(`document.querySelectorAll('.sc-card').length`)) < 2, 'The arrow key did not flip to the next source.')
     await ctx.shot('flipped')
+    // Escape closes Compare's chooser (focus back on Compare), then the carousel (focus back on the button that opened it).
+    if (await ctx.evaluate(`!!document.querySelector('.sc-compare')`)) {
+      await ctx.click('.sc-compare')
+      await ctx.wait(`!!document.querySelector('.sc-chooser-item')`, 3000, 'the Compare chooser')
+      await ctx.press('Escape')
+      await ctx.wait(`!document.querySelector('.sc-chooser')`, 3000, 'Escape to close the Compare chooser')
+      const onCompare = await ctx.wait(`!!document.activeElement?.classList.contains('sc-compare')`, 2000).then(() => true, () => false)
+      expect(onCompare, 'Closing the Compare chooser left the keyboard focus nowhere.')
+    }
+    await ctx.press('Escape')
+    await ctx.wait(`!document.querySelector('.sources-carousel')`, 5000, 'Escape to close the carousel')
+    const onOpener = await ctx.wait(`!!document.activeElement?.classList.contains('world-sources-button')`, 2000).then(() => true, () => false)
+    expect(onOpener, 'Closing the carousel left the keyboard focus nowhere.')
+    await ctx.evaluate(`(() => { document.querySelector('.world-sources-button').click(); return true })()`)
+    await ctx.wait(`document.querySelectorAll('.sc-card').length >= 3`, 5_000, 'the carousel to open again')
+    await ctx.delay(1500)
     const chosen = await ctx.evaluate(`(() => { const card = document.querySelector('.sc-card.is-front'); return card.getAttribute('aria-label') })()`)
     await ctx.evaluate(`(() => { document.querySelector('.sc-card.is-front').click(); return true })()`)
     await ctx.delay(180)
@@ -692,6 +719,7 @@ export const checks = {
   },
 
   async FLY_TO(ctx) {
+    await keepDrawing(ctx)
     await ctx.flyTo('Charlottetown PEI')
     await ctx.wait(`document.querySelector('h1')?.innerText === 'Charlottetown'`, 15_000, 'the title to read Charlottetown')
     await ctx.wait(`getComputedStyle(document.querySelector('.globe-locator') ?? document.body).opacity === '1'`, 15_000, 'the locator to appear on the spot')
@@ -706,6 +734,7 @@ export const checks = {
   },
 
   async GLOBE_MOTION(ctx) {
+    await keepDrawing(ctx)
     await ctx.flyTo('Dar es Salaam')
     await ctx.wait(`getComputedStyle(document.querySelector('.globe-locator') ?? document.body).opacity === '1'`, 15_000, 'the locator')
     await ctx.delay(2500)
@@ -722,6 +751,7 @@ export const checks = {
 
   // ---- Places, news and history --------------------------------------------
   async COUNTRY_PANEL(ctx) {
+    await keepDrawing(ctx)
     await ctx.waitForNews()
     await ctx.flyTo('Canada')
     await ctx.delay(2500)
@@ -742,6 +772,7 @@ export const checks = {
   },
 
   async COUNTRY_NAMES(ctx) {
+    await keepDrawing(ctx)
     await ctx.delay(2000)
     const atStart = await ctx.evaluate(`document.querySelectorAll('.country-name.is-on').length`)
     expect(atStart >= 8, `Only ${atStart} country names at the default view.`)
@@ -775,6 +806,7 @@ export const checks = {
   },
 
   async WORLD_STORIES(ctx) {
+    await keepDrawing(ctx)
     await ctx.waitForNews()
     await ctx.click('.globe-tabs button', 'World')
     await ctx.wait(`document.querySelectorAll('.world-list > li').length >= 5`, 90_000, 'at least five stories covered across the world')
@@ -785,6 +817,7 @@ export const checks = {
   },
 
   async STORY_MOUNTAINS(ctx) {
+    await keepDrawing(ctx)
     await ctx.waitForNews()
     await ctx.wait(`window.intoponet.browserHost.getNewsDigest().then((raw) => (JSON.parse(raw).mountains ?? []).length >= 5)`, 120_000, 'story mountains in the news digest')
     const digest = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getNewsDigest()`))
@@ -801,7 +834,23 @@ export const checks = {
     await ctx.shot('story-mountains')
     await ctx.press('Escape')
     await ctx.wait(`!document.querySelector('.story-panel')`, 5_000, 'the story panel to close on Escape')
-    return `${digest.mountains.length} story mountains; highest "${panel}" (${top.outlets} outlets, ${top.countries.length} other countries).`
+    // A pinned story that wears away (a digest without it) is unpinned: it does not come back pinned by itself when it rises again.
+    await ctx.click('.story-highest')
+    await ctx.wait(`!!document.querySelector('.story-panel h2')`, 10_000, 'the pinned story panel again')
+    const pinnedLabel = await ctx.evaluate(`document.querySelector('.story-panel h2').innerText`)
+    const raw = await ctx.evaluate(`window.intoponet.browserHost.getNewsDigest()`)
+    const live = JSON.parse(raw)
+    const pinned = live.mountains.find((m) => (m.label ?? m.title) === pinnedLabel)
+    expect(pinned, `The pinned story "${pinnedLabel}" is not in the digest.`)
+    const sendDigest = (payload) => ctx.main(`(() => { electron.BrowserWindow.getAllWindows()[0].webContents.send('browser-host:event', { type: 'news-digest', payload: ${JSON.stringify(payload)} }); return true })()`)
+    await sendDigest(JSON.stringify({ ...live, mountains: live.mountains.filter((m) => m.id !== pinned.id) }))
+    await ctx.wait(`!document.querySelector('.story-panel')`, 5_000, 'the worn-away story\'s panel to close')
+    await sendDigest(raw)
+    await ctx.delay(1500)
+    expect(!(await ctx.evaluate(`!!document.querySelector('.story-panel')`)), `"${pinnedLabel}" wore away, then came back pinned by itself when it rose again.`)
+    const button = await ctx.evaluate(`document.querySelector('.story-highest')?.innerText ?? ''`)
+    expect(button.includes('Highest peak'), `After the pinned story wore away, the peak button reads "${button.replace(/\s+/g, ' ')}".`)
+    return `${digest.mountains.length} story mountains; highest "${panel}" (${top.outlets} outlets, ${top.countries.length} other countries); a pinned story that wore away stayed unpinned.`
   },
 
   async OLDS_HEADLINE(ctx) {
@@ -835,6 +884,7 @@ export const checks = {
   },
 
   async OLDS_UI(ctx) {
+    await keepDrawing(ctx)
     await ctx.waitForNews()
     await ctx.flyTo('Canada')
     await ctx.delay(2500)
@@ -851,13 +901,14 @@ export const checks = {
     const clipped = await ctx.evaluate(`(() => { const t = document.querySelector('.olds-track')?.getBoundingClientRect(); if (!t) return 0; return [...document.querySelectorAll('.olds-card')].filter((c) => { const r = c.getBoundingClientRect(); return r.top < t.top - 1 || r.bottom > t.bottom + 1 }).length })()`)
     expect(clipped === 0, `${clipped} timeline cards are clipped.`)
     await ctx.press('Escape')
-    await ctx.delay(900)
-    expect(!(await ctx.evaluate(`!!document.querySelector('.olds-sheet')`)), 'Escape does not close The Olds.')
+    const closed = await ctx.wait(`!document.querySelector('.olds-sheet')`, 5000).then(() => true, () => false)
+    expect(closed, 'Escape does not close The Olds.')
     return `Views ${views.join('/')}; sections: ${sections.join(', ') || 'path only'}.`
   },
 
   // An outlet's earlier coverage of a story (its topic pages, then Wayback Machine snapshots), newest first.
   async OLDS_COVERAGE(ctx) {
+    await keepDrawing(ctx)
     await ctx.waitForNews()
     await ctx.click('.globe-tabs button', 'World')
     await ctx.wait(`document.querySelectorAll('.world-list > li').length > 0`, 90_000, 'world stories')
@@ -2106,27 +2157,74 @@ export const checks = {
   },
 
   async TOUR(ctx) {
+    await keepDrawing(ctx)
     // Every step's spotlight must find what it shows (a renamed button would leave the tour pointing at nothing).
     await ctx.waitForNews()
     await ctx.wait(`!!document.querySelector('.story-highest')`, 60_000, 'story mountains to rise')
+    const tabList = `window.intoponet.browserHost.getTabs().then((t) => t.map((x) => x.id).sort().join(','))`
+    const tabsBefore = await ctx.evaluate(tabList)
     await ctx.click('.settings-button')
     await ctx.click('button', 'Take the tour')
     await ctx.wait(`!!document.querySelector('.tour-card')`, 5000, 'the tour to start')
     const total = Number((await ctx.evaluate(`document.querySelector('.tour-count').textContent`)).split(' of ')[1])
     const missed = []
+    // The step's own name (its progress dot); the card's heading animates from one step to the next.
+    const stepTitle = `(document.querySelector('.tour-progress [aria-current="step"]')?.getAttribute('aria-label') ?? '').replace(/^Step \\d+: /, '')`
     for (let step = 1; step <= total; step += 1) {
       await ctx.wait(`document.querySelector('.tour-count')?.textContent.startsWith('${step} of') && !document.querySelector('.tour-next')?.textContent.includes('Showing')`, 45_000, `tour step ${step} to finish showing`)
+      await ctx.wait(`document.getElementById('tour-title')?.textContent === ${stepTitle}`, 5000, `tour step ${step}'s card`)
       await ctx.delay(700)
-      const state = JSON.parse(await ctx.evaluate(`JSON.stringify({ title: document.getElementById('tour-title').textContent, lit: !!document.querySelector('.tour-spotlight'), centred: !!document.querySelector('.tour-dim') })`))
+      const state = JSON.parse(await ctx.evaluate(`JSON.stringify({ title: ${stepTitle}, lit: !!document.querySelector('.tour-spotlight'), centred: !!document.querySelector('.tour-dim') })`))
       const centred = ['A browser with the whole world in view', 'The everyday things, done carefully'].includes(state.title)
       if (!centred && !state.lit) missed.push(`${step}. ${state.title}`)
-      if (['The news rises as mountains', 'Follow a story around the world', 'Tabs down the side, in every view', 'Save any page as a clean PDF'].includes(state.title)) await ctx.shot(`step-${step}`)
+      if (['The news rises as mountains', 'Follow a story around the world', 'Two outlets, side by side', 'Tabs down the side, in every view', 'Save any page as a clean PDF', 'Tabs that know their story', 'Tidy suggests the folders', 'Anchor a workspace to a place', 'Links from other apps go where they belong'].includes(state.title)) await ctx.shot(`step-${step}`)
       if (step < total) await ctx.click('.tour-next')
     }
     expect(missed.length === 0, `These tour steps point at nothing: ${missed.join('; ')}.`)
     await ctx.click('.tour-next')
     await ctx.wait(`!document.querySelector('.tour-card') && !document.querySelector('.story-panel')`, 5000, 'the tour to finish and tidy up')
-    return `All ${total} steps shown, each spotlight on what it describes; the tour put everything back at the end.`
+    // Everything it opened is closed again: none of its pages is left in the sidebar.
+    const tidy = await ctx.wait(`${tabList}.then((ids) => ids === ${JSON.stringify(tabsBefore)})`, 5000).then(() => true, () => false)
+    expect(tidy, `The tour left a tab open: ${await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => t.map((x) => x.title || x.url).join(', '))`)}.`)
+    // The Olds step moves on once The Olds has looked, even when it finds nothing: here Wikipedia cannot be reached.
+    await ctx.main(`(() => {
+      const dns = process.mainModule.require('dns')
+      dns.__tourLookup ??= dns.lookup
+      const lookup = dns.__tourLookup
+      dns.lookup = function (host, options, callback) {
+        if (typeof options === 'function') { callback = options; options = {} }
+        if (/(^|\\.)(wikipedia|wikidata|wikimedia)\\.org$/.test(host)) return process.nextTick(callback, Object.assign(new Error('getaddrinfo ENOTFOUND ' + host), { code: 'ENOTFOUND', hostname: host }))
+        return lookup.call(this, host, options, callback)
+      }
+      return true
+    })()`)
+    let offline
+    try {
+      await ctx.click('.settings-button')
+      await ctx.click('button', 'Take the tour')
+      await ctx.wait(`!!document.querySelector('.tour-card')`, 5000, 'the tour to start again')
+      await ctx.evaluate(`(() => {
+        const step = window.__oldsStep = { start: performance.now() }
+        const timer = setInterval(() => {
+          if (document.querySelector('.tour-next')?.textContent.includes('Showing')) step.showing = true
+          else if (step.showing) {
+            step.ms = Math.round(performance.now() - step.start)
+            step.olds = (document.querySelector('.olds-sheet .olds-status') ?? document.querySelector('.olds-sheet h2'))?.innerText ?? 'not open'
+            clearInterval(timer)
+          }
+        }, 50)
+        ;[...document.querySelectorAll('.tour-progress button')].find((b) => b.getAttribute('aria-label').endsWith(': The history behind the news')).click()
+        return true
+      })()`)
+      await ctx.wait(`!!window.__oldsStep.ms`, 45_000, 'The Olds step to finish with Wikipedia unreachable')
+      offline = JSON.parse(await ctx.evaluate(`JSON.stringify(window.__oldsStep)`))
+      expect(offline.ms < 12_000, `With Wikipedia unreachable, The Olds step kept showing for ${Math.round(offline.ms / 1000)} s (The Olds: "${offline.olds}").`)
+      await ctx.press('Escape')
+      await ctx.wait(`!document.querySelector('.tour-card') && !document.querySelector('.olds-sheet')`, 5000, 'the tour to close on Escape')
+    } finally {
+      await ctx.main(`(() => { const dns = process.mainModule.require('dns'); if (dns.__tourLookup) dns.lookup = dns.__tourLookup; return true })()`)
+    }
+    return `All ${total} steps shown, each spotlight on what it describes; the tour put everything back at the end, its own tab closed. With Wikipedia unreachable The Olds step moved on after ${(offline.ms / 1000).toFixed(1)} s ("${offline.olds}").`
   },
   async TAB_ARCHIVE(ctx) {
     // Started with an "hour" of 200 ms (TAB_ARCHIVE.env below), so "12 hours" is 2.4 seconds.

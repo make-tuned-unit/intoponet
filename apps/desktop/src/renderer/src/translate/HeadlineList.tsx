@@ -150,7 +150,7 @@ export function HeadlineList({
           return (
             <li key={headline.url} className={onHistory ? 'has-history' : undefined}>
               <button type="button" onClick={(event) => openOrPreview(event, headline.url, onOpen)} title={shown ? headline.title : undefined}>
-                <strong lang={shown ? target : code ?? undefined}>{shown ?? headline.title}</strong>
+                <strong dir="auto" lang={shown ? target : code ?? undefined}>{shown ?? headline.title}</strong>
                 <small>
                   {detail ? detail(headline) : `${headline.publisher} · ${relativeTime(headline.publishedAt, now)}`}{shown && code ? ` · from ${languageName(code)}${translation && modelFor(code, translation.supported)?.rough ? ` (rough, via ${languageName(RELATED_MODEL[code]!)})` : ''}` : ''}
                   {hostIsPaywalled(headline.url, paywalled) && <span className="paywall-lock" title="This outlet usually restricts articles to subscribers. Opening it offers free coverage of the same story."><Lock size={10} aria-hidden="true" /> paywall</span>}
