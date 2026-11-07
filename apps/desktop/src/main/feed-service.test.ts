@@ -261,6 +261,47 @@ describe('FEED_FETCH service', () => {
     expect((await throttledService.snapshot()).sources['hinckley-bosworth-news']?.deadLetters[0]?.status).toBe(429)
   })
 
+  it('tries feeds that failed for want of a network again at once, and leaves other failures backed off', async () => {
+    let now = FIXED_NOW
+    let online = false
+    const server = createServer((_request, response) => {
+      response.writeHead(200, { 'content-type': 'application/rss+xml' })
+      response.end(rss)
+    })
+    servers.push(server)
+    const origin = await listen(server)
+    const offlineFetch: typeof fetch = async (input, init) => {
+      if (!online) throw new TypeError('fetch failed')
+      return fetch(input, init)
+    }
+    const service = new FeedFetchService({ registry: registry(`${origin}/rss`), storage: new MemoryStorage(), mode: 'fixture', fetchImpl: offlineFetch, now: () => now })
+    // A night offline: every attempt fails and the backoff grows.
+    for (let i = 0; i < 6; i += 1) {
+      const failed = await service.refreshSource('hinckley-bosworth-news')
+      expect(failed.status).toBe('error')
+      now = Date.parse(failed.nextAttemptAt!)
+    }
+    now += 60_000
+    const failed = await service.refreshSource('hinckley-bosworth-news')
+    expect(Date.parse(failed.nextAttemptAt!) - now).toBeGreaterThan(2 * 60 * 60_000)
+    expect((await service.refreshSource('hinckley-bosworth-news')).status).toBe('deferred')
+    // Back online: the feed is due now, not hours from now.
+    online = true
+    expect(service.retryNetworkFailures()).toBe(1)
+    const updated = await service.refreshSource('hinckley-bosworth-news')
+    expect(updated.status).toBe('updated')
+    expect(service.retryNetworkFailures()).toBe(0)
+    service.stop()
+
+    const refused = createServer((_request, response) => { response.writeHead(500); response.end() })
+    servers.push(refused)
+    const refusedOrigin = await listen(refused)
+    const broken = new FeedFetchService({ registry: registry(`${refusedOrigin}/rss`), storage: new MemoryStorage(), mode: 'fixture', now: () => FIXED_NOW })
+    expect((await broken.refreshSource('hinckley-bosworth-news')).status).toBe('error')
+    expect(broken.retryNetworkFailures()).toBe(0)
+    expect((await broken.refreshSource('hinckley-bosworth-news')).status).toBe('deferred')
+  })
+
   it('caps request concurrency and deduplicates in-flight jobs per source', async () => {
     let active = 0
     let maxActive = 0

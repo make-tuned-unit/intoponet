@@ -146,7 +146,7 @@ export function newsSourceMeta(feeds: NewsFeedEntry[]): NewsSourceMeta[] {
  * country's outlets are reporting. Runs in the main process; nothing personal
  * is sent, and the renderer only ever receives the validated digest.
  */
-export function startNewsService(options: { userData: string; emit: (payload: string) => void; digestBuilder?: DigestBuilder }): { stop: () => Promise<void>; latest: () => string | null; trends: (place: PlaceQuery & { geonameId?: string }) => Promise<PlaceTrends> } {
+export function startNewsService(options: { userData: string; emit: (payload: string) => void; digestBuilder?: DigestBuilder }): { stop: () => Promise<void>; latest: () => string | null; trends: (place: PlaceQuery & { geonameId?: string }) => Promise<PlaceTrends>; retryOffline: () => void } {
   const feeds = newsFeedEntries()
   const meta = newsSourceMeta(feeds)
   const digestPath = join(options.userData, 'news-digest.json')
@@ -163,7 +163,7 @@ export function startNewsService(options: { userData: string; emit: (payload: st
   let latest: string | null = null
   latest = readCachedNewsDigest(digestPath)
   if (latest) options.emit(latest)
-  if (!feeds.length) return { stop: async () => undefined, latest: () => latest, trends: async () => ({ rising: [], fading: [], recentStories: 0, previousStories: 0, outlets: 0, uncompared: 0, latest: [], earlier: [] }) }
+  if (!feeds.length) return { stop: async () => undefined, latest: () => latest, retryOffline: () => undefined, trends: async () => ({ rising: [], fading: [], recentStories: 0, previousStories: 0, outlets: 0, uncompared: 0, latest: [], earlier: [] }) }
 
   const builder = options.digestBuilder ?? inlineDigestBuilder()
   // The items array last sent for each feed (feeds replace the array whenever their items change).
@@ -288,6 +288,11 @@ export function startNewsService(options: { userData: string; emit: (payload: st
       return service.flush()
     },
     latest: () => latest,
+    /** Back online (or awake): feeds that failed for want of a network are fetched now, and In the news with them. */
+    retryOffline: () => {
+      if (stopped) return
+      if (service.retryNetworkFailures() > 0 && !inTheNews.length) refreshInTheNews()
+    },
     /** What is rising and fading in one place's news, from the latest feeds. */
     trends: async ({ geonameId, ...place }: PlaceQuery & { geonameId?: string }): Promise<PlaceTrends> => {
       // A city is also named in its outlets' own languages ("Roma", "Bruxelles"); found once, then cached.

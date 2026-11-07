@@ -5312,6 +5312,16 @@ app.whenReady().then(async () => {
       digestBuilder: openDigestBuilder(),
     })
     app.once('will-quit', () => { void newsService?.stop() })
+    // After a night offline every feed has backed off for hours: waking, or the network coming back, fetches them now.
+    powerMonitor.on('resume', () => newsService?.retryOffline())
+    let wasOnline = net.isOnline()
+    const onlineTimer = setInterval(() => {
+      const online = net.isOnline()
+      if (online && !wasOnline) newsService?.retryOffline()
+      wasOnline = online
+    }, 30_000)
+    onlineTimer.unref?.()
+    app.once('will-quit', () => clearInterval(onlineTimer))
   })
 
   app.on('activate', () => {

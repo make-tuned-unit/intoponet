@@ -490,7 +490,35 @@ export class FeedFetchService {
     if (this.running) return
     await this.ensureLoaded()
     this.running = true
+    // A restart after a spell offline tries those feeds again now (see retryNetworkFailures).
+    this.retryNetworkFailures()
     for (const sourceId of this.sources.keys()) this.scheduleSource(sourceId)
+  }
+
+  /**
+   * Feeds whose last attempt failed for want of a network (no connection, a timeout) are tried again
+   * now instead of when their backoff ends: after a night offline every feed has backed off for hours.
+   * Feeds that failed any other way (an HTTP error, a bad feed) keep their backoff, and one that fails
+   * again backs off as before. Called on start, and when the Mac wakes or comes back online.
+   */
+  retryNetworkFailures(): number {
+    const now = this.now()
+    let retried = 0
+    for (const [sourceId, state] of Object.entries(this.cache.sources)) {
+      const last = state.deadLetters.at(-1)
+      if (state.health === 'healthy' || (last?.code !== 'network' && last?.code !== 'timeout')) continue
+      const due = state.nextAttemptAt ? Date.parse(state.nextAttemptAt) : Number.NaN
+      if (!(due > now) || this.inFlight.has(sourceId)) continue
+      state.nextAttemptAt = timestamp(now)
+      retried += 1
+      const timer = this.timers.get(sourceId)
+      if (timer) {
+        this.clearTimer(timer)
+        this.timers.delete(sourceId)
+      }
+      this.scheduleSource(sourceId)
+    }
+    return retried
   }
 
   stop(): void {
