@@ -54,7 +54,7 @@ import { archiveAfterMs, DEFAULT_TAB_ARCHIVE, TabArchive, type ArchivedTab } fro
 import { addLinkRoute, moveLinkRoute, parseLinkRoutes, removeLinkRoute, routeFor, serializeLinkRoutes, siteOfWebUrl, updateLinkRoute, type LinkRoute } from './linkRoutes'
 import { DEFAULT_TAB_SLEEP, parseBrowsingSettingsFile, parseLinksFromOtherApps, sleepAfterMs, tabsDueForSleep, TYPED_FORM_SCRIPT } from './tabSleep'
 import { QuickWindows, type QuickProtection } from './quickWindow'
-import { AUTO_PIP_WORLD_ID, ENTER_PIP_SCRIPT, EXIT_PIP_SCRIPT, NowPlaying, TOGGLE_PLAYBACK_SCRIPT, type PipEnterResult } from './autoPip'
+import { AUTO_PIP_WORLD_ID, ENTER_PIP_SCRIPT, EXIT_PIP_SCRIPT, NowPlaying, PIP_LEFT_SCRIPT, TOGGLE_PLAYBACK_SCRIPT, type PipEnterResult } from './autoPip'
 import type { NowPlayingSnapshot } from '@intoponet/browser-api'
 import { browserContextExtras, searchSelectionLabel } from './browserContextMenu'
 
@@ -1852,6 +1852,22 @@ function floatLeavingTab(view: WebContentsView): void {
       tab.pictureInPicture = true
       nowPlaying.update(tab.id, { pip: true }, Date.now())
       emitNowPlaying()
+      watchFloatingWindow(tab, view)
+    })
+    .catch(() => undefined)
+}
+
+/**
+ * The small window can close without the app: the person closes it, or uses its back-to-tab button.
+ * The tab then no longer floats (it may sleep or be archived again, and the control stops saying so).
+ */
+function watchFloatingWindow(tab: OpenTab, view: WebContentsView): void {
+  void view.webContents.executeJavaScriptInIsolatedWorld(AUTO_PIP_WORLD_ID, [{ code: PIP_LEFT_SCRIPT }])
+    .then(() => {
+      if (tab.view !== view || !tab.pictureInPicture) return
+      delete tab.pictureInPicture
+      nowPlaying.update(tab.id, { pip: false }, Date.now())
+      emitNowPlaying()
     })
     .catch(() => undefined)
 }
@@ -3411,6 +3427,8 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
   view.webContents.on('did-navigate', () => {
     const tab = tabOfView(view)
     if (!tab) return
+    // A new page: nothing of the old one floats any more.
+    delete tab.pictureInPicture
     nowPlaying.forget(tab.id)
     emitNowPlaying()
   })

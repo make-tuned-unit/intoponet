@@ -3463,8 +3463,17 @@ export const checks = {
       await until(async () => !(await pipOf('/video')), 4000, 'the video to dock when its workspace came back')
       expect(await playing('/video'), 'The video stopped when its workspace came back.')
       await ctx.evaluate(`window.intoponet.workspaces.switchTo({ index: 0 }).then(() => true)`).catch(() => undefined)
+      // The person closes the small window themselves (Chromium pauses the video): the tab no longer floats,
+      // so the control stops saying so, and the tab may sleep again.
+      await openPage(ctx, `${origin}/plain?closed`, 1500)
+      await until(async () => await pipOf('/video'), 6000, 'the video to float again')
+      await (await ctx.page('/video')).evaluate(`document.exitPictureInPicture().then(() => { document.querySelector('video').pause(); return true })`, { userGesture: true })
+      await ctx.wait(`!(document.querySelector('.now-playing')?.textContent ?? '').includes('small window')`, 6000, 'the now-playing control to stop saying the video floats once its window was closed')
+      await ctx.evaluate(`window.intoponet.browsing.setTabSleep('15m').then(() => true)`)
+      await until(async () => (await tabAt('/video'))?.asleep === true, 30_000, 'the video tab to sleep once its small window was closed')
+      await ctx.evaluate(`window.intoponet.browsing.setTabSleep('never').then(() => true)`)
       await setPip(false)
-      return 'Off by default; with it on, leaving a playing tab floated its canvas video (playback went on), returning docked it; the now-playing control listed it (labelled, axe clean) and pause, play, mute, unmute and go-to worked from the keyboard; a page with disablePictureInPicture kept playing in place; a floating tab was not put to sleep or archived while other tabs were.'
+      return 'Off by default; with it on, leaving a playing tab floated its canvas video (playback went on), returning docked it; the now-playing control listed it (labelled, axe clean) and pause, play, mute, unmute and go-to worked from the keyboard; a page with disablePictureInPicture kept playing in place; a floating tab was not put to sleep or archived while other tabs were; once the person closed the small window, the control stopped saying it floats and the tab slept.'
     } finally {
       server.close()
     }

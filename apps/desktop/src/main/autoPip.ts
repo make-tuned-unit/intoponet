@@ -42,6 +42,16 @@ export const EXIT_PIP_SCRIPT = `(async () => {
   }
 })()`
 
+/**
+ * Resolves once the floating video is back in its page: the person closed the small window (or used
+ * its back-to-tab button), or it was docked. Resolves at once when nothing floats.
+ */
+export const PIP_LEFT_SCRIPT = `new Promise((resolve) => {
+  const video = document.pictureInPictureElement
+  if (!video) { resolve('left'); return }
+  video.addEventListener('leavepictureinpicture', () => resolve('left'), { once: true })
+})`
+
 /** Plays the page's paused media again, or pauses what is playing. Resolves what it did. */
 export const TOGGLE_PLAYBACK_SCRIPT = `(() => {
   const media = [...document.querySelectorAll('video, audio')]
