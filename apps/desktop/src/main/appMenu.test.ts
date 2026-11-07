@@ -25,6 +25,7 @@ const state = (overrides: Partial<AppMenuState> = {}): AppMenuState => ({
   privateMode: false,
   recentlyClosed: [],
   developer: false,
+  quickWindowFocused: false,
   ...overrides,
 })
 

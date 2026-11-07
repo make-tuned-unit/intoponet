@@ -1,4 +1,4 @@
-import { TAB_SLEEP_AFTER, TAB_SWITCH_ORDERS, type TabArchiveAfter, type TabSleepAfter, type TabSwitchOrder } from '@intoponet/browser-api'
+import { LINKS_FROM_OTHER_APPS, TAB_SLEEP_AFTER, TAB_SWITCH_ORDERS, type LinksFromOtherApps, type TabArchiveAfter, type TabSleepAfter, type TabSwitchOrder } from '@intoponet/browser-api'
 import { DEFAULT_TAB_ARCHIVE, isTabArchiveAfter } from './tabArchive'
 import { parsePageAppearanceFile } from './pageAppearance'
 
@@ -55,7 +55,12 @@ export const TYPED_FORM_SCRIPT = `(() => {
   return !!active && active.isContentEditable
 })()`
 
-export type BrowsingSettingsFile = { pageAppearance: ReturnType<typeof parsePageAppearanceFile>; tabSleep: TabSleepAfter; tabSwitchOrder: TabSwitchOrder; tabArchive: TabArchiveAfter }
+export type BrowsingSettingsFile = { pageAppearance: ReturnType<typeof parsePageAppearanceFile>; tabSleep: TabSleepAfter; tabSwitchOrder: TabSwitchOrder; tabArchive: TabArchiveAfter; linksFromOtherApps: LinksFromOtherApps }
+
+/** Links from other apps open in a new tab unless the file chooses the quick window. */
+export function parseLinksFromOtherApps(value: unknown): LinksFromOtherApps {
+  return typeof value === 'string' && (LINKS_FROM_OTHER_APPS as readonly string[]).includes(value) ? value as LinksFromOtherApps : 'tab'
+}
 
 /** browsing-settings.json, with defaults for anything missing or damaged. */
 export function parseBrowsingSettingsFile(raw: unknown): BrowsingSettingsFile {
@@ -67,5 +72,6 @@ export function parseBrowsingSettingsFile(raw: unknown): BrowsingSettingsFile {
     tabSleep: typeof sleep === 'string' && (TAB_SLEEP_AFTER as readonly string[]).includes(sleep) ? sleep as TabSleepAfter : DEFAULT_TAB_SLEEP,
     tabSwitchOrder: typeof order === 'string' && (TAB_SWITCH_ORDERS as readonly string[]).includes(order) ? order as TabSwitchOrder : 'strip',
     tabArchive: isTabArchiveAfter(record['tabArchive']) ? record['tabArchive'] : DEFAULT_TAB_ARCHIVE,
+    linksFromOtherApps: parseLinksFromOtherApps(record['linksFromOtherApps']),
   }
 }

@@ -2840,6 +2840,156 @@ export const checks = {
       server.close()
     }
   },
+
+  async QUICK_WINDOW(ctx) {
+    // A small local site: every path answers with a page whose "next" link goes on, and one ad picture.
+    const NEXT = { '/quick-1': '/quick-2', '/quick-3': '/quick-4' }
+    const site = await new Promise((resolve) => {
+      const server = createServer((request, response) => {
+        const path = new URL(request.url, 'http://localhost').pathname
+        response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
+        response.end(`<!doctype html><title>Quick ${path}</title><body style="font:16px system-ui;margin:40px"><h1>Quick ${path}</h1><p><a id="next" href="${NEXT[path] ?? '/quick-next'}">Next page</a></p><img id="ad" src="https://pagead2.googlesyndication.com/pagead/banner.png" width="40" height="20" alt=""><input id="field" aria-label="Field"></body>`)
+      })
+      server.listen(0, '127.0.0.1', () => resolve(server))
+    })
+    const origin = `http://127.0.0.1:${site.address().port}`
+    // Main-process helpers. A quick window is a window whose contents include the toolbar page (a data: URL).
+    const PRELUDE = `const isQuick = (w) => w.contentView.children.some((v) => !v.webContents.isDestroyed() && v.webContents.getURL().startsWith('data:text/html'))
+      const quick = () => electron.BrowserWindow.getAllWindows().filter((w) => !w.isDestroyed() && isQuick(w))
+      const main = () => electron.BrowserWindow.getAllWindows().find((w) => !w.isDestroyed() && !isQuick(w))
+      const toolbarOf = (w) => w.contentView.children[0].webContents
+      const pageOf = (w) => w.contentView.children[1].webContents`
+    const mainCall = (expression) => ctx.main(`(() => { ${PRELUDE}; return (${expression}) })()`)
+    const quickCount = () => mainCall('quick().length')
+    const pageUrl = () => mainCall("pageOf(quick()[0]).getURL()")
+    const tabUrls = () => ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => JSON.stringify(t.map((x) => x.url)))`).then(JSON.parse)
+    const openFromOtherApp = (url) => ctx.main(`electron.app.emit('open-url', { preventDefault() {} }, ${JSON.stringify(url)})`)
+    const until = async (check, label, ms = 15_000) => {
+      const end = Date.now() + ms
+      while (Date.now() < end) {
+        if (await check()) return
+        await ctx.delay(250)
+      }
+      throw new CheckFailure(`Timed out waiting for ${label}.`)
+    }
+    const clickLinkIn = async (part) => {
+      const page = await ctx.page(part)
+      await page.evaluate(`(() => { document.getElementById('next').click(); return true })()`, { userGesture: true })
+    }
+    try {
+      // Setting off (the default): a link from another app opens as a tab, as before.
+      expect(await ctx.evaluate(`window.intoponet.browsing.settings().then((s) => s.linksFromOtherApps)`) === 'tab', 'Links from other apps do not open in a new tab by default.')
+      await openFromOtherApp(`${origin}/tab-link`)
+      await until(async () => (await tabUrls()).some((url) => url.endsWith('/tab-link')), 'the link to open as a tab')
+      expect(await quickCount() === 0, 'With the setting off, a link from another app opened a quick window.')
+
+      // Settings › Browsing: the choice is there, and picking Quick window is saved.
+      await openPanel(ctx, 'Settings')
+      const settingsText = await ctx.evaluate(`document.querySelector('.settings-pane')?.innerText ?? ''`)
+      expect(settingsText.includes('Links from other apps open in'), 'Settings › Browsing has no choice for links from other apps.')
+      expect(await ctx.click('.browsing-appearance button', 'Quick window'), 'The "Quick window" choice is missing.')
+      await ctx.delay(800)
+      expect(await ctx.evaluate(`window.intoponet.browsing.settings().then((s) => s.linksFromOtherApps)`) === 'quick-window', 'Choosing Quick window did not take effect.')
+      const saved = JSON.parse(readFileSync(join(ctx.profile, 'browsing-settings.json'), 'utf8'))
+      expect(saved.linksFromOtherApps === 'quick-window', 'The Quick window choice was not saved to browsing-settings.json.')
+      await ctx.press('Escape')
+      await ctx.delay(400)
+
+      // Setting on: a small, always-on-top window; no new tab in the main window; the ad picture is blocked.
+      await openFromOtherApp(`${origin}/quick-1`)
+      await until(async () => (await quickCount()) === 1, 'the quick window to open')
+      const shape = await mainCall(`(() => { const b = quick()[0].getBounds(); return { width: b.width, height: b.height, top: quick()[0].isAlwaysOnTop() } })()`)
+      expect(shape.width <= 900 && shape.height <= 640 && shape.top, `The quick window is ${shape.width}×${shape.height}${shape.top ? '' : ' and not always on top'}.`)
+      expect((await tabUrls()).length === 1 && !(await tabUrls()).some((url) => url.includes('/quick-1')), 'The quick link also opened a tab in the main window.')
+      await until(async () => (await pageUrl()).endsWith('/quick-1'), 'the quick page to load')
+      await until(async () => /[1-9]\d* blocked/.test(await mainCall("toolbarOf(quick()[0]).executeJavaScript(\"document.getElementById('protection').textContent\")")), 'the toolbar to count a blocked ad')
+      expect(await mainCall("pageOf(quick()[0]).executeJavaScript(\"document.getElementById('ad').naturalWidth\")") === 0, 'The ad picture loaded in the quick window.')
+
+      // Navigate inside it, then ⌘O: the same page becomes a tab of the main window, history kept, no reload.
+      await clickLinkIn('/quick-1')
+      await until(async () => (await pageUrl()).endsWith('/quick-2'), 'the link inside the quick window to load')
+      const quickPageId = await mainCall('pageOf(quick()[0]).id')
+      const sentinel = await ctx.page('/quick-2')
+      await sentinel.evaluate(`(() => { window.__quickSentinel = 42; return true })()`)
+      await ctx.keyInPage('/quick-2', 'O', ['meta'])
+      await until(async () => (await quickCount()) === 0, 'the quick window to go after ⌘O')
+      const moved = await mainCall(`(() => { const views = main().contentView.children.map((v) => v.webContents).filter((c) => c && !c.isDestroyed()); const page = views.find((c) => c.getURL().endsWith('/quick-2')); return page ? { id: page.id, canGoBack: page.navigationHistory.canGoBack() } : null })()`)
+      expect(moved?.id === quickPageId, `⌘O did not move the same page into the main window (id ${moved?.id} vs ${quickPageId}).`)
+      expect(moved.canGoBack === true, '⌘O lost the page history (nothing to go back to).')
+      expect((await tabUrls()).some((url) => url.endsWith('/quick-2')), '⌘O did not add a tab for the page.')
+      expect(await sentinel.evaluate('window.__quickSentinel') === 42, '⌘O reloaded the page.')
+
+      // Another link, then Close: no tab, and nothing in Recently Closed.
+      const tabsBeforeClose = (await tabUrls()).length
+      await openFromOtherApp(`${origin}/quick-3`)
+      await until(async () => (await quickCount()) === 1 && (await pageUrl()).endsWith('/quick-3'), 'the second quick window to load')
+      await clickLinkIn('/quick-3')
+      await until(async () => (await pageUrl()).endsWith('/quick-4'), 'the link in the second quick window to load')
+      await mainCall("toolbarOf(quick()[0]).executeJavaScript(\"document.getElementById('close').click()\")")
+      await until(async () => (await quickCount()) === 0, 'the quick window to close')
+      expect((await tabUrls()).length === tabsBeforeClose && !(await tabUrls()).some((url) => /quick-[34]/.test(url)), 'Closing a quick window left a tab behind.')
+      await ctx.delay(500)
+      const closedMenu = await mainCall(`electron.Menu.getApplicationMenu().items.find((m) => m.label === 'History').submenu.items.find((i) => i.label === 'Recently Closed').submenu.items.map((i) => i.label)`)
+      expect(closedMenu.length === 1 && closedMenu[0] === 'No Recently Closed Tabs', `Closing a quick window left something to reopen: ${closedMenu.join(', ')}.`)
+
+      // Private browsing on: the quick window's page uses the private partition, and the toolbar says so.
+      await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(true).then(() => true)`)
+      await openFromOtherApp(`${origin}/quick-private`)
+      await until(async () => (await quickCount()) === 1, 'the private quick window to open')
+      expect(await mainCall("pageOf(quick()[0]).session === electron.session.fromPartition('intoponet-private')"), 'A quick window opened in private browsing did not use the private partition.')
+      expect(await mainCall("toolbarOf(quick()[0]).executeJavaScript(\"document.getElementById('private').hidden\")") === false, 'The private quick window does not say it is private.')
+      await ctx.keyInPage('/quick-private', 'W', ['meta'])
+      await until(async () => (await quickCount()) === 0, 'the private quick window to close with ⌘W')
+      await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
+      await ctx.delay(800)
+
+      // Turning private browsing off closes a private quick window too: gone, and no tab added for its page.
+      await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(true).then(() => true)`)
+      await openFromOtherApp(`${origin}/quick-private-2`)
+      await until(async () => (await quickCount()) === 1, 'the second private quick window to open')
+      const tabsBeforePrivateOff = await tabUrls()
+      await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
+      await until(async () => (await quickCount()) === 0, 'the private quick window to close when private browsing ends')
+      await ctx.delay(500)
+      const tabsAfterPrivateOff = await tabUrls()
+      expect(tabsAfterPrivateOff.length === tabsBeforePrivateOff.length && !tabsAfterPrivateOff.some((url) => url.includes('/quick-private-2')), 'Ending private browsing left a private quick window or its page as a tab.')
+
+      // ⌥⌘N: an empty quick window with its address field ready; typing an address loads it.
+      // Pressed in the page on screen (the adopted tab): keys in a background tab never reach the browser's handler.
+      await ctx.keyInPage('/quick-2', 'N', ['meta', 'alt'])
+      await until(async () => (await quickCount()) === 1, 'the empty quick window to open with ⌥⌘N')
+      expect(await mainCall("toolbarOf(quick()[0]).executeJavaScript(\"document.getElementById('address').readOnly\")") === false, 'The empty quick window has no editable address field.')
+      await mainCall("toolbarOf(quick()[0]).focus()")
+      await mainCall(`toolbarOf(quick()[0]).insertText(${JSON.stringify(`${origin}/typed`)})`)
+      await mainCall("toolbarOf(quick()[0]).sendInputEvent({ type: 'keyDown', keyCode: 'Enter' })")
+      await until(async () => (await pageUrl()).endsWith('/typed'), 'the typed address to load in the quick window')
+
+      // The toolbar page passes axe.
+      const violations = await mainCall(`toolbarOf(quick()[0]).executeJavaScript(process.mainModule.require('fs').readFileSync(${JSON.stringify(join(repo, 'node_modules/axe-core/axe.min.js'))}, 'utf8') + ';axe.run(document, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"] }, resultTypes: ["violations"] }).then((r) => r.violations.map((v) => v.id + " ×" + v.nodes.length))')`)
+      expect(violations.length === 0, `WCAG violations on the quick window toolbar: ${violations.join(', ')}.`)
+      // Escape in an edited address field reverts it and leaves the field; the window stays open.
+      await mainCall("toolbarOf(quick()[0]).focus()")
+      await mainCall("toolbarOf(quick()[0]).executeJavaScript('window.quickFocusAddress()')")
+      await ctx.delay(300)
+      await mainCall("toolbarOf(quick()[0]).insertText('zzz')")
+      await ctx.delay(300)
+      await mainCall("toolbarOf(quick()[0]).sendInputEvent({ type: 'keyDown', keyCode: 'Escape' })")
+      await ctx.delay(600)
+      expect(await quickCount() === 1, 'Escape in an edited address field closed the quick window.')
+      expect(await mainCall("toolbarOf(quick()[0]).executeJavaScript(\"document.getElementById('address').value\")") === `${origin}/typed`, 'Escape did not revert the edited address field.')
+      // ⌘T in a quick window opens a tab in the main window, which comes forward; the quick window stays.
+      const tabsBeforeNewTab = (await tabUrls()).length
+      await ctx.keyInPage('/typed', 'T', ['meta'])
+      await until(async () => (await tabUrls()).length === tabsBeforeNewTab + 1, 'a new tab in the main window after ⌘T in a quick window')
+      expect(await quickCount() === 1, '⌘T closed the quick window.')
+      // Escape outside the field closes it.
+      await mainCall("toolbarOf(quick()[0]).sendInputEvent({ type: 'keyDown', keyCode: 'Escape' })")
+      await until(async () => (await quickCount()) === 0, 'the typed quick window to close with Escape')
+      return 'Setting off: a tab. Settings › Browsing chooses Quick window (saved). A quick window is small and always on top, opens no tab and blocks the ad picture. Navigating inside, then ⌘O: the same page (same id, history kept, not reloaded) is a tab and the quick window is gone. A second one closed with its Close button leaves no tab and nothing to reopen. Private: private partition, labelled. ⌥⌘N opens an empty one; a typed address loads; Escape in an edited address field reverts it and keeps the window; ⌘T opens a tab in the main window; Escape outside the field closes it. Toolbar axe clean.'
+    } finally {
+      site.close()
+    }
+  },
 }
 
 checks.TAB_SLEEP.env = { INTOPONET_TAB_SLEEP_MINUTE_MS: '200' }

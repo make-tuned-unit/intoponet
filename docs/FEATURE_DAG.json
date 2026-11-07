@@ -553,6 +553,17 @@
       "tier": "core",
       "kind": "e2e",
       "promise": "When the sidebar layout of a supported sidebar-tab browser is found on this Mac, import previews and recreates its spaces as workspaces with their pinned tabs, folders (nesting kept) and favourites; unsupported or unreadable files are reported, never half-imported."
+    },
+    {
+      "id": "QUICK_WINDOW",
+      "title": "Quick window for links from other apps",
+      "deps": [
+        "BROWSE",
+        "EXTERNAL_APPS"
+      ],
+      "tier": "core",
+      "kind": "e2e",
+      "promise": "With the setting on, a link opened from another app (Mail, Slack, Finder) shows in a small floating window with protection on; ⌘O moves it, with its history, into a tab of the main window (or a chosen workspace), closing it leaves no tab behind, and ⌥⌘N opens an empty one."
     }
   ]
 }

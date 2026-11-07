@@ -30,8 +30,8 @@ describe('tab sleep', () => {
   })
 
   it('reads the settings file with defaults', () => {
-    expect(parseBrowsingSettingsFile(null)).toEqual({ pageAppearance: 'system', tabSleep: '1h', tabSwitchOrder: 'strip', tabArchive: 'off' })
-    expect(parseBrowsingSettingsFile({ pageAppearance: 'dark', tabSleep: '15m', tabSwitchOrder: 'recent', tabArchive: '1w' })).toEqual({ pageAppearance: 'dark', tabSleep: '15m', tabSwitchOrder: 'recent', tabArchive: '1w' })
-    expect(parseBrowsingSettingsFile({ tabSleep: '3d', tabSwitchOrder: 'random' })).toEqual({ pageAppearance: 'system', tabSleep: '1h', tabSwitchOrder: 'strip', tabArchive: 'off' })
+    expect(parseBrowsingSettingsFile(null)).toEqual({ pageAppearance: 'system', tabSleep: '1h', tabSwitchOrder: 'strip', tabArchive: 'off', linksFromOtherApps: 'tab' })
+    expect(parseBrowsingSettingsFile({ pageAppearance: 'dark', tabSleep: '15m', tabSwitchOrder: 'recent', tabArchive: '1w', linksFromOtherApps: 'quick-window' })).toEqual({ pageAppearance: 'dark', tabSleep: '15m', tabSwitchOrder: 'recent', tabArchive: '1w', linksFromOtherApps: 'quick-window' })
+    expect(parseBrowsingSettingsFile({ tabSleep: '3d', tabSwitchOrder: 'random', linksFromOtherApps: 'window' })).toEqual({ pageAppearance: 'system', tabSleep: '1h', tabSwitchOrder: 'strip', tabArchive: 'off', linksFromOtherApps: 'tab' })
   })
 })

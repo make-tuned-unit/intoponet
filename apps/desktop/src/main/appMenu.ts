@@ -41,6 +41,10 @@ export type AppCommand =
   | { type: 'copy-address-raw' }
   | { type: 'toggle-tab-sidebar' }
   | { type: 'command-menu' }
+  /** An empty quick window (⌥⌘N). */
+  | { type: 'new-quick-window' }
+  /** Moves the focused quick window's page into a tab (⌘O). */
+  | { type: 'open-quick-in-main' }
 
 /** What the menu needs to know to enable its items. */
 export type AppMenuState = {
@@ -59,6 +63,8 @@ export type AppMenuState = {
   developer: boolean
   /** Workspaces there are (⌃1–9 switch to them); 1 when absent. */
   workspaceCount?: number
+  /** A quick window (links from other apps) has keyboard focus: ⌘O can move its page into a tab. */
+  quickWindowFocused: boolean
 }
 
 /**
@@ -99,6 +105,8 @@ export const APP_SHORTCUTS = {
   // The Mac's own "Show Sidebar" key (⇧⌘S is Capture).
   'toggle-tab-sidebar': ['Ctrl+Cmd+S'],
   'command-menu': ['CmdOrCtrl+K'],
+  'new-quick-window': ['Alt+CmdOrCtrl+N'],
+  'open-quick-in-main': ['CmdOrCtrl+O'],
 } as const satisfies Partial<Record<AppCommand['type'], readonly string[]>>
 
 type SimpleCommandType = keyof typeof APP_SHORTCUTS
@@ -121,7 +129,7 @@ export function workspaceNumberShortcuts(platform: NodeJS.Platform): { accelerat
 export type AppCommandRoute =
   | { kind: 'shell'; action: ShellShortcut }
   | { kind: 'host'; command: BrowserHostCommand }
-  | { kind: 'native'; action: 'inspect-page' | 'shell-devtools' | 'show-history' }
+  | { kind: 'native'; action: 'inspect-page' | 'shell-devtools' | 'show-history' | 'new-quick-window' | 'open-quick-in-main' }
 
 export function routeAppCommand(command: AppCommand): AppCommandRoute {
   switch (command.type) {
@@ -161,6 +169,8 @@ export function routeAppCommand(command: AppCommand): AppCommandRoute {
     case 'inspect-page': return { kind: 'native', action: 'inspect-page' }
     case 'show-history': return { kind: 'native', action: 'show-history' }
     case 'shell-devtools': return { kind: 'native', action: 'shell-devtools' }
+    case 'new-quick-window': return { kind: 'native', action: 'new-quick-window' }
+    case 'open-quick-in-main': return { kind: 'native', action: 'open-quick-in-main' }
   }
 }
 
@@ -248,11 +258,13 @@ export function appMenuTemplate(state: AppMenuState, run: (command: AppCommand) 
       label: 'File',
       submenu: [
         ...item('New Tab', 'new-tab'),
+        ...item('New Quick Window', 'new-quick-window'),
         { ...item('Private Browsing', 'toggle-private')[0], type: 'checkbox', checked: state.privateMode },
         ...item('Open Location…', 'open-location'),
         ...item('Commands…', 'command-menu'),
         { type: 'separator' },
         ...item('Close Tab', 'close-tab', state.tabShowing),
+        ...item('Open in Intoponet', 'open-quick-in-main', state.quickWindowFocused),
         ...item('Reopen Closed Tab', 'reopen-closed-tab', state.recentlyClosed.length > 0),
         { type: 'separator' },
         ...item('Save Page As…', 'save-page', page),
@@ -358,7 +370,7 @@ export function appMenuTemplate(state: AppMenuState, run: (command: AppCommand) 
 export function appMenuStateKey(state: AppMenuState): string {
   return JSON.stringify([
     state.tabShowing, state.hasPage, state.canGoBack, state.canGoForward, state.isLoading,
-    Math.min(state.tabCount, 9), state.privateMode, state.developer, state.workspaceCount ?? 1,
+    Math.min(state.tabCount, 9), state.privateMode, state.developer, state.workspaceCount ?? 1, state.quickWindowFocused,
     state.recentlyClosed.slice(0, 15).map((entry) => [entry.id, closedLabel(entry)]),
   ])
 }

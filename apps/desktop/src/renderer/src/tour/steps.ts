@@ -295,6 +295,14 @@ export const TOUR_STEPS: TourStep[] = [
     seconds: 8,
   },
   {
+    id: 'quick-window',
+    chapter: 'Browsing',
+    title: 'Links from other apps, in a quick window',
+    body: 'In Settings › Browsing, a link from Mail or Slack can open in a small window that floats above your work, with protection on. ⌘O moves it into a tab with its history; closing it leaves nothing behind. ⌥⌘N opens an empty one.',
+    target: '.settings-button',
+    seconds: 11,
+  },
+  {
     id: 'done',
     chapter: 'That’s the tour',
     title: 'The world is your start page',

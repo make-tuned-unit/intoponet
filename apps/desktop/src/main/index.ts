@@ -23,6 +23,7 @@ import {
   webContents,
   webFrameMain,
   nativeTheme,
+  screen,
 } from 'electron'
 import type { IpcMainInvokeEvent, MenuItemConstructorOptions } from 'electron'
 import { pendingWrite, writeFileAtomic, writeFileAtomicSync } from './atomicFile'
@@ -41,7 +42,7 @@ import { capTitle, capUrl, coalesce, persistedActiveUrl } from './tabState'
 import { EXIT_FULLSCREEN_SCRIPT, FULLSCREEN_WORLD_ID, fullscreenSiteName, showFullscreenNotice } from './fullscreenNotice'
 import { bindLeavePrompt, SAFE_DIALOG_PREFERENCES } from './leavePrompt'
 import { fetchTabIcon, TabIconMemory } from './tabFavicon'
-import { browsingChannels, parseBrowsingCommand, type BrowsingEvent, type ArchivedTabSnapshot, type TabFolderSnapshot, type BrowsingSettings, type PageLoadError, type TabArchiveAfter, type TabSidebarState, type TabSleepAfter, type TabSwitchOrder } from '@intoponet/browser-api'
+import { browsingChannels, parseBrowsingCommand, type BrowsingEvent, type ArchivedTabSnapshot, type TabFolderSnapshot, type BrowsingSettings, type LinksFromOtherApps, type PageLoadError, type TabArchiveAfter, type TabSidebarState, type TabSleepAfter, type TabSwitchOrder } from '@intoponet/browser-api'
 import { ExternalOpenBroker, classifyExternalUrl } from './externalOpen'
 import { CertificateErrorMemo, classifyLoadError, isCertificateError, showsErrorPage, summarizeCertificate } from './errorPage'
 import { IncomingOpenQueue, LocalFileGrants, incomingFileTarget, incomingTargetsFromArgs, incomingWebUrl, type IncomingTarget } from './incomingOpen'
@@ -50,7 +51,8 @@ import { SWITCHER_KEYS_SCRIPT, switcherHtml, SWITCHER_ROW_HEIGHT, SWITCHER_ROWS,
 import { focusLinkScript, isLinkPreviewRequest, parsePreviewMessage, PREVIEW_FOCUS_LOOP_SCRIPT, PREVIEW_WORLD_ID, previewFrameHtml, previewHeading, previewLayout, previewSite, type PreviewRect } from './linkPreview'
 import { collapseAdSlotsScript, UNCOLLAPSE_AD_SLOTS_SCRIPT } from './adCollapse'
 import { archiveAfterMs, DEFAULT_TAB_ARCHIVE, TabArchive, type ArchivedTab } from './tabArchive'
-import { DEFAULT_TAB_SLEEP, parseBrowsingSettingsFile, sleepAfterMs, tabsDueForSleep, TYPED_FORM_SCRIPT } from './tabSleep'
+import { DEFAULT_TAB_SLEEP, parseBrowsingSettingsFile, parseLinksFromOtherApps, sleepAfterMs, tabsDueForSleep, TYPED_FORM_SCRIPT } from './tabSleep'
+import { QuickWindows, type QuickProtection } from './quickWindow'
 import { browserContextExtras, searchSelectionLabel } from './browserContextMenu'
 
 declare const __INTOPONET_MAC_UPDATE_URL__: string
@@ -72,6 +74,20 @@ if (!app.isReady()) {
 // ---- Links and files from other apps (default browser, Open With, a second launch) ----
 /** What arrived before the window was ready opens once it is (see whenReady). */
 const incomingOpens = new IncomingOpenQueue()
+const quickWindows: QuickWindows = new QuickWindows({
+  buildView: (isPrivate) => buildView(isPrivate),
+  adopt: (view, url) => adoptQuickView(view, url),
+  protection: quickProtection,
+  workArea: () => screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea,
+  developer: () => developerBuild(),
+  isPrivate: () => privateMode,
+  pageLoaded: (view) => {
+    void applyCosmeticFilters(view.webContents, { url: view.webContents.getURL() })
+    scheduleAdCollapse(view.webContents.id)
+  },
+  changed: () => appMenu.schedule(),
+  runInMain: (command) => runInMainWindow(command),
+})
 /** Local files opened from Finder: the only files a tab may read (see servePageFiles). */
 const localFileGrants = new LocalFileGrants()
 const readSmallFile = (path: string): Buffer => {
@@ -566,11 +582,26 @@ function exceptionsFilePath(): string {
 }
 
 function currentOrigin(): string {
-  if (!lastKnownUrl) return ''
+  return originOfUrl(lastKnownUrl)
+}
+
+function originOfUrl(value: string): string {
+  if (!value) return ''
   try {
-    return new URL(lastKnownUrl).origin
+    return new URL(value).origin
   } catch {
     return ''
+  }
+}
+
+/** A quick window's protection counts and site pause, as the protection bar reads them for a tab. */
+function quickProtection(view: WebContentsView): QuickProtection {
+  if (viewGone(view)) return { blocked: 0, protectionOn: true }
+  const counts = protectionPages.counters(view.webContents.id)
+  const origin = originOfUrl(view.webContents.getURL())
+  return {
+    blocked: counts.blockedAds + counts.blockedTrackers,
+    protectionOn: origin ? protection.isSiteEnabled(origin, 'default') : true,
   }
 }
 
@@ -733,7 +764,8 @@ function scheduleAdCollapse(contentsId: number, url?: string, delay = 250): void
 function wireProtectionSession(partition = 'persist:intoponet-default'): void {
   const guest = session.fromPartition(partition)
   guest.webRequest.onBeforeRequest((details, callback) => {
-    const routed = routeProtectionRequest(protection, protectionPages, details, linkPreview ? [...allTabs(), { url: linkPreview.url, view: linkPreview.view }] : allTabs())
+    // A quick window's page is attributed to it as a tab's page is.
+    const routed = routeProtectionRequest(protection, protectionPages, details, [...(linkPreview ? [...allTabs(), { url: linkPreview.url, view: linkPreview.view }] : allTabs()), ...quickWindows.protectionTabs()])
     if (!routed) {
       callback({})
       return
@@ -741,6 +773,7 @@ function wireProtectionSession(partition = 'persist:intoponet-default'): void {
     const { webContentsId, decision } = routed
     if (decision.action === 'block') {
       if (pageView?.webContents.id === webContentsId) emitProtectionState()
+      quickWindows.protectionChanged(webContentsId)
       // A blocked ad frame, picture or video leaves an empty box: hide it once it is in the page.
       if (webContentsId >= 0 && ['subFrame', 'image', 'media', 'object'].includes(details.resourceType)) scheduleAdCollapse(webContentsId, details.url)
       callback({ cancel: true })
@@ -1608,6 +1641,8 @@ let sidebarEdgeTimer: ReturnType<typeof setTimeout> | null = null
 
 /** How long an unpinned tab goes unseen before it closes into Archived tabs (off unless chosen). */
 let tabArchiveAfter: TabArchiveAfter = DEFAULT_TAB_ARCHIVE
+/** Where links from other apps open (Settings › Browsing): a tab, or a quick window (quickWindow.ts). */
+let linksFromOtherApps: LinksFromOtherApps = 'tab'
 const tabArchive = new TabArchive()
 /** Archived tabs are kept like history: sealed on disk (in memory only when the Mac cannot seal). */
 const tabArchiveFile = (): string => join(app.getPath('userData'), 'personal', 'tab-archive.v1.seal')
@@ -2766,6 +2801,11 @@ function runAppCommand(command: AppCommand): void {
     })
     return
   }
+  if (route.action === 'new-quick-window') return quickWindows.openEmpty()
+  if (route.action === 'open-quick-in-main') {
+    quickWindows.adoptFocused()
+    return
+  }
   if (route.action === 'show-history') return openHistoryPane()
   if (route.action === 'inspect-page') {
     if (pageView && pageAttached && !viewGone(pageView) && !isStartView(pageView)) inspectPage(pageView)
@@ -2995,6 +3035,7 @@ function appMenuState(): AppMenuState {
     recentlyClosed: closedTabs.list(),
     workspaceCount: workspaces.workspaces.length,
     developer: developerBuild(),
+    quickWindowFocused: quickWindows.focused(),
   }
 }
 
@@ -3618,6 +3659,7 @@ function browsingSettings(): BrowsingSettings {
     tabSleep: tabSleepAfter,
     tabSwitchOrder,
     tabArchive: tabArchiveAfter,
+    linksFromOtherApps,
     defaultBrowser: {
       isDefault: app.isDefaultProtocolClient('http') && app.isDefaultProtocolClient('https'),
       // Only the installed app: from a development build macOS would register Electron itself.
@@ -3637,7 +3679,8 @@ function wireBrowsing(): void {
   tabSleepAfter = stored.tabSleep
   tabSwitchOrder = stored.tabSwitchOrder
   tabArchiveAfter = stored.tabArchive
-  const saveSettings = (): Promise<void> => trackedWrite(settingsFile, JSON.stringify({ pageAppearance: pageAppearance.current, tabSleep: tabSleepAfter, tabSwitchOrder, tabArchive: tabArchiveAfter })).catch(() => undefined)
+  linksFromOtherApps = parseLinksFromOtherApps(stored.linksFromOtherApps)
+  const saveSettings = (): Promise<void> => trackedWrite(settingsFile, JSON.stringify({ pageAppearance: pageAppearance.current, tabSleep: tabSleepAfter, tabSwitchOrder, tabArchive: tabArchiveAfter, linksFromOtherApps })).catch(() => undefined)
   externalOpener = new ExternalOpenBroker({
     emit: emitBrowsing,
     openExternal: (href) => shell.openExternal(href, { activate: true }),
@@ -3672,6 +3715,11 @@ function wireBrowsing(): void {
         await saveSettings()
         emitBrowsing({ type: 'settings', settings: browsingSettings() })
         return browsingSettings()
+      case 'set-links-from-other-apps':
+        linksFromOtherApps = command.choice
+        await saveSettings()
+        emitBrowsing({ type: 'settings', settings: browsingSettings() })
+        return browsingSettings()
       case 'set-tab-switch-order':
         tabSwitchOrder = command.order
         await saveSettings()
@@ -3688,8 +3736,46 @@ function wireBrowsing(): void {
   })
 }
 
-/** A link or file from another app: a new tab, with the window brought forward. */
+/**
+ * A quick window's page becomes a tab of the main window, shown (⌘O). The same web contents, so
+ * history, scroll position and session carry over without a reload.
+ */
+function adoptQuickView(view: WebContentsView, url: string): boolean {
+  if (!window || window.isDestroyed()) createWindow()
+  makeRoomForTab()
+  const tab: OpenTab = { id: randomUUID(), url, title: view.webContents.getTitle(), favicon: '', view, lastShownAt: Date.now() }
+  openTabs.push(tab)
+  showTab(tab.id)
+  // The icon it already reported, now that it is a tab (as openLinkPreviewAsTab does).
+  const icon = tabIconWanted.get(view)
+  if (icon) updateTabIcon(view, icon)
+  if (window && !window.isDestroyed()) {
+    if (window.isMinimized()) window.restore()
+    window.show()
+    window.focus()
+  }
+  view.webContents.focus()
+  schedulePersistentStateSave()
+  appMenu.schedule()
+  return true
+}
+
+/** A command pressed in a quick window that the main window runs: the main window comes forward first. */
+function runInMainWindow(command: AppCommand): void {
+  if (window && !window.isDestroyed()) {
+    if (window.isMinimized()) window.restore()
+    window.show()
+    window.focus()
+  }
+  runAppCommand(command)
+}
+
+/** A link or file from another app: a new tab (or a quick window, when Settings says so), with the window brought forward. */
 function openIncoming(target: IncomingTarget): void {
+  if (target.kind === 'web' && linksFromOtherApps === 'quick-window') {
+    quickWindows.open(target.url, privateMode)
+    return
+  }
   if (!window || window.isDestroyed()) createWindow()
   if (target.kind === 'file') localFileGrants.grant(target.path)
   const view = createBrowserTab(target.url, true, privateMode, false, target.kind === 'file')
@@ -3990,6 +4076,7 @@ app.whenReady().then(async () => {
           // Leaving private browsing closes private tabs and wipes their session.
           sitePermissions!.clear(true)
           if (linkPreview?.isPrivate) closeLinkPreview(false)
+          quickWindows.closePrivate()
           for (const tab of openTabs.filter((item) => privateViews.has(item.view))) discardTab(tab.id)
           const privateSession = session.fromPartition(PRIVATE_PARTITION)
           await privateSession.clearStorageData().catch(() => undefined)
