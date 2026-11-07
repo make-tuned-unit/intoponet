@@ -1,0 +1,253 @@
+/* Workspaces and favourites at the top of the tab sidebar. The shown workspace's accent colours the
+ * sidebar's selection (--workspace-accent, set on .tab-rail-surface). */
+.tab-rail-workspace-bar {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 6px;
+}
+
+.tab-rail-workspace-bar:not(:has(> :not(.sr-only))) {
+  display: none;
+}
+
+.tab-rail-workspace-bar > :not(.sr-only):last-child {
+  margin-bottom: 4px;
+}
+
+.tab-rail-favourites {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(214, 246, 241, 0.08);
+}
+
+.tab-rail:not(.is-open) .tab-rail-favourites {
+  justify-content: center;
+}
+
+.tab-rail-favourite {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  color: var(--warm-white);
+  background: rgba(205, 245, 240, 0.07);
+  box-shadow: inset 0 0 0 1px rgba(214, 246, 241, 0.08);
+  cursor: pointer;
+}
+
+.tab-rail.is-open .tab-rail-favourite {
+  flex: 1 1 36px;
+  max-width: 56px;
+}
+
+.tab-rail-favourite.is-own {
+  box-shadow: inset 0 -2px 0 var(--workspace-accent, var(--teal)), inset 0 0 0 1px rgba(214, 246, 241, 0.08);
+}
+
+.tab-rail-favourite:hover {
+  background: var(--lg-hover);
+}
+
+.tab-rail-favourite img {
+  width: 16px;
+  height: 16px;
+}
+
+.tab-rail-favourite-letter {
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.tab-rail-workspaces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.tab-rail:not(.is-open) .tab-rail-workspaces {
+  flex-direction: column;
+  align-items: center;
+}
+
+.tab-rail-workspace {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+  transition: color 160ms var(--lg-spring), background 160ms var(--lg-spring);
+}
+
+.tab-rail-workspace:hover {
+  color: var(--warm-white);
+  background: var(--lg-hover);
+}
+
+.tab-rail-workspace.is-active {
+  color: var(--accent, var(--teal));
+  background: color-mix(in srgb, var(--accent, #20f4e4) 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent, #20f4e4) 55%, transparent);
+}
+
+.tab-rail-workspace-head {
+  display: flex;
+  align-items: center;
+  min-height: 24px;
+  padding-left: 8px;
+}
+
+.tab-rail:not(.is-open) .tab-rail-workspace-head {
+  display: none;
+}
+
+.tab-rail-workspace-name {
+  flex: 1;
+  color: var(--workspace-accent, var(--teal));
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.tab-rail-workspace-editor,
+.tab-rail-workspace-confirm {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(195, 237, 232, 0.16);
+  border-radius: 12px;
+  background: rgba(6, 20, 26, 0.96);
+  font-size: 12.5px;
+}
+
+.tab-rail-workspace-confirm p {
+  margin: 0;
+}
+
+.tab-rail-workspace-confirm p:first-child {
+  font-weight: 650;
+}
+
+.tab-rail-workspace-field {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+}
+
+.tab-rail-workspace-name-input {
+  min-width: 0;
+  padding: 5px 8px;
+  border: 1px solid rgba(32, 244, 228, 0.5);
+  border-radius: 9px;
+  color: var(--warm-white);
+  background: rgba(3, 12, 18, 0.6);
+  font: inherit;
+}
+
+.tab-rail-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.tab-rail-swatches legend {
+  margin-bottom: 4px;
+  padding: 0;
+  color: var(--muted);
+}
+
+.tab-rail-swatch {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  color: var(--warm-white);
+  cursor: pointer;
+}
+
+.tab-rail-swatch input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.tab-rail-swatch:has(input:checked) {
+  background: rgba(32, 244, 228, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(32, 244, 228, 0.6);
+}
+
+.tab-rail-swatch:has(input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.tab-rail-swatch-colour {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+}
+
+.tab-rail-workspace-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tab-rail-workspace-buttons button {
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--warm-white);
+  background: rgba(205, 245, 240, 0.1);
+  font: inherit;
+  cursor: pointer;
+}
+
+.tab-rail-workspace-buttons button[type="submit"] {
+  color: #031014;
+  background: var(--teal);
+}
+
+.tab-rail-workspace-buttons button.is-danger {
+  color: #170503;
+  background: var(--coral);
+}
+
+.tab-rail-workspace-message {
+  margin: 0;
+  padding: 4px 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.tab-rail:not(.is-open) .tab-rail-workspace-message,
+.tab-rail:not(.is-open) .tab-rail-workspace-editor,
+.tab-rail:not(.is-open) .tab-rail-workspace-confirm {
+  display: none;
+}
+
+/* The selection takes the shown workspace's accent. */
+.tab-rail-surface[style*="--workspace-accent"] .tab-rail-indicator {
+  background: linear-gradient(120deg, color-mix(in srgb, var(--workspace-accent) 20%, transparent), color-mix(in srgb, var(--workspace-accent) 6%, transparent));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--workspace-accent) 50%, transparent), 0 0 22px -8px color-mix(in srgb, var(--workspace-accent) 70%, transparent);
+}
+
+.tab-rail-surface[style*="--workspace-accent"] .tab-rail-indicator::before {
+  background: var(--workspace-accent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--workspace-accent) 80%, transparent);
+}

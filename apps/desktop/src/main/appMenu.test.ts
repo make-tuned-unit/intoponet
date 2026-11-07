@@ -104,6 +104,21 @@ describe('the menu bar', () => {
     expect(findItem(empty, 'closed-none')?.enabled).toBe(false)
   })
 
+  it('switches workspaces with ⌃1–9 (⌘1–9 stay with tabs), in the menu and inside a page', () => {
+    const run = vi.fn<(command: AppCommand) => void>()
+    const template = appMenuTemplate(state({ workspaceCount: 2 }), run)
+    expect(findItem(template, 'select-workspace-2')).toMatchObject({ accelerator: 'Ctrl+2', enabled: true, visible: false })
+    expect(findItem(template, 'select-workspace-3')?.enabled).toBe(false)
+    ;(findItem(template, 'select-workspace-2')?.click as () => void)()
+    expect(run).toHaveBeenCalledWith({ type: 'select-workspace', index: 1 })
+    expect(routeAppCommand({ type: 'select-workspace', index: 1 })).toEqual({ kind: 'host', command: { type: 'switch-workspace', index: 1 } })
+    const key = (digit: string, mods: { meta?: boolean; control?: boolean; alt?: boolean }) => appCommandForInput({ type: 'keyDown', key: digit, code: `Digit${digit}`, meta: false, control: false, shift: false, alt: false, ...mods }, { platform: 'darwin' })
+    expect(key('2', { control: true })).toEqual({ type: 'select-workspace', index: 1 })
+    expect(key('2', { meta: true })).toEqual({ type: 'select-tab', index: 1 })
+    expect(key('9', { control: true })).toEqual({ type: 'select-workspace', index: 8 })
+    expect(appMenuStateKey(state({ workspaceCount: 2 }))).not.toBe(appMenuStateKey(state({ workspaceCount: 3 })))
+  })
+
   it('shows private browsing as a checkbox in its current state', () => {
     expect(findItem(appMenuTemplate(state({ privateMode: true }), () => undefined), 'toggle-private')).toMatchObject({ type: 'checkbox', checked: true, accelerator: 'CmdOrCtrl+Shift+N' })
   })

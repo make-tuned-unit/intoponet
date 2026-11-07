@@ -519,6 +519,18 @@
       "tier": "core",
       "kind": "e2e",
       "promise": "With protection on, the space a page kept for a blocked ad (its frame, picture or an empty slot labelled Advertisement) is hidden, while anything holding the page's own text stays; with protection paused for the site, the page is left as it is."
+    },
+    {
+      "id": "WORKSPACES",
+      "title": "Workspaces",
+      "deps": [
+        "SIDEBAR_TABS",
+        "TAB_FOLDERS",
+        "PINNED_HOME"
+      ],
+      "tier": "core",
+      "kind": "e2e",
+      "promise": "Each workspace has its own name, icon, accent colour, pinned tabs, folders and open tabs, while a short favourites row can be shared by all of them; switching (⌃1–9, a two-finger swipe on the sidebar, or the command menu) swaps the sidebar in under 150 ms without reloading other workspaces' sleeping tabs, and every workspace is restored on the next launch; private browsing stays separate from all of them."
     }
   ]
 }

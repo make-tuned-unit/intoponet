@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os'
 import { createServer } from 'node:http'
 import { join } from 'node:path'
 import { deflateSync as zlibSync } from 'node:zlib'
-import { CheckFailure, expect, repo } from './lib.mjs'
+import { CheckFailure, expect, repo, runAppCheck } from './lib.mjs'
 
 // The app's default: the website's edge proxy in front of the Neon registry (see apps/desktop/src/main/beacons/defaults.ts).
 const LIVE_REGISTRY = 'https://intoponet.com/registry'
@@ -2201,6 +2201,232 @@ export const checks = {
       await ctx.delay(500)
       expect(!(await byTitle('Page /docs')).folderId && (await folders()).find((folder) => folder.name === 'Reports')?.parentId === null, 'Deleting a folder lost its tabs or folders.')
       return 'Folder named from the sidebar; tab dragged in and moved by command; nested four deep; order follows the sidebar; folded and kept; saved as path-named collections; a collection opened as a folder; delete keeps tabs; axe clean.'
+    } finally {
+      server.close()
+    }
+  },
+  async WORKSPACES(ctx) {
+    const { server, origin } = await tabSite()
+    const host = 'window.intoponet.browserHost'
+    const ws = 'window.intoponet.workspaces'
+    const tabs = async () => JSON.parse(await ctx.evaluate(`${host}.getTabs().then((t) => JSON.stringify(t))`))
+    const state = async () => JSON.parse(await ctx.evaluate(`${ws}.get().then((s) => JSON.stringify(s))`))
+    const titles = async () => (await tabs()).map((tab) => tab.title.replace('Page /', '')).join(' ')
+    const byTitle = async (title) => (await tabs()).find((tab) => tab.title === `Page /${title}`)
+    const loaded = (path) => ctx.main(`electron.webContents.getAllWebContents().some((c) => c.getURL() === ${JSON.stringify(`${origin}/${path}`)})`)
+    const savedState = () => JSON.parse(readFileSync(join(ctx.profile, 'browser-state.v1.json'), 'utf8'))
+    const typeCommand = async (text) => {
+      await ctx.evaluate(`(() => { const input = document.querySelector('.command-input input'); input.focus(); input.select(); return true })()`)
+      await ctx.type(text)
+      await ctx.delay(300)
+    }
+    const key = async (key, code, keyCode, modifiers = 0) => {
+      await ctx.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', key, code, windowsVirtualKeyCode: keyCode, modifiers })
+      await ctx.send('Input.dispatchKeyEvent', { type: 'keyUp', key, code, windowsVirtualKeyCode: keyCode, modifiers })
+    }
+    /** ⌃N pressed in the page showing `fromPath`, timed until the sidebar shows the other workspace's tabs. */
+    const timedSwitch = async (digit, fromPath, targetId, expectTitle) => {
+      await ctx.evaluate(`(() => { window.__wsShown = 0; const done = () => { const rail = document.querySelector('.tab-rail'); if (rail?.dataset.workspace === ${JSON.stringify(targetId)} && [...rail.querySelectorAll('[data-tab-id] .tab-rail-title')].some((e) => e.textContent === ${JSON.stringify(expectTitle)})) { window.__wsShown = performance.now(); return true } return false }; const watch = new MutationObserver(() => { if (done()) watch.disconnect() }); watch.observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true }); window.__wsAsked = performance.now(); return true })()`)
+      expect(await ctx.keyInPage(`/${fromPath}`, digit, ['control']), `No page at /${fromPath} to press ⌃${digit} in.`)
+      await ctx.wait(`window.__wsShown > 0`, 3000, `⌃${digit} to show the workspace's tabs`)
+      return ctx.evaluate(`window.__wsShown - window.__wsAsked`)
+    }
+    /** The app opened again (as after quitting or a crash) with a saved browser state, in a profile of its own. */
+    const relaunch = async (saved, check) => {
+      const profile = mkdtempSync(join(tmpdir(), 'intoponet-e2e-relaunch-'))
+      writeFileSync(join(profile, 'browser-state.v1.json'), JSON.stringify(saved))
+      const before = process.env.E2E_PROFILE
+      process.env.E2E_PROFILE = profile
+      try {
+        return await runAppCheck(check, { timeoutMs: 60_000 })
+      } finally {
+        if (before === undefined) delete process.env.E2E_PROFILE
+        else process.env.E2E_PROFILE = before
+        rmSync(profile, { recursive: true, force: true })
+      }
+    }
+    try {
+      // Main: a pinned tab, a folder with a tab in it, and an open tab.
+      for (const name of ['main-a', 'main-b', 'main-pin']) await openPage(ctx, `${origin}/${name}`, 900)
+      await ctx.evaluate(`${host}.setTabPinned(${JSON.stringify((await byTitle('main-pin')).id)}, true).then(() => true)`)
+      await ctx.evaluate(`${host}.createTabFolder('Main folder', null, [${JSON.stringify((await byTitle('main-b')).id)}]).then(() => true)`)
+      await ctx.click('button[aria-label="Pin tabs open"]')
+      await ctx.delay(600)
+      let now = await state()
+      expect(now.workspaces.length === 1 && now.workspaces[0].name === 'Main', `A new profile starts with ${JSON.stringify(now.workspaces)}.`)
+      expect(!(await ctx.evaluate(`!!document.querySelector('.tab-rail-workspaces')`)), 'With one workspace the sidebar already shows a workspace switcher.')
+      const mainId = now.activeId
+
+      // Create one from the sidebar: it is shown at once and asks for its name, icon and colour.
+      await ctx.click('button[aria-label="New workspace"]')
+      await ctx.wait(`document.activeElement?.classList.contains('tab-rail-workspace-name-input')`, 4000, 'the new workspace to ask for its name')
+      await ctx.evaluate(`document.activeElement.select(); true`)
+      await ctx.type('Research')
+      await ctx.evaluate(`(() => { document.querySelector('.tab-rail-workspace-editor input[aria-label="Flask"]').click(); document.querySelector('.tab-rail-workspace-editor input[aria-label="Violet"]').click(); document.querySelector('.tab-rail-workspace-name-input').focus(); return true })()`)
+      await ctx.press('Enter')
+      await ctx.wait(`${ws}.get().then((s) => s.workspaces.some((w) => w.name === 'Research' && w.icon === 'flask' && w.accent === 'violet' && w.id === s.activeId))`, 4000, 'the new workspace to be named Research, with its icon and colour, and shown')
+      now = await state()
+      const researchId = now.activeId
+      expect((await tabs()).every((tab) => tab.isStartPage), `The new workspace opened with someone else's tabs: ${await titles()}.`)
+      await ctx.wait(`document.querySelector('.tab-rail-workspace.is-active')?.getAttribute('aria-label')?.startsWith('Research')`, 3000, 'the switcher to show Research as the current workspace')
+      // Its own pinned tab, folder and open tab.
+      await openPage(ctx, `${origin}/research-a`, 900)
+      await openPage(ctx, `${origin}/research-b`, 900)
+      await openPage(ctx, `${origin}/research-c`, 900)
+      await ctx.evaluate(`${host}.setTabPinned(${JSON.stringify((await byTitle('research-a')).id)}, true).then(() => true)`)
+      await ctx.evaluate(`${host}.createTabFolder('Papers', null, [${JSON.stringify((await byTitle('research-b')).id)}]).then(() => true)`)
+      await ctx.delay(500)
+      expect(await titles() === 'research-a research-b research-c', `Research holds: ${await titles()}.`)
+      const researchFolders = JSON.parse(await ctx.evaluate(`${host}.getTabFolders().then((f) => JSON.stringify(f))`))
+      expect(researchFolders.map((folder) => folder.name).join() === 'Papers', `Research's folders: ${researchFolders.map((folder) => folder.name).join()}.`)
+
+      // A sleeping tab in Main: its pinned tab, unloaded (its close button only unloads a pinned tab).
+      await ctx.evaluate(`${ws}.switchTo({ id: ${JSON.stringify(mainId)} }).then(() => true)`)
+      await ctx.delay(800)
+      expect(await titles() === 'main-pin main-b main-a', `Main holds: ${await titles()}.`)
+      const mainPin = await byTitle('main-pin')
+      await ctx.evaluate(`${host}.activateTab(${JSON.stringify((await byTitle('main-a')).id)}).then(() => ${host}.closeTab(${JSON.stringify(mainPin.id)})).then(() => true)`)
+      await ctx.wait(`${host}.getTabs().then((t) => t.find((x) => x.id === ${JSON.stringify(mainPin.id)})?.asleep === true)`, 4000, 'Main\'s pinned tab to sleep')
+      expect(!(await loaded('main-pin')), 'The sleeping tab\'s page is still loaded.')
+
+      // ⌃1 and ⌃2 from inside the page switch: timed until the sidebar shows the other workspace's tabs.
+      const times = []
+      for (let round = 0; round < 4; round += 1) {
+        times.push(await timedSwitch('2', 'main-a', researchId, 'Page /research-c'))
+        await ctx.delay(300)
+        times.push(await timedSwitch('1', 'research-c', mainId, 'Page /main-a'))
+        await ctx.delay(300)
+      }
+      times.sort((a, b) => a - b)
+      const slowest = times[times.length - 1]
+      expect(slowest < 150, `Switching workspaces took up to ${Math.round(slowest)} ms (must be under 150 ms): ${times.map(Math.round).join(', ')}.`)
+      // Main's sleeping tab never woke, however often Main was shown; Research's pages kept going (not reloaded).
+      expect(!(await loaded('main-pin')) && (await byTitle('main-pin')).asleep, 'Switching workspaces woke Main\'s sleeping tab.')
+      expect(await loaded('research-c'), 'Research\'s open page was unloaded while Main was shown.')
+      expect(await titles() === 'main-pin main-b main-a', `Back in Main the sidebar shows: ${await titles()}.`)
+      const mainFolders = JSON.parse(await ctx.evaluate(`${host}.getTabFolders().then((f) => JSON.stringify(f))`))
+      expect(mainFolders.map((folder) => folder.name).join() === 'Main folder' && (await byTitle('main-b')).folderId === mainFolders[0].id, `Main's folder did not come back with it: ${JSON.stringify(mainFolders)}.`)
+
+      // The command menu switches too.
+      await typeCommand('> research')
+      await ctx.wait(`[...document.querySelectorAll('[role="listbox"] [role="option"]')].some((e) => e.innerText.includes('Switch to workspace Research'))`, 3000, 'the command menu to offer Research')
+      expect(await ctx.evaluate(`document.querySelector('[role="listbox"] [role="option"]').innerText.includes('Switch to workspace Research')`), 'The command menu does not offer switching to Research first.')
+      await ctx.press('Enter')
+      await ctx.wait(`${ws}.get().then((s) => s.activeId === ${JSON.stringify(researchId)})`, 3000, 'the command menu to show Research')
+
+      // A sideways two-finger swipe on the sidebar shows the next workspace (one per swipe).
+      const rail = JSON.parse(await ctx.evaluate(`JSON.stringify(document.querySelector('.tab-rail').getBoundingClientRect())`))
+      for (let i = 0; i < 5; i += 1) {
+        await ctx.send('Input.dispatchMouseEvent', { type: 'mouseWheel', x: rail.x + rail.width / 2, y: rail.y + rail.height / 2, deltaX: 30, deltaY: 0 })
+        await ctx.delay(30)
+      }
+      await ctx.wait(`${ws}.get().then((s) => s.activeId === ${JSON.stringify(mainId)})`, 3000, 'a swipe on the sidebar to show the next workspace')
+      await ctx.delay(500)
+      expect((await state()).activeId === mainId, 'One swipe switched more than once.')
+
+      // Keyboard: the switcher's buttons take arrows and Enter; ⌥⇧← moves a workspace (⌃1–9 follow the order).
+      await ctx.evaluate(`document.querySelector('.tab-rail-workspace.is-active').focus(); true`)
+      await key('ArrowRight', 'ArrowRight', 39)
+      expect(await ctx.evaluate(`document.activeElement?.dataset.workspaceId === ${JSON.stringify(researchId)}`), 'The arrow key did not move to the next workspace.')
+      await ctx.press('Enter')
+      await ctx.wait(`${ws}.get().then((s) => s.activeId === ${JSON.stringify(researchId)})`, 3000, 'Enter on a workspace to show it')
+      await ctx.wait(`document.querySelector('.tab-rail-workspace.is-active')?.dataset.workspaceId === ${JSON.stringify(researchId)}`, 3000, 'the switcher to mark Research as current')
+      await ctx.evaluate(`document.querySelector('.tab-rail-workspace.is-active').focus(); true`)
+      await key('ArrowLeft', 'ArrowLeft', 37, 1 | 8)
+      await ctx.wait(`${ws}.get().then((s) => s.workspaces[0].id === ${JSON.stringify(researchId)})`, 3000, '⌥⇧← to move Research first')
+
+      // Rename from the workspace's actions.
+      await ctx.click('button[aria-label="Actions for workspace Research"]')
+      await ctx.wait(`!!document.querySelector('.tab-rail-folder-menu [role="menuitem"]')`, 2000, 'the workspace menu')
+      await ctx.click('.tab-rail-folder-menu [role="menuitem"]', 'Rename')
+      await ctx.wait(`document.activeElement?.classList.contains('tab-rail-workspace-name-input')`, 3000, 'the name field')
+      await ctx.evaluate(`document.activeElement.select(); true`)
+      await ctx.type('Reading')
+      await ctx.press('Enter')
+      await ctx.wait(`${ws}.get().then((s) => s.workspaces[0].name === 'Reading')`, 3000, 'the workspace to be renamed Reading')
+
+      // Favourites: one shared by every workspace, one owned by Main.
+      await ctx.evaluate(`${ws}.addFavourite(${JSON.stringify((await byTitle('research-c')).id)}, true).then(() => true)`)
+      await ctx.evaluate(`${ws}.switchTo({ id: ${JSON.stringify(mainId)} }).then(() => true)`)
+      await ctx.delay(600)
+      await ctx.evaluate(`${ws}.addFavourite(${JSON.stringify((await byTitle('main-a')).id)}, false).then(() => true)`)
+      await ctx.wait(`document.querySelectorAll('.tab-rail-favourite').length === 2`, 3000, 'Main to show both favourites')
+      await ctx.evaluate(`${ws}.switchTo({ id: ${JSON.stringify(researchId)} }).then(() => true)`)
+      await ctx.wait(`document.querySelectorAll('.tab-rail-favourite').length === 1`, 3000, 'Reading to show only the shared favourite')
+
+      // Private tabs belong to no workspace: never counted, never moved into one, never saved.
+      await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(true).then(() => true)`)
+      await openPage(ctx, `${origin}/private-page`, 900)
+      const privateTab = (await tabs()).find((tab) => tab.isPrivate)
+      expect(privateTab, 'No private tab opened.')
+      now = await state()
+      expect(now.workspaces.find((w) => w.id === researchId).tabCount === 3, `Reading counts ${now.workspaces.find((w) => w.id === researchId).tabCount} tabs with a private tab open.`)
+      const refused = await ctx.evaluate(`${ws}.moveTab(${JSON.stringify(privateTab.id)}, ${JSON.stringify(mainId)}).then(() => 'moved', () => 'refused')`)
+      expect(refused === 'refused', 'A private tab was moved into a workspace.')
+      await ctx.evaluate(`${ws}.switchTo({ id: ${JSON.stringify(mainId)} }).then(() => true)`)
+      await ctx.delay(600)
+      expect((await tabs()).some((tab) => tab.id === privateTab.id && tab.isPrivate), 'The private tab went away with the workspace.')
+      await ctx.delay(500)
+      expect(!JSON.stringify(savedState()).includes('private-page'), 'A private page was saved with the workspaces.')
+      await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
+      await ctx.delay(600)
+      expect(!(await tabs()).some((tab) => tab.isPrivate), 'Leaving private browsing left a private tab.')
+      await ctx.evaluate(`${ws}.switchTo({ id: ${JSON.stringify(researchId)} }).then(() => true)`)
+      await ctx.delay(600)
+      await axeAudit(ctx, 'the tab sidebar with workspaces and favourites', '.tab-rail')
+      await ctx.shot('workspaces')
+
+      // Saved for the next launch (version 3); kept during the session too, so a crash loses nothing.
+      await ctx.delay(500)
+      const saved = savedState()
+      expect(saved.version === 3 && saved.workspaces.map((w) => w.name).join() === 'Reading,Main' && saved.activeWorkspaceId === researchId, `Saved workspaces: ${JSON.stringify({ version: saved.version, workspaces: saved.workspaces, active: saved.activeWorkspaceId })}.`)
+      expect(saved.tabs.filter((tab) => tab.workspaceId === mainId).length === 3 && saved.tabs.filter((tab) => tab.workspaceId === researchId).length === 3, `Saved tabs by workspace: ${JSON.stringify(saved.tabs.map((tab) => [tab.title, tab.workspaceId]))}.`)
+      expect(saved.folders.some((folder) => folder.name === 'Papers' && folder.workspaceId === researchId) && saved.folders.some((folder) => folder.name === 'Main folder' && folder.workspaceId === mainId), `Saved folders: ${JSON.stringify(saved.folders)}.`)
+
+      // Opened again with that state: every workspace comes back with its own tabs, folders and favourites.
+      const restored = await relaunch(saved, async (next) => {
+        const nextState = JSON.parse(await next.evaluate(`${ws}.get().then((s) => JSON.stringify(s))`))
+        expect(nextState.workspaces.map((w) => `${w.name}:${w.icon}:${w.accent}`).join() === 'Reading:flask:violet,Main:globe:teal' && nextState.activeId === researchId, `After a restart: ${JSON.stringify(nextState.workspaces)}.`)
+        expect(nextState.favourites.length === 2 && nextState.favourites.filter((f) => f.workspaceId === null).length === 1, `Favourites after a restart: ${JSON.stringify(nextState.favourites)}.`)
+        const shown = JSON.parse(await next.evaluate(`${host}.getTabs().then((t) => JSON.stringify(t))`))
+        expect(shown.map((tab) => tab.title).join() === 'Page /research-a,Page /research-b,Page /research-c' && shown[0].pinned, `Reading after a restart: ${shown.map((tab) => tab.title).join()}.`)
+        await next.evaluate(`${ws}.switchTo({ index: 1 }).then(() => true)`)
+        await next.delay(600)
+        const other = JSON.parse(await next.evaluate(`${host}.getTabs().then((t) => JSON.stringify(t))`))
+        const folders = JSON.parse(await next.evaluate(`${host}.getTabFolders().then((f) => JSON.stringify(f))`))
+        // Only the tab Main shows may load; the others stay unloaded until clicked.
+        expect(other.map((tab) => tab.title).join() === 'Page /main-pin,Page /main-b,Page /main-a' && other[0].pinned && other.filter((tab) => !tab.active).every((tab) => tab.asleep) && other[0].asleep, `Main after a restart: ${JSON.stringify(other.map((tab) => [tab.title, tab.active, tab.asleep]))}.`)
+        expect(folders.length === 1 && other.find((tab) => tab.title === 'Page /main-b').folderId === folders[0].id, `Main's folder after a restart: ${JSON.stringify(folders)}.`)
+        return 'restored'
+      })
+      expect(restored === 'restored', 'The relaunched app did not check its workspaces.')
+
+      // A browser state from before workspaces (version 2) opens with all its tabs and folders in Main.
+      const migrated = await relaunch({ version: 2, url: `${origin}/old-a`, bounds: { x: 40, y: 104, width: 900, height: 600 }, wasVisible: false, tabs: [{ id: 'old-a', url: `${origin}/old-a`, title: 'Old A' }, { id: 'old-b', url: `${origin}/old-b`, title: 'Old B', folderId: 'old-f' }], folders: [{ id: 'old-f', name: 'Old folder', parentId: null }] }, async (next) => {
+        const nextState = JSON.parse(await next.evaluate(`${ws}.get().then((s) => JSON.stringify(s))`))
+        const shown = JSON.parse(await next.evaluate(`${host}.getTabs().then((t) => JSON.stringify(t))`))
+        expect(nextState.workspaces.length === 1 && nextState.workspaces[0].name === 'Main' && nextState.workspaces[0].tabCount === 2, `A version 2 state opened as ${JSON.stringify(nextState.workspaces)}.`)
+        expect(shown.map((tab) => tab.title).join() === 'Old B,Old A' && shown[0].folderId === 'old-f', `Its tabs in Main: ${JSON.stringify(shown.map((tab) => [tab.title, tab.folderId]))}.`)
+        return 'migrated'
+      })
+      expect(migrated === 'migrated', 'The relaunched app did not check the migration.')
+
+      // Delete, after confirming (focus starts on Cancel), and Undo brings it back with its tabs, unreloaded.
+      const researchC = (await byTitle('research-c')).id
+      await ctx.click('button[aria-label="Actions for workspace Reading"]')
+      await ctx.wait(`!!document.querySelector('.tab-rail-folder-menu [role="menuitem"]')`, 2000, 'the workspace menu')
+      await ctx.click('.tab-rail-folder-menu [role="menuitem"]', 'Delete workspace')
+      await ctx.wait(`!!document.querySelector('.tab-rail-workspace-confirm[role="alertdialog"]') && document.activeElement?.textContent === 'Cancel'`, 3000, 'the delete confirmation, with focus on Cancel')
+      expect((await state()).workspaces.length === 2, 'Asking to delete deleted before it was confirmed.')
+      await axeAudit(ctx, 'the delete confirmation', '.tab-rail')
+      await ctx.click('.tab-rail-workspace-confirm button', 'Delete workspace')
+      await ctx.wait(`${ws}.get().then((s) => s.workspaces.length === 1 && s.recentlyDeleted?.name === 'Reading')`, 3000, 'Reading to be deleted, with Undo offered')
+      expect(await titles() === 'main-pin main-b main-a', `After deleting Reading the sidebar shows: ${await titles()}.`)
+      await ctx.wait(`[...document.querySelectorAll('.tab-rail-workspace-undo')].some((e) => e.textContent.includes('Deleted “Reading”'))`, 3000, 'the sidebar to offer Undo')
+      await ctx.click('.tab-rail-workspace-undo button')
+      await ctx.wait(`${ws}.get().then((s) => s.workspaces.length === 2 && s.activeId === ${JSON.stringify(researchId)} && !s.recentlyDeleted)`, 3000, 'Undo to bring Reading back')
+      expect(await titles() === 'research-a research-b research-c' && (await tabs()).some((tab) => tab.id === researchC), `After Undo Reading holds: ${await titles()}.`)
+      return `Created, named (icon and colour), renamed, reordered, deleted with confirmation and Undo; each workspace kept its own pinned tab, folder and open tabs; ⌃1/⌃2 switched in ${Math.round(times[0])}–${Math.round(slowest)} ms with the other workspace's sleeping tab left asleep; command menu, swipe and keyboard switched; shared and own favourites; private tabs in no workspace and never saved; restored after a restart and migrated a version 2 state into Main; axe clean.`
     } finally {
       server.close()
     }

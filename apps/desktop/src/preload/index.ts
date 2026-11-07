@@ -34,6 +34,8 @@ import {
   type ProtectionSnapshot,
   type PublicFieldStatus,
   type SavedPdfRecord,
+  type WorkspacesApi,
+  type WorkspacesState,
 } from '@intoponet/browser-api'
 
 const invoke = (
@@ -51,10 +53,28 @@ const invoke = (
   | PublicFieldStatus
   | PdfExportOptions
   | SavedPdfRecord[]
+  | WorkspacesState
   | string
   | null
 > =>
   ipcRenderer.invoke(browserHostChannels.command, command)
+
+/** Workspaces and the favourites row (commands on the browser host's channel). */
+const workspace = (command: BrowserHostCommand): Promise<WorkspacesState> => invoke(command) as Promise<WorkspacesState>
+const workspaces: WorkspacesApi = {
+  get: () => workspace({ type: 'get-workspaces' }),
+  create: (look = {}) => workspace({ type: 'create-workspace', ...look }),
+  update: (id, changes) => workspace({ type: 'update-workspace', id, ...changes }),
+  move: (id, toIndex) => workspace({ type: 'move-workspace', id, toIndex }),
+  delete: (id) => workspace({ type: 'delete-workspace', id }),
+  undoDelete: () => workspace({ type: 'undo-delete-workspace' }),
+  switchTo: (target) => workspace({ type: 'switch-workspace', ...target }),
+  moveTab: (tabId, workspaceId) => workspace({ type: 'move-tab-to-workspace', tabId, workspaceId }),
+  addFavourite: (tabId, shared = true) => workspace({ type: 'add-favourite', tabId, shared }),
+  setFavouriteShared: (id, shared) => workspace({ type: 'update-favourite', id, shared }),
+  removeFavourite: (id) => workspace({ type: 'remove-favourite', id }),
+  openFavourite: (id) => workspace({ type: 'open-favourite', id }),
+}
 
 const browserHost: BrowserHostApi = {
   open: async (intent, disposition) => {
@@ -471,4 +491,4 @@ const browserImport: BrowserImportApi = {
   run: (profileId, categories) => importInvoke({ type: 'run', profileId, categories }) as Promise<ImportRunResult>,
 }
 
-contextBridge.exposeInMainWorld('intoponet', Object.freeze({ browserHost, captures, olds, knowledge, laya, translate, privacy, sitePermissions, beacons, favicons, articles, access, downloads, history, browsing, updates, feedback, passwords, browserImport }))
+contextBridge.exposeInMainWorld('intoponet', Object.freeze({ browserHost, captures, olds, knowledge, laya, translate, privacy, sitePermissions, beacons, favicons, articles, access, downloads, history, browsing, updates, feedback, passwords, browserImport, workspaces }))

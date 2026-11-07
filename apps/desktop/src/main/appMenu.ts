@@ -33,6 +33,8 @@ export type AppCommand =
   | { type: 'previous-tab' }
   /** 0-based; -1 is the last tab (⌘9). */
   | { type: 'select-tab'; index: number }
+  /** 0-based: ⌃1 is the first workspace. */
+  | { type: 'select-workspace'; index: number }
   | { type: 'help' }
   /** The open page's address, tracking parameters removed (raw: exactly as it is). */
   | { type: 'copy-address' }
@@ -55,6 +57,8 @@ export type AppMenuState = {
   recentlyClosed: { id: string; title: string; url: string }[]
   /** Development builds also offer the app window's own developer tools. */
   developer: boolean
+  /** Workspaces there are (⌃1–9 switch to them); 1 when absent. */
+  workspaceCount?: number
 }
 
 /**
@@ -105,6 +109,14 @@ const TAB_NUMBER_SHORTCUTS: { accelerator: string; index: number }[] = [
   { accelerator: 'CmdOrCtrl+9', index: -1 },
 ]
 
+/**
+ * ⌃1–⌃9 show workspaces 1–9 (⌘1–9 already select tabs). Elsewhere than the Mac, ⌃ is the command
+ * key, so they take ⌥ instead.
+ */
+export function workspaceNumberShortcuts(platform: NodeJS.Platform): { accelerator: string; index: number }[] {
+  return Array.from({ length: 9 }, (_, index) => ({ accelerator: `${platform === 'darwin' ? 'Ctrl' : 'Alt'}+${index + 1}`, index }))
+}
+
 /** Where a command is carried out: in the app window's interface, in the browser host, or natively. */
 export type AppCommandRoute =
   | { kind: 'shell'; action: ShellShortcut }
@@ -140,6 +152,7 @@ export function routeAppCommand(command: AppCommand): AppCommandRoute {
     case 'next-tab': return { kind: 'host', command: { type: 'cycle-tabs', direction: 'next' } }
     case 'previous-tab': return { kind: 'host', command: { type: 'cycle-tabs', direction: 'previous' } }
     case 'select-tab': return { kind: 'host', command: { type: 'select-tab', index: command.index } }
+    case 'select-workspace': return { kind: 'host', command: { type: 'switch-workspace', index: command.index } }
     case 'command-menu': return { kind: 'shell', action: 'command-menu' }
     case 'toggle-tab-sidebar': return { kind: 'shell', action: 'toggle-tab-sidebar' }
     case 'copy-address': return { kind: 'host', command: { type: 'copy-page-address', clean: true } }
@@ -200,6 +213,16 @@ export function appMenuTemplate(state: AppMenuState, run: (command: AppCommand) 
     visible: false,
     acceleratorWorksWhenHidden: true,
     click: () => run({ type: 'select-tab', index }),
+  }))
+  const workspaceCount = state.workspaceCount ?? 1
+  const workspaceNumbers: MenuItemConstructorOptions[] = workspaceNumberShortcuts(state.platform).map(({ accelerator, index }) => ({
+    id: `select-workspace-${index + 1}`,
+    label: `Workspace ${index + 1}`,
+    accelerator,
+    enabled: workspaceCount > index,
+    visible: false,
+    acceleratorWorksWhenHidden: true,
+    click: () => run({ type: 'select-workspace', index }),
   }))
 
   return [
@@ -319,6 +342,7 @@ export function appMenuTemplate(state: AppMenuState, run: (command: AppCommand) 
         ...item('Select Next Tab', 'next-tab', state.tabCount > 1),
         ...item('Select Previous Tab', 'previous-tab', state.tabCount > 1),
         ...tabNumbers,
+        ...workspaceNumbers,
         ...(isMac ? [{ type: 'separator' } as const, { role: 'front' } as const] : []),
       ],
     },
@@ -334,7 +358,7 @@ export function appMenuTemplate(state: AppMenuState, run: (command: AppCommand) 
 export function appMenuStateKey(state: AppMenuState): string {
   return JSON.stringify([
     state.tabShowing, state.hasPage, state.canGoBack, state.canGoForward, state.isLoading,
-    Math.min(state.tabCount, 9), state.privateMode, state.developer,
+    Math.min(state.tabCount, 9), state.privateMode, state.developer, state.workspaceCount ?? 1,
     state.recentlyClosed.slice(0, 15).map((entry) => [entry.id, closedLabel(entry)]),
   ])
 }
@@ -431,8 +455,9 @@ function matches(chord: Chord, input: KeyInput, keys: Set<string>): boolean {
  */
 export function appCommandForInput(input: KeyInput, options: { developer?: boolean; platform?: NodeJS.Platform } = {}): AppCommand | null {
   if (input.type !== 'keyDown') return null
-  if (!input.meta && !input.control) return null
   const platform = options.platform ?? process.platform
+  // Workspace numbers take ⌥ where ⌃ is the command key.
+  if (!input.meta && !input.control && !(input.alt && platform !== 'darwin')) return null
   const keys = inputKeys(input)
   for (const [type, accelerators] of Object.entries(APP_SHORTCUTS) as [SimpleCommandType, readonly string[]][]) {
     if (type === 'shell-devtools' && !options.developer) continue
@@ -440,6 +465,9 @@ export function appCommandForInput(input: KeyInput, options: { developer?: boole
   }
   for (const { accelerator, index } of TAB_NUMBER_SHORTCUTS) {
     if (matches(parseAccelerator(accelerator, platform), input, keys)) return { type: 'select-tab', index }
+  }
+  for (const { accelerator, index } of workspaceNumberShortcuts(platform)) {
+    if (matches(parseAccelerator(accelerator, platform), input, keys)) return { type: 'select-workspace', index }
   }
   return null
 }

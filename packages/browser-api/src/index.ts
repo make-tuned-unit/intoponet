@@ -1,3 +1,4 @@
+import { WORKSPACE_COMMAND_TYPES, parseWorkspaceCommand, type WorkspaceCommand, type WorkspacesState } from './workspaces'
 export type BrowserPanelBounds = {
   x: number
   y: number
@@ -254,6 +255,8 @@ export type BrowserHostEvent =
   /** The sidebar's folders changed (`rename`: a folder just made from the tab menu, to name now). */
   | { type: 'tab-folders'; folders: TabFolderSnapshot[]; rename?: string }
   | { type: 'tab-switcher'; open: boolean; selected?: string; position?: number; count?: number }
+  /** Workspaces changed (or one was switched to: `switchedMs` is how long main took). */
+  | { type: 'workspaces'; state: WorkspacesState; switchedMs?: number }
 
 export type ShellShortcut = 'new-tab' | 'find' | 'find-next' | 'find-previous' | 'open-settings' | 'bookmark' | 'next-tab' | 'previous-tab' | 'focus-launcher' | 'toggle-bookmarks' | 'capture' | 'toggle-private' | 'absorb-selection' | 'toggle-tab-sidebar' | 'command-menu'
 
@@ -463,6 +466,8 @@ export type BrowserHostCommand =
   | { type: 'get-place-trends'; countryCode: string; name?: string; aliases?: string[]; geonameId?: string }
   /** Right-click in the address bar: edit items plus "Paste and Go". */
   | { type: 'address-menu'; hasSelection: boolean }
+  /** Workspaces and favourites (workspaces.ts). */
+  | WorkspaceCommand
 
 const commandTypes = new Set<BrowserHostCommand['type']>([
   'open',
@@ -601,6 +606,7 @@ export function parseBrowserHostCommand(value: unknown): BrowserHostCommand {
     throw new Error('Invalid browser-host command.')
   }
   const type = value['type']
+  if (WORKSPACE_COMMAND_TYPES.has(type)) return parseWorkspaceCommand(value)
   if (!commandTypes.has(type as BrowserHostCommand['type'])) {
     throw new Error('Unknown browser-host command.')
   }
@@ -840,3 +846,4 @@ export * from './updates'
 export * from './downloads'
 export * from './history'
 export * from './browsing'
+export * from './workspaces'
