@@ -3485,7 +3485,8 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
     // A site's style tweak goes into every tab of that site, background tabs included.
     void applySiteStyle(view)
     if (pageView !== view && companionView !== view) return
-    void applyCosmeticFilters(view.webContents, { only: view.webContents.mainFrame })
+    // This page's own address: the other side of a split has its own site's rules, not the focused side's.
+    void applyCosmeticFilters(view.webContents, { only: view.webContents.mainFrame, url: view.webContents.getURL() })
   })
   // A side of a split that takes the keyboard becomes the focused side (the toolbar and find follow it).
   view.webContents.on('focus', () => {
