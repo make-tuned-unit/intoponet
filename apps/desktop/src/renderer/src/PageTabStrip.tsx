@@ -17,7 +17,8 @@ export type PageTabStripProps = {
  * tabs can be dragged (or moved with ⌥⇧← / ⌥⇧→) into a new order; right-click opens the tab menu.
  */
 export function PageTabStrip({ tabs, stripRef, caption, label }: PageTabStripProps) {
-  const dragHandlers = useTabDrag('x')
+  // The page a dragged tab would be split in beside: the shown one (not a new tab's start page).
+  const dragHandlers = useTabDrag('x', { shownId: tabs.find((tab) => tab.active && !tab.isStartPage)?.id })
   const buttons = useRef(new Map<string, HTMLButtonElement>())
   /** A tab moved from the keyboard keeps focus once the strip shows the new order. */
   const refocus = useRef<string | null>(null)
@@ -36,6 +37,46 @@ export function PageTabStrip({ tabs, stripRef, caption, label }: PageTabStripPro
     <div className="page-tabs" ref={stripRef} role="tablist" aria-label="Open screens">
       {tabs.map((tab, index) => {
         const name = label(tab)
+        // Side by side, a pair is one tab: drawn once, from its left side.
+        const partner = tab.split ? tabs.find((other) => other.id === tab.split!.partnerId) : undefined
+        if (partner && partner.split?.partnerId === tab.id) {
+          if (tab.split!.side === 'right') return null
+          const halves = [tab, partner]
+          return (
+            <div key={tab.id} data-tab-id={tab.id} className={`page-tab page-tab-pair${halves.some((half) => half.active) ? ' selected' : ''}`}>
+              {halves.map((half, at) => (
+                <button
+                  key={half.id}
+                  ref={(element) => { if (element) buttons.current.set(half.id, element); else buttons.current.delete(half.id) }}
+                  type="button"
+                  role="tab"
+                  className={`page-tab-main is-split-half${half.active ? ' is-focused' : ''}`}
+                  aria-selected={half.active}
+                  aria-label={`${label(half)}, ${at === 0 ? 'left' : 'right'} side by side${half.active ? ', focused' : ''}`}
+                  tabIndex={half.active || (!halves.some((other) => other.active) && at === 0) ? 0 : -1}
+                  title={label(half)}
+                  onFocus={() => setFocusId(half.id)}
+                  onClick={() => void window.intoponet.browserHost.activateTab(half.id)}
+                  onContextMenu={(event) => openTabMenu(event, half.id)}
+                  {...dragHandlers(half, index)}
+                >
+                  <TabIcon tab={half} size={14} />
+                  <span>{caption(half)}</span>
+                </button>
+              ))}
+              <button
+                type="button"
+                className="page-tab-close"
+                tabIndex={-1}
+                aria-hidden="true"
+                aria-label="Unsplit these two pages"
+                onClick={() => void window.intoponet.browserHost.unsplitTab(tab.id)}
+              >
+                <X size={12} />
+              </button>
+            </div>
+          )
+        }
         return (
           <div
             key={tab.id}

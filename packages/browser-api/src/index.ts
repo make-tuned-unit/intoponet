@@ -21,6 +21,29 @@ export type BrowserPanelSnapshot = {
   zoomFactor?: number
   /** The page could not load: the shell draws the error page in its place (the view stays hidden). */
   loadError?: import('./browsing').PageLoadError
+  /** Two pages side by side: the shell draws the divider and each side's header (its origin and security). */
+  split?: SplitPanelSnapshot
+  /** A tab is being dragged onto this edge of the page: the shell draws "Drop to split" in `zone`. */
+  splitPreview?: { side: SplitSide; zone: BrowserPanelBounds }
+}
+
+export type SplitSide = 'left' | 'right'
+
+/** One side of a split: its tab, its address and whether it is secure (PRD WEB-006). */
+export type SplitSideSnapshot = { id: string; url: string; title: string; secure: boolean }
+
+/** A pair of tabs side by side. Rectangles are window coordinates, like the page's bounds. */
+export type SplitPanelSnapshot = {
+  left: SplitSideSnapshot
+  right: SplitSideSnapshot
+  /** The side that has keyboard focus: the address bar, find, zoom and the rest act on it. */
+  focused: SplitSide
+  /** The left side's share of the width the two sides share (the divider's place). */
+  ratio: number
+  divider: BrowserPanelBounds
+  headers: { left: BrowserPanelBounds; right: BrowserPanelBounds }
+  /** The two pages themselves (below their headers). */
+  sides: { left: BrowserPanelBounds; right: BrowserPanelBounds }
 }
 
 /** A recently closed tab that can be reopened (private tabs are never kept). */
@@ -109,6 +132,8 @@ export type PageTabSnapshot = {
   lastShownAt?: number
   /** The sidebar folder it is in. */
   folderId?: string
+  /** Side by side with another tab (its partner); `side` is where this tab's page sits. */
+  split?: { partnerId: string; side: SplitSide }
 }
 
 /** A folder in the tab sidebar (folders nest through parentId). */
@@ -331,6 +356,13 @@ export interface BrowserHostApi {
   cycleTabs(direction: 'next' | 'previous'): Promise<void>
   /** Move a tab to a new position in the tab order (pinned tabs stay ahead of the others). */
   moveTab(id: string, toIndex: number): Promise<void>
+  /** Pages side by side: pair `id` (default the shown tab) with `partnerId` (default the next tab). */
+  splitTab(id?: string, partnerId?: string, side?: SplitSide): Promise<void>
+  unsplitTab(id?: string): Promise<void>
+  setSplitRatio(ratio: number): Promise<void>
+  focusSplitSide(side: SplitSide): Promise<void>
+  /** Shows where a dragged tab would land on the page's edge (null clears it). */
+  splitPreview(side: SplitSide | null): Promise<void>
   setTabPinned(id: string, pinned: boolean): Promise<void>
   setTabMuted(id: string, muted: boolean): Promise<void>
   /** The tab's context menu (a native menu), at a point in the window or at the pointer. */
@@ -443,6 +475,16 @@ export type BrowserHostCommand =
   | { type: 'copy-page-address'; clean: boolean }
   /** A pinned tab goes back to its home address (and is shown). */
   | { type: 'tab-home'; id: string }
+  /** Pair a tab with `partnerId` (default: the next tab) side by side; `id` (default: the shown tab) takes `side`. */
+  | { type: 'split-tab'; id?: string; partnerId?: string; side?: SplitSide }
+  /** End the pair `id` (default: the shown tab) is in; both tabs are whole again. */
+  | { type: 'unsplit-tab'; id?: string }
+  /** The divider's place: the left side's share of the two sides' width. */
+  | { type: 'set-split-ratio'; ratio: number }
+  /** Make the left or right side the one that has focus (its header was chosen). */
+  | { type: 'focus-split-side'; side: SplitSide }
+  /** A tab dragged over an edge: the page gives up that half to show "Drop to split" (null clears it). */
+  | { type: 'split-preview'; side: SplitSide | null }
   /** ⌃ released (commit: show the highlighted tab) or Escape (cancel) while the recent-tabs switcher is open. */
   | { type: 'tab-switcher'; action: 'commit' | 'cancel' }
   /** Preview a web address in a card floating over the page or the globe (⇧-click on a headline). */
@@ -522,6 +564,11 @@ const commandTypes = new Set<BrowserHostCommand['type']>([
   'select-tab',
   'copy-page-address',
   'tab-home',
+  'split-tab',
+  'unsplit-tab',
+  'set-split-ratio',
+  'focus-split-side',
+  'split-preview',
   'tab-switcher',
   'preview-link',
   'force-reload',
@@ -773,6 +820,24 @@ export function parseBrowserHostCommand(value: unknown): BrowserHostCommand {
     case 'tab-home':
       if (typeof value['id'] !== 'string' || value['id'].length === 0 || value['id'].length > 80) throw new Error('Invalid tab.')
       return { type, id: value['id'] }
+    case 'split-tab': {
+      const side = value['side']
+      if (side !== undefined && side !== 'left' && side !== 'right') throw new Error('Invalid split side.')
+      const id = value['id'] === undefined ? undefined : parseTabId(value['id'])
+      const partnerId = value['partnerId'] === undefined ? undefined : parseTabId(value['partnerId'])
+      return { type, ...(id ? { id } : {}), ...(partnerId ? { partnerId } : {}), ...(side ? { side } : {}) }
+    }
+    case 'unsplit-tab':
+      return { type, ...(value['id'] === undefined ? {} : { id: parseTabId(value['id']) }) }
+    case 'set-split-ratio':
+      if (typeof value['ratio'] !== 'number' || !Number.isFinite(value['ratio']) || value['ratio'] < 0 || value['ratio'] > 1) throw new Error('Invalid split ratio.')
+      return { type, ratio: value['ratio'] }
+    case 'focus-split-side':
+      if (value['side'] !== 'left' && value['side'] !== 'right') throw new Error('Invalid split side.')
+      return { type, side: value['side'] }
+    case 'split-preview':
+      if (value['side'] !== null && value['side'] !== 'left' && value['side'] !== 'right') throw new Error('Invalid split preview.')
+      return { type, side: value['side'] }
     case 'copy-page-address':
       if (typeof value['clean'] !== 'boolean') throw new Error('Invalid copy request.')
       return { type, clean: value['clean'] }

@@ -92,6 +92,27 @@ export function workspaceSubmenu(choices: TabMenuWorkspaces): MenuItemConstructo
   ]
 }
 
+/** Pages side by side (splitPages.ts): the tab's partner, the tabs it could pair with, and what to do. */
+export type TabMenuSplit = {
+  /** The tab's partner, when it is side by side with one. */
+  partner: { id: string; title: string } | null
+  /** Tabs that could pair with this one now (same privacy, pinning and folder). */
+  candidates: ReadonlyArray<{ id: string; title: string }>
+  split: (partnerId: string | null) => void
+  unsplit: () => void
+}
+
+/** "Split with Next Tab", "Split with ▸" (the other tabs), or "Unsplit". */
+export function splitSubmenu(choices: TabMenuSplit): MenuItemConstructorOptions[] {
+  if (choices.partner) return [{ label: 'Unsplit', click: choices.unsplit }]
+  return [
+    { label: 'Split with Next Tab', click: () => choices.split(null) },
+    ...(choices.candidates.length
+      ? [{ label: 'Split with ▸', submenu: choices.candidates.map((candidate): MenuItemConstructorOptions => ({ label: candidate.title || 'Untitled', click: () => choices.split(candidate.id) })) }]
+      : []),
+  ]
+}
+
 /** The native menu template; `run` performs an action for this tab. */
 export function tabMenuTemplate(
   tabs: readonly TabMenuTab[],
@@ -99,6 +120,7 @@ export function tabMenuTemplate(
   run: (action: TabMenuAction, id: string) => void,
   folders?: TabMenuFolders,
   workspaces?: TabMenuWorkspaces,
+  split?: TabMenuSplit,
 ): MenuItemConstructorOptions[] {
   const items = tabMenuEntries(tabs, id).map((entry): MenuItemConstructorOptions =>
     'separator' in entry
@@ -107,6 +129,8 @@ export function tabMenuTemplate(
   )
   const tab = tabs.find((item) => item.id === id)
   if (!tab) return items
+  // Last, after the close group. A new tab has no page to put beside another yet.
+  if (split && !tab.isStartPage) items.push({ type: 'separator' as const }, ...splitSubmenu(split))
   // After Pin/Unpin.
   const pinAt = (): number => {
     const at = items.findIndex((item) => item.label === 'Pin Tab' || item.label === 'Unpin Tab') + 1

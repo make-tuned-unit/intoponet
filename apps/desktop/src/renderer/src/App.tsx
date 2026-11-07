@@ -140,6 +140,7 @@ import { TabRail } from './TabRail'
 import type { WorkspaceRequest } from './WorkspaceBar'
 import { PageTabStrip } from './PageTabStrip'
 import './shellChrome.css'
+import { SplitChrome, rectStyle as splitRectStyle } from './SplitPages'
 import { BookmarkPane, type PaneFilter } from './BookmarkPane'
 import { groupOf, moveBookmarkToGroup, UNSORTED_GROUP_ID } from './bookmarkGroups'
 import { AnimatePresence } from 'motion/react'
@@ -2529,7 +2530,7 @@ export function App() {
   const commandActions = useMemo((): Array<OmniboxAction & { run: () => void }> => {
     const app = (id: string, label: string, run: () => void, shortcut = '', keywords = ''): OmniboxAction & { run: () => void } => ({ id, label, shortcut, keywords, run })
     const list: Array<(OmniboxAction & { run: () => void }) | false> = [
-      ...menuActions({ hasPage, pageShown: panel.isVisible, canGoBack: panel.canGoBack, canGoForward: panel.canGoForward, loading: panel.isLoading, tabCount: tabs.length, privateMode: privacyState?.privateMode ?? false, sidebarHidden: sidebar.mode === 'hidden' })
+      ...menuActions({ hasPage, pageShown: panel.isVisible, canGoBack: panel.canGoBack, canGoForward: panel.canGoForward, loading: panel.isLoading, tabCount: tabs.length, privateMode: privacyState?.privateMode ?? false, sidebarHidden: sidebar.mode === 'hidden', splitActive: !!panel.split })
         .map((action) => ({ ...action, run: () => void window.intoponet.browserHost.runMenuCommand(action.id) })),
       hasPage && app('protection', protection.enabled ? 'Turn protection off for this site' : 'Turn protection on for this site', () => setSiteProtection(!protection.enabled), '', 'ads trackers block shield'),
       hasPage && app('translate', 'Translate this page', () => setTranslateOpen(true), '', 'language'),
@@ -4302,30 +4303,37 @@ export function App() {
             </div>
           )}
           <div ref={panelBody} className="browser-body">
+            {/* Beside another page, a start or error page fills only its own half (the other is a page). */}
             {panel.isVisible && panel.loadError && !onStartPage && (
-              <ErrorPage
-                error={panel.loadError}
-                canGoBack={panel.canGoBack}
-                retrying={panel.isLoading}
-                onRetry={() => void window.intoponet.browserHost.reload()}
-                onBack={() => void window.intoponet.browserHost.back()}
-              />
+              <div className={panel.split ? 'split-start-frame' : 'split-start-plain'} style={panel.split ? splitRectStyle(panel.split.sides[panel.split.focused]) : undefined}>
+                <ErrorPage
+                  error={panel.loadError}
+                  canGoBack={panel.canGoBack}
+                  retrying={panel.isLoading}
+                  onRetry={() => void window.intoponet.browserHost.reload()}
+                  onBack={() => void window.intoponet.browserHost.back()}
+                />
+              </div>
             )}
             {onStartPage && (
-              <StartPage
-                tabId={tabs.find((tab) => tab.active)?.id ?? ''}
-                bookmarks={startPageBookmarks}
-                recents={startPageRecents}
-                news={startPageNews}
-                newsLoaded={newsDigest !== null}
-                isPrivate={panel.isPrivate === true}
-                onSubmit={submitFromStartPage}
-                onOpen={(url) => void submitFromStartPage(url).catch(() => undefined)}
-              />
+              <div className={panel.split ? 'split-start-frame' : 'split-start-plain'} style={panel.split ? splitRectStyle(panel.split.sides[panel.split.focused]) : undefined}>
+                <StartPage
+                  tabId={tabs.find((tab) => tab.active)?.id ?? ''}
+                  bookmarks={startPageBookmarks}
+                  recents={startPageRecents}
+                  news={startPageNews}
+                  newsLoaded={newsDigest !== null}
+                  isPrivate={panel.isPrivate === true}
+                  onSubmit={submitFromStartPage}
+                  onOpen={(url) => void submitFromStartPage(url).catch(() => undefined)}
+                />
+              </div>
             )}
           </div>
         </section>
       )}
+
+      {panel.isVisible && <SplitChrome split={panel.split} preview={panel.splitPreview} />}
 
       <div className="command-dock">
         {tabs.length > 0 && !railVisible && (

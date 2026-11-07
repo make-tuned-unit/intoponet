@@ -295,6 +295,14 @@ export const TOUR_STEPS: TourStep[] = [
     seconds: 8,
   },
   {
+    id: 'split-pages',
+    chapter: 'Browsing',
+    title: 'Two pages side by side',
+    body: 'Drag a tab to the left or right edge of the page, or choose Split with Next Tab in a tab’s menu, and the two pages sit side by side with a divider you can drag. Each side has its own address, find and zoom; ⌃⇧- puts them back together.',
+    target: '.browser-body',
+    seconds: 9,
+  },
+  {
     id: 'done',
     chapter: 'That’s the tour',
     title: 'The world is your start page',

@@ -4,7 +4,10 @@ import { Globe2, House, Volume2, VolumeX } from 'lucide-react'
 import { useRef, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react'
 import type { PageTabSnapshot } from '@intoponet/browser-api'
 import { dropIndex, reorderDelta, type TabBox, type TabAxis } from './tabReorder'
+import { splitDropSide } from '../../shared/splitDrop'
 import './tabControls.css'
+
+type SplitSide = 'left' | 'right'
 
 /** The tab's favicon, or a spinner while its page loads. */
 export function TabIcon({ tab, size }: { tab: PageTabSnapshot; size: number }) {
@@ -112,6 +115,21 @@ type Drag = {
   boxes: TabBox[] | null
   /** The tab ids of `boxes`, in the same order. */
   ids: string[]
+  /** The edge of the page the dragged tab is over (its drop would split the page), if any. */
+  preview: SplitSide | null
+}
+
+/**
+ * Where a tab dragged to (x, y) would be split in beside the shown page: the page's left or right
+ * edge. Null over the sidebar, in the page's middle, or for the shown tab itself.
+ */
+function splitDropFor(x: number, y: number, draggedId: string, shownId: string | undefined): SplitSide | null {
+  if (!shownId || draggedId === shownId) return null
+  const body = document.querySelector('.browser-body')
+  // Only where the page area is what the pointer is over (not the sidebar laid over it).
+  if (!body || !document.elementFromPoint(x, y)?.closest('.browser-body')) return null
+  const rect = body.getBoundingClientRect()
+  return splitDropSide({ x, y }, { x: rect.x, y: rect.y, width: rect.width, height: rect.height })
 }
 
 /**
@@ -123,7 +141,7 @@ type Drag = {
  * that do not show every tab (folders folded away). Dropped on a folder (an element with
  * data-folder-drop), the tab goes into that folder.
  */
-export function useTabDrag(axis: TabAxis, options: { indexOf?: (id: string) => number } = {}) {
+export function useTabDrag(axis: TabAxis, options: { indexOf?: (id: string) => number; shownId?: string | undefined } = {}) {
   const drag = useRef<Drag | null>(null)
   const justDragged = useRef(false)
 
@@ -136,6 +154,12 @@ export function useTabDrag(axis: TabAxis, options: { indexOf?: (id: string) => n
     state.item.classList.remove('is-dragging')
     justDragged.current = true
     window.setTimeout(() => { justDragged.current = false }, 0)
+    if (state.preview) {
+      // Dropped on a page's edge: the tab is split in beside the shown page (or the page is left as it was).
+      void window.intoponet.browserHost.splitPreview(null)
+      if (commit && options.shownId) void window.intoponet.browserHost.splitTab(state.id, options.shownId, state.preview)
+      return
+    }
     if (!commit) return
     const folder = document.elementsFromPoint(event.clientX, event.clientY)
       .map((element) => element.closest<HTMLElement>('[data-folder-drop]'))
@@ -156,7 +180,7 @@ export function useTabDrag(axis: TabAxis, options: { indexOf?: (id: string) => n
       if (event.button !== 0 || event.pointerType === 'touch') return
       const item = event.currentTarget.closest<HTMLElement>('[data-tab-id]')
       if (!item) return
-      drag.current = { id: tab.id, index, pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, item, boxes: null, ids: [] }
+      drag.current = { id: tab.id, index, pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, item, boxes: null, ids: [], preview: null }
     },
     onPointerMove: (event: PointerEvent<HTMLElement>) => {
       const state = drag.current
@@ -177,6 +201,12 @@ export function useTabDrag(axis: TabAxis, options: { indexOf?: (id: string) => n
         state.item.classList.add('is-dragging')
       }
       state.item.style.setProperty('translate', axis === 'x' ? `${dx}px 0` : `${dx}px ${dy}px`)
+      // Over a page's edge: offer to split it there (the page makes room; see SplitPages.tsx).
+      const side = splitDropFor(event.clientX, event.clientY, state.id, options.shownId)
+      if (side !== state.preview) {
+        state.preview = side
+        void window.intoponet.browserHost.splitPreview(side)
+      }
     },
     onPointerUp: (event: PointerEvent<HTMLElement>) => finish(event, true),
     onPointerCancel: (event: PointerEvent<HTMLElement>) => finish(event, false),
