@@ -168,6 +168,20 @@ export function moveFolderedTab<T extends FolderedTab>(tabs: T[], folders: reado
   return changed
 }
 
+/** Opens a folder and every folder it is in, so its tabs show in the sidebar. Mutates; true when one was collapsed. */
+export function revealFolder(folders: TabFolder[], id: string): boolean {
+  let changed = false
+  const seen = new Set<string>()
+  for (let folder = folders.find((item) => item.id === id); folder && !seen.has(folder.id); folder = folders.find((item) => item.id === folder!.parentId)) {
+    seen.add(folder.id)
+    if (folder.collapsed) {
+      delete folder.collapsed
+      changed = true
+    }
+  }
+  return changed
+}
+
 /** Puts a tab in a folder (or none), at the end of it. Pinned tabs stay out of folders. */
 export function setTabFolder<T extends FolderedTab>(tabs: T[], folders: readonly TabFolder[], id: string, folderId: string | null): boolean {
   const tab = tabs.find((item) => item.id === id)

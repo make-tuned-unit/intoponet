@@ -2629,8 +2629,31 @@ export const checks = {
       }
       expect(folded(saved), `Saved folders: ${JSON.stringify(saved.folders)}.`)
       expect(saved.tabs.find((tab) => tab.title === 'Page /docs')?.folderId === work.id, 'A tab\'s folder was not saved.')
-      await ctx.click(`[data-folder-drop="${work.id}"] .tab-rail-folder-toggle`)
-      await ctx.delay(500)
+      // ⌥⇧↑ on the first loose tab moves it into the folded folder above (into Drafts, before map): Work opens, and the tab stays in sight with focus.
+      const altShift = async (key, keyCode) => {
+        for (const type of ['rawKeyDown', 'keyUp']) await ctx.send('Input.dispatchKeyEvent', { type, key, code: key, windowsVirtualKeyCode: keyCode, modifiers: 1 | 8 })
+      }
+      const mail = await byTitle('Page /mail')
+      const mailFocused = `document.activeElement?.closest('[data-tab-id]')?.dataset.tabId === ${JSON.stringify(mail.id)}`
+      // Focus on its row in the list it is in now (not the old row, which fades out where it was).
+      const mailFocusedIn = (list) => `${mailFocused} && !!document.activeElement.closest(${JSON.stringify(list)})`
+      const inDrafts = `#tab-folder-${parent}`
+      await ctx.evaluate(`document.querySelector('[data-tab-id="${mail.id}"] [role="tab"]').focus(); true`)
+      await altShift('ArrowUp', 38)
+      await ctx.wait(`${host}.getTabFolders().then((f) => !f.find((x) => x.id === ${JSON.stringify(work.id)}).collapsed)`, 3000, 'moving a tab into the folded folder to open it')
+      expect((await byTitle('Page /mail')).folderId === parent, `⌥⇧↑ did not move the tab into the folder above (it is in ${(await byTitle('Page /mail')).folderId ?? 'none'}).`)
+      await ctx.wait(mailFocusedIn(inDrafts), 3000, 'the tab moved into the opened folder to be shown there and keep focus')
+      // ⌥⇧↓ moves it past map, then out of the folder again (its row is drawn afresh below while the old one fades), still focused.
+      await altShift('ArrowDown', 40)
+      await ctx.wait(`${host}.getTabs().then((t) => t.map((x) => x.id).indexOf(${JSON.stringify(mail.id)}) === t.findIndex((x) => x.title === 'Page /map') + 1)`, 3000, '⌥⇧↓ to move the tab past map')
+      await ctx.wait(`${mailFocusedIn(inDrafts)} && [...document.querySelectorAll(${JSON.stringify(`${inDrafts} [role="tab"]`)})].at(-1) === document.activeElement`, 3000, 'the tab moved inside the folder to keep focus')
+      await altShift('ArrowDown', 40)
+      await ctx.wait(`${host}.getTabs().then((t) => !t.find((x) => x.id === ${JSON.stringify(mail.id)}).folderId)`, 3000, '⌥⇧↓ to take the tab out of the folder')
+      await ctx.wait(mailFocusedIn('.tab-rail-group'), 3000, 'the tab taken out of the folder to keep focus in the open tabs')
+      // Still focused once the old row has faded out.
+      await ctx.delay(400)
+      expect(await ctx.evaluate(mailFocusedIn('.tab-rail-group')), 'The tab taken out of the folder lost focus once its old row faded out.')
+      await ctx.delay(300)
       await axeAudit(ctx, 'the tab sidebar with folders', '.tab-rail')
       // Saved as a private collection (one per folder, nested ones named by their path).
       await ctx.click(`[data-folder-drop="${work.id}"] .tab-rail-folder-more`)
@@ -2651,7 +2674,7 @@ export const checks = {
       await ctx.evaluate(`${host}.deleteTabFolder(${JSON.stringify(work.id)}).then(() => true)`)
       await ctx.delay(500)
       expect(!(await byTitle('Page /docs')).folderId && (await folders()).find((folder) => folder.name === 'Reports')?.parentId === null, 'Deleting a folder lost its tabs or folders.')
-      return 'Folder named from the sidebar; tab dragged in and moved by command; nested four deep; order follows the sidebar; folded and kept; saved as path-named collections; a collection opened as a folder; delete keeps tabs; axe clean.'
+      return 'Folder named from the sidebar; tab dragged in and moved by command; nested four deep; order follows the sidebar; folded and kept; ⌥⇧↑ into a folded folder opened it with the tab in sight and focused; saved as path-named collections; a collection opened as a folder; delete keeps tabs; axe clean.'
     } finally {
       server.close()
     }

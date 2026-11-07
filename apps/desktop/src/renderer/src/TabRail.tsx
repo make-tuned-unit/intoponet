@@ -139,8 +139,12 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
     onExpandedChange(true)
     onRenameHandled?.()
   }, [renameFolderId]) // eslint-disable-line react-hooks/exhaustive-deps
-  /** A tab moved from the keyboard keeps focus once the rail shows the new order. */
-  const refocus = useRef<string | null>(null)
+  /**
+   * A tab moved from the keyboard keeps focus once the rail shows the new order. `tabs` is the list
+   * it moved in: a move into a collapsed folder brings the opened folder and the new order one after
+   * the other, so focus waits for the new order, and once more for the folder.
+   */
+  const refocus = useRef<{ id: string; tabs: readonly PageTabSnapshot[]; waited: boolean } | null>(null)
 
   const focusTab = (index: number): void => {
     const next = Math.max(0, Math.min(visibleTabs.length - 1, index))
@@ -148,11 +152,31 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
     requestAnimationFrame(() => list.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus())
   }
 
+  /** A tab's button in the list it belongs to now: pinned tabs, its folder's tabs, or the open tabs. */
+  const movedTabButton = (tab: PageTabSnapshot): HTMLButtonElement | null => {
+    const root = list.current
+    const folderId = inFolder(tab)
+    const group = !root ? null : tab.pinned ? root.querySelector(':scope > .tab-rail-pinned') : folderId ? root.querySelector(`#${CSS.escape(`tab-folder-${folderId}`)}`) : root.querySelector(':scope > .tab-rail-group')
+    const id = CSS.escape(tab.id)
+    return group?.querySelector<HTMLButtonElement>(`[data-tab-id="${id}"] [role="tab"], [role="tab"][data-tab-id="${id}"]`) ?? null
+  }
+
   useEffect(() => {
-    const moved = refocus.current ? visibleTabs.findIndex((tab) => tab.id === refocus.current) : -1
+    const pending = refocus.current
+    const moved = pending ? visibleTabs.findIndex((tab) => tab.id === pending.id) : -1
+    if (pending && (tabs === pending.tabs || (moved < 0 && !pending.waited))) {
+      if (tabs !== pending.tabs) pending.waited = true
+      return
+    }
     refocus.current = null
     if (moved >= 0) {
-      focusTab(moved)
+      const tab = visibleTabs[moved]!
+      setFocusIndex(moved)
+      // Its row where it now is, at once (the rows are drawn by now): a tab moved into or out of a folder is drawn
+      // there afresh while its old row fades out, and focus left on that row would go with it.
+      const button = movedTabButton(tab)
+      if (button) button.focus()
+      else focusTab(moved)
       return
     }
     const active = visibleTabs.findIndex((tab) => tab.active)
@@ -224,8 +248,10 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
     // The tab that has focus (after a drag it can differ from the remembered one).
     const focusedId = (event.target as HTMLElement).closest<HTMLElement>('[data-tab-id]')?.dataset['tabId']
     const focusedIndex = tabs.findIndex((item) => item.id === focusedId)
-    if (focusedIndex >= 0 && moveTabByKey(event, tabs, focusedIndex, 'y') !== null) {
-      refocus.current = focusedId ?? null
+    const to = focusedIndex >= 0 ? moveTabByKey(event, tabs, focusedIndex, 'y') : null
+    if (to !== null) {
+      // Nothing moves at either end: focus simply stays.
+      if (focusedId && to !== focusedIndex) refocus.current = { id: focusedId, tabs, waited: false }
       return
     }
     if (event.key === 'ArrowDown') focusTab(focusIndex + 1)

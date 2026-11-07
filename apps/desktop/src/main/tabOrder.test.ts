@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canNest, deleteFolder, descendantIds, folderDepth, folderedOrder, folderTreeOrder, moveFolderedTab, setTabFolder, type TabFolder } from './tabOrder'
+import { canNest, deleteFolder, descendantIds, folderDepth, folderedOrder, folderTreeOrder, moveFolderedTab, revealFolder, setTabFolder, type TabFolder } from './tabOrder'
 
 
 describe('tab folders', () => {
@@ -58,5 +58,26 @@ describe('tab folders', () => {
     expect(all.find((folder) => folder.id === 'reports')!.parentId).toBeNull()
     expect(list.find((tab) => tab.id === 'd')!.folderId).toBeUndefined()
     expect(list.map((tab) => tab.id)).toEqual(['p', 'c', 'b', 'd', 'a', 'e'])
+  })
+})
+
+describe('revealFolder', () => {
+  it('opens a collapsed folder and the folders it is in, and nothing else', () => {
+    const folders: TabFolder[] = [
+      { id: 'top', name: 'Top', parentId: null, collapsed: true },
+      { id: 'mid', name: 'Mid', parentId: 'top' },
+      { id: 'leaf', name: 'Leaf', parentId: 'mid', collapsed: true },
+      { id: 'other', name: 'Other', parentId: null, collapsed: true },
+    ]
+    expect(revealFolder(folders, 'leaf')).toBe(true)
+    expect(folders.map((folder) => [folder.id, folder.collapsed ?? false])).toEqual([['top', false], ['mid', false], ['leaf', false], ['other', true]])
+    expect(revealFolder(folders, 'leaf')).toBe(false)
+    expect(revealFolder(folders, 'missing')).toBe(false)
+  })
+
+  it('stops at a loop of parents', () => {
+    const loop: TabFolder[] = [{ id: 'a', name: 'A', parentId: 'b', collapsed: true }, { id: 'b', name: 'B', parentId: 'a', collapsed: true }]
+    expect(revealFolder(loop, 'a')).toBe(true)
+    expect(loop.every((folder) => !folder.collapsed)).toBe(true)
   })
 })

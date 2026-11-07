@@ -203,7 +203,7 @@ protocol.registerSchemesAsPrivileged([
 ])
 let captures: CaptureService | null = null
 import { browserContextActions, type BrowserContextAction } from './browserContextMenu'
-import { canNest, deleteFolder, duplicateIndex, folderDepth, folderedOrder, folderTreeOrder, MAX_FOLDER_DEPTH, MAX_FOLDERS, moveFolderedTab, moveTab, otherTabIds, pinnedFirst, setPinned, setTabFolder, tabIdsToRight, type TabFolder } from './tabOrder'
+import { canNest, deleteFolder, duplicateIndex, folderDepth, folderedOrder, folderTreeOrder, MAX_FOLDER_DEPTH, MAX_FOLDERS, moveFolderedTab, moveTab, otherTabIds, pinnedFirst, revealFolder, setPinned, setTabFolder, tabIdsToRight, type TabFolder } from './tabOrder'
 import { planGrouping, snapshotGrouping, undoGrouping, UNDO_GROUPING_MS, type GroupingSnapshot } from './tabGrouping'
 import { keepPairsWhole, suggestGroups, tidyCandidates, tidyText } from './tabTidy'
 import { dot } from './laya/retrieval'
@@ -4272,6 +4272,8 @@ async function handleBrowserCommand(
         if (moved) keepPairTogether(moved)
         keepOutOfPairs(openTabs, command.id, toIndex > from)
         tabsRearranged()
+        // Moved (⌥⇧↑/↓) into a collapsed folder: the folder opens, so the tab stays in sight and keeps focus.
+        if (moved?.folderId && revealFolder(tabFolders, moved.folderId)) emitTabFolders()
         emitTabs()
         schedulePersistentStateSave()
       }
