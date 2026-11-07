@@ -1732,8 +1732,8 @@ export const checks = {
     expect(lib.includes('Vanuatu'), 'An old plain-text bookmark was lost instead of moving into the encrypted library.')
     await openPanel(ctx, 'My map')
     expect(await ctx.click('.bookmark-pin-actions button', 'Hide pin'), 'Pins cannot be hidden from the globe.')
-    await ctx.delay(500)
-    const hidden = await ctx.evaluate(`window.intoponet.browserHost.readPrivateLibrary().then((r) => JSON.parse(r.payload).bookmarks.some((b) => b.hiddenOnMap))`)
+    // The library is sealed and flushed to disk before it is put in place, which can take over a second on a busy Mac.
+    const hidden = await ctx.wait(`window.intoponet.browserHost.readPrivateLibrary().then((r) => JSON.parse(r.payload).bookmarks.some((b) => b.hiddenOnMap))`, 10_000, 'the hidden pin to be saved').catch(() => false)
     expect(hidden, 'Hiding a pin was not saved.')
     expect(await ctx.click('.bookmark-pin-actions button', 'Publish beacon'), 'A pin cannot be published as a beacon.')
     await ctx.wait(`!!document.querySelector('.beacon-payload pre')`, 10_000, 'the beacon consent screen')
