@@ -1,4 +1,6 @@
 import { WORKSPACE_COMMAND_TYPES, parseWorkspaceCommand, type WorkspaceCommand, type WorkspacesState } from './workspaces'
+import { parseSiteTweakDraft, parseSiteTweakSite, type SiteTweakApi } from './siteTweaks'
+
 export type BrowserPanelBounds = {
   x: number
   y: number
@@ -373,6 +375,8 @@ export interface BrowserHostApi {
   getPlaceTrends(place: { countryCode: string; name?: string; aliases?: string[]; geonameId?: string }): Promise<string | null>
   /** The address bar's context menu (Cut, Copy, Paste, Paste and Go, Select All). */
   showAddressMenu(hasSelection: boolean): Promise<void>
+  /** Make a site yours: per-site hiding, width, font, colours and style rules. */
+  siteTweaks: SiteTweakApi
   subscribe(listener: (event: BrowserHostEvent) => void): () => void
 }
 
@@ -472,8 +476,24 @@ export type BrowserHostCommand =
   | { type: 'address-menu'; hasSelection: boolean }
   /** Workspaces and favourites (workspaces.ts). */
   | WorkspaceCommand
+  | { type: 'site-tweak-state' }
+  | { type: 'site-tweak-save'; tweak: Record<string, unknown> }
+  | { type: 'site-tweak-set-enabled'; enabled: boolean; site?: string }
+  | { type: 'site-tweak-remove'; site?: string }
+  | { type: 'site-tweak-list' }
+  | { type: 'site-tweak-pick' }
+  | { type: 'site-tweak-cancel-pick' }
+  | { type: 'site-tweak-clear-preview' }
 
 const commandTypes = new Set<BrowserHostCommand['type']>([
+  'site-tweak-state',
+  'site-tweak-save',
+  'site-tweak-set-enabled',
+  'site-tweak-remove',
+  'site-tweak-list',
+  'site-tweak-pick',
+  'site-tweak-cancel-pick',
+  'site-tweak-clear-preview',
   'open',
   'new-tab',
   'hold-page',
@@ -834,6 +854,19 @@ export function parseBrowserHostCommand(value: unknown): BrowserHostCommand {
       return value['options'] === undefined ? { type } : { type, options: parsePdfExportOptions(value['options']) }
     case 'set-pdf-settings':
       return { type, options: parsePdfExportOptions(value['options']) }
+    case 'site-tweak-save':
+      return { type, tweak: parseSiteTweakDraft(value['tweak']) }
+    case 'site-tweak-set-enabled':
+      if (typeof value['enabled'] !== 'boolean') throw new Error('Invalid site tweak flag.')
+      return { type, enabled: value['enabled'], ...(value['site'] !== undefined ? { site: parseSiteTweakSite(value['site']) } : {}) }
+    case 'site-tweak-remove':
+      return { type, ...(value['site'] !== undefined ? { site: parseSiteTweakSite(value['site']) } : {}) }
+    case 'site-tweak-state':
+    case 'site-tweak-list':
+    case 'site-tweak-pick':
+    case 'site-tweak-cancel-pick':
+    case 'site-tweak-clear-preview':
+      return { type }
     case 'open-saved-file': {
       const path = value['path']
       if (typeof path !== 'string' || !path.startsWith('/') || path.length > 2048 || !/\.pdf$/i.test(path) || path.includes('\0')) throw new Error('Invalid file.')
@@ -857,3 +890,4 @@ export * from './downloads'
 export * from './history'
 export * from './browsing'
 export * from './workspaces'
+export * from './siteTweaks'

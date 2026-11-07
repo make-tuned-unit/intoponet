@@ -295,6 +295,14 @@ export const TOUR_STEPS: TourStep[] = [
     seconds: 8,
   },
   {
+    id: 'site-tweaks',
+    chapter: 'Browsing',
+    title: 'Make a site yours',
+    body: 'Open a site’s protection bar and choose Customize site: point at an element to hide it, pick a reading width, a font or light or dark colours, or add your own styles. They apply on every visit to that site, stay on this Mac, and never run a script.',
+    target: '[aria-controls="protection-panel"]',
+    seconds: 11,
+  },
+  {
     id: 'done',
     chapter: 'That’s the tour',
     title: 'The world is your start page',

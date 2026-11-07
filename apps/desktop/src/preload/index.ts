@@ -36,6 +36,11 @@ import {
   type SavedPdfRecord,
   type WorkspacesApi,
   type WorkspacesState,
+  type SiteTweakDraft,
+  type SiteTweakListItem,
+  type SiteTweakPick,
+  type SiteTweakSaveResult,
+  type SiteTweakState,
 } from '@intoponet/browser-api'
 
 const invoke = (
@@ -54,6 +59,10 @@ const invoke = (
   | PdfExportOptions
   | SavedPdfRecord[]
   | WorkspacesState
+  | SiteTweakState
+  | SiteTweakListItem[]
+  | SiteTweakSaveResult
+  | SiteTweakPick
   | string
   | null
 > =>
@@ -253,6 +262,22 @@ const browserHost: BrowserHostApi = {
   getPlaceTrends: (place: { countryCode: string; name?: string; aliases?: string[]; geonameId?: string }) => invoke({ type: 'get-place-trends', ...place }) as Promise<string | null>,
   showAddressMenu: async (hasSelection) => {
     await invoke({ type: 'address-menu', hasSelection })
+  },
+  siteTweaks: {
+    state: () => invoke({ type: 'site-tweak-state' }) as Promise<SiteTweakState>,
+    save: (draft: SiteTweakDraft) => invoke({ type: 'site-tweak-save', tweak: draft as unknown as Record<string, unknown> }) as Promise<SiteTweakSaveResult>,
+    setEnabled: (enabled: boolean, site?: string) => invoke({ type: 'site-tweak-set-enabled', enabled, ...(site ? { site } : {}) }) as Promise<SiteTweakState>,
+    remove: async (site?: string) => {
+      await invoke({ type: 'site-tweak-remove', ...(site ? { site } : {}) })
+    },
+    list: () => invoke({ type: 'site-tweak-list' }) as Promise<SiteTweakListItem[]>,
+    pick: () => invoke({ type: 'site-tweak-pick' }) as Promise<SiteTweakPick>,
+    cancelPick: async () => {
+      await invoke({ type: 'site-tweak-cancel-pick' })
+    },
+    clearPreview: async () => {
+      await invoke({ type: 'site-tweak-clear-preview' })
+    },
   },
   subscribe: (listener) => {
     const handler = (_event: Electron.IpcRendererEvent, payload: BrowserHostEvent): void => {

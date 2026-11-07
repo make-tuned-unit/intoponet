@@ -20,12 +20,14 @@ const day = (iso: string): string => {
  * A page that could not load, drawn by the shell where the page would be (the tab's address
  * stays in the toolbar; Retry reloads it, Back goes to the previous page).
  */
-export function ErrorPage({ error, canGoBack, retrying, onRetry, onBack }: {
+export function ErrorPage({ error, canGoBack, retrying, onRetry, onBack, onTurnOffTweaks }: {
   error: PageLoadError
   canGoBack: boolean
   retrying: boolean
   onRetry: () => void
   onBack: () => void
+  /** Shown when the site has Site tweaks that may be the trouble (turning them off reloads the page). */
+  onTurnOffTweaks?: (() => void) | undefined
 }) {
   const Icon = ICONS[error.kind] ?? CircleAlert
   const certificate = error.certificate
@@ -52,6 +54,11 @@ export function ErrorPage({ error, canGoBack, retrying, onRetry, onBack }: {
             <RotateCw size={14} aria-hidden="true" className={retrying ? 'is-spinning' : undefined} /> {retrying ? 'Retrying…' : 'Retry'}
           </button>
         </div>
+        {onTurnOffTweaks && (
+          <p className="load-error-note">
+            <button type="button" className="load-error-link" onClick={onTurnOffTweaks}>Turn off this site’s tweaks</button>
+          </p>
+        )}
         {error.autoRetry && <p className="load-error-note" role="status">Waiting for a connection…</p>}
       </div>
     </div>

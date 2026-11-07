@@ -2840,6 +2840,200 @@ export const checks = {
       server.close()
     }
   },
+  async SITE_TWEAKS(ctx) {
+    // Two hosts are two sites: 127.0.0.1 (A) and localhost (B). Local pages only.
+    const tweaksFile = join(ctx.profile, 'site-tweaks.json')
+    const storedSites = () => (existsSync(tweaksFile) ? JSON.parse(readFileSync(tweaksFile, 'utf8')).sites ?? {} : {})
+    const storedLater = async () => { await ctx.delay(1200); return storedSites() }
+    const markup = (name) => `<!doctype html><html><head><meta charset="utf-8"><title>${name}</title></head><body style="font:16px system-ui;margin:0">
+      <header>${name} header</header><div id="wrap"><div id="promo" class="banner">PROMO-SENTINEL buy now</div>
+      <main><article><h1>${name} story</h1><p id="para">The story text on ${name}.</p></article></main></div></body></html>`
+    const siteA = createServer((request, response) => { response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); response.end(markup('Site A')) })
+    const siteB = createServer((request, response) => { response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); response.end(markup('Site B')) })
+    await new Promise((resolve) => siteA.listen(0, '127.0.0.1', resolve))
+    await new Promise((resolve) => siteB.listen(0, 'localhost', resolve))
+    const portA = siteA.address().port
+    const portB = siteB.address().port
+    const urlA = `http://127.0.0.1:${portA}/tweak`
+    const urlB = `http://localhost:${portB}/tweak`
+    const urlPrivate = `http://127.0.0.1:${portA}/private-tweak`
+    const statusIs = (text) => `(document.querySelector('.site-tweaks-status')?.innerText ?? '').includes(${JSON.stringify(text)})`
+    const errorIs = (text) => `(document.querySelector('.site-tweaks-error')?.innerText ?? '').includes(${JSON.stringify(text)})`
+    const navigate = (url) => ctx.evaluate(`window.intoponet.browserHost.navigate(${JSON.stringify(url)}).then(() => true)`).then(() => ctx.delay(2000))
+    const pageStyles = async (page) => JSON.parse(await page.evaluate(`JSON.stringify((() => {
+      const s = (el) => (el ? getComputedStyle(el) : null);
+      const para = document.getElementById('para');
+      return { wrapMax: s(document.getElementById('wrap'))?.maxWidth ?? null, font: s(para)?.fontFamily ?? null, spacing: s(para)?.letterSpacing ?? null,
+        colour: s(para)?.color ?? null, bodyBg: s(document.body)?.backgroundColor ?? null, promo: s(document.getElementById('promo'))?.display ?? null,
+        scripts: document.querySelectorAll('script').length };
+    })())`))
+    const openCustomize = async () => {
+      if (!(await ctx.evaluate(`!!document.querySelector('#site-tweaks-panel')`))) {
+        if (!(await ctx.evaluate(`!!document.querySelector('.shield-bar')`))) {
+          expect(await ctx.click('.shield-control > button'), 'The Protection button is missing.')
+          await ctx.delay(600)
+        }
+        expect(await ctx.click('.shield-bar-toggle', 'Customize site'), 'The "Customize site" button is missing from the protection bar.')
+      }
+      await ctx.wait(`!!document.querySelector('#site-tweaks-title')`, 8000, 'the Customize site panel')
+      await ctx.delay(300)
+    }
+    const setTweakCss = (value) => ctx.evaluate(`(() => { const t = document.querySelector('.site-tweaks-css textarea'); if (!t) return false;
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(t, ${JSON.stringify(value)});
+      t.dispatchEvent(new Event('input', { bubbles: true })); return true })()`)
+    const saveStyles = async () => {
+      expect(await ctx.click('.site-tweaks button', 'Save styles'), 'The "Save styles" button is missing.')
+    }
+    // A pointer click on the page, as a person makes it (CDP sends it to the page itself).
+    const clickInPage = async (page, selector) => {
+      const box = JSON.parse(await page.evaluate(`JSON.stringify(document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect())`))
+      const x = box.x + box.width / 2
+      const y = box.y + box.height / 2
+      await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y })
+      await page.send('Input.dispatchMouseEvent', { type: 'mousePressed', x, y, button: 'left', clickCount: 1 })
+      await page.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, button: 'left', clickCount: 1 })
+    }
+    const pressInPage = async (page, key, code) => {
+      for (const type of ['keyDown', 'keyUp']) await page.send('Input.dispatchKeyEvent', { type, key, code, windowsVirtualKeyCode: code === 'Escape' ? 27 : 0 })
+    }
+    const closeAllTabs = () => ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => Promise.all(t.map((x) => window.intoponet.browserHost.closeTab(x.id)))).then(() => true)`)
+    try {
+      // Pick an element on site A: Escape stops picking and saves nothing; then point at #promo and save.
+      await ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: ${JSON.stringify(urlA)} }).then(() => true)`)
+      await ctx.delay(2500)
+      await openCustomize()
+      expect(await ctx.click('#site-tweaks-panel button', 'Hide an element'), 'The "Hide an element" button is missing.')
+      await ctx.delay(800)
+      const pageA = await ctx.page(`127.0.0.1:${portA}/tweak`)
+      await pressInPage(pageA, 'Escape', 'Escape')
+      await ctx.wait(statusIs('No element was picked'), 8000, 'Escape to stop picking')
+      expect((await pageStyles(pageA)).promo === 'block', 'Stopping the picker still hid the element.')
+
+      await ctx.click('#site-tweaks-panel button', 'Hide an element')
+      await ctx.delay(800)
+      await clickInPage(pageA, '#promo')
+      await ctx.wait(`(document.querySelector('.site-tweaks-picked')?.innerText ?? '').includes('#promo')`, 10_000, 'the picked element to wait for a Save')
+      expect((await pageStyles(pageA)).promo === 'none', 'The picked element was not previewed (hidden) before saving.')
+      expect(await ctx.click('.site-tweaks-picked button', 'Save'), 'The Save button for the picked element is missing.')
+      await ctx.wait(statusIs('Element hidden on this site'), 8000, 'the saved element')
+      expect((await pageStyles(pageA)).promo === 'none', 'The saved element is not hidden on the page.')
+      const afterSave = await storedLater()
+      expect(afterSave['127.0.0.1']?.hidden?.includes('#promo'), `The hidden element was not written to site-tweaks.json: ${JSON.stringify(afterSave)}.`)
+
+      // Reload: still hidden. Site B is not touched.
+      await ctx.evaluate(`window.intoponet.browserHost.reload().then(() => true)`)
+      await ctx.delay(2500)
+      expect((await pageStyles(await ctx.page(`127.0.0.1:${portA}/tweak`))).promo === 'none', 'After a reload the hidden element is back.')
+      await navigate(urlB)
+      const b0 = await pageStyles(await ctx.page(`localhost:${portB}/tweak`))
+      expect(b0.promo === 'block', 'Site B lost an element it never had hidden (the tweak leaked across hosts).')
+
+      // Back on A: width, font and dark colours change A's computed styles.
+      await navigate(urlA)
+      await openCustomize()
+      expect(await ctx.click('.site-tweaks-choice button', 'Narrow'), 'The Width choices are missing.')
+      await ctx.wait(statusIs('Width saved'), 8000, 'the width to be saved')
+      expect(await ctx.click('.site-tweaks-choice button', 'Serif'), 'The Font choices are missing.')
+      await ctx.wait(statusIs('Font saved'), 8000, 'the font to be saved')
+      expect(await ctx.click('.site-tweaks-choice button', 'Dark'), 'The Colour choices are missing.')
+      await ctx.wait(statusIs('Colours saved'), 8000, 'the colours to be saved')
+      let styled = await pageStyles(await ctx.page(`127.0.0.1:${portA}/tweak`))
+      expect(styled.wrapMax === '672px', `Narrow width did not centre the reading column on A: max-width ${styled.wrapMax}.`)
+      expect(/Georgia/.test(styled.font ?? ''), `Serif font did not apply on A: ${styled.font}.`)
+      expect(styled.bodyBg === 'rgb(28, 28, 30)', `Dark colours did not apply on A: ${styled.bodyBg}.`)
+
+      // Own styles apply. @import is refused with a reason; markup that would run a script is refused, and nothing runs.
+      await setTweakCss('#para { letter-spacing: 3px }')
+      await saveStyles()
+      await ctx.wait(statusIs('Styles saved'), 8000, 'the styles to be saved')
+      expect((await pageStyles(await ctx.page(`127.0.0.1:${portA}/tweak`))).spacing === '3px', 'The own style rule did not apply on A.')
+      await setTweakCss('@import url("https://example.org/a.css"); #para { letter-spacing: 9px }')
+      await saveStyles()
+      await ctx.wait(errorIs('cannot load other style sheets'), 8000, 'the @import refusal')
+      expect((await pageStyles(await ctx.page(`127.0.0.1:${portA}/tweak`))).spacing === '3px', 'A refused style was applied anyway.')
+      await setTweakCss('p { color: red }</style><script>window.SITE_TWEAK_SENTINEL = 1</script>')
+      await saveStyles()
+      await ctx.wait(errorIs('cannot contain HTML'), 8000, 'the script-markup refusal')
+      const sentinel = await (await ctx.page(`127.0.0.1:${portA}/tweak`)).evaluate(`JSON.stringify({ sentinel: typeof window.SITE_TWEAK_SENTINEL, scripts: document.querySelectorAll('script').length })`)
+      expect(sentinel === JSON.stringify({ sentinel: 'undefined', scripts: 0 }), `A script in the styles ran or was added to the page: ${sentinel}.`)
+      await setTweakCss('#para { letter-spacing: 3px }')
+      await saveStyles()
+      await ctx.wait(statusIs('Styles saved'), 8000, 'the styles to be saved again')
+
+      // Site B has none of it.
+      await navigate(urlB)
+      const b1 = await pageStyles(await ctx.page(`localhost:${portB}/tweak`))
+      expect(b1.wrapMax === 'none' && !/Georgia/.test(b1.font ?? '') && b1.bodyBg !== 'rgb(28, 28, 30)' && b1.promo === 'block', `Site B changed with site A's tweaks: ${JSON.stringify(b1)}.`)
+      await navigate(urlA)
+      await openCustomize()
+      await axeAudit(ctx, 'the Customize site panel', '#site-tweaks-panel')
+
+      // A private tab on A sees the tweaks; its own change is in memory only and is never written.
+      const writtenBefore = await storedLater()
+      const textBefore = existsSync(tweaksFile) ? readFileSync(tweaksFile, 'utf8') : ''
+      expect(writtenBefore['127.0.0.1']?.hidden?.includes('#promo'), 'The tweak is not saved before the private tab.')
+      await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(true).then(() => true)`)
+      await ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: ${JSON.stringify(urlPrivate)} }).then(() => true)`)
+      await ctx.delay(2500)
+      await openCustomize()
+      const pagePrivate = await ctx.page(`127.0.0.1:${portA}/private-tweak`)
+      const seen = await pageStyles(pagePrivate)
+      expect(seen.promo === 'none' && seen.wrapMax === '672px', `A private tab does not see the site's tweaks: ${JSON.stringify(seen)}.`)
+      await setTweakCss('#para { color: rgb(0, 128, 0) }')
+      await saveStyles()
+      await ctx.wait(statusIs('Styles saved'), 8000, 'the private styles to be saved')
+      expect((await pageStyles(pagePrivate)).colour === 'rgb(0, 128, 0)', 'The private tab did not apply its own change.')
+      const textAfter = await storedLater().then(() => (existsSync(tweaksFile) ? readFileSync(tweaksFile, 'utf8') : ''))
+      expect(textAfter === textBefore && !textAfter.includes('rgb(0, 128, 0)'), 'A change made in a private tab was written to site-tweaks.json.')
+      await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
+      await ctx.delay(1000)
+      await closeAllTabs()
+      await ctx.delay(500)
+
+      // Turn off: the styles go at once, with no reload (a marker in the page survives).
+      await ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: ${JSON.stringify(urlA)} }).then(() => true)`)
+      await ctx.delay(2500)
+      await openCustomize()
+      const live = await ctx.page(`127.0.0.1:${portA}/tweak`)
+      await live.evaluate(`window.__sameDocument = 'yes'`)
+      expect(await ctx.click('.site-tweaks-switch input'), 'The "Tweaks on for this site" switch is missing.')
+      await ctx.wait(statusIs('Tweaks are off'), 8000, 'the switch to turn tweaks off')
+      await ctx.delay(800)
+      const off = await pageStyles(live)
+      expect(off.promo === 'block' && off.wrapMax === 'none' && off.spacing === 'normal' && !/Georgia/.test(off.font ?? ''), `Turning tweaks off left styles on the page: ${JSON.stringify(off)}.`)
+      expect((await live.evaluate(`window.__sameDocument ?? null`)) === 'yes', 'Turning tweaks off reloaded the page.')
+      expect(await ctx.click('.site-tweaks-switch input'), 'The switch could not be turned back on.')
+      await ctx.wait(statusIs('Tweaks are on'), 8000, 'the switch to turn tweaks on')
+      expect((await pageStyles(live)).promo === 'none', 'Turning tweaks back on did not hide the element again.')
+
+      // Settings: the site is listed; Remove takes it away (and the file too).
+      await openPanel(ctx, 'My map')
+      await ctx.click('.drawer-tabs button', 'Privacy')
+      await ctx.wait(`(document.querySelector('.site-tweaks-list')?.innerText ?? '').includes('127.0.0.1')`, 8000, 'the site in Settings')
+      await axeAudit(ctx, 'Site tweaks in Settings', '.site-tweaks-list')
+      expect(await ctx.click('.site-tweaks-list button', 'Remove'), 'The Remove button for the site is missing from Settings.')
+      await ctx.wait(`(document.querySelector('.site-tweaks-list')?.innerText ?? '').includes('No site tweaks yet')`, 8000, 'the site to leave Settings')
+      expect(!(await storedLater())['127.0.0.1'], 'The removed site is still in site-tweaks.json.')
+
+      // The error page can turn a site's tweaks off (the failed site is 127.0.0.1 too).
+      await ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: ${JSON.stringify(urlA)} }).then(() => true)`)
+      await ctx.delay(2000)
+      await ctx.evaluate(`window.intoponet.browserHost.siteTweaks.save({ enabled: true, hidden: ['#promo'], css: '' }).then((r) => r.ok)`)
+      const probe = createServer()
+      await new Promise((resolve) => probe.listen(0, '127.0.0.1', resolve))
+      const closedPort = probe.address().port
+      await new Promise((resolve) => probe.close(resolve))
+      await ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: ${JSON.stringify(`http://127.0.0.1:${closedPort}/`)} }).then(() => true, () => true)`)
+      await ctx.wait(`!!document.querySelector('.load-error-page')`, 15_000, 'the error page for a site that is not answering')
+      expect(await ctx.click('.load-error-page button', 'Turn off this site'), 'The error page does not offer to turn off the site tweaks.')
+      await ctx.wait(`window.intoponet.browserHost.siteTweaks.list().then((l) => l.some((item) => item.site === '127.0.0.1' && !item.enabled))`, 10_000, 'the tweaks to be turned off from the error page')
+
+      return 'Escape stops picking; a picked element is previewed, saved, kept after reload, and not on site B. Width, font and dark colours change site A only, with no reload when turned off. @import and script markup are refused and nothing runs. A private tab sees the tweaks and writes nothing. Settings lists and removes the site, and the error page turns tweaks off.'
+    } finally {
+      siteA.close()
+      siteB.close()
+    }
+  },
 }
 
 checks.TAB_SLEEP.env = { INTOPONET_TAB_SLEEP_MINUTE_MS: '200' }
