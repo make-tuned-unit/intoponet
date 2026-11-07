@@ -1,16 +1,18 @@
 import { describe, expect, it } from 'vitest'
+import { repairSplits, type SplitTab } from './splitPages'
 import { planGrouping, snapshotGrouping, undoGrouping, type GroupableTab } from './tabGrouping'
-import type { TabFolder } from './tabOrder'
+import { folderedOrder, type FolderedTab, type TabFolder } from './tabOrder'
 
 let counter = 0
 const newId = () => `f${++counter}`
 
+// In the sidebar's order (main keeps its tabs so): pinned, then each folder's tabs, then the rest.
 const tabs = (): GroupableTab[] => [
   { id: 'pin', pinned: true },
+  { id: 'c', folderId: 'old' },
   { id: 'a' },
   { id: 'b' },
   { id: 'secret', isPrivate: true },
-  { id: 'c', folderId: 'old' },
 ]
 const folders = (): TabFolder[] => [{ id: 'old', name: 'Reading', parentId: null }]
 
@@ -80,7 +82,7 @@ describe('undoGrouping', () => {
     // Undo the grouping: the snapshot taken before it.
     undoGrouping(currentTabs, currentFolders, { ...snapshot, created: plan.created })
     expect(currentFolders).toEqual(folders())
-    expect(currentTabs.map((tab) => tab.id)).toEqual(['pin', 'a', 'b', 'secret', 'c'])
+    expect(currentTabs.map((tab) => tab.id)).toEqual(['pin', 'c', 'a', 'b', 'secret'])
     expect(currentTabs.find((tab) => tab.id === 'a')?.folderId).toBeUndefined()
     expect(currentTabs.find((tab) => tab.id === 'c')?.folderId).toBe('old')
   })
@@ -96,6 +98,67 @@ describe('undoGrouping', () => {
     expect(currentFolders.find((folder) => folder.id === 'story')?.storyId).toBeUndefined()
     expect(currentTabs.find((tab) => tab.id === 'new')?.folderId).toBe('story')
     expect(currentTabs.find((tab) => tab.id === 'gone')?.folderId).toBe('made')
+  })
+
+  /** Group `ids` into a new folder the way main does (plan, apply, folderedOrder), and return the snapshot to undo it. */
+  const group = (currentTabs: GroupableTab[], currentFolders: TabFolder[], ids: string[]) => {
+    const plan = planGrouping({ tabs: currentTabs, folders: currentFolders, groups: [{ name: 'Delta floods', tabIds: ids, storyId: 'flood' }], maxFolders: 60, newId })
+    const snapshot = snapshotGrouping(currentTabs, currentFolders, plan.created)
+    currentFolders.splice(0, currentFolders.length, ...plan.folders)
+    for (const tab of currentTabs) {
+      const folderId = plan.folderOf.get(tab.id)
+      if (folderId) tab.folderId = folderId
+    }
+    const ordered = folderedOrder(currentTabs as unknown as FolderedTab[], currentFolders) as unknown as GroupableTab[]
+    currentTabs.splice(0, currentTabs.length, ...ordered)
+    // Moving one side of a pair into a folder ends the pair (main's repairSplits).
+    repairSplits(currentTabs as unknown as SplitTab[])
+    return snapshot
+  }
+
+  it('keeps pinned tabs first and folder tabs together when tabs were pinned or put in a folder since', () => {
+    const currentTabs: GroupableTab[] = [{ id: 'pin', pinned: true }, { id: 'a' }, { id: 'b' }, { id: 'x' }, { id: 'y' }]
+    const currentFolders: TabFolder[] = [{ id: 'old', name: 'Reading', parentId: null }]
+    const snapshot = group(currentTabs, currentFolders, ['a', 'b'])
+    // Since the grouping: `x` was pinned (pinned tabs go first), `y` put in the folder Reading, and a new tab put there too.
+    const x = currentTabs.find((tab) => tab.id === 'x')!
+    x.pinned = true
+    currentTabs.splice(currentTabs.indexOf(x), 1)
+    currentTabs.splice(1, 0, x)
+    currentTabs.find((tab) => tab.id === 'y')!.folderId = 'old'
+    currentTabs.push({ id: 'new', folderId: 'old' })
+    undoGrouping(currentTabs, currentFolders, snapshot)
+    expect(currentTabs.map((tab) => tab.id)).toEqual(['pin', 'x', 'new', 'a', 'b', 'y'])
+    expect(currentTabs.find((tab) => tab.id === 'y')?.folderId).toBeUndefined()
+    expect(currentTabs.find((tab) => tab.id === 'new')?.folderId).toBe('old')
+  })
+
+  it('pairs side by side again the tabs whose pair the grouping ended', () => {
+    const pairOf = (partnerId: string, side: 'left' | 'right') => ({ split: { partnerId, side, ratio: 0.4 } })
+    const currentTabs: GroupableTab[] = [{ id: 'a', ...pairOf('b', 'left') }, { id: 'b', ...pairOf('a', 'right') }, { id: 'c' }]
+    const snapshot = group(currentTabs, [], ['a', 'c'])
+    expect(currentTabs.every((tab) => !tab.split)).toBe(true)
+    undoGrouping(currentTabs, [], snapshot)
+    expect(currentTabs.map((tab) => tab.id)).toEqual(['a', 'b', 'c'])
+    expect(currentTabs[0]!.split).toEqual({ partnerId: 'b', side: 'left', ratio: 0.4 })
+    expect(currentTabs[1]!.split).toEqual({ partnerId: 'a', side: 'right', ratio: 0.4 })
+  })
+
+  it('leaves alone a pair whose other side closed, or a side paired with another tab since', () => {
+    const pairOf = (partnerId: string, side: 'left' | 'right') => ({ split: { partnerId, side, ratio: 0.5 } })
+    const closed: GroupableTab[] = [{ id: 'a', ...pairOf('b', 'left') }, { id: 'b', ...pairOf('a', 'right') }, { id: 'c' }]
+    const first = group(closed, [], ['a', 'c'])
+    closed.splice(closed.findIndex((tab) => tab.id === 'b'), 1)
+    undoGrouping(closed, [], first)
+    expect(closed.every((tab) => !tab.split)).toBe(true)
+    const repaired: GroupableTab[] = [{ id: 'a', ...pairOf('b', 'left') }, { id: 'b', ...pairOf('a', 'right') }, { id: 'c' }]
+    const second = group(repaired, [], ['a', 'c'])
+    // `b` was put side by side with a new tab since.
+    repaired.find((tab) => tab.id === 'b')!.split = { partnerId: 'n', side: 'left', ratio: 0.5 }
+    repaired.push({ id: 'n', split: { partnerId: 'b', side: 'right', ratio: 0.5 } })
+    undoGrouping(repaired, [], second)
+    expect(repaired.find((tab) => tab.id === 'a')?.split).toBeUndefined()
+    expect(repaired.find((tab) => tab.id === 'b')?.split?.partnerId).toBe('n')
   })
 
   it('moves the subfolders of a removed folder to the top', () => {
