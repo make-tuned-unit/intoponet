@@ -1,10 +1,12 @@
 /**
  * Keep a broken renderer from automatically reloading in a crash loop.
  * A user initiated retry starts a fresh recovery window.
+ * The crashed page's back/forward list is kept until the page loads again (`History`).
  */
-export class CrashRecoveryPolicy {
+export class CrashRecoveryPolicy<History = unknown> {
   private crashes = new Map<string, number[]>()
   private paused = new Set<string>()
+  private histories = new Map<string, History>()
 
   constructor(private readonly windowMs = 60_000) {}
 
@@ -21,6 +23,19 @@ export class CrashRecoveryPolicy {
     return !this.paused.has(tabId)
   }
 
+  /** The back/forward list the crashed page had (none: it loads its address only). */
+  keepHistory(tabId: string, history: History | undefined): void {
+    if (history === undefined) this.histories.delete(tabId)
+    else this.histories.set(tabId, history)
+  }
+
+  /** The kept list, handed out once: when the page loads again, automatically or on Reload. */
+  takeHistory(tabId: string): History | undefined {
+    const history = this.histories.get(tabId)
+    this.histories.delete(tabId)
+    return history
+  }
+
   manualRetry(tabId: string): void {
     this.crashes.delete(tabId)
     this.paused.delete(tabId)
@@ -29,5 +44,6 @@ export class CrashRecoveryPolicy {
   forget(tabId: string): void {
     this.crashes.delete(tabId)
     this.paused.delete(tabId)
+    this.histories.delete(tabId)
   }
 }

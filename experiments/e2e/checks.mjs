@@ -1287,15 +1287,29 @@ export const checks = {
       expect(state.url === url, `After Retry the tab is at ${state.url}.`)
       // A page whose renderer crashes twice in a row waits for Reload: the toolbar keeps its address, and Reload brings it back.
       const crashPage = () => ctx.main(`(() => { const c = electron.webContents.getAllWebContents().find((c) => c.getURL() === ${JSON.stringify(url)}); if (!c) return false; c.forcefullyCrashRenderer(); return true })()`)
+      // It comes back with its back/forward list, as a sleeping tab wakes: an earlier page first, then this one again.
+      await ctx.evaluate(`window.intoponet.browserHost.navigate(${JSON.stringify(`${url}?earlier`)}).then(() => true, () => true)`)
+      await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.url === ${JSON.stringify(`${url}?earlier`)} && !s.isLoading)`, 15_000, 'the earlier page')
+      await ctx.evaluate(`window.intoponet.browserHost.navigate(${JSON.stringify(url)}).then(() => true, () => true)`)
+      await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.url === ${JSON.stringify(url)} && s.canGoBack && !s.isLoading)`, 15_000, 'the page again, with the earlier one behind it')
+      const historyOf = () => ctx.main(`(() => { const c = electron.webContents.getAllWebContents().find((c) => !c.isCrashed() && c.getURL() === ${JSON.stringify(url)}); return JSON.stringify(c ? { urls: c.navigationHistory.getAllEntries().map((e) => e.url), index: c.navigationHistory.getActiveIndex() } : null) })()`).then(JSON.parse)
+      const beforeCrash = await historyOf()
+      expect(beforeCrash && beforeCrash.urls.length >= 2 && beforeCrash.urls.includes(`${url}?earlier`), `The page has no back/forward list to keep: ${JSON.stringify(beforeCrash)}.`)
       expect(await crashPage(), 'The page to crash is not open.')
       await ctx.delay(1500)
       await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.title === 'Browsing test' && !s.isLoading)`, 15_000, 'the page to load again after a crash')
+      const afterCrash = await historyOf()
+      expect(JSON.stringify(afterCrash) === JSON.stringify(beforeCrash), `After a crash the page came back without its back/forward list: ${JSON.stringify(afterCrash)}, before ${JSON.stringify(beforeCrash)}.`)
+      expect((await panelState(ctx)).canGoBack, 'After a crash Back is not offered.')
       expect(await crashPage(), 'The page that loaded again after a crash is not open.')
       await ctx.delay(1500)
       const paused = await panelState(ctx)
       expect(paused.url === url, `After repeated crashes the toolbar shows "${paused.url}" instead of the page's address (${url}).`)
       await ctx.evaluate(`window.intoponet.browserHost.reload().then(() => true)`)
       await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.title === 'Browsing test' && s.url === ${JSON.stringify(url)})`, 15_000, 'Reload to bring the crashed page back')
+      await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.canGoBack && !s.isLoading)`, 15_000, 'Back to be offered once Reload has brought the crashed page back')
+      const afterReload = await historyOf()
+      expect(JSON.stringify(afterReload) === JSON.stringify(beforeCrash), `Reload after repeated crashes brought the page back without its back/forward list: ${JSON.stringify(afterReload)}.`)
     } finally {
       site.close()
     }
@@ -4033,6 +4047,12 @@ export const checks = {
         return (await stateOf()).split && views.pages.length === 2 && views.pages.every((p) => p.visible) && views.pages.some((p) => p.url.includes('/split-left') && p.id !== crashedId)
       })
       await expectLayout('after the other side crashed')
+      // It came back where it was, with its back/forward list (the page it was on before it loaded again by itself).
+      const leftHistory = await waitFor('the crashed side\'s back/forward list', async () => {
+        const urls = JSON.parse(await ctx.main(`JSON.stringify(electron.webContents.getAllWebContents().find((c) => !c.isCrashed() && c.getURL().includes('/split-left'))?.navigationHistory.getAllEntries().map((e) => e.url) ?? [])`))
+        return urls.some((u) => u.endsWith('/split-left')) && urls.some((u) => u.includes('?again')) ? urls : null
+      }).catch(() => null)
+      expect(leftHistory, 'The crashed side came back without its back/forward list.')
       expect((await stateOf()).split.focused === 'right', 'A crash on the left side moved the focus.')
       // The other side fails to load: hidden while it fails, shown again once its page loads.
       await ctx.main(`(() => { void ${pageOf('/split-left')}.loadURL('http://127.0.0.1:${port}/split-flaky?left').catch(() => undefined); return true })()`)

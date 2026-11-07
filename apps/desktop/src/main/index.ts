@@ -1990,8 +1990,28 @@ function wakeTab(tab: OpenTab): void {
       .catch(() => undefined)
       .finally(() => restoringViews.delete(view))
   } else if ((!current || current === 'about:blank') && safeHttpUrl(tab.url) && !restoringViews.has(tab.view) && crashRecovery.canAutoRecover(tab.id)) {
-    void tab.view.webContents.loadURL(tab.url)
+    loadBlankTab(tab)
   }
+}
+
+/**
+ * A tab whose view is blank loads its page: where it was when its renderer crashed (back/forward
+ * list and scroll restored, as a sleeping tab wakes), else at its address.
+ */
+function loadBlankTab(tab: OpenTab): void {
+  const view = tab.view
+  const history = crashRecovery.takeHistory(tab.id)
+  if (!history) {
+    void view.webContents.loadURL(tab.url).catch(() => undefined)
+    return
+  }
+  restoringViews.add(view)
+  void view.webContents.navigationHistory.restore(history)
+    // Only when the list could not be restored at all: a page that failed shows its error page, and a
+    // load stopped by a newer navigation (a click, an address typed meanwhile) must not be undone.
+    .catch(() => (viewGone(view) || view.webContents.getURL() ? undefined : view.webContents.loadURL(tab.url)))
+    .catch(() => undefined)
+    .finally(() => restoringViews.delete(view))
 }
 
 /** A pinned tab is away from home once it is on another site (moving around the same site is not leaving). */
@@ -3077,7 +3097,7 @@ function blockedPopup(opener: WebContentsView, url: string): void {
 function popupsAllowed(contents: Electron.WebContents, isPrivate: boolean, scope = 'default'): boolean {
   return sitePermissions?.check(originOf(contents.getURL()), ['popups'], isPrivate, null, scope) === true
 }
-const crashRecovery = new CrashRecoveryPolicy()
+const crashRecovery = new CrashRecoveryPolicy<TabHistory>()
 
 /** A popup window opened by a page: http(s) only, nested popups become tabs, closes with its page. */
 function wirePopupWindow(child: BrowserWindow, opener: WebContentsView): void {
@@ -3655,6 +3675,16 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
     const currentUrl = view.webContents.getURL()
     const crashedUrl = safeHttpUrl(currentUrl) ? currentUrl : tab?.url || lastKnownUrl
     const mayAutoRecover = tab ? crashRecovery.recordCrash(tab.id) : false
+    // Its back/forward list outlives the renderer: the page comes back with it (loadBlankTab).
+    if (tab) {
+      let history: TabHistory | undefined
+      try {
+        history = boundedHistory({ entries: view.webContents.navigationHistory.getAllEntries(), index: view.webContents.navigationHistory.getActiveIndex() })
+      } catch {
+        history = undefined
+      }
+      crashRecovery.keepHistory(tab.id, history)
+    }
     if (pageView === view) detachActive()
     if (pageView === view) pageView = null
     protectionPages.remove(view.webContents.id)
@@ -3674,10 +3704,10 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
       pageView = replacement
       lastKnownUrl = crashedUrl
       attachPageView()
-      if (mayAutoRecover) void replacement.webContents.loadURL(crashedUrl)
+      if (mayAutoRecover) loadBlankTab(tab)
     } else if (companionView === view) {
       // The other side of the pair on screen: its replacement takes its place beside the page.
-      if (mayAutoRecover) void replacement.webContents.loadURL(crashedUrl)
+      if (mayAutoRecover) loadBlankTab(tab)
       syncCompanion()
       emitPanelState()
     }
@@ -4379,7 +4409,7 @@ async function handleBrowserCommand(
       if (!currentUrl || currentUrl === 'about:blank') {
         if (tab && safeHttpUrl(tab.url)) {
           crashRecovery.manualRetry(tab.id)
-          void pageView.webContents.loadURL(tab.url)
+          loadBlankTab(tab)
         }
       } else {
         pageView.webContents.reload()
