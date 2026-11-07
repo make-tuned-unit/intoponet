@@ -635,9 +635,12 @@ function pagePanelState(): BrowserPanelSnapshot {
       isStartPage: true,
     }
   }
+  // A page whose renderer kept crashing waits, blank, for Reload: the toolbar keeps its address and title.
+  const tab = openTabs.find((item) => item.view === pageView)
+  const crashed = tab && !contents.getURL() && safeHttpUrl(tab.url) && !crashRecovery.canAutoRecover(tab.id) ? tab : undefined
   return {
-    url: capUrl(contents.getURL()),
-    title: capTitle(contents.getTitle()),
+    url: capUrl(crashed ? crashed.url : contents.getURL()),
+    title: capTitle(crashed ? crashed.title : contents.getTitle()),
     canGoBack: contents.navigationHistory.canGoBack(),
     canGoForward: contents.navigationHistory.canGoForward(),
     isLoading: contents.isLoading(),

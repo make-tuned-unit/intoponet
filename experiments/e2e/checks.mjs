@@ -1133,6 +1133,17 @@ export const checks = {
       // Back to the error entry and forward again behave like normal history.
       const state = await panelState(ctx)
       expect(state.url === url, `After Retry the tab is at ${state.url}.`)
+      // A page whose renderer crashes twice in a row waits for Reload: the toolbar keeps its address, and Reload brings it back.
+      const crashPage = () => ctx.main(`(() => { const c = electron.webContents.getAllWebContents().find((c) => c.getURL() === ${JSON.stringify(url)}); if (!c) return false; c.forcefullyCrashRenderer(); return true })()`)
+      expect(await crashPage(), 'The page to crash is not open.')
+      await ctx.delay(1500)
+      await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.title === 'Browsing test' && !s.isLoading)`, 15_000, 'the page to load again after a crash')
+      expect(await crashPage(), 'The page that loaded again after a crash is not open.')
+      await ctx.delay(1500)
+      const paused = await panelState(ctx)
+      expect(paused.url === url, `After repeated crashes the toolbar shows "${paused.url}" instead of the page's address (${url}).`)
+      await ctx.evaluate(`window.intoponet.browserHost.reload().then(() => true)`)
+      await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.title === 'Browsing test' && s.url === ${JSON.stringify(url)})`, 15_000, 'Reload to bring the crashed page back')
     } finally {
       site.close()
     }
