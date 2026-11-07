@@ -165,6 +165,9 @@ export type TabFolderSnapshot = { id: string; name: string; parentId: string | n
 /** Tabs to put in one folder (a story's folder, or a folder with this name), for Group by story and Tidy. */
 export type TabGroupRequest = { name: string; tabIds: string[]; storyId?: string }
 
+/** A grouping done: how many tabs it moved (fewer than asked when some closed or are side by side), into how many folders, and its Undo. */
+export type TabGroupResult = { undoId: string; moved: number; folders: number }
+
 /** Tidy's suggestion: the folders it would make (nothing moves until they are accepted), or why it cannot suggest any. */
 export type TidySuggestion = { available: true; groups: Array<{ name: string; tabIds: string[] }> } | { available: false; reason: string }
 
@@ -381,7 +384,7 @@ export interface BrowserHostApi {
   deleteTabFolder(id: string): Promise<void>
   moveTabToFolder(tabId: string, folderId: string | null): Promise<void>
   openTabFolder(name: string, urls: string[]): Promise<void>
-  groupTabs(groups: TabGroupRequest[]): Promise<{ undoId: string }>
+  groupTabs(groups: TabGroupRequest[]): Promise<TabGroupResult>
   undoGroupTabs(undoId: string): Promise<void>
   tidyTabsSuggest(): Promise<TidySuggestion>
   reopenArchivedTabs(ids: string[]): Promise<void>

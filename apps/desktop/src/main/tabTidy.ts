@@ -15,6 +15,8 @@ export type TidyTab = {
   folderId?: string | undefined
   isPrivate?: boolean | undefined
   isStartPage?: boolean | undefined
+  /** Side by side with another tab. */
+  split?: { partnerId: string } | undefined
 }
 
 export type TidyGroup = { name: string; tabIds: string[] }
@@ -130,6 +132,24 @@ export function suggestGroups(vectors: readonly Float32Array[], candidates: read
     used.add(name)
     return { name, tabIds: members.map((tab) => tab.id) }
   })
+}
+
+/**
+ * A tab side by side with another is suggested only in the same folder as its other side (accepting
+ * never breaks a pair: see tabGrouping.ts), so the preview shows only what Accept moves. Groups left
+ * with fewer than two tabs are dropped.
+ */
+export function keepPairsWhole(groups: readonly TidyGroup[], tabs: readonly TidyTab[]): TidyGroup[] {
+  const partnerOf = new Map(tabs.map((tab) => [tab.id, tab.split?.partnerId]))
+  return groups
+    .map((group) => ({
+      ...group,
+      tabIds: group.tabIds.filter((id) => {
+        const partner = partnerOf.get(id)
+        return !partner || group.tabIds.includes(partner)
+      }),
+    }))
+    .filter((group) => group.tabIds.length >= 2)
 }
 
 function mean(a: number[], b: number[], similarity: number[][]): number {

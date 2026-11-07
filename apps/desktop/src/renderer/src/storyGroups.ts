@@ -1,10 +1,11 @@
-import type { PageTabSnapshot, TabFolderSnapshot, TabGroupRequest } from '@intoponet/browser-api'
+import type { PageTabSnapshot, TabFolderSnapshot, TabGroupRequest, TabGroupResult } from '@intoponet/browser-api'
 import type { StoryMatch } from '../../shared/news/storyTabs'
 
 /**
  * Group by story: the loose matched tabs of each story go into one folder for it. A story with
  * a folder already gets its loose matched tabs (even one); otherwise it needs two or more.
- * Pinned, foldered and private tabs are never grouped.
+ * Pinned, foldered and private tabs are never grouped, nor one side of a pair side by side unless
+ * its other side goes into the same folder (main keeps pairs whole too).
  */
 export function storyGroupRequests(tabs: readonly PageTabSnapshot[], matches: ReadonlyMap<string, StoryMatch>, folders: readonly TabFolderSnapshot[]): TabGroupRequest[] {
   const byStory = new Map<string, { label: string; tabIds: string[] }>()
@@ -16,10 +17,24 @@ export function storyGroupRequests(tabs: readonly PageTabSnapshot[], matches: Re
     byStory.set(match.storyId, entry)
   }
   const groups: TabGroupRequest[] = []
-  for (const [storyId, { label, tabIds }] of byStory) {
+  const partnerOf = new Map(tabs.map((tab) => [tab.id, tab.split?.partnerId]))
+  for (const [storyId, { label, tabIds: matched }] of byStory) {
+    const tabIds = matched.filter((id) => {
+      const partner = partnerOf.get(id)
+      return !partner || matched.includes(partner)
+    })
     const hasFolder = folders.some((folder) => folder.storyId === storyId)
-    if (!hasFolder && tabIds.length < 2) continue
+    if (!tabIds.length || (!hasFolder && tabIds.length < 2)) continue
     groups.push({ name: label, tabIds, storyId })
   }
   return groups
+}
+
+const count = (n: number, one: string, many: string): string => `${n} ${n === 1 ? one : many}`
+
+/** The notice after a grouping, counting the tabs it moved (fewer than asked when some closed or stayed side by side). */
+export function groupingNotice(kind: 'story' | 'tidy', result: Pick<TabGroupResult, 'moved' | 'folders'>): string {
+  return kind === 'story'
+    ? `Grouped ${count(result.moved, 'tab', 'tabs')} by story`
+    : `Made ${count(result.folders, 'folder', 'folders')} (${count(result.moved, 'tab', 'tabs')})`
 }

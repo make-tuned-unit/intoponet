@@ -58,6 +58,27 @@ describe('tab archive', () => {
     expect(archive.list().map((entry) => entry.url)).toEqual(['https://c.example/', 'https://a.example/'])
   })
 
+  it('keeps the workspace and folder a tab was archived from, but lists neither', () => {
+    const archive = new TabArchive(() => 5_000)
+    archive.add({ url: 'https://a.example/', title: 'A', favicon: '', workspaceId: 'work', folderId: 'papers' })
+    archive.add({ url: 'https://b.example/', title: 'B', favicon: '' })
+    expect(Object.keys(archive.list()[0]!).sort()).toEqual(['archivedAt', 'favicon', 'id', 'title', 'url'])
+    const restored = new TabArchive(() => 5_000)
+    const payload = JSON.parse(archive.serialize())
+    // An entry saved before workspaces were recorded, and one with a damaged place.
+    payload.entries.push({ id: 'old', url: 'https://old.example/', title: 'Old', favicon: '', archivedAt: 4_000 })
+    payload.entries.push({ id: 'bad', url: 'https://bad.example/', title: 'Bad', favicon: '', archivedAt: 3_000, workspaceId: 7, folderId: 'papers' })
+    expect(restored.load(JSON.stringify(payload))).toBe(true)
+    const place = (url: string) => {
+      const entry = restored.take(restored.list().find((item) => item.url === url)!.id)
+      return [entry?.workspaceId, entry?.folderId]
+    }
+    expect(place('https://a.example/')).toEqual(['work', 'papers'])
+    expect(place('https://b.example/')).toEqual([undefined, undefined])
+    expect(place('https://old.example/')).toEqual([undefined, undefined])
+    expect(place('https://bad.example/')).toEqual([undefined, undefined])
+  })
+
   it('forgets tabs archived more than 90 days ago', () => {
     let now = 0
     const archive = new TabArchive(() => now)

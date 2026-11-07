@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { TAB_ARCHIVE_AFTER, type ArchivedTabSnapshot, type TabArchiveAfter } from '@intoponet/browser-api'
-import { boundedHistory, type TabHistory } from './closedTabs'
+import { boundedHistory, tabPlace, type TabHistory, type TabPlace } from './closedTabs'
 
 /**
  * Tabs that tidy themselves away: an unpinned tab not looked at for the chosen time closes into
@@ -25,7 +25,7 @@ export function isTabArchiveAfter(value: unknown): value is TabArchiveAfter {
   return typeof value === 'string' && (TAB_ARCHIVE_AFTER as readonly string[]).includes(value)
 }
 
-export type ArchivedTab = ArchivedTabSnapshot & { history?: TabHistory }
+export type ArchivedTab = ArchivedTabSnapshot & TabPlace & { history?: TabHistory }
 
 function webUrl(value: unknown): value is string {
   if (typeof value !== 'string' || value.length > 8_192) return false
@@ -42,17 +42,17 @@ export class TabArchive {
 
   constructor(private readonly now: () => number = Date.now) {}
 
-  /** Newest first, without their back/forward lists. */
+  /** Newest first, without their back/forward lists or where they were. */
   list(): ArchivedTabSnapshot[] {
-    return this.entries.map(({ history: _history, ...entry }) => entry)
+    return this.entries.map(({ id, url, title, favicon, archivedAt }) => ({ id, url, title, favicon, archivedAt }))
   }
 
   get size(): number {
     return this.entries.length
   }
 
-  /** Archives a tab (one entry per address: archiving it again moves it to the top). */
-  add(tab: { url: string; title: string; favicon: string; history?: TabHistory }): ArchivedTab | null {
+  /** Archives a tab, with the workspace and folder it was in (one entry per address: archiving it again moves it to the top). */
+  add(tab: { url: string; title: string; favicon: string; history?: TabHistory } & TabPlace): ArchivedTab | null {
     if (!webUrl(tab.url)) return null
     const history = boundedHistory(tab.history)
     const entry: ArchivedTab = {
@@ -61,6 +61,7 @@ export class TabArchive {
       title: tab.title.slice(0, 300),
       favicon: tab.favicon.startsWith('data:image/') && tab.favicon.length <= 64_000 ? tab.favicon : '',
       archivedAt: this.now(),
+      ...tabPlace(tab),
       ...(history ? { history } : {}),
     }
     this.entries = [entry, ...this.entries.filter((item) => item.url !== tab.url)].slice(0, MAX_ARCHIVED)
@@ -115,6 +116,8 @@ export class TabArchive {
         title: record['title'].slice(0, 300),
         favicon: record['favicon'].startsWith('data:image/') && record['favicon'].length <= 64_000 ? record['favicon'] : '',
         archivedAt: record['archivedAt'],
+        // Entries archived before workspaces and folders were recorded have neither: they reopen in the workspace shown.
+        ...tabPlace(record),
         ...(history ? { history } : {}),
       })
     }

@@ -204,6 +204,11 @@ export class PasswordService {
     this.deps.changed(null)
   }
 
+  /** The workspaces with sign-ins of their own saved (for removing those of a workspace that is gone). */
+  workspaceIds(): Promise<string[]> {
+    return this.vault.workspaceIds()
+  }
+
   async removeNever(origin: string): Promise<void> {
     await this.vault.removeNever(origin)
     this.deps.changed(null)

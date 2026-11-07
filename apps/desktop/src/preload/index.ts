@@ -28,6 +28,7 @@ import {
   type TabSidebarState,
   type ArchivedTabSnapshot,
   type TabFolderSnapshot,
+  type TabGroupResult,
   type TidySuggestion,
   type PageTabSnapshot,
   type PdfExportOptions,
@@ -162,7 +163,7 @@ const browserHost: BrowserHostApi = {
   openTabFolder: async (name, urls) => {
     await invoke({ type: 'open-tab-folder', name, urls })
   },
-  groupTabs: (groups) => invoke({ type: 'group-tabs', groups }) as Promise<{ undoId: string }>,
+  groupTabs: (groups) => invoke({ type: 'group-tabs', groups }) as Promise<TabGroupResult>,
   undoGroupTabs: async (undoId) => {
     await invoke({ type: 'undo-group-tabs', undoId })
   },

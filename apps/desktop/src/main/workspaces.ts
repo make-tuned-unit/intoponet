@@ -15,6 +15,7 @@ import {
   type WorkspacesState,
 } from '@intoponet/browser-api'
 import { MAX_FOLDERS, type TabFolder } from './tabOrder'
+import { isWorkspaceIdentityId } from './workspaceIdentity'
 
 /**
  * Workspaces, kept apart from Electron so they can be tested. The workspace being shown keeps its
@@ -266,7 +267,8 @@ function sameSiteAddress(left: string, right: string): boolean {
  * Versions 1 and 2 had no workspaces: everything they saved moves into "Main".
  */
 export type SavedWorkspace = Workspace & { activeTabId?: string }
-export type SavedWorkspaces = { workspaces: SavedWorkspace[]; activeId: string; favourites: Favourite[]; migrated: boolean }
+/** `complete`: every saved workspace was read (none dropped as damaged or past the limit), so these are the person's workspaces. */
+export type SavedWorkspaces = { workspaces: SavedWorkspace[]; activeId: string; favourites: Favourite[]; migrated: boolean; complete: boolean }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -311,12 +313,14 @@ export function parseSavedWorkspaces(state: Record<string, unknown>): SavedWorks
         icon: isWorkspaceIcon(entry['icon']) ? entry['icon'] : 'globe',
         accent: isWorkspaceAccent(entry['accent']) ? entry['accent'] : WORKSPACE_ACCENTS[workspaces.length % WORKSPACE_ACCENTS.length]!,
         ...(anchor ? { anchor } : {}),
-        ...(entry['separateSignIns'] === true ? { separateSignIns: true } : {}),
+        // An id that cannot name a partition (a hand-edited file) means no separate sign-ins, never an error on restore.
+        ...(entry['separateSignIns'] === true && isWorkspaceIdentityId(entry['id']) ? { separateSignIns: true } : {}),
         ...(isId(entry['activeTabId']) ? { activeTabId: entry['activeTabId'] } : {}),
       })
     }
   }
   const migrated = workspaces.length === 0
+  const complete = !migrated && Array.isArray(state['workspaces']) && state['workspaces'].length === workspaces.length
   if (migrated) workspaces.push({ ...MAIN_WORKSPACE })
   const activeId = isId(state['activeWorkspaceId']) && workspaces.some((workspace) => workspace.id === state['activeWorkspaceId']) ? state['activeWorkspaceId'] : workspaces[0]!.id
   const known = new Set(workspaces.map((workspace) => workspace.id))
@@ -330,7 +334,7 @@ export function parseSavedWorkspaces(state: Record<string, unknown>): SavedWorks
       favourites.push({ id: entry['id'], url: entry['url'], title: typeof entry['title'] === 'string' ? entry['title'].slice(0, 180) : '', workspaceId: isId(owner) ? owner : null })
     }
   }
-  return { workspaces, activeId, favourites, migrated }
+  return { workspaces, activeId, favourites, migrated, complete }
 }
 
 /** The workspace a saved tab or folder belongs to: its own when that still exists, otherwise the first (Main, after a migration). */

@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import { basename, dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { readFile } from 'node:fs/promises'
-import { appendFileSync, createWriteStream, existsSync, mkdirSync, readFileSync, rmSync, statSync, unlinkSync } from 'node:fs'
+import { readFile, rm } from 'node:fs/promises'
+import { appendFileSync, createWriteStream, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, unlinkSync } from 'node:fs'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import type { ReadableStream as NodeReadableStream } from 'node:stream/web'
@@ -47,7 +47,7 @@ import { capTitle, capUrl, coalesce, persistedActiveUrl, restoredActiveTab } fro
 import { EXIT_FULLSCREEN_SCRIPT, FULLSCREEN_WORLD_ID, fullscreenSiteName, showFullscreenNotice } from './fullscreenNotice'
 import { bindLeavePrompt, SAFE_DIALOG_PREFERENCES } from './leavePrompt'
 import { fetchTabIcon, TabIconMemory } from './tabFavicon'
-import { browsingChannels, parseBrowsingCommand, type LinkRoutesState, type BrowsingEvent, type ArchivedTabSnapshot, type TabFolderSnapshot, type TabGroupRequest, type TidySuggestion, type BrowsingSettings, type LinksFromOtherApps, type PageLoadError, type TabArchiveAfter, type TabSidebarState, type TabSleepAfter, type TabSwitchOrder } from '@intoponet/browser-api'
+import { browsingChannels, parseBrowsingCommand, type LinkRoutesState, type BrowsingEvent, type ArchivedTabSnapshot, type TabFolderSnapshot, type TabGroupRequest, type TabGroupResult, type TidySuggestion, type BrowsingSettings, type LinksFromOtherApps, type PageLoadError, type TabArchiveAfter, type TabSidebarState, type TabSleepAfter, type TabSwitchOrder } from '@intoponet/browser-api'
 import { ExternalOpenBroker, classifyExternalUrl } from './externalOpen'
 import { CertificateErrorMemo, classifyLoadError, isCertificateError, showsErrorPage, summarizeCertificate } from './errorPage'
 import { IncomingOpenQueue, LocalFileGrants, incomingFileTarget, incomingTargetsFromArgs, incomingWebUrl, type IncomingTarget } from './incomingOpen'
@@ -142,7 +142,7 @@ import {
 import { FOCUS_TAKES_TYPING_SCRIPT, isPlainEscape, pageKeyAction, TEXT_FIELD_FIRST } from './shellShortcuts'
 import { cleanAddress } from '../shared/cleanAddress'
 import { createAppMenuController, menuCommandById, routeAppCommand, type AppCommand, type AppMenuState } from './appMenu'
-import { boundedHistory, ClosedTabs, type TabHistory } from './closedTabs'
+import { boundedHistory, ClosedTabs, reopenPlace, type TabHistory, type TabPlace } from './closedTabs'
 import { stepZoom, ZoomStore } from './zoomStore'
 import { CANCEL_PICK_SCRIPT, hideCss, listItem, PICK_ELEMENT_SCRIPT, selectorProblem, siteOf, SiteTweakStore, SiteTweaks, tweakCss } from './siteTweaks'
 import type { SiteTweakListItem, SiteTweakPick, SiteTweakSaveResult, SiteTweakState } from '@intoponet/browser-api'
@@ -156,10 +156,14 @@ import {
   PRIVATE_PARTITION,
   hasSeparateSignIns,
   identityScope,
+  isWorkspaceIdentityId,
   pagePartition,
+  partitionWorkspaceId,
   scopeWorkspaceId,
   signInsChange,
+  sweepLeftoverIdentities,
   workspacePartition,
+  workspacePartitionFolder,
   workspacePermissionsFile,
   type IdentityScope,
 } from './workspaceIdentity'
@@ -201,9 +205,9 @@ protocol.registerSchemesAsPrivileged([
 ])
 let captures: CaptureService | null = null
 import { browserContextActions, type BrowserContextAction } from './browserContextMenu'
-import { canNest, deleteFolder, duplicateIndex, folderDepth, folderedOrder, folderTreeOrder, MAX_FOLDER_DEPTH, MAX_FOLDERS, moveFolderedTab, moveTab, otherTabIds, pinnedFirst, setPinned, setTabFolder, tabIdsToRight, type TabFolder } from './tabOrder'
+import { canNest, deleteFolder, duplicateIndex, folderDepth, folderedOrder, folderTreeOrder, MAX_FOLDER_DEPTH, MAX_FOLDERS, moveFolderedTab, moveTab, otherTabIds, pinnedFirst, revealFolder, setPinned, setTabFolder, tabIdsToRight, type TabFolder } from './tabOrder'
 import { planGrouping, snapshotGrouping, undoGrouping, UNDO_GROUPING_MS, type GroupingSnapshot } from './tabGrouping'
-import { suggestGroups, tidyCandidates, tidyText } from './tabTidy'
+import { keepPairsWhole, suggestGroups, tidyCandidates, tidyText } from './tabTidy'
 import { dot } from './laya/retrieval'
 import { tabMenuTemplate, type TabMenuAction, type TabMenuSplit } from './tabMenu'
 import { canSplit, keepOutOfPairs, pairMoveTarget, partnerOf, repairSplits, setSplitRatio, splitBounds, splitPreviewArea, splitWith, storableRatio, unsplit, DEFAULT_SPLIT_RATIO, type SplitLayout, type SplitSide, type TabSplit } from './splitPages'
@@ -298,6 +302,8 @@ const openTabs: OpenTab[] = []
 let workspaces = new WorkspaceSet<OpenTab>()
 /** A workspace deleted moments ago: Undo brings it back (its tabs stay open, unseen) until the timer closes them. */
 let deletedWorkspace: { removed: RemovedWorkspace<OpenTab>; timer: ReturnType<typeof setTimeout> } | null = null
+/** Every saved workspace was read at startup (never with the state file missing, unreadable or set aside). */
+let savedWorkspacesLoaded = false
 /** Every tab in every workspace, and private tabs. */
 function allTabs(): OpenTab[] {
   return [...openTabs, ...workspaces.parkedTabs()]
@@ -2074,10 +2080,10 @@ function createTabFolder(name: string, parentId: string | null, tabIds: string[]
 /** The latest grouping, kept for Undo for two minutes (tabGrouping.ts). Cleared when the shown workspace changes. */
 let lastGrouping: { undoId: string; at: number; snapshot: GroupingSnapshot } | null = null
 
-/** Put loose tabs into folders (tabGrouping.ts). Pinned and private tabs stay where they are. */
-function groupTabs(groups: TabGroupRequest[]): string {
+/** Put loose tabs into folders (tabGrouping.ts). Pinned and private tabs, and pairs side by side, stay where they are. */
+function groupTabs(groups: TabGroupRequest[]): TabGroupResult {
   const plan = planGrouping({
-    tabs: openTabs.map((tab) => ({ id: tab.id, pinned: tab.pinned, isPrivate: privateViews.has(tab.view), folderId: tab.folderId })),
+    tabs: openTabs.map((tab) => ({ id: tab.id, pinned: tab.pinned, isPrivate: privateViews.has(tab.view), folderId: tab.folderId, split: tab.split })),
     folders: tabFolders,
     groups,
     maxFolders: MAX_FOLDERS,
@@ -2098,7 +2104,8 @@ function groupTabs(groups: TabGroupRequest[]): string {
   tabsRearranged()
   emitTabs()
   schedulePersistentStateSave()
-  return undoId
+  // What was moved, not what was asked for: the notice says so.
+  return { undoId, moved: plan.folderOf.size, folders: new Set(plan.folderOf.values()).size }
 }
 
 function undoGroupTabs(undoId: string): void {
@@ -2133,7 +2140,7 @@ async function tidyTabsSuggest(): Promise<TidySuggestion> {
   const vectors = await laya.embedTexts(texts)
   if (!vectors) return { available: false, reason: 'Laya could not read these tabs right now.' }
   if (process.env.INTOPONET_TIDY_DEBUG) appendFileSync(process.env.INTOPONET_TIDY_DEBUG, `${JSON.stringify({ similarity: vectors.map((a) => vectors.map((b) => Number(dot(a, b).toFixed(3)))) })}\n`)
-  return { available: true, groups: suggestGroups(vectors, candidates) }
+  return { available: true, groups: keepPairsWhole(suggestGroups(vectors, candidates), candidates) }
 }
 
 // ---- Workspaces (workspaces.ts) ----------------------------------------------------------------
@@ -2355,11 +2362,48 @@ function forgetWorkspacePermissions(workspaceId: string): void {
   }
 }
 
-/** Everything a workspace keeps apart: its sign-ins and site data, its permissions and its saved logins. */
-async function forgetWorkspaceIdentity(workspaceId: string): Promise<void> {
+/**
+ * Everything a workspace keeps apart: its sign-ins and site data, its permissions and its saved logins.
+ * `leftover`: found at startup with no page of this run using it, so its partition's folder is deleted
+ * outright instead of being opened to be cleared.
+ */
+async function forgetWorkspaceIdentity(workspaceId: string, leftover = false): Promise<void> {
   forgetWorkspacePermissions(workspaceId)
-  await clearPartitionData(workspacePartition(workspaceId))
+  if (leftover) await rm(join(app.getPath('userData'), 'Partitions', workspacePartitionFolder(workspaceId)), { recursive: true, force: true }).catch(() => undefined)
+  else await clearPartitionData(workspacePartition(workspaceId))
   await passwords?.forgetWorkspace(workspaceId).catch(() => undefined)
+}
+
+/** Names in a folder of the profile (none when it is not there). */
+function namesIn(folder: string): string[] {
+  try {
+    return readdirSync(folder)
+  } catch {
+    return []
+  }
+}
+
+/**
+ * At startup: sign-ins, site data, permission answers and saved logins of a workspace that is gone or
+ * no longer keeps its own, left when the app stopped before clearing them (a crash or force-quit in a
+ * deletion's Undo window). Only once the saved workspaces loaded (workspaceIdentity.ts). Quitting waits for it.
+ */
+function sweepLeftoverSignIns(): void {
+  const userData = app.getPath('userData')
+  const opened = (id: string): boolean => [...wiredPartitions].some((partition) => partitionWorkspaceId(partition)?.toLowerCase() === id.toLowerCase())
+  const sweep = sweepLeftoverIdentities(savedWorkspacesLoaded, {
+    workspaces: () => [...workspaces.workspaces, ...(deletedWorkspace ? [deletedWorkspace.removed.workspace] : [])],
+    partitionInUse: opened,
+    partitionFolders: () => namesIn(join(userData, 'Partitions')),
+    profileFiles: () => namesIn(userData),
+    loginWorkspaceIds: () => passwords?.workspaceIds().catch(() => []) ?? Promise.resolve([]),
+    forget: (id) => forgetWorkspaceIdentity(id, true),
+  }).catch((error: unknown) => {
+    console.error('Could not remove leftover sign-ins:', error)
+    return []
+  })
+  writesInFlight.add(sweep)
+  void sweep.finally(() => writesInFlight.delete(sweep))
 }
 
 /** Workspace actions menu: "Separate sign-ins" on or off (the shell has confirmed). */
@@ -2367,6 +2411,8 @@ async function setSeparateSignIns(workspaceId: string, separate: boolean): Promi
   const workspace = workspaces.get(workspaceId)
   if (!workspace) throw new Error('That workspace is gone.')
   if (separate && workspaceId === MAIN_WORKSPACE_ID) throw new Error('Main always shares its sign-ins.')
+  // A hand-edited id that cannot name a partition: refused before the setting changes, so its tabs keep a session.
+  if (separate && !isWorkspaceIdentityId(workspaceId)) throw new Error('This workspace cannot keep its own sign-ins.')
   if (hasSeparateSignIns(workspace) === separate) return
   workspaces.update(workspaceId, { separateSignIns: separate })
   if (separate) ensurePageSession(workspacePartition(workspaceId))
@@ -2585,25 +2631,21 @@ function archiveTab(tab: OpenTab): ArchivedTab | null {
     url: safeHttpUrl(liveUrl) ? liveUrl : tab.url,
     title: (live ? tab.view.webContents.getTitle() : '') || tab.title,
     favicon: tab.favicon,
+    // Only the shown workspace's tabs are archived.
+    workspaceId: workspaces.activeId,
+    ...(tab.folderId ? { folderId: tab.folderId } : {}),
     ...(history ? { history } : {}),
   })
   if (entry) discardTab(tab.id, false)
   return entry
 }
 
-/** Reopens archived tabs: one is shown where it was; several come back asleep, in the background. */
+/** Reopens archived tabs where they were (reopenTab): one is shown, in its workspace; several come back asleep, in the background. */
 function reopenArchivedTabs(ids: string[]): void {
   const show = ids.length === 1
   for (const id of ids) {
     const entry = tabArchive.take(id)
-    if (!entry) continue
-    const view = createBrowserTab(entry.url, false, false)
-    const tab = view && tabOfView(view)
-    if (!view || !tab) continue
-    tab.title = entry.title
-    tab.favicon = entry.favicon
-    tab.asleep = entry.history ? { history: entry.history } : {}
-    if (show) showTab(tab.id)
+    if (entry) reopenTab(entry, show)
   }
   emitTabs()
   saveTabArchive()
@@ -3061,13 +3103,15 @@ function closeTab(id: string): void {
 
 function discardTab(id: string, remember = true): void {
   const index = openTabs.findIndex((tab) => tab.id === id)
+  // The workspace it is closed in, so Recently closed can bring it back there.
+  const workspaceId = index >= 0 ? workspaces.activeId : workspaces.workspaceOfParkedTab(id)
   // A tab in a workspace not shown (its page closed itself, say) goes from there.
   const tab = index >= 0 ? openTabs.splice(index, 1)[0] : workspaces.takeParkedTab(id)
   if (!tab) return
   if (index < 0) emitWorkspaces()
   nowPlaying.forget(tab.id)
   emitNowPlaying()
-  if (remember) rememberClosedTab(tab)
+  if (remember) rememberClosedTab(tab, workspaceId)
   crashRecovery.forget(tab.id)
   // Its partner, if any, is whole again (its side of the split goes with this tab).
   if (tab.split) {
@@ -3858,8 +3902,8 @@ function inspectPage(view: WebContentsView, at?: { x: number; y: number }): void
   if (at) contents.inspectElement(Math.round(at.x), Math.round(at.y))
 }
 
-/** A closing tab joins Recently Closed (with its back/forward list), unless it is private, untracked or a start page. */
-function rememberClosedTab(tab: OpenTab): void {
+/** A closing tab joins Recently Closed (with its back/forward list, workspace and folder), unless it is private, untracked or a start page. */
+function rememberClosedTab(tab: OpenTab, workspaceId: string | null): void {
   if (tab.start || privateViews.has(tab.view) || untrackedViews.has(tab.view)) return
   const live = !viewGone(tab.view)
   const liveUrl = live ? tab.view.webContents.getURL() : ''
@@ -3876,29 +3920,50 @@ function rememberClosedTab(tab: OpenTab): void {
     title: (live ? tab.view.webContents.getTitle() : '') || tab.title,
     favicon: tab.favicon,
     isPrivate: false,
+    workspaceId,
+    ...(tab.folderId ? { folderId: tab.folderId } : {}),
     ...(history ? { history } : {}),
   })
 }
 
-/** Reopens the newest closed tab (or the one asked for) with its back/forward list, and shows it. */
+/**
+ * A tab reopened from Recently closed or Archived tabs comes back where it was (closedTabs.ts
+ * reopenPlace): in the workspace it was closed in, built with that workspace's sign-ins, and in its
+ * folder while that is there; with its workspace gone, in the one shown. It comes asleep with its
+ * back/forward list, so it loads where it was once shown. `show` shows it, and its workspace first.
+ */
+function reopenTab(entry: { url: string; title: string; favicon: string; history?: TabHistory } & TabPlace, show: boolean): OpenTab | null {
+  const url = safeHttpUrl(entry.url)
+  if (!url) return null
+  const place = reopenPlace(entry, workspaces.activeId, (id) => (id === workspaces.activeId ? tabFolders : workspaces.parkedOf(id)?.folders ?? null))
+  const parked = place.workspaceId === workspaces.activeId ? null : workspaces.parkedOf(place.workspaceId)!
+  if (!parked) makeRoomForTab()
+  const tab: OpenTab = {
+    id: randomUUID(), url: url.toString(), title: entry.title, favicon: entry.favicon, view: buildView(false, place.workspaceId),
+    asleep: entry.history ? { history: entry.history } : {}, lastShownAt: Date.now(),
+    ...(place.folderId ? { folderId: place.folderId } : {}),
+  }
+  if (parked) {
+    parked.tabs.splice(0, parked.tabs.length, ...folderedOrder([...parked.tabs, tab], parked.folders))
+    // Its workspace shows it first when switched to (nothing else there wakes, and no new tab is made).
+    if (show) parked.activeTabId = tab.id
+  } else {
+    openTabs.splice(0, openTabs.length, ...folderedOrder([...openTabs, tab], tabFolders))
+  }
+  if (show) {
+    if (parked) switchWorkspace({ id: place.workspaceId })
+    if (activeTabId !== tab.id || !pageAttached) showTab(tab.id)
+  }
+  if (parked) emitWorkspaces()
+  emitTabs()
+  schedulePersistentStateSave()
+  return tab
+}
+
+/** Reopens the newest closed tab (or the one asked for) where it was, with its back/forward list, and shows it. */
 function reopenClosedTab(id?: string): void {
   const entry = closedTabs.take(id)
-  if (!entry) return
-  const view = createBrowserTab(entry.url, false, false)
-  const tab = view && tabOfView(view)
-  if (!view || !tab) return
-  tab.title = entry.title
-  tab.favicon = entry.favicon
-  let loaded: Promise<void>
-  if (entry.history) {
-    restoringViews.add(view)
-    loaded = view.webContents.navigationHistory.restore(entry.history).catch(() => view.webContents.loadURL(entry.url))
-  } else {
-    loaded = view.webContents.loadURL(entry.url)
-  }
-  void loaded.catch(() => undefined).finally(() => restoringViews.delete(view))
-  showTab(tab.id)
-  lastKnownUrl = entry.url
+  if (entry) reopenTab(entry, true)
 }
 
 /** ⌘W: closes the tab being shown, then shows the tab that took its place, or the globe when none are left. */
@@ -4307,6 +4372,8 @@ async function handleBrowserCommand(
         if (moved) keepPairTogether(moved)
         keepOutOfPairs(openTabs, command.id, toIndex > from)
         tabsRearranged()
+        // Moved (⌥⇧↑/↓) into a collapsed folder: the folder opens, so the tab stays in sight and keeps focus.
+        if (moved?.folderId && revealFolder(tabFolders, moved.folderId)) emitTabFolders()
         emitTabs()
         schedulePersistentStateSave()
       }
@@ -4573,7 +4640,7 @@ async function handleBrowserCommand(
       return { ...folder }
     }
     case 'group-tabs':
-      return { undoId: groupTabs(command.groups) }
+      return groupTabs(command.groups)
     case 'undo-group-tabs':
       undoGroupTabs(command.undoId)
       break
@@ -5199,6 +5266,8 @@ app.whenReady().then(async () => {
       pageView = active.view
       lastKnownUrl = active.url
     }
+    // Restored to the end with every saved workspace read: only then may leftover sign-ins be removed.
+    savedWorkspacesLoaded = saved.complete
   })
 
   // The browser itself first: everything below may fail on its own without leaving the app without a window.
@@ -5257,6 +5326,8 @@ app.whenReady().then(async () => {
       if (pageView && !viewGone(pageView) && pageView.webContents === contents) emit({ type: 'navigation-failed', url, reason: CLIENT_CERTIFICATE_NOTICE })
     })
   })
+  // After passwords, permissions and every workspace's own session are set up (those in use are never touched).
+  startup('leftover sign-ins', sweepLeftoverSignIns)
 
   let laya: LayaService | null = null
   startup('captures', () => {

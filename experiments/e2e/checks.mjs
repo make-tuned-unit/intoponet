@@ -662,6 +662,11 @@ const waitForQuit = async (profile) => {
 const identityRelaunch = async (ctx, { workId, mainId, gone }) => {
   const { stateOf, showIn, waitPage } = identityHelpers(ctx)
   const ws = 'window.intoponet.workspaces'
+  // Leftovers of workspaces that are gone are removed at startup (before anything opens Gone's partition again below); Work's stay.
+  const leftovers = [join(ctx.profile, 'Partitions', `intoponet-ws-${gone}`), join(ctx.profile, 'Partitions', 'intoponet-ws-crashed-e2e'), join(ctx.profile, 'site-permissions.ws-crashed-e2e.json')]
+  for (let i = 0; i < 40 && leftovers.some((path) => existsSync(path)); i += 1) await ctx.delay(250)
+  expect(!leftovers.some((path) => existsSync(path)), `Sign-in data of deleted workspaces is still on disk after a relaunch: ${leftovers.filter((path) => existsSync(path)).map((path) => path.slice(ctx.profile.length + 1)).join(', ')}.`)
+  expect(existsSync(join(ctx.profile, 'Partitions', `intoponet-ws-${workId}`)), "Work's own partition folder was removed at startup.")
   const state = await stateOf()
   expect(state.workspaces.find((item) => item.id === workId)?.separateSignIns === true, 'After a relaunch Work no longer has separate sign-ins.')
   const goneCookies = await ctx.main(`electron.session.fromPartition(${JSON.stringify(`persist:intoponet-ws-${gone}`)}).cookies.get({}).then((list) => list.length)`)
@@ -2596,6 +2601,8 @@ export const checks = {
       await openPage(ctx, `${origin}/old-c`, 900)
       const [pinned] = await tabs()
       await ctx.evaluate(`${host}.setTabPinned(${JSON.stringify(pinned.id)}, true).then(() => true)`)
+      // One of the tabs to be archived is in a folder: it comes back there.
+      const kept = JSON.parse(await ctx.evaluate(`${host}.createTabFolder('Kept', null, [${JSON.stringify((await tabs()).find((tab) => tab.title === 'Page /old-c').id)}]).then((f) => JSON.stringify(f))`))
       // Private tabs: one in the background, one in front.
       await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(true).then(() => true)`)
       await openPage(ctx, `${origin}/private-bg`, 900)
@@ -2614,16 +2621,21 @@ export const checks = {
       await ctx.click('.tab-rail-undo')
       await ctx.wait(`${host}.getTabs().then((t) => t.some((x) => x.title === 'Page /old-b') && t.some((x) => x.title === 'Page /old-c'))`, 4000, 'Undo to reopen them')
       expect((await archived()).length === 0, 'Undo left the tabs in the archive.')
+      expect((await tabs()).find((tab) => tab.title === 'Page /old-c')?.folderId === kept.id, 'Undo brought the archived tab back outside its folder.')
       // Archived again, then found from the address bar and reopened with its back list.
       await ctx.wait(`${host}.getArchivedTabs().then((t) => t.length >= 2)`, 20_000, 'the tabs to be archived again')
       await ctx.evaluate(`window.intoponet.browsing.setTabArchive('off').then(() => true)`)
       await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
+      // Reopened while another workspace is shown, it comes back in the one it was archived from.
+      const homeId = JSON.parse(await ctx.evaluate(`window.intoponet.workspaces.get().then((s) => JSON.stringify(s.activeId))`))
+      await ctx.evaluate(`window.intoponet.workspaces.create({ name: 'Elsewhere' }).then(() => true)`)
       await ctx.delay(600)
       await ctx.evaluate(`(() => { const input = document.querySelector('.command-input input'); input.focus(); return true })()`)
       await ctx.type('old-b')
       await ctx.wait(`[...document.querySelectorAll('[role="option"]')].some((e) => e.textContent.includes('Reopen archived tab'))`, 4000, 'the address bar to offer the archived tab')
       await ctx.evaluate(`[...document.querySelectorAll('[role="option"]')].find((e) => e.textContent.includes('Reopen archived tab')).dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); [...document.querySelectorAll('[role="option"]')].find((e) => e.textContent.includes('Reopen archived tab'))?.click(); true`)
       await ctx.wait(`${host}.getTabs().then((t) => t.some((x) => x.active && x.title === 'Page /old-b'))`, 6000, 'the archived tab to reopen in front')
+      expect(JSON.parse(await ctx.evaluate(`window.intoponet.workspaces.get().then((s) => JSON.stringify(s.activeId))`)) === homeId, 'The archived tab reopened in the workspace shown, not the one it was archived from.')
       await ctx.delay(1500)
       const panel = JSON.parse(await ctx.evaluate(`${host}.getState().then((s) => JSON.stringify(s))`))
       expect(panel.canGoBack, 'The reopened tab lost its back list.')
@@ -2631,7 +2643,7 @@ export const checks = {
       expect((await archived()).length === 1, 'The reopened tab is still in the archive.')
       await ctx.evaluate(`window.intoponet.history.clearBrowsingData({ range: 'all', history: true, siteData: false, cache: false, downloads: false }).then(() => true)`)
       await ctx.wait(`${host}.getArchivedTabs().then((t) => t.length === 0)`, 4000, 'clearing history to clear the archive')
-      return 'Unseen unpinned tabs archived (pinned, typed and private ones stayed); "2 tabs archived" with Undo; found from the address bar and reopened with its back list; cleared with history.'
+      return 'Unseen unpinned tabs archived (pinned, typed and private ones stayed); "2 tabs archived" with Undo, back in their folder; found from the address bar in another workspace and reopened in its own, with its back list; cleared with history.'
     } finally {
       server.close()
     }
@@ -2780,12 +2792,40 @@ export const checks = {
       // Folding a folder hides its tabs (and its folders); it is kept for the next launch.
       await ctx.click(`[data-folder-drop="${work.id}"] .tab-rail-folder-toggle`)
       await ctx.wait(`!document.querySelector('[data-tab-id="${docs.id}"]') && document.querySelector('[data-folder-drop="${work.id}"] .tab-rail-folder-toggle').getAttribute('aria-expanded') === 'false'`, 3000, 'Work to fold')
-      await ctx.delay(500)
-      const saved = JSON.parse(readFileSync(join(ctx.profile, 'browser-state.v1.json'), 'utf8'))
-      expect(saved.folders?.find((folder) => folder.id === work.id)?.collapsed === true && saved.folders.length === 4, `Saved folders: ${JSON.stringify(saved.folders)}.`)
+      // Saves are flushed to disk one after another: under heavy disk load the file can take a moment to catch up.
+      const folded = (state) => state.folders?.find((folder) => folder.id === work.id)?.collapsed === true && state.folders.length === 4
+      let saved = null
+      for (let i = 0; i < 25 && !folded(saved ?? {}); i += 1) {
+        await ctx.delay(200)
+        saved = JSON.parse(readFileSync(join(ctx.profile, 'browser-state.v1.json'), 'utf8'))
+      }
+      expect(folded(saved), `Saved folders: ${JSON.stringify(saved.folders)}.`)
       expect(saved.tabs.find((tab) => tab.title === 'Page /docs')?.folderId === work.id, 'A tab\'s folder was not saved.')
-      await ctx.click(`[data-folder-drop="${work.id}"] .tab-rail-folder-toggle`)
-      await ctx.delay(500)
+      // ⌥⇧↑ on the first loose tab moves it into the folded folder above (into Drafts, before map): Work opens, and the tab stays in sight with focus.
+      const altShift = async (key, keyCode) => {
+        for (const type of ['rawKeyDown', 'keyUp']) await ctx.send('Input.dispatchKeyEvent', { type, key, code: key, windowsVirtualKeyCode: keyCode, modifiers: 1 | 8 })
+      }
+      const mail = await byTitle('Page /mail')
+      const mailFocused = `document.activeElement?.closest('[data-tab-id]')?.dataset.tabId === ${JSON.stringify(mail.id)}`
+      // Focus on its row in the list it is in now (not the old row, which fades out where it was).
+      const mailFocusedIn = (list) => `${mailFocused} && !!document.activeElement.closest(${JSON.stringify(list)})`
+      const inDrafts = `#tab-folder-${parent}`
+      await ctx.evaluate(`document.querySelector('[data-tab-id="${mail.id}"] [role="tab"]').focus(); true`)
+      await altShift('ArrowUp', 38)
+      await ctx.wait(`${host}.getTabFolders().then((f) => !f.find((x) => x.id === ${JSON.stringify(work.id)}).collapsed)`, 3000, 'moving a tab into the folded folder to open it')
+      expect((await byTitle('Page /mail')).folderId === parent, `⌥⇧↑ did not move the tab into the folder above (it is in ${(await byTitle('Page /mail')).folderId ?? 'none'}).`)
+      await ctx.wait(mailFocusedIn(inDrafts), 3000, 'the tab moved into the opened folder to be shown there and keep focus')
+      // ⌥⇧↓ moves it past map, then out of the folder again (its row is drawn afresh below while the old one fades), still focused.
+      await altShift('ArrowDown', 40)
+      await ctx.wait(`${host}.getTabs().then((t) => t.map((x) => x.id).indexOf(${JSON.stringify(mail.id)}) === t.findIndex((x) => x.title === 'Page /map') + 1)`, 3000, '⌥⇧↓ to move the tab past map')
+      await ctx.wait(`${mailFocusedIn(inDrafts)} && [...document.querySelectorAll(${JSON.stringify(`${inDrafts} [role="tab"]`)})].at(-1) === document.activeElement`, 3000, 'the tab moved inside the folder to keep focus')
+      await altShift('ArrowDown', 40)
+      await ctx.wait(`${host}.getTabs().then((t) => !t.find((x) => x.id === ${JSON.stringify(mail.id)}).folderId)`, 3000, '⌥⇧↓ to take the tab out of the folder')
+      await ctx.wait(mailFocusedIn('.tab-rail-group'), 3000, 'the tab taken out of the folder to keep focus in the open tabs')
+      // Still focused once the old row has faded out.
+      await ctx.delay(400)
+      expect(await ctx.evaluate(mailFocusedIn('.tab-rail-group')), 'The tab taken out of the folder lost focus once its old row faded out.')
+      await ctx.delay(300)
       await axeAudit(ctx, 'the tab sidebar with folders', '.tab-rail')
       // Saved as a private collection (one per folder, nested ones named by their path).
       await ctx.click(`[data-folder-drop="${work.id}"] .tab-rail-folder-more`)
@@ -2806,7 +2846,7 @@ export const checks = {
       await ctx.evaluate(`${host}.deleteTabFolder(${JSON.stringify(work.id)}).then(() => true)`)
       await ctx.delay(500)
       expect(!(await byTitle('Page /docs')).folderId && (await folders()).find((folder) => folder.name === 'Reports')?.parentId === null, 'Deleting a folder lost its tabs or folders.')
-      return 'Folder named from the sidebar; tab dragged in and moved by command; nested four deep; order follows the sidebar; folded and kept; saved as path-named collections; a collection opened as a folder; delete keeps tabs; axe clean.'
+      return 'Folder named from the sidebar; tab dragged in and moved by command; nested four deep; order follows the sidebar; folded and kept; ⌥⇧↑ into a folded folder opened it with the tab in sight and focused; saved as path-named collections; a collection opened as a folder; delete keeps tabs; axe clean.'
     } finally {
       server.close()
     }
@@ -2838,9 +2878,10 @@ export const checks = {
       return ctx.evaluate(`window.__wsShown - window.__wsAsked`)
     }
     /** The app opened again (as after quitting or a crash) with a saved browser state, in a profile of its own. */
-    const relaunch = async (saved, check) => {
+    const relaunch = async (saved, check, prepare = () => {}) => {
       const profile = mkdtempSync(join(tmpdir(), 'intoponet-e2e-relaunch-'))
       writeFileSync(join(profile, 'browser-state.v1.json'), JSON.stringify(saved))
+      prepare(profile)
       const before = process.env.E2E_PROFILE
       process.env.E2E_PROFILE = profile
       try {
@@ -3000,6 +3041,8 @@ export const checks = {
         expect(shown.map((tab) => tab.title).join() === 'Page /research-a,Page /research-b,Page /research-c' && shown[0].pinned, `Reading after a restart: ${shown.map((tab) => tab.title).join()}.`)
         await next.evaluate(`${ws}.switchTo({ index: 1 }).then(() => true)`)
         await next.delay(600)
+        // The tab Main shows wakes and loads; until its page's title arrives it is listed by its address (slow under heavy load).
+        await next.wait(`${host}.getTabs().then((t) => t.some((x) => x.active && x.title === 'Page /main-a'))`, 5000, 'the page Main shows to load its title').catch(() => undefined)
         const other = JSON.parse(await next.evaluate(`${host}.getTabs().then((t) => JSON.stringify(t))`))
         const folders = JSON.parse(await next.evaluate(`${host}.getTabFolders().then((f) => JSON.stringify(f))`))
         // Only the tab Main shows may load; the others stay unloaded until clicked.
@@ -3015,7 +3058,15 @@ export const checks = {
         const shown = JSON.parse(await next.evaluate(`${host}.getTabs().then((t) => JSON.stringify(t))`))
         expect(nextState.workspaces.length === 1 && nextState.workspaces[0].name === 'Main' && nextState.workspaces[0].tabCount === 2, `A version 2 state opened as ${JSON.stringify(nextState.workspaces)}.`)
         expect(shown.map((tab) => tab.title).join() === 'Old B,Old A' && shown[0].folderId === 'old-f', `Its tabs in Main: ${JSON.stringify(shown.map((tab) => [tab.title, tab.folderId]))}.`)
+        // No saved workspaces were read (the state predates them): sign-in data on disk is never taken for leftovers then.
+        await next.delay(1500)
+        const kept = [join(next.profile, 'Partitions', 'intoponet-ws-unknown-e2e', 'Cookies'), join(next.profile, 'site-permissions.ws-unknown-e2e.json')]
+        expect(kept.every((path) => existsSync(path)), `Starting without saved workspaces removed sign-in data: ${kept.filter((path) => !existsSync(path)).map((path) => path.slice(next.profile.length + 1)).join(', ')} is gone.`)
         return 'migrated'
+      }, (profile) => {
+        mkdirSync(join(profile, 'Partitions', 'intoponet-ws-unknown-e2e'), { recursive: true })
+        writeFileSync(join(profile, 'Partitions', 'intoponet-ws-unknown-e2e', 'Cookies'), 'not ours to judge')
+        writeFileSync(join(profile, 'site-permissions.ws-unknown-e2e.json'), '{}')
       })
       expect(migrated === 'migrated', 'The relaunched app did not check the migration.')
 
@@ -3045,7 +3096,22 @@ export const checks = {
       await ctx.click('.tab-rail-workspace-undo button')
       await ctx.wait(`${ws}.get().then((s) => s.workspaces.length === 2 && s.activeId === ${JSON.stringify(researchId)} && !s.recentlyDeleted)`, 3000, 'Undo to bring Reading back')
       expect(await titles() === 'research-a research-b research-c' && (await tabs()).some((tab) => tab.id === researchC), `After Undo Reading holds: ${await titles()}.`)
-      return `Created, named (icon and colour), renamed, reordered, deleted with confirmation and Undo; each workspace kept its own pinned tab, folder and open tabs; ⌃1/⌃2 switched in ${Math.round(times[0])}–${Math.round(slowest)} ms with the other workspace's sleeping tab left asleep; command menu, swipe and keyboard switched; shared and own favourites; private tabs in no workspace and never saved; restored after a restart and migrated a version 2 state into Main; axe clean.`
+
+      // A tab closed in Reading's folder, reopened while Main is shown, comes back in Reading and in that folder.
+      const papers = JSON.parse(await ctx.evaluate(`${host}.getTabFolders().then((f) => JSON.stringify(f))`)).find((folder) => folder.name === 'Papers')
+      const closing = await byTitle('research-b')
+      expect(papers && closing?.folderId === papers.id, `research-b is not in Papers before closing: ${JSON.stringify(closing)}.`)
+      await ctx.evaluate(`${host}.closeTab(${JSON.stringify(closing.id)}).then(() => true)`)
+      await ctx.delay(400)
+      await ctx.evaluate(`${ws}.switchTo({ id: ${JSON.stringify(mainId)} }).then(() => true)`)
+      await ctx.delay(600)
+      await ctx.evaluate(`${host}.reopenClosedTab().then(() => true)`)
+      await ctx.wait(`${ws}.get().then((s) => s.activeId === ${JSON.stringify(researchId)})`, 3000, 'reopening the closed tab to show Reading, where it was closed')
+      await ctx.wait(`${host}.getTabs().then((t) => t.some((x) => x.active && x.url.endsWith('/research-b')))`, 6000, 'the reopened tab to be shown in Reading')
+      const reopened = (await tabs()).find((tab) => tab.url.endsWith('/research-b'))
+      expect(reopened.folderId === papers.id, `The reopened tab came back outside its folder (folder ${reopened.folderId ?? 'none'}).`)
+      expect((await tabs()).map((tab) => tab.url.split('/').pop()).join(' ') === 'research-a research-b research-c', `After reopening, Reading holds: ${(await tabs()).map((tab) => tab.url).join(', ')}.`)
+      return `Created, named (icon and colour), renamed, reordered, deleted with confirmation and Undo; each workspace kept its own pinned tab, folder and open tabs; ⌃1/⌃2 switched in ${Math.round(times[0])}–${Math.round(slowest)} ms with the other workspace's sleeping tab left asleep; command menu, swipe and keyboard switched; shared and own favourites; private tabs in no workspace and never saved; restored after a restart and migrated a version 2 state into Main; a tab closed in a folder reopened from another workspace came back in its workspace and folder; axe clean.`
     } finally {
       server.close()
     }
@@ -4899,9 +4965,26 @@ export const checks = {
       // Grouping tabs that are gone (closed while Tidy's preview was open) is refused, not reported as done with an Undo.
       expect(await ctx.evaluate(`${host}.groupTabs([{ name: 'Gone', tabIds: ['no-such-tab'] }]).then(() => 'grouped', () => 'refused')`) === 'refused', 'Grouping tabs that are gone was reported as done.')
       expect((await folders()).length === 0, 'Grouping tabs that are gone made a folder.')
+      // A pair side by side is never broken: with b beside the control page, Group by story leaves b (and so has one article, too few for a folder)...
+      await ctx.evaluate(`${host}.splitTab(${JSON.stringify(b.id)}, ${JSON.stringify(control.id)}, 'left').then(() => true)`)
+      await ctx.wait(`${host}.getTabs().then((t) => t.find((x) => x.id === ${JSON.stringify(b.id)})?.split?.partnerId === ${JSON.stringify(control.id)})`, 4000, 'b and the control page to be side by side')
+      await ctx.wait(`!!document.querySelector('.tab-rail-pair')`, 4000, 'the sidebar to show the pair')
+      await ctx.click('button[aria-label="Group by story"]')
+      await ctx.delay(800)
+      expect((await folders()).length === 0 && (await byUrl('/b'))?.split?.partnerId === control.id, `Group by story broke a pair or made a folder for one article: ${JSON.stringify({ folders: await folders(), b: await byUrl('/b') })}.`)
+      // ...and main, asked for both articles anyway, moves only the one not in a pair.
+      const pairUndo = JSON.parse(await ctx.evaluate(`${host}.groupTabs([{ name: ${JSON.stringify(label)}, tabIds: [${JSON.stringify(a.id)}, ${JSON.stringify(b.id)}], storyId: ${JSON.stringify(made.storyId)} }]).then((r) => JSON.stringify(r))`))
+      const [pairA, pairB] = [await byUrl('/a'), await byUrl('/b')]
+      expect(!!pairA?.folderId && !pairB?.folderId && pairB?.split?.partnerId === control.id && (await byUrl('/control'))?.split?.partnerId === b.id, `Grouping one side of a pair moved it out of the pair: ${JSON.stringify({ a: pairA, b: pairB })}.`)
+      expect(pairUndo.moved === 1 && pairUndo.folders === 1, `Grouping reported ${JSON.stringify(pairUndo)}; one tab moved, into one folder.`)
+      await ctx.evaluate(`${host}.undoGroupTabs(${JSON.stringify(pairUndo.undoId)}).then(() => true)`)
+      await ctx.evaluate(`${host}.unsplitTab(${JSON.stringify(b.id)}).then(() => true)`)
+      await ctx.wait(`window.intoponet.browserHost.getTabFolders().then((f) => f.length === 0)`, 4000, 'the one-article folder to be undone')
+      await ctx.wait(`!document.querySelector('.tab-rail-pair') && !document.querySelector('.tab-rail-folder')`, 4000, 'the sidebar to show the pair ended and no folder')
       // Hovering the folder highlights its story on the globe; leaving clears it.
       await ctx.click('button[aria-label="Group by story"]')
       await ctx.wait(`window.intoponet.browserHost.getTabFolders().then((f) => f.some((x) => x.storyId))`, 8000, 'the story folder again')
+      await ctx.wait(`[...document.querySelectorAll('.tab-rail-archived')].some((e) => e.textContent.includes('Grouped 2 tabs by story'))`, 3000, 'the notice to count the two tabs grouped')
       const hovered = (await folders()).find((folder) => folder.storyId)
       const at = JSON.parse(await ctx.evaluate(`JSON.stringify((() => { const r = document.querySelector('[data-story-id="${hovered.storyId}"] .tab-rail-folder-head').getBoundingClientRect(); return { x: r.x + 40, y: r.y + r.height / 2 } })())`))
       await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: at.x, y: at.y })
@@ -4978,6 +5061,10 @@ export const checks = {
       // Laya on (its model downloads here, which the full tier allows). Not awaited: the download can take minutes.
       await ctx.evaluate(`void window.intoponet.laya.enable().catch(() => undefined), true`)
       await ctx.wait(`window.intoponet.laya.status().then((s) => s.enabled && s.model.downloaded && s.model.verified)`, 900_000, 'Laya to be on with its model ready')
+      // A cooking page side by side with an astronomy page: their topics differ, so Tidy suggests neither (it never breaks a pair).
+      const [c1, a1] = [(await tabs()).find((tab) => tab.url === `${origin}/c1`), (await tabs()).find((tab) => tab.url === `${origin}/a1`)]
+      await ctx.evaluate(`${host}.splitTab(${JSON.stringify(c1.id)}, ${JSON.stringify(a1.id)}, 'left').then(() => true)`)
+      await ctx.wait(`${host}.getTabs().then((t) => t.find((x) => x.id === ${JSON.stringify(c1.id)})?.split?.partnerId === ${JSON.stringify(a1.id)})`, 4000, 'the cooking and astronomy pages to be side by side')
       const orderBefore = (await tabs()).map((tab) => tab.id).join(' ')
       // The suggestion is shown and nothing moves until accepted.
       const suggestion = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.tidyTabsSuggest().then((s) => JSON.stringify(s))`))
@@ -4989,6 +5076,7 @@ export const checks = {
         expect(topics.size === 1 && !topics.has('other'), `Tidy mixed topics in "${group.name}": ${group.tabIds.map((id) => byId.get(id)).join(' | ')}.`)
       }
       expect(new Set(suggestion.groups.flatMap((group) => group.tabIds.map((id) => topicOf(byId.get(id))))).size === 2, 'Tidy did not separate cooking from astronomy.')
+      expect(!suggestion.groups.some((group) => group.tabIds.includes(c1.id) || group.tabIds.includes(a1.id)), `Tidy suggested moving one side of a pair: ${JSON.stringify(suggestion.groups)}.`)
       expect((await folders()).length === 0, 'Tidy moved tabs before they were accepted.')
       // A private tab about cooking is open during a suggestion: its title must not reach the model, and nothing may be requested.
       await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(true).then(() => true)`)
@@ -5016,14 +5104,25 @@ export const checks = {
       })
       await ctx.shot('tidy-preview')
       await axeAudit(ctx, 'the Tidy preview', '.tidy-sheet')
+      // A suggested tab (not the one shown) closes while the preview is open: Accept moves the others, and says how many it moved.
+      const shownId = (await tabs()).find((tab) => tab.active)?.id
+      const closedMeanwhile = suggestion.groups.flatMap((group) => group.tabIds).find((id) => id !== shownId)
+      await ctx.evaluate(`${host}.closeTab(${JSON.stringify(closedMeanwhile)}).then(() => true)`)
+      await ctx.delay(500)
+      const moved = suggestion.groups.reduce((n, group) => n + group.tabIds.length, 0) - 1
       await ctx.click('.tidy-accept')
       await ctx.wait(`window.intoponet.browserHost.getTabFolders().then((f) => f.length === ${suggestion.groups.length})`, 10_000, 'the accepted Tidy folders')
       const accepted = await tabs()
-      expect(accepted.filter((tab) => tab.folderId).length === suggestion.groups.reduce((n, group) => n + group.tabIds.length, 0), 'Accepting did not move exactly the suggested tabs.')
+      expect(accepted.filter((tab) => tab.folderId).length === moved, 'Accepting did not move exactly the suggested tabs still open.')
+      await ctx.wait(`[...document.querySelectorAll('.tab-rail-archived')].some((e) => e.textContent.includes(${JSON.stringify(`(${moved} ${moved === 1 ? 'tab' : 'tabs'})`)}))`, 3000, `the Tidy notice to count the ${moved} tabs it moved`).catch(async (error) => {
+        throw new CheckFailure(`${error.message} The notice says: ${await ctx.evaluate(`[...document.querySelectorAll('.tab-rail-archived')].map((e) => e.textContent).join(' | ')`)}`)
+      })
+      expect(accepted.find((tab) => tab.id === c1.id)?.split?.partnerId === a1.id && !accepted.find((tab) => tab.id === c1.id)?.folderId, 'Accepting Tidy broke the pair side by side.')
       await ctx.click('.tab-rail-archived .tab-rail-undo')
       await ctx.wait(`window.intoponet.browserHost.getTabFolders().then((f) => f.length === 0)`, 10_000, 'Undo to remove the Tidy folders')
-      expect((await tabs()).map((tab) => tab.id).join(' ') === orderBefore, 'Undo did not restore the tab order.')
-      return `Laya off: Tidy explained it and offered Group by story. Laya on: ${suggestion.groups.length} groups (${suggestion.groups.map((group) => group.name).join('; ')}) separated cooking from astronomy; nothing moved before Accept; Undo restored the order.`
+      expect((await tabs()).map((tab) => tab.id).join(' ') === orderBefore.split(' ').filter((id) => id !== closedMeanwhile).join(' '), 'Undo did not restore the tab order.')
+      expect((await tabs()).find((tab) => tab.id === a1.id)?.split?.partnerId === c1.id, 'Undoing Tidy broke the pair side by side.')
+      return `Laya off: Tidy explained it and offered Group by story. Laya on: ${suggestion.groups.length} groups (${suggestion.groups.map((group) => group.name).join('; ')}) separated cooking from astronomy and left a pair side by side alone; nothing moved before Accept; with a suggested tab closed meanwhile, Accept moved the rest and its notice counted ${moved}; Undo restored the order.`
     } finally {
       server.close()
     }
@@ -5168,6 +5267,19 @@ export const checks = {
       expect(!previewLeft, "A link preview opened in Work stayed open after switching to Main, where Open as Tab would keep Work's sign-in.")
       await showIn(workId, 'who=dan')
 
+      // A tab closed in Work and reopened while Main is shown comes back in Work, with Work's sign-ins (never Main's).
+      const popupTab = (await tabsOf()).find((item) => item.url.includes('who=popup'))
+      expect(popupTab, "Work's popup tab is missing.")
+      await ctx.evaluate(`${host}.closeTab(${JSON.stringify(popupTab.id)}).then(() => true)`)
+      await ctx.delay(500)
+      await ctx.evaluate(`${ws}.switchTo({ id: ${JSON.stringify(mainId)} }).then(() => true)`)
+      await ctx.delay(600)
+      await ctx.evaluate(`${host}.reopenClosedTab().then(() => true)`)
+      await ctx.wait(`${ws}.get().then((s) => s.activeId === ${JSON.stringify(workId)})`, 4000, 'reopening the closed tab to show Work, where it was closed')
+      await waitPage('who=popup', 'Signed in as dan')
+      const reopenedIn = await ctx.main(`(() => { const page = electron.webContents.getAllWebContents().find((w) => !w.isDestroyed() && w.getURL().includes('who=popup')); return page ? page.session === electron.session.fromPartition(${JSON.stringify(`persist:intoponet-ws-${workId}`)}) : null })()`)
+      expect(reopenedIn === true, `The tab reopened from Work is not in Work's session (${reopenedIn}).`)
+
       // A workspace with its own sign-ins deleted just before quitting (inside its Undo window) takes its sign-ins with it.
       const gone = JSON.parse(await ctx.evaluate(`${ws}.create({ name: 'Gone' }).then((s) => JSON.stringify(s))`)).activeId
       await ctx.evaluate(`${ws}.update(${JSON.stringify(gone)}, { separateSignIns: true }).then(() => true)`)
@@ -5187,6 +5299,11 @@ export const checks = {
       await waitForQuit(ctx.profile)
       // The quit app has written its last files (its helpers outlive the main process for a moment).
       await new Promise((resolve) => setTimeout(resolve, 2500))
+      // What a crash inside a deletion's Undo window leaves: a workspace's partition folder and permission answers, with no workspace.
+      mkdirSync(join(ctx.profile, 'Partitions', 'intoponet-ws-crashed-e2e'), { recursive: true })
+      writeFileSync(join(ctx.profile, 'Partitions', 'intoponet-ws-crashed-e2e', 'Cookies'), 'left behind')
+      writeFileSync(join(ctx.profile, 'site-permissions.ws-crashed-e2e.json'), '{}')
+      expect(existsSync(join(ctx.profile, 'Partitions', `intoponet-ws-${gone}`)) && existsSync(join(ctx.profile, 'Partitions', `intoponet-ws-${workId}`)), 'The Gone and Work partition folders are not where the relaunch check looks for them.')
       const before = process.env.E2E_PROFILE
       process.env.E2E_PROFILE = ctx.profile
       try {

@@ -206,13 +206,19 @@ export class PasswordVault {
     })
   }
 
-  /** Forgets every sign-in saved in one workspace's own scope (when its sign-ins are deleted). */
+  /** Forgets every sign-in saved in one workspace's own scope (when its sign-ins are deleted). The file is left alone when it holds none. */
   removeWorkspace(workspaceId: string): Promise<number> {
     return this.mutate((data) => {
       const before = data.logins.length
       data.logins = data.logins.filter((login) => login.workspaceId !== workspaceId)
       return before - data.logins.length
-    })
+    }, (removed) => removed > 0)
+  }
+
+  /** The workspaces with sign-ins saved in their own scope (none when the file cannot be opened). */
+  async workspaceIds(): Promise<string[]> {
+    await this.load()
+    return [...new Set((this.data?.logins ?? []).flatMap((login) => (login.workspaceId ? [login.workspaceId] : [])))]
   }
 
   async isNever(origin: string): Promise<boolean> {
@@ -238,13 +244,14 @@ export class PasswordVault {
     })
   }
 
-  /** Apply a change to a copy, seal it, and keep it only once it is on disk. One change at a time. */
-  private mutate<T>(change: (data: VaultData) => T): Promise<T> {
+  /** Apply a change to a copy, seal it, and keep it only once it is on disk. One change at a time. `changed` false: nothing to write. */
+  private mutate<T>(change: (data: VaultData) => T, changed: (result: T) => boolean = () => true): Promise<T> {
     const run = this.queue.then(async () => {
       await this.load()
       if (!this.data) throw new Error('Saved passwords could not be opened on this Mac.')
       const next = structuredClone(this.data)
       const result = change(next)
+      if (!changed(result)) return result
       await this.write(next)
       this.data = next
       return result

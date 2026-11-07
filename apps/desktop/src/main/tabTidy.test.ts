@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { suggestGroups, tidyCandidates, tidyText, TIDY_MAX_GROUPS, TIDY_SIMILARITY, type TidyTab } from './tabTidy'
+import { keepPairsWhole, suggestGroups, tidyCandidates, tidyText, TIDY_MAX_GROUPS, TIDY_SIMILARITY, type TidyTab } from './tabTidy'
 
 const vector = (...values: number[]) => new Float32Array(values)
 
@@ -100,5 +100,21 @@ describe('suggestGroups', () => {
 
   it('needs one vector per candidate', () => {
     expect(() => suggestGroups([vector(1, 0)], [tab('a', 'A'), tab('b', 'B')])).toThrow()
+  })
+})
+
+describe('keepPairsWhole', () => {
+  const tab = (id: string, title: string): TidyTab => ({ id, url: `https://site.example/${id}`, title })
+
+  it('suggests a side of a pair only in the same folder as its other side, and drops groups left too small', () => {
+    const tabs: TidyTab[] = [
+      { ...tab('l', 'Left'), split: { partnerId: 'r' } },
+      { ...tab('r', 'Right'), split: { partnerId: 'l' } },
+      tab('a', 'A'), tab('b', 'B'), tab('c', 'C'),
+    ]
+    expect(keepPairsWhole([{ name: 'One', tabIds: ['l', 'a', 'b'] }, { name: 'Two', tabIds: ['r', 'c'] }, { name: 'Both', tabIds: ['l', 'r'] }], tabs)).toEqual([
+      { name: 'One', tabIds: ['a', 'b'] },
+      { name: 'Both', tabIds: ['l', 'r'] },
+    ])
   })
 })
