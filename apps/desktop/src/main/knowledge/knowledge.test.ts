@@ -286,6 +286,32 @@ describe('KnowledgeService', () => {
     expect(await knowledge.search('Halifax')).toEqual([])
   })
 
+  it('keeps every change when absorbs, edits and removals overlap', async () => {
+    const crypto = createAesGcmCrypto(randomBytes(32))
+    let page: KnowledgePage = fakePage('https://en.wikipedia.org/wiki/Halifax_Explosion', {})
+    const knowledge = new KnowledgeService({ dir, crypto, getActivePage: () => page })
+    const first = await knowledge.commit((await knowledge.preview('article') as AbsorbPreview).previewId)
+    const doomed = await (async () => { page = fakePage('https://example.org/doomed', {}); return knowledge.commit((await knowledge.preview('article') as AbsorbPreview).previewId) })()
+    const previews: AbsorbPreview[] = []
+    for (const url of ['https://example.org/one', 'https://example.org/two']) {
+      page = fakePage(url, {})
+      previews.push(await knowledge.preview('article') as AbsorbPreview)
+    }
+    // Two absorbs, two entity removals on another page and a removal, all at once (quick clicks).
+    await Promise.all([
+      ...previews.map((preview) => knowledge.commit(preview.previewId)),
+      knowledge.update(first.id, { removeEntities: ['Boston'] }),
+      knowledge.update(first.id, { removeEntities: ['Halifax'] }),
+      knowledge.remove(doomed.id),
+    ])
+    const reopened = new KnowledgeService({ dir, crypto, getActivePage: () => null })
+    const records = await reopened.list()
+    expect(records.map((record) => record.url).sort()).toEqual(['https://en.wikipedia.org/wiki/Halifax_Explosion', 'https://example.org/one', 'https://example.org/two'])
+    const places = records.find((record) => record.id === first.id)!.places.map((place) => place.name)
+    expect(places).not.toContain('Boston')
+    expect(places).not.toContain('Halifax')
+  })
+
   it('refuses sensitive pages before running any script, and form pages after', async () => {
     const login = fakePage('https://example.com/signin', {})
     expect(await service(login).preview('article')).toEqual({ refused: true, reason: REFUSALS.sensitivePage })

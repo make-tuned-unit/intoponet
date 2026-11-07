@@ -53,6 +53,8 @@ export class KnowledgeService {
   private readonly index = new KnowledgeIndex()
   private store: KnowledgeStore | null = null
   private ready: Promise<KnowledgeStore> | null = null
+  /** Changes run one at a time, each on the result of the last: quick clicks must not undo each other. */
+  private changes: Promise<unknown> = Promise.resolve()
   private readonly now: () => number
 
   constructor(private readonly options: {
@@ -164,7 +166,11 @@ export class KnowledgeService {
     }
   }
 
-  async commit(previewId: string, options: { removeEntities?: string[]; note?: string } = {}): Promise<KnowledgeRecord> {
+  commit(previewId: string, options: { removeEntities?: string[]; note?: string } = {}): Promise<KnowledgeRecord> {
+    return this.serial(() => this.commitNow(previewId, options))
+  }
+
+  private async commitNow(previewId: string, options: { removeEntities?: string[]; note?: string }): Promise<KnowledgeRecord> {
     this.sweep()
     const preview = this.previews.get(previewId)
     if (!preview) throw new Error('This preview has expired. Absorb the page again.')
@@ -224,13 +230,21 @@ export class KnowledgeService {
     return this.index.search(query, Math.min(limit, KNOWLEDGE_LIMITS.searchLimit))
   }
 
-  async remove(id: string): Promise<void> {
+  remove(id: string): Promise<void> {
+    return this.serial(() => this.removeNow(id))
+  }
+
+  private async removeNow(id: string): Promise<void> {
     await (await this.load()).remove(id)
     this.index.remove(id)
     this.notify({ type: 'remove', id })
   }
 
-  async update(id: string, patch: { note?: string | null; removeEntities?: string[]; title?: string }): Promise<KnowledgeRecord> {
+  update(id: string, patch: { note?: string | null; removeEntities?: string[]; title?: string }): Promise<KnowledgeRecord> {
+    return this.serial(() => this.updateNow(id, patch))
+  }
+
+  private async updateNow(id: string, patch: { note?: string | null; removeEntities?: string[]; title?: string }): Promise<KnowledgeRecord> {
     const store = await this.load()
     const document = await store.get(id)
     if (!document) throw new Error('That absorbed page no longer exists.')
@@ -249,7 +263,11 @@ export class KnowledgeService {
   }
 
   /** Recompute entities, places and dates from the stored paragraphs. */
-  async reindex(id: string): Promise<KnowledgeRecord> {
+  reindex(id: string): Promise<KnowledgeRecord> {
+    return this.serial(() => this.reindexNow(id))
+  }
+
+  private async reindexNow(id: string): Promise<KnowledgeRecord> {
     const store = await this.load()
     const document = await store.get(id)
     if (!document) throw new Error('That absorbed page no longer exists.')
@@ -286,11 +304,21 @@ export class KnowledgeService {
     return knowledgeToJsonLd(documents, new Date(this.now()))
   }
 
-  async removeAll(): Promise<void> {
+  removeAll(): Promise<void> {
+    return this.serial(() => this.removeAllNow())
+  }
+
+  private async removeAllNow(): Promise<void> {
     await (await this.load()).removeAll()
     this.index.clear()
     this.previews.clear()
     this.notify({ type: 'clear' })
+  }
+
+  private serial<T>(change: () => Promise<T>): Promise<T> {
+    const run = this.changes.then(change, change)
+    this.changes = run.catch(() => undefined)
+    return run
   }
 }
 
