@@ -76,6 +76,14 @@ describe('PasswordVault', () => {
     expect(file.data!.toString()).toBe('not ours')
   })
 
+  it('treats a file of zero bytes as nothing saved yet, so passwords can still be saved', async () => {
+    const file = memoryFile(Buffer.alloc(0))
+    const vault = new PasswordVault(fakeCrypto(), file)
+    expect(await vault.status()).toMatchObject({ unreadable: false, count: 0 })
+    await vault.save('https://example.com', 'ada', 'pw')
+    expect(await new PasswordVault(fakeCrypto(), file).list()).toEqual([expect.objectContaining({ username: 'ada' })])
+  })
+
   it('opens the file once Keychain access is allowed, without a restart, and never saves over it before', async () => {
     const crypto = fakeCrypto()
     const file = memoryFile()

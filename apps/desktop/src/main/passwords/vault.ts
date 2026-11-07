@@ -91,7 +91,8 @@ export class PasswordVault {
     this.loading = (async () => {
       try {
         const sealed = this.file.read()
-        if (!sealed) {
+        // No file, or one of zero bytes (it holds nothing, e.g. left by a crash): nothing saved yet.
+        if (!sealed || sealed.length === 0) {
           this.data = emptyData()
           this.unreadable = false
           return

@@ -14,6 +14,19 @@ describe('readSealedPrivateLibrary', () => {
     expect(decrypt).not.toHaveBeenCalled()
   })
 
+  it('treats a sealed file of zero bytes as no library yet, not a damaged one', async () => {
+    const decrypt = vi.fn()
+    await expect(
+      readSealedPrivateLibrary({
+        encryptionAvailable: true,
+        fileExists: true,
+        fileEmpty: true,
+        decrypt,
+      }),
+    ).resolves.toEqual({ status: 'ok', payload: null })
+    expect(decrypt).not.toHaveBeenCalled()
+  })
+
   it('returns a distinct error and does not decrypt when encryption is unavailable', async () => {
     const decrypt = vi.fn()
     await expect(

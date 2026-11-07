@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { basename, dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { readFile } from 'node:fs/promises'
-import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
+import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, unlinkSync } from 'node:fs'
 import {
   app,
   BrowserWindow,
@@ -1328,6 +1328,7 @@ async function readSealedLibrary(): Promise<PrivateLibraryReadResult> {
   const result = await readSealedPrivateLibrary({
     encryptionAvailable: await safeStorage.isAsyncEncryptionAvailable(),
     fileExists: existsSync(privateLibraryPath()),
+    fileEmpty: existsSync(privateLibraryPath()) && statSync(privateLibraryPath()).size === 0,
     decrypt: () => safeStorage.decryptStringAsync(readFileSync(privateLibraryPath())),
     reEncrypt: writeSealedLibrary,
   })
@@ -1369,17 +1370,8 @@ function openPasswordVault(): PasswordVault {
     },
     {
       read: () => (existsSync(passwordVaultPath()) ? readFileSync(passwordVaultPath()) : null),
-      write: (data) => {
-        const destination = passwordVaultPath()
-        const temporary = `${destination}.${randomUUID()}.tmp`
-        try {
-          writeFileSync(temporary, data, { mode: 0o600 })
-          renameSync(temporary, destination)
-        } catch (error) {
-          if (existsSync(temporary)) unlinkSync(temporary)
-          throw error
-        }
-      },
+      // Flushed to disk before it replaces the old file, like every other saved file.
+      write: (data) => writeFileAtomicSync(passwordVaultPath(), data),
     },
   )
 }
