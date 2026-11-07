@@ -37,6 +37,19 @@ export type BrowsingSettings = {
   tabSleep: TabSleepAfter
   tabSwitchOrder: TabSwitchOrder
   tabArchive: TabArchiveAfter
+  /** Video follows you: leaving a tab whose video plays floats that video in picture-in-picture (off by default). */
+  autoPictureInPicture: boolean
+}
+
+/** The tab the now-playing control stands for (null in the event when nothing plays). */
+export type NowPlayingSnapshot = {
+  tabId: string
+  title: string
+  /** Its media is playing now (false: paused, or floating and paused). */
+  playing: boolean
+  muted: boolean
+  /** The tab's video floats in picture-in-picture. */
+  pip: boolean
 }
 
 /** A page asked to open another app. Shown as "Open <appName>?" in the shell. */
@@ -68,6 +81,7 @@ export type BrowsingCommand =
   | { type: 'set-tab-sleep'; after: TabSleepAfter }
   | { type: 'set-tab-switch-order'; order: TabSwitchOrder }
   | { type: 'set-tab-archive'; after: TabArchiveAfter }
+  | { type: 'set-auto-picture-in-picture'; enabled: boolean }
 
 export interface BrowsingApi {
   decideExternal(id: string, decision: 'open' | 'cancel', always?: boolean): Promise<void>
@@ -79,6 +93,7 @@ export interface BrowsingApi {
   setTabSleep(after: TabSleepAfter): Promise<BrowsingSettings>
   setTabSwitchOrder(order: TabSwitchOrder): Promise<BrowsingSettings>
   setTabArchive(after: TabArchiveAfter): Promise<BrowsingSettings>
+  setAutoPictureInPicture(enabled: boolean): Promise<BrowsingSettings>
   subscribe(listener: (event: BrowsingEvent) => void): () => void
 }
 
@@ -107,6 +122,9 @@ export function parseBrowsingCommand(value: unknown): BrowsingCommand {
     case 'set-tab-archive':
       if (typeof v['after'] !== 'string' || !(TAB_ARCHIVE_AFTER as readonly string[]).includes(v['after'])) break
       return { type: 'set-tab-archive', after: v['after'] as TabArchiveAfter }
+    case 'set-auto-picture-in-picture':
+      if (typeof v['enabled'] !== 'boolean') break
+      return { type: 'set-auto-picture-in-picture', enabled: v['enabled'] }
     case 'external-pending':
     case 'settings':
     case 'make-default-browser':

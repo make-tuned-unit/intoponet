@@ -295,6 +295,14 @@ export const TOUR_STEPS: TourStep[] = [
     seconds: 8,
   },
   {
+    id: 'video-follows-you',
+    chapter: 'Browsing',
+    title: 'Video follows you',
+    body: 'Turn on “Float playing video when you switch tabs” in Settings › Browsing, and a video keeps playing in a small window when you leave its tab. The sidebar shows what is playing, with play, pause, mute and go-to-tab buttons.',
+    target: '.tab-rail',
+    seconds: 10,
+  },
+  {
     id: 'done',
     chapter: 'That’s the tour',
     title: 'The world is your start page',

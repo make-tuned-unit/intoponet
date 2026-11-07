@@ -553,6 +553,16 @@
       "tier": "core",
       "kind": "e2e",
       "promise": "When the sidebar layout of a supported sidebar-tab browser is found on this Mac, import previews and recreates its spaces as workspaces with their pinned tabs, folders (nesting kept) and favourites; unsupported or unreadable files are reported, never half-imported."
+    },
+    {
+      "id": "AUTO_PIP",
+      "title": "Video follows you",
+      "deps": [
+        "TABS"
+      ],
+      "tier": "core",
+      "kind": "e2e",
+      "promise": "With the setting on, switching away from a tab playing a video floats that video in picture-in-picture; returning to the tab docks it again; the sidebar shows a now-playing control that pauses, mutes or jumps to the tab; sites that refuse picture-in-picture keep playing in place."
     }
   ]
 }

@@ -29,9 +29,14 @@ describe('tab sleep', () => {
     expect(tabsDueForSleep(tabs, now, null)).toEqual([])
   })
 
+  it('never sleeps a tab whose video floats in picture-in-picture', () => {
+    const due = tabsDueForSleep([tab('floating', { pictureInPicture: true }), tab('plain')], 10_000, 1000)
+    expect(due).toEqual(['plain'])
+  })
+
   it('reads the settings file with defaults', () => {
-    expect(parseBrowsingSettingsFile(null)).toEqual({ pageAppearance: 'system', tabSleep: '1h', tabSwitchOrder: 'strip', tabArchive: 'off' })
-    expect(parseBrowsingSettingsFile({ pageAppearance: 'dark', tabSleep: '15m', tabSwitchOrder: 'recent', tabArchive: '1w' })).toEqual({ pageAppearance: 'dark', tabSleep: '15m', tabSwitchOrder: 'recent', tabArchive: '1w' })
-    expect(parseBrowsingSettingsFile({ tabSleep: '3d', tabSwitchOrder: 'random' })).toEqual({ pageAppearance: 'system', tabSleep: '1h', tabSwitchOrder: 'strip', tabArchive: 'off' })
+    expect(parseBrowsingSettingsFile(null)).toEqual({ pageAppearance: 'system', tabSleep: '1h', tabSwitchOrder: 'strip', tabArchive: 'off', autoPictureInPicture: false })
+    expect(parseBrowsingSettingsFile({ pageAppearance: 'dark', tabSleep: '15m', tabSwitchOrder: 'recent', tabArchive: '1w', autoPictureInPicture: true })).toEqual({ pageAppearance: 'dark', tabSleep: '15m', tabSwitchOrder: 'recent', tabArchive: '1w', autoPictureInPicture: true })
+    expect(parseBrowsingSettingsFile({ tabSleep: '3d', tabSwitchOrder: 'random', autoPictureInPicture: 'yes' })).toEqual({ pageAppearance: 'system', tabSleep: '1h', tabSwitchOrder: 'strip', tabArchive: 'off', autoPictureInPicture: false })
   })
 })

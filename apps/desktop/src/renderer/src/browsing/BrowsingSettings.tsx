@@ -60,6 +60,10 @@ export function BrowsingSettings() {
     setError('')
     void window.intoponet.browsing.setTabSwitchOrder(order).then(setSettings, () => setError('The tab order setting could not be changed.'))
   }
+  const chooseAutoPip = (enabled: boolean): void => {
+    setError('')
+    void window.intoponet.browsing.setAutoPictureInPicture(enabled).then(setSettings, () => setError('The picture-in-picture setting could not be changed.'))
+  }
   const makeDefault = (): void => {
     setError('')
     void window.intoponet.browsing.makeDefaultBrowser().then(setSettings, () => setError('macOS did not change the default browser.'))
@@ -100,6 +104,18 @@ export function BrowsingSettings() {
           </button>
         ))}
       </div>
+      <p id="auto-pip-label">Video follows you: when you leave a tab whose video is playing, the video floats in a small window on top, and returning to the tab docks it again. Sites that refuse keep playing where they are.</p>
+      <label className="browsing-switch">
+        <input
+          type="checkbox"
+          role="switch"
+          aria-labelledby="auto-pip-name"
+          checked={settings?.autoPictureInPicture ?? false}
+          disabled={!settings}
+          onChange={(event) => chooseAutoPip(event.currentTarget.checked)}
+        />
+        <span id="auto-pip-name">Float playing video when you switch tabs</span>
+      </label>
       <p className="browsing-default-status" role="status">
         {!settings ? 'Checking the default browser…' : settings.defaultBrowser.isDefault ? 'Intoponet is your default browser.' : 'Intoponet is not your default browser.'}
       </p>

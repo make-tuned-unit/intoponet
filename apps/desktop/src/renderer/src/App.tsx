@@ -138,6 +138,7 @@ import { inferUnifiedLauncherIntent } from './launcherIntent'
 import { TabDock } from './TabDock'
 import { TabRail } from './TabRail'
 import type { WorkspaceRequest } from './WorkspaceBar'
+import { useNowPlaying } from './nowPlaying/NowPlayingControl'
 import { PageTabStrip } from './PageTabStrip'
 import './shellChrome.css'
 import { BookmarkPane, type PaneFilter } from './BookmarkPane'
@@ -507,6 +508,7 @@ export function App() {
   const [passwordPicking, setPasswordPicking] = useState(false)
   const [sitePermissionMap, setSitePermissionMap] = useState<SitePermissionMap>({})
   const [tabs, setTabs] = useState<PageTabSnapshot[]>([])
+  const nowPlaying = useNowPlaying()
   const [fullWidth, setFullWidth] = useState(false)
   const [notice, setNotice] = useState('')
   /** Shown in the address field for a moment after the page address is copied (a notice would sit under the page). */
@@ -2897,6 +2899,7 @@ export function App() {
         onNewTab={openNewTab}
         archivedCount={justArchived?.ids.length ?? 0}
         onUndoArchive={undoArchive}
+        nowPlaying={nowPlaying}
         folders={tabFolders}
         renameFolderId={renameFolderId}
         onRenameHandled={() => setRenameFolderId(null)}

@@ -27,6 +27,8 @@ export type SleepCandidate = {
   /** When it was last shown or left. */
   lastShownAt: number
   audible: boolean
+  /** Its video floats in picture-in-picture (autoPip.ts). */
+  pictureInPicture?: boolean
   /** Camera or microphone asked for by its page. */
   capturing: boolean
   downloading: boolean
@@ -36,7 +38,7 @@ export type SleepCandidate = {
 export function tabsDueForSleep(tabs: readonly SleepCandidate[], now: number, afterMs: number | null): string[] {
   if (afterMs === null) return []
   return tabs
-    .filter((tab) => !tab.active && !tab.asleep && !tab.start && !tab.audible && !tab.capturing && !tab.downloading && now - tab.lastShownAt >= afterMs)
+    .filter((tab) => !tab.active && !tab.asleep && !tab.start && !tab.audible && !tab.pictureInPicture && !tab.capturing && !tab.downloading && now - tab.lastShownAt >= afterMs)
     .map((tab) => tab.id)
 }
 
@@ -55,7 +57,14 @@ export const TYPED_FORM_SCRIPT = `(() => {
   return !!active && active.isContentEditable
 })()`
 
-export type BrowsingSettingsFile = { pageAppearance: ReturnType<typeof parsePageAppearanceFile>; tabSleep: TabSleepAfter; tabSwitchOrder: TabSwitchOrder; tabArchive: TabArchiveAfter }
+export type BrowsingSettingsFile = {
+  pageAppearance: ReturnType<typeof parsePageAppearanceFile>
+  tabSleep: TabSleepAfter
+  tabSwitchOrder: TabSwitchOrder
+  tabArchive: TabArchiveAfter
+  /** Off unless turned on (Settings › Browsing). */
+  autoPictureInPicture: boolean
+}
 
 /** browsing-settings.json, with defaults for anything missing or damaged. */
 export function parseBrowsingSettingsFile(raw: unknown): BrowsingSettingsFile {
@@ -67,5 +76,6 @@ export function parseBrowsingSettingsFile(raw: unknown): BrowsingSettingsFile {
     tabSleep: typeof sleep === 'string' && (TAB_SLEEP_AFTER as readonly string[]).includes(sleep) ? sleep as TabSleepAfter : DEFAULT_TAB_SLEEP,
     tabSwitchOrder: typeof order === 'string' && (TAB_SWITCH_ORDERS as readonly string[]).includes(order) ? order as TabSwitchOrder : 'strip',
     tabArchive: isTabArchiveAfter(record['tabArchive']) ? record['tabArchive'] : DEFAULT_TAB_ARCHIVE,
+    autoPictureInPicture: record['autoPictureInPicture'] === true,
   }
 }

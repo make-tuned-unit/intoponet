@@ -188,6 +188,9 @@ const browserHost: BrowserHostApi = {
   setTabPinned: async (id, pinned) => {
     await invoke({ type: 'set-tab-pinned', id, pinned })
   },
+  toggleTabPlayback: async (id) => {
+    await invoke({ type: 'now-playing-toggle', id })
+  },
   setTabMuted: async (id, muted) => {
     await invoke({ type: 'set-tab-muted', id, muted })
   },
@@ -479,6 +482,7 @@ const browsing: BrowsingApi = {
   setTabSleep: (after) => browsingInvoke({ type: 'set-tab-sleep', after }) as Promise<BrowsingSettings>,
   setTabSwitchOrder: (order) => browsingInvoke({ type: 'set-tab-switch-order', order }) as Promise<BrowsingSettings>,
   setTabArchive: (after) => browsingInvoke({ type: 'set-tab-archive', after }) as Promise<BrowsingSettings>,
+  setAutoPictureInPicture: (enabled) => browsingInvoke({ type: 'set-auto-picture-in-picture', enabled }) as Promise<BrowsingSettings>,
   makeDefaultBrowser: () => browsingInvoke({ type: 'make-default-browser' }) as Promise<BrowsingSettings>,
   subscribe: (listener) => {
     const handler = (_event: Electron.IpcRendererEvent, event: BrowsingEvent): void => listener(event)

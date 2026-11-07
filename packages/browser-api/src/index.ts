@@ -231,6 +231,8 @@ export type BrowserHostEvent =
   | { type: 'pdf-export'; event: PdfExportEvent }
   | { type: 'protection-state'; protection: ProtectionSnapshot }
   | { type: 'tabs'; tabs: PageTabSnapshot[] }
+  /** What plays in a tab (the sidebar's now-playing control); null when nothing plays. */
+  | { type: 'now-playing'; nowPlaying: import('./browsing').NowPlayingSnapshot | null }
   | { type: 'tab-dock-state'; open: boolean }
   /** Full-screen toolbar auto-hide: the pointer moved into the page. */
   | { type: 'chrome-state'; revealed: boolean }
@@ -333,6 +335,8 @@ export interface BrowserHostApi {
   moveTab(id: string, toIndex: number): Promise<void>
   setTabPinned(id: string, pinned: boolean): Promise<void>
   setTabMuted(id: string, muted: boolean): Promise<void>
+  /** Plays or pauses the tab's media (the now-playing control). */
+  toggleTabPlayback(id: string): Promise<void>
   /** The tab's context menu (a native menu), at a point in the window or at the pointer. */
   showTabMenu(id: string, at?: { x: number; y: number }): Promise<void>
   /** Close the tab being shown (⌘W) and show the next one, or the globe when none are left. */
@@ -434,6 +438,8 @@ export type BrowserHostCommand =
   | { type: 'move-tab'; id: string; toIndex: number }
   | { type: 'set-tab-pinned'; id: string; pinned: boolean }
   | { type: 'set-tab-muted'; id: string; muted: boolean }
+  /** Plays or pauses a tab's media (the now-playing control). */
+  | { type: 'now-playing-toggle'; id: string }
   | { type: 'tab-menu'; id: string; x?: number; y?: number }
   | { type: 'close-active-tab' }
   | { type: 'reopen-closed-tab'; id?: string }
@@ -515,6 +521,7 @@ const commandTypes = new Set<BrowserHostCommand['type']>([
   'move-tab',
   'set-tab-pinned',
   'set-tab-muted',
+  'now-playing-toggle',
   'tab-menu',
   'close-active-tab',
   'reopen-closed-tab',
@@ -739,6 +746,8 @@ export function parseBrowserHostCommand(value: unknown): BrowserHostCommand {
     case 'set-tab-pinned':
       if (typeof value['pinned'] !== 'boolean') throw new Error('Invalid tab pin.')
       return { type, id: parseTabId(value['id']), pinned: value['pinned'] }
+    case 'now-playing-toggle':
+      return { type, id: parseTabId(value['id']) }
     case 'set-tab-muted':
       if (typeof value['muted'] !== 'boolean') throw new Error('Invalid tab mute.')
       return { type, id: parseTabId(value['id']), muted: value['muted'] }

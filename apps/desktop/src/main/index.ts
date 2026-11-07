@@ -51,6 +51,8 @@ import { focusLinkScript, isLinkPreviewRequest, parsePreviewMessage, PREVIEW_FOC
 import { collapseAdSlotsScript, UNCOLLAPSE_AD_SLOTS_SCRIPT } from './adCollapse'
 import { archiveAfterMs, DEFAULT_TAB_ARCHIVE, TabArchive, type ArchivedTab } from './tabArchive'
 import { DEFAULT_TAB_SLEEP, parseBrowsingSettingsFile, sleepAfterMs, tabsDueForSleep, TYPED_FORM_SCRIPT } from './tabSleep'
+import { AUTO_PIP_WORLD_ID, ENTER_PIP_SCRIPT, EXIT_PIP_SCRIPT, NowPlaying, TOGGLE_PLAYBACK_SCRIPT, type PipEnterResult } from './autoPip'
+import type { NowPlayingSnapshot } from '@intoponet/browser-api'
 import { browserContextExtras, searchSelectionLabel } from './browserContextMenu'
 
 declare const __INTOPONET_MAC_UPDATE_URL__: string
@@ -274,7 +276,14 @@ type OpenTab = {
   lastShownAt?: number
   /** The sidebar folder it is in (unpinned tabs only). */
   folderId?: string
+  /** Floating in picture-in-picture (Settings › Browsing: video follows you); docked again when shown. */
+  pictureInPicture?: boolean
 }
+
+/** Video follows you (Settings › Browsing): a tab left while its video plays floats that video. */
+let autoPictureInPicture = false
+/** What plays in which tab, for the now-playing control (autoPip.ts). */
+const nowPlaying = new NowPlaying()
 
 /** Asks before a page opens another app (externalOpen.ts); null until the app is ready. */
 let externalOpener: ExternalOpenBroker | null = null
@@ -560,6 +569,26 @@ function emit(event: BrowserHostEvent): void {
 
 /** At most about one per frame: a page can fire navigation and title events as fast as it likes. */
 const emitPanelState = coalesce(() => emit({ type: 'panel-state', panel: panelState() }))
+
+/** The now-playing control's tab (every tab, the one in front included), or null when nothing plays. */
+function nowPlayingSnapshot(): NowPlayingSnapshot | null {
+  return nowPlaying.snapshot(activeTabId, (tabId) => {
+    // Every workspace's tabs: a video in a workspace not shown keeps playing and stays listed.
+    const tab = allTabs().find((item) => item.id === tabId)
+    if (!tab || viewGone(tab.view)) return null
+    const contents = tab.view.webContents
+    return { title: capTitle(contents.getTitle() || tab.title || capUrl(tab.url)), muted: contents.isAudioMuted() }
+  })
+}
+const emitNowPlaying = coalesce(() => emit({ type: 'now-playing', nowPlaying: nowPlayingSnapshot() }))
+
+/** A tab's media started or stopped (the control lists it while it plays). */
+function setTabPlaying(view: WebContentsView, playing: boolean): void {
+  const tab = tabOfView(view)
+  if (!tab) return
+  nowPlaying.update(tab.id, { playing }, Date.now())
+  emitNowPlaying()
+}
 
 function exceptionsFilePath(): string {
   return join(app.getPath('userData'), 'protection-exceptions.json')
@@ -1299,12 +1328,45 @@ function detachActive(): void {
   }
 }
 
+/**
+ * Video follows you: the tab being left floats its largest playing video in picture-in-picture
+ * (asked in its page; a refusal leaves playback where it was). Only with the setting on.
+ */
+function floatLeavingTab(view: WebContentsView): void {
+  const tab = tabOfView(view)
+  if (!autoPictureInPicture || !tab || tab.start || tab.loadError || tab.asleep || viewGone(view)) return
+  void view.webContents.executeJavaScriptInIsolatedWorld(AUTO_PIP_WORLD_ID, [{ code: ENTER_PIP_SCRIPT }], true)
+    .then((result: PipEnterResult) => {
+      if (result !== 'entered') return
+      // Shown again before the answer came back: it is docked already.
+      if (activeTabId === tab.id) {
+        void view.webContents.executeJavaScriptInIsolatedWorld(AUTO_PIP_WORLD_ID, [{ code: EXIT_PIP_SCRIPT }], true).catch(() => undefined)
+        return
+      }
+      tab.pictureInPicture = true
+      nowPlaying.update(tab.id, { pip: true }, Date.now())
+      emitNowPlaying()
+    })
+    .catch(() => undefined)
+}
+
+/** Docks a tab's floating video (the tab is shown again). */
+function dockFloatingTab(tab: OpenTab): void {
+  if (!tab.pictureInPicture) return
+  delete tab.pictureInPicture
+  nowPlaying.update(tab.id, { pip: false }, Date.now())
+  if (!viewGone(tab.view)) void tab.view.webContents.executeJavaScriptInIsolatedWorld(AUTO_PIP_WORLD_ID, [{ code: EXIT_PIP_SCRIPT }], true).catch(() => undefined)
+}
+
 function showTab(id: string): WebContentsView | null {
   const tab = openTabs.find((item) => item.id === id)
   if (!tab) return null
   const preview = linkPreview
   if (preview) setImmediate(() => { if (linkPreview === preview) closeLinkPreview(false) })
-  if (pageView && pageView !== tab.view) detachActive()
+  if (pageView && pageView !== tab.view) {
+    floatLeavingTab(pageView)
+    detachActive()
+  }
   const now = Date.now()
   const previous = openTabs.find((item) => item.id === activeTabId)
   if (previous) previous.lastShownAt = now
@@ -1314,7 +1376,10 @@ function showTab(id: string): WebContentsView | null {
   const selectedUrl = tab.view.webContents.getURL()
   lastKnownUrl = safeHttpUrl(selectedUrl) ? selectedUrl : tab.url
   attachPageView()
+  // Returning to a tab docks its floating video again.
+  dockFloatingTab(tab)
   emitTabs()
+  emitNowPlaying()
   emitProtectionState()
   emitPasswordState()
   // A tab that loaded in the background missed its cosmetic rules and tracker stand-ins.
@@ -1416,10 +1481,14 @@ function switchWorkspace(target: WorkspaceSwitch): boolean {
   // What was shown goes out of sight (a private page too: the workspace asked for is what shows).
   const previous = openTabs.find((tab) => tab.id === activeTabId)
   if (previous) previous.lastShownAt = Date.now()
+  // Leaving the workspace floats its playing video, as leaving a tab does (video follows you).
+  if (pageView) floatLeavingTab(pageView)
   detachActive()
   pageView = null
   activeTabId = null
   openTabs.splice(0, openTabs.length, ...next.tabs, ...privateTabs)
+  // A floating video of a tab in the workspace now shown docks, unless its tab is the one shown (showTab docks that).
+  for (const tab of openTabs) if (tab.id !== next.activeTabId) dockFloatingTab(tab)
   tabFolders = next.folders
   const show = next.tabs.find((tab) => tab.id === next.activeTabId) ?? next.tabs.find((tab) => !tab.asleep) ?? next.tabs[0]
   if (showing) {
@@ -1437,6 +1506,7 @@ function switchWorkspace(target: WorkspaceSwitch): boolean {
   emitPanelState()
   emitProtectionState()
   emitWorkspaces(performance.now() - started)
+  emitNowPlaying()
   schedulePersistentStateSave()
   return true
 }
@@ -2001,7 +2071,7 @@ async function sleepIdleTabs(): Promise<void> {
     if (archiveMs !== null && (browsingData?.history.policy.footprints ?? true)) {
       const archived: ArchivedTab[] = []
       for (const tab of [...openTabs]) {
-        if (tab.id === activeTabId || tab.pinned || tab.start || tab.loadError || privateViews.has(tab.view) || now - (tab.lastShownAt ?? now) < archiveMs) continue
+        if (tab.id === activeTabId || tab.pinned || tab.start || tab.loadError || tab.pictureInPicture || privateViews.has(tab.view) || now - (tab.lastShownAt ?? now) < archiveMs) continue
         const live = !viewGone(tab.view) && !tab.asleep
         if (live) {
           const contents = tab.view.webContents
@@ -2029,6 +2099,7 @@ async function sleepIdleTabs(): Promise<void> {
         start: !!tab.start || !!tab.loadError,
         lastShownAt: tab.lastShownAt ?? now,
         audible: live && tab.view.webContents.isCurrentlyAudible(),
+        pictureInPicture: tab.pictureInPicture === true,
         capturing: capturingContents.has(contentsId),
         downloading: live && (browsingData?.downloads.activeForPage(String(contentsId)) ?? false),
       }
@@ -2053,6 +2124,7 @@ async function sleepIdleTabs(): Promise<void> {
  */
 function unloadTab(tab: OpenTab, options: { keepHistory: boolean; url?: string }): void {
   if (tab.start || tab.asleep || viewGone(tab.view) || pageView === tab.view) return
+  nowPlaying.forget(tab.id)
   const old = tab.view
   const liveUrl = old.webContents.getURL()
   let history: TabHistory | undefined
@@ -2116,6 +2188,7 @@ function discardTab(id: string, remember = true): void {
   const tab = index >= 0 ? openTabs.splice(index, 1)[0] : workspaces.takeParkedTab(id)
   if (!tab) return
   if (index < 0) emitWorkspaces()
+  nowPlaying.forget(tab.id)
   if (remember) rememberClosedTab(tab)
   crashRecovery.forget(tab.id)
   if (pageView === tab.view) {
@@ -2558,8 +2631,19 @@ function buildView(isPrivate = privateMode): WebContentsView {
     emitTabs()
     if (pageView === view) emitPanelState()
   })
-  // The tab's speaker icon.
-  view.webContents.on('audio-state-changed', () => emitTabs())
+  // The tab's speaker icon, and the now-playing control (autoPip.ts).
+  view.webContents.on('audio-state-changed', () => {
+    emitTabs()
+    emitNowPlaying()
+  })
+  view.webContents.on('media-started-playing', () => setTabPlaying(view, true))
+  view.webContents.on('media-paused', () => setTabPlaying(view, false))
+  view.webContents.on('did-navigate', () => {
+    const tab = tabOfView(view)
+    if (!tab) return
+    nowPlaying.forget(tab.id)
+    emitNowPlaying()
+  })
   view.webContents.on('did-stop-loading', () => {
     rememberTab(view)
     if (pageView !== view) return
@@ -3123,9 +3207,13 @@ async function handleBrowserCommand(
       if (activeTabId) showTab(activeTabId)
       else if (openTabs[0]) showTab(openTabs[0].id)
       break
-    case 'activate-tab':
+    case 'activate-tab': {
+      // A tab in another workspace (the now-playing control's go-to): its workspace is shown first.
+      const workspaceId = openTabs.some((tab) => tab.id === command.id) ? null : workspaces.workspaceOfParkedTab(command.id)
+      if (workspaceId) switchWorkspace({ id: workspaceId })
       showTab(command.id)
       break
+    }
     case 'close-tab':
       closeTab(command.id)
       break
@@ -3183,11 +3271,26 @@ async function handleBrowserCommand(
       }
       break
     case 'set-tab-muted': {
-      const tab = openTabs.find((item) => item.id === command.id)
+      const tab = allTabs().find((item) => item.id === command.id)
       if (tab && !viewGone(tab.view)) {
         tab.view.webContents.setAudioMuted(command.muted)
         emitTabs()
+        emitNowPlaying()
       }
+      break
+    }
+    case 'now-playing-toggle': {
+      const tab = allTabs().find((item) => item.id === command.id)
+      if (!tab || viewGone(tab.view)) break
+      // Play or pause the tab's media (a user gesture, so playback may start).
+      void tab.view.webContents.executeJavaScriptInIsolatedWorld(AUTO_PIP_WORLD_ID, [{ code: TOGGLE_PLAYBACK_SCRIPT }], true)
+        .then((result: string) => {
+          // Paused from the control: it stays listed so it can be played again.
+          if (result === 'paused') nowPlaying.update(tab.id, { playing: false, held: true }, Date.now())
+          if (result === 'playing') nowPlaying.update(tab.id, { playing: true, held: false }, Date.now())
+          emitNowPlaying()
+        })
+        .catch(() => undefined)
       break
     }
     case 'tab-menu': {
@@ -3618,6 +3721,7 @@ function browsingSettings(): BrowsingSettings {
     tabSleep: tabSleepAfter,
     tabSwitchOrder,
     tabArchive: tabArchiveAfter,
+    autoPictureInPicture,
     defaultBrowser: {
       isDefault: app.isDefaultProtocolClient('http') && app.isDefaultProtocolClient('https'),
       // Only the installed app: from a development build macOS would register Electron itself.
@@ -3637,7 +3741,8 @@ function wireBrowsing(): void {
   tabSleepAfter = stored.tabSleep
   tabSwitchOrder = stored.tabSwitchOrder
   tabArchiveAfter = stored.tabArchive
-  const saveSettings = (): Promise<void> => trackedWrite(settingsFile, JSON.stringify({ pageAppearance: pageAppearance.current, tabSleep: tabSleepAfter, tabSwitchOrder, tabArchive: tabArchiveAfter })).catch(() => undefined)
+  autoPictureInPicture = stored.autoPictureInPicture
+  const saveSettings = (): Promise<void> => trackedWrite(settingsFile, JSON.stringify({ pageAppearance: pageAppearance.current, tabSleep: tabSleepAfter, tabSwitchOrder, tabArchive: tabArchiveAfter, autoPictureInPicture })).catch(() => undefined)
   externalOpener = new ExternalOpenBroker({
     emit: emitBrowsing,
     openExternal: (href) => shell.openExternal(href, { activate: true }),
@@ -3664,6 +3769,11 @@ function wireBrowsing(): void {
         return browsingSettings()
       case 'set-tab-sleep':
         tabSleepAfter = command.after
+        await saveSettings()
+        emitBrowsing({ type: 'settings', settings: browsingSettings() })
+        return browsingSettings()
+      case 'set-auto-picture-in-picture':
+        autoPictureInPicture = command.enabled
         await saveSettings()
         emitBrowsing({ type: 'settings', settings: browsingSettings() })
         return browsingSettings()
