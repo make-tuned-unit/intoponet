@@ -201,6 +201,7 @@ import { cityAliases, countryPlace, distanceKm as placeDistanceKm, nearestCountr
 import { Tour } from './tour/Tour'
 import type { TourControls } from './tour/steps'
 import { parseNewsDigest, type NewsDigest, type NewsHeadline, type RisingTerm } from '../../shared/news/newsDigest'
+import { matchTabsToStories, type StoryHeadlines } from '../../shared/news/storyTabs'
 import type { GlobalStory } from '../../shared/news/globalStories'
 import { isExcludedSite, type PrivacyState } from '@intoponet/browser-api'
 import { PrivacyPane } from './privacy/PrivacyPane'
@@ -717,6 +718,16 @@ export function App() {
   }, [designPreview, previewTopic, previewIntensity, previewRadiusScale, fieldView, personalActivity, eligiblePublicSnapshot, visibleGlobeSignals, newsDigest, selectedSignalId, globeLayerSet])
   // Story mountains: with local news on, the terrain is the stories outlets are covering (storyMountains.ts).
   const storyStories = useMemo(() => newsDigest?.mountains ?? [], [newsDigest])
+  // Open tabs that are articles of a story, matched here on this Mac against the digest (nothing about tabs is sent).
+  const storyEvidence = useMemo<StoryHeadlines[]>(() => storyStories.map((story) => ({
+    id: story.id,
+    label: storyLabel(story),
+    headlines: [{ title: story.title, url: story.url }, ...story.countries.map((country) => country.headline)],
+  })), [storyStories])
+  const tabStories = useMemo(() => matchTabsToStories(tabs, storyEvidence), [tabs, storyEvidence])
+  /** A story folder hovered or focused in the sidebar: its summit and strands are drawn, the camera stays put. */
+  const [storyHighlightId, setStoryHighlightId] = useState<string | null>(null)
+  const [groupRequest, setGroupRequest] = useState<number | undefined>(undefined)
   const storyMode = fieldView === 'public' && !designPreview && globeLayerSet.has('news') && storyStories.length > 0
   const storyKey = storyMode ? storyTerrainKey(storyStories) : ''
   // Rebuilt only when a height or story changes, not on every digest.
@@ -2204,7 +2215,12 @@ export function App() {
   }, [publicGlobe, visibleGlobeSignals, selectedSignal, labelView, bookmarks, globePrefs.pins, fieldView, knowledgeRecords, storyMode, storyStories])
   const hoveredStory = hoveredMarkerId?.startsWith(STORY_MARKER_PREFIX) ? storyStories.find((story) => storyMarkerId(story) === hoveredMarkerId) ?? null : null
   const pinnedStory = storyMode && pinnedStoryId ? storyStories.find((story) => story.id === pinnedStoryId) ?? null : null
-  const strandStory = pinnedStory ?? hoveredStory
+  const highlightStory = storyMode && storyHighlightId ? storyStories.find((story) => story.id === storyHighlightId) ?? null : null
+  const strandStory = pinnedStory ?? hoveredStory ?? highlightStory
+  useEffect(() => {
+    // The highlighted story, for checks and assistive tools that read the shell.
+    document.documentElement.dataset['storyHighlight'] = highlightStory?.id ?? ''
+  }, [highlightStory?.id])
   const storyStrands = useMemo(() => (storyMode && strandStory
     ? { summit: { ...strandStory.summit, height: strandStory.height }, ends: strandEnds(strandStory, pinnedStory ? 16 : 8), still: reduceMotion, terrain: storyTerrain }
     : null), [storyMode, strandStory, pinnedStory, reduceMotion, storyTerrain])
@@ -2561,6 +2577,8 @@ export function App() {
       app('my-map', 'Open My map', showLibrary, '', 'pins places'),
       hasPage && app('full-width', fullWidth ? 'Exit full width' : 'Full width', () => setBrowserFullWidth(!fullWidth), '', 'maximise'),
       storyStories.length > 0 && app('highest-peak', 'Fly to the highest story peak', () => findPeak(0), 'H', 'mountain news story'),
+      // Group by story acts on the sidebar, so it is offered only while the sidebar is shown.
+      tabs.length > 1 && sidebar.mode !== 'hidden' && app('group-tabs-by-story', 'Group tabs by story', () => setGroupRequest((n) => (n ?? 0) + 1), '', 'folder story match mountain'),
       app('tour', 'Take the tour', () => setTourOpen(true), '', 'help guide'),
       // Workspaces: switch (⌃1–9 do the same), make, rename and delete. The sidebar asks for names and confirmation.
       ...(workspaces && workspaces.workspaces.length > 1 ? workspaces.workspaces.map((workspace, index) => workspace.id !== workspaces.activeId && app(
@@ -2926,6 +2944,9 @@ export function App() {
         message={railMessage}
         workspaces={workspaces}
         workspaceRequest={workspaceRequest}
+        storyMatches={tabStories}
+        onStoryHighlight={setStoryHighlightId}
+        groupRequest={groupRequest}
       />
       <BookmarkPane
         open={bookmarksOpen && !fieldLabOpen}

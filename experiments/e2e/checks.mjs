@@ -3684,6 +3684,82 @@ export const checks = {
       server.close()
     }
   },
+
+  async STORY_TABS(ctx) {
+    await ctx.waitForNews()
+    await ctx.wait(`window.intoponet.browserHost.getNewsDigest().then((raw) => (JSON.parse(raw).mountains ?? []).some((m) => (m.countries ?? []).some((c) => c.headline && c.headline.title !== m.title)))`, 120_000, 'a story with two headlines in the news digest')
+    const digest = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getNewsDigest()`))
+    const story = digest.mountains.find((m) => (m.countries ?? []).some((c) => c.headline && c.headline.title !== m.title))
+    const second = story.countries.find((c) => c.headline && c.headline.title !== story.title).headline
+    const label = story.label ?? story.title
+    const storyName = label.length > 40 ? `${label.slice(0, 38)}…` : label
+    const escape = (text) => text.replace(/[&<>"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[char])
+    // Two articles of the story (matched by their titles), a control and a private tab with a matching title.
+    const titles = { '/a': `${story.title} | Harbour Daily`, '/b': `${second.title} | Tide Wire`, '/private': `${story.title} | Harbour Daily`, '/control': 'Cooking pasta for a crowd: ten easy sauces | Kitchen Notes' }
+    const hits = new Map()
+    const server = createServer((request, response) => {
+      const path = new URL(request.url, 'http://localhost').pathname
+      hits.set(path, (hits.get(path) ?? 0) + 1)
+      const title = titles[path] ?? 'Not found'
+      response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
+      response.end(`<!doctype html><meta charset="utf-8"><title>${escape(title)}</title><body style="font:16px system-ui;margin:40px"><h1>${escape(title)}</h1></body>`)
+    })
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+    const origin = `http://127.0.0.1:${server.address().port}`
+    const host = 'window.intoponet.browserHost'
+    const tabs = async () => JSON.parse(await ctx.evaluate(`${host}.getTabs().then((t) => JSON.stringify(t))`))
+    const folders = async () => JSON.parse(await ctx.evaluate(`${host}.getTabFolders().then((f) => JSON.stringify(f))`))
+    const byUrl = async (path) => (await tabs()).find((tab) => tab.url === `${origin}${path}`)
+    const requestCounts = () => JSON.stringify([...hits].sort())
+    try {
+      await ctx.click('button[aria-label="Pin tabs open"]')
+      for (const path of ['/a', '/b', '/control']) await openPage(ctx, `${origin}${path}`, 900)
+      await ctx.wait(`document.querySelectorAll('.tab-rail-story').length === 2`, 30_000, 'a story badge on each of the two articles')
+      const [a, b, control] = [await byUrl('/a'), await byUrl('/b'), await byUrl('/control')]
+      expect(!!a && !!b && !!control, 'The test pages did not open as tabs.')
+      expect(await ctx.evaluate(`!!document.querySelector('[data-tab-id="${a.id}"] .tab-rail-story') && !!document.querySelector('[data-tab-id="${b.id}"] .tab-rail-story')`), 'An article in the story has no badge.')
+      expect(await ctx.evaluate(`!document.querySelector('[data-tab-id="${control.id}"] .tab-rail-story')`), 'The unrelated control page has a story badge.')
+      // A private tab with the same title as an article gets no badge (and is never grouped).
+      await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(true).then(() => true)`)
+      await openPage(ctx, `${origin}/private`, 900)
+      const privateTab = await byUrl('/private')
+      expect(privateTab?.isPrivate === true, 'The private test tab is not private.')
+      await ctx.delay(800)
+      expect(await ctx.evaluate(`!document.querySelector('[data-tab-id="${privateTab.id}"] .tab-rail-story')`), 'A private tab was given a story badge.')
+      await ctx.delay(1500)
+      const baseline = requestCounts()
+      // Group by story: one folder named for the story, holding the two articles and nothing else.
+      const orderBefore = (await tabs()).map((tab) => tab.id).join(' ')
+      await ctx.click('button[aria-label="Group by story"]')
+      await ctx.wait(`window.intoponet.browserHost.getTabFolders().then((f) => f.some((x) => x.storyId))`, 8000, 'the story folder')
+      const made = (await folders()).find((folder) => folder.storyId)
+      expect(made.name === storyName, `The folder is named "${made.name}", not for the story "${storyName}".`)
+      const grouped = await tabs()
+      expect(grouped.find((tab) => tab.id === a.id)?.folderId === made.id && grouped.find((tab) => tab.id === b.id)?.folderId === made.id, 'The story’s two articles are not in its folder.')
+      expect(!grouped.find((tab) => tab.id === control.id)?.folderId && !grouped.find((tab) => tab.id === privateTab.id)?.folderId, 'The control or the private tab was grouped.')
+      await ctx.shot('story-folder')
+      // Undo puts back the order and removes the folder.
+      await ctx.click('.tab-rail-archived .tab-rail-undo')
+      await ctx.wait(`window.intoponet.browserHost.getTabFolders().then((f) => !f.some((x) => x.storyId))`, 8000, 'the story folder to be removed by Undo')
+      expect((await tabs()).map((tab) => tab.id).join(' ') === orderBefore, 'Undo did not restore the tab order.')
+      // Hovering the folder highlights its story on the globe; leaving clears it.
+      await ctx.click('button[aria-label="Group by story"]')
+      await ctx.wait(`window.intoponet.browserHost.getTabFolders().then((f) => f.some((x) => x.storyId))`, 8000, 'the story folder again')
+      const hovered = (await folders()).find((folder) => folder.storyId)
+      const at = JSON.parse(await ctx.evaluate(`JSON.stringify((() => { const r = document.querySelector('[data-story-id="${hovered.storyId}"] .tab-rail-folder-head').getBoundingClientRect(); return { x: r.x + 40, y: r.y + r.height / 2 } })())`))
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: at.x, y: at.y })
+      await ctx.wait(`document.documentElement.dataset.storyHighlight === ${JSON.stringify(hovered.storyId)}`, 5000, 'the story to be highlighted when its folder is hovered')
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 700, y: 600 })
+      await ctx.wait(`document.documentElement.dataset.storyHighlight === ''`, 5000, 'the highlight to clear when the pointer leaves the folder')
+      // Matching and grouping sent nothing for any tab's address or title.
+      expect(requestCounts() === baseline, `A tab page was requested while matching: ${requestCounts()} (was ${baseline}).`)
+      await axeAudit(ctx, 'the tab sidebar with a story folder', '.tab-rail')
+      await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
+      return `Two articles of "${storyName}" badged; the control and a private tab with a matching title not; Group by story made one folder for it holding only the two articles; Undo restored the order and removed the folder; hovering the folder highlighted the story (${hovered.storyId}) and leaving cleared it; no page was requested during matching; axe clean.`
+    } finally {
+      server.close()
+    }
+  },
 }
 
 checks.TAB_SLEEP.env = { INTOPONET_TAB_SLEEP_MINUTE_MS: '200' }

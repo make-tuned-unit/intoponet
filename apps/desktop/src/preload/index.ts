@@ -54,6 +54,7 @@ const invoke = (
   | ArchivedTabSnapshot[]
   | TabFolderSnapshot
   | TabFolderSnapshot[]
+  | { undoId: string }
   | PrivateLibraryReadResult
   | PublicFieldStatus
   | PdfExportOptions
@@ -157,6 +158,10 @@ const browserHost: BrowserHostApi = {
   },
   openTabFolder: async (name, urls) => {
     await invoke({ type: 'open-tab-folder', name, urls })
+  },
+  groupTabs: (groups) => invoke({ type: 'group-tabs', groups }) as Promise<{ undoId: string }>,
+  undoGroupTabs: async (undoId) => {
+    await invoke({ type: 'undo-group-tabs', undoId })
   },
   reopenArchivedTabs: async (ids) => {
     await invoke({ type: 'reopen-archived-tabs', ids })

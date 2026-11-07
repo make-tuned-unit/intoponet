@@ -1,8 +1,10 @@
 import { AnimatePresence, motion, useReducedMotion, type Transition } from 'motion/react'
-import { Columns2, Ellipsis, Folder, FolderOpen, FolderPlus, Layers, PanelLeftClose, PanelLeftDashed, PanelLeftOpen, Plus, Undo2, X } from 'lucide-react'
+import { Columns2, Ellipsis, Folder, FolderOpen, FolderPlus, Layers, Mountain, PanelLeftClose, PanelLeftDashed, PanelLeftOpen, Plus, Undo2, X } from 'lucide-react'
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type WheelEvent } from 'react'
 import { MAX_WORKSPACES, TAB_SIDEBAR_WIDTH, type NowPlayingSnapshot, type PageTabSnapshot, type TabFolderSnapshot, type WorkspacesState } from '@intoponet/browser-api'
 import { folderTree } from './tabFolders'
+import { storyGroupRequests } from './storyGroups'
+import type { StoryMatch } from '../../shared/news/storyTabs'
 import { NowPlayingControl } from './nowPlaying/NowPlayingControl'
 import { useGlassSheen } from './glass/useGlassSheen'
 import { RailMenu } from './RailMenu'
@@ -12,6 +14,9 @@ import './glass/glass.css'
 import './tabRail.css'
 
 const spring: Transition = { type: 'spring', stiffness: 460, damping: 38 }
+const EMPTY_MATCHES: ReadonlyMap<string, StoryMatch> = new Map()
+/** How long the grouping notice (and its Undo) stays: the same two minutes main keeps the grouping for. */
+const NOTICE_MS = 120_000
 /** Hover this long before the rail expands, so a known favicon can be clicked like an app icon. */
 const HOVER_INTENT_MS = 1000
 
@@ -45,6 +50,12 @@ export type TabRailProps = {
   workspaceRequest?: WorkspaceRequest | null
   /** What plays in a tab (the now-playing control at the foot of the rail); null hides it. */
   nowPlaying?: NowPlayingSnapshot | null
+  /** Open tabs that are articles of a world story (storyTabs.ts), by tab id. */
+  storyMatches?: ReadonlyMap<string, StoryMatch>
+  /** A story folder's hover or focus: the globe highlights that story's summit (null when it ends). */
+  onStoryHighlight?: ((storyId: string | null) => void) | undefined
+  /** Command menu request (a changing number): Group by story. */
+  groupRequest?: number | undefined
 }
 
 /** A sideways two-finger swipe on the sidebar this far (in wheel pixels) shows the next or previous workspace. */
@@ -59,7 +70,7 @@ const SWIPE_GAP_MS = 220
  * keeps it expanded as vertical tabs. Pinned tabs sit first as icons; tabs
  * can be dragged (or moved with ⌥⇧↑ / ⌥⇧↓) into a new order.
  */
-export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange, onHide, onExpandedChange, onPinnedChange, onNewTab, archivedCount = 0, onUndoArchive, folders = [], renameFolderId = null, onRenameHandled, onSaveFolder, message = '', workspaces = null, workspaceRequest = null, nowPlaying = null }: TabRailProps) {
+export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange, onHide, onExpandedChange, onPinnedChange, onNewTab, archivedCount = 0, onUndoArchive, folders = [], renameFolderId = null, onRenameHandled, onSaveFolder, message = '', workspaces = null, workspaceRequest = null, nowPlaying = null, storyMatches = EMPTY_MATCHES, onStoryHighlight, groupRequest }: TabRailProps) {
   const reduceMotion = useReducedMotion()
   const surface = useGlassSheen<HTMLDivElement>()
   const list = useRef<HTMLDivElement>(null)
@@ -111,6 +122,8 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
   const dragHandlers = useTabDrag('y', { indexOf: (id) => tabs.findIndex((tab) => tab.id === id), shownId: shownTabId })
   const [renaming, setRenaming] = useState<string | null>(null)
   const [folderMenu, setFolderMenu] = useState<string | null>(null)
+  /** The last grouping (Group by story, or accepted Tidy folders), with Undo while main still keeps it. */
+  const [notice, setNotice] = useState<{ text: string; undoId?: string } | null>(null)
   useEffect(() => {
     if (!renameFolderId) return
     setRenaming(renameFolderId)
@@ -139,6 +152,37 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
   }, [tabs, folders])
 
   useEffect(() => () => { if (intent.current) window.clearTimeout(intent.current) }, [])
+
+  useEffect(() => {
+    if (!notice) return
+    const timer = window.setTimeout(() => setNotice(null), NOTICE_MS)
+    return () => window.clearTimeout(timer)
+  }, [notice])
+
+  /** Group the loose matched tabs by their story (folders for stories that have one, or two or more tabs). */
+  const groupByStory = (): void => {
+    const groups = storyGroupRequests(tabs, storyMatches, folders)
+    if (!groups.length) {
+      setNotice({ text: 'No loose tabs are from a story yet.' })
+      return
+    }
+    const count = groups.reduce((total, group) => total + group.tabIds.length, 0)
+    void window.intoponet.browserHost.groupTabs(groups).then(
+      ({ undoId }) => setNotice({ text: `Grouped ${count} ${count === 1 ? 'tab' : 'tabs'} by story`, undoId }),
+      () => setNotice({ text: 'Those tabs could not be grouped.' }),
+    )
+  }
+
+  const undoNotice = (): void => {
+    const undoId = notice?.undoId
+    setNotice(null)
+    if (undoId) void window.intoponet.browserHost.undoGroupTabs(undoId).catch(() => setNotice({ text: 'Nothing to undo any more.' }))
+  }
+
+  // The command menu's Group by story (App's request number).
+  useEffect(() => {
+    if (groupRequest !== undefined) { onExpandedChange(true); groupByStory() }
+  }, [groupRequest]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
     // Keys in a folder's name field or menu are theirs.
@@ -187,7 +231,18 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
     const listId = `tab-folder-${folder.id}`
     const count = folderTabs.length
     return (
-      <div key={folder.id} className={`tab-rail-folder${folder.collapsed ? ' is-collapsed' : ''}`} role="group" aria-label={`Folder ${folder.name}`} style={{ '--folder-depth': depth - 1 } as CSSProperties}>
+      <div
+        key={folder.id}
+        className={`tab-rail-folder${folder.collapsed ? ' is-collapsed' : ''}`}
+        role="group"
+        aria-label={`Folder ${folder.name}`}
+        data-story-id={folder.storyId}
+        style={{ '--folder-depth': depth - 1 } as CSSProperties}
+        onPointerEnter={() => { if (folder.storyId) onStoryHighlight?.(folder.storyId) }}
+        onPointerLeave={() => { if (folder.storyId) onStoryHighlight?.(null) }}
+        onFocus={() => { if (folder.storyId) onStoryHighlight?.(folder.storyId) }}
+        onBlur={(event) => { if (folder.storyId && !event.currentTarget.contains(event.relatedTarget as Node | null)) onStoryHighlight?.(null) }}
+      >
         <div className="tab-rail-folder-head" data-folder-drop={folder.id}>
           {renaming === folder.id ? (
             <input
@@ -332,7 +387,8 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
     const partner = pairPartner(tab)
     if (partner) return tab.split?.side === 'left' ? renderPair(tab, partner, index, setSize) : null
     const title = tab.title || tab.url || 'Untitled page'
-    const label = `${title}${tab.pinned ? ', pinned' : ''}${tabStateLabel(tab)}${tabSoundLabel(tab)}${tab.loading ? ', loading' : ''}`
+    const story = storyMatches.get(tab.id)
+    const label = `${title}${tab.pinned ? ', pinned' : ''}${tabStateLabel(tab)}${tabSoundLabel(tab)}${tab.loading ? ', loading' : ''}${story ? `, part of the story ${story.label}` : ''}`
     return (
       <motion.div
         key={tab.id}
@@ -369,6 +425,7 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
             <TabIcon tab={tab} size={18} />
           </span>
           <span className="tab-rail-title" aria-hidden={!open}>{title}</span>
+          {story && <span className="tab-rail-story" title={`Part of the story: ${story.label}`} aria-hidden="true"><Mountain size={11} /></span>}
         </button>
         <TabHomeButton tab={tab} className="tab-rail-home" />
         <TabAudioButton tab={tab} className="tab-rail-audio" focusable={false} />
@@ -439,7 +496,18 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
               )}
             </div>
             <div className="tab-rail-archived" role="status">
-              {archivedCount === 0 && message && <span className="tab-rail-title" aria-hidden={false}>{message}</span>}
+              {archivedCount === 0 && notice && (
+                <>
+                  <span className="tab-rail-title" aria-hidden={false}>{notice.text}</span>
+                  {notice.undoId && (
+                    <button type="button" className="tab-rail-undo" onClick={undoNotice} aria-label={`Undo: ${notice.text}`} title="Put the tabs back where they were">
+                      <Undo2 size={14} aria-hidden="true" />
+                      <span className="tab-rail-title" aria-hidden={!open}>Undo</span>
+                    </button>
+                  )}
+                </>
+              )}
+              {archivedCount === 0 && !notice && message && <span className="tab-rail-title" aria-hidden={false}>{message}</span>}
               {archivedCount > 0 && (
                 <>
                   <span className="tab-rail-title" aria-hidden={!open}>{archivedCount} {archivedCount === 1 ? 'tab' : 'tabs'} archived</span>
@@ -466,6 +534,12 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
                 <FolderPlus size={15} />
                 <span className="tab-rail-title" aria-hidden={!open}>New folder</span>
               </button>
+              {storyMatches.size > 0 && (
+                <button type="button" className="tab-rail-action" aria-label="Group by story" title="Put loose tabs about the same world story into a folder for it" onClick={groupByStory}>
+                  <Mountain size={15} />
+                  <span className="tab-rail-title" aria-hidden={!open}>Group by story</span>
+                </button>
+              )}
               <button
                 type="button"
                 className={`tab-rail-action${pinned ? ' is-active' : ''}`}

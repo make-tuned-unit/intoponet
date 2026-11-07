@@ -327,6 +327,14 @@ export const TOUR_STEPS: TourStep[] = [
     seconds: 9,
   },
   {
+    id: 'tabs-story',
+    chapter: 'Browsing',
+    title: 'Tabs that know their story',
+    body: 'An article in a tab that matches a world story wears a small mountain in the sidebar. Group by story puts those tabs in one folder, and hovering the folder shows the story’s peak on the globe. It all happens on this Mac.',
+    target: '.tab-rail',
+    seconds: 10,
+  },
+  {
     id: 'done',
     chapter: 'That’s the tour',
     title: 'The world is your start page',

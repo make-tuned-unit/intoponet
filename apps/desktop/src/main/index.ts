@@ -42,7 +42,7 @@ import { capTitle, capUrl, coalesce, persistedActiveUrl } from './tabState'
 import { EXIT_FULLSCREEN_SCRIPT, FULLSCREEN_WORLD_ID, fullscreenSiteName, showFullscreenNotice } from './fullscreenNotice'
 import { bindLeavePrompt, SAFE_DIALOG_PREFERENCES } from './leavePrompt'
 import { fetchTabIcon, TabIconMemory } from './tabFavicon'
-import { browsingChannels, parseBrowsingCommand, type BrowsingEvent, type ArchivedTabSnapshot, type TabFolderSnapshot, type BrowsingSettings, type LinksFromOtherApps, type PageLoadError, type TabArchiveAfter, type TabSidebarState, type TabSleepAfter, type TabSwitchOrder } from '@intoponet/browser-api'
+import { browsingChannels, parseBrowsingCommand, type BrowsingEvent, type ArchivedTabSnapshot, type TabFolderSnapshot, type TabGroupRequest, type BrowsingSettings, type LinksFromOtherApps, type PageLoadError, type TabArchiveAfter, type TabSidebarState, type TabSleepAfter, type TabSwitchOrder } from '@intoponet/browser-api'
 import { ExternalOpenBroker, classifyExternalUrl } from './externalOpen'
 import { CertificateErrorMemo, classifyLoadError, isCertificateError, showsErrorPage, summarizeCertificate } from './errorPage'
 import { IncomingOpenQueue, LocalFileGrants, incomingFileTarget, incomingTargetsFromArgs, incomingWebUrl, type IncomingTarget } from './incomingOpen'
@@ -180,6 +180,7 @@ protocol.registerSchemesAsPrivileged([
 let captures: CaptureService | null = null
 import { browserContextActions, type BrowserContextAction } from './browserContextMenu'
 import { canNest, deleteFolder, duplicateIndex, folderDepth, folderedOrder, folderTreeOrder, MAX_FOLDER_DEPTH, MAX_FOLDERS, moveFolderedTab, moveTab, otherTabIds, pinnedFirst, setPinned, setTabFolder, tabIdsToRight, type TabFolder } from './tabOrder'
+import { planGrouping, snapshotGrouping, undoGrouping, UNDO_GROUPING_MS, type GroupingSnapshot } from './tabGrouping'
 import { tabMenuTemplate, type TabMenuAction, type TabMenuSplit } from './tabMenu'
 import { canSplit, partnerOf, repairSplits, setSplitRatio, splitBounds, splitPreviewArea, splitWith, storableRatio, unsplit, DEFAULT_SPLIT_RATIO, type SplitLayout, type SplitSide, type TabSplit } from './splitPages'
 import { liveTabFlags } from './tabState'
@@ -491,6 +492,7 @@ function parseSavedFolders(value: unknown): TabFolder[] {
       name,
       parentId: typeof record['parentId'] === 'string' ? record['parentId'] : null,
       ...(record['collapsed'] === true ? { collapsed: true } : {}),
+      ...(typeof record['storyId'] === 'string' && record['storyId'].length > 0 && record['storyId'].length <= 80 ? { storyId: record['storyId'] } : {}),
     })
   }
   // A parent that is missing (or a loop) puts the folder at the top level.
@@ -1842,6 +1844,45 @@ function createTabFolder(name: string, parentId: string | null, tabIds: string[]
   return folder
 }
 
+/** The latest grouping, kept for Undo for two minutes (tabGrouping.ts). Cleared when the shown workspace changes. */
+let lastGrouping: { undoId: string; at: number; snapshot: GroupingSnapshot } | null = null
+
+/** Put loose tabs into folders (tabGrouping.ts). Pinned and private tabs stay where they are. */
+function groupTabs(groups: TabGroupRequest[]): string {
+  const plan = planGrouping({
+    tabs: openTabs.map((tab) => ({ id: tab.id, pinned: tab.pinned, isPrivate: privateViews.has(tab.view), folderId: tab.folderId })),
+    folders: tabFolders,
+    groups,
+    maxFolders: MAX_FOLDERS,
+    newId: randomUUID,
+  })
+  const snapshot = snapshotGrouping(openTabs, tabFolders, plan.created)
+  tabFolders = plan.folders
+  for (const tab of openTabs) {
+    const folderId = plan.folderOf.get(tab.id)
+    if (folderId) tab.folderId = folderId
+  }
+  openTabs.splice(0, openTabs.length, ...folderedOrder(openTabs, tabFolders))
+  const undoId = randomUUID()
+  lastGrouping = { undoId, at: Date.now(), snapshot }
+  emitTabFolders()
+  tabsRearranged()
+  emitTabs()
+  schedulePersistentStateSave()
+  return undoId
+}
+
+function undoGroupTabs(undoId: string): void {
+  const last = lastGrouping
+  if (!last || last.undoId !== undoId || Date.now() - last.at > UNDO_GROUPING_MS) throw new Error('Nothing to undo.')
+  lastGrouping = null
+  undoGrouping(openTabs, tabFolders, last.snapshot)
+  emitTabFolders()
+  tabsRearranged()
+  emitTabs()
+  schedulePersistentStateSave()
+}
+
 // ---- Workspaces (workspaces.ts) ----------------------------------------------------------------
 
 /** How long a deleted workspace can be brought back before its tabs close. */
@@ -1891,7 +1932,8 @@ function switchWorkspace(target: WorkspaceSwitch): boolean {
   // A floating video of a tab in the workspace now shown docks, unless its tab is the one shown (showTab docks that).
   for (const tab of openTabs) if (tab.id !== next.activeTabId) dockFloatingTab(tab)
   tabFolders = next.folders
-  const show = next.tabs.find((tab) => tab.id === next.activeTabId) ?? next.tabs.find((tab) => !tab.asleep) ?? next.tabs[0]
+  lastGrouping = null
+  const show =next.tabs.find((tab) => tab.id === next.activeTabId) ?? next.tabs.find((tab) => !tab.asleep) ?? next.tabs[0]
   if (showing) {
     if (show) showTab(show.id)
     // An empty workspace opens on a new tab, so the sidebar (and its way back) stays.
@@ -3615,6 +3657,7 @@ async function handleBrowserCommand(
   | SiteTweakListItem[]
   | SiteTweakSaveResult
   | SiteTweakPick
+  | { undoId: string }
   | string
   | null
 > {
@@ -3979,6 +4022,11 @@ async function handleBrowserCommand(
       if (!folder) throw new Error(`At most ${MAX_FOLDERS} folders.`)
       return { ...folder }
     }
+    case 'group-tabs':
+      return { undoId: groupTabs(command.groups) }
+    case 'undo-group-tabs':
+      undoGroupTabs(command.undoId)
+      break
     case 'run-menu-command': {
       const chosen = menuCommandById(command.id, { developer: developerBuild() })
       if (!chosen) throw new Error('Unknown menu command.')
