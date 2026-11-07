@@ -193,6 +193,9 @@ export function useTabDrag(axis: TabAxis, options: { indexOf?: (id: string) => n
         const list = state.item.closest('[data-tab-container]') ?? state.item.closest('[role="tablist"]')
         const elements = [...(list?.querySelectorAll<HTMLElement>('[data-tab-id]') ?? [])]
         state.ids = elements.map((element) => element.dataset['tabId'] ?? '')
+        // Its place among the elements measured: a pair is one element, so this can differ from its place among the tabs.
+        const at = elements.indexOf(state.item)
+        if (at >= 0) state.index = at
         state.boxes = elements.map((element) => {
           const rect = element.getBoundingClientRect()
           return { left: rect.left, top: rect.top, width: rect.width, height: rect.height }

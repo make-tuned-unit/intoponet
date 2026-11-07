@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseBrowsingSettingsFile, sleepAfterMs, tabsDueForSleep, type SleepCandidate } from './tabSleep'
+import { answerWithin, parseBrowsingSettingsFile, sleepAfterMs, tabsDueForSleep, type SleepCandidate } from './tabSleep'
 
 const tab = (id: string, extra: Partial<SleepCandidate> = {}): SleepCandidate => ({
   id, active: false, asleep: false, start: false, lastShownAt: 0, audible: false, capturing: false, downloading: false, ...extra,
@@ -38,5 +38,18 @@ describe('tab sleep', () => {
     expect(parseBrowsingSettingsFile(null)).toEqual({ pageAppearance: 'system', tabSleep: '1h', tabSwitchOrder: 'strip', tabArchive: 'off', linksFromOtherApps: 'tab', autoPictureInPicture: false })
     expect(parseBrowsingSettingsFile({ pageAppearance: 'dark', tabSleep: '15m', tabSwitchOrder: 'recent', tabArchive: '1w', linksFromOtherApps: 'quick-window', autoPictureInPicture: true })).toEqual({ pageAppearance: 'dark', tabSleep: '15m', tabSwitchOrder: 'recent', tabArchive: '1w', linksFromOtherApps: 'quick-window', autoPictureInPicture: true })
     expect(parseBrowsingSettingsFile({ tabSleep: '3d', tabSwitchOrder: 'random', linksFromOtherApps: 'window', autoPictureInPicture: 'yes' })).toEqual({ pageAppearance: 'system', tabSleep: '1h', tabSwitchOrder: 'strip', tabArchive: 'off', linksFromOtherApps: 'tab', autoPictureInPicture: false })
+  })
+})
+
+describe('asking a page whether it holds typed text', () => {
+  it('takes the page’s answer when it comes in time', async () => {
+    await expect(answerWithin(Promise.resolve(false), 50, true)).resolves.toBe(false)
+  })
+
+  it('treats a page that fails or does not answer in time as holding text, so it stays awake and the others go on', async () => {
+    await expect(answerWithin(Promise.reject(new Error('gone')), 50, true)).resolves.toBe(true)
+    const started = Date.now()
+    await expect(answerWithin(new Promise<boolean>(() => undefined), 30, true)).resolves.toBe(true)
+    expect(Date.now() - started).toBeLessThan(1000)
   })
 })

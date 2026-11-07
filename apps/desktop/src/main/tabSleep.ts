@@ -42,6 +42,23 @@ export function tabsDueForSleep(tabs: readonly SleepCandidate[], now: number, af
     .map((tab) => tab.id)
 }
 
+/** How long a page has to say whether it holds typed text before it is left awake (and asked again later). */
+export const TYPED_CHECK_MS = 2_000
+
+/**
+ * A page's answer, or `fallback` when it fails or does not answer within `ms`: a busy or hung page
+ * must not hold up the other tabs (the sleep and archive passes ask one page at a time).
+ */
+export function answerWithin<T>(answer: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(fallback), ms)
+    answer.then(
+      (value) => { clearTimeout(timer); resolve(value) },
+      () => { clearTimeout(timer); resolve(fallback) },
+    )
+  })
+}
+
 /** Run in the page (isolated world): has someone typed into a field that has not been sent? */
 export const TYPED_FORM_SCRIPT = `(() => {
   const changed = (element) => {

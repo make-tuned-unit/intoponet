@@ -29,6 +29,14 @@ export function persistedActiveUrl(savedTabs: readonly { id: string; url: string
   return savedTabs.find((tab) => sameAddress(tab.url, lastKnownUrl))?.url ?? savedTabs[0]?.url ?? ''
 }
 
+/**
+ * The tab shown again after a restart: the one saved as shown (by id, so of two tabs at one address
+ * the right one comes back), else the first at the saved address, else the first tab.
+ */
+export function restoredActiveTab<T extends { id: string; url: string }>(tabs: readonly T[], activeTabId: string | undefined, url: string): T | undefined {
+  return tabs.find((tab) => tab.id === activeTabId) ?? tabs.find((tab) => sameAddress(tab.url, url)) ?? tabs[0]
+}
+
 /** Longest page address sent to the app window or saved; longer ones lose their query, then their path. */
 export const MAX_SNAPSHOT_URL = 8 * 1024
 export const MAX_SNAPSHOT_TITLE = 512

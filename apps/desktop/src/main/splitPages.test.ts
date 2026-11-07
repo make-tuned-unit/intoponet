@@ -5,6 +5,8 @@ import {
   SPLIT_HEADER,
   SPLIT_MIN_WIDTH,
   canSplit,
+  keepOutOfPairs,
+  pairMoveTarget,
   clampRatio,
   pairOrder,
   partnerOf,
@@ -224,6 +226,71 @@ describe('tab pairing', () => {
     const tabs = [tab('a', { split: { partnerId: 'gone', side: 'left', ratio: 0.5 } })]
     repairSplits(tabs)
     expect(tabs[0]!.split).toBeUndefined()
+  })
+})
+
+describe('moves keep pairs whole', () => {
+  /** The sidebar's move: the tab moves, its partner follows it (as index.ts's keepPairTogether does), then pairs are kept whole. */
+  const move = (tabs: SplitTab[], id: string, toIndex: number): string[] => {
+    const from = tabs.findIndex((item) => item.id === id)
+    const to = Math.min(tabs.length - 1, Math.max(0, Math.round(pairMoveTarget(tabs, id, toIndex))))
+    const [moved] = tabs.splice(from, 1)
+    tabs.splice(to, 0, moved!)
+    const partner = partnerOf(tabs, moved!)
+    if (partner) {
+      const rest = tabs.filter((item) => item !== partner)
+      const at = rest.indexOf(moved!) + (moved!.split!.side === 'left' ? 1 : 0)
+      tabs.splice(0, tabs.length, ...rest.slice(0, at), partner, ...rest.slice(at))
+    }
+    keepOutOfPairs(tabs, id, to > from)
+    repairSplits(tabs)
+    return ids(tabs)
+  }
+  const paired = (): SplitTab[] => {
+    const tabs = [tab('x'), tab('a'), tab('b'), tab('c')]
+    splitWith(tabs, 'a', 'b')
+    return tabs
+  }
+
+  it('moves a tab past a pair, not between its sides (⌥⇧↑ and ⌥⇧↓)', () => {
+    let tabs = paired()
+    expect(move(tabs, 'c', 2)).toEqual(['x', 'c', 'a', 'b'])
+    expect(partnerOf(tabs, tabs[2]!)?.id).toBe('b')
+    tabs = paired()
+    expect(move(tabs, 'x', 1)).toEqual(['a', 'b', 'x', 'c'])
+    expect(partnerOf(tabs, tabs[0]!)?.id).toBe('b')
+  })
+
+  it('drops a dragged tab after a pair when it lands between its sides on the way down', () => {
+    const tabs = paired()
+    // The rail asks for the left side's place when the tab is dropped just below the pair.
+    expect(move(tabs, 'x', 1)).toEqual(['a', 'b', 'x', 'c'])
+    expect(tabs[0]!.split).toBeDefined()
+  })
+
+  it('moves a pair one place down or up from the keyboard (its partner’s place is stepped over)', () => {
+    let tabs = paired()
+    expect(move(tabs, 'a', 2)).toEqual(['x', 'c', 'a', 'b'])
+    expect(partnerOf(tabs, tabs[2]!)?.id).toBe('b')
+    tabs = paired()
+    expect(move(tabs, 'a', 0)).toEqual(['a', 'b', 'x', 'c'])
+    expect(partnerOf(tabs, tabs[0]!)?.id).toBe('b')
+  })
+
+  it('moves a pair past another pair whole, both pairs kept', () => {
+    const tabs = [tab('a'), tab('b'), tab('c'), tab('d')]
+    splitWith(tabs, 'a', 'b')
+    splitWith(tabs, 'c', 'd')
+    expect(move(tabs, 'a', 1)).toEqual(['c', 'd', 'a', 'b'])
+    expect(tabs.every((item) => item.split)).toBe(true)
+    expect(move(tabs, 'b', 1)).toEqual(['a', 'b', 'c', 'd'])
+    expect(tabs.every((item) => item.split)).toBe(true)
+  })
+
+  it('leaves ordinary moves alone', () => {
+    const tabs = [tab('a'), tab('b'), tab('c')]
+    expect(move(tabs, 'a', 2)).toEqual(['b', 'c', 'a'])
+    expect(pairMoveTarget(tabs, 'b', 0)).toBe(0)
   })
 })
 

@@ -1443,7 +1443,56 @@ export const checks = {
       const loading = await ctx.evaluate(`${host}.getTabs().then((t) => t.some((x) => x.url.includes('/slow') && x.loading))`)
       expect(loading, 'The loading tab is not marked as loading.')
       await ctx.wait(`!document.querySelector('[data-tab-id] .tab-spinner')`, 20_000, 'the spinner to stop once the page loaded')
-      return 'Moved by command, drag and ⌥⇧↓ (focus kept); pinned tab first, icon-only and saved; speaker muted and unmuted a playing tab; spinner while a slow page loaded; no axe violations in rail or strip.'
+
+      // A pair side by side is one row: a tab dragged past it, or moved past it from the keyboard, goes round it and the pair holds.
+      const [left, right, below, last] = (await tabs()).filter((tab) => !tab.pinned).map((tab) => tab.id)
+      await ctx.evaluate(`${host}.splitTab(${JSON.stringify(left)}, ${JSON.stringify(right)}, 'left').then(() => true)`)
+      await ctx.delay(800)
+      const unpinned = async () => (await tabs()).filter((tab) => !tab.pinned).map((tab) => tab.id).join(' ')
+      const paired = async () => (await tabs()).filter((tab) => tab.split).map((tab) => tab.id).join(' ') === `${left} ${right}`
+      const rowOf = async (id) => JSON.parse(await ctx.evaluate(`JSON.stringify(document.querySelector('.tab-rail-list [data-tab-id=${JSON.stringify(id)}] [role="tab"]').getBoundingClientRect())`))
+      const start = await rowOf(below)
+      const end = await rowOf(last)
+      const grab = { x: start.x + start.width / 2, y: start.y + start.height / 2 }
+      const drop = end.y + end.height - 2
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: grab.x, y: grab.y })
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: grab.x, y: grab.y, button: 'left', buttons: 1, clickCount: 1 })
+      for (let step = 1; step <= 8; step += 1) {
+        await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: grab.x, y: grab.y + (drop - grab.y) * (step / 8), button: 'left', buttons: 1 })
+        await ctx.delay(30)
+      }
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: grab.x, y: drop, button: 'left', buttons: 0, clickCount: 1 })
+      await ctx.delay(700)
+      expect(await unpinned() === [left, right, last, below].join(' ') && await paired(), `A tab below a pair, dragged to the end, did not move there with the pair kept (order: ${await unpinned()}).`)
+      await ctx.evaluate(`document.querySelector('.tab-rail-list [data-tab-id=${JSON.stringify(last)}] [role="tab"]').focus()`)
+      await key('ArrowUp', 38, 1 | 8)
+      await ctx.delay(700)
+      expect(await unpinned() === [last, left, right, below].join(' ') && await paired(), `⌥⇧↑ on the tab below a pair did not move it above the pair with the pair kept (order: ${await unpinned()}).`)
+      // The keyboard goes through a pair: ↓ reaches each side, then the tab after it (rail); → does the same in the strip.
+      const focusedTab = () => ctx.evaluate(`(() => { const e = document.activeElement; return (e?.getAttribute('aria-label')?.includes('right side by side') ? 'right:' : '') + (e?.closest('[data-tab-id]')?.dataset.tabId ?? '') })()`)
+      await ctx.evaluate(`document.querySelector('.tab-rail-list [data-tab-id=${JSON.stringify(left)}] [role="tab"]').focus()`)
+      await key('ArrowDown', 40, 0)
+      await ctx.delay(300)
+      expect(await focusedTab() === `right:${left}`, `↓ from a pair's left side did not reach its right side (focus: ${await focusedTab()}).`)
+      await key('ArrowDown', 40, 0)
+      await ctx.delay(300)
+      expect(await focusedTab() === below, `↓ from a pair's right side did not reach the next tab (focus: ${await focusedTab()}).`)
+      await ctx.evaluate(`${host}.close().then(() => true)`)
+      await ctx.wait(`!!document.querySelector('.page-tabs [data-tab-id=${JSON.stringify(left)}] [role="tab"]')`, 10_000, 'the strip with the pair')
+      await ctx.evaluate(`document.querySelector('.page-tabs [data-tab-id=${JSON.stringify(left)}] [role="tab"]').focus()`)
+      await key('ArrowRight', 39, 0)
+      await key('ArrowRight', 39, 0)
+      await ctx.delay(300)
+      expect(await focusedTab() === below, `→ in the strip did not go through the pair to the next tab (focus: ${await focusedTab()}).`)
+      await ctx.evaluate(`${host}.restore().then(() => true)`)
+      await ctx.delay(800)
+      // Delete on a pair's right side closes that side, not the left one.
+      await ctx.evaluate(`document.querySelectorAll('.tab-rail-list [data-tab-id=${JSON.stringify(left)}] [role="tab"]')[1].focus()`)
+      await key('Delete', 46, 0)
+      await ctx.delay(800)
+      const remaining = (await tabs()).map((tab) => tab.id)
+      expect(!remaining.includes(right) && remaining.includes(left), `Delete on a pair's right side closed ${remaining.includes(left) ? 'nothing' : 'its left side'}.`)
+      return 'Moved by command, drag and ⌥⇧↓ (focus kept); pinned tab first, icon-only and saved; speaker muted and unmuted a playing tab; spinner while a slow page loaded; a tab dragged or moved past a pair went round it and the pair held; arrows went through a pair in rail and strip, and Delete closed the focused side; no axe violations in rail or strip.'
     } finally {
       server.close()
     }
@@ -1957,7 +2006,17 @@ export const checks = {
       const panel = JSON.parse(await ctx.evaluate(`${host}.getState().then((s) => JSON.stringify(s))`))
       expect(panel.canGoBack, 'The woken tab lost its back history.')
       await ctx.evaluate(`window.intoponet.browsing.setTabSleep('never').then(() => true)`)
-      return `9 background tabs slept (typed text and the front tab stayed awake); their pages' memory ${Math.round(awake / 1024)} MB → ${Math.round(asleep / 1024)} MB; woke on the same page, scroll and back list.`
+      // A background page that does not answer (busy for a while) stays awake without holding up the other tabs' sleep.
+      await ctx.evaluate(`${host}.getTabs().then((t) => Promise.all(t.filter((x) => !x.active).map((x) => ${host}.closeTab(x.id)))).then(() => true)`)
+      await openPage(ctx, `${origin}/busy`, 800)
+      await openPage(ctx, `${origin}/later`, 800)
+      await openPage(ctx, `${origin}/last`, 800)
+      await (await ctx.page('/busy')).evaluate(`setTimeout(() => { const end = Date.now() + 14000; while (Date.now() < end) {} }, 200); true`)
+      await ctx.delay(500)
+      await ctx.evaluate(`window.intoponet.browsing.setTabSleep('15m').then(() => true)`)
+      await ctx.wait(`${host}.getTabs().then((t) => t.some((x) => x.url.endsWith('/later') && x.asleep))`, 10_000, 'a background tab to sleep while another background page was busy')
+      await ctx.evaluate(`window.intoponet.browsing.setTabSleep('never').then(() => true)`)
+      return `9 background tabs slept (typed text and the front tab stayed awake); their pages' memory ${Math.round(awake / 1024)} MB → ${Math.round(asleep / 1024)} MB; woke on the same page, scroll and back list; a busy background page did not hold up the others.`
     } finally {
       server.close()
     }
@@ -2086,8 +2145,11 @@ export const checks = {
       // ⌃⌘S shows it again as it was; it is kept for the next launch.
       await ctx.keyInPage('/notes', 'S', ['control', 'meta'])
       await ctx.wait(`!!document.querySelector('.tab-rail.is-pinned')`, 3000, '⌃⌘S to show the sidebar again')
-      await ctx.delay(700)
-      const saved = JSON.parse(readFileSync(join(ctx.profile, 'browser-state.v1.json'), 'utf8'))
+      // The save waits until the page stops moving (each bounds change while the sidebar slides in defers it),
+      // which takes longer on a busy Mac: wait for the file rather than a fixed time.
+      const savedSidebar = () => { try { return JSON.parse(readFileSync(join(ctx.profile, 'browser-state.v1.json'), 'utf8')).sidebar } catch { return null } }
+      for (let i = 0; i < 25 && !(savedSidebar()?.mode === 'open' && savedSidebar().width === resized.width); i += 1) await ctx.delay(200)
+      const saved = { sidebar: savedSidebar() }
       expect(saved.sidebar?.mode === 'open' && saved.sidebar.width === resized.width, `Saved sidebar: ${JSON.stringify(saved.sidebar)}.`)
       // Keyboard: arrows move between tabs in it.
       await ctx.evaluate(`document.querySelector('.tab-rail [role="tab"][tabindex="0"]').focus(); true`)
@@ -3605,8 +3667,24 @@ export const checks = {
       await until(async () => !(await pipOf('/video')), 4000, 'the video to dock when its workspace came back')
       expect(await playing('/video'), 'The video stopped when its workspace came back.')
       await ctx.evaluate(`window.intoponet.workspaces.switchTo({ index: 0 }).then(() => true)`).catch(() => undefined)
+      // The person closes the small window themselves (Chromium pauses the video): the tab no longer floats,
+      // so the control stops saying so, and the tab may sleep again.
+      await openPage(ctx, `${origin}/plain?closed`, 1500)
+      await until(async () => await pipOf('/video'), 6000, 'the video to float again')
+      await (await ctx.page('/video')).evaluate(`document.exitPictureInPicture().then(() => { document.querySelector('video').pause(); return true })`, { userGesture: true })
+      await ctx.wait(`!(document.querySelector('.now-playing')?.textContent ?? '').includes('small window')`, 6000, 'the now-playing control to stop saying the video floats once its window was closed')
+      await ctx.evaluate(`window.intoponet.browsing.setTabSleep('15m').then(() => true)`)
+      await until(async () => (await tabAt('/video'))?.asleep === true, 30_000, 'the video tab to sleep once its small window was closed')
+      await ctx.evaluate(`window.intoponet.browsing.setTabSleep('never').then(() => true)`)
       await setPip(false)
-      return 'Off by default; with it on, leaving a playing tab floated its canvas video (playback went on), returning docked it; the now-playing control listed it (labelled, axe clean) and pause, play, mute, unmute and go-to worked from the keyboard; a page with disablePictureInPicture kept playing in place; a floating tab was not put to sleep or archived while other tabs were.'
+      // A background tab playing a video, closed from the sidebar, leaves the now-playing control at once.
+      pages['/video-bg'] = VIDEO_PAGE('Background video', '')
+      await openPage(ctx, `${origin}/video-bg`, 3000)
+      await openPage(ctx, `${origin}/plain?after-bg`, 1500)
+      await ctx.wait(`(document.querySelector('.now-playing')?.textContent ?? '').includes('Background video')`, 8000, 'the control to list the video playing in a background tab')
+      await ctx.evaluate(`${host}.closeTab(${JSON.stringify((await tabAt('/video-bg')).id)}).then(() => true)`)
+      await ctx.wait(`!(document.querySelector('.now-playing')?.textContent ?? '').includes('Background video')`, 5000, 'the control to drop a playing tab once it was closed')
+      return 'Off by default; with it on, leaving a playing tab floated its canvas video (playback went on), returning docked it; the now-playing control listed it (labelled, axe clean) and pause, play, mute, unmute and go-to worked from the keyboard; a page with disablePictureInPicture kept playing in place; a floating tab was not put to sleep or archived while other tabs were; once the person closed the small window, the control stopped saying it floats and the tab slept; a playing background tab, closed, left the control.'
     } finally {
       server.close()
     }
@@ -4464,6 +4542,9 @@ export const checks = {
       await ctx.click('.tab-rail-archived .tab-rail-undo')
       await ctx.wait(`window.intoponet.browserHost.getTabFolders().then((f) => !f.some((x) => x.storyId))`, 8000, 'the story folder to be removed by Undo')
       expect((await tabs()).map((tab) => tab.id).join(' ') === orderBefore, 'Undo did not restore the tab order.')
+      // Grouping tabs that are gone (closed while Tidy's preview was open) is refused, not reported as done with an Undo.
+      expect(await ctx.evaluate(`${host}.groupTabs([{ name: 'Gone', tabIds: ['no-such-tab'] }]).then(() => 'grouped', () => 'refused')`) === 'refused', 'Grouping tabs that are gone was reported as done.')
+      expect((await folders()).length === 0, 'Grouping tabs that are gone made a folder.')
       // Hovering the folder highlights its story on the globe; leaving clears it.
       await ctx.click('button[aria-label="Group by story"]')
       await ctx.wait(`window.intoponet.browserHost.getTabFolders().then((f) => f.some((x) => x.storyId))`, 8000, 'the story folder again')
@@ -4476,6 +4557,11 @@ export const checks = {
       // Matching and grouping sent nothing for any tab's address or title.
       expect(requestCounts() === baseline, `A tab page was requested while matching: ${requestCounts()} (was ${baseline}).`)
       await axeAudit(ctx, 'the tab sidebar with a story folder', '.tab-rail')
+      // A folder that goes away under the pointer gets no pointer-leave: its story stops being highlighted all the same.
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: at.x, y: at.y })
+      await ctx.wait(`document.documentElement.dataset.storyHighlight === ${JSON.stringify(hovered.storyId)}`, 5000, 'the story to be highlighted again on hover')
+      await ctx.evaluate(`${host}.deleteTabFolder(${JSON.stringify(hovered.id)}).then(() => true)`)
+      await ctx.wait(`document.documentElement.dataset.storyHighlight === ''`, 5000, 'the highlight to clear when the hovered story folder was deleted')
       await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
       return `Two articles of "${storyName}" badged; the control and a private tab with a matching title not; Group by story made one folder for it holding only the two articles; Undo restored the order and removed the folder; hovering the folder highlighted the story (${hovered.storyId}) and leaving cleared it; no page was requested during matching; axe clean.`
     } finally {
@@ -4516,12 +4602,24 @@ export const checks = {
       // Laya off: Tidy says why and offers Group by story. Nothing moves.
       const status = await ctx.evaluate(`window.intoponet.laya.status().then((s) => JSON.stringify(s))`).then(JSON.parse)
       if (status.enabled) await ctx.evaluate(`window.intoponet.laya.disable({ deleteModel: false }).then(() => true)`)
+      await ctx.evaluate(`(document.querySelector('button[aria-label="Tidy tabs"]').focus(), true)`)
       await ctx.click('button[aria-label="Tidy tabs"]')
       await ctx.wait(`!!document.querySelector('.tidy-explain') && document.querySelector('.tidy-explain').innerText.includes('Turn it on in Settings › Laya')`, 20_000, 'Tidy to explain that Laya is off')
       expect(await ctx.evaluate(`[...document.querySelectorAll('.tidy-explain button')].some((b) => b.innerText.includes('Group by story'))`), 'Tidy with Laya off does not offer Group by story.')
+      // The sheet is drawn by the shell, under the native page view: the page must be hidden while it is open.
+      const pageShown = () => ctx.main(`electron.BrowserWindow.getAllWindows()[0].contentView.children.some((view) => view.getVisible() && /^https?:/.test(view.webContents?.getURL?.() ?? ''))`)
+      expect(!(await pageShown()), 'The page view is drawn over the Tidy preview, hiding it.')
+      expect(await ctx.evaluate(`!!document.activeElement?.closest('.tidy-sheet')`), 'Focus did not move into the Tidy preview.')
+      // It is modal: Tab from its last button stays in it (it does not reach the sidebar behind it).
+      await ctx.evaluate(`([...document.querySelectorAll('.tidy-sheet button')].at(-1).focus(), true)`)
+      await ctx.press('Tab')
+      expect(await ctx.evaluate(`!!document.activeElement?.closest('.tidy-sheet')`), 'Tab left the Tidy preview for the sidebar behind it.')
       await axeAudit(ctx, 'the Tidy preview with Laya off', '.tidy-sheet')
       await ctx.press('Escape')
       await ctx.wait(`!document.querySelector('.tidy-sheet')`, 5000, 'the Tidy preview to close')
+      await ctx.delay(300)
+      expect(await pageShown(), 'The page did not come back after the Tidy preview closed.')
+      expect(await ctx.evaluate(`document.activeElement?.getAttribute('aria-label') === 'Tidy tabs'`), 'Focus did not go back to Tidy when the preview closed.')
       expect((await folders()).length === 0, 'Tidy with Laya off moved tabs.')
       // Laya on (its model downloads here, which the full tier allows). Not awaited: the download can take minutes.
       await ctx.evaluate(`void window.intoponet.laya.enable().catch(() => undefined), true`)

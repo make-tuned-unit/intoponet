@@ -1,4 +1,5 @@
-import type { TabFolder } from './tabOrder'
+import { folderTreeOrder, type TabFolder } from './tabOrder'
+import type { TabSplit } from './splitPages'
 
 /**
  * Grouping loose tabs into folders (Group by story, and accepted Tidy suggestions), and undoing
@@ -8,7 +9,7 @@ import type { TabFolder } from './tabOrder'
 
 export type GroupRequest = { name: string; tabIds: string[]; storyId?: string }
 
-export type GroupableTab = { id: string; pinned?: boolean | undefined; isPrivate?: boolean | undefined; folderId?: string | undefined }
+export type GroupableTab = { id: string; pinned?: boolean | undefined; isPrivate?: boolean | undefined; folderId?: string | undefined; split?: TabSplit | undefined }
 
 /** What the grouping changed, enough to take it back. */
 export type GroupingSnapshot = {
@@ -20,6 +21,8 @@ export type GroupingSnapshot = {
   storyOf: Array<[string, string | undefined]>
   /** Folders the grouping made, removed again on undo. */
   created: string[]
+  /** Pairs side by side before the grouping (moving one side into a folder ends a pair; undo brings it back). */
+  splitOf?: Array<[string, TabSplit]>
 }
 
 export const UNDO_GROUPING_MS = 120_000
@@ -70,14 +73,16 @@ export function snapshotGrouping(tabs: readonly GroupableTab[], folders: readonl
     folderOf: tabs.map((tab) => [tab.id, tab.folderId]),
     storyOf: folders.map((folder) => [folder.id, folder.storyId]),
     created,
+    splitOf: tabs.flatMap((tab): Array<[string, TabSplit]> => (tab.split ? [[tab.id, { ...tab.split }]] : [])),
   }
 }
 
 /**
  * Put the tabs and folders back as the snapshot has them: the folders the grouping made are
  * removed (their subfolders move to the top), folder stories and each tab's folder are restored,
- * and the tab order is restored. Mutates both arrays. Tabs opened since the grouping keep their
- * place at the end.
+ * pairs the grouping pulled apart are paired again, and the tab order is restored (pinned tabs first,
+ * then each folder's tabs, then the rest, as the sidebar shows them). Mutates both arrays. Tabs
+ * opened since the grouping go at the end of their group.
  */
 export function undoGrouping<T extends GroupableTab>(tabs: T[], folders: TabFolder[], snapshot: GroupingSnapshot): void {
   const removed = new Set(snapshot.created)
@@ -98,8 +103,22 @@ export function undoGrouping<T extends GroupableTab>(tabs: T[], folders: TabFold
     }
     if (tab.folderId && (removed.has(tab.folderId) || !folders.some((folder) => folder.id === tab.folderId))) delete tab.folderId
   }
+  // A pair the grouping ended comes back when both sides are still here and neither was paired since.
+  const savedSplit = new Map(snapshot.splitOf ?? [])
+  for (const [id, split] of savedSplit) {
+    const tab = tabs.find((item) => item.id === id)
+    const partner = tabs.find((item) => item.id === split.partnerId)
+    if (!tab || !partner || tab.split || partner.split || savedSplit.get(partner.id)?.partnerId !== id) continue
+    tab.split = { ...split }
+    partner.split = { ...savedSplit.get(partner.id)! }
+  }
   const position = new Map(snapshot.order.map((id, index) => [id, index]))
   const rank = (id: string): number => position.get(id) ?? Number.MAX_SAFE_INTEGER
-  const sorted = tabs.map((tab, index) => ({ tab, index })).sort((a, b) => rank(a.tab.id) - rank(b.tab.id) || a.index - b.index).map(({ tab }) => tab)
+  // The sidebar's order (tabOrder.ts folderedOrder): tabs pinned or moved into a folder since stay in their group.
+  const tree = folderTreeOrder(folders)
+  const group = (tab: T): number => (tab.pinned ? -1 : tab.folderId && tree.includes(tab.folderId) ? tree.indexOf(tab.folderId) : tree.length)
+  const sorted = tabs.map((tab, index) => ({ tab, index }))
+    .sort((a, b) => group(a.tab) - group(b.tab) || rank(a.tab.id) - rank(b.tab.id) || a.index - b.index)
+    .map(({ tab }) => tab)
   tabs.splice(0, tabs.length, ...sorted)
 }

@@ -199,6 +199,41 @@ export function repairSplits<T extends SplitTab>(tabs: T[]): T[] {
 }
 
 /**
+ * Where a tab asked to move to `toIndex` goes, so a pair moves as one row: a paired tab asked onto
+ * its partner's place (one step, from the keyboard) steps past it instead of into itself.
+ */
+export function pairMoveTarget(tabs: readonly SplitTab[], id: string, toIndex: number): number {
+  const from = tabs.findIndex((tab) => tab.id === id)
+  const tab = tabs[from]
+  const partner = tab ? partnerOf(tabs, tab) : undefined
+  const to = Math.round(toIndex)
+  if (!partner || to !== tabs.indexOf(partner)) return toIndex
+  return to + (to > from ? 1 : -1)
+}
+
+/**
+ * After a move, a tab (or a pair) that landed between the two sides of another pair goes past that
+ * pair, in the direction it moved: a pair is one row of the sidebar and is never split by a move.
+ * Mutates in place and returns the array.
+ */
+export function keepOutOfPairs<T extends SplitTab>(tabs: T[], id: string, movedDown: boolean): T[] {
+  const at = tabs.findIndex((tab) => tab.id === id)
+  if (at < 0) return tabs
+  const partner = partnerOf(tabs, tabs[at]!)
+  const partnerAt = partner ? tabs.indexOf(partner) : -1
+  const together = partnerAt >= 0 && Math.abs(partnerAt - at) === 1
+  const start = together ? Math.min(at, partnerAt) : at
+  const end = together ? Math.max(at, partnerAt) : at
+  const before = tabs[start - 1]
+  const after = tabs[end + 1]
+  if (!before || !after || partnerOf(tabs, before) !== after) return tabs
+  const unit = tabs.splice(start, end - start + 1)
+  // The other pair now sits at start - 1 and start.
+  tabs.splice(movedDown ? start + 1 : start - 1, 0, ...unit)
+  return tabs
+}
+
+/**
  * While a tab is dragged onto an edge, the page gives up the half on that side so the shell can
  * draw the drop zone there. `side` is the side the dragged tab would take. Returns the page's rect
  * (the view, the other half) and the zone (the free half, full height).

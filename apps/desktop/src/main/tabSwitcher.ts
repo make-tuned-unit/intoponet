@@ -12,14 +12,25 @@ export type SwitcherTab = {
   favicon: string
   lastShownAt: number
   isPrivate: boolean
+  /** The other side, for a tab side by side with another (a pair is one place to go). */
+  partnerId?: string | undefined
 }
 
-/** The tabs to step through: the current one first, then the others most recently shown first. */
+/**
+ * The tabs to step through: the current one first, then the others most recently shown first. A pair
+ * side by side is one entry (its side seen last): the current pair's other side is already on screen.
+ */
 export function recentOrder(tabs: readonly SwitcherTab[], activeId: string | null): string[] {
   const active = tabs.find((tab) => tab.id === activeId)
   const peers = tabs.filter((tab) => !active || tab.isPrivate === active.isPrivate)
+  const listed = new Set<string>()
   return [...peers]
     .sort((a, b) => (a.id === activeId ? -1 : b.id === activeId ? 1 : b.lastShownAt - a.lastShownAt))
+    .filter((tab) => {
+      if (tab.partnerId && listed.has(tab.partnerId)) return false
+      listed.add(tab.id)
+      return true
+    })
     .map((tab) => tab.id)
 }
 

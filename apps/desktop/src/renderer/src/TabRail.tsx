@@ -162,6 +162,18 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
 
   useEffect(() => () => { if (intent.current) window.clearTimeout(intent.current) }, [])
 
+  /** The story a story folder's hover or focus highlights on the globe. */
+  const highlighted = useRef<string | null>(null)
+  const highlightStory = (storyId: string | null): void => {
+    highlighted.current = storyId
+    onStoryHighlight?.(storyId)
+  }
+  // A folder that goes away under the pointer (deleted, undone, another workspace) or a sidebar that hides
+  // gets no pointer-leave: its story stops being highlighted all the same.
+  useEffect(() => {
+    if (highlighted.current && (!visible || !folders.some((folder) => folder.storyId === highlighted.current))) highlightStory(null)
+  }, [folders, visible]) // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!notice) return
     const timer = window.setTimeout(() => setNotice(null), NOTICE_MS)
@@ -260,10 +272,10 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
         aria-label={`Folder ${folder.name}`}
         data-story-id={folder.storyId}
         style={{ '--folder-depth': depth - 1 } as CSSProperties}
-        onPointerEnter={() => { if (folder.storyId) onStoryHighlight?.(folder.storyId) }}
-        onPointerLeave={() => { if (folder.storyId) onStoryHighlight?.(null) }}
-        onFocus={() => { if (folder.storyId) onStoryHighlight?.(folder.storyId) }}
-        onBlur={(event) => { if (folder.storyId && !event.currentTarget.contains(event.relatedTarget as Node | null)) onStoryHighlight?.(null) }}
+        onPointerEnter={() => { if (folder.storyId) highlightStory(folder.storyId) }}
+        onPointerLeave={() => { if (folder.storyId) highlightStory(null) }}
+        onFocus={() => { if (folder.storyId) highlightStory(folder.storyId) }}
+        onBlur={(event) => { if (folder.storyId && !event.currentTarget.contains(event.relatedTarget as Node | null)) highlightStory(null) }}
       >
         <div className="tab-rail-folder-head" data-folder-drop={folder.id}>
           {renaming === folder.id ? (
@@ -378,7 +390,7 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
                 aria-label={`${title}, ${at === 0 ? 'left' : 'right'} side by side${half.active ? ', focused' : ''}`}
                 tabIndex={half.active || (!focused && at === 0) ? 0 : -1}
                 title={title}
-                onFocus={() => setFocusIndex(Math.max(0, visibleTabs.indexOf(left)))}
+                onFocus={() => setFocusIndex(Math.max(0, visibleTabs.indexOf(half)))}
                 onClick={() => void window.intoponet.browserHost.activateTab(half.id)}
                 onContextMenu={(event) => openTabMenu(event, half.id)}
                 {...dragHandlers(half, Math.max(0, visibleTabs.indexOf(half)))}

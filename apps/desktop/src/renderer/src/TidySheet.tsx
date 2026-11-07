@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { Layers, Sparkles, X } from 'lucide-react'
 import type { PageTabSnapshot, TidySuggestion } from '@intoponet/browser-api'
 import { useGlassSheen } from './glass/useGlassSheen'
+import { holdPage } from './browsingData/pageHold'
 import './glass/glass.css'
 import './tidySheet.css'
 
@@ -23,6 +24,15 @@ export function TidySheet({ tabs, onAccept, onGroupByStory, onClose }: {
   const [state, setState] = useState<State>({ status: 'loading' })
   const titles = new Map(tabs.map((tab) => [tab.id, tab.title || tab.url || 'Untitled page']))
 
+  // The page is a native view drawn above the shell: hide it while the sheet is open, or it covers the sheet.
+  useEffect(() => holdPage(), [])
+  // Focus moves into the sheet, and back to what opened it when it closes.
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null
+    sheen.current?.focus()
+    return () => opener?.focus?.()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     let live = true
     window.intoponet.browserHost.tidyTabsSuggest().then((suggestion: TidySuggestion) => {
@@ -33,11 +43,29 @@ export function TidySheet({ tabs, onAccept, onGroupByStory, onClose }: {
     return () => { live = false }
   }, [])
 
+  // Escape closes the sheet only, before the app's own Escape handling (which would close the page).
   useEffect(() => {
-    const onKey = (event: KeyboardEvent): void => { if (event.key === 'Escape') onClose() }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      event.stopPropagation()
+      onClose()
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
   }, [onClose])
+
+  // Tab stays inside the sheet: it is modal, and the sidebar behind it is out of reach.
+  const keepFocusInside = (event: ReactKeyboardEvent<HTMLDivElement>): void => {
+    if (event.key !== 'Tab' || !sheen.current) return
+    const focusable = [...sheen.current.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled])')]
+    const first = focusable[0]
+    const last = focusable.at(-1)
+    if (!first || !last) return
+    const at = document.activeElement
+    if (event.shiftKey && (at === first || at === sheen.current)) { event.preventDefault(); last.focus() }
+    else if (!event.shiftKey && at === last) { event.preventDefault(); first.focus() }
+  }
 
   const groups = state.status === 'ready' ? state.groups : []
   const chosen = groups.filter((group) => group.include && group.name.trim() && group.tabIds.length)
@@ -49,7 +77,7 @@ export function TidySheet({ tabs, onAccept, onGroupByStory, onClose }: {
 
   return createPortal(
     <div className="tidy-scrim" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
-      <div ref={sheen} className="tidy-sheet lg-surface lg-sheen" role="dialog" aria-modal="true" aria-labelledby="tidy-title">
+      <div ref={sheen} className="tidy-sheet lg-surface lg-sheen" role="dialog" aria-modal="true" aria-labelledby="tidy-title" tabIndex={-1} onKeyDown={keepFocusInside}>
         <header className="tidy-head">
           <h2 id="tidy-title"><Sparkles size={15} aria-hidden="true" /> Tidy tabs</h2>
           <button type="button" className="tidy-close" aria-label="Close" onClick={onClose}><X size={15} aria-hidden="true" /></button>

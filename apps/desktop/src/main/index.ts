@@ -38,7 +38,7 @@ import { parsePasswordCommand, passwordChannels, type PasswordEvent } from '../s
 import { parsePasswordPageMessage, passwordPageChannels } from '../shared/passwordPage'
 import { updateChannels, parseUpdateCommand } from '@intoponet/browser-api'
 import { browserUserAgent } from './browserUserAgent'
-import { capTitle, capUrl, coalesce, persistedActiveUrl } from './tabState'
+import { capTitle, capUrl, coalesce, persistedActiveUrl, restoredActiveTab } from './tabState'
 import { EXIT_FULLSCREEN_SCRIPT, FULLSCREEN_WORLD_ID, fullscreenSiteName, showFullscreenNotice } from './fullscreenNotice'
 import { bindLeavePrompt, SAFE_DIALOG_PREFERENCES } from './leavePrompt'
 import { fetchTabIcon, TabIconMemory } from './tabFavicon'
@@ -52,9 +52,9 @@ import { focusLinkScript, isLinkPreviewRequest, parsePreviewMessage, PREVIEW_FOC
 import { collapseAdSlotsScript, UNCOLLAPSE_AD_SLOTS_SCRIPT } from './adCollapse'
 import { archiveAfterMs, DEFAULT_TAB_ARCHIVE, TabArchive, type ArchivedTab } from './tabArchive'
 import { addLinkRoute, moveLinkRoute, parseLinkRoutes, removeLinkRoute, routeFor, serializeLinkRoutes, siteOfWebUrl, updateLinkRoute, type LinkRoute } from './linkRoutes'
-import { DEFAULT_TAB_SLEEP, parseBrowsingSettingsFile, parseLinksFromOtherApps, sleepAfterMs, tabsDueForSleep, TYPED_FORM_SCRIPT } from './tabSleep'
+import { answerWithin, DEFAULT_TAB_SLEEP, parseBrowsingSettingsFile, parseLinksFromOtherApps, sleepAfterMs, tabsDueForSleep, TYPED_CHECK_MS, TYPED_FORM_SCRIPT } from './tabSleep'
 import { QuickWindows, type QuickProtection } from './quickWindow'
-import { AUTO_PIP_WORLD_ID, ENTER_PIP_SCRIPT, EXIT_PIP_SCRIPT, NowPlaying, TOGGLE_PLAYBACK_SCRIPT, type PipEnterResult } from './autoPip'
+import { AUTO_PIP_WORLD_ID, ENTER_PIP_SCRIPT, EXIT_PIP_SCRIPT, NowPlaying, PIP_LEFT_SCRIPT, TOGGLE_PLAYBACK_SCRIPT, type PipEnterResult } from './autoPip'
 import type { NowPlayingSnapshot } from '@intoponet/browser-api'
 import { browserContextExtras, searchSelectionLabel } from './browserContextMenu'
 
@@ -200,7 +200,7 @@ import { planGrouping, snapshotGrouping, undoGrouping, UNDO_GROUPING_MS, type Gr
 import { suggestGroups, tidyCandidates, tidyText } from './tabTidy'
 import { dot } from './laya/retrieval'
 import { tabMenuTemplate, type TabMenuAction, type TabMenuSplit } from './tabMenu'
-import { canSplit, partnerOf, repairSplits, setSplitRatio, splitBounds, splitPreviewArea, splitWith, storableRatio, unsplit, DEFAULT_SPLIT_RATIO, type SplitLayout, type SplitSide, type TabSplit } from './splitPages'
+import { canSplit, keepOutOfPairs, pairMoveTarget, partnerOf, repairSplits, setSplitRatio, splitBounds, splitPreviewArea, splitWith, storableRatio, unsplit, DEFAULT_SPLIT_RATIO, type SplitLayout, type SplitSide, type TabSplit } from './splitPages'
 import { compareCountryName, compareLabelFor, landedCompare, savedCompareOf, tabCompareFor, type CompareSideInput, type TabCompare } from './compare'
 import { liveTabFlags } from './tabState'
 import { groupSavedFolders, parseSavedWorkspaces, savedWorkspaceOf, WorkspaceSet, type RemovedWorkspace, type SavedWorkspace, type SavedWorkspaces } from './workspaces'
@@ -1895,6 +1895,22 @@ function floatLeavingTab(view: WebContentsView): void {
       tab.pictureInPicture = true
       nowPlaying.update(tab.id, { pip: true }, Date.now())
       emitNowPlaying()
+      watchFloatingWindow(tab, view)
+    })
+    .catch(() => undefined)
+}
+
+/**
+ * The small window can close without the app: the person closes it, or uses its back-to-tab button.
+ * The tab then no longer floats (it may sleep or be archived again, and the control stops saying so).
+ */
+function watchFloatingWindow(tab: OpenTab, view: WebContentsView): void {
+  void view.webContents.executeJavaScriptInIsolatedWorld(AUTO_PIP_WORLD_ID, [{ code: PIP_LEFT_SCRIPT }])
+    .then(() => {
+      if (tab.view !== view || !tab.pictureInPicture) return
+      delete tab.pictureInPicture
+      nowPlaying.update(tab.id, { pip: false }, Date.now())
+      emitNowPlaying()
     })
     .catch(() => undefined)
 }
@@ -2013,6 +2029,8 @@ function groupTabs(groups: TabGroupRequest[]): string {
     maxFolders: MAX_FOLDERS,
     newId: randomUUID,
   })
+  // Nothing to move (the tabs closed or left while Tidy's preview was open, or the folder limit): say so, with no Undo.
+  if (plan.folderOf.size === 0) throw new Error(tabFolders.length >= MAX_FOLDERS ? `At most ${MAX_FOLDERS} folders.` : 'Those tabs are no longer open here.')
   const snapshot = snapshotGrouping(openTabs, tabFolders, plan.created)
   tabFolders = plan.folders
   for (const tab of openTabs) {
@@ -2545,6 +2563,7 @@ function switcherTabs(): SwitcherTab[] {
       favicon: tab.favicon,
       lastShownAt: tab.lastShownAt ?? 0,
       isPrivate: privateViews.has(tab.view),
+      partnerId: partnerOf(openTabs, tab)?.id,
     }
   })
 }
@@ -2852,7 +2871,7 @@ async function sleepIdleTabs(): Promise<void> {
         if (live) {
           const contents = tab.view.webContents
           if (contents.isCurrentlyAudible() || capturingContents.has(contents.id) || browsingData?.downloads.activeForPage(String(contents.id))) continue
-          const typed = await contents.executeJavaScriptInIsolatedWorld(KEYS_WORLD_ID, [{ code: TYPED_FORM_SCRIPT }]).catch(() => true)
+          const typed = await answerWithin(contents.executeJavaScriptInIsolatedWorld(KEYS_WORLD_ID, [{ code: TYPED_FORM_SCRIPT }]), TYPED_CHECK_MS, true)
           if (typed !== false) continue
         }
         if (tab.id === activeTabId || !openTabs.includes(tab)) continue
@@ -2885,7 +2904,7 @@ async function sleepIdleTabs(): Promise<void> {
       const tab = allTabs().find((item) => item.id === id)
       if (!tab || viewGone(tab.view)) continue
       // Typed text not yet sent keeps a tab awake (it would be lost); so does a page that will not answer.
-      const typed = await tab.view.webContents.executeJavaScriptInIsolatedWorld(KEYS_WORLD_ID, [{ code: TYPED_FORM_SCRIPT }]).catch(() => true)
+      const typed = await answerWithin(tab.view.webContents.executeJavaScriptInIsolatedWorld(KEYS_WORLD_ID, [{ code: TYPED_FORM_SCRIPT }]), TYPED_CHECK_MS, true)
       if (typed !== false || tab.id === activeTabId || tab.view === companionView || tab.asleep) continue
       unloadTab(tab, { keepHistory: true })
     }
@@ -2902,6 +2921,8 @@ async function sleepIdleTabs(): Promise<void> {
 function unloadTab(tab: OpenTab, options: { keepHistory: boolean; url?: string }): void {
   if (tab.start || tab.asleep || viewGone(tab.view) || pageView === tab.view || companionView === tab.view) return
   nowPlaying.forget(tab.id)
+  // Its media stops with its page: the now-playing control no longer lists it.
+  emitNowPlaying()
   const old = tab.view
   const liveUrl = old.webContents.getURL()
   let history: TabHistory | undefined
@@ -2973,6 +2994,7 @@ function discardTab(id: string, remember = true): void {
   if (!tab) return
   if (index < 0) emitWorkspaces()
   nowPlaying.forget(tab.id)
+  emitNowPlaying()
   if (remember) rememberClosedTab(tab)
   crashRecovery.forget(tab.id)
   // Its partner, if any, is whole again (its side of the split goes with this tab).
@@ -3475,6 +3497,8 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
   view.webContents.on('did-navigate', () => {
     const tab = tabOfView(view)
     if (!tab) return
+    // A new page: nothing of the old one floats any more.
+    delete tab.pictureInPicture
     nowPlaying.forget(tab.id)
     emitNowPlaying()
   })
@@ -4148,15 +4172,20 @@ async function handleBrowserCommand(
       if (next) showTab(next.id)
       break
     }
-    case 'move-tab':
-      if (moveFolderedTab(openTabs, tabFolders, command.id, command.toIndex)) {
+    case 'move-tab': {
+      // A pair moves as one row: a step onto its partner goes past it, and nothing lands between a pair's sides.
+      const from = openTabs.findIndex((item) => item.id === command.id)
+      const toIndex = pairMoveTarget(openTabs, command.id, command.toIndex)
+      if (moveFolderedTab(openTabs, tabFolders, command.id, toIndex)) {
         const moved = openTabs.find((item) => item.id === command.id)
         if (moved) keepPairTogether(moved)
+        keepOutOfPairs(openTabs, command.id, toIndex > from)
         tabsRearranged()
         emitTabs()
         schedulePersistentStateSave()
       }
       break
+    }
     case 'set-tab-pinned':
       if (setPinned(openTabs, command.id, command.pinned)) {
         // Pinning records where the tab is as its home; unpinning forgets it.
@@ -5033,8 +5062,7 @@ app.whenReady().then(async () => {
       const tabs = repairSplits(folderedOrder(pinnedFirst(byWorkspace.get(workspace.id) ?? []), folders))
       workspaces.park(workspace.id, { tabs, folders, activeTabId: tabs.some((tab) => tab.id === workspace.activeTabId) ? workspace.activeTabId! : null })
     }
-    const active =
-      openTabs.find((tab) => samePage(tab.url, restoredState.url)) ?? openTabs[0]
+    const active = restoredActiveTab(openTabs, saved.workspaces.find((workspace) => workspace.id === workspaces.activeId)?.activeTabId, restoredState.url)
     if (active) {
       delete active.asleep
       activeTabId = active.id
