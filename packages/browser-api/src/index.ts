@@ -346,6 +346,8 @@ export interface BrowserHostApi {
   goTabHome(id: string): Promise<void>
   /** Ends the recent-tabs switcher: show the highlighted tab, or keep the current one. */
   tabSwitcher(action: 'commit' | 'cancel'): Promise<void>
+  /** Open a web address in a card over the page or the globe (link preview), in the current browsing mode. */
+  previewLink(url: string): Promise<void>
   /** Reload, ignoring cached files. */
   forceReload(): Promise<void>
   /** Save the page as HTML with its files (asks where, in Downloads). */
@@ -440,6 +442,8 @@ export type BrowserHostCommand =
   | { type: 'tab-home'; id: string }
   /** ⌃ released (commit: show the highlighted tab) or Escape (cancel) while the recent-tabs switcher is open. */
   | { type: 'tab-switcher'; action: 'commit' | 'cancel' }
+  /** Preview a web address in a card floating over the page or the globe (⇧-click on a headline). */
+  | { type: 'preview-link'; url: string }
   | { type: 'force-reload' }
   | { type: 'save-page' }
   /** Save the page as a PDF in one click (options: also remembered for the next click). */
@@ -514,6 +518,7 @@ const commandTypes = new Set<BrowserHostCommand['type']>([
   'copy-page-address',
   'tab-home',
   'tab-switcher',
+  'preview-link',
   'force-reload',
   'save-page',
   'export-pdf',
@@ -754,6 +759,11 @@ export function parseBrowserHostCommand(value: unknown): BrowserHostCommand {
     case 'tab-switcher':
       if (value['action'] !== 'commit' && value['action'] !== 'cancel') throw new Error('Invalid switcher action.')
       return { type, action: value['action'] }
+    case 'preview-link':
+      if (typeof value['url'] !== 'string' || value['url'].length === 0 || value['url'].length > 8_192 || !/^https?:\/\//i.test(value['url'])) {
+        throw new Error('Invalid preview address.')
+      }
+      return { type, url: value['url'] }
     case 'tab-home':
       if (typeof value['id'] !== 'string' || value['id'].length === 0 || value['id'].length > 80) throw new Error('Invalid tab.')
       return { type, id: value['id'] }

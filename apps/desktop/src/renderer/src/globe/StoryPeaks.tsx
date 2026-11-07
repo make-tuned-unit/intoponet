@@ -4,6 +4,7 @@ import type { StoryMountain } from '../../../shared/news/storyMountains'
 import { countryPlace } from '../../../shared/places/places'
 import type { GlobeMarker } from './GlobeMarkers'
 import { summitRadius, type StrandEnd } from './StoryStrands'
+import { openOrPreview } from '../linkPreview'
 
 /** Summit gold (also the shader's cap colour). */
 export const SUMMIT_COLOR = '#ffd166'
@@ -112,7 +113,7 @@ export function StoryPanel({ story, rank, onClose, onOpen }: { story: StoryMount
         <button ref={closeRef} type="button" className="lg-icon-button" aria-label="Close" onClick={onClose}><X size={14} /></button>
       </header>
       <h2>{story.label ?? story.title}</h2>
-      <button type="button" className="story-panel-lead" onClick={() => onOpen(story.url)}>{story.title} <span>{story.publisher}</span></button>
+      <button type="button" className="story-panel-lead" onClick={(event) => openOrPreview(event, story.url, onOpen)} title="Open the article (⇧-click to preview it over the globe)">{story.title} <span>{story.publisher}</span></button>
       <p className="story-panel-detail">{coverageLine(story)}</p>
       {story.countries.length > 0 && (
         <>
@@ -123,7 +124,7 @@ export function StoryPanel({ story, rank, onClose, onOpen }: { story: StoryMount
                 <span className="story-panel-order">{index + 1}</span>
                 <div>
                   <span className="story-panel-country">{countryName(country.countryCode)} <span>{country.outlets} {country.outlets === 1 ? 'outlet' : 'outlets'} · from {timeOf(country.firstAt)}</span></span>
-                  <button type="button" onClick={() => onOpen(country.headline.url)} lang={country.headline.lang}>{country.headline.title} <span>{country.headline.publisher}</span></button>
+                  <button type="button" onClick={(event) => openOrPreview(event, country.headline.url, onOpen)} lang={country.headline.lang}>{country.headline.title} <span>{country.headline.publisher}</span></button>
                 </div>
               </li>
             ))}

@@ -10,6 +10,7 @@ import { formatMegabytes, languageName, modelFor, nativeName, RELATED_MODEL, typ
 import { useHeadlinePref } from './headlinePref'
 import { modelsToFetch } from './modelQueue'
 import './translate.css'
+import { openOrPreview } from '../linkPreview'
 
 /**
  * Headlines shown in your language, with an Original ↔ your-language flip.
@@ -148,7 +149,7 @@ export function HeadlineList({
           const code = headlineLanguage(headline.lang, headline.title)
           return (
             <li key={headline.url} className={onHistory ? 'has-history' : undefined}>
-              <button type="button" onClick={() => onOpen(headline.url)} title={shown ? headline.title : undefined}>
+              <button type="button" onClick={(event) => openOrPreview(event, headline.url, onOpen)} title={shown ? headline.title : undefined}>
                 <strong lang={shown ? target : code ?? undefined}>{shown ?? headline.title}</strong>
                 <small>
                   {detail ? detail(headline) : `${headline.publisher} · ${relativeTime(headline.publishedAt, now)}`}{shown && code ? ` · from ${languageName(code)}${translation && modelFor(code, translation.supported)?.rough ? ` (rough, via ${languageName(RELATED_MODEL[code]!)})` : ''}` : ''}

@@ -2239,6 +2239,227 @@ export const checks = {
       server.close()
     }
   },
+  async LINK_PREVIEW(ctx) {
+    // A page with links, the page they lead to (with an ad frame and an ad picture) and one more page after it.
+    const pages = {
+      '/home': `<!doctype html><html lang="en"><title>Home page</title><body style="font:16px system-ui;margin:0">
+        <a id="lnk" href="/target" style="position:absolute;left:40px;top:40px;width:320px;height:48px;display:block">Read the target story</a>
+        <a id="other" href="/elsewhere" style="position:absolute;left:40px;top:120px">Somewhere else</a></body></html>`,
+      '/private-home': `<!doctype html><html lang="en"><title>Private home</title><body style="font:16px system-ui;margin:0">
+        <a id="lnk" href="/private-target" style="position:absolute;left:40px;top:40px;width:320px;height:48px;display:block">A private story</a></body></html>`,
+      '/target': `<!doctype html><html lang="en"><title>Target story</title><body style="font:16px system-ui;margin:24px">
+        <h1>Target story</h1><p id="lead">The story starts here.</p>
+        <div id="slot" class="ad-slot" style="min-height:250px;background:#eee"><span>Advertisement</span><iframe src="https://securepubads.g.doubleclick.net/gampad/ads?slot=lp" width="300" height="250"></iframe></div>
+        <img src="https://pagead2.googlesyndication.com/pagead/lp-banner.png" width="728" height="90" alt="">
+        <p><a id="next" href="/target2">Next page</a> <button id="last" type="button">Last control</button></p></body></html>`,
+      '/target2': `<!doctype html><html lang="en"><title>Second page</title><body style="font:16px system-ui;margin:24px"><h1>Second page</h1></body></html>`,
+      '/private-target': `<!doctype html><html lang="en"><title>Private target</title><body><h1>Private target</h1></body></html>`,
+    }
+    const server = createServer((request, response) => {
+      const path = new URL(request.url, 'http://localhost').pathname
+      response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
+      response.end(pages[path] ?? `<!doctype html><title>Page ${path}</title><h1>${path}</h1>`)
+    })
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+    const origin = `http://127.0.0.1:${server.address().port}`
+    const host = 'window.intoponet.browserHost'
+    const tabs = async () => JSON.parse(await ctx.evaluate(`${host}.getTabs().then((t) => JSON.stringify(t))`))
+    /** What is on screen: the card (frame + page on top), the views under it, and focus. */
+    const card = () => ctx.main(`(() => {
+      const win = electron.BrowserWindow.getAllWindows()[0]
+      const kids = win.contentView.children.filter((v) => v.webContents && !v.webContents.isDestroyed())
+      const frame = kids.find((v) => v.webContents.getURL().startsWith('data:') && v.webContents.getURL().includes('link-preview-card'))
+      const page = frame ? kids[kids.length - 1] : null
+      const partition = (c) => c.session === electron.session.fromPartition('intoponet-private') ? 'private' : c.session === electron.session.fromPartition('persist:intoponet-default') ? 'normal' : 'other'
+      return JSON.stringify({
+        windows: electron.BrowserWindow.getAllWindows().length,
+        open: !!frame && page !== frame && kids.indexOf(frame) === kids.length - 2,
+        url: page ? page.webContents.getURL() : null,
+        id: page ? page.webContents.id : null,
+        bounds: page ? page.getBounds() : null,
+        partition: page ? partition(page.webContents) : null,
+        pageFocused: page ? page.webContents.isFocused() : false,
+        frameFocused: frame ? frame.webContents.isFocused() : false,
+        shellFocused: win.webContents.isFocused(),
+        under: kids.filter((v) => v !== frame && v !== page).map((v) => ({ url: v.webContents.getURL(), bounds: v.getBounds(), focused: v.webContents.isFocused() })),
+      })
+    })()`).then(JSON.parse)
+    /** Focus is only reported for the key window: bring the app forward first (other apps may be in front during checks). */
+    const focusState = async () => {
+      await ctx.main(`(() => { electron.app.focus({ steal: true }); electron.BrowserWindow.getAllWindows()[0].focus(); return true })()`)
+      await ctx.delay(400)
+      return card()
+    }
+    const waitOpen = async (part, label) => {
+      for (let i = 0; i < 40; i += 1) {
+        const state = await card()
+        if (state.open && (!part || (state.url ?? '').includes(part))) return state
+        await ctx.delay(250)
+      }
+      throw new CheckFailure(`The preview card did not open (${label}).`)
+    }
+    const waitClosed = async (label) => {
+      for (let i = 0; i < 20; i += 1) {
+        const state = await card()
+        if (!state.open && !state.id) return state
+        await ctx.delay(250)
+      }
+      throw new CheckFailure(`The preview card stayed open after ${label}.`)
+    }
+    /** Keys as the OS delivers them, to one web contents. */
+    const keyTo = (id, keyCode, modifiers = []) => ctx.main(`(() => { const c = electron.webContents.fromId(${id}); for (const type of ['keyDown', 'keyUp']) c.sendInputEvent({ type, keyCode: ${JSON.stringify(keyCode)}, modifiers: ${JSON.stringify(modifiers)} }); return true })()`)
+    const shiftClick = async (session, selector) => {
+      const box = JSON.parse(await session.evaluate(`JSON.stringify(document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect())`))
+      for (const type of ['mousePressed', 'mouseReleased']) await session.send('Input.dispatchMouseEvent', { type, x: box.x + box.width / 2, y: box.y + box.height / 2, button: 'left', clickCount: 1, modifiers: 8 })
+    }
+    const focusedLink = (session) => session.evaluate(`document.activeElement?.id ?? ''`)
+    try {
+      // Every request the protection blocks, in either session, with the page that asked for it.
+      await ctx.main(`(() => { globalThis.__lpBlocked = []; for (const p of ['persist:intoponet-default', 'intoponet-private']) electron.session.fromPartition(p).webRequest.onErrorOccurred((d) => { if (d.error === 'net::ERR_BLOCKED_BY_CLIENT') globalThis.__lpBlocked.push({ id: d.webContentsId, url: d.url }) }); return true })()`)
+      await openPage(ctx, `${origin}/home`, 2500)
+      const home = await ctx.page('/home')
+      const before = await tabs()
+      const homeHistory = await home.evaluate('history.length')
+
+      // ⇧-click: a card over the page, no new window or tab, the page under it as it was.
+      await shiftClick(home, '#lnk')
+      const shown = await waitOpen('/target', '⇧-click on a link')
+      expect(shown.windows === 1, `⇧-click opened a window (${shown.windows} windows).`)
+      await ctx.delay(1500)
+      const during = await tabs()
+      expect(during.length === before.length, `⇧-click opened a tab (${before.length} → ${during.length}).`)
+      const under = shown.under.find((view) => view.url.includes('/home'))
+      expect(!!under, 'The page under the card is gone.')
+      expect(await home.evaluate('location.pathname') === '/home' && await home.evaluate('history.length') === homeHistory, 'The page under the card navigated.')
+      const share = [shown.bounds.width / under.bounds.width, shown.bounds.height / under.bounds.height]
+      expect(share.every((s) => s >= 0.7 && s <= 0.85), `The card is not about 80% of the page (${share.map((s) => Math.round(s * 100)).join('% × ')}%).`)
+      expect(shown.partition === 'normal', `The preview of a normal tab is in the "${shown.partition}" session.`)
+      const entered = await focusState()
+      expect(entered.open && entered.pageFocused && !entered.under.some((view) => view.focused), `Focus did not move into the card (${JSON.stringify({ page: entered.pageFocused, frame: entered.frameFocused, shell: entered.shellFocused })}).`)
+      const previewId = shown.id
+
+      // Protection: the ad frame and ad picture are blocked in the card, and their space is hidden.
+      await ctx.delay(3500)
+      const blocked = await ctx.main(`JSON.stringify(globalThis.__lpBlocked.filter((b) => b.id === ${previewId}).map((b) => new URL(b.url).hostname))`).then(JSON.parse)
+      expect(blocked.some((h) => h.includes('doubleclick')) && blocked.some((h) => h.includes('googlesyndication')), `Protection did not block the test ad hosts in the preview (blocked: ${blocked.join(', ') || 'nothing'}).`)
+      const preview = await ctx.page('/target')
+      const slot = await preview.evaluate(`Math.round(document.getElementById('slot').getBoundingClientRect().height)`)
+      expect(slot === 0, `The blocked ad left a ${slot} px box in the preview.`)
+
+      // The card's own controls pass axe.
+      const frame = await ctx.page('link-preview-card')
+      if (!(await frame.evaluate(`typeof axe !== 'undefined'`))) await frame.evaluate(`${readFileSync(join(repo, 'node_modules/axe-core/axe.min.js'), 'utf8')}; true`)
+      const violations = JSON.parse(await frame.evaluate(`axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'] }, resultTypes: ['violations'] }).then((r) => JSON.stringify(r.violations.map((v) => v.id + ' ×' + v.nodes.length)))`))
+      expect(violations.length === 0, `WCAG violations on the preview card: ${violations.join(', ')}`)
+      const heading = await frame.evaluate(`document.getElementById('title').textContent`)
+      expect(heading === 'Target story', `The card's title bar says "${heading}".`)
+
+      // Focus stays in the card: Tab from Close goes into the page, Tab past the page's last control comes back to the title bar.
+      await frame.evaluate(`document.getElementById('close').focus(); true`)
+      await keyTo(await ctx.main(`electron.BrowserWindow.getAllWindows()[0].contentView.children.find((v) => v.webContents?.getURL().includes('link-preview-card')).webContents.id`), 'Tab')
+      await ctx.delay(300)
+      let state = await focusState()
+      expect(state.pageFocused && !state.frameFocused, `Tab from the card's Close button left the card (${JSON.stringify({ ...state, under: undefined })}; frame focus "${await frame.evaluate('document.activeElement?.id ?? ""')}").`)
+      await preview.evaluate(`document.getElementById('last').focus(); true`)
+      await keyTo(previewId, 'Tab')
+      await ctx.delay(300)
+      state = await focusState()
+      const titleBarFocus = await frame.evaluate(`document.activeElement?.id ?? ''`)
+      expect(state.frameFocused && titleBarFocus === 'open-tab' && !state.shellFocused && !state.under.some((view) => view.focused), `Tab past the page's last control left the card (title bar focus: "${titleBarFocus}").`)
+
+      // Escape closes it and focus goes back to the link.
+      // (The link lost focus meanwhile, so finding it focused again is the card's doing.)
+      await home.evaluate(`document.activeElement?.blur(); true`)
+      await keyTo(previewId, 'Escape')
+      await waitClosed('Escape')
+      await ctx.delay(400)
+      expect(await focusedLink(home) === 'lnk', 'After Escape, focus did not return to the link.')
+
+      // Preview Link from the context menu (the native menu is read, not shown); then a click outside closes it.
+      await home.evaluate(`document.activeElement?.blur(); true`)
+      await ctx.main(`(() => { const M = electron.Menu; globalThis.__lpBuild = M.buildFromTemplate; M.buildFromTemplate = (template) => { globalThis.__lpMenu = template; return { popup() {} } }; return true })()`)
+      const box = JSON.parse(await home.evaluate(`JSON.stringify(document.getElementById('lnk').getBoundingClientRect())`))
+      for (const type of ['mousePressed', 'mouseReleased']) await home.send('Input.dispatchMouseEvent', { type, x: box.x + 20, y: box.y + 20, button: 'right', clickCount: 1 })
+      await ctx.delay(800)
+      const items = await ctx.main(`(() => { const t = globalThis.__lpMenu || []; electron.Menu.buildFromTemplate = globalThis.__lpBuild; const item = t.find((i) => i.label === 'Preview Link'); if (item) item.click(); return JSON.stringify(t.map((i) => i.label).filter(Boolean)) })()`).then(JSON.parse)
+      expect(items.includes('Preview Link'), `The link's context menu has no "Preview Link" (${items.join(', ')}).`)
+      const fromMenu = await waitOpen('/target', 'Preview Link')
+      await ctx.main(`(() => { const f = electron.BrowserWindow.getAllWindows()[0].contentView.children.find((v) => v.webContents?.getURL().includes('link-preview-card')); for (const type of ['mouseDown', 'mouseUp']) f.webContents.sendInputEvent({ type, x: 6, y: 6, button: 'left', clickCount: 1 }); return true })()`)
+      await waitClosed('a click outside it')
+      await ctx.delay(400)
+      expect(await focusedLink(home) === 'lnk', 'After a click outside, focus did not return to the link.')
+      expect(fromMenu.id !== previewId, 'The preview reused a closed page.')
+
+      // ⌘W closes the card, not the tab under it.
+      await shiftClick(home, '#lnk')
+      const third = await waitOpen('/target', '⇧-click again')
+      await ctx.delay(800)
+      await keyTo(third.id, 'W', ['meta'])
+      await waitClosed('⌘W')
+      expect((await tabs()).length === before.length, '⌘W closed the tab under the card as well.')
+
+      // Open as Tab: the same page, with the back list from inside the card.
+      await shiftClick(home, '#lnk')
+      const fourth = await waitOpen('/target', '⇧-click for Open as Tab')
+      await ctx.delay(1200)
+      // A real click (scripted ones leave a back list Chromium skips).
+      const inCard = await ctx.page('/target')
+      const next = JSON.parse(await inCard.evaluate(`JSON.stringify(document.getElementById('next').getBoundingClientRect())`))
+      for (const type of ['mousePressed', 'mouseReleased']) await inCard.send('Input.dispatchMouseEvent', { type, x: next.x + next.width / 2, y: next.y + next.height / 2, button: 'left', clickCount: 1 })
+      await waitOpen('/target2', 'a link followed inside the card')
+      await ctx.delay(800)
+      // The frame closes as it answers: do not wait for the reply.
+      void (await ctx.page('link-preview-card')).evaluate(`setTimeout(() => document.getElementById('open-tab').click(), 50); true`).catch(() => undefined)
+      await waitClosed('Open as Tab')
+      await ctx.delay(800)
+      const after = await tabs()
+      const moved = after.find((tab) => tab.active)
+      expect(after.length === before.length + 1 && moved?.url === `${origin}/target2`, `Open as Tab did not show the page as a tab (${after.map((tab) => tab.url).join(', ')}).`)
+      const panel = await panelState(ctx)
+      expect(panel.canGoBack, 'The tab made from the preview lost its back list.')
+      const sameContents = await ctx.main(`electron.webContents.fromId(${fourth.id})?.getURL() ?? ''`)
+      expect(sameContents === `${origin}/target2`, 'Open as Tab made a new page instead of keeping the preview\'s.')
+      await ctx.evaluate(`${host}.closeActiveTab().then(() => true)`)
+      await ctx.delay(800)
+
+      // A private tab's preview is private.
+      await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(true).then(() => true)`)
+      await openPage(ctx, `${origin}/private-home`, 2500)
+      const privateHome = await ctx.page('/private-home')
+      await shiftClick(privateHome, '#lnk')
+      const privately = await waitOpen('/private-target', '⇧-click in a private tab')
+      expect(privately.partition === 'private', `A preview from a private tab is in the "${privately.partition}" session.`)
+      const badge = await (await ctx.page('link-preview-card')).evaluate(`document.querySelector('.private')?.textContent ?? ''`)
+      expect(badge === 'Private', 'The private preview does not say it is private.')
+      await keyTo(privately.id, 'Escape')
+      await waitClosed('Escape in a private preview')
+      await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
+      await ctx.delay(800)
+
+      // A headline in the World list, ⇧-clicked, is previewed over the globe, which stays showing.
+      await ctx.evaluate(`${host}.getTabs().then((t) => Promise.all(t.map((x) => ${host}.closeTab(x.id)))).then(() => true)`)
+      await ctx.delay(800)
+      await ctx.waitForNews()
+      expect(await ctx.click('.globe-tabs button', 'World'), 'The World tab is missing.')
+      await ctx.wait(`document.querySelectorAll('.world-list .world-row').length > 0`, 90_000, 'stories covered across the world')
+      await ctx.evaluate(`(() => { const row = document.querySelector('.world-list .world-row'); row.focus(); row.dispatchEvent(new MouseEvent('click', { bubbles: true, shiftKey: true })); return true })()`)
+      const headline = await waitOpen('http', '⇧-click on a World list headline')
+      expect(/^https?:/.test(headline.url) && !headline.url.startsWith(origin), `The World list preview shows ${headline.url}.`)
+      const globe = await panelState(ctx)
+      expect(!globe.isVisible && await ctx.evaluate(`!!document.querySelector('canvas') && !!document.querySelector('.world-list')`), 'Previewing a headline left the globe.')
+      await ctx.delay(1500)
+      await ctx.shot('world-preview')
+      await keyTo(headline.id, 'Escape')
+      await waitClosed('Escape over the globe')
+      await ctx.delay(400)
+      const back = await ctx.evaluate(`document.activeElement?.classList.contains('world-row') ?? false`)
+      expect(back && !(await panelState(ctx)).isVisible, 'Closing the headline preview did not return to the World list.')
+      return `⇧-click and Preview Link opened a ${Math.round(share[0] * 100)}% × ${Math.round(share[1] * 100)}% card with no new window or tab and the page under it unchanged; ads blocked (${[...new Set(blocked)].join(', ')}) and their space hidden in the card; Escape, a click outside and ⌘W closed it with focus back on the link; Tab stayed in the card; Open as Tab kept the page and its back list; a private tab's preview was private; a World list headline was previewed over the globe; axe clean.`
+    } finally {
+      await ctx.main(`(() => { for (const p of ['persist:intoponet-default', 'intoponet-private']) electron.session.fromPartition(p).webRequest.onErrorOccurred(null); return true })()`).catch(() => undefined)
+      server.close()
+    }
+  },
 }
 
 checks.TAB_SLEEP.env = { INTOPONET_TAB_SLEEP_MINUTE_MS: '200' }

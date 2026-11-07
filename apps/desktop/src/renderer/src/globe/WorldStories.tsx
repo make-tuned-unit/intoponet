@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { BookOpen, ChevronDown, GalleryHorizontal, Globe2, History } from 'lucide-react'
+import { BookOpen, ChevronDown, Eye, GalleryHorizontal, Globe2, History } from 'lucide-react'
 import type { GlobalStory } from '../../../shared/news/globalStories'
 import type { NewsHeadline, WikiNewsItem } from '../../../shared/news/newsDigest'
 import { HeadlineList } from '../translate/HeadlineList'
@@ -10,6 +10,7 @@ import { hostIsPaywalled } from '../../../shared/news/paywall'
 import { learnedPaywalls } from '../access/learnedPaywalls'
 import { SourceCarousel, type CarouselLaunch } from './SourceCarousel'
 import './sourceCarousel.css'
+import { openOrPreview, previewLink } from '../linkPreview'
 
 const regionNames = (() => {
   try {
@@ -92,8 +93,8 @@ export function WorldStories({
                   <button
                     type="button"
                     className="world-row"
-                    onClick={() => toggle(story)}
-                    title={`Open the article and see where it was covered. Local outlets in ${story.countries.length} countries${story.internationalDesks ? ` and ${story.internationalDesks} international desks` : ''} covered it (${story.outletCount} outlets in all). Shared words: ${story.terms.join(', ')}.`}
+                    onClick={(event) => { if (event.shiftKey) previewLink(story.url); else toggle(story) }}
+                    title={`Open the article and see where it was covered (⇧-click to preview it over the globe). Local outlets in ${story.countries.length} countries${story.internationalDesks ? ` and ${story.internationalDesks} international desks` : ''} covered it (${story.outletCount} outlets in all). Shared words: ${story.terms.join(', ')}.`}
                   >
                     <span className="world-rank">{index + 1}</span>
                     <span className="world-text">
@@ -131,6 +132,14 @@ export function WorldStories({
                             <GalleryHorizontal size={13} aria-hidden="true" /> See all {story.headlines.length} sources
                           </button>
                         )}
+                        <button
+                          type="button"
+                          className="globe-history-button world-preview-button"
+                          onClick={() => previewLink(story.url)}
+                          title="Read the article in a card over the globe (or ⇧-click any headline)"
+                        >
+                          <Eye size={13} aria-hidden="true" /> Preview article
+                        </button>
                         <button
                           type="button"
                           className="globe-history-button"
@@ -172,7 +181,7 @@ export function WorldStories({
               <li key={item.story}>
                 <p>{item.date && <em>{item.date}</em>}{item.story}</p>
                 <span>
-                  {item.links[0] && <button type="button" onClick={() => onOpen(item.links[0]!.url)}>Read</button>}
+                  {item.links[0] && <button type="button" onClick={(event) => openOrPreview(event, item.links[0]!.url, onOpen)}>Read</button>}
                   {item.mainTitle && (
                     <button type="button" className="world-itn-history" onClick={() => onArticleHistory(item.mainTitle!)}>
                       <History size={11} aria-hidden="true" /> History

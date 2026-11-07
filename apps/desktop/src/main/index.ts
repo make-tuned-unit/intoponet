@@ -47,6 +47,7 @@ import { CertificateErrorMemo, classifyLoadError, isCertificateError, showsError
 import { IncomingOpenQueue, LocalFileGrants, incomingFileTarget, incomingTargetsFromArgs, incomingWebUrl, type IncomingTarget } from './incomingOpen'
 import { PageAppearanceController } from './pageAppearance'
 import { SWITCHER_KEYS_SCRIPT, switcherHtml, SWITCHER_ROW_HEIGHT, SWITCHER_ROWS, TabSwitcher, type SwitcherTab } from './tabSwitcher'
+import { focusLinkScript, isLinkPreviewRequest, parsePreviewMessage, PREVIEW_FOCUS_LOOP_SCRIPT, PREVIEW_WORLD_ID, previewFrameHtml, previewHeading, previewLayout, previewSite, type PreviewRect } from './linkPreview'
 import { collapseAdSlotsScript, UNCOLLAPSE_AD_SLOTS_SCRIPT } from './adCollapse'
 import { archiveAfterMs, DEFAULT_TAB_ARCHIVE, TabArchive, type ArchivedTab } from './tabArchive'
 import { DEFAULT_TAB_SLEEP, parseBrowsingSettingsFile, sleepAfterMs, tabsDueForSleep, TYPED_FORM_SCRIPT } from './tabSleep'
@@ -594,15 +595,16 @@ function forgetCosmeticFrame(contents: Electron.WebContents, isMainFrame: boolea
  */
 async function applyCosmeticFilters(
   contents: Electron.WebContents,
-  options: { only?: Electron.WebFrameMain | null; onlyNew?: boolean } = {},
+  options: { only?: Electron.WebFrameMain | null; onlyNew?: boolean; /** The page's address when it is not the tab showing (a link preview). */ url?: string } = {},
 ): Promise<void> {
   try {
     if (contents.isDestroyed()) return
-    const origin = currentOrigin()
+    const pageUrl = options.url ?? lastKnownUrl
+    const origin = options.url === undefined ? currentOrigin() : (() => { try { return new URL(options.url).origin } catch { return '' } })()
     const rules =
       origin && !protection.isSiteEnabled(origin, 'default')
         ? null
-        : protection.cosmeticRules(lastKnownUrl, lastKnownUrl)
+        : protection.cosmeticRules(pageUrl, pageUrl)
     const css = rules?.cssRules.join('\n') ?? ''
     // With protection on, blocked tracker globals get quiet stand-ins so the page's own buttons don't throw.
     const script = rules ? `${cosmeticInjection(css)};${TRACKER_STUB_SCRIPT}` : `${cosmeticInjection(css)};${UNCOLLAPSE_AD_SLOTS_SCRIPT}`
@@ -658,7 +660,7 @@ function scheduleAdCollapse(contentsId: number, url?: string, delay = 250): void
 function wireProtectionSession(partition = 'persist:intoponet-default'): void {
   const guest = session.fromPartition(partition)
   guest.webRequest.onBeforeRequest((details, callback) => {
-    const routed = routeProtectionRequest(protection, protectionPages, details, openTabs)
+    const routed = routeProtectionRequest(protection, protectionPages, details, linkPreview ? [...openTabs, { url: linkPreview.url, view: linkPreview.view }] : openTabs)
     if (!routed) {
       callback({})
       return
@@ -695,6 +697,7 @@ function attachPageView(): void {
   pageView.setVisible(pageViewShown(pageView))
   applyPageViewBounds()
   pageAttached = true
+  raiseLinkPreview()
   updateWindowButtons()
   schedulePersistentStateSave()
   emitPanelState()
@@ -1226,6 +1229,8 @@ function detachActive(): void {
 function showTab(id: string): WebContentsView | null {
   const tab = openTabs.find((item) => item.id === id)
   if (!tab) return null
+  const preview = linkPreview
+  if (preview) setImmediate(() => { if (linkPreview === preview) closeLinkPreview(false) })
   if (pageView && pageView !== tab.view) detachActive()
   const now = Date.now()
   const previous = openTabs.find((item) => item.id === activeTabId)
@@ -1453,6 +1458,237 @@ function endTabSwitcher(action: 'commit' | 'cancel'): void {
   hideSwitcher()
   if (chosen && chosen !== activeTabId) showTab(chosen)
   else if (chosen && !pageAttached) showTab(chosen)
+}
+
+// ---- Link preview (linkPreview.ts): a page in a card over the page or the globe ----
+
+type LinkPreview = {
+  /** The previewed page: an ordinary page view (same session as its opener), not yet a tab. */
+  view: WebContentsView
+  /** The card's frame: backdrop, title bar and buttons, filling the window under the page. */
+  frame: WebContentsView
+  /** The link as it was clicked (focus goes back to it). */
+  url: string
+  /** The page the link was in; null for the app window (a headline on the globe). */
+  opener: WebContentsView | null
+  isPrivate: boolean
+  /** Stops watching the app window and the page underneath for focus. */
+  unwatch: () => void
+}
+let linkPreview: LinkPreview | null = null
+
+/** Where the card is centred: the page when one is showing, otherwise the whole window. */
+function linkPreviewArea(): PreviewRect {
+  if (pageView && pageAttached && !viewGone(pageView)) return pageView.getBounds()
+  const [width = 1440, height = 940] = window?.getContentSize() ?? []
+  return { x: 0, y: 0, width, height }
+}
+
+function layoutLinkPreview(): void {
+  const preview = linkPreview
+  if (!preview || !window || window.isDestroyed()) return
+  const [width = 0, height = 0] = window.getContentSize()
+  const { card, page } = previewLayout(linkPreviewArea())
+  preview.frame.setBounds({ x: 0, y: 0, width, height })
+  preview.view.setBounds(page)
+  if (viewGone(preview.frame)) return
+  const style = { left: `${card.x}px`, top: `${card.y}px`, width: `${card.width}px`, height: `${card.height}px` }
+  void preview.frame.webContents.executeJavaScript(`(() => { const card = document.getElementById('link-preview-card'); if (card) Object.assign(card.style, ${JSON.stringify(style)}); return true })()`).catch(() => undefined)
+}
+
+/** Keeps the card above a page view that was just added to the window. */
+function raiseLinkPreview(): void {
+  if (!linkPreview || !window || window.isDestroyed()) return
+  window.contentView.addChildView(linkPreview.frame)
+  window.contentView.addChildView(linkPreview.view)
+}
+
+/** The title bar follows the page (its title once known, and its site). */
+function updateLinkPreviewFrame(): void {
+  const preview = linkPreview
+  if (!preview || viewGone(preview.view) || viewGone(preview.frame)) return
+  const url = preview.view.webContents.getURL() || preview.url
+  const heading = previewHeading(preview.view.webContents.getTitle(), url)
+  void preview.frame.webContents.executeJavaScript(`window.previewUpdate && window.previewUpdate(${JSON.stringify(heading)}, ${JSON.stringify(previewSite(url))}); true`).catch(() => undefined)
+}
+
+/** Tab past the page's last control (or ⇧Tab before its first) goes to the title bar, not out of the card. */
+function armLinkPreviewFocusLoop(preview: LinkPreview): void {
+  if (linkPreview !== preview || viewGone(preview.view)) return
+  void preview.view.webContents.executeJavaScriptInIsolatedWorld(PREVIEW_WORLD_ID, [{ code: PREVIEW_FOCUS_LOOP_SCRIPT }])
+    .then((direction: unknown) => {
+      if (linkPreview !== preview || viewGone(preview.frame)) return
+      preview.frame.webContents.focus()
+      void preview.frame.webContents.executeJavaScript(`window.previewFocus && window.previewFocus(${JSON.stringify(direction === 'backward' ? 'last' : 'first')}); true`).catch(() => undefined)
+      armLinkPreviewFocusLoop(preview)
+    })
+    .catch(() => undefined)
+}
+
+/**
+ * ⇧-click, Preview Link, or a headline previewed from the globe: the page opens in a card over
+ * the page (or the globe), in the opener's session; the app window's own headlines use the
+ * current browsing mode. A link ⇧-clicked inside the card opens in the card.
+ */
+function openLinkPreview(urlValue: string, opener: WebContentsView | null): boolean {
+  const target = safeHttpUrl(urlValue)
+  if (!target || !window || window.isDestroyed()) return false
+  const url = target.toString()
+  if (linkPreview && opener === linkPreview.view) {
+    void linkPreview.view.webContents.loadURL(url).catch(() => undefined)
+    return true
+  }
+  if (linkPreview) closeLinkPreview(false)
+  if (tabSwitcher.open) endTabSwitcher('cancel')
+  const isPrivate = opener ? privateViews.has(opener) : privateMode
+  const view = buildView(isPrivate)
+  view.setBorderRadius(8)
+  // A page of our own with a little script: it only reports clicks and keys (as console lines).
+  const frame = new WebContentsView({ webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, spellcheck: false } })
+  frame.setBackgroundColor('#00000000')
+  frame.webContents.on('will-navigate', (event) => event.preventDefault())
+  frame.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  const preview: LinkPreview = { view, frame, url, opener, isPrivate, unwatch: () => undefined }
+  linkPreview = preview
+  const current = (): boolean => linkPreview === preview
+  const contentsId = view.webContents.id
+
+  frame.webContents.on('console-message', (details) => {
+    if (!current()) return
+    const action = parsePreviewMessage(details.message)
+    if (action === 'close') closeLinkPreview()
+    else if (action === 'open-as-tab') openLinkPreviewAsTab()
+    else if (action === 'focus-page-start' || action === 'focus-page-end') view.webContents.focus()
+  })
+  // Escape and ⌘W close the card (before the page or the menu bar see them).
+  const keys = (event: Electron.Event, input: Electron.Input): void => {
+    if (!current() || input.type !== 'keyDown') return
+    const action = pageKeyAction(input, { developer: developerBuild() })
+    const closeKey = action?.kind === 'command' && action.command.type === 'close-tab'
+    const escape = input.key === 'Escape' && !input.meta && !input.control && !input.alt && htmlFullScreenView !== view
+    if (!closeKey && !escape) return
+    event.preventDefault()
+    closeLinkPreview()
+  }
+  view.webContents.on('before-input-event', keys)
+  frame.webContents.on('before-input-event', keys)
+
+  // The same protection as a tab: blocked requests (wireProtectionSession), hidden ads and empty ad space.
+  view.webContents.on('dom-ready', () => {
+    if (!current()) return
+    void applyCosmeticFilters(view.webContents, { only: view.webContents.mainFrame, url: view.webContents.getURL() })
+    armLinkPreviewFocusLoop(preview)
+  })
+  view.webContents.on('did-frame-finish-load', (_event, _isMainFrame, frameProcessId, frameRoutingId) => {
+    if (!current()) return
+    const loaded = webFrameMain.fromId(frameProcessId, frameRoutingId)
+    if (loaded) void applyCosmeticFilters(view.webContents, { only: loaded, url: view.webContents.getURL() })
+  })
+  view.webContents.on('did-stop-loading', () => {
+    if (!current()) return
+    void applyCosmeticFilters(view.webContents, { onlyNew: true, url: view.webContents.getURL() })
+    scheduleAdCollapse(contentsId)
+    scheduleAdCollapse(contentsId, undefined, 2_500)
+    updateLinkPreviewFrame()
+  })
+  view.webContents.on('page-title-updated', () => { if (current()) updateLinkPreviewFrame() })
+  view.webContents.on('did-navigate', () => { if (current()) updateLinkPreviewFrame() })
+  view.webContents.on('did-navigate-in-page', () => { if (current()) updateLinkPreviewFrame() })
+  // The page's first document may replace the view that had focus: keep it in the card.
+  view.webContents.once('did-navigate', () => {
+    if (current() && !viewGone(frame) && !frame.webContents.isFocused()) view.webContents.focus()
+  })
+  view.webContents.on('render-process-gone', () => { if (current()) closeLinkPreview(false) })
+  view.webContents.once('destroyed', () => { if (current()) closeLinkPreview(false) })
+
+  // Focus is trapped in the card: if the app window or the page underneath takes it (the window coming
+  // back to the front, a click that slipped through), it goes back to the part of the card that had it.
+  // Shortcuts that move on to the app (⌘L, ⌘T…) close the card first (showShellShortcut).
+  let lastFocus: 'page' | 'frame' = 'page'
+  view.webContents.on('focus', () => { if (current()) lastFocus = 'page' })
+  frame.webContents.on('focus', () => { if (current()) lastFocus = 'frame' })
+  const shell = window.webContents
+  const under = pageView && pageAttached && !viewGone(pageView) ? pageView.webContents : null
+  const elsewhere = (): void => {
+    setImmediate(() => {
+      if (!current() || viewGone(view) || viewGone(frame)) return
+      if (lastFocus === 'frame') frame.webContents.focus()
+      else view.webContents.focus()
+    })
+  }
+  shell.on('focus', elsewhere)
+  under?.on('focus', elsewhere)
+  preview.unwatch = () => {
+    if (!shell.isDestroyed()) shell.off('focus', elsewhere)
+    if (under && !under.isDestroyed()) under.off('focus', elsewhere)
+  }
+
+  const [width = 0, height = 0] = window.getContentSize()
+  const { card, page } = previewLayout(linkPreviewArea())
+  frame.setBounds({ x: 0, y: 0, width, height })
+  view.setBounds(page)
+  window.contentView.addChildView(frame)
+  window.contentView.addChildView(view)
+  void frame.webContents.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(previewFrameHtml({ card, title: '', url, isPrivate }))}`).catch(() => undefined)
+  void view.webContents.loadURL(url).catch(() => undefined)
+  view.webContents.focus()
+  appMenu.schedule()
+  return true
+}
+
+/** Escape, a click outside, ⌘W or Close: the card goes, and focus goes back to the link (or the headline). */
+function closeLinkPreview(restoreFocus = true): void {
+  const preview = linkPreview
+  if (!preview) return
+  linkPreview = null
+  preview.unwatch()
+  if (window && !window.isDestroyed()) {
+    window.contentView.removeChildView(preview.view)
+    window.contentView.removeChildView(preview.frame)
+  }
+  if (!viewGone(preview.frame)) preview.frame.webContents.close()
+  const contentsId = viewContentsIds.get(preview.view)
+  if (contentsId !== undefined) {
+    protectionPages.remove(contentsId)
+    blockedAdAddresses.delete(contentsId)
+  }
+  if (!viewGone(preview.view)) preview.view.webContents.close()
+  appMenu.schedule()
+  if (!restoreFocus) return
+  const opener = preview.opener
+  if (opener && opener === pageView && pageAttached && !viewGone(opener)) {
+    opener.webContents.focus()
+    void opener.webContents.executeJavaScriptInIsolatedWorld(PREVIEW_WORLD_ID, [{ code: focusLinkScript(preview.url) }]).catch(() => undefined)
+  } else if (window && !window.isDestroyed()) {
+    window.webContents.focus()
+  }
+}
+
+/** Open as Tab: the very same page (and its back list) becomes a tab and is shown. */
+function openLinkPreviewAsTab(): void {
+  const preview = linkPreview
+  if (!preview) return
+  if (viewGone(preview.view)) return closeLinkPreview(false)
+  linkPreview = null
+  preview.unwatch()
+  const view = preview.view
+  if (window && !window.isDestroyed()) {
+    window.contentView.removeChildView(view)
+    window.contentView.removeChildView(preview.frame)
+  }
+  if (!viewGone(preview.frame)) preview.frame.webContents.close()
+  view.setBorderRadius(0)
+  makeRoomForTab()
+  const live = view.webContents.getURL()
+  const tab: OpenTab = { id: randomUUID(), url: safeHttpUrl(live) ? live : preview.url, title: view.webContents.getTitle(), favicon: '', view }
+  openTabs.push(tab)
+  showTab(tab.id)
+  // The icon it already reported, now that it is a tab.
+  const icon = tabIconWanted.get(view)
+  if (icon) updateTabIcon(view, icon)
+  view.webContents.focus()
+  schedulePersistentStateSave()
+  appMenu.schedule()
 }
 
 /** Puts background tabs that have been out of sight long enough to sleep (see tabSleep.ts). */
@@ -1713,6 +1949,7 @@ function contextMenuTemplate(view: WebContentsView, params: Electron.ContextMenu
       const newView = createBrowserTab(linkUrl, true, privateViews.has(view))
       if (newView) void newView.webContents.loadURL(linkUrl)
     } })
+    items.push({ label: 'Preview Link', click: () => openLinkPreview(linkUrl, view) })
   }
   if (has('copy-link-address') && linkUrl) {
     items.push({ label: 'Copy Link Address', click: () => clipboard.writeText(linkUrl) })
@@ -1974,6 +2211,11 @@ function buildView(isPrivate = privateMode): WebContentsView {
       routeExternal(view.webContents, url)
       return { action: 'deny' }
     }
+    // ⇧-click (or ⇧↵) on a link: it opens in a card over the page (linkPreview.ts), not a window.
+    if (isLinkPreviewRequest({ url, disposition, features }) && userActivation.consume(view.webContents.id)) {
+      setImmediate(() => openLinkPreview(url, view))
+      return { action: 'deny' }
+    }
     // Only right after a click or key press in the page (or for a site always allowed pop-ups).
     const activated = userActivation.consume(view.webContents.id) || popupsAllowed(view.webContents, privateViews.has(view))
     const plan = popupDecision({ url, disposition, features }, popupLimiter, view.webContents.id, Date.now(), activated)
@@ -2208,6 +2450,8 @@ async function runTabMenuAction(action: TabMenuAction, id: string): Promise<void
 /** A shell shortcut for the app window's interface: it takes keyboard focus from the page first. */
 function showShellShortcut(action: ShellShortcut): void {
   if (!window || window.isDestroyed()) return
+  // A shortcut for the app (address bar, new tab…) moves on from a link preview.
+  closeLinkPreview(false)
   window.webContents.focus()
   emit({ type: 'shortcut', action })
 }
@@ -2289,6 +2533,7 @@ function reopenClosedTab(id?: string): void {
 
 /** ⌘W: closes the tab being shown, then shows the tab that took its place, or the globe when none are left. */
 function closeActiveTab(): void {
+  if (linkPreview) return closeLinkPreview()
   if (!pageAttached || !activeTabId) return
   closeTab(activeTabId)
 }
@@ -2439,7 +2684,8 @@ function appMenuState(): AppMenuState {
   const hasPage = !!view && !isStartView(view)
   return {
     platform: process.platform,
-    tabShowing: !!view && activeTabId !== null,
+    // ⌘W closes a link preview first, also over the globe.
+    tabShowing: (!!view && activeTabId !== null) || linkPreview !== null,
     hasPage,
     canGoBack: hasPage && view.webContents.navigationHistory.canGoBack(),
     canGoForward: hasPage && view.webContents.navigationHistory.canGoForward(),
@@ -2480,6 +2726,7 @@ function setPanelBounds(bounds: BrowserPanelBounds): void {
   }
   lastBounds = safeBounds
   applyPageViewBounds()
+  layoutLinkPreview()
   schedulePersistentStateSave()
 }
 
@@ -2594,6 +2841,9 @@ async function handleBrowserCommand(
     }
     case 'tab-switcher':
       endTabSwitcher(command.action)
+      break
+    case 'preview-link':
+      openLinkPreview(command.url, null)
       break
     case 'cycle-tabs': {
       if (openTabs.length === 0) break
@@ -3004,6 +3254,7 @@ function createWindow(): void {
   // The window grows into fullscreen over an animation: keep a fullscreen page filling it.
   window.on('resize', () => {
     if (htmlFullScreenView && htmlFullScreenView === pageView) applyPageViewBounds()
+    layoutLinkPreview()
   })
   window.on('close', () => { shellClosing = true })
   // Leaving the window (⌘Tab to another app) while switching tabs: go to the highlighted one.
@@ -3347,6 +3598,7 @@ app.whenReady().then(async () => {
         if (!command.on) {
           // Leaving private browsing closes private tabs and wipes their session.
           sitePermissions!.clear(true)
+          if (linkPreview?.isPrivate) closeLinkPreview(false)
           for (const tab of openTabs.filter((item) => privateViews.has(item.view))) discardTab(tab.id)
           const privateSession = session.fromPartition(PRIVATE_PARTITION)
           await privateSession.clearStorageData().catch(() => undefined)

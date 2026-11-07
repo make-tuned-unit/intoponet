@@ -279,6 +279,14 @@ export const TOUR_STEPS: TourStep[] = [
     run: (controls) => controls.showKnowledge(false),
   },
   {
+    id: 'link-preview',
+    chapter: 'Browsing',
+    title: 'Peek at a link first',
+    body: '⇧-click a link, or a headline in the World list, and it opens in a card over the page or the globe, with the same protection. Escape puts it away; Open as Tab keeps it.',
+    target: '.browser-body',
+    seconds: 8,
+  },
+  {
     id: 'done',
     chapter: 'That’s the tour',
     title: 'The world is your start page',
