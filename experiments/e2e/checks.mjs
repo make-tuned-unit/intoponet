@@ -593,11 +593,13 @@ const waitForQuit = async (profile) => {
 }
 
 /** Second run, on a copy of the profile after a quit: the option, Work's sign-in and permissions, and Main's sign-in are kept. */
-const identityRelaunch = async (ctx, { workId, mainId }) => {
+const identityRelaunch = async (ctx, { workId, mainId, gone }) => {
   const { stateOf, showIn, waitPage } = identityHelpers(ctx)
   const ws = 'window.intoponet.workspaces'
   const state = await stateOf()
   expect(state.workspaces.find((item) => item.id === workId)?.separateSignIns === true, 'After a relaunch Work no longer has separate sign-ins.')
+  const goneCookies = await ctx.main(`electron.session.fromPartition(${JSON.stringify(`persist:intoponet-ws-${gone}`)}).cookies.get({}).then((list) => list.length)`)
+  expect(goneCookies === 0 && !state.workspaces.some((item) => item.id === gone), `A workspace deleted just before quitting still holds ${goneCookies} cookie(s) after a relaunch.`)
   const permissionsFile = join(ctx.profile, `site-permissions.ws-${workId}.json`)
   expect(existsSync(permissionsFile), "Work's permission answers were not kept across a relaunch.")
   await showIn(workId, 'who=dan')
@@ -4462,9 +4464,19 @@ export const checks = {
       await showIn(workId, 'who=dan')
       await waitPage('who=dan', 'Signed in as dan')
 
+      // A workspace with its own sign-ins deleted just before quitting (inside its Undo window) takes its sign-ins with it.
+      const gone = JSON.parse(await ctx.evaluate(`${ws}.create({ name: 'Gone' }).then((s) => JSON.stringify(s))`)).activeId
+      await ctx.evaluate(`${ws}.update(${JSON.stringify(gone)}, { separateSignIns: true }).then(() => true)`)
+      await openPage(ctx, `${base}/?who=gone`, 300)
+      await waitPage('who=gone', 'Signed out')
+      await ctx.main(`electron.webContents.getAllWebContents().find((w) => w.getURL().includes('who=gone')).executeJavaScript("document.cookie = 'sid=gone; Max-Age=86400; Path=/'; true")`)
+      expect(await ctx.main(`electron.session.fromPartition(${JSON.stringify(`persist:intoponet-ws-${gone}`)}).cookies.get({}).then((list) => list.length)`) === 1, 'The Gone workspace did not keep its own sign-in.')
+      await ctx.evaluate(`${ws}.delete(${JSON.stringify(gone)}).then(() => true)`)
+      expect((await stateOf()).activeId === workId, 'Deleting the Gone workspace did not go back to Work.')
+
       // Quit, then open a copy of the profile again: the option, Work's sign-in and permissions, and Main's sign-in are all kept.
       // The sign-ins are on disk before the quit (Chromium writes cookies a little after they are set).
-      await ctx.main(`Promise.all([${JSON.stringify('persist:intoponet-default')}, ${JSON.stringify(`persist:intoponet-ws-${workId}`)}].map((name) => electron.session.fromPartition(name).cookies.flushStore())).then(() => true)`)
+      await ctx.main(`Promise.all([${JSON.stringify('persist:intoponet-default')}, ${JSON.stringify(`persist:intoponet-ws-${workId}`)}, ${JSON.stringify(`persist:intoponet-ws-${gone}`)}].map((name) => electron.session.fromPartition(name).cookies.flushStore())).then(() => true)`)
       await ctx.main('electron.app.quit()')
       await waitForQuit(ctx.profile)
       // The quit app has written its last files (its helpers outlive the main process for a moment).
@@ -4472,7 +4484,7 @@ export const checks = {
       const before = process.env.E2E_PROFILE
       process.env.E2E_PROFILE = ctx.profile
       try {
-        return await runAppCheck((again) => identityRelaunch(again, { workId, mainId }), { timeoutMs: 120_000 }) || 'Separate sign-ins: isolated in Work, asked again, ad blocked, download listed, history named, cleared, moved with a warning, private session, kept across a relaunch.'
+        return await runAppCheck((again) => identityRelaunch(again, { workId, mainId, gone }), { timeoutMs: 120_000 }) || 'Separate sign-ins: isolated in Work, asked again, ad blocked, download listed, history named, cleared, moved with a warning, private session, kept across a relaunch.'
       } finally {
         if (before === undefined) delete process.env.E2E_PROFILE
         else process.env.E2E_PROFILE = before

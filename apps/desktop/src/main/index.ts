@@ -2108,7 +2108,12 @@ function finishWorkspaceDelete(): void {
     if (!viewGone(tab.view)) tab.view.webContents.close()
   }
   // A workspace with its own sign-ins takes them with it, once Undo can no longer bring it back.
-  if (hasSeparateSignIns(pending.removed.workspace)) void forgetWorkspaceIdentity(pending.removed.workspace.id)
+  // Quitting waits for this (before-quit), or its cookies and logins would outlive it on disk.
+  if (hasSeparateSignIns(pending.removed.workspace)) {
+    const forgetting = forgetWorkspaceIdentity(pending.removed.workspace.id).catch(() => undefined)
+    writesInFlight.add(forgetting)
+    void forgetting.finally(() => writesInFlight.delete(forgetting))
+  }
   emitWorkspaces()
 }
 
@@ -5319,6 +5324,8 @@ let quitFlushStarted = false
 app.on('before-quit', (event) => {
   if (!app.isReady()) return
   shellClosing = true
+  // A workspace deleted moments ago is gone for good: Undo ends with the app, and its own sign-ins are deleted before it quits.
+  finishWorkspaceDelete()
   // A zoom changed just now is still waiting to be saved: start it so the flush below waits for it.
   void zoomStore?.flush().catch(() => undefined)
   void siteTweaks?.store.flush().catch(() => undefined)
