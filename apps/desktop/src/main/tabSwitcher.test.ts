@@ -28,6 +28,19 @@ describe('recent tab switching', () => {
     expect(switcher.commit()).toBeNull()
   })
 
+  it('treats a pair side by side as one place: a quick ⌃Tab from a pair goes to the tab before it, not its other side', () => {
+    // Shown c, then the pair a|b: all three were last shown at the same moment.
+    const pair = [tab('c', 50), { ...tab('a', 50), partnerId: 'b' }, { ...tab('b', 50), partnerId: 'a' }, tab('d', 10)]
+    expect(recentOrder(pair, 'a')).toEqual(['a', 'c', 'd'])
+    expect(recentOrder(pair, 'b')).toEqual(['b', 'c', 'd'])
+    // From c, the pair is one entry: its side seen last.
+    const back = [tab('c', 60), { ...tab('a', 60), partnerId: 'b' }, { ...tab('b', 50), partnerId: 'a' }, tab('d', 10)]
+    expect(recentOrder(back, 'c')).toEqual(['c', 'a', 'd'])
+    const switcher = new TabSwitcher()
+    switcher.step(pair, 'a', 'next')
+    expect(switcher.commit()).toBe('c')
+  })
+
   it('does not open with one tab, and drops tabs closed while open', () => {
     const switcher = new TabSwitcher()
     expect(switcher.step([tab('a', 1)], 'a', 'next')).toBeNull()

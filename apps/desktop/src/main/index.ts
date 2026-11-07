@@ -2493,6 +2493,7 @@ function switcherTabs(): SwitcherTab[] {
       favicon: tab.favicon,
       lastShownAt: tab.lastShownAt ?? 0,
       isPrivate: privateViews.has(tab.view),
+      partnerId: partnerOf(openTabs, tab)?.id,
     }
   })
 }
