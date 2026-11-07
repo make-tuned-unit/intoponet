@@ -2028,8 +2028,11 @@ export const checks = {
       // ⌃⌘S shows it again as it was; it is kept for the next launch.
       await ctx.keyInPage('/notes', 'S', ['control', 'meta'])
       await ctx.wait(`!!document.querySelector('.tab-rail.is-pinned')`, 3000, '⌃⌘S to show the sidebar again')
-      await ctx.delay(700)
-      const saved = JSON.parse(readFileSync(join(ctx.profile, 'browser-state.v1.json'), 'utf8'))
+      // The save waits until the page stops moving (each bounds change while the sidebar slides in defers it),
+      // which takes longer on a busy Mac: wait for the file rather than a fixed time.
+      const savedSidebar = () => { try { return JSON.parse(readFileSync(join(ctx.profile, 'browser-state.v1.json'), 'utf8')).sidebar } catch { return null } }
+      for (let i = 0; i < 25 && !(savedSidebar()?.mode === 'open' && savedSidebar().width === resized.width); i += 1) await ctx.delay(200)
+      const saved = { sidebar: savedSidebar() }
       expect(saved.sidebar?.mode === 'open' && saved.sidebar.width === resized.width, `Saved sidebar: ${JSON.stringify(saved.sidebar)}.`)
       // Keyboard: arrows move between tabs in it.
       await ctx.evaluate(`document.querySelector('.tab-rail [role="tab"][tabindex="0"]').focus(); true`)
