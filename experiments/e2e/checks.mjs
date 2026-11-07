@@ -3694,7 +3694,8 @@ export const checks = {
       // Pause and play from the control with the keyboard; mute and unmute too.
       expect(await ctx.click('.now-playing-button', 'Pause'), 'The control has no Pause button.')
       await until(async () => (await (await videoOf('/video')).state()).paused === true, 4000, 'the video to pause')
-      expect(await ctx.evaluate(`document.querySelector('.now-playing').textContent.includes('Paused')`), 'The control does not say Paused.')
+      // The control hears of the pause from the page a moment after the video stops.
+      await ctx.wait(`!!document.querySelector('.now-playing')?.textContent.includes('Paused')`, 4000, 'the control to say Paused')
       await focusControl('Play')
       await ctx.press('Enter')
       await until(async () => !(await (await videoOf('/video')).state()).paused, 4000, 'the video to play again')
