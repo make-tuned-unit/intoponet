@@ -42,8 +42,8 @@ export type TourStep = {
   chapter: string
   title: string
   body: string
-  /** What to spotlight (CSS selector); none for a centred card. */
-  target?: string
+  /** What to spotlight (CSS selector), or selectors to try in order; none for a centred card. */
+  target?: string | string[]
   /** How long the step stays when playing. */
   seconds?: number
   run?: (controls: TourControls, context: TourContext) => Promise<void> | void
@@ -76,27 +76,6 @@ export const TOUR_STEPS: TourStep[] = [
     run: (controls) => controls.showList('top'),
   },
   {
-    id: 'peaks',
-    chapter: 'Story mountains',
-    title: 'The news rises as mountains',
-    body: 'Every story outlets are covering becomes terrain: the more independent outlets carry it, the higher it stands, with a gold crest on top. Peaks rise and wear down as the news ebbs and flows. Spin the globe to find the highest, or press H.',
-    target: '.story-highest',
-    seconds: 10,
-    run: async (controls) => {
-      controls.reset()
-      await controls.spin(40, 3_500)
-    },
-  },
-  {
-    id: 'strands',
-    chapter: 'Story mountains',
-    title: 'Follow a story around the world',
-    body: 'Hover a summit and strands run over the Earth to every country that covered it. Click to pin it: each country’s first headline, in the order coverage appeared. Height counts outlets, not importance.',
-    target: '.story-panel',
-    seconds: 11,
-    run: async (controls) => { await controls.findHighestPeak() },
-  },
-  {
     id: 'fly',
     chapter: 'The living globe',
     title: 'Fly anywhere by name',
@@ -127,6 +106,28 @@ export const TOUR_STEPS: TourStep[] = [
     run: async (controls) => { await controls.typeInAddressBar('> ') },
   },
   {
+    id: 'peaks',
+    chapter: 'Story mountains',
+    title: 'The news rises as mountains',
+    body: 'Every story outlets are covering becomes terrain: the more independent outlets carry it, the higher it stands, with a gold crest on top. Peaks rise and wear down as the news ebbs and flows. Spin the globe to find the highest, or press H.',
+    target: '.story-highest',
+    seconds: 10,
+    run: async (controls) => {
+      await controls.typeInAddressBar('')
+      controls.reset()
+      await controls.spin(40, 3_500)
+    },
+  },
+  {
+    id: 'strands',
+    chapter: 'Story mountains',
+    title: 'Follow a story around the world',
+    body: 'Hover a summit and strands run over the Earth to every country that covered it. Click to pin it: each country’s first headline, in the order coverage appeared. Height counts outlets, not importance.',
+    target: '.story-panel',
+    seconds: 11,
+    run: async (controls) => { await controls.findHighestPeak() },
+  },
+  {
     id: 'world',
     chapter: 'Stories',
     title: 'Stories the whole world is covering',
@@ -139,6 +140,14 @@ export const TOUR_STEPS: TourStep[] = [
       context.headline = await controls.openWorldStory()
       if (context.headline) controls.prepareOlds(context.headline)
     },
+  },
+  {
+    id: 'compare-outlets',
+    chapter: 'Stories',
+    title: 'Two outlets, side by side',
+    body: 'Under a world story’s sources, choose Compare and pick another outlet: the two articles sit side by side, each labelled with its outlet and country, each translatable on its own, with The Olds for the story one click away.',
+    target: ['.sc-compare', '.globe-panel'],
+    seconds: 9,
   },
   {
     id: 'olds',
@@ -203,6 +212,69 @@ export const TOUR_STEPS: TourStep[] = [
     seconds: 9,
   },
   {
+    id: 'pdf',
+    chapter: 'Browsing',
+    title: 'Save any page as a clean PDF',
+    body: 'One click keeps a page as a tidy, searchable PDF without the ads and pop-ups, with links that still work. Add it to your bookmarks to find it on the map later.',
+    target: '[aria-label="Save this page as PDF"]',
+    seconds: 9,
+  },
+  {
+    id: 'capture',
+    chapter: 'Browsing',
+    title: 'Screenshots and recordings, kept in folders',
+    body: 'Capture a part of any page as an image, or record it as a video. Captures go into folders you name, on this Mac.',
+    target: '[aria-label="Capture this page: screenshot or recording"]',
+    seconds: 8,
+  },
+  {
+    id: 'link-preview',
+    chapter: 'Browsing',
+    title: 'Peek at a link first',
+    body: '⇧-click a link, or a headline in the World list, and it opens in a card over the page or the globe, with the same protection. Escape puts it away; Open as Tab keeps it.',
+    target: '.browser-body',
+    seconds: 8,
+  },
+  {
+    id: 'site-tweaks',
+    chapter: 'Browsing',
+    title: 'Make a site yours',
+    body: 'Open a site’s protection bar and choose Customize site: point at an element to hide it, pick a reading width, a font or light or dark colours, or add your own styles. They apply on every visit to that site, stay on this Mac, and never run a script.',
+    target: '[aria-controls="protection-panel"]',
+    seconds: 11,
+  },
+  {
+    id: 'split-pages',
+    chapter: 'Browsing',
+    title: 'Two pages side by side',
+    body: 'Drag a tab to the left or right edge of the page, or choose Split with Next Tab in a tab’s menu, and the two pages sit side by side with a divider you can drag. Each side has its own address, find and zoom; ⌃⇧- puts them back together.',
+    target: '.browser-body',
+    seconds: 9,
+  },
+  {
+    id: 'video-follows-you',
+    chapter: 'Browsing',
+    title: 'Video follows you',
+    body: 'Turn on “Float playing video when you switch tabs” in Settings › Browsing, and a video keeps playing in a small window when you leave its tab. The sidebar shows what is playing, with play, pause, mute and go-to-tab buttons.',
+    target: '.tab-rail',
+    seconds: 10,
+  },
+  {
+    id: 'quick-window',
+    chapter: 'Browsing',
+    title: 'Links from other apps go where they belong',
+    body: 'A link from Mail or Slack can open in a small quick window above your work; ⌘O moves it into a tab with its history, and closing it leaves nothing behind. Choose Always open here… and that site’s links go straight to a workspace from then on. Both are in Settings › Browsing.',
+    target: '.settings-button',
+    seconds: 11,
+  },
+  {
+    id: 'basics',
+    chapter: 'Browsing',
+    title: 'The everyday things, done carefully',
+    body: 'Saved passwords that fill only when you click, downloads you can pause and check, History (⌘Y), reopening closed tabs (⇧⌘T), per-site zoom, and a real menu bar. Settings brings your bookmarks, tabs, history and passwords over from Chrome, Arc, Brave, Edge or Vivaldi, on this Mac, and makes Intoponet your default browser.',
+    seconds: 10,
+  },
+  {
     id: 'tabs',
     chapter: 'Tabs',
     title: 'Tabs down the side, in every view',
@@ -227,27 +299,44 @@ export const TOUR_STEPS: TourStep[] = [
     seconds: 10,
   },
   {
-    id: 'pdf',
-    chapter: 'Browsing',
-    title: 'Save any page as a clean PDF',
-    body: 'One click keeps a page as a tidy, searchable PDF without the ads and pop-ups, with links that still work. Add it to your bookmarks to find it on the map later.',
-    target: '[aria-label="Save this page as PDF"]',
+    id: 'tabs-story',
+    chapter: 'Tabs',
+    title: 'Tabs that know their story',
+    body: 'An article in a tab that matches a world story wears a small mountain in the sidebar. Group by story puts those tabs in one folder, and hovering the folder shows the story’s peak on the globe. It all happens on this Mac.',
+    target: ['[aria-label="Group by story"]', '.tab-rail'],
+    seconds: 10,
+  },
+  {
+    id: 'tidy',
+    chapter: 'Tabs',
+    title: 'Tidy suggests the folders',
+    body: 'With Laya on, Tidy reads your loose tabs’ titles on this Mac and suggests folders for them. You see every folder before anything moves, and Undo puts the tabs back. Private tabs are never read.',
+    target: ['[aria-label="Tidy tabs"]', '.tab-rail'],
     seconds: 9,
   },
   {
-    id: 'capture',
-    chapter: 'Browsing',
-    title: 'Screenshots and recordings, kept in folders',
-    body: 'Capture a part of any page as an image, or record it as a video. Captures go into folders you name, on this Mac.',
-    target: '[aria-label="Capture this page: screenshot or recording"]',
-    seconds: 8,
+    id: 'workspaces',
+    chapter: 'Workspaces',
+    title: 'Workspaces keep things apart',
+    body: 'Make a workspace for work, a trip or a story you follow: each has its own name, colour, pinned tabs, folders and open tabs. Switch with ⌃1–9, a sideways swipe on the sidebar, or the command menu; sleeping tabs stay asleep. A favourites row can be shared by every workspace, and private browsing is never part of one.',
+    target: ['.tab-rail-workspaces', '[aria-label="New workspace"]', '.tab-rail'],
+    seconds: 10,
   },
   {
-    id: 'basics',
-    chapter: 'Browsing',
-    title: 'The everyday things, done carefully',
-    body: 'Saved passwords that fill only when you click, downloads you can pause and check, History (⌘Y), reopening closed tabs (⇧⌘T), per-site zoom, and a real menu bar. Settings brings your bookmarks, tabs, history and passwords over from Chrome, Arc, Brave, Edge or Vivaldi, on this Mac, and makes Intoponet your default browser.',
-    seconds: 10,
+    id: 'place-workspaces',
+    chapter: 'Workspaces',
+    title: 'Anchor a workspace to a place',
+    body: 'Choose Anchor to a place from a workspace’s menu, and switching to it flies the globe there while your page stays open. Its sidebar lists that place’s latest headlines, and tabs you open from them stay in that workspace. Only your own map shows the anchor.',
+    target: ['[aria-label^="Actions for workspace"]', '.tab-rail-workspaces', '[aria-label="New workspace"]', '.tab-rail'],
+    seconds: 11,
+  },
+  {
+    id: 'sign-ins',
+    chapter: 'Workspaces',
+    title: 'A workspace with its own sign-ins',
+    body: 'Choose Separate sign-ins from a workspace’s menu and it keeps its own cookies, site data, saved passwords and permissions, so a site you are signed in to in Main does not know you there. Turning it off, or clearing it, deletes only that workspace’s data.',
+    target: ['[aria-label^="Actions for workspace"]', '.tab-rail-workspaces', '[aria-label="New workspace"]', '.tab-rail'],
+    seconds: 11,
   },
   {
     id: 'absorb',
@@ -277,78 +366,6 @@ export const TOUR_STEPS: TourStep[] = [
     target: '[aria-label="Pin current page to My map"], [aria-label="Edit current page pin"]',
     seconds: 11,
     run: (controls) => controls.showKnowledge(false),
-  },
-  {
-    id: 'workspaces',
-    chapter: 'Tabs',
-    title: 'Workspaces keep things apart',
-    body: 'Make a workspace for work, a trip or a story you follow: each has its own name, colour, pinned tabs, folders and open tabs. Switch with ⌃1–9, a sideways swipe on the sidebar, or the command menu; sleeping tabs stay asleep. A favourites row can be shared by every workspace, and private browsing is never part of one.',
-    target: '.tab-rail',
-    seconds: 10,
-  },
-  {
-    id: 'link-preview',
-    chapter: 'Browsing',
-    title: 'Peek at a link first',
-    body: '⇧-click a link, or a headline in the World list, and it opens in a card over the page or the globe, with the same protection. Escape puts it away; Open as Tab keeps it.',
-    target: '.browser-body',
-    seconds: 8,
-  },
-  {
-    id: 'site-tweaks',
-    chapter: 'Browsing',
-    title: 'Make a site yours',
-    body: 'Open a site’s protection bar and choose Customize site: point at an element to hide it, pick a reading width, a font or light or dark colours, or add your own styles. They apply on every visit to that site, stay on this Mac, and never run a script.',
-    target: '[aria-controls="protection-panel"]',
-    seconds: 11,
-  },
-  {
-    id: 'quick-window',
-    chapter: 'Browsing',
-    title: 'Links from other apps, in a quick window',
-    body: 'In Settings › Browsing, a link from Mail or Slack can open in a small window that floats above your work, with protection on. ⌘O moves it into a tab with its history; closing it leaves nothing behind. ⌥⌘N opens an empty one.',
-    target: '.settings-button',
-    seconds: 11,
-  },
-  {
-    id: 'video-follows-you',
-    chapter: 'Browsing',
-    title: 'Video follows you',
-    body: 'Turn on “Float playing video when you switch tabs” in Settings › Browsing, and a video keeps playing in a small window when you leave its tab. The sidebar shows what is playing, with play, pause, mute and go-to-tab buttons.',
-    target: '.tab-rail',
-    seconds: 10,
-  },
-  {
-    id: 'split-pages',
-    chapter: 'Browsing',
-    title: 'Two pages side by side',
-    body: 'Drag a tab to the left or right edge of the page, or choose Split with Next Tab in a tab’s menu, and the two pages sit side by side with a divider you can drag. Each side has its own address, find and zoom; ⌃⇧- puts them back together.',
-    target: '.browser-body',
-    seconds: 9,
-  },
-  {
-    id: 'compare-outlets',
-    chapter: 'Browsing',
-    title: 'Two outlets, side by side',
-    body: 'In a world story’s sources, choose Compare and pick another outlet: the two articles sit side by side, each labelled with its outlet and country, each translatable on its own, with The Olds for the story one click away.',
-    target: '.browser-body',
-    seconds: 9,
-  },
-  {
-    id: 'place-workspaces',
-    chapter: 'Tabs',
-    title: 'Anchor a workspace to a place',
-    body: 'Choose Anchor to a place from a workspace’s menu, and switching to it flies the globe there while your page stays open. Its sidebar lists that place’s latest headlines, and tabs you open from them stay in that workspace. Only your own map shows the anchor.',
-    target: '.tab-rail',
-    seconds: 11,
-  },
-  {
-    id: 'tabs-story',
-    chapter: 'Browsing',
-    title: 'Tabs that know their story',
-    body: 'An article in a tab that matches a world story wears a small mountain in the sidebar. Group by story puts those tabs in one folder, and hovering the folder shows the story’s peak on the globe. It all happens on this Mac.',
-    target: '.tab-rail',
-    seconds: 10,
   },
   {
     id: 'done',

@@ -9,12 +9,13 @@ type Box = { left: number; top: number; width: number; height: number }
 const PAD = 10
 const CARD_WIDTH = 380
 
-/** Where the spotlight goes: the target's box (the first visible match), with a little room around it. */
-function boxOf(selector: string | undefined): Box | null {
-  if (!selector) return null
-  for (const element of document.querySelectorAll<HTMLElement>(selector)) {
-    const rect = element.getBoundingClientRect()
-    if (rect.width > 4 && rect.height > 4) return { left: rect.left - PAD, top: rect.top - PAD, width: rect.width + PAD * 2, height: rect.height + PAD * 2 }
+/** Where the spotlight goes: the first visible match of the first target that has one, with a little room around it. */
+function boxOf(target: string | string[] | undefined): Box | null {
+  for (const selector of typeof target === 'string' ? [target] : target ?? []) {
+    for (const element of document.querySelectorAll<HTMLElement>(selector)) {
+      const rect = element.getBoundingClientRect()
+      if (rect.width > 4 && rect.height > 4) return { left: rect.left - PAD, top: rect.top - PAD, width: rect.width + PAD * 2, height: rect.height + PAD * 2 }
+    }
   }
   return null
 }
