@@ -882,7 +882,7 @@ async function applyCosmeticFilters(
 // ---- Make a site yours (SITE_TWEAKS; the logic is in siteTweaks.ts) -------------------------------
 
 /** Isolated world for the element picker (and its cancel): the page's own scripts cannot see either. */
-const SITE_TWEAK_WORLD_ID = 1313
+const SITE_TWEAK_WORLD_ID = 1317
 /** The site tweaks as saved (and, for a private tab, as changed in that tab). Null before the store starts. */
 let siteTweaks: SiteTweaks | null = null
 /** The element picked on each page, hidden for a preview until it is saved or cancelled. */
