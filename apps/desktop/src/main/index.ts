@@ -652,18 +652,20 @@ function pagePanelState(): BrowserPanelSnapshot {
       isStartPage: true,
     }
   }
-  // A page whose renderer kept crashing waits, blank, for Reload: the toolbar keeps its address and title.
+  // Nothing committed yet: a new tab before its first page arrives, a page whose renderer crashed (or
+  // kept crashing, waiting blank for Reload). The toolbar shows the address it is loading or will load.
   const tab = openTabs.find((item) => item.view === pageView)
-  const crashed = tab && !contents.getURL() && safeHttpUrl(tab.url) && !crashRecovery.canAutoRecover(tab.id) ? tab : undefined
+  const pending = tab && !contents.getURL() && safeHttpUrl(tab.url) ? tab : undefined
   return {
-    url: capUrl(crashed ? crashed.url : contents.getURL()),
-    title: capTitle(crashed ? crashed.title : contents.getTitle()),
+    url: capUrl(pending ? pending.url : contents.getURL()),
+    title: capTitle(pending ? pending.title || contents.getTitle() : contents.getTitle()),
     canGoBack: contents.navigationHistory.canGoBack(),
     canGoForward: contents.navigationHistory.canGoForward(),
     isLoading: contents.isLoading(),
     isVisible: pageAttached,
     isPrivate: privateViews.has(pageView),
     zoomFactor: Number(contents.getZoomFactor().toFixed(3)),
+    ...(pending ? { isPending: true as const } : {}),
     ...loadErrorOf(pageView),
   }
 }
@@ -1818,11 +1820,13 @@ function createStartTab(): void {
   emitPanelState()
 }
 
-/** The tab is about to load a page: stop drawing the start page and show the view. */
-function leaveStartPage(view: WebContentsView): void {
+/** The tab is about to load a page (`url`): stop drawing the start page and show the view. */
+function leaveStartPage(view: WebContentsView, url?: string): void {
   const tab = tabOfView(view)
   if (!tab?.start) return
   tab.start = false
+  // Until its first page commits, the tab and the toolbar show the address it is loading.
+  if (url && safeHttpUrl(url)) tab.url = url
   if (pageView === view && pageAttached) view.setVisible(pageViewShown(view))
   emitTabs()
   if (pageView === view) emitPanelState()
@@ -3415,13 +3419,13 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
     event.preventDefault()
     Menu.buildFromTemplate(template).popup({ window })
   })
-  view.webContents.on('did-start-navigation', (_event, _url, inPlace, mainFrame) => {
+  view.webContents.on('did-start-navigation', (_event, startedUrl, inPlace, mainFrame) => {
     if (!mainFrame || inPlace) return
     loadingDocument.add(view)
     // The page is about to be replaced: its inserted style and any previewed element go with it.
     previewSelectors.delete(view.webContents.id)
     blockedAdAddresses.delete(view.webContents.id)
-    leaveStartPage(view)
+    leaveStartPage(view, startedUrl)
     translateService?.forgetPage(view.webContents.id)
     frequencyNavigation += 1
     frequencyLoadSucceeded = false
@@ -4158,7 +4162,7 @@ async function handleBrowserCommand(
       // From a new tab's start page, the page opens in that same tab.
       if (pageView && pageAttached && isStartView(pageView)) {
         const view = pageView
-        leaveStartPage(view)
+        leaveStartPage(view, url)
         lastKnownUrl = url
         await view.webContents.loadURL(url)
         break
@@ -4383,7 +4387,7 @@ async function handleBrowserCommand(
       const target = safeHttpUrl(command.url)
       if (!target) throw new Error('Only HTTP and HTTPS destinations are supported.')
       const view = createPageView()
-      leaveStartPage(view)
+      leaveStartPage(view, target.toString())
       const tab = tabOfView(view)
       if (tab) crashRecovery.manualRetry(tab.id)
       attachPageView()

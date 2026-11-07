@@ -959,8 +959,8 @@ export function App() {
   useEffect(() => {
     if (!panel.url || !/^https?:\/\//.test(panel.url)) return
     // An address that failed to load (a typo, a site that is down) is not a page visited, and would come back
-    // as an address bar completion. (Its address reaches the panel only with the error.)
-    if (panel.loadError) return
+    // as an address bar completion. Nor is one still loading, before any page has arrived (isPending).
+    if (panel.loadError || panel.isPending) return
     if (panel.isPrivate || !privacySettings.footprints || isExcludedSite(panel.url, privacyState?.excludedSites ?? [])) return
     setRecents((current) =>
       rememberRecent(current, {
@@ -969,7 +969,7 @@ export function App() {
         visitedAt: new Date().toISOString(),
       }),
     )
-  }, [panel.title, panel.url, panel.loadError, panel.isPrivate, privacySettings.footprints, privacyState?.excludedSites])
+  }, [panel.title, panel.url, panel.loadError, panel.isPending, panel.isPrivate, privacySettings.footprints, privacyState?.excludedSites])
 
   useEffect(() => {
     void window.intoponet.passwords.pageState().then(setPasswordState, () => undefined)

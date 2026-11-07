@@ -1059,7 +1059,12 @@ export const checks = {
   // ---- Browsing ------------------------------------------------------------
   async OMNIBOX(ctx) {
     const server = await new Promise((resolve) => {
-      const site = createServer((_request, response) => { response.setHeader('content-type', 'text/html; charset=utf-8'); response.end('<!doctype html><title>Omnibox landing</title><h1>Omnibox landing</h1>') })
+      const site = createServer((request, response) => {
+        response.setHeader('content-type', 'text/html; charset=utf-8')
+        // A slow site: nothing arrives for 4 s.
+        if (request.url?.startsWith('/slow')) { setTimeout(() => response.end('<!doctype html><title>Slow landing</title><h1>Slow landing</h1>'), 4_000); return }
+        response.end('<!doctype html><title>Omnibox landing</title><h1>Omnibox landing</h1>')
+      })
       site.listen(0, 'localhost', () => resolve(site))
     })
     try {
@@ -1137,6 +1142,18 @@ export const checks = {
       const kept = await ctx.evaluate(`window.intoponet.browserHost.readPrivateLibrary().then((r) => r.status === 'ok' && r.payload ? JSON.parse(r.payload).recents.map((p) => p.url).join(' ') : '')`)
       expect(kept.includes(host), `The visited page is not among recent pages (${kept}).`)
       expect(!kept.includes('never-loaded'), 'An address that failed to load was kept as a recent page.')
+
+      // A new tab's address bar shows the address it is loading before its first page arrives: a tab opened from the
+      // address bar, and a new tab's start page.
+      const toolbarAddress = `(document.querySelector('.origin-badge:not(.start-origin)')?.getAttribute('title') ?? '')`
+      for (const [label, slowUrl, fromStart] of [['a new tab', `${url}slow-tab`, false], ["a new tab's start page", `${url}slow-start`, true]]) {
+        if (fromStart) {
+          await ctx.evaluate(`window.intoponet.browserHost.newTab().then(() => true)`)
+          await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.isStartPage === true)`, 8_000, 'a new tab on its start page')
+        }
+        void ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: ${JSON.stringify(slowUrl)} }).then(() => true, () => true)`).catch(() => undefined)
+        await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.isVisible && s.isLoading && s.url === ${JSON.stringify(slowUrl)} && ${toolbarAddress} === ${JSON.stringify(slowUrl)})`, 2_500, `the address bar of ${label} to show the address it is loading, before the page arrives`)
+      }
       return `"localh" completed to ${host}; history row opened in a background tab with ⌘↵; then "Switch to tab" landed on it (1 tab); Backspace removed the completion; "Fredericton" flew the globe.`
     } finally {
       server.close()

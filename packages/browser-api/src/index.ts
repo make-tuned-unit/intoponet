@@ -19,6 +19,8 @@ export type BrowserPanelSnapshot = {
   isPrivate?: boolean
   /** The active tab is a new tab that has not loaded a page yet: the shell draws its start page. */
   isStartPage?: boolean
+  /** No page has arrived in the tab yet (it is loading, or waits after a crash): `url` is the address it is loading. */
+  isPending?: true
   /** The page's zoom (1 = 100%); the toolbar shows it when it is not 100%. */
   zoomFactor?: number
   /** The page could not load: the shell draws the error page in its place (the view stays hidden). */
