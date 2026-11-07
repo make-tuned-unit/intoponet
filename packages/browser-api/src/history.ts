@@ -16,6 +16,8 @@ export type HistoryVisit = {
   host: string
   /** Epoch milliseconds. */
   visitedAt: number
+  /** The workspace the tab was in (absent for visits made before workspaces, and in quick windows). */
+  workspaceId?: string
 }
 
 /** One local calendar day of results, newest first. `day` is "YYYY-MM-DD" in this Mac's time zone. */

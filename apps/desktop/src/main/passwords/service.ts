@@ -10,6 +10,8 @@ export type PasswordPage = {
   /** The top frame's password origin now, or null when passwords are not offered there. */
   origin(): string | null
   isPrivate: boolean
+  /** The workspace whose own sign-ins the page uses; null for the shared ones. Only that scope's logins are offered. */
+  workspaceId: string | null
   fill(message: PasswordFillMessage): void
 }
 
@@ -22,7 +24,7 @@ export type PasswordServiceDeps = {
   setTimer?: (run: () => void, ms: number) => void
 }
 
-type PendingOffer = PasswordOffer & { password: string }
+type PendingOffer = PasswordOffer & { password: string; workspaceId: string | null }
 
 type PageRecord = {
   offer: PendingOffer | null
@@ -76,7 +78,7 @@ export class PasswordService {
       return
     }
     if (message.type === 'login-form') {
-      const accounts = await this.vault.forSite(origin)
+      const accounts = await this.vault.forSite(origin, page.workspaceId)
       if (accounts.length === 1 && page.origin() === origin) {
         const [only] = accounts
         page.fill({ origin, username: only!.username, password: only!.password, overwrite: false })
@@ -88,12 +90,12 @@ export class PasswordService {
     const remembered = record.identifier && sameLoginSite(record.identifier.origin, origin) && this.clock() - record.identifier.at < IDENTIFIER_MS ? record.identifier.username : ''
     const username = message.username || remembered
     if (await this.vault.isNever(origin)) return
-    const existing = await this.vault.find(origin, username)
+    const existing = await this.vault.find(origin, username, page.workspaceId)
     if (existing && existing.password === message.password) {
       await this.vault.markUsed(existing.id).catch(() => undefined)
       return
     }
-    record.held = { offer: { id: randomUUID(), origin: existing?.origin ?? origin, username, password: message.password, kind: existing ? 'update' : 'save' }, at: this.clock() }
+    record.held = { offer: { id: randomUUID(), origin: existing?.origin ?? origin, username, password: message.password, kind: existing ? 'update' : 'save', workspaceId: page.workspaceId }, at: this.clock() }
   }
 
   /** A new document in the page: what was filled no longer applies. Offers stay (sign-ins redirect). */
@@ -114,7 +116,7 @@ export class PasswordService {
     const record = this.pages.get(page.id)
     const offer = record?.offer ? { id: record.offer.id, origin: record.offer.origin, username: record.offer.username, kind: record.offer.kind } : null
     if (!origin && !offer) return null
-    const accounts = origin ? (await this.vault.forSite(origin)).map(({ id, username }) => ({ id, username })) : []
+    const accounts = origin ? (await this.vault.forSite(origin, page.workspaceId)).map(({ id, username }) => ({ id, username })) : []
     const filled = record?.filled && accounts.some((account) => account.id === record.filled) ? record.filled : null
     return { origin: origin ?? '', offer, accounts, filled, choose: accounts.length > 1 && !filled && !record?.choiceDismissed }
   }
@@ -125,7 +127,7 @@ export class PasswordService {
     const [pageId, record] = entry
     const offer = record.offer!
     if (decision === 'save') {
-      const saved = await this.vault.save(offer.origin, offer.username, offer.password)
+      const saved = await this.vault.save(offer.origin, offer.username, offer.password, offer.workspaceId)
       record.filled = saved.id
     }
     if (decision === 'never') await this.vault.addNever(offer.origin)
@@ -139,7 +141,8 @@ export class PasswordService {
     if (page.isPrivate) throw new Error('Passwords are not filled in private tabs.')
     const login = await this.vault.get(id)
     const origin = page.origin()
-    if (!origin || !login || !sameLoginSite(login.origin, origin)) throw new Error('That password is not for this site.')
+    // Another workspace's sign-in (or the shared one, from a separate-sign-in workspace) is not this page's.
+    if (!origin || !login || !sameLoginSite(login.origin, origin) || (login.workspaceId ?? null) !== page.workspaceId) throw new Error('That password is not for this site.')
     page.fill({ origin, username: login.username, password: login.password, overwrite: true })
     const record = this.record(page.id)
     record.filled = id
@@ -192,6 +195,12 @@ export class PasswordService {
 
   async remove(id: string): Promise<void> {
     await this.vault.remove(id)
+    this.deps.changed(null)
+  }
+
+  /** A workspace's own sign-ins are deleted with its site data. */
+  async forgetWorkspace(workspaceId: string): Promise<void> {
+    await this.vault.removeWorkspace(workspaceId)
     this.deps.changed(null)
   }
 

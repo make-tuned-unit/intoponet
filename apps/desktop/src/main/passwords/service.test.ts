@@ -33,6 +33,7 @@ function page(url: string, options: { id?: number; isPrivate?: boolean } = {}): 
     url,
     fills,
     isPrivate: options.isPrivate ?? false,
+    workspaceId: null,
     origin: () => {
       try {
         const parsed = new URL(result.url)
@@ -174,5 +175,42 @@ describe('PasswordService', () => {
     expect(await refused.service.reveal(other.id)).toBeNull()
     expect(await refused.service.copy(other.id)).toBe(false)
     expect(refused.clipboard.text).toBe('')
+  })
+})
+
+describe('password service and workspaces', () => {
+  const inWork = (url: string, options: { id?: number } = {}) => ({ ...page(url, options), workspaceId: 'work' })
+
+  it('offers a workspace only its own sign-ins, and never the shared ones', async () => {
+    const { service, vault } = setup()
+    await vault.save('https://example.com', 'ada', 'shared-pw')
+    const work = await vault.save('https://example.com', 'bob', 'work-pw', 'work')
+    const tab = inWork('https://example.com/login')
+    await service.report(tab, { type: 'login-form' })
+    expect(tab.fills).toEqual([{ origin: 'https://example.com', username: 'bob', password: 'work-pw', overwrite: false }])
+    expect(await service.pageState(tab)).toMatchObject({ accounts: [{ id: work.id, username: 'bob' }], choose: false })
+    const shared = page('https://example.com/login', { id: 2 })
+    await service.report(shared, { type: 'login-form' })
+    expect(shared.fills).toEqual([{ origin: 'https://example.com', username: 'ada', password: 'shared-pw', overwrite: false }])
+  })
+
+  it('will not fill another scope\'s password into a page', async () => {
+    const { service, vault } = setup()
+    const shared = await vault.save('https://example.com', 'ada', 'shared-pw')
+    const tab = inWork('https://example.com/login')
+    await expect(service.fill(tab, shared.id)).rejects.toThrow(/not for this site/)
+    expect(tab.fills).toEqual([])
+  })
+
+  it('saves a sign-in captured in a workspace into that workspace', async () => {
+    const { service, vault } = setup()
+    const tab = inWork('https://example.com/login')
+    await service.report(tab, { type: 'submitted', username: 'ada', password: 'pw-work' })
+    await service.report(tab, signedIn)
+    const offer = (await service.pageState(tab))?.offer
+    expect(offer).toMatchObject({ username: 'ada', kind: 'save' })
+    await service.decide(offer!.id, 'save')
+    expect(await vault.forSite('https://example.com')).toEqual([])
+    expect(await vault.forSite('https://example.com', 'work')).toMatchObject([{ username: 'ada', workspaceId: 'work' }])
   })
 })

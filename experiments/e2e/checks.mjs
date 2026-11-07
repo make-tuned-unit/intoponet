@@ -518,6 +518,103 @@ function buildSidebarFixture(root, sidebar) {
   writeFileSync(join(root, 'Arc', 'StorableSidebar.json'), typeof sidebar === 'string' ? sidebar : JSON.stringify(sidebar))
 }
 
+// ---- Separate sign-ins per workspace ------------------------------------------
+/** A small site that sets a cookie on sign-in; `/` says who it thinks is signed in. Ads and a download are on it. */
+const IDENTITY_LOGIN = `<!doctype html><title>Identity sign in</title><body style="font:16px system-ui;margin:40px"><h1>Sign in</h1><form method="post" action="/login"><label style="display:block;margin:12px 0">Username <input id="username" name="username" autocomplete="username" style="font:inherit;padding:6px"></label><label style="display:block;margin:12px 0">Password <input id="password" name="password" type="password" autocomplete="current-password" style="font:inherit;padding:6px"></label><button id="go" type="submit">Sign in</button></form></body>`
+const startIdentitySite = () => new Promise((resolve) => {
+  const server = createServer((request, response) => {
+    const url = new URL(request.url ?? '/', 'http://localhost')
+    const cookies = Object.fromEntries((request.headers.cookie ?? '').split('; ').filter(Boolean).map((pair) => pair.split('=')))
+    if (url.pathname === '/file.bin') {
+      response.writeHead(200, { 'content-type': 'application/octet-stream', 'content-length': '65536', 'content-disposition': 'attachment; filename="intoponet-e2e-identity.bin"' })
+      response.end(Buffer.alloc(65536, 3))
+      return
+    }
+    if (url.pathname === '/login' && request.method === 'POST') {
+      let body = ''
+      request.on('data', (chunk) => { body += chunk })
+      request.on('end', () => {
+        const who = new URLSearchParams(body).get('username') ?? ''
+        response.writeHead(303, { location: `/?who=${encodeURIComponent(who)}`, 'set-cookie': `sid=${encodeURIComponent(who)}; Path=/; Max-Age=86400; SameSite=Lax` })
+        response.end()
+      })
+      return
+    }
+    response.setHeader('content-type', 'text/html; charset=utf-8')
+    if (url.pathname === '/login') { response.end(IDENTITY_LOGIN); return }
+    const signedIn = cookies.sid ? `Signed in as ${decodeURIComponent(cookies.sid)}` : 'Signed out'
+    response.end(`<!doctype html><title>Identity test</title><body style="font:16px system-ui;margin:40px"><h1>${signedIn}</h1><a id="get" href="/file.bin">Download the file</a><img src="https://securepubads.g.doubleclick.net/ad.png" width="300" height="250" alt="ad"></body>`)
+  })
+  server.listen(0, 'localhost', () => resolve(server))
+})
+/** Helpers for the sign-in check, bound to one app run (the check runs twice: before and after a relaunch). */
+const identityHelpers = (ctx) => {
+  const host = 'window.intoponet.browserHost'
+  const ws = 'window.intoponet.workspaces'
+  const stateOf = async () => JSON.parse(await ctx.evaluate(`${ws}.get().then((s) => JSON.stringify(s))`))
+  const tabsOf = async () => JSON.parse(await ctx.evaluate(`${host}.getTabs().then((t) => JSON.stringify(t))`))
+  /** The text of the page whose address has `marker`, read in the main process (no page session needed). */
+  const pageText = (marker) => ctx.main(`(async () => { const page = electron.webContents.getAllWebContents().find((w) => w.getURL().includes(${JSON.stringify(marker)})); return page ? page.executeJavaScript('document.body.innerText') : '' })()`)
+  const waitPage = async (marker, text, ms = 20_000) => {
+    const end = Date.now() + ms
+    let last = ''
+    while (Date.now() < end) {
+      last = await pageText(marker).catch(() => '')
+      if (String(last).includes(text)) return
+      await ctx.delay(400)
+    }
+    throw new CheckFailure(`The page ${marker} did not show "${text}" (it shows "${String(last).replace(/\s+/g, ' ').slice(0, 80)}").`)
+  }
+  /** Shows the tab whose address has `marker`, in a workspace (switching to it first when needed). */
+  const showIn = async (workspaceId, marker) => {
+    if ((await stateOf()).activeId !== workspaceId) {
+      await ctx.evaluate(`${ws}.switchTo({ id: ${JSON.stringify(workspaceId)} }).then(() => true)`)
+      await ctx.delay(700)
+    }
+    const tab = (await tabsOf()).find((item) => item.url.includes(marker))
+    expect(tab, `No tab in that workspace shows ${marker}.`)
+    await ctx.evaluate(`${host}.activateTab(${JSON.stringify(tab.id)}).then(() => true)`)
+    await ctx.delay(900)
+    return tab
+  }
+  return { stateOf, tabsOf, pageText, waitPage, showIn }
+}
+/** Waits until no app process still holds this profile (after a quit). */
+const waitForQuit = async (profile) => {
+  for (let i = 0; i < 120; i += 1) {
+    try {
+      execFileSync('pgrep', ['-f', `--user-data-dir=${profile}`], { stdio: 'ignore' })
+    } catch {
+      return
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250))
+  }
+  throw new CheckFailure('The app did not quit in time.')
+}
+
+/** Second run, on a copy of the profile after a quit: the option, Work's sign-in and permissions, and Main's sign-in are kept. */
+const identityRelaunch = async (ctx, { workId, mainId }) => {
+  const { stateOf, showIn, waitPage } = identityHelpers(ctx)
+  const ws = 'window.intoponet.workspaces'
+  const state = await stateOf()
+  expect(state.workspaces.find((item) => item.id === workId)?.separateSignIns === true, 'After a relaunch Work no longer has separate sign-ins.')
+  const permissionsFile = join(ctx.profile, `site-permissions.ws-${workId}.json`)
+  expect(existsSync(permissionsFile), "Work's permission answers were not kept across a relaunch.")
+  await showIn(workId, 'who=dan')
+  await waitPage('who=dan', 'Signed in as dan')
+  await showIn(mainId, 'who=mhome')
+  await waitPage('who=mhome', 'Signed in as ada')
+  // Turning the option off deletes Work's cookies, its permission answers and its saved logins; Main keeps its own.
+  await ctx.evaluate(`${ws}.update(${JSON.stringify(workId)}, { separateSignIns: false }).then(() => true)`)
+  const cookies = await ctx.main(`electron.session.fromPartition(${JSON.stringify(`persist:intoponet-ws-${workId}`)}).cookies.get({}).then((list) => list.length)`)
+  expect(cookies === 0, `Work still holds ${cookies} cookie(s) after its own sign-ins were turned off.`)
+  expect(!existsSync(permissionsFile), "Work's permission answers are still on disk after its own sign-ins were turned off.")
+  const logins = JSON.parse(await ctx.evaluate(`window.intoponet.passwords.list().then((l) => JSON.stringify(l))`))
+  expect(!logins.some((login) => login.workspaceId === workId), "Work's saved passwords are still kept after its own sign-ins were turned off.")
+  await waitPage('who=mhome', 'Signed in as ada')
+  return 'Kept across a relaunch: the option, Work\'s sign-in and permissions, Main\'s sign-in. Turning the option off deleted Work\'s cookies, permissions and saved passwords, and Main stayed signed in.'
+}
+
 export const checks = {
   // ---- Foundations ---------------------------------------------------------
   async APP_BOOT(ctx) {
@@ -4236,6 +4333,150 @@ export const checks = {
       await ctx.wait(`window.intoponet.browserHost.getTabFolders().then((f) => f.length === 0)`, 10_000, 'Undo to remove the Tidy folders')
       expect((await tabs()).map((tab) => tab.id).join(' ') === orderBefore, 'Undo did not restore the tab order.')
       return `Laya off: Tidy explained it and offered Group by story. Laya on: ${suggestion.groups.length} groups (${suggestion.groups.map((group) => group.name).join('; ')}) separated cooking from astronomy; nothing moved before Accept; Undo restored the order.`
+    } finally {
+      server.close()
+    }
+  },
+
+  async WORKSPACE_IDENTITIES(ctx) {
+    const server = await startIdentitySite()
+    const base = `http://localhost:${server.address().port}`
+    const host = 'window.intoponet.browserHost'
+    const ws = 'window.intoponet.workspaces'
+    const { stateOf, tabsOf, pageText, waitPage, showIn } = identityHelpers(ctx)
+    const workspaceEntry = (state, id) => state.workspaces.find((item) => item.id === id)
+    const askLocation = async (marker) => { void (await ctx.page(marker)).evaluate(`navigator.geolocation.getCurrentPosition(() => {}, () => {}); true`) }
+    let mainId = ''
+    let workId = ''
+    try {
+      // Main: signed in as ada.
+      await openPage(ctx, `${base}/login?who=main`, 2500)
+      await signIn(ctx, await ctx.page('who=main'), 'ada', 'Main-Pa55!')
+      await waitPage('who=ada', 'Signed in as ada')
+      mainId = (await stateOf()).activeId
+
+      // A workspace of its own with separate sign-ins: it starts signed out, while Main stays signed in.
+      const created = JSON.parse(await ctx.evaluate(`${ws}.create({ name: 'Work' }).then((s) => JSON.stringify(s))`))
+      workId = created.activeId
+      await ctx.evaluate(`${ws}.update(${JSON.stringify(workId)}, { separateSignIns: true }).then(() => true)`)
+      expect(workspaceEntry(await stateOf(), workId)?.separateSignIns === true, 'Separate sign-ins did not turn on for Work.')
+      await openPage(ctx, `${base}/?who=wstart`, 2500)
+      await waitPage('who=wstart', 'Signed out')
+
+      // Work signs in as bob, and the sign-in is saved in Work.
+      await openPage(ctx, `${base}/login?who=wlogin`, 2500)
+      await signIn(ctx, await ctx.page('who=wlogin'), 'bob', 'Work-Pa55!')
+      await waitPage('who=bob', 'Signed in as bob')
+      await ctx.wait(`(document.querySelector('.password-bar')?.innerText ?? '').includes('Save password')`, 15_000, 'the Save password offer in Work')
+      expect(await ctx.click('.password-bar button', 'Save'), 'The Work sign-in offer has no Save button.')
+      await ctx.wait(`window.intoponet.passwords.list().then((l) => l.some((x) => x.username === 'bob' && x.workspaceId === ${JSON.stringify(workId)}))`, 10_000, 'the Work sign-in to be saved in Work')
+
+      // Main: still signed in as ada, and its sign-in page does not offer Work's account.
+      await showIn(mainId, 'who=ada')
+      await openPage(ctx, `${base}/login?who=mlogin`, 2500)
+      const [mainUser] = JSON.parse(await (await ctx.page('who=mlogin')).evaluate(`JSON.stringify([document.querySelector('#username')?.value ?? null])`))
+      expect(mainUser === '', `Main's sign-in page filled in "${mainUser}", a sign-in saved in Work.`)
+      await openPage(ctx, `${base}/?who=mhome`, 2500)
+      await waitPage('who=mhome', 'Signed in as ada')
+
+      // A location permission allowed in Main is asked again in Work.
+      await showIn(mainId, 'who=mhome')
+      await askLocation('who=mhome')
+      await ctx.wait(`!!document.querySelector('[aria-label$="asks for permission"]')`, 15_000, 'the location prompt in Main')
+      expect(await ctx.click('[aria-label$="asks for permission"] button', 'Allow'), `The location prompt in Main has no Allow button (bar: "${await ctx.evaluate("document.querySelector('.permission-bar')?.innerText ?? ''")}").`)
+      await ctx.delay(800)
+      await showIn(workId, 'who=bob')
+      await askLocation('who=bob')
+      await ctx.wait(`!!document.querySelector('[aria-label$="asks for permission"]')`, 15_000, 'the location prompt to be asked again in Work')
+      expect(await ctx.click('[aria-label$="asks for permission"] button', 'Allow'), 'The location prompt in Work has no Allow button.')
+      await ctx.delay(800)
+
+      // Ad blocking runs in Work too: the ad on its page is stopped.
+      await ctx.click('.shield-control > button')
+      await ctx.delay(1000)
+      const shield = await ctx.evaluate(`document.querySelector('.shield-bar')?.innerText ?? ''`)
+      const stopped = Number(shield.match(/(\d+) tracker/)?.[1] ?? 0) + Number(shield.match(/(\d+) ad/)?.[1] ?? 0)
+      expect(stopped > 0, `Nothing was blocked on Work's page: "${shield.replace(/\n+/g, ' · ')}".`)
+      await ctx.click('.shield-control > button')
+      await ctx.delay(500)
+
+      // A download in Work is listed, and the file is saved.
+      const link = JSON.parse(await (await ctx.page('who=bob')).evaluate(`JSON.stringify(document.querySelector('#get')?.getBoundingClientRect() ?? null)`))
+      expect(link, "Work's page has no download link.")
+      const workPage = await ctx.page('who=bob')
+      for (const type of ['mousePressed', 'mouseReleased']) await workPage.send('Input.dispatchMouseEvent', { type, x: link.x + 5, y: link.y + 5, button: 'left', clickCount: 1 })
+      await ctx.wait(`window.intoponet.downloads.list().then((l) => l.some((d) => d.filename === 'intoponet-e2e-identity.bin' && d.state === 'completed'))`, 30_000, 'the Work download to finish')
+      const landed = join(ctx.profile, 'Downloads', 'intoponet-e2e-identity.bin')
+      expect(existsSync(landed) && statSync(landed).size === 65536, `The Work download is not in ${landed}.`)
+
+      // History names the workspace each visit was made in.
+      const visits = JSON.parse(await ctx.evaluate(`window.intoponet.history.search('who=bob').then((r) => JSON.stringify(r.days.flatMap((d) => d.visits)))`))
+      expect(visits.some((visit) => visit.workspaceId === workId && visit.url.includes('who=bob')), `History does not name Work for its visit: ${JSON.stringify(visits.map((visit) => [visit.url, visit.workspaceId ?? null]))}.`)
+
+      // Main's sign-in page does not get Work's saved account; Work's does.
+      await showIn(workId, 'who=bob')
+      await openPage(ctx, `${base}/login?who=wcheck`, 2500)
+      const [workUser] = JSON.parse(await (await ctx.page('who=wcheck')).evaluate(`JSON.stringify([document.querySelector('#username')?.value ?? null])`))
+      expect(workUser === 'bob', `Work's sign-in page did not offer its saved account (it filled "${workUser}").`)
+
+      // Clearing Work's data signs Work out and leaves Main signed in.
+      await showIn(workId, 'who=bob')
+      await ctx.evaluate(`${ws}.clearSignIns(${JSON.stringify(workId)}).then(() => true)`)
+      await waitPage('who=bob', 'Signed out')
+      await waitPage('who=mhome', 'Signed in as ada')
+
+      // A tab moved from Main to Work warns first, and arrives signed out with its history.
+      await showIn(mainId, 'who=ada')
+      await (await ctx.page('who=ada')).evaluate(`location.href = '/?who=ada&step=2'; true`)
+      await waitPage('step=2', 'Signed in as ada')
+      await ctx.main(`(() => { const d = electron.dialog; globalThis.__moveAsks = []; globalThis.__realMessageBox = d.showMessageBox; d.showMessageBox = async (...args) => { globalThis.__moveAsks.push(String(args[args.length - 1].message)); return { response: 0 } }; return true })()`)
+      const moving = (await tabsOf()).find((item) => item.url.includes('step=2'))
+      expect(moving, 'The Main tab for the move is missing.')
+      await ctx.evaluate(`${ws}.moveTab(${JSON.stringify(moving.id)}, ${JSON.stringify(workId)}).then(() => true)`)
+      const asked = await ctx.main('globalThis.__moveAsks')
+      await ctx.main(`(() => { electron.dialog.showMessageBox = globalThis.__realMessageBox; return true })()`)
+      expect(asked.includes('This tab will reload signed out in Work'), `Moving the tab did not warn first (it asked: ${JSON.stringify(asked)}).`)
+      await showIn(workId, 'step=2')
+      await waitPage('step=2', 'Signed out')
+      const kept = await ctx.main(`(() => { const page = electron.webContents.getAllWebContents().find((w) => w.getURL().includes('step=2')); return page ? page.navigationHistory.getActiveIndex() > 0 : false })()`)
+      expect(kept, 'The moved tab kept no history to go back to.')
+
+      // Work signs in again (as dan), and a private tab in Work uses the private session.
+      await openPage(ctx, `${base}/login?who=dlogin`, 2500)
+      await signIn(ctx, await ctx.page('who=dlogin'), 'dan', 'Work-Pa55!')
+      await waitPage('who=dan', 'Signed in as dan')
+      // A tab a Work page opens (a link clicked in it) is in Work, with Work's sign-ins.
+      const dan = await ctx.page('who=dan')
+      await dan.evaluate(`(() => { const a = document.createElement('a'); a.href = '/?who=popup'; a.target = '_blank'; a.id = 'popup'; a.textContent = 'Open'; document.body.append(a); return true })()`)
+      const popupAt = JSON.parse(await dan.evaluate(`JSON.stringify(document.getElementById('popup').getBoundingClientRect())`))
+      for (const type of ['mousePressed', 'mouseReleased']) await dan.send('Input.dispatchMouseEvent', { type, x: popupAt.x + 5, y: popupAt.y + 5, button: 'left', clickCount: 1 })
+      await waitPage('who=popup', 'Signed in as dan')
+      await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(true).then(() => true)`)
+      await openPage(ctx, `${base}/?who=priv`, 2500)
+      const privateSession = await ctx.main(`(() => { const page = electron.webContents.getAllWebContents().find((w) => w.getURL().includes('who=priv')); return page ? page.session === electron.session.fromPartition('intoponet-private') : null })()`)
+      expect(privateSession === true, `A private tab in Work did not use the private session (${privateSession}; tabs: ${JSON.stringify((await tabsOf()).map((item) => [item.url, item.isPrivate]))}).`)
+      await waitPage('who=priv', 'Signed out')
+      const privateTab = (await tabsOf()).find((item) => item.url.includes('who=priv'))
+      if (privateTab) await ctx.evaluate(`${host}.closeTab(${JSON.stringify(privateTab.id)}).then(() => true)`)
+      await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
+      await showIn(workId, 'who=dan')
+      await waitPage('who=dan', 'Signed in as dan')
+
+      // Quit, then open a copy of the profile again: the option, Work's sign-in and permissions, and Main's sign-in are all kept.
+      // The sign-ins are on disk before the quit (Chromium writes cookies a little after they are set).
+      await ctx.main(`Promise.all([${JSON.stringify('persist:intoponet-default')}, ${JSON.stringify(`persist:intoponet-ws-${workId}`)}].map((name) => electron.session.fromPartition(name).cookies.flushStore())).then(() => true)`)
+      await ctx.main('electron.app.quit()')
+      await waitForQuit(ctx.profile)
+      // The quit app has written its last files (its helpers outlive the main process for a moment).
+      await new Promise((resolve) => setTimeout(resolve, 2500))
+      const before = process.env.E2E_PROFILE
+      process.env.E2E_PROFILE = ctx.profile
+      try {
+        return await runAppCheck((again) => identityRelaunch(again, { workId, mainId }), { timeoutMs: 120_000 }) || 'Separate sign-ins: isolated in Work, asked again, ad blocked, download listed, history named, cleared, moved with a warning, private session, kept across a relaunch.'
+      } finally {
+        if (before === undefined) delete process.env.E2E_PROFILE
+        else process.env.E2E_PROFILE = before
+      }
     } finally {
       server.close()
     }

@@ -190,3 +190,14 @@ describe('history command validation', () => {
     expect(history.importVisits([{ url: 'https://example.com/', title: '', visitedAt: NOON - 30 * DAY }])).toEqual({ added: 0, duplicates: 0, excluded: 0, old: 1 })
   })
 })
+
+describe('history workspaces', () => {
+  it('records the workspace of each visit, and the same page in another workspace is a new visit', () => {
+    const { history } = store()
+    expect(history.record({ url: 'https://example.com/a', title: 'A', isPrivate: false, workspaceId: 'work' })).toBe(true)
+    expect(history.record({ url: 'https://example.com/a', title: 'A', isPrivate: false, workspaceId: 'home' })).toBe(true)
+    const days = history.search('', 0, 10).days
+    const visits = days.flatMap((day) => day.visits)
+    expect(visits.map((visit) => visit.workspaceId).sort()).toEqual(['home', 'work'])
+  })
+})

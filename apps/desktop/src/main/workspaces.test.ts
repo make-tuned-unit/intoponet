@@ -189,3 +189,41 @@ describe('workspace commands from the app window', () => {
     expect(() => parseBrowserHostCommand({ type: 'move-tab-to-workspace', tabId: 't' })).toThrow()
   })
 })
+
+describe('workspace separate sign-ins', () => {
+  it('turns separate sign-ins on and off, and reports a change only when there is one', () => {
+    const set = new WorkspaceSet<{ id: string }>([{ ...MAIN_WORKSPACE }, { id: 'work', name: 'Work', icon: 'briefcase', accent: 'cyan' }])
+    expect(set.get('work')?.separateSignIns).toBeUndefined()
+    expect(set.update('work', { separateSignIns: true })).toBe(true)
+    expect(set.get('work')?.separateSignIns).toBe(true)
+    expect(set.update('work', { separateSignIns: true })).toBe(false)
+    expect(set.update('work', { separateSignIns: false })).toBe(true)
+    expect(set.snapshot(() => 0).workspaces.find((workspace) => workspace.id === 'work')?.separateSignIns).toBe(false)
+  })
+
+  it('keeps the setting in saved state, and drops a damaged one', () => {
+    const saved = parseSavedWorkspaces({
+      activeWorkspaceId: 'work',
+      workspaces: [
+        { id: 'main', name: 'Main', icon: 'globe', accent: 'teal' },
+        { id: 'work', name: 'Work', icon: 'briefcase', accent: 'cyan', separateSignIns: true },
+        { id: 'home', name: 'Home', icon: 'house', accent: 'mint', separateSignIns: 'yes' },
+      ],
+    })
+    expect(saved.workspaces.map((workspace) => [workspace.id, workspace.separateSignIns])).toEqual([
+      ['main', undefined],
+      ['work', true],
+      ['home', undefined],
+    ])
+  })
+})
+
+describe('separate sign-ins commands', () => {
+  it('parses the setting and the clear command', () => {
+    expect(parseBrowserHostCommand({ type: 'update-workspace', id: 'work', separateSignIns: true })).toMatchObject({ type: 'update-workspace', id: 'work', separateSignIns: true })
+    expect(parseBrowserHostCommand({ type: 'update-workspace', id: 'work', name: 'Work' })).not.toHaveProperty('separateSignIns')
+    expect(() => parseBrowserHostCommand({ type: 'update-workspace', id: 'work', separateSignIns: 'yes' })).toThrow()
+    expect(parseBrowserHostCommand({ type: 'clear-workspace-sign-ins', id: 'work' })).toEqual({ type: 'clear-workspace-sign-ins', id: 'work' })
+    expect(() => parseBrowserHostCommand({ type: 'clear-workspace-sign-ins' })).toThrow()
+  })
+})

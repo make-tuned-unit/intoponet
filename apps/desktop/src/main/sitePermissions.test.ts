@@ -219,3 +219,37 @@ describe('popups', () => {
     expect(limiter.allow(7, 20_000)).toBe(true)
   })
 })
+
+describe('permission broker scopes', () => {
+  it('keeps a workspace\'s answers apart from the shared ones', () => {
+    const shared = new SitePermissionStore(null)
+    const work = new SitePermissionStore(null)
+    const broker = new SitePermissionBroker({ store: (_p, scope) => (scope === 'ws:work' ? work : shared), emit: () => undefined, timeoutMs: 50 })
+    work.set('https://meet.test', ['camera'], 'allow')
+    expect(broker.check('https://meet.test', ['camera'], false, null, 'ws:work')).toBe(true)
+    expect(broker.check('https://meet.test', ['camera'], false, null, 'default')).toBeNull()
+  })
+
+  it('asks again in a workspace rather than inheriting the shared answer', () => {
+    const events: SitePermissionEvent[] = []
+    const shared = new SitePermissionStore(null)
+    const work = new SitePermissionStore(null)
+    const broker = new SitePermissionBroker({ store: (_p, scope) => (scope === 'ws:work' ? work : shared), emit: (event) => events.push(event), timeoutMs: 50 })
+    shared.set('https://meet.test', ['camera'], 'allow')
+    const answers: boolean[] = []
+    broker.request({ origin: 'https://meet.test', kinds: ['camera'], isPrivate: false, owner: 1, scope: 'ws:work' }, (granted) => answers.push(granted))
+    expect(events.filter((event) => event.type === 'request')).toHaveLength(1)
+    expect(answers).toEqual([])
+  })
+
+  it('clears one scope without touching another', () => {
+    const shared = new SitePermissionStore(null)
+    const work = new SitePermissionStore(null)
+    const broker = new SitePermissionBroker({ store: (_p, scope) => (scope === 'ws:work' ? work : shared), emit: () => undefined, timeoutMs: 50 })
+    shared.set('https://a.test', ['camera'], 'allow')
+    work.set('https://a.test', ['camera'], 'allow')
+    broker.clear(false, 'ws:work')
+    expect(work.get('https://a.test')).toEqual({})
+    expect(shared.get('https://a.test')).toEqual({ camera: 'allow' })
+  })
+})

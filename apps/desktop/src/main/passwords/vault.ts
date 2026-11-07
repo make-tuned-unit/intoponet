@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import type { PasswordVaultStatus, SavedLogin } from '../../shared/passwords'
 import { PASSWORD_LIMIT, USERNAME_LIMIT } from '../../shared/passwordPage'
 import { passwordOrigin, sameLoginSite } from './origin'
+import { isWorkspaceIdentityId } from '../workspaceIdentity'
 
 /**
  * Saved passwords, sealed in one file with a key macOS keeps in the login Keychain
@@ -38,13 +39,18 @@ const isDate = (value: unknown): value is string => typeof value === 'string' &&
 function readLogin(value: unknown): StoredLogin | null {
   if (!value || typeof value !== 'object') return null
   const input = value as Record<string, unknown>
-  const { id, origin, username, password, createdAt, updatedAt, lastUsedAt } = input
+  const { id, origin, username, password, createdAt, updatedAt, lastUsedAt, workspaceId } = input
   if (typeof id !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(id)) return null
   if (typeof origin !== 'string' || passwordOrigin(origin) !== origin) return null
   if (typeof username !== 'string' || username.length > USERNAME_LIMIT) return null
   if (typeof password !== 'string' || !password || password.length > PASSWORD_LIMIT) return null
   if (!isDate(createdAt) || !isDate(updatedAt)) return null
-  return { id, origin, username, password, createdAt, updatedAt, lastUsedAt: isDate(lastUsedAt) ? lastUsedAt : null }
+  // An absent workspace means the shared sign-ins (every file before workspaces had separate sign-ins).
+  if (workspaceId !== undefined && !isWorkspaceIdentityId(workspaceId)) return null
+  return {
+    id, origin, username, password, createdAt, updatedAt, lastUsedAt: isDate(lastUsedAt) ? lastUsedAt : null,
+    ...(typeof workspaceId === 'string' ? { workspaceId } : {}),
+  }
 }
 
 /** Parse a decrypted vault, dropping anything malformed. */
@@ -114,11 +120,14 @@ export class PasswordVault {
     return (this.data?.logins ?? []).map(summary).sort((a, b) => a.origin.localeCompare(b.origin) || a.username.localeCompare(b.username))
   }
 
-  /** Saved sign-ins for this site (www. and the bare domain count as one), exact origin first. */
-  async forSite(origin: string): Promise<StoredLogin[]> {
+  /**
+   * Saved sign-ins for this site (www. and the bare domain count as one), exact origin first. Only
+   * those of the scope asked: the shared ones (workspaceId null) or one workspace's own.
+   */
+  async forSite(origin: string, workspaceId: string | null = null): Promise<StoredLogin[]> {
     await this.load()
     return (this.data?.logins ?? [])
-      .filter((login) => sameLoginSite(login.origin, origin))
+      .filter((login) => (login.workspaceId ?? null) === workspaceId && sameLoginSite(login.origin, origin))
       .sort((a, b) => Number(b.origin === origin) - Number(a.origin === origin) || (b.lastUsedAt ?? '').localeCompare(a.lastUsedAt ?? '') || a.username.localeCompare(b.username))
   }
 
@@ -128,18 +137,20 @@ export class PasswordVault {
   }
 
   /** The saved entry for this site and username, if there is one. */
-  async find(origin: string, username: string): Promise<StoredLogin | null> {
-    return (await this.forSite(origin)).find((login) => login.username === username) ?? null
+  async find(origin: string, username: string, workspaceId: string | null = null): Promise<StoredLogin | null> {
+    return (await this.forSite(origin, workspaceId)).find((login) => login.username === username) ?? null
   }
 
-  /** Save a new sign-in, or a new password for one already saved. */
-  save(origin: string, username: string, password: string): Promise<SavedLogin> {
+  /** Save a new sign-in, or a new password for one already saved in the same scope. */
+  save(origin: string, username: string, password: string, workspaceId: string | null = null): Promise<SavedLogin> {
     if (passwordOrigin(origin) !== origin) return Promise.reject(new Error('Passwords are saved only for secure sites.'))
     if (!password || password.length > PASSWORD_LIMIT || username.length > USERNAME_LIMIT) return Promise.reject(new Error('Invalid sign-in.'))
+    if (workspaceId !== null && !isWorkspaceIdentityId(workspaceId)) return Promise.reject(new Error('Invalid workspace.'))
     return this.mutate((data) => {
       const stamp = this.now().toISOString()
-      const existing = data.logins.find((login) => login.origin === origin && login.username === username)
-        ?? data.logins.find((login) => sameLoginSite(login.origin, origin) && login.username === username)
+      const inScope = (login: StoredLogin) => (login.workspaceId ?? null) === workspaceId
+      const existing = data.logins.find((login) => inScope(login) && login.origin === origin && login.username === username)
+        ?? data.logins.find((login) => inScope(login) && sameLoginSite(login.origin, origin) && login.username === username)
       if (existing) {
         existing.password = password
         existing.updatedAt = stamp
@@ -147,7 +158,7 @@ export class PasswordVault {
         return summary(existing)
       }
       if (data.logins.length >= MAX_LOGINS) throw new Error('Too many saved passwords.')
-      const login: StoredLogin = { id: randomUUID(), origin, username, password, createdAt: stamp, updatedAt: stamp, lastUsedAt: stamp }
+      const login: StoredLogin = { id: randomUUID(), origin, username, password, createdAt: stamp, updatedAt: stamp, lastUsedAt: stamp, ...(workspaceId ? { workspaceId } : {}) }
       data.logins.push(login)
       data.never = data.never.filter((item) => !sameLoginSite(item, origin))
       return summary(login)
@@ -169,7 +180,7 @@ export class PasswordVault {
           invalid += 1
           continue
         }
-        if (data.logins.some((login) => sameLoginSite(login.origin, row.origin) && login.username === row.username)) {
+        if (data.logins.some((login) => !login.workspaceId && sameLoginSite(login.origin, row.origin) && login.username === row.username)) {
           existing += 1
           continue
         }
@@ -191,6 +202,15 @@ export class PasswordVault {
   remove(id: string): Promise<void> {
     return this.mutate((data) => {
       data.logins = data.logins.filter((login) => login.id !== id)
+    })
+  }
+
+  /** Forgets every sign-in saved in one workspace's own scope (when its sign-ins are deleted). */
+  removeWorkspace(workspaceId: string): Promise<number> {
+    return this.mutate((data) => {
+      const before = data.logins.length
+      data.logins = data.logins.filter((login) => login.workspaceId !== workspaceId)
+      return before - data.logins.length
     })
   }
 

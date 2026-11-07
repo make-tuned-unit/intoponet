@@ -110,18 +110,22 @@ export class SitePermissionStore {
   }
 }
 
-type Pending = { request: SitePermissionRequest; callbacks: Array<(granted: boolean) => void>; owner: number; timer: ReturnType<typeof setTimeout>; decisionVersion: number; allowing: boolean }
+type Pending = { request: SitePermissionRequest; scope: string; callbacks: Array<(granted: boolean) => void>; owner: number; timer: ReturnType<typeof setTimeout>; decisionVersion: number; allowing: boolean }
 
 /**
  * Turns Chromium permission requests into one prompt per site and request,
  * answered by the user. Stored answers apply at once; unanswered prompts are
  * declined after `timeoutMs`.
+ *
+ * `scope` says whose answers these are: 'default' (the shared sign-ins), `ws:<id>` (a workspace with
+ * separate sign-ins, which keeps its own file) or private (isPrivate, memory only). A prompt and a
+ * remembered answer never cross scopes.
  */
 export class SitePermissionBroker {
   private pending = new Map<string, Pending>()
 
   constructor(private readonly options: {
-    store: (isPrivate: boolean) => SitePermissionStore
+    store: (isPrivate: boolean, scope: string) => SitePermissionStore
     emit: (event: SitePermissionEvent) => void
     /** Ask macOS for camera/microphone access the first time a site is allowed them. */
     systemAccess?: (kind: 'camera' | 'microphone') => Promise<boolean>
@@ -129,17 +133,18 @@ export class SitePermissionBroker {
   }) {}
 
   /** Answer from storage if possible: true/false, or null when the user must be asked. */
-  check(origin: string | null, kinds: SitePermissionKind[] | 'always' | null, isPrivate: boolean, topOrigin?: string | null): boolean | null {
+  check(origin: string | null, kinds: SitePermissionKind[] | 'always' | null, isPrivate: boolean, topOrigin?: string | null, scope = 'default'): boolean | null {
     if (kinds === 'always') return true
     if (!kinds || !origin) return false
-    const saved = this.options.store(isPrivate).get(permissionKey(origin, topOrigin))
+    const saved = this.options.store(isPrivate, scope).get(permissionKey(origin, topOrigin))
     if (kinds.some((kind) => saved[kind] === 'block')) return false
     if (kinds.every((kind) => saved[kind] === 'allow')) return true
     return null
   }
 
-  request(input: { origin: string | null; topOrigin?: string | null; kinds: SitePermissionKind[] | 'always' | null; isPrivate: boolean; owner: number }, callback: (granted: boolean) => void): void {
-    const known = this.check(input.origin, input.kinds, input.isPrivate, input.topOrigin)
+  request(input: { origin: string | null; topOrigin?: string | null; kinds: SitePermissionKind[] | 'always' | null; isPrivate: boolean; owner: number; scope?: string }, callback: (granted: boolean) => void): void {
+    const scope = input.scope ?? 'default'
+    const known = this.check(input.origin, input.kinds, input.isPrivate, input.topOrigin, scope)
     if (known !== null || !input.origin || !Array.isArray(input.kinds)) {
       callback(known === true)
       return
@@ -147,7 +152,7 @@ export class SitePermissionBroker {
     const kinds = input.kinds
     const key = permissionKey(input.origin, input.topOrigin)
     // The same site asking again while a prompt is open joins that prompt.
-    const same = [...this.pending.values()].find((item) => item.owner === input.owner && keyOf(item.request) === key && item.request.kinds.join() === kinds.join())
+    const same = [...this.pending.values()].find((item) => item.owner === input.owner && item.scope === scope && keyOf(item.request) === key && item.request.kinds.join() === kinds.join())
     if (same) {
       same.callbacks.push(callback)
       return
@@ -156,7 +161,7 @@ export class SitePermissionBroker {
     const request: SitePermissionRequest = { id: randomUUID(), origin: input.origin, ...embedded, kinds, isPrivate: input.isPrivate }
     const timer = setTimeout(() => this.finish(request.id, false), this.options.timeoutMs ?? 120_000)
     timer.unref?.()
-    this.pending.set(request.id, { request, callbacks: [callback], owner: input.owner, timer, decisionVersion: 0, allowing: false })
+    this.pending.set(request.id, { request, scope, callbacks: [callback], owner: input.owner, timer, decisionVersion: 0, allowing: false })
     this.options.emit({ type: 'request', request })
   }
 
@@ -168,12 +173,13 @@ export class SitePermissionBroker {
     const version = ++item.decisionVersion
     item.allowing = allows
     const { kinds, isPrivate } = item.request
+    const { scope } = item
     const key = keyOf(item.request)
     // Only a remembered answer settles the site's other waiting prompts.
     const remembered = decision === 'allow' || decision === 'block'
     if (remembered) {
       for (const [otherId, other] of this.pending) {
-        if (otherId !== id && keyOf(other.request) === key && other.request.isPrivate === isPrivate
+        if (otherId !== id && keyOf(other.request) === key && other.request.isPrivate === isPrivate && other.scope === scope
           && other.request.kinds.some((kind) => kinds.includes(kind))) this.finish(otherId, false)
       }
     }
@@ -188,26 +194,26 @@ export class SitePermissionBroker {
     }
     if (this.pending.get(id) !== item || item.decisionVersion !== version) return
     if (remembered) {
-      this.options.store(isPrivate).set(key, kinds, decision)
+      this.options.store(isPrivate, scope).set(key, kinds, decision)
       this.options.emit({ type: 'changed', origin: item.request.topOrigin ?? item.request.origin })
     }
     this.finish(id, granted)
   }
 
   /** Reset also invalidates outstanding requests, including an OS prompt. */
-  reset(origin: string, isPrivate: boolean, kind?: SitePermissionKind): void {
-    this.options.store(isPrivate).reset(origin, kind)
+  reset(origin: string, isPrivate: boolean, kind?: SitePermissionKind, scope = 'default'): void {
+    this.options.store(isPrivate, scope).reset(origin, kind)
     for (const [id, item] of this.pending) {
-      if (keyOf(item.request) === origin && item.request.isPrivate === isPrivate
+      if (keyOf(item.request) === origin && item.request.isPrivate === isPrivate && item.scope === scope
         && (!kind || item.request.kinds.includes(kind))) this.finish(id, false)
     }
     this.options.emit({ type: 'changed', origin })
   }
 
   /** Leaving a private session must invalidate consent still awaiting the OS. */
-  clear(isPrivate: boolean): void {
-    for (const [id, item] of this.pending) if (item.request.isPrivate === isPrivate) this.finish(id, false)
-    this.options.store(isPrivate).clear()
+  clear(isPrivate: boolean, scope = 'default'): void {
+    for (const [id, item] of this.pending) if (item.request.isPrivate === isPrivate && item.scope === scope) this.finish(id, false)
+    this.options.store(isPrivate, scope).clear()
   }
 
   /** A page navigated away or closed: its open prompts no longer apply. */

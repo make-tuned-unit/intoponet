@@ -77,6 +77,7 @@ const workspaces: WorkspacesApi = {
   get: () => workspace({ type: 'get-workspaces' }),
   create: (look = {}) => workspace({ type: 'create-workspace', ...look }),
   update: (id, changes) => workspace({ type: 'update-workspace', id, ...changes }),
+  clearSignIns: (id) => workspace({ type: 'clear-workspace-sign-ins', id }),
   move: (id, toIndex) => workspace({ type: 'move-workspace', id, toIndex }),
   delete: (id) => workspace({ type: 'delete-workspace', id }),
   undoDelete: () => workspace({ type: 'undo-delete-workspace' }),

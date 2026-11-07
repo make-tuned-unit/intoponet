@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { basename, dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { readFile } from 'node:fs/promises'
-import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
+import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import {
   app,
   BrowserWindow,
@@ -78,7 +78,8 @@ if (!app.isReady()) {
 /** What arrived before the window was ready opens once it is (see whenReady). */
 const incomingOpens = new IncomingOpenQueue()
 const quickWindows: QuickWindows = new QuickWindows({
-  buildView: (isPrivate) => buildView(isPrivate),
+  // A quick window is not part of a workspace: its page uses the shared sign-ins (or private).
+  buildView: (isPrivate) => buildView(isPrivate, null),
   adopt: (view, url) => adoptQuickView(view, url),
   protection: quickProtection,
   workArea: () => screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea,
@@ -144,6 +145,19 @@ import { savePageFilename } from './savePage'
 import { TRACKER_STUB_SCRIPT } from './trackerStubs'
 import { addressMenuTemplate, pasteAndGoText } from './addressMenu'
 import { bindPermissionOwnerLifecycle, kindsFor, originOf, SitePermissionBroker, SitePermissionStore } from './sitePermissions'
+import {
+  DEFAULT_PARTITION,
+  MAIN_WORKSPACE_ID,
+  PRIVATE_PARTITION,
+  hasSeparateSignIns,
+  identityScope,
+  pagePartition,
+  scopeWorkspaceId,
+  signInsChange,
+  workspacePartition,
+  workspacePermissionsFile,
+  type IdentityScope,
+} from './workspaceIdentity'
 import { bindPopupCloseWithOwner, nestedPopupDecision, popupDecision, popupWindowOptions, PopupLimiter, trackUserActivation, UserActivation, guardPopupWindow } from './popups'
 import { CLIENT_CERTIFICATE_NOTICE, declineClientCertificate, rejectCertificateErrorForSession } from './browserCertificatePolicy'
 import { reserveDownloadPath, sanitizeDownloadFilename } from './downloadReservation'
@@ -231,15 +245,21 @@ let splitPreviewSide: SplitSide | null = null
 let translateService: TranslateService | null = null
 /** Saved passwords (sealed on this Mac); null until the app is ready. */
 let passwords: PasswordService | null = null
-/** Private browsing: new tabs use an in-memory session and record nothing. */
-const PRIVATE_PARTITION = 'intoponet-private'
 // Site permissions: asked in a bar, remembered per site (private tabs: in memory until private browsing ends).
+// Each workspace with separate sign-ins keeps its own answers (workspaceIdentity.ts: the scope).
 let sitePermissions: SitePermissionBroker | null = null
 const privatePermissions = new SitePermissionStore(null)
+let normalPermissions: SitePermissionStore | null = null
+const workspacePermissionStores = new Map<string, SitePermissionStore>()
 /** Sites the user never wants absorbed or remembered (Privacy › Sites to leave out). */
 let excludedSites: string[] = []
 let privateMode = false
 const privateViews = new WeakSet<WebContentsView>()
+/** The workspace a page view belongs to (null: none, as in a quick window), and the partition it was built with. */
+const viewWorkspaces = new WeakMap<WebContentsView, string | null>()
+const viewPartitions = new WeakMap<WebContentsView, string>()
+/** Sessions that already have the download and protection handlers (each partition once). */
+const wiredPartitions = new Set<string>()
 let faviconCache: FaviconCache | null = null
 let pageAttached = false
 let activeTabId: string | null = null
@@ -932,7 +952,7 @@ function scheduleAdCollapse(contentsId: number, url?: string, delay = 250): void
   }, delay)
 }
 
-function wireProtectionSession(partition = 'persist:intoponet-default'): void {
+function wireProtectionSession(partition = DEFAULT_PARTITION): void {
   const guest = session.fromPartition(partition)
   guest.webRequest.onBeforeRequest((details, callback) => {
     // A quick window's page is attributed to it as a tab's page is.
@@ -1355,6 +1375,8 @@ function passwordPage(view: WebContentsView): PasswordPage {
   return {
     id: contents.id,
     isPrivate: privateViews.has(view),
+    // A workspace with separate sign-ins offers only its own logins; everywhere else, the shared ones.
+    workspaceId: privateViews.has(view) ? null : scopeWorkspaceId(scopeOfView(view)),
     origin: () => (contents.isDestroyed() ? null : passwordOrigin(contents.mainFrame.url)),
     fill: (message) => {
       if (!contents.isDestroyed()) contents.mainFrame.send(passwordPageChannels.fill, message)
@@ -1497,9 +1519,47 @@ function navigationFailureReason(code: number, description: string): string {
   return description
 }
 
-function wireDownloadSession(partition = 'persist:intoponet-default'): void {
+/** Every session a page can use gets the download and protection handlers, once each (a workspace's own included). */
+function ensurePageSession(partition: string): void {
+  if (wiredPartitions.has(partition)) return
+  wiredPartitions.add(partition)
+  wireDownloadSession(partition)
+  wireProtectionSession(partition)
+}
+
+/** The partition a page view was built with (the shared one when none was recorded). */
+function partitionOfView(view: WebContentsView): string {
+  return viewPartitions.get(view) ?? DEFAULT_PARTITION
+}
+
+/** Whose permissions and saved logins a page view uses: private, the shared identity, or its workspace's own. */
+function scopeOfView(view: WebContentsView): IdentityScope {
+  return identityScope(partitionOfView(view))
+}
+
+/** The workspace a page view is in (null: none, as in a quick window). */
+function workspaceOfView(view: WebContentsView): string | null {
+  return viewWorkspaces.get(view) ?? null
+}
+
+/** The site permission store for a scope: memory for private tabs, the shared file, or a workspace's own file. */
+function permissionStoreFor(isPrivate: boolean, scope: string): SitePermissionStore {
+  if (isPrivate) return privatePermissions
+  const id = scopeWorkspaceId(scope)
+  if (!id) return normalPermissions!
+  let store = workspacePermissionStores.get(id)
+  if (!store) {
+    store = new SitePermissionStore(join(app.getPath('userData'), workspacePermissionsFile(id)))
+    workspacePermissionStores.set(id, store)
+  }
+  return store
+}
+
+function wireDownloadSession(partition = DEFAULT_PARTITION): void {
   const browsing = session.fromPartition(partition)
   const isPrivate = partition === PRIVATE_PARTITION
+  // The session's own identity: a workspace's prompts and answers never cross into another's.
+  const scope = identityScope(partition)
   // Camera, microphone, location, notifications and clipboard reading are asked in a bar under the toolbar;
   // harmless ones (fullscreen, writing to the clipboard) are granted; everything else is refused.
   browsing.setPermissionRequestHandler((contents, permission, callback, details) => {
@@ -1518,13 +1578,13 @@ function wireDownloadSession(partition = 'persist:intoponet-default'): void {
       contents.once('destroyed', () => capturingContents.delete(id))
     }
     // Answers are kept per (asking site, page it is in): an embedded frame is named with its page.
-    sitePermissions.request({ origin: originOf(details.requestingUrl || contents.getURL()), topOrigin: originOf(contents.getURL()), kinds: kindsFor(permission, mediaTypes), isPrivate, owner: contents.id }, callback)
+    sitePermissions.request({ origin: originOf(details.requestingUrl || contents.getURL()), topOrigin: originOf(contents.getURL()), kinds: kindsFor(permission, mediaTypes), isPrivate, owner: contents.id, scope }, callback)
   })
   browsing.setPermissionCheckHandler((contents, permission, requestingOrigin, details) => {
     const mediaType = (details as { mediaType?: string }).mediaType
     const kinds = kindsFor(permission, mediaType === 'video' ? ['video'] : mediaType === 'audio' ? ['audio'] : [])
     const topOrigin = contents ? originOf(contents.getURL()) : originOf((details as { embeddingOrigin?: string }).embeddingOrigin ?? '')
-    return sitePermissions?.check(originOf(requestingOrigin), kinds, isPrivate, topOrigin) === true
+    return sitePermissions?.check(originOf(requestingOrigin), kinds, isPrivate, topOrigin, scope) === true
   })
   app.on('certificate-error', (event, webContents, url, error, certificate, callback, isMainFrame) => {
     // Refused, as before; the error page shows what was wrong with the certificate.
@@ -1611,8 +1671,12 @@ function installDownloadsAndHistory(): void {
     getWindow: () => window,
     handle: handleFromShell,
     excludedSites: () => excludedSites,
-    normalPartition: 'persist:intoponet-default',
+    normalPartition: DEFAULT_PARTITION,
     privatePartition: PRIVATE_PARTITION,
+    // Clearing browsing data clears every workspace's own sign-ins too (a removed one until its Undo ends).
+    workspacePartitions: () => [...workspaces.workspaces, ...(deletedWorkspace ? [deletedWorkspace.removed.workspace] : [])]
+      .filter((workspace) => hasSeparateSignIns(workspace))
+      .map((workspace) => workspacePartition(workspace.id)),
     seal: {
       available: () => safeStorage.isAsyncEncryptionAvailable(),
       encrypt: (text) => safeStorage.encryptStringAsync(text),
@@ -2043,6 +2107,8 @@ function finishWorkspaceDelete(): void {
     }
     if (!viewGone(tab.view)) tab.view.webContents.close()
   }
+  // A workspace with its own sign-ins takes them with it, once Undo can no longer bring it back.
+  if (hasSeparateSignIns(pending.removed.workspace)) void forgetWorkspaceIdentity(pending.removed.workspace.id)
   emitWorkspaces()
 }
 
@@ -2079,13 +2145,141 @@ function undoWorkspaceDelete(): void {
   schedulePersistentStateSave()
 }
 
-/** Moves a tab of the shown workspace into another one (out of its folder: folders belong to a workspace). */
-function moveTabToWorkspace(tabId: string, workspaceId: string): void {
-  const index = openTabs.findIndex((tab) => tab.id === tabId)
-  const tab = openTabs[index]
+/** Asks in front of the window, as a sheet (the Touch ID prompt does the same). True when the person goes ahead. */
+async function confirmInWindow(options: { message: string; detail: string; button: string }): Promise<boolean> {
+  const dialogOptions = { type: 'question' as const, buttons: [options.button, 'Cancel'], defaultId: 0, cancelId: 1, message: options.message, detail: options.detail }
+  const { response } = window && !window.isDestroyed() ? await dialog.showMessageBox(window, dialogOptions) : await dialog.showMessageBox(dialogOptions)
+  return response === 0
+}
+
+/** The tabs of a workspace: the shown one's (without private tabs) or a parked one's. */
+function tabsOf(workspaceId: string): OpenTab[] {
+  if (workspaceId === workspaces.activeId) return openTabs.filter((tab) => !privateViews.has(tab.view))
+  return workspaces.parkedOf(workspaceId)?.tabs ?? []
+}
+
+/**
+ * A tab's page moves to the partition its workspace now uses: a loaded page is put to sleep (its
+ * history kept, its cookies not), and a sleeping or start tab gets a view in the new partition.
+ * The tab must not be the one showing (rebuildWorkspaceTabs and moveTabToWorkspace arrange that).
+ */
+function repartitionTab(tab: OpenTab): void {
+  if (tab.pictureInPicture) delete tab.pictureInPicture
+  if (!tab.start && !tab.asleep && !viewGone(tab.view)) {
+    unloadTab(tab, { keepHistory: true })
+    return
+  }
+  const old = tab.view
+  tab.view = buildView(privateViews.has(old), workspaceOfView(old))
+  const contentsId = viewContentsIds.get(old)
+  if (contentsId !== undefined) {
+    protectionPages.remove(contentsId)
+    translateService?.forgetPage(contentsId)
+  }
+  setImmediate(() => { if (!viewGone(old)) old.webContents.close() })
+  emitTabs()
+  schedulePersistentStateSave()
+}
+
+/**
+ * A workspace's sign-ins changed (on, off, or cleared): its pages are put to sleep and built again
+ * in the partition now in use, and the page in front wakes where it was. `beforeWake` runs once
+ * the old pages are closed and before anything wakes (clearing the old data goes there). Nothing
+ * outside the workspace is touched.
+ */
+async function rebuildWorkspaceTabs(workspaceId: string, beforeWake?: () => Promise<void>): Promise<void> {
+  const tabs = tabsOf(workspaceId)
+  const front = workspaceId === workspaces.activeId ? tabs.find((tab) => tab.view === pageView) : undefined
+  const showing = pageAttached
+  if (front) {
+    // Off the screen first: a split's other side goes with it (it is rebuilt, and comes back with its pair).
+    detachActive()
+    pageView = null
+    activeTabId = null
+  }
+  if (linkPreview && tabs.some((tab) => tab.view === linkPreview!.opener)) closeLinkPreview(false)
+  for (const tab of [...tabs]) repartitionTab(tab)
+  emitTabs()
+  if (beforeWake) await beforeWake()
+  if (front) {
+    if (showing) showTab(front.id)
+    else {
+      activeTabId = front.id
+      pageView = front.view
+      lastKnownUrl = front.url
+    }
+  }
+  emitTabs()
+  emitPanelState()
+  emitWorkspaces()
+  schedulePersistentStateSave()
+}
+
+/** Deletes a partition's cookies, site storage and cache (its pages are never live while this runs). */
+async function clearPartitionData(partition: string): Promise<void> {
+  const target = session.fromPartition(partition)
+  await target.clearStorageData().catch(() => undefined)
+  await target.clearCache().catch(() => undefined)
+}
+
+/** A workspace's own site permissions: prompts still waiting end, and its answers are deleted from disk. */
+function forgetWorkspacePermissions(workspaceId: string): void {
+  sitePermissions?.clear(false, `ws:${workspaceId}`)
+  workspacePermissionStores.delete(workspaceId)
+  try {
+    rmSync(join(app.getPath('userData'), workspacePermissionsFile(workspaceId)), { force: true })
+  } catch {
+    // Nothing to remove.
+  }
+}
+
+/** Everything a workspace keeps apart: its sign-ins and site data, its permissions and its saved logins. */
+async function forgetWorkspaceIdentity(workspaceId: string): Promise<void> {
+  forgetWorkspacePermissions(workspaceId)
+  await clearPartitionData(workspacePartition(workspaceId))
+  await passwords?.forgetWorkspace(workspaceId).catch(() => undefined)
+}
+
+/** Workspace actions menu: "Separate sign-ins" on or off (the shell has confirmed). */
+async function setSeparateSignIns(workspaceId: string, separate: boolean): Promise<void> {
+  const workspace = workspaces.get(workspaceId)
+  if (!workspace) throw new Error('That workspace is gone.')
+  if (separate && workspaceId === MAIN_WORKSPACE_ID) throw new Error('Main always shares its sign-ins.')
+  if (hasSeparateSignIns(workspace) === separate) return
+  workspaces.update(workspaceId, { separateSignIns: separate })
+  if (separate) ensurePageSession(workspacePartition(workspaceId))
+  // Turning it off deletes the workspace's own sign-ins, site data, permissions and saved logins once its pages are closed.
+  await rebuildWorkspaceTabs(workspaceId, separate ? undefined : () => forgetWorkspaceIdentity(workspaceId))
+}
+
+/** "Clear sign-ins and site data…": only a workspace with separate sign-ins has any, and only its own are cleared. */
+async function clearWorkspaceSignIns(workspaceId: string): Promise<void> {
+  if (!hasSeparateSignIns(workspaces.get(workspaceId))) throw new Error('This workspace shares its sign-ins. Turn on Separate sign-ins first.')
+  await rebuildWorkspaceTabs(workspaceId, () => clearPartitionData(workspacePartition(workspaceId)))
+}
+
+/**
+ * Moves a tab of the shown workspace into another one (out of its folder: folders belong to a workspace).
+ * When the two use different sign-ins, the person is told the tab reloads signed out, and it comes
+ * back asleep in the new one: its history is kept, its cookies are not.
+ */
+async function moveTabToWorkspace(tabId: string, workspaceId: string): Promise<void> {
+  const tab = openTabs.find((item) => item.id === tabId)
   if (!tab || privateViews.has(tab.view)) throw new Error('Private tabs are not part of any workspace.')
   if (workspaceId === workspaces.activeId || !workspaces.get(workspaceId)) return
-  // A pair lives in one workspace: the tab that leaves is no longer side by side.
+  const from = workspaces.active()
+  const to = workspaces.get(workspaceId)!
+  const reloads = signInsChange(from, to)
+  if (reloads) {
+    const go = await confirmInWindow({
+      message: `This tab will reload signed out in ${to.name}`,
+      detail: `Sign-ins and site data stay with ${from.name}. The tab keeps its history.`,
+      button: 'Move Tab',
+    })
+    // The answer took a while: the tab may have closed or the workspace changed meanwhile.
+    if (!go || openTabs.indexOf(tab) < 0 || workspaces.activeId !== from.id) return
+  }
+  const index = openTabs.indexOf(tab)
   if (tab.split) endSplit(tab)
   if (activeTabId === tabId) {
     const next = openTabs.find((other, at) => at > index && !privateViews.has(other.view)) ?? [...openTabs.slice(0, index)].reverse().find((other) => !privateViews.has(other.view))
@@ -2099,7 +2293,9 @@ function moveTabToWorkspace(tabId: string, workspaceId: string): void {
   openTabs.splice(openTabs.indexOf(tab), 1)
   delete tab.folderId
   tab.lastShownAt = Date.now()
+  viewWorkspaces.set(tab.view, workspaceId)
   workspaces.addToParked(workspaceId, tab)
+  if (reloads) repartitionTab(tab)
   emitTabs()
   emitPanelState()
   emitWorkspaces()
@@ -2133,13 +2329,19 @@ async function handleWorkspaceCommand(command: WorkspaceCommand): Promise<Worksp
       break
     }
     case 'update-workspace': {
-      const { type: _type, id, ...changes } = command
-      if (workspaces.update(id, changes)) {
+      const { type: _type, id, separateSignIns, ...changes } = command
+      if (separateSignIns !== undefined) await setSeparateSignIns(id, separateSignIns)
+      if (workspaces.update(id, changes) || separateSignIns !== undefined) {
         emitWorkspaces()
         schedulePersistentStateSave()
       }
       break
     }
+    case 'clear-workspace-sign-ins':
+      await clearWorkspaceSignIns(command.id)
+      emitWorkspaces()
+      schedulePersistentStateSave()
+      break
     case 'move-workspace':
       if (workspaces.move(command.id, command.toIndex)) {
         emitWorkspaces()
@@ -2158,7 +2360,7 @@ async function handleWorkspaceCommand(command: WorkspaceCommand): Promise<Worksp
       break
     }
     case 'move-tab-to-workspace':
-      moveTabToWorkspace(command.tabId, command.workspaceId)
+      await moveTabToWorkspace(command.tabId, command.workspaceId)
       break
     case 'add-favourite': {
       const tab = openTabs.find((item) => item.id === command.tabId)
@@ -2430,7 +2632,8 @@ function openLinkPreview(urlValue: string, opener: WebContentsView | null): bool
   if (linkPreview) closeLinkPreview(false)
   if (tabSwitcher.open) endTabSwitcher('cancel')
   const isPrivate = opener ? privateViews.has(opener) : privateMode
-  const view = buildView(isPrivate)
+  // The preview is the opener's workspace's page: its sign-ins, not another's.
+  const view = buildView(isPrivate, opener ? workspaceOfView(opener) : workspaces.activeId)
   view.setBorderRadius(8)
   // A page of our own with a little script: it only reports clicks and keys (as console lines).
   const frame = new WebContentsView({ webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, spellcheck: false } })
@@ -2661,7 +2864,7 @@ function unloadTab(tab: OpenTab, options: { keepHistory: boolean; url?: string }
   tab.title = old.webContents.getTitle() || tab.title
   delete tab.loadError
   // The tab holds the replacement first, so closing the old page does not close the tab.
-  tab.view = buildView(privateViews.has(old))
+  tab.view = buildView(privateViews.has(old), workspaceOfView(old))
   tab.asleep = history ? { history } : {}
   const contentsId = viewContentsIds.get(old)
   if (contentsId !== undefined) {
@@ -2774,16 +2977,17 @@ function blockedPopup(opener: WebContentsView, url: string): void {
   if (!target || !sitePermissions || viewGone(opener)) return
   const contents = opener.webContents
   const isPrivate = privateViews.has(opener)
-  sitePermissions.request({ origin: originOf(contents.getURL()), kinds: ['popups'], isPrivate, owner: contents.id }, (granted) => {
+  const scope = scopeOfView(opener)
+  sitePermissions.request({ origin: originOf(contents.getURL()), kinds: ['popups'], isPrivate, owner: contents.id, scope }, (granted) => {
     if (!granted || viewGone(opener) || !popupLimiter.allow(contents.id)) return
-    const tab = createBrowserTab(target.toString(), true, isPrivate, true)
+    const tab = createBrowserTab(target.toString(), true, isPrivate, true, false, opener)
     if (tab) void tab.webContents.loadURL(target.toString()).catch(() => undefined)
   })
 }
 
 /** Whether this site was always allowed pop-ups (the bar's "Always for this site"). */
-function popupsAllowed(contents: Electron.WebContents, isPrivate: boolean): boolean {
-  return sitePermissions?.check(originOf(contents.getURL()), ['popups'], isPrivate) === true
+function popupsAllowed(contents: Electron.WebContents, isPrivate: boolean, scope = 'default'): boolean {
+  return sitePermissions?.check(originOf(contents.getURL()), ['popups'], isPrivate, null, scope) === true
 }
 const crashRecovery = new CrashRecoveryPolicy()
 
@@ -2806,7 +3010,7 @@ function wirePopupWindow(child: BrowserWindow, opener: WebContentsView): void {
       if (!plan.withoutGesture) emit({ type: 'navigation-failed', url, reason: plan.reason })
       return { action: 'deny' }
     }
-    const tab = createBrowserTab(url, true, privateViews.has(opener), true)
+    const tab = createBrowserTab(url, true, privateViews.has(opener), true, false, opener)
     if (tab) void tab.webContents.loadURL(url).catch(() => undefined)
     return { action: 'deny' }
   })
@@ -2814,7 +3018,11 @@ function wirePopupWindow(child: BrowserWindow, opener: WebContentsView): void {
   bindPopupCloseWithOwner(child, opener.webContents)
 }
 
-function createBrowserTab(urlValue: string, activate = true, isPrivate = privateMode, openedByPage = false, localFile = false): WebContentsView | null {
+/**
+ * A new tab in the shown workspace, or, when `opener` is a page of another workspace, in that one
+ * (parked, unseen): a popup's tab is in its opener's workspace, with that workspace's sign-ins.
+ */
+function createBrowserTab(urlValue: string, activate = true, isPrivate = privateMode, openedByPage = false, localFile = false, opener: WebContentsView | null = null): WebContentsView | null {
   // A local file only when it was opened from Finder or another app (see openIncoming).
   const url = safeHttpUrl(urlValue) ?? (localFile && urlValue.startsWith('file:') ? new URL(urlValue) : null)
   if (!url) return null
@@ -2823,10 +3031,19 @@ function createBrowserTab(urlValue: string, activate = true, isPrivate = private
     emit({ type: 'navigation-failed', url: url.toString(), reason: `A page tried to open another tab, but ${MAX_TABS} tabs are already open. Close a tab and try again.` })
     return null
   }
+  const home = !isPrivate && opener && !viewGone(opener) ? workspaceOfView(opener) ?? workspaces.activeId : workspaces.activeId
+  if (!workspaces.get(home)) return null
   makeRoomForTab()
-  const view = buildView(isPrivate)
+  const view = buildView(isPrivate, home)
   const tab: OpenTab = { id: randomUUID(), url: url.toString(), title: '', favicon: '', view }
   tab.lastShownAt = Date.now()
+  if (home !== workspaces.activeId) {
+    // Its page is in another workspace: the tab waits there (loaded, as a parked tab is) until that workspace is shown.
+    workspaces.addToParked(home, tab)
+    emitWorkspaces()
+    schedulePersistentStateSave()
+    return view
+  }
   openTabs.push(tab)
   if (activate) {
     showTab(tab.id)
@@ -2856,7 +3073,7 @@ function contextMenuTemplate(view: WebContentsView, params: Electron.ContextMenu
 
   if (has('open-link-in-new-tab') && linkUrl) {
     items.push({ label: 'Open Link in New Tab', click: () => {
-      const newView = createBrowserTab(linkUrl, true, privateViews.has(view))
+      const newView = createBrowserTab(linkUrl, true, privateViews.has(view), false, false, view)
       if (newView) void newView.webContents.loadURL(linkUrl)
     } })
     items.push({ label: 'Preview Link', click: () => openLinkPreview(linkUrl, view) })
@@ -2921,7 +3138,7 @@ function moreContextItems(view: WebContentsView, params: Electron.ContextMenuPar
   const linkUrl = safeHttpUrl(params.linkURL)?.toString()
   const imageUrl = safeHttpUrl(params.srcURL)?.toString()
   const openInTab = (url: string, privately: boolean): void => {
-    const tab = createBrowserTab(url, true, privately)
+    const tab = createBrowserTab(url, true, privately, false, false, privately ? null : view)
     if (tab) void tab.webContents.loadURL(url).catch(() => undefined)
   }
   if (extras.openLinkInPrivateTab && linkUrl) items.push({ label: 'Open Link in Private Tab', click: () => openInTab(linkUrl, true) })
@@ -2958,9 +3175,17 @@ function spellingContextItems(view: WebContentsView, params: Electron.ContextMen
   return items
 }
 
-function buildView(isPrivate = privateMode): WebContentsView {
+/**
+ * A page view for a tab. `workspaceId` is the workspace the tab belongs to (the shown one by
+ * default; null for a quick window, which uses the shared sign-ins). The page's session is that
+ * workspace's partition: its own sign-ins when it has separate ones, the shared ones otherwise,
+ * and the private one for a private tab (workspaceIdentity.ts).
+ */
+function buildView(isPrivate = privateMode, workspaceId: string | null = workspaces.activeId): WebContentsView {
   let frequencyNavigation = 0
   let frequencyLoadSucceeded = false
+  const partition = pagePartition(workspaceId === null ? null : workspaces.get(workspaceId), isPrivate)
+  ensurePageSession(partition)
   const view = new WebContentsView({
     webPreferences: {
       contextIsolation: true,
@@ -2970,14 +3195,16 @@ function buildView(isPrivate = privateMode): WebContentsView {
       // PDF links open in Chromium's built-in viewer without `plugins: true` (Electron 45; the
       // PDF_VIEWER feature check proves it), so plugins stay off.
       spellcheck: true,
-      session: session.fromPartition(isPrivate ? PRIVATE_PARTITION : 'persist:intoponet-default'),
+      session: session.fromPartition(partition),
       // The sign-in helper for saved passwords; private tabs never get it.
       ...(isPrivate ? {} : { preload: join(__dirname, '../preload/page.js') }),
     },
   })
+  viewPartitions.set(view, partition)
+  viewWorkspaces.set(view, isPrivate ? null : workspaceId)
   if (isPrivate) privateViews.add(view)
   if (isPrivate) privateWebContents.add(view.webContents)
-  browsingData?.attachPage(view.webContents, () => privateViews.has(view))
+  browsingData?.attachPage(view.webContents, () => privateViews.has(view), () => workspaceOfView(view) ?? undefined)
 
   // Behind a page before it paints: light, or dark when pages are dark (no white flash at night).
   view.setBackgroundColor(pageAppearance.current === 'dark' || (pageAppearance.current === 'system' && nativeTheme.shouldUseDarkColors) ? '#202124' : '#ffffff')
@@ -3130,7 +3357,7 @@ function buildView(isPrivate = privateMode): WebContentsView {
       return { action: 'deny' }
     }
     // Only right after a click or key press in the page (or for a site always allowed pop-ups).
-    const activated = userActivation.consume(view.webContents.id) || popupsAllowed(view.webContents, privateViews.has(view))
+    const activated = userActivation.consume(view.webContents.id) || popupsAllowed(view.webContents, privateViews.has(view), scopeOfView(view))
     const plan = popupDecision({ url, disposition, features }, popupLimiter, view.webContents.id, Date.now(), activated)
     if (plan.action === 'deny') {
       if (plan.withoutGesture) blockedPopup(view, url)
@@ -3139,7 +3366,7 @@ function buildView(isPrivate = privateMode): WebContentsView {
     }
     if (plan.action === 'tab') {
       // Same privacy as the page that opened it.
-      const tab = createBrowserTab(url, !plan.background, privateViews.has(view), true)
+      const tab = createBrowserTab(url, !plan.background, privateViews.has(view), true, false, view)
       if (tab) void tab.webContents.loadURL(url).catch(() => undefined)
       return { action: 'deny' }
     }
@@ -3314,7 +3541,7 @@ function buildView(isPrivate = privateMode): WebContentsView {
         : `The page renderer stopped (${details.reason}). Automatic reload is paused after repeated crashes. Use Reload to try again.`,
     })
     if (!tab || !safeHttpUrl(crashedUrl)) return
-    const replacement = buildView(privateViews.has(view))
+    const replacement = buildView(privateViews.has(view), workspaceOfView(view))
     tab.view = replacement
     tab.url = crashedUrl
     delete tab.loadError
@@ -3348,7 +3575,7 @@ async function runTabMenuAction(action: TabMenuAction, id: string): Promise<void
       if (!safeHttpUrl(url)) break
       const at = duplicateIndex(openTabs, id)
       // A private tab's duplicate stays private.
-      const view = createBrowserTab(url, true, privateViews.has(tab.view))
+      const view = createBrowserTab(url, true, privateViews.has(tab.view), false, false, tab.view)
       const copy = view && tabOfView(view)
       if (copy) await handleBrowserCommand({ type: 'move-tab', id: copy.id, toIndex: at })
       if (view) void view.webContents.loadURL(url).catch(() => undefined)
@@ -3897,7 +4124,7 @@ async function handleBrowserCommand(
         move: (workspaceId) => void handleBrowserCommand({ type: 'move-tab-to-workspace', tabId: command.id, workspaceId }).catch(() => undefined),
         moveToNew: workspaces.workspaces.length < MAX_WORKSPACES ? () => {
           const workspace = workspaces.create()
-          if (workspace) moveTabToWorkspace(command.id, workspace.id)
+          if (workspace) void moveTabToWorkspace(command.id, workspace.id).catch(() => undefined)
         } : null,
         favourite: (() => {
           const live = target && !viewGone(target.view) ? target.view.webContents.getURL() : ''
@@ -4587,12 +4814,13 @@ function openIncoming(target: IncomingTarget): void {
  * ones. Nothing here can fail part way: the plan already fits every limit.
  */
 function addImportedWorkspaces(plan: WorkspaceImportPlan): void {
-  const unloaded = (page: { url: string; title: string }, extra: Partial<OpenTab> = {}): OpenTab => ({ id: randomUUID(), url: page.url, title: page.title, favicon: '', view: buildView(false), asleep: {}, lastShownAt: Date.now(), ...extra })
   for (const planned of plan.workspaces) {
     const id = planned.existingId ?? workspaces.create({ name: planned.name })?.id
     if (!id) continue
     const target = id === workspaces.activeId ? { tabs: openTabs, folders: tabFolders } : workspaces.parkedOf(id)
     if (!target) continue
+    // Each imported page is unloaded and built in the workspace it joins (its sign-ins).
+    const unloaded = (page: { url: string; title: string }, extra: Partial<OpenTab> = {}): OpenTab => ({ id: randomUUID(), url: page.url, title: page.title, favicon: '', view: buildView(false, id), asleep: {}, lastShownAt: Date.now(), ...extra })
     const added: OpenTab[] = planned.pinned.map((page) => unloaded(page, { pinned: true, home: page.url }))
     const addFolders = (list: readonly FolderPlan[], parentId: string | null): void => {
       for (const folder of list) {
@@ -4682,7 +4910,7 @@ app.whenReady().then(async () => {
     lastBounds = restoredState.bounds
     tabSidebar = restoredState.sidebar ?? null
     const saved = restoredState.workspaces
-    workspaces = new WorkspaceSet<OpenTab>(saved.workspaces.map(({ id, name, icon, accent, anchor }) => ({ id, name, icon, accent, ...(anchor ? { anchor } : {}) })), saved.activeId, saved.favourites)
+    workspaces = new WorkspaceSet<OpenTab>(saved.workspaces.map(({ id, name, icon, accent, anchor, separateSignIns }) => ({ id, name, icon, accent, ...(anchor ? { anchor } : {}), ...(separateSignIns ? { separateSignIns } : {}) })), saved.activeId, saved.favourites)
     tabFolders = restoredState.folders.get(workspaces.activeId) ?? []
     const byWorkspace = new Map<string, OpenTab[]>()
     for (const savedTab of restoredState.tabs) {
@@ -4690,7 +4918,7 @@ app.whenReady().then(async () => {
       // Restored tabs are unloaded until shown (their pages load on the first click), and look it.
       // Parked workspaces' tabs stay that way until their workspace is shown and they are clicked.
       const tab: OpenTab = {
-        id: savedTab.id, url: savedTab.url, title: savedTab.title, favicon: '', view: buildView(false), asleep: {}, lastShownAt: Date.now(),
+        id: savedTab.id, url: savedTab.url, title: savedTab.title, favicon: '', view: buildView(false, savedTab.workspaceId), asleep: {}, lastShownAt: Date.now(),
         ...(savedTab.pinned ? { pinned: true, home: savedTab.home ?? savedTab.url } : {}),
         ...(!savedTab.pinned && savedTab.folderId && folders.some((folder) => folder.id === savedTab.folderId) ? { folderId: savedTab.folderId } : {}),
         ...(savedTab.split ? { split: { ...savedTab.split } } : {}),
@@ -4744,29 +4972,32 @@ app.whenReady().then(async () => {
   startup('saved passwords', wirePasswords)
   startup('browser import', wireImportFromBrowsers)
   startup('site permissions', () => {
-    const normalPermissions = new SitePermissionStore(join(app.getPath('userData'), 'site-permissions.json'))
+    normalPermissions = new SitePermissionStore(join(app.getPath('userData'), 'site-permissions.json'))
     sitePermissions = new SitePermissionBroker({
-      store: (isPrivate) => (isPrivate ? privatePermissions : normalPermissions),
+      store: (isPrivate, scope) => permissionStoreFor(isPrivate, scope),
       emit: (event) => { if (window && !window.isDestroyed()) window.webContents.send(sitePermissionChannels.event, event) },
       systemAccess: (kind) => (process.platform === 'darwin' ? systemPreferences.askForMediaAccess(kind) : Promise.resolve(true)),
     })
     handleFromShell(sitePermissionChannels.command, async (_event, value: unknown) => {
       const command = parseSitePermissionCommand(value)
-      const store = pageView && privateViews.has(pageView) ? privatePermissions : normalPermissions
+      // The page in front decides whose answers these are.
+      const shownPrivate = Boolean(pageView && privateViews.has(pageView))
+      const shownScope = pageView ? scopeOfView(pageView) : 'default'
+      const store = permissionStoreFor(shownPrivate, shownScope)
       if (command.type === 'decide') return sitePermissions!.decide(command.id, command.decision)
       if (command.type === 'pending') return sitePermissions!.list()
       if (command.type === 'reset') {
-        sitePermissions!.reset(command.origin, Boolean(pageView && privateViews.has(pageView)), command.kind)
+        sitePermissions!.reset(command.origin, shownPrivate, command.kind, shownScope)
       }
       return store.get(command.origin)
     })
   })
   startup('page sessions', () => {
-    wireDownloadSession()
-    wireProtectionSession()
-    // Private tabs get the same protections, permissions and download handling.
-    wireDownloadSession(PRIVATE_PARTITION)
-    wireProtectionSession(PRIVATE_PARTITION)
+    // The shared sessions, and private tabs' (the same protections, permissions and download handling).
+    // A workspace's own session is wired when it is first used (buildView) or made to have sign-ins of its own.
+    ensurePageSession(DEFAULT_PARTITION)
+    ensurePageSession(PRIVATE_PARTITION)
+    for (const workspace of workspaces.workspaces) if (hasSeparateSignIns(workspace)) ensurePageSession(workspacePartition(workspace.id))
     // No TLS client certificate is ever sent on its own (Electron's default sends the first one).
     app.on('select-client-certificate', (event, contents, url, _list, callback) => {
       declineClientCertificate(event, callback)

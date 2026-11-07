@@ -7,6 +7,7 @@ import { useFavicon } from './favicons'
 import { RailMenu } from './RailMenu'
 import { AnchorPicker } from './WorkspaceAnchor'
 import './workspaces.css'
+const MAIN_WORKSPACE_ID = 'main'
 
 /** Accents from the brand tokens (brand/brand-tokens.css), by the names main keeps. */
 export const ACCENT_COLOURS: Record<WorkspaceAccent, string> = {
@@ -69,6 +70,7 @@ export function WorkspaceBar({ state, open, onExpand, request }: {
   const [editing, setEditing] = useState<string | null>(null)
   const [confirming, setConfirming] = useState<string | null>(null)
   const [anchoring, setAnchoring] = useState<string | null>(null)
+  const [identity, setIdentity] = useState<IdentityChange | null>(null)
   const [message, setMessage] = useState('')
   const switcher = useRef<HTMLDivElement>(null)
   const active = state.workspaces.find((workspace) => workspace.id === state.activeId) ?? state.workspaces[0]
@@ -220,12 +222,28 @@ export function WorkspaceBar({ state, open, onExpand, request }: {
             ...(state.workspaces.length < MAX_WORKSPACES ? [{ label: 'New workspace', run: createNew }] : []),
             ...(index > 0 ? [{ label: 'Move left', run: () => void api.move(active.id, index - 1).catch(fail) }] : []),
             ...(index < state.workspaces.length - 1 ? [{ label: 'Move right', run: () => void api.move(active.id, index + 1).catch(fail) }] : []),
+            ...(active.id !== MAIN_WORKSPACE_ID ? [{
+              label: active.separateSignIns ? 'Share sign-ins with the others…' : 'Separate sign-ins…',
+              run: () => setIdentity({ workspace: active, action: active.separateSignIns ? 'off' : 'on' }),
+            }] : []),
+            ...(active.separateSignIns ? [{ label: 'Clear sign-ins and site data…', run: () => setIdentity({ workspace: active, action: 'clear' }) }] : []),
             { label: 'Delete workspace…', run: () => setConfirming(active.id) },
           ]}
         />
       )}
       {editingWorkspace && <WorkspaceEditor key={editingWorkspace.id} workspace={editingWorkspace} onDone={() => setEditing(null)} onError={fail} />}
       {anchoringWorkspace && <AnchorPicker key={anchoringWorkspace.id} workspace={anchoringWorkspace} onDone={() => setAnchoring(null)} onError={fail} />}
+      {identity && (
+        <IdentityConfirm
+          change={identity}
+          onConfirm={() => {
+            const { workspace, action } = identity
+            setIdentity(null)
+            void (action === 'clear' ? api.clearSignIns(workspace.id) : api.update(workspace.id, { separateSignIns: action === 'on' })).catch(fail)
+          }}
+          onCancel={() => setIdentity(null)}
+        />
+      )}
       {confirmingWorkspace && (
         <DeleteConfirm
           workspace={confirmingWorkspace}
@@ -243,6 +261,48 @@ export function WorkspaceBar({ state, open, onExpand, request }: {
         </div>
       )}
       {message && <p className="tab-rail-workspace-message" role="status">{message}</p>}
+    </div>
+  )
+}
+
+/** A sign-in change the person asked for, waiting for confirmation. */
+type IdentityChange = { workspace: WorkspaceSnapshot; action: 'on' | 'off' | 'clear' }
+
+/**
+ * "Separate sign-ins" on, off, or cleared, confirmed first. Focus starts on Cancel, so Enter alone never confirms.
+ * The words say what happens to the workspace's own sign-ins and site data.
+ */
+function IdentityConfirm({ change, onConfirm, onCancel }: { change: IdentityChange; onConfirm: () => void; onCancel: () => void }) {
+  const cancel = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => cancel.current?.focus())
+    return () => cancelAnimationFrame(frame)
+  }, [])
+  const name = change.workspace.name
+  const copy = change.action === 'on'
+    ? { title: `Separate sign-ins for “${name}”?`, detail: `Tabs in ${name} will reload signed out. Sites you are signed in to elsewhere will not know you here.`, button: 'Separate sign-ins', danger: false }
+    : change.action === 'off'
+      ? { title: `Share sign-ins with the others in “${name}”?`, detail: `${name} will use your shared sign-ins. Its own sign-ins and site data will be deleted.`, button: 'Share sign-ins', danger: true }
+      : { title: `Clear sign-ins and site data in “${name}”?`, detail: `Its tabs reload signed out. The other workspaces are not touched.`, button: 'Clear sign-ins', danger: true }
+  return (
+    <div
+      className="tab-rail-workspace-confirm"
+      role="alertdialog"
+      aria-labelledby="workspace-identity-title"
+      aria-describedby="workspace-identity-detail"
+      onKeyDown={(event) => {
+        if (event.key !== 'Escape') return
+        event.preventDefault()
+        event.stopPropagation()
+        onCancel()
+      }}
+    >
+      <p id="workspace-identity-title">{copy.title}</p>
+      <p id="workspace-identity-detail">{copy.detail}</p>
+      <div className="tab-rail-workspace-buttons">
+        <button type="button" className={copy.danger ? 'is-danger' : undefined} onClick={onConfirm}>{copy.button}</button>
+        <button ref={cancel} type="button" onClick={onCancel}>Cancel</button>
+      </div>
     </div>
   )
 }

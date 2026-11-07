@@ -6,7 +6,7 @@ export const passwordChannels = {
   event: 'intoponet:passwords-event',
 } as const
 
-/** A saved sign-in as the shell sees it (no password). */
+/** A saved sign-in as the shell sees it (no password). `workspaceId` is set only for a sign-in saved in a workspace with separate sign-ins. */
 export type SavedLogin = {
   id: string
   origin: string
@@ -14,6 +14,7 @@ export type SavedLogin = {
   createdAt: string
   updatedAt: string
   lastUsedAt: string | null
+  workspaceId?: string
 }
 
 /** "Save password for …?" or "Update password?" after a sign-in. */

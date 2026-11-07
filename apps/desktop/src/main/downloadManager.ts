@@ -24,6 +24,8 @@ export type DownloadContext = {
   isPrivate: boolean
   /** The page that started it (null for downloads the app started, e.g. a retry). */
   pageKey: string | null
+  /** The session it came through (a workspace's own sign-ins, or the shared one): a retry uses the same. */
+  partition?: string
 }
 
 /** What is kept on disk for a finished download (normal tabs only). */
@@ -38,6 +40,8 @@ export type DownloadRecord = {
   startedAt: number
   endedAt: number
   error: string | null
+  /** The session it came through, when not the shared one (a retry signs in the same way). */
+  partition?: string
 }
 
 export type DownloadManagerDeps = {
@@ -55,8 +59,8 @@ export type DownloadManagerDeps = {
   remove: (path: string) => void
   /** Make sure the macOS quarantine flag is on a finished file. */
   quarantine: (path: string, url: string) => Promise<void>
-  /** Start the same address again (retry). */
-  restart: (url: string, isPrivate: boolean) => void
+  /** Start the same address again (retry), through the session it came through. */
+  restart: (url: string, isPrivate: boolean, partition?: string) => void
   /** A download ended (for the "Saved … to Downloads" notice). */
   onDone?: (entry: { filename: string; path: string; state: 'completed' | 'cancelled' | 'interrupted' }) => void
   now?: () => number
@@ -78,6 +82,7 @@ type Tracked = {
   endedAt: number | null
   isPrivate: boolean
   pageKey: string | null
+  partition: string | null
   exists: boolean
   item: DownloadItemLike | null
   reservation: DownloadReservation | null
@@ -129,7 +134,7 @@ export class DownloadManager {
       this.entries.push({
         id: record.id, filename: record.filename, url: record.url, path: record.path, state: record.state as DownloadRecord['state'],
         receivedBytes: Number(record.receivedBytes) || 0, totalBytes: Number(record.totalBytes) || 0, bytesPerSecond: 0,
-        startedAt: record.startedAt, endedAt: record.endedAt, isPrivate: false, pageKey: null,
+        startedAt: record.startedAt, endedAt: record.endedAt, isPrivate: false, pageKey: null, partition: typeof record.partition === 'string' ? record.partition : null,
         exists: record.state === 'completed' && this.deps.exists(record.path),
         item: null, reservation: null, attention: null, dangerous: false, note: downloadCaution(record.filename),
         error: typeof record.error === 'string' ? record.error : null, sample: null,
@@ -143,7 +148,7 @@ export class DownloadManager {
     const entry: Tracked = {
       id: randomUUID(), filename: this.deps.sanitize(input.filename), url: input.url, path: input.path, state: 'completed',
       receivedBytes: input.bytes, totalBytes: input.bytes, bytesPerSecond: 0, startedAt: now, endedAt: now,
-      isPrivate: input.isPrivate, pageKey: null, exists: true, item: null, reservation: null,
+      isPrivate: input.isPrivate, pageKey: null, partition: null, exists: true, item: null, reservation: null,
       attention: null, dangerous: false, note: null, error: null, sample: null,
     }
     this.entries.unshift(entry)
@@ -168,7 +173,7 @@ export class DownloadManager {
     const entry: Tracked = {
       id: randomUUID(), filename: this.deps.sanitize(requested), url: item.getURL(), path: '', state: 'progressing',
       receivedBytes: 0, totalBytes: Math.max(0, item.getTotalBytes() || 0), bytesPerSecond: 0, startedAt: now, endedAt: null,
-      isPrivate: context.isPrivate, pageKey: context.pageKey, exists: false, item, reservation: null,
+      isPrivate: context.isPrivate, pageKey: context.pageKey, partition: context.partition ?? null, exists: false, item, reservation: null,
       attention: null, dangerous: false, note: null, error: null, sample: { at: now, bytes: 0 },
     }
     this.entries.unshift(entry)
@@ -387,7 +392,8 @@ export class DownloadManager {
     if (!/^https?:/.test(entry.url)) throw new Error('This download cannot be tried again.')
     this.entries.splice(this.entries.indexOf(entry), 1)
     this.save()
-    this.deps.restart(entry.url, entry.isPrivate)
+    if (entry.partition) this.deps.restart(entry.url, entry.isPrivate, entry.partition)
+    else this.deps.restart(entry.url, entry.isPrivate)
     return this.emitNow()
   }
 
@@ -478,6 +484,7 @@ export class DownloadManager {
       .map((entry) => ({
         id: entry.id, filename: entry.filename, url: entry.url, path: entry.path, state: entry.state as DownloadRecord['state'],
         receivedBytes: entry.receivedBytes, totalBytes: entry.totalBytes, startedAt: entry.startedAt, endedAt: entry.endedAt!, error: entry.error,
+        ...(entry.partition ? { partition: entry.partition } : {}),
       }))
   }
 
