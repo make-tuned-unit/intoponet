@@ -70,7 +70,7 @@ import { PdfBar } from './pdf/PdfBar'
 import type { PdfExportEvent } from '@intoponet/browser-api'
 import { formatPublicSourceHealth } from './globe/publicFieldStatus'
 import { SiteIcon } from './SiteIcon'
-import { FreeCoverageBar } from './access/FreeCoverageBar'
+import { FreeCoverageBar, freeCoverageFor } from './access/FreeCoverageBar'
 import { learnedPaywalls, mayRememberSite, rememberPaywall } from './access/learnedPaywalls'
 import { hostIsPaywalled } from '../../shared/news/paywall'
 import { hostOf } from './favicons'
@@ -355,6 +355,9 @@ export function App() {
     }, 1_200)
     return () => clearTimeout(timer)
   }, [panel.url, panel.isLoading, panel.isVisible, panel.isPrivate])
+  // "Free coverage" in a Compare side's header: that side's page, whose choices show even if its bar was closed.
+  const [coverageAsked, setCoverageAsked] = useState<string | null>(null)
+  const freeCoverage = freeCoverageFor({ url: panel.url, title: panel.title }, pageAccess, accessHidden, coverageAsked)
   const [activeTopic, setActiveTopic] = useState(
     () => localStorage.getItem(topicKey) ?? 'Open knowledge',
   )
@@ -4257,11 +4260,11 @@ export function App() {
             onShowAll={() => { setBookmarkFilterRequest({ filter: 'pdfs', at: Date.now() }); setBookmarksOpen(true) }}
           />
           {translateOpen && <TranslateBar model={translation} onClose={() => setTranslateOpen(false)} site={pageSite} neverSite={neverThisSite} onNeverSite={setNeverSite} />}
-          {pageAccess && pageAccess.url === panel.url && !accessHidden.includes(hostOf(pageAccess.url)) && (
+          {freeCoverage && (
             <FreeCoverageBar
-              title={pageAccess.title || panel.title}
-              url={pageAccess.url}
-              signals={pageAccess.signals}
+              title={freeCoverage.title || panel.title}
+              url={freeCoverage.url}
+              signals={freeCoverage.signals}
               candidates={[
                 ...(newsDigest?.global ?? []).flatMap((story) => story.headlines),
                 ...(newsDigest?.countries ?? []).flatMap((country) => country.headlines.map((headline) => ({ ...headline, countryCode: country.countryCode }))),
@@ -4271,15 +4274,16 @@ export function App() {
               onOpen={(url) => void window.intoponet.browserHost.open({ kind: 'url', value: url })}
               onSearch={(query) => void window.intoponet.browserHost.open({ kind: 'search', value: query })}
               onClose={() => {
-                const next = [...new Set([hostOf(pageAccess.url), ...accessHidden])].slice(0, 300)
+                setCoverageAsked(null)
+                const next = [...new Set([hostOf(freeCoverage.url), ...accessHidden])].slice(0, 300)
                 setAccessHidden(next)
                 // Hidden for this session only when the tab is private or the site is left out.
-                if (mayRememberSite(pageAccess.url, panel.isPrivate, excludedSitesRef.current)) {
+                if (mayRememberSite(freeCoverage.url, panel.isPrivate, excludedSitesRef.current)) {
                   try {
                     // From what is stored, not this session's list (which may hold private or left-out hosts).
                     const stored = JSON.parse(localStorage.getItem('intoponet.paywall-bar-hidden.v1') ?? '[]') as unknown
                     const kept = Array.isArray(stored) ? stored.filter((host): host is string => typeof host === 'string') : []
-                    localStorage.setItem('intoponet.paywall-bar-hidden.v1', JSON.stringify([...new Set([hostOf(pageAccess.url), ...kept])].slice(0, 300)))
+                    localStorage.setItem('intoponet.paywall-bar-hidden.v1', JSON.stringify([...new Set([hostOf(freeCoverage.url), ...kept])].slice(0, 300)))
                   } catch { /* convenience only */ }
                 }
               }}
@@ -4475,6 +4479,13 @@ export function App() {
           compare={{
             // A side's Translate: focus that side (Translate acts on the focused page), then open the bar.
             translate: (side) => { void window.intoponet.browserHost.focusSplitSide(side).then(() => setTranslateOpen(true), () => undefined) },
+            // A side's Free coverage: that side takes the focus (if it has not) and its choices open, also where they were closed.
+            freeCoverage: (side) => {
+              const url = panel.split?.[side].url
+              if (!url) return
+              setCoverageAsked(url)
+              if (panel.split?.focused !== side) void window.intoponet.browserHost.focusSplitSide(side).catch(() => undefined)
+            },
             // The Olds for a Compare pair: the story's own history, as the world story's button opens it.
             olds: (storyId) => {
               const story = newsDigest?.global?.find((item) => item.id === storyId)

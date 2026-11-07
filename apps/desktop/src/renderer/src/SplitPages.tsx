@@ -98,9 +98,11 @@ function clampRatio(value: number): number {
   return Math.min(1, Math.max(0, value))
 }
 
-/** A Compare side's actions (COMPARE_COVERAGE): translate that side on its own, or open The Olds for the story. */
+/** A Compare side's actions (COMPARE_COVERAGE): translate that side on its own, its free coverage, or The Olds for the story. */
 export type CompareActions = {
   translate: (side: SplitSide) => void
+  /** Focuses that side (if it is not) and opens its free-coverage choices, even where that bar was closed. */
+  freeCoverage: (side: SplitSide) => void
   olds: (storyId: string) => void
 }
 
@@ -167,7 +169,7 @@ function SideHeader({ side, tab, focused, rect, actions }: SideHeaderProps) {
                 type="button"
                 className="split-compare-button"
                 aria-label={`Free coverage of this story, from other outlets (${compare.outlet})`}
-                onClick={() => { if (!focused) void window.intoponet.browserHost.focusSplitSide(side) }}
+                onClick={() => actions.freeCoverage(side)}
               >
                 Free coverage
               </button>

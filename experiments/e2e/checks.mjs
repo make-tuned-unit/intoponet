@@ -4525,6 +4525,25 @@ export const checks = {
         else await ctx.delay(250)
       }
       expect(moved?.compare?.outlet === 'Moved Outlet', `The right side lost its outlet label after its link redirected to another host: ${JSON.stringify(moved)}.`)
+
+      // "Free coverage" on a paywalled side opens that side's free-coverage choices: from the other side, and
+      // again from that side once it has the focus and its bar was closed.
+      await ctx.evaluate(`(() => { localStorage.setItem('intoponet.paywalled-hosts.v1', JSON.stringify(['localhost'])); return true })()`)
+      await ctx.evaluate(`window.intoponet.browserHost.openCompare({ id: 'paywall-story', title: 'A paywalled story' }, { url: 'http://127.0.0.1:${port}/free', outlet: 'Free Outlet', countryCode: 'GB' }, { url: 'http://localhost:${port}/paywalled', outlet: 'Paid Outlet', countryCode: 'FR' }).then(() => true)`)
+      const freeButton = `[...document.querySelectorAll('.split-header[data-split-side="right"] .split-compare-button')].find((b) => b.textContent.includes('Free coverage'))`
+      for (let i = 0; i < 40; i += 1) {
+        const now = await stateOf()
+        if (now.split?.right?.compare?.outlet === 'Paid Outlet' && now.split.focused === 'left' && await ctx.evaluate(`!!${freeButton}`)) break
+        await ctx.delay(250)
+      }
+      expect(await ctx.evaluate(`!!${freeButton}`), 'The paywalled right side offers no Free coverage.')
+      await ctx.evaluate(`(() => { ${freeButton}.click(); return true })()`)
+      await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.split?.focused === 'right')`, 8_000, 'Free coverage to focus its side')
+      await ctx.wait(`!!document.querySelector('.free-coverage')`, 10_000, 'the free-coverage choices for the right side')
+      await ctx.evaluate(`(() => { document.querySelector('.free-coverage .fc-close').click(); return true })()`)
+      await ctx.wait(`!document.querySelector('.free-coverage')`, 5_000, 'the free-coverage bar to close')
+      await ctx.evaluate(`(() => { ${freeButton}.click(); return true })()`)
+      await ctx.wait(`!!document.querySelector('.free-coverage')`, 5_000, 'Free coverage on the focused side to open its choices again after the bar was closed')
     } finally {
       redirects.close()
     }
