@@ -3539,8 +3539,10 @@ export const checks = {
       expect(await ctx.click('.browsing-appearance button', 'Quick window'), 'The "Quick window" choice is missing.')
       await ctx.delay(800)
       expect(await ctx.evaluate(`window.intoponet.browsing.settings().then((s) => s.linksFromOtherApps)`) === 'quick-window', 'Choosing Quick window did not take effect.')
-      const saved = JSON.parse(readFileSync(join(ctx.profile, 'browsing-settings.json'), 'utf8'))
-      expect(saved.linksFromOtherApps === 'quick-window', 'The Quick window choice was not saved to browsing-settings.json.')
+      // The file is flushed to disk before it is put in place, which can take over a second on a busy Mac.
+      const settingsFile = join(ctx.profile, 'browsing-settings.json')
+      const savedChoice = () => { try { return JSON.parse(readFileSync(settingsFile, 'utf8')).linksFromOtherApps } catch { return null } }
+      await until(async () => savedChoice() === 'quick-window', 'the Quick window choice to be saved to browsing-settings.json', 10_000)
       await ctx.press('Escape')
       await ctx.delay(400)
 
