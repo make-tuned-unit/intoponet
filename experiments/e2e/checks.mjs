@@ -589,7 +589,8 @@ const identityHelpers = (ctx) => {
 const waitForQuit = async (profile) => {
   for (let i = 0; i < 120; i += 1) {
     try {
-      execFileSync('pgrep', ['-f', `--user-data-dir=${profile}`], { stdio: 'ignore' })
+      // `--` first: without it pgrep reads the pattern as an option, refuses it, and this returns at once.
+      execFileSync('pgrep', ['-f', '--', `--user-data-dir=${profile}`], { stdio: 'ignore' })
     } catch {
       return
     }
@@ -1789,9 +1790,8 @@ export const checks = {
     expect(health.ok === true, 'The beacon registry is not healthy.')
     const read = await ctx.evaluate(`window.intoponet.beacons.read({ topic: 'none-such-topic' }).then((r) => Array.isArray(r))`)
     expect(read, 'The app cannot read beacons from the registry.')
-    const unsigned = await fetch(`${LIVE_REGISTRY}/v1/beacons`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kind: 'publish' }) })
-    expect(unsigned.status === 400, `The registry accepted an unsigned request (${unsigned.status}).`)
-    return 'Live registry healthy, readable from the app, refuses unsigned publishes.'
+    // Read only: nothing is ever sent to the live registry from a check (its tests cover refusing unsigned publishes).
+    return 'Live registry healthy and readable from the app.'
   },
 
   // ---- Accessibility -------------------------------------------------------
