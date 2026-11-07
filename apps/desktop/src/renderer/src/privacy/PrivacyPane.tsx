@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Ban, EyeOff, Footprints, HardDrive, MapPin, Trash2, X } from 'lucide-react'
 import { normalizeSite, type PrivacyState } from '@intoponet/browser-api'
 import { RETENTION_OPTIONS, type PrivacySettings, type RetentionDays } from './privacySettings'
+import { SiteTweaksList } from '../siteTweaks/SiteTweaksPanel'
 
 /**
  * What this Mac keeps about your browsing, and the switches for it:
@@ -139,6 +140,10 @@ export function PrivacyPane({
                 : 'Time Machine includes the named paths in future backups with the rest of this Mac.'}</p>
           </>
         )}
+      </section>
+
+      <section>
+        <SiteTweaksList />
       </section>
     </div>
   )

@@ -207,6 +207,7 @@ import { mergeImportedLibrary } from './browserImport/mergeImport'
 import { PermissionBar, SitePermissionChips } from './permissions/PermissionBar'
 import { ExternalOpenBar, useExternalOpenRequests } from './browsing/ExternalOpenBar'
 import { ErrorPage, navigationErrorMessage } from './browsing/ErrorPage'
+import { SiteTweaksPanel } from './siteTweaks/SiteTweaksPanel'
 import { PasswordBar } from './passwords/PasswordBar'
 import { BookmarkSiteBar, type BookmarkSiteOffer } from './passwords/BookmarkSiteBar'
 import { siteLabel, type PasswordPageState } from '../../shared/passwords'
@@ -498,6 +499,23 @@ export function App() {
   const [findResult, setFindResult] = useState<FindInPageResult | null>(null)
   const [protection, setProtection] = useState<ProtectionSnapshot>(emptyProtection)
   const [shieldOpen, setShieldOpen] = useState(false)
+  /** Customize site (SITE_TWEAKS), opened from the protection bar. */
+  const [siteTweaksOpen, setSiteTweaksOpen] = useState(false)
+  /** The failed page's site has tweaks that can be turned off from the error page. */
+  const [failedSiteHasTweaks, setFailedSiteHasTweaks] = useState(false)
+  useEffect(() => {
+    if (!shieldOpen) setSiteTweaksOpen(false)
+  }, [shieldOpen])
+  useEffect(() => {
+    if (!panel.loadError) {
+      setFailedSiteHasTweaks(false)
+      return
+    }
+    void window.intoponet.browserHost.siteTweaks.state().then(
+      (state) => setFailedSiteHasTweaks(state.tweak?.enabled === true),
+      () => setFailedSiteHasTweaks(false),
+    )
+  }, [panel.loadError, panel.url])
   const [permissionRequests, setPermissionRequests] = useState<SitePermissionRequest[]>([])
   /** Pages asking to open another app (mailto:, zoommtg:…). */
   const externalRequests = useExternalOpenRequests()
@@ -4292,6 +4310,9 @@ export function App() {
                 />
               )}
               <span className="shield-bar-actions">
+                <button type="button" className="shield-bar-toggle" aria-expanded={siteTweaksOpen} aria-controls="site-tweaks-panel" onClick={() => setSiteTweaksOpen((open) => !open)}>
+                  Customize site
+                </button>
                 <button type="button" className="shield-bar-toggle" title={protection.enabled ? "Turn protection off for this site and reload it (use if the page looks broken)" : "Turn protection back on and reload"} onClick={() => setSiteProtection(!protection.enabled)}>
                   {protection.enabled ? 'Pause on this site' : 'Resume protection'}
                 </button>
@@ -4299,6 +4320,7 @@ export function App() {
                   <X size={14} />
                 </button>
               </span>
+              {siteTweaksOpen && <SiteTweaksPanel pageUrl={panel.url} />}
             </div>
           )}
           <div ref={panelBody} className="browser-body">
@@ -4309,6 +4331,7 @@ export function App() {
                 retrying={panel.isLoading}
                 onRetry={() => void window.intoponet.browserHost.reload()}
                 onBack={() => void window.intoponet.browserHost.back()}
+                onTurnOffTweaks={failedSiteHasTweaks ? () => void window.intoponet.browserHost.siteTweaks.setEnabled(false).then(() => window.intoponet.browserHost.reload()) : undefined}
               />
             )}
             {onStartPage && (

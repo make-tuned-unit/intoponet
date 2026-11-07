@@ -118,6 +118,8 @@ import { cleanAddress } from '../shared/cleanAddress'
 import { createAppMenuController, menuCommandById, routeAppCommand, type AppCommand, type AppMenuState } from './appMenu'
 import { boundedHistory, ClosedTabs, type TabHistory } from './closedTabs'
 import { stepZoom, ZoomStore } from './zoomStore'
+import { CANCEL_PICK_SCRIPT, hideCss, listItem, PICK_ELEMENT_SCRIPT, selectorProblem, siteOf, SiteTweakStore, SiteTweaks, tweakCss } from './siteTweaks'
+import type { SiteTweakListItem, SiteTweakPick, SiteTweakSaveResult, SiteTweakState } from '@intoponet/browser-api'
 import { savePageFilename } from './savePage'
 import { TRACKER_STUB_SCRIPT } from './trackerStubs'
 import { addressMenuTemplate, pasteAndGoText } from './addressMenu'
@@ -627,9 +629,9 @@ async function loadExceptions(): Promise<void> {
 
 const cosmeticStyleId = 'intoponet-cosmetic'
 
-function cosmeticInjection(css: string): string {
+function cosmeticInjection(css: string, styleId = cosmeticStyleId): string {
   return `(() => {
-    const id = ${JSON.stringify(cosmeticStyleId)};
+    const id = ${JSON.stringify(styleId)};
     const existing = document.getElementById(id);
     const css = ${JSON.stringify(css)};
     if (!css) {
@@ -678,7 +680,8 @@ async function applyCosmeticFilters(
       origin && !protection.isSiteEnabled(origin, 'default')
         ? null
         : protection.cosmeticRules(pageUrl, pageUrl)
-    const css = rules?.cssRules.join('\n') ?? ''
+    // A site's hidden elements (SITE_TWEAKS) ride the same style element, also when protection is paused for the site.
+    const css = [rules?.cssRules.join('\n') ?? '', hideCss(siteHiddenSelectors(contents, pageUrl))].filter(Boolean).join('\n')
     // With protection on, blocked tracker globals get quiet stand-ins so the page's own buttons don't throw.
     const script = rules ? `${cosmeticInjection(css)};${TRACKER_STUB_SCRIPT}` : `${cosmeticInjection(css)};${UNCOLLAPSE_AD_SLOTS_SCRIPT}`
     const frames = options.only ? [options.only] : contents.mainFrame?.framesInSubtree ?? []
@@ -702,6 +705,96 @@ async function applyCosmeticFilters(
   } catch {
     // The page may have navigated away before insertion finished.
   }
+}
+
+// ---- Make a site yours (SITE_TWEAKS; the logic is in siteTweaks.ts) -------------------------------
+
+/** Isolated world for the element picker (and its cancel): the page's own scripts cannot see either. */
+const SITE_TWEAK_WORLD_ID = 1313
+/** The site tweaks as saved (and, for a private tab, as changed in that tab). Null before the store starts. */
+let siteTweaks: SiteTweaks | null = null
+/** The element picked on each page, hidden for a preview until it is saved or cancelled. */
+const previewSelectors = new Map<number, string>()
+/** The style tweak inserted in each page (its insertCSS key), so it can be replaced or removed. */
+/** The style element a site's style tweak lives in (see applySiteStyle). */
+const siteStyleElementId = 'intoponet-site-style'
+
+/** The web contents of every private page (tabs and link previews alike), so tweaks know not to save. */
+const privateWebContents = new WeakSet<Electron.WebContents>()
+
+/** The selectors hidden on a page at `url`: its site's (when tweaks are on) and the element being previewed. */
+function siteHiddenSelectors(contents: Electron.WebContents, url: string): string[] {
+  const selectors: string[] = []
+  const site = siteOf(url)
+  const tweak = site && siteTweaks ? siteTweaks.get(site, privateWebContents.has(contents)) : null
+  if (tweak?.enabled) selectors.push(...tweak.hidden)
+  const preview = previewSelectors.get(contents.id)
+  if (preview) selectors.push(preview)
+  return selectors
+}
+
+/**
+ * The site's style tweak (width, font, colours, the person's own CSS) on the page's main frame, as one
+ * style element that is replaced on every change and removed when there is none. This is the same
+ * mechanism as the protection rules. insertCSS is not used: in this Electron build removeInsertedCSS
+ * resolves but the inserted rule stays, so a turned-off or changed style could never be taken back.
+ * The CSS is only ever the text of a style element; no page script runs it.
+ */
+async function applySiteStyle(view: WebContentsView): Promise<void> {
+  if (viewGone(view)) return
+  const contents = view.webContents
+  if (contents.isDestroyed()) return
+  const site = siteOf(contents.getURL())
+  const tweak = site && siteTweaks ? siteTweaks.get(site, privateViews.has(view)) : null
+  const css = tweak ? tweakCss(tweak) : ''
+  const frame = contents.mainFrame
+  if (!frame || frame.detached) return
+  await frame.executeJavaScript(cosmeticInjection(css, siteStyleElementId)).catch(() => undefined)
+}
+
+/** After a change to a site's tweaks: the style on each open tab of that site, and the hidden elements on the shown page. */
+function refreshSiteTweaks(site: string): void {
+  // Every tab, parked workspace tabs included, and the link preview card (an ordinary page view).
+  const views = [...allTabs().map((tab) => tab.view), ...(linkPreview ? [linkPreview.view] : [])]
+  for (const view of views) {
+    if (!viewGone(view) && siteOf(view.webContents.getURL()) === site) void applySiteStyle(view)
+  }
+  if (pageView && !viewGone(pageView) && siteOf(pageView.webContents.getURL()) === site) void applyCosmeticFilters(pageView.webContents)
+  if (linkPreview && !viewGone(linkPreview.view) && siteOf(linkPreview.view.webContents.getURL()) === site) {
+    void applyCosmeticFilters(linkPreview.view.webContents, { url: linkPreview.view.webContents.getURL() })
+  }
+}
+
+/** The site the shown page belongs to, and whether it is a private tab. */
+function shownSiteTweakSite(): { site: string | null; isPrivate: boolean } {
+  if (!pageView || viewGone(pageView)) return { site: null, isPrivate: false }
+  return { site: siteOf(pageView.webContents.getURL()), isPrivate: privateViews.has(pageView) }
+}
+
+/** Where a command acts: the site it names (Settings, always saved tweaks), else the shown page's site. */
+function siteTweakTarget(site?: string): { site: string; isPrivate: boolean } | null {
+  if (site) return { site, isPrivate: false }
+  const shown = shownSiteTweakSite()
+  return shown.site ? { site: shown.site, isPrivate: shown.isPrivate } : null
+}
+
+function siteTweakState(): SiteTweakState {
+  const { site, isPrivate } = shownSiteTweakSite()
+  return { site, tweak: site && siteTweaks ? siteTweaks.get(site, isPrivate) : null, isPrivate }
+}
+
+/** The element picker on the shown page: resolves with the selector the person clicked, previewed (hidden) until saved or cancelled. */
+async function pickSiteElement(): Promise<SiteTweakPick> {
+  if (!pageView || viewGone(pageView)) return { selector: null, error: 'Open a web page first.' }
+  const contents = pageView.webContents
+  if (!siteOf(contents.getURL())) return { selector: null, error: 'Site tweaks work on web pages.' }
+  contents.focus()
+  const picked: unknown = await contents.executeJavaScriptInIsolatedWorld(SITE_TWEAK_WORLD_ID, [{ code: PICK_ELEMENT_SCRIPT }]).catch(() => null)
+  if (typeof picked !== 'string' || contents.isDestroyed()) return { selector: null }
+  if (selectorProblem(picked)) return { selector: null, error: 'That element cannot be hidden.' }
+  previewSelectors.set(contents.id, picked)
+  void applyCosmeticFilters(contents)
+  return { selector: picked }
 }
 
 /** Addresses of blocked ad frames, pictures and media, per page, so their empty boxes can be hidden. */
@@ -2366,6 +2459,7 @@ function buildView(isPrivate = privateMode): WebContentsView {
     },
   })
   if (isPrivate) privateViews.add(view)
+  if (isPrivate) privateWebContents.add(view.webContents)
   browsingData?.attachPage(view.webContents, () => privateViews.has(view))
 
   // Behind a page before it paints: light, or dark when pages are dark (no white flash at night).
@@ -2463,6 +2557,8 @@ function buildView(isPrivate = privateMode): WebContentsView {
   })
   view.webContents.on('did-start-navigation', (_event, _url, inPlace, mainFrame) => {
     if (!mainFrame || inPlace) return
+    // The page is about to be replaced: its inserted style and any previewed element go with it.
+    previewSelectors.delete(view.webContents.id)
     blockedAdAddresses.delete(view.webContents.id)
     leaveStartPage(view)
     translateService?.forgetPage(view.webContents.id)
@@ -2594,6 +2690,8 @@ function buildView(isPrivate = privateMode): WebContentsView {
   })
   // Early as well, so a banner clicked before the page finishes loading already works.
   view.webContents.on('dom-ready', () => {
+    // A site's style tweak goes into every tab of that site, background tabs included.
+    void applySiteStyle(view)
     if (pageView !== view) return
     void applyCosmeticFilters(view.webContents, { only: view.webContents.mainFrame })
   })
@@ -3080,6 +3178,10 @@ async function handleBrowserCommand(
   | PdfExportSettings
   | SavedPdfRecord[]
   | WorkspacesState
+  | SiteTweakState
+  | SiteTweakListItem[]
+  | SiteTweakSaveResult
+  | SiteTweakPick
   | string
   | null
 > {
@@ -3424,6 +3526,47 @@ async function handleBrowserCommand(
       return null
     case 'get-state':
       break
+    case 'site-tweak-state':
+      return siteTweakState()
+    case 'site-tweak-save': {
+      const { site, isPrivate } = shownSiteTweakSite()
+      if (!site || !siteTweaks) return { ok: false, error: 'Site tweaks work on web pages.' }
+      const result = siteTweaks.save(site, command.tweak, isPrivate, Date.now())
+      if (result.ok) {
+        if (pageView) previewSelectors.delete(pageView.webContents.id)
+        refreshSiteTweaks(site)
+      }
+      return result
+    }
+    case 'site-tweak-set-enabled': {
+      const target = siteTweakTarget(command.site)
+      if (target && siteTweaks) {
+        siteTweaks.setEnabled(target.site, command.enabled, target.isPrivate, Date.now())
+        refreshSiteTweaks(target.site)
+      }
+      return siteTweakState()
+    }
+    case 'site-tweak-remove': {
+      const target = siteTweakTarget(command.site)
+      if (target && siteTweaks) {
+        siteTweaks.remove(target.site, target.isPrivate)
+        refreshSiteTweaks(target.site)
+      }
+      return null
+    }
+    case 'site-tweak-list':
+      return siteTweaks ? siteTweaks.store.list().map(({ site, tweak }) => listItem(site, tweak)) : []
+    case 'site-tweak-pick':
+      return pickSiteElement()
+    case 'site-tweak-cancel-pick':
+      if (pageView && !viewGone(pageView)) void pageView.webContents.executeJavaScriptInIsolatedWorld(SITE_TWEAK_WORLD_ID, [{ code: CANCEL_PICK_SCRIPT }]).catch(() => undefined)
+      return null
+    case 'site-tweak-clear-preview':
+      if (pageView && !viewGone(pageView)) {
+        previewSelectors.delete(pageView.webContents.id)
+        void applyCosmeticFilters(pageView.webContents)
+      }
+      return null
     case 'get-protection':
       return protectionSnapshot()
     case 'set-site-protection': {
@@ -3852,6 +3995,13 @@ app.whenReady().then(async () => {
       write: (data) => trackedWrite(zoomFile, data),
     })
   })
+  startup('site tweaks', () => {
+    const tweaksFile = join(app.getPath('userData'), 'site-tweaks.json')
+    siteTweaks = new SiteTweaks(new SiteTweakStore({
+      read: () => (existsSync(tweaksFile) ? readFileSync(tweaksFile, 'utf8') : null),
+      write: (data) => trackedWrite(tweaksFile, data),
+    }))
+  })
   startup('saved passwords', wirePasswords)
   startup('browser import', wireImportFromBrowsers)
   startup('site permissions', () => {
@@ -4193,6 +4343,7 @@ app.on('before-quit', (event) => {
   shellClosing = true
   // A zoom changed just now is still waiting to be saved: start it so the flush below waits for it.
   void zoomStore?.flush().catch(() => undefined)
+  void siteTweaks?.store.flush().catch(() => undefined)
   // The news feed cache is saved once a minute; save the rest now so the next launch starts with today's news.
   const news = newsService
   newsService = null

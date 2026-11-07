@@ -553,6 +553,17 @@
       "tier": "core",
       "kind": "e2e",
       "promise": "When the sidebar layout of a supported sidebar-tab browser is found on this Mac, import previews and recreates its spaces as workspaces with their pinned tabs, folders (nesting kept) and favourites; unsupported or unreadable files are reported, never half-imported."
+    },
+    {
+      "id": "SITE_TWEAKS",
+      "title": "Make a site yours",
+      "deps": [
+        "BROWSE",
+        "PROTECTION"
+      ],
+      "tier": "core",
+      "kind": "e2e",
+      "promise": "From the site protection popover you can hide an element by pointing at it, choose a reading width, font and light or dark colours for that site, or add your own style rules; tweaks are stored only on this Mac, never run scripts, apply on every visit to that site (not to others), and can be turned off or removed per site."
     }
   ]
 }
