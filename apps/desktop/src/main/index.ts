@@ -2007,7 +2007,7 @@ function switchWorkspace(target: WorkspaceSwitch): boolean {
   for (const tab of openTabs) if (tab.id !== next.activeTabId) dockFloatingTab(tab)
   tabFolders = next.folders
   lastGrouping = null
-  const show =next.tabs.find((tab) => tab.id === next.activeTabId) ?? next.tabs.find((tab) => !tab.asleep) ?? next.tabs[0]
+  const show = next.tabs.find((tab) => tab.id === next.activeTabId) ?? next.tabs.find((tab) => !tab.asleep) ?? next.tabs[0]
   if (showing) {
     if (show) showTab(show.id)
     // An empty workspace opens on a new tab, so the sidebar (and its way back) stays.

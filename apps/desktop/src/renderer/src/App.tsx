@@ -202,7 +202,7 @@ import { cityAliases, countryPlace, distanceKm as placeDistanceKm, nearestCountr
 import { Tour } from './tour/Tour'
 import type { TourControls } from './tour/steps'
 import { parseNewsDigest, type NewsDigest, type NewsHeadline, type RisingTerm } from '../../shared/news/newsDigest'
-import { matchTabsToStories, type StoryHeadlines } from '../../shared/news/storyTabs'
+import { matchTabsToStories, withWorldStories, type StoryHeadlines } from '../../shared/news/storyTabs'
 import type { GlobalStory } from '../../shared/news/globalStories'
 import { isExcludedSite, type PrivacyState } from '@intoponet/browser-api'
 import { PrivacyPane } from './privacy/PrivacyPane'
@@ -724,11 +724,12 @@ export function App() {
   // Story mountains: with local news on, the terrain is the stories outlets are covering (storyMountains.ts).
   const storyStories = useMemo(() => newsDigest?.mountains ?? [], [newsDigest])
   // Open tabs that are articles of a story, matched here on this Mac against the digest (nothing about tabs is sent).
-  const storyEvidence = useMemo<StoryHeadlines[]>(() => storyStories.map((story) => ({
+  // Story mountains first (their summits can be highlighted), then the World tab's stories (storyTabs.ts withWorldStories).
+  const storyEvidence = useMemo<StoryHeadlines[]>(() => withWorldStories(storyStories.map((story) => ({
     id: story.id,
     label: storyLabel(story),
     headlines: [{ title: story.title, url: story.url }, ...story.countries.map((country) => country.headline)],
-  })), [storyStories])
+  })), newsDigest?.global ?? []), [storyStories, newsDigest])
   const tabStories = useMemo(() => matchTabsToStories(tabs, storyEvidence), [tabs, storyEvidence])
   /** A story folder hovered or focused in the sidebar: its summit and strands are drawn, the camera stays put. */
   const [storyHighlightId, setStoryHighlightId] = useState<string | null>(null)

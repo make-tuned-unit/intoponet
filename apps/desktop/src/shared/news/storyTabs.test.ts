@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canonicalAddress, matchTabsToStories, sameHeadline, titleKeys, type StoryHeadlines } from './storyTabs'
+import { canonicalAddress, matchTabsToStories, sameHeadline, titleKeys, withWorldStories, type StoryHeadlines } from './storyTabs'
 
 const HEADLINE = 'Flood waters rise across the northern river delta as rescue teams reach villages'
 const STORIES: StoryHeadlines[] = [
@@ -60,6 +60,16 @@ describe('sameHeadline', () => {
     expect(sameHeadline('flood waters rise', 'flood waters rise across the northern delta')).toBe(false)
     expect(sameHeadline('stock markets fall again after rate decision', 'stock markets rise again after rate decision')).toBe(false)
   })
+
+  it('never matches one swapped word in a long title, or a different number', () => {
+    const long = 'flood waters rise across the northern river delta as rescue teams reach villages'
+    expect(sameHeadline(long.replace('northern', 'southern'), long)).toBe(false)
+    expect(sameHeadline('12 killed as storm hits coastal towns overnight', '15 killed as storm hits coastal towns overnight')).toBe(false)
+  })
+
+  it('still matches a headline with a few extra words', () => {
+    expect(sameHeadline('live flood waters rise across the northern river delta as rescue teams reach villages', 'flood waters rise across the northern river delta as rescue teams reach villages')).toBe(true)
+  })
 })
 
 describe('matchTabsToStories', () => {
@@ -106,5 +116,27 @@ describe('matchTabsToStories', () => {
   it('returns nothing without stories or tabs', () => {
     expect(matchTabsToStories([tab('a', 'https://x.example', HEADLINE)], []).size).toBe(0)
     expect(matchTabsToStories([], STORIES).size).toBe(0)
+  })
+})
+
+describe('withWorldStories', () => {
+  const mountain: StoryHeadlines = { id: 'm1', label: 'Delta floods', headlines: [{ title: HEADLINE, url: 'https://www.example-news.com/world/delta-floods' }] }
+
+  it('adds a world story sharing a headline to that mountain, so its other headlines match the mountain', () => {
+    const stories = withWorldStories([mountain], [{ id: 'gs-flood', title: HEADLINE, url: 'https://example-news.com/world/delta-floods', headlines: [{ title: 'Army engineers shore up delta levees as the flood crest nears the capital', url: 'https://third.example/levees' }] }])
+    expect(stories.map((story) => story.id)).toEqual(['m1'])
+    expect(matchTabsToStories([tab('t', 'https://third.example/levees', 'x')], stories).get('t')?.storyId).toBe('m1')
+  })
+
+  it('keeps a world story with no mountain as its own story', () => {
+    const stories = withWorldStories([mountain], [{ id: 'gs-vote', title: 'Voters queue for the coastal election count in Harbour City today', url: 'https://harbour-times.net/vote', headlines: [] }])
+    expect(stories.map((story) => story.id)).toEqual(['m1', 'world:gs-vote'])
+    expect(matchTabsToStories([tab('t', 'https://harbour-times.net/vote', 'x')], stories).get('t')).toEqual({ storyId: 'world:gs-vote', label: 'Voters queue for the coastal election count in Harbour City today' })
+  })
+
+  it('drops a world story that overlaps two mountains', () => {
+    const other: StoryHeadlines = { id: 'm2', label: 'Vote', headlines: [{ title: 'x', url: 'https://harbour-times.net/vote' }] }
+    const stories = withWorldStories([mountain, other], [{ id: 'gs-both', title: HEADLINE, url: 'https://harbour-times.net/vote', headlines: [] }])
+    expect(stories.map((story) => story.id)).toEqual(['m1', 'm2'])
   })
 })

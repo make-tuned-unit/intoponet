@@ -56,20 +56,24 @@ export function titleKeys(title: string): string[] {
   return [...keys].filter((key) => key.length > 0)
 }
 
+/** Words that carry meaning: three letters or more, or any number ("12 killed" is not "15 killed"). */
 function contentWords(key: string): Set<string> {
-  return new Set(key.split(' ').filter((word) => word.length >= 3 && !STOPWORDS.has(word)))
+  return new Set(key.split(' ').filter((word) => (word.length >= 3 || /\d/.test(word)) && !STOPWORDS.has(word)))
 }
 
-/** Titles name the same story: equal once folded, or nearly the same words (Jaccard ≥ 0.8 over six or more content words). */
+/**
+ * Titles name the same story: equal once folded, or one holds every content word of the other
+ * (six or more) with few extra (Jaccard ≥ 0.8). A swapped word ("northern" for "southern",
+ * "rise" for "fall") never matches, however long the title.
+ */
 export function sameHeadline(tabKey: string, headlineKey: string): boolean {
   if (tabKey === headlineKey) return true
   const a = contentWords(tabKey)
   const b = contentWords(headlineKey)
   if (a.size < 6 || b.size < 6) return false
-  let shared = 0
-  for (const word of a) if (b.has(word)) shared += 1
-  const union = a.size + b.size - shared
-  return union > 0 && shared / union >= 0.8
+  const [small, large] = a.size <= b.size ? [a, b] : [b, a]
+  for (const word of small) if (!large.has(word)) return false
+  return small.size / large.size >= 0.8
 }
 
 /**
@@ -108,4 +112,41 @@ export function matchTabsToStories(tabs: StoryTabInput[], stories: StoryHeadline
     matches.set(tab.id, { storyId, label: labels.get(storyId) ?? '' })
   }
   return matches
+}
+
+/** A World tab story as the digest has it (globalStories.ts). */
+export type WorldStoryInput = { id: string; title: string; url: string; headlines: ReadonlyArray<{ title: string; url: string }> }
+
+/**
+ * The stories tabs are matched against: story mountains, and the World tab's stories. A world
+ * story that shares a headline (by address or title) with a mountain adds its headlines to that
+ * mountain, so a tab is never torn between two names for one story; the rest stand on their own
+ * as `world:<id>` (no summit to highlight).
+ */
+export function withWorldStories(mountains: readonly StoryHeadlines[], world: readonly WorldStoryInput[]): StoryHeadlines[] {
+  const merged = mountains.map((story) => ({ ...story, headlines: [...story.headlines] }))
+  const signs = (headlines: ReadonlyArray<{ title: string; url: string }>): Set<string> => {
+    const out = new Set<string>()
+    for (const headline of headlines) {
+      const address = canonicalAddress(headline.url)
+      if (address) out.add(`a:${address}`)
+      for (const key of titleKeys(headline.title)) out.add(`t:${key}`)
+    }
+    return out
+  }
+  const mountainSigns = merged.map((story) => signs(story.headlines))
+  for (const story of world) {
+    const headlines = [{ title: story.title, url: story.url }, ...story.headlines]
+    const own = signs(headlines)
+    const overlapping = mountainSigns.flatMap((set, index) => ([...own].some((sign) => set.has(sign)) ? [index] : []))
+    if (overlapping.length === 1) {
+      merged[overlapping[0]!]!.headlines.push(...headlines)
+      continue
+    }
+    // Shared with two mountains: which one it is cannot be said, so it adds nothing.
+    if (overlapping.length > 1) continue
+    const id = `world:${story.id}`
+    if (id.length <= 80) merged.push({ id, label: story.title, headlines })
+  }
+  return merged
 }
