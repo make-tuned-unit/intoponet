@@ -888,13 +888,29 @@ export const checks = {
 
   async WORLD_STORIES(ctx) {
     await keepDrawing(ctx)
+    // Offline, an empty World list says it waits for a connection (checked while the first headlines are still on their way).
+    let offline = 'news came before the offline check'
+    if (await ctx.evaluate(`!!document.querySelector('.world-stories .globe-empty')`)) {
+      await ctx.send('Network.enable')
+      await ctx.send('Network.emulateNetworkConditions', { offline: true, latency: 0, downloadThroughput: -1, uploadThroughput: -1 })
+      try {
+        await ctx.delay(400)
+        const text = await ctx.evaluate(`document.querySelector('.world-stories .globe-empty')?.textContent ?? null`)
+        if (text !== null) {
+          expect(text.startsWith('Waiting for a connection'), `Offline, the empty World list said: "${text}"`)
+          offline = 'offline, the empty list waits for a connection'
+        }
+      } finally {
+        await ctx.send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 })
+      }
+    }
     await ctx.waitForNews()
     await ctx.click('.globe-tabs button', 'World')
     await ctx.wait(`document.querySelectorAll('.world-list > li').length >= 5`, 90_000, 'at least five stories covered across the world')
     const scroll = JSON.parse(await ctx.evaluate(`(() => { const el = document.querySelector('.globe-panel .world-stories'); const before = el.scrollTop; el.scrollTop = 400; return JSON.stringify({ moved: el.scrollTop - before, overflow: el.scrollHeight > el.clientHeight }) })()`))
     expect(!scroll.overflow || scroll.moved > 0, 'The World list overflows but cannot be scrolled.')
     const stories = await ctx.evaluate(`document.querySelectorAll('.world-list > li').length`)
-    return `${stories} world stories; scrolls ${scroll.moved}px.`
+    return `${stories} world stories; scrolls ${scroll.moved}px; ${offline}.`
   },
 
   async STORY_MOUNTAINS(ctx) {

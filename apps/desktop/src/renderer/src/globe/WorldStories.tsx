@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { BookOpen, ChevronDown, Eye, GalleryHorizontal, Globe2, History } from 'lucide-react'
 import type { GlobalStory } from '../../../shared/news/globalStories'
 import type { NewsHeadline, WikiNewsItem } from '../../../shared/news/newsDigest'
@@ -20,6 +20,28 @@ const regionNames = (() => {
   }
 })()
 const countryName = (code: string): string => regionNames?.of(code) ?? code
+
+/** What the World list says while no story is covered across several countries: offline, that it waits for a connection. */
+export function worldEmptyText(online: boolean): string {
+  return online
+    ? 'No story is yet covered across several countries. This needs a few hours of headlines from many outlets.'
+    : 'Waiting for a connection: World stories come from the headlines outlets around the world are publishing.'
+}
+
+/** Whether this Mac is connected to a network, kept current. */
+function useOnline(): boolean {
+  const [online, setOnline] = useState(() => navigator.onLine)
+  useEffect(() => {
+    const update = (): void => setOnline(navigator.onLine)
+    window.addEventListener('online', update)
+    window.addEventListener('offline', update)
+    return () => {
+      window.removeEventListener('online', update)
+      window.removeEventListener('offline', update)
+    }
+  }, [])
+  return online
+}
 
 /**
  * Stories covered across the world right now: the same story in headlines
@@ -53,6 +75,7 @@ export function WorldStories({
   // Story titles in your language (same Original ↔ English choice as the headlines inside).
   const titleItems = useMemo(() => stories.map((story) => ({ key: story.id, title: story.title, lang: story.headlines.find((item) => item.url === story.url)?.lang ?? null })), [stories])
   const titles = useTranslatedTitles(titleItems, translation)
+  const online = useOnline()
   const toggle = (story: GlobalStory): void => {
     const next = expanded === story.id ? null : story.id
     setExpanded(next)
@@ -169,7 +192,7 @@ export function WorldStories({
           </ol>
         </section>
       ) : (
-        <p className="globe-empty">No story is yet covered across several countries. This needs a few hours of headlines from many outlets.</p>
+        <p className="globe-empty">{worldEmptyText(online)}</p>
       )}
       {inTheNews.length > 0 && (
         <section className="world-itn" aria-label="Wikipedia In the news">
