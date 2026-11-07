@@ -90,8 +90,8 @@ const workspaces: WorkspacesApi = {
 }
 
 const browserHost: BrowserHostApi = {
-  open: async (intent, disposition) => {
-    await invoke({ type: 'open', intent, ...(disposition ? { disposition } : {}) })
+  open: async (intent, disposition, options) => {
+    await invoke({ type: 'open', intent, ...(disposition ? { disposition } : {}), ...(options?.untracked ? { untracked: true } : {}) })
   },
   newTab: async () => {
     await invoke({ type: 'new-tab' })

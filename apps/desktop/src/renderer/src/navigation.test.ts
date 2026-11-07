@@ -59,6 +59,13 @@ describe('parseBrowserHostCommand', () => {
     expect(() => parseBrowserHostCommand({ type: 'open', intent, disposition: 'new-window' })).toThrow('Invalid open disposition')
   })
 
+  it('opens a page that leaves no trace only in a tab of its own (the guided tour)', () => {
+    const intent = { kind: 'url', value: 'example.com' }
+    expect(parseBrowserHostCommand({ type: 'open', intent, disposition: 'background-tab', untracked: true })).toEqual({ type: 'open', intent, disposition: 'background-tab', untracked: true })
+    expect(parseBrowserHostCommand({ type: 'open', intent, disposition: 'foreground-tab', untracked: 'yes' })).toEqual({ type: 'open', intent, disposition: 'foreground-tab' })
+    expect(() => parseBrowserHostCommand({ type: 'open', intent, untracked: true })).toThrow('tab of its own')
+  })
+
   it('parses the address bar menu request', () => {
     expect(parseBrowserHostCommand({ type: 'address-menu', hasSelection: true, extra: 1 })).toEqual({ type: 'address-menu', hasSelection: true })
     expect(parseBrowserHostCommand({ type: 'address-menu', hasSelection: 'yes' })).toEqual({ type: 'address-menu', hasSelection: false })

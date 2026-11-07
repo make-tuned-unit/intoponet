@@ -261,6 +261,11 @@ const workspacePermissionStores = new Map<string, SitePermissionStore>()
 let excludedSites: string[] = []
 let privateMode = false
 const privateViews = new WeakSet<WebContentsView>()
+/**
+ * Tabs that leave no trace (the guided tour's page): no history visit or recent page, never in Recently
+ * closed or Archived tabs, never saved with the open tabs, no remembered icon.
+ */
+const untrackedViews = new WeakSet<WebContentsView>()
 /** The workspace a page view belongs to (null: none, as in a quick window), and the partition it was built with. */
 const viewWorkspaces = new WeakMap<WebContentsView, string | null>()
 const viewPartitions = new WeakMap<WebContentsView, string>()
@@ -415,7 +420,8 @@ function safeHttpUrl(value: string): URL | null {
 function persistentState(): PersistentBrowserState {
   // Private tabs are never saved or restored; nor are empty new tabs.
   const shownId = workspaces.activeId
-  const shown: SavedTab[] = tabSnapshots().filter((tab) => !tab.isPrivate && !tab.isStartPage).map((tab) => ({
+  const untracked = new Set(openTabs.filter((tab) => untrackedViews.has(tab.view)).map((tab) => tab.id))
+  const shown: SavedTab[] = tabSnapshots().filter((tab) => !tab.isPrivate && !tab.isStartPage && !untracked.has(tab.id)).map((tab) => ({
     id: tab.id,
     url: tab.url,
     title: tab.title,
@@ -431,12 +437,12 @@ function persistentState(): PersistentBrowserState {
   const records: SavedWorkspace[] = []
   for (const workspace of workspaces.workspaces) {
     const held = workspace.id === shownId ? null : workspaces.parkedOf(workspace.id)
-    const lastTab = held ? held.activeTabId : openTabs.some((tab) => tab.id === activeTabId && !privateViews.has(tab.view)) ? activeTabId : null
+    const lastTab = held ? held.activeTabId : openTabs.some((tab) => tab.id === activeTabId && !privateViews.has(tab.view) && !untrackedViews.has(tab.view)) ? activeTabId : null
     records.push({ ...workspace, ...(lastTab ? { activeTabId: lastTab } : {}) })
     if (!held) continue
     for (const folder of held.folders) folders.push({ ...folder, workspaceId: workspace.id })
     for (const tab of held.tabs) {
-      if (tab.start) continue
+      if (tab.start || untrackedViews.has(tab.view)) continue
       const live = !viewGone(tab.view)
       const current = live ? tab.view.webContents.getURL() : ''
       const url = capUrl(safeHttpUrl(current) ? current : tab.url)
@@ -663,6 +669,7 @@ function pagePanelState(): BrowserPanelSnapshot {
     isLoading: contents.isLoading(),
     isVisible: pageAttached,
     isPrivate: privateViews.has(pageView),
+    ...(untrackedViews.has(pageView) ? { untracked: true } : {}),
     zoomFactor: Number(contents.getZoomFactor().toFixed(3)),
     ...loadErrorOf(pageView),
   }
@@ -2870,7 +2877,7 @@ async function sleepIdleTabs(): Promise<void> {
     if (archiveMs !== null && (browsingData?.history.policy.footprints ?? true)) {
       const archived: ArchivedTab[] = []
       for (const tab of [...openTabs]) {
-        if (tab.id === activeTabId || tab.view === companionView || tab.pinned || tab.start || tab.loadError || tab.pictureInPicture || privateViews.has(tab.view) || now - (tab.lastShownAt ?? now) < archiveMs) continue
+        if (tab.id === activeTabId || tab.view === companionView || tab.pinned || tab.start || tab.loadError || tab.pictureInPicture || privateViews.has(tab.view) || untrackedViews.has(tab.view) || now - (tab.lastShownAt ?? now) < archiveMs) continue
         const live = !viewGone(tab.view) && !tab.asleep
         if (live) {
           const contents = tab.view.webContents
@@ -3282,7 +3289,7 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
   viewWorkspaces.set(view, isPrivate ? null : workspaceId)
   if (isPrivate) privateViews.add(view)
   if (isPrivate) privateWebContents.add(view.webContents)
-  browsingData?.attachPage(view.webContents, () => privateViews.has(view), () => workspaceOfView(view) ?? undefined)
+  browsingData?.attachPage(view.webContents, () => privateViews.has(view) || untrackedViews.has(view), () => workspaceOfView(view) ?? undefined)
 
   // Behind a page before it paints: light, or dark when pages are dark (no white flash at night).
   view.setBackgroundColor(pageAppearance.current === 'dark' || (pageAppearance.current === 'system' && nativeTheme.shouldUseDarkColors) ? '#202124' : '#ffffff')
@@ -3597,8 +3604,8 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
     if (pageView === view || companionView === view) emitPanelState()
   })
   view.webContents.on('page-favicon-updated', (_event, favicons) => {
-    // Private tabs leave nothing in favicons.json.
-    if (favicons[0] && !privateViews.has(view)) faviconCache?.remember(view.webContents.getURL(), favicons[0])
+    // Private and untracked tabs leave nothing in favicons.json.
+    if (favicons[0] && !privateViews.has(view) && !untrackedViews.has(view)) faviconCache?.remember(view.webContents.getURL(), favicons[0])
     updateTabIcon(view, favicons[0] ?? '')
   })
   view.webContents.on('found-in-page', (_event, result) => {
@@ -3773,9 +3780,9 @@ function inspectPage(view: WebContentsView, at?: { x: number; y: number }): void
   if (at) contents.inspectElement(Math.round(at.x), Math.round(at.y))
 }
 
-/** A closing tab joins Recently Closed (with its back/forward list), unless it is private or a start page. */
+/** A closing tab joins Recently Closed (with its back/forward list), unless it is private, untracked or a start page. */
 function rememberClosedTab(tab: OpenTab): void {
-  if (tab.start || privateViews.has(tab.view)) return
+  if (tab.start || privateViews.has(tab.view) || untrackedViews.has(tab.view)) return
   const live = !viewGone(tab.view)
   const liveUrl = live ? tab.view.webContents.getURL() : ''
   let history: { entries: Electron.NavigationEntry[]; index: number } | undefined
@@ -4106,6 +4113,11 @@ async function handleBrowserCommand(
       // ⌘↵ / ⌥↵ from the address bar: always a fresh tab, behind or in front.
       if (command.disposition) {
         const view = createBrowserTab(url, command.disposition === 'foreground-tab')
+        // Marked before it loads: its first visit is not recorded either.
+        if (view && command.untracked) {
+          untrackedViews.add(view)
+          schedulePersistentStateSave()
+        }
         if (view) await view.webContents.loadURL(url)
         break
       }

@@ -962,7 +962,8 @@ export function App() {
     // An address that failed to load (a typo, a site that is down) is not a page visited, and would come back
     // as an address bar completion. (Its address reaches the panel only with the error.)
     if (panel.loadError) return
-    if (panel.isPrivate || !privacySettings.footprints || isExcludedSite(panel.url, privacyState?.excludedSites ?? [])) return
+    // Nor is a page in a private tab, or the tour's own page (it leaves no trace).
+    if (panel.isPrivate || panel.untracked || !privacySettings.footprints || isExcludedSite(panel.url, privacyState?.excludedSites ?? [])) return
     setRecents((current) =>
       rememberRecent(current, {
         url: panel.url,
@@ -970,7 +971,7 @@ export function App() {
         visitedAt: new Date().toISOString(),
       }),
     )
-  }, [panel.title, panel.url, panel.loadError, panel.isPrivate, privacySettings.footprints, privacyState?.excludedSites])
+  }, [panel.title, panel.url, panel.loadError, panel.isPrivate, panel.untracked, privacySettings.footprints, privacyState?.excludedSites])
 
   useEffect(() => {
     void window.intoponet.passwords.pageState().then(setPasswordState, () => undefined)
@@ -2892,8 +2893,9 @@ export function App() {
         const before = await window.intoponet.browserHost.getTabs().catch(() => [])
         let tab = made && before.some((item) => item.id === made) ? made : null
         if (!tab) {
-          // Made behind the globe, then shown already hidden (below): the page never covers the tour.
-          const opening = window.intoponet.browserHost.open({ kind: 'url', value: url }, 'background-tab').catch(() => undefined)
+          // Made behind the globe, then shown already hidden (below): the page never covers the tour. It leaves no
+          // trace: no history visit, no recent page, never in Recently closed or Archived tabs.
+          const opening = window.intoponet.browserHost.open({ kind: 'url', value: url }, 'background-tab', { untracked: true }).catch(() => undefined)
           // Main makes the tab before it answers this (it handles the two in order); the page loads once shown.
           let after = await window.intoponet.browserHost.getTabs().catch(() => [])
           if (after.length === before.length) {

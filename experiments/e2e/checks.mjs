@@ -2420,8 +2420,16 @@ export const checks = {
       return JSON.parse(await ctx.evaluate(scene))
     }
     const shown = []
+    // The tour's page is never saved with the open tabs (a crash or quit mid-tour would bring it back).
+    const tourPage = 'en.wikipedia.org/wiki/Earth'
+    const stateFile = join(ctx.profile, 'browser-state.v1.json')
+    let savedWithTabs = null
     for (let step = 1; step <= total; step += 1) {
       const state = shown[step] = await settle(step)
+      if (state.title === 'Every page, with tools built in') {
+        await ctx.delay(600)
+        savedWithTabs = existsSync(stateFile) && readFileSync(stateFile, 'utf8').includes(tourPage)
+      }
       const centred = ['A browser with the whole world in view', 'The everyday things, done carefully'].includes(state.title)
       if (!centred && !state.lit) missed.push(`${step}. ${state.title}`)
       if (!state.onTop) missed.push(`${step}. ${state.title} (its card is covered)`)
@@ -2464,6 +2472,16 @@ export const checks = {
     expect(tidy, `The tour left a tab open: ${await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => t.map((x) => x.title || x.url).join(', '))`)}.`)
     const keptAfter = await ctx.evaluate(kept)
     expect(keptAfter === keptBefore, `The tour changed the saved sidebar or the workspaces: ${keptBefore} → ${keptAfter}.`)
+    // Its page leaves no trace: no History visit, no recent page, nothing in Recently closed or Archived tabs, never saved as an open tab.
+    const traces = JSON.parse(await ctx.evaluate(`Promise.all([
+      window.intoponet.history.search('Earth').then((r) => r.days.flatMap((d) => d.visits.map((v) => v.url))),
+      window.intoponet.browserHost.readPrivateLibrary().then((r) => r.status === 'ok' && r.payload ? JSON.parse(r.payload).recents.map((p) => p.url) : []),
+      window.intoponet.browserHost.getClosedTabs().then((t) => t.map((x) => x.url)),
+      window.intoponet.browserHost.getArchivedTabs().then((t) => t.map((x) => x.url)),
+    ]).then(([history, recents, closed, archived]) => JSON.stringify({ history, recents, closed, archived }))`))
+    const left = Object.entries(traces).filter(([, urls]) => urls.some((url) => url.includes(tourPage))).map(([where]) => where)
+    if (savedWithTabs !== false) left.push('saved open tabs')
+    expect(left.length === 0, `The tour's page left a trace in: ${left.join(', ')}.`)
     return `All ${total} steps shown, each spotlight on what it describes, the same played forward, gone back to and jumped to; the tour put everything back at the end, its own tab closed. With Wikipedia unreachable The Olds step moved on ${((offline.ms - offline.looked) / 1000).toFixed(1)} s after The Olds had looked (${(offline.ms / 1000).toFixed(1)} s in all: "${offline.olds}").`
   },
   async TAB_ARCHIVE(ctx) {
