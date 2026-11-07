@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { closeSync, fsyncSync, openSync, readdirSync, renameSync, rmSync, statSync, writeSync } from 'node:fs'
+import { closeSync, existsSync, fsyncSync, openSync, readdirSync, renameSync, rmSync, statSync, writeSync } from 'node:fs'
 import { open, rename, rm } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
 
@@ -10,12 +10,20 @@ import { basename, dirname, join } from 'node:path'
  */
 
 const queues = new Map<string, Promise<void>>()
+/** Async writes not finished yet (each settles, never rejects), and the temporary files they are writing. */
+const inFlight = new Set<Promise<void>>()
+const temporaries = new Set<string>()
+/** Set at the very end of a quit (removeUnfinishedTemporaries): an async write would not finish, so none starts or lands. */
+let ended = false
+const quitting = (): Error => new Error('Intoponet is quitting.')
 
 /** Atomic write; writes to the same path run in order (the last one wins). */
 export function writeFileAtomic(path: string, data: string | Uint8Array, mode = 0o600): Promise<void> {
   const previous = queues.get(path) ?? Promise.resolve()
   const next = previous.catch(() => undefined).then(async () => {
+    if (ended) throw quitting()
     const temporary = `${path}.${randomUUID()}.tmp`
+    temporaries.add(temporary)
     try {
       const handle = await open(temporary, 'w', mode)
       try {
@@ -24,16 +32,51 @@ export function writeFileAtomic(path: string, data: string | Uint8Array, mode = 
       } finally {
         await handle.close()
       }
+      // Too late: what is written at the end of the quit is newer than this.
+      if (ended) throw quitting()
       await rename(temporary, path)
     } catch (error) {
       await rm(temporary, { force: true }).catch(() => undefined)
       throw error
+    } finally {
+      temporaries.delete(temporary)
     }
   })
   const settled = next.catch(() => undefined)
   queues.set(path, settled)
-  void settled.then(() => { if (queues.get(path) === settled) queues.delete(path) })
+  inFlight.add(settled)
+  void settled.then(() => {
+    inFlight.delete(settled)
+    if (queues.get(path) === settled) queues.delete(path)
+  })
   return next
+}
+
+/** Every async atomic write still on its way to disk (each settles, never rejects): quitting waits for them. */
+export function atomicWritesInFlight(): Promise<void>[] {
+  return [...inFlight]
+}
+
+/**
+ * The very end of a quit, once it waited as long as it could: deletes the temporary files of writes
+ * still unfinished, and no async write starts or lands after this (synchronous writes still can, so
+ * the newest data is written last). Each unfinished write leaves the file it was replacing as it was,
+ * and no stray `<file>.<id>.tmp` outlives the app. Returns how many were deleted.
+ */
+export function removeUnfinishedTemporaries(): number {
+  ended = true
+  let removed = 0
+  for (const temporary of temporaries) {
+    try {
+      if (!existsSync(temporary)) continue
+      rmSync(temporary, { force: true })
+      removed += 1
+    } catch {
+      // Already gone.
+    }
+  }
+  temporaries.clear()
+  return removed
 }
 
 /** Synchronous atomic write, for quit and window-close paths that cannot wait. */

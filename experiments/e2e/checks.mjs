@@ -1,7 +1,7 @@
 // One end-to-end check per feature in docs/FEATURE_DAG.json. Each drives the
 // real built app and fails with a plain sentence when its promise isn't kept.
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { createServer as createHttpsServer } from 'node:https'
 import { tmpdir } from 'node:os'
 import { createServer } from 'node:http'
@@ -257,6 +257,14 @@ async function pdfExport(ctx) {
     const keptAsked = JSON.parse(await ctx.main(`electron.dialog.__asked`) ?? '[]')
     expect(existsSync(keptPdf) && readFileSync(keptPdf).equals(TEST_PDF), `Save Page As on a PDF did not save the PDF itself (${existsSync(keptPdf) ? readFileSync(keptPdf).subarray(0, 40).toString('latin1') : 'no file'}).`)
     expect(/doc\.pdf$/.test(keptAsked[0] ?? '') && JSON.stringify(keptAsked[1]).includes('"pdf"'), `Save Page As on a PDF suggested ${JSON.stringify(keptAsked)}.`)
+    // Save as PDF on a PDF tab names the file after the PDF (here its file name), not only the site and date.
+    const beforePdfTab = await ctx.evaluate(`document.querySelector('.pdf-done .pdf-name')?.title ?? ''`)
+    await ctx.evaluate(`window.intoponet.browserHost.exportPdf().then(() => true)`)
+    await ctx.wait(`(() => { const done = document.querySelector('.pdf-done .pdf-name'); const failed = document.querySelector('.pdf-failed')?.innerText ?? ''; return (!!done && done.title !== ${JSON.stringify(beforePdfTab)}) || (!!failed && !failed.includes('did not load')) })()`, 90_000, 'the PDF tab to be saved as PDF')
+    const pdfTabFailure = await ctx.evaluate(`document.querySelector('.pdf-failed')?.innerText ?? ''`)
+    expect(!pdfTabFailure, `Save as PDF on a PDF tab failed: ${pdfTabFailure}`)
+    const pdfTabPath = await ctx.evaluate(`document.querySelector('.pdf-done .pdf-name').title`)
+    expect(/\/doc – 127\.0\.0\.1 – \d{4}-\d{2}-\d{2}\.pdf$/.test(pdfTabPath) && existsSync(pdfTabPath), `Save as PDF on a PDF tab was not named after the PDF: ${pdfTabPath}`)
     // Saved into a group after private browsing ended: the private search left nothing in its bookmark.
     await ctx.evaluate(`window.intoponet.browserHost.setPdfSettings({ mode: 'auto', paper: 'a4', textSize: 'medium', images: true, citation: true, groupId: 'pdfgroup' }).then(() => true)`)
     await openPage(ctx, `${base}/article?after-private`, 3000)
@@ -1260,6 +1268,14 @@ export const checks = {
     await ctx.wait(`window.intoponet.browserHost.getTabs().then((t) => t.some((x) => /example\.org/.test(x.url)))`, 10_000, 'the blocked pop-up to open after "Allow once"')
     await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => t.find((x) => !/example\.org/.test(x.url))).then((t) => t && window.intoponet.browserHost.activateTab(t.id)).then(() => true)`)
     await ctx.delay(1000)
+    // A tab in the background asks: the bar names that tab, so the answer is not taken for the page in front.
+    const behind = await ctx.page('example.org')
+    void behind.evaluate(`Notification.requestPermission()`).catch(() => undefined)
+    await ctx.wait(`(document.querySelector('.permission-bar')?.innerText ?? '').includes('example.org wants to')`, 15_000, 'the permission bar when a background tab asks to show notifications')
+    const named = await ctx.evaluate(`document.querySelector('.permission-bar').innerText`)
+    expect(/^Background tab “[^”]+” · example\.org wants to show notifications/.test(named), `The bar does not name the background tab that asked: "${named}"`)
+    expect(await ctx.click('.permission-bar button', 'Not now'), 'The permission bar has no "Not now" button.')
+    await ctx.wait(`!document.querySelector('.permission-bar')`, 5_000, 'the permission bar to go after "Not now"')
     // A real click in the page (not a scripted one) lets it open a sign-in window and a new tab.
     const clickPage = async (session) => {
       for (const type of ['mousePressed', 'mouseReleased']) await session.send('Input.dispatchMouseEvent', { type, x: 20, y: 20, button: 'left', clickCount: 1 })
@@ -1275,7 +1291,7 @@ export const checks = {
     await ctx.delay(2500)
     tabs = await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => t.map((x) => x.url).join(' '))`)
     expect(/iana\.org/.test(tabs), 'A target=_blank link clicked by the person did not open as a tab.')
-    return 'Location allowed via the bar; a pop-up without a click was blocked and opened with "Allow once"; a clicked popup kept its opener; a clicked _blank link opened a tab.'
+    return `Location allowed via the bar; a pop-up without a click was blocked and opened with "Allow once"; a background tab asking was named ("${named.split(' wants')[0]}"); a clicked popup kept its opener; a clicked _blank link opened a tab.`
   },
 
   async EXTERNAL_APPS(ctx) {
@@ -1778,8 +1794,8 @@ export const checks = {
     expect(lib.includes('Vanuatu'), 'An old plain-text bookmark was lost instead of moving into the encrypted library.')
     await openPanel(ctx, 'My map')
     expect(await ctx.click('.bookmark-pin-actions button', 'Hide pin'), 'Pins cannot be hidden from the globe.')
-    await ctx.delay(500)
-    const hidden = await ctx.evaluate(`window.intoponet.browserHost.readPrivateLibrary().then((r) => JSON.parse(r.payload).bookmarks.some((b) => b.hiddenOnMap))`)
+    // The library is sealed and flushed to disk before it is put in place, which can take over a second on a busy Mac.
+    const hidden = await ctx.wait(`window.intoponet.browserHost.readPrivateLibrary().then((r) => JSON.parse(r.payload).bookmarks.some((b) => b.hiddenOnMap))`, 10_000, 'the hidden pin to be saved').catch(() => false)
     expect(hidden, 'Hiding a pin was not saved.')
     expect(await ctx.click('.bookmark-pin-actions button', 'Publish beacon'), 'A pin cannot be published as a beacon.')
     await ctx.wait(`!!document.querySelector('.beacon-payload pre')`, 10_000, 'the beacon consent screen')
@@ -1889,7 +1905,34 @@ export const checks = {
       await ctx.press('Escape')
       await ctx.delay(400)
       expect(!(await ctx.evaluate(`!!document.querySelector('.history-pane')`)), 'Escape did not close History.')
-      return `Downloaded ${DOWNLOAD_BYTES / 1024} KB with progress → done; on disk with quarantine "${quarantine}"; History found and deleted a visit; private visit not kept.`
+
+      // Quitting just as saves start (sealing slowed here: 3 s for history, 0.3 s for the rest): the one-second history
+      // save of a visit and a library save sent after the quit began are both waited for, and no temporary file is left.
+      const library = await ctx.evaluate(`window.intoponet.browserHost.readPrivateLibrary().then((r) => r.payload ?? JSON.stringify({ schema: 'intoponet.private-library.v1', bookmarks: [], collections: [], recents: [], absorbed: [] }))`)
+      await ctx.main(`(() => { const s = electron.safeStorage; const seal = s.encryptStringAsync.bind(s); globalThis.__historySealing = 0; s.encryptStringAsync = (text) => { const history = text.includes('intoponet.history.v1'); if (history) globalThis.__historySealing = Date.now(); return new Promise((resolve) => setTimeout(resolve, history ? 3000 : 300)).then(() => seal(text)) }; return true })()`)
+      await openPage(ctx, `${base}/delta`, 0)
+      // The visit's one-second save starts sealing: the quit begins at once, with about 3 s of that save to go.
+      let sealing = 0
+      for (let i = 0; i < 50 && !sealing; i += 1) {
+        sealing = await ctx.main('globalThis.__historySealing')
+        if (!sealing) await ctx.delay(100)
+      }
+      expect(sealing > 0, 'The visit was never saved to history.')
+      const quitAt = Date.now()
+      await ctx.main('electron.app.quit()')
+      await ctx.delay(100)
+      await ctx.evaluate(`(() => { void window.intoponet.browserHost.writePrivateLibrary(${JSON.stringify(library)}).catch(() => undefined); return true })()`).catch(() => false)
+      // A quitting app waits for its debugger to disconnect before it exits.
+      ctx.detachMain()
+      await waitForQuit(ctx.profile)
+      const historyFile = join(ctx.profile, 'personal', 'history.v1.seal')
+      const libraryFile = join(ctx.profile, 'private-library.v1.seal')
+      // The quit waited for that save rather than end without it.
+      expect(existsSync(historyFile) && statSync(historyFile).mtimeMs >= sealing + 2900, `The history save started in the last moments of the quit was not waited for (history last written ${existsSync(historyFile) ? Math.round(statSync(historyFile).mtimeMs - sealing) : '—'} ms after it began sealing, which takes 3 s).`)
+      expect(existsSync(libraryFile) && statSync(libraryFile).mtimeMs >= quitAt + 100, 'A library save sent after the quit began was not waited for.')
+      const leftovers = ['', 'personal'].flatMap((sub) => readdirSync(join(ctx.profile, sub)).filter((name) => name.endsWith('.tmp')).map((name) => join(sub, name)))
+      expect(!leftovers.length, `Quitting left temporary files in the profile: ${leftovers.join(', ')}.`)
+      return `Downloaded ${DOWNLOAD_BYTES / 1024} KB with progress → done; on disk with quarantine "${quarantine}"; History found and deleted a visit; private visit not kept; a quit waited for the late history and library saves and left no temporary files.`
     } finally {
       server.close()
     }
@@ -3625,8 +3668,10 @@ export const checks = {
       expect(await ctx.click('.browsing-appearance button', 'Quick window'), 'The "Quick window" choice is missing.')
       await ctx.delay(800)
       expect(await ctx.evaluate(`window.intoponet.browsing.settings().then((s) => s.linksFromOtherApps)`) === 'quick-window', 'Choosing Quick window did not take effect.')
-      const saved = JSON.parse(readFileSync(join(ctx.profile, 'browsing-settings.json'), 'utf8'))
-      expect(saved.linksFromOtherApps === 'quick-window', 'The Quick window choice was not saved to browsing-settings.json.')
+      // The file is flushed to disk before it is put in place, which can take over a second on a busy Mac.
+      const settingsFile = join(ctx.profile, 'browsing-settings.json')
+      const savedChoice = () => { try { return JSON.parse(readFileSync(settingsFile, 'utf8')).linksFromOtherApps } catch { return null } }
+      await until(async () => savedChoice() === 'quick-window', 'the Quick window choice to be saved to browsing-settings.json', 10_000)
       await ctx.press('Escape')
       await ctx.delay(400)
 
@@ -3712,6 +3757,21 @@ export const checks = {
       await ctx.delay(600)
       expect(await quickCount() === 1, 'Escape in an edited address field closed the quick window.')
       expect(await mainCall("toolbarOf(quick()[0]).executeJavaScript(\"document.getElementById('address').value\")") === `${origin}/typed`, 'Escape did not revert the edited address field.')
+      // ⌘L and some typing, then a click into the page and a link followed there: no stale typed text stays in the field.
+      await mainCall("toolbarOf(quick()[0]).focus()")
+      await mainCall("toolbarOf(quick()[0]).executeJavaScript('window.quickFocusAddress()')")
+      await ctx.delay(300)
+      await mainCall("toolbarOf(quick()[0]).insertText('stale words')")
+      await ctx.delay(300)
+      await mainCall("pageOf(quick()[0]).focus()")
+      await ctx.delay(300)
+      await clickLinkIn('/typed')
+      await until(async () => (await pageUrl()).endsWith('/quick-next'), 'the link followed in the page to load')
+      await ctx.delay(500)
+      const afterLink = JSON.parse(await mainCall(`toolbarOf(quick()[0]).executeJavaScript("JSON.stringify([document.getElementById('address').value, document.getElementById('address').readOnly])")`))
+      expect(afterLink[0] === `${origin}/quick-next` && afterLink[1] === true, `After typing, clicking into the page and following a link, the address field shows "${afterLink[0]}"${afterLink[1] ? '' : ' and is still being edited'}.`)
+      await mainCall('(() => { pageOf(quick()[0]).navigationHistory.goBack(); return true })()')
+      await until(async () => (await pageUrl()).endsWith('/typed'), 'Back to the typed page')
       // ⌘T in a quick window opens a tab in the main window, which comes forward; the quick window stays.
       const tabsBeforeNewTab = (await tabUrls()).length
       await ctx.keyInPage('/typed', 'T', ['meta'])

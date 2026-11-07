@@ -11,12 +11,14 @@ import {
   type ClearBrowsingDataResult,
   type DownloadEvent,
   type HistoryEvent,
+  type HistoryVisit,
 } from '@intoponet/browser-api'
 import { removeSetAside, setAsideUnreadable, writeFileAtomic, writeFileAtomicSync } from './atomicFile'
 import { LatestWriter } from './latestWriter'
 import { DownloadManager, type DownloadRecord } from './downloadManager'
 import { reserveDownloadPath, sanitizeDownloadFilename } from './downloadReservation'
-import { HistoryStore } from './historyStore'
+import { dayKey, HistoryStore } from './historyStore'
+import { UnreadSealedFile } from './unreadSealedFile'
 import { ensureQuarantine } from './quarantine'
 
 /**
@@ -134,8 +136,19 @@ export function installBrowsingData(options: BrowsingDataOptions): BrowsingData 
   let saveTimer: ReturnType<typeof setTimeout> | null = null
   let changeTimer: ReturnType<typeof setTimeout> | null = null
   const historyWriter = new LatestWriter<string>(async (payload) => {
-    // Only ever written sealed: without encryption, history stays in memory for this run.
-    if (!(await options.seal.available())) return
+    // Only ever written sealed: without encryption, history stays in memory (still to be saved, should it come back).
+    if (!(await options.seal.available())) {
+      historyDirty = true
+      return
+    }
+    // History that could not be read at startup (the Keychain was unavailable) is read now, before anything is written over it.
+    if (savedHistory.isUnread) {
+      if (!(await savedHistory.settle())) {
+        historyDirty = true
+        return
+      }
+      payload = history.serialize()
+    }
     await writeFileAtomic(historyFile, await options.seal.encrypt(payload))
   })
   const saveHistory = (): void => {
@@ -143,25 +156,33 @@ export function installBrowsingData(options: BrowsingDataOptions): BrowsingData 
     historyDirty = false
     void historyWriter.save(history.serialize()).catch((error: unknown) => console.error('Could not save history:', error))
   }
-  const history = new HistoryStore({
-    excludedSites: options.excludedSites,
-    onChange: () => {
-      historyDirty = true
-      if (!saveTimer) saveTimer = setTimeout(() => { saveTimer = null; saveHistory() }, 1_000)
-      if (!changeTimer) {
-        changeTimer = setTimeout(() => {
-          changeTimer = null
-          const event: HistoryEvent = { type: 'changed' }
-          send(historyChannels.event, event)
-        }, 400)
-      }
-    },
+  const historyChanged = (): void => {
+    historyDirty = true
+    if (!saveTimer) saveTimer = setTimeout(() => { saveTimer = null; saveHistory() }, 1_000)
+    if (!changeTimer) {
+      changeTimer = setTimeout(() => {
+        changeTimer = null
+        const event: HistoryEvent = { type: 'changed' }
+        send(historyChannels.event, event)
+      }, 400)
+    }
+  }
+  const history = new HistoryStore({ excludedSites: options.excludedSites, onChange: historyChanged })
+  /** The saved history while the Keychain is unavailable: read once it is, merged with this run's visits (then saved). */
+  const savedHistory = new UnreadSealedFile<HistoryVisit>({
+    exists: () => existsSync(historyFile),
+    available: () => options.seal.available(),
+    read: async (keep) => history.load(await options.seal.decrypt(readFileSync(historyFile)), policySet, keep),
+    setAside: () => { setAsideUnreadable(historyFile) },
+    onRead: historyChanged,
   })
   void (async () => {
     try {
-      if (existsSync(historyFile) && (await options.seal.available())) {
-        // History that cannot be read is kept aside, never replaced by the next save.
-        if (!history.load(await options.seal.decrypt(readFileSync(historyFile)), policySet)) setAsideUnreadable(historyFile)
+      if (existsSync(historyFile)) {
+        // History that cannot be read is kept aside, never replaced by the next save. Without encryption (the
+        // Keychain unavailable) it is read later, once it can be, and nothing is written over it until then.
+        if (!(await options.seal.available())) savedHistory.markUnread()
+        else if (!history.load(await options.seal.decrypt(readFileSync(historyFile)), policySet)) setAsideUnreadable(historyFile)
       }
     } catch (error) {
       console.error('Could not read history:', error)
@@ -173,17 +194,28 @@ export function installBrowsingData(options: BrowsingDataOptions): BrowsingData 
   })()
   const pruneTimer = setInterval(() => history.prune(), 3_600_000)
   pruneTimer.unref?.()
-  app.on('before-quit', () => {
-    if (saveTimer) clearTimeout(saveTimer)
-    saveTimer = null
-    if (!historyDirty || !historyLoaded || !options.seal.availableSync()) return
+  const writeHistoryNow = (): void => {
+    if (!historyDirty || !historyLoaded || savedHistory.isUnread || !options.seal.availableSync()) return
     historyDirty = false
     try {
       writeFileAtomicSync(historyFile, options.seal.encryptSync(history.serialize()))
     } catch (error) {
       console.error('Could not save history on quit:', error)
     }
+  }
+  app.on('before-quit', () => {
+    if (saveTimer) clearTimeout(saveTimer)
+    saveTimer = null
+    // A save already on its way (the one-second save, started just now) would land after a write made here
+    // and replace it with older visits: quitting waits for it, and what is left is written as the app ends.
+    // History still unread is read before it is saved (an async save, which quitting waits for too).
+    if (savedHistory.isUnread) {
+      if (historyDirty) saveHistory()
+    } else if (!historyWriter.pending) writeHistoryNow()
   })
+  // The very end of the quit, after the saves on their way were waited for (any still unfinished at the time
+  // limit can no longer land): what is left is written last, so nothing older replaces it.
+  app.on('quit', writeHistoryNow)
 
   // ---- Clear browsing data ----------------------------------------------------------------------
   const clearBrowsingData = async (request: ClearBrowsingDataRequest): Promise<ClearBrowsingDataResult> => {
@@ -220,6 +252,7 @@ export function installBrowsingData(options: BrowsingDataOptions): BrowsingData 
     }
     if (request.history) {
       history.deleteSince(since)
+      savedHistory.removed((visit) => visit.visitedAt >= since)
       removeSetAside(historyFile)
       options.onHistoryCleared?.(since)
       cleared.push('history')
@@ -252,11 +285,13 @@ export function installBrowsingData(options: BrowsingDataOptions): BrowsingData 
   })
   options.handle(historyChannels.command, async (_event, value: unknown) => {
     const command = parseHistoryCommand(value)
+    // History left unread at startup (the Keychain was unavailable) is read first if it can be now.
+    await savedHistory.settle()
     switch (command.type) {
       case 'search': return history.search(command.query, command.cursor, command.limit)
       case 'delete': history.delete(command.ids); return undefined
-      case 'delete-day': history.deleteDay(command.day); return undefined
-      case 'clear': history.clear(); removeSetAside(historyFile); return undefined
+      case 'delete-day': history.deleteDay(command.day); savedHistory.removed((visit) => dayKey(visit.visitedAt) === command.day); return undefined
+      case 'clear': history.clear(); savedHistory.removed(() => true); removeSetAside(historyFile); return undefined
       case 'set-policy': policySet = true; history.setPolicy(command.policy); return undefined
       case 'clear-browsing-data': return clearBrowsingData(command.request)
     }

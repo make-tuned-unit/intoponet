@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LatestWriter } from './latestWriter'
+import { LatestWriter, latestWritesInFlight } from './latestWriter'
 
 function deferredWrites() {
   const written: string[] = []
@@ -68,5 +68,19 @@ describe('latest-only ordered writer', () => {
     await discarding
     expect(written).toEqual(['a'])
     expect(writer.pending).toBe(false)
+  })
+  it('is listed for the quit while a save runs or waits, until its last save is written', async () => {
+    const { writer, written, release } = deferredWrites()
+    expect(latestWritesInFlight()).toEqual([])
+    void writer.save('a')
+    expect(latestWritesInFlight()).toHaveLength(1)
+    const listed = Promise.all(latestWritesInFlight()).then(() => [...written])
+    // A save asked for while the first runs (a late one) is part of the same wait.
+    void writer.save('b')
+    await release()
+    expect(latestWritesInFlight()).toHaveLength(1)
+    await release()
+    expect(await listed).toEqual(['a', 'b'])
+    expect(latestWritesInFlight()).toEqual([])
   })
 })

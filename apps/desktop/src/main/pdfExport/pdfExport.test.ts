@@ -9,7 +9,7 @@ vi.mock('@mozilla/readability/Readability.js?raw', () => ({ default: 'function R
 vi.mock('@mozilla/readability/Readability-readerable.js?raw', () => ({ default: 'module.exports = function () { return true };' }))
 vi.mock('dompurify/dist/purify.min.js?raw', () => ({ default: 'module.exports = { sanitize: (html) => html };' }))
 
-const { pdfFilename } = await import('./filename')
+const { pdfDocumentTitle, pdfFilename } = await import('./filename')
 const { parsePdfSettings, resolvePaper, DEFAULT_PDF_SETTINGS } = await import('./settings')
 const { buildPrintDocument, cssString, readableDate } = await import('./template')
 const { whereFromsPlist } = await import('./whereFrom')
@@ -42,6 +42,19 @@ describe('PDF file names', () => {
   })
   it('says nothing about the page for private tabs', () => {
     expect(pdfFilename({ title: 'Secret clinic results', site: 'Clinic', url: 'https://clinic.example/', isPrivate: true, date: day })).toBe('Saved page 2026-11-05.pdf')
+  })
+  it('names a PDF tab after the PDF: its title, else its file name, never only the site', () => {
+    expect(pdfDocumentTitle('Annual Report 2025', 'https://example.org/files/ar25.pdf')).toBe('Annual Report 2025')
+    expect(pdfDocumentTitle('doc.pdf', 'http://127.0.0.1:8080/doc.pdf')).toBe('doc')
+    expect(pdfDocumentTitle('', 'https://example.org/papers/Climate%20%C3%A9tude.PDF?download=1')).toBe('Climate étude')
+    expect(pdfDocumentTitle('example.org/papers/q3.pdf', 'https://example.org/papers/q3.pdf')).toBe('q3')
+    expect(pdfDocumentTitle('https://example.org/papers/q3.pdf', 'https://example.org/papers/q3.pdf')).toBe('q3')
+    expect(pdfDocumentTitle('', 'https://example.org/')).toBe('')
+    expect(pdfDocumentTitle('', 'https://example.org/bad%E0%A4%A.pdf')).toBe('bad%E0%A4%A')
+    const name = pdfFilename({ title: pdfDocumentTitle('doc.pdf', 'http://127.0.0.1:8080/doc.pdf'), site: '', url: 'http://127.0.0.1:8080/doc.pdf', isPrivate: false, date: day })
+    expect(name).toBe('doc – 127.0.0.1 – 2026-11-05.pdf')
+    // A file name with slashes or colons in its title still makes one safe file name.
+    expect(pdfFilename({ title: pdfDocumentTitle('Q3: in/out', 'https://example.org/q3.pdf'), site: '', url: 'https://example.org/q3.pdf', isPrivate: false, date: day })).toBe('Q3 in out – example.org – 2026-11-05.pdf')
   })
 })
 

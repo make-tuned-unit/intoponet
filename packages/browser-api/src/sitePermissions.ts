@@ -25,6 +25,9 @@ export type SitePermissionRequest = {
   isPrivate: boolean
   /** Asked from a workspace with separate sign-ins: its name (the answer is kept for that workspace only). */
   workspace?: string
+  /** The tab that asked, and its title then (absent for a page in its own window): the bar names it when it is not the tab shown. */
+  tabId?: string
+  tabTitle?: string
 }
 
 export type SitePermissionEvent =

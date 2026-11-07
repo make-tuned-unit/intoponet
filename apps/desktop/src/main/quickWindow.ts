@@ -125,6 +125,16 @@ const toolbarScript = `(() => {
   document.getElementById('open').addEventListener('click', () => send({ type: 'open-in-main' }))
   document.getElementById('close').addEventListener('click', () => send({ type: 'close' }))
   window.quickFocusAddress = () => { address.readOnly = false; address.focus(); address.select(); return true }
+  // The page was clicked: the edit ends, and the field shows the page's address again and follows it as it navigates.
+  // (The field would otherwise keep the toolbar's focus, and with it the typed text, as when the window goes to the back.)
+  window.quickLeaveAddress = () => {
+    if (!hasPage || document.activeElement !== address) return true
+    address.value = shown
+    address.blur()
+    address.readOnly = true
+    send({ type: 'editing', on: false })
+    return true
+  }
   window.quickRender(initialState)
   if (!initialState.hasPage) address.focus()
 })()`
@@ -343,6 +353,10 @@ export class QuickWindows {
     })
     toolbar.webContents.on('before-input-event', (event, input) => this.key(entry, event, input, true))
     page.webContents.on('before-input-event', (event, input) => this.key(entry, event, input, false))
+    // Clicking into the page leaves the address field: no typed text stays behind as the page navigates.
+    page.webContents.on('focus', () => {
+      if (!entry.closed && !toolbar.webContents.isDestroyed()) void toolbar.webContents.executeJavaScript('window.quickLeaveAddress && window.quickLeaveAddress()').catch(() => undefined)
+    })
 
     const contents = page.webContents
     const update = (): void => this.refresh(entry)

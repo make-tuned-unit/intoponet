@@ -1,3 +1,11 @@
+/** Every writer's saves running or waiting to run (each settles, never rejects): quitting waits for them. */
+const draining = new Set<Promise<void>>()
+
+/** Saves still on their way in any LatestWriter (the library, history, archived tabs, downloads). */
+export function latestWritesInFlight(): Promise<void>[] {
+  return [...draining]
+}
+
 /**
  * Saves one value (the private library) in order, writing only the newest: a save asked for while
  * another is running waits for it, and saves superseded in the meantime are skipped (their callers
@@ -19,7 +27,12 @@ export class LatestWriter<T> {
       const waiters = this.queued?.waiters ?? []
       waiters.push({ resolve, reject })
       this.queued = { value, waiters }
-      if (!this.running) this.running = this.drain()
+      if (!this.running) {
+        const running = this.drain()
+        this.running = running
+        draining.add(running)
+        void running.finally(() => draining.delete(running))
+      }
     })
   }
 

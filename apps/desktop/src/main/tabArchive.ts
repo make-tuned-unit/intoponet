@@ -89,10 +89,11 @@ export class TabArchive {
   }
 
   /**
-   * A saved payload; anything unreadable or out of bounds is left out. Returns false when the payload
-   * as a whole could not be read, so the caller can keep that file rather than save over it.
+   * A saved payload; anything unreadable or out of bounds is left out, and so is anything `keep` refuses
+   * (removed while the file was still unread). Returns false when the payload as a whole could not be read,
+   * so the caller can keep that file rather than save over it.
    */
-  load(payload: string | null): boolean {
+  load(payload: string | null, keep: (entry: ArchivedTab) => boolean = () => true): boolean {
     if (!payload) return true
     let raw: unknown
     try {
@@ -118,7 +119,7 @@ export class TabArchive {
       })
     }
     const urls = new Set(this.entries.map((entry) => entry.url))
-    this.entries = [...this.entries, ...loaded.filter((entry) => !urls.has(entry.url))].sort((a, b) => b.archivedAt - a.archivedAt).slice(0, MAX_ARCHIVED)
+    this.entries = [...this.entries, ...loaded.filter((entry) => !urls.has(entry.url) && keep(entry))].sort((a, b) => b.archivedAt - a.archivedAt).slice(0, MAX_ARCHIVED)
     this.prune()
     return true
   }

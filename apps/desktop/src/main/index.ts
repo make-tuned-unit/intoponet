@@ -29,9 +29,11 @@ import {
   screen,
 } from 'electron'
 import type { IpcMainInvokeEvent, MenuItemConstructorOptions } from 'electron'
-import { pendingWrite, removeSetAside, setAsideUnreadable, writeFileAtomic, writeFileAtomicSync } from './atomicFile'
+import { atomicWritesInFlight, pendingWrite, removeSetAside, removeUnfinishedTemporaries, setAsideUnreadable, writeFileAtomic, writeFileAtomicSync } from './atomicFile'
 import { isAppShellUrl, SHELL_PERMISSIONS } from './shellGuard'
-import { LatestWriter } from './latestWriter'
+import { LatestWriter, latestWritesInFlight } from './latestWriter'
+import { waitForSaves } from './quitSaves'
+import { UnreadSealedFile } from './unreadSealedFile'
 import { fetchCurrentRelease, UpdateController } from './updates'
 import { FeedbackService, parseFeedbackCommand } from './feedback'
 import { PasswordVault } from './passwords/vault'
@@ -303,6 +305,10 @@ function allTabs(): OpenTab[] {
 function tabOfView(view: WebContentsView | null): OpenTab | undefined {
   if (!view) return undefined
   return openTabs.find((tab) => tab.view === view) ?? workspaces.parkedTabs().find((tab) => tab.view === view)
+}
+/** The tab (in any workspace) whose page this is; undefined for a page in its own window. */
+function tabOfContents(contents: Electron.WebContents): OpenTab | undefined {
+  return allTabs().find((tab) => !viewGone(tab.view) && tab.view.webContents === contents)
 }
 let lastBounds: BrowserPanelBounds = { x: 40, y: 104, width: 900, height: 600 }
 /** The shell has reported the page area at least once (until then lastBounds is only a default or a saved guess). */
@@ -1643,7 +1649,9 @@ function wireDownloadSession(partition = DEFAULT_PARTITION): void {
     // A workspace with its own sign-ins is named in the bar, which may show while another workspace is in front.
     const ownWorkspace = scopeWorkspaceId(scope)
     const workspace = ownWorkspace ? workspaces.get(ownWorkspace)?.name : undefined
-    sitePermissions.request({ origin: originOf(details.requestingUrl || contents.getURL()), topOrigin: originOf(contents.getURL()), kinds: kindsFor(permission, mediaTypes), isPrivate, owner: contents.id, scope, ...(workspace ? { workspace } : {}) }, callback)
+    // The tab that asked is named in the bar when another tab is in front.
+    const asking = tabOfContents(contents)
+    sitePermissions.request({ origin: originOf(details.requestingUrl || contents.getURL()), topOrigin: originOf(contents.getURL()), kinds: kindsFor(permission, mediaTypes), isPrivate, owner: contents.id, scope, ...(workspace ? { workspace } : {}), ...(asking ? { tab: { id: asking.id, title: asking.title } } : {}) }, callback)
   })
   browsing.setPermissionCheckHandler((contents, permission, requestingOrigin, details) => {
     const mediaType = (details as { mediaType?: string }).mediaType
@@ -1752,6 +1760,7 @@ function installDownloadsAndHistory(): void {
     onDownloadDone: (entry) => emit({ type: 'download-finished', ...entry }),
     onHistoryCleared: (since) => {
       tabArchive.deleteSince(since)
+      savedTabArchive.removed((entry) => entry.archivedAt >= since)
       removeSetAside(tabArchiveFile())
       saveTabArchive()
     },
@@ -2518,8 +2527,22 @@ const tabArchive = new TabArchive()
 /** Archived tabs are kept like history: sealed on disk (in memory only when the Mac cannot seal). */
 const tabArchiveFile = (): string => join(app.getPath('userData'), 'personal', 'tab-archive.v1.seal')
 let tabArchiveLoaded = false
+/** Archived tabs saved before, while the Keychain is unavailable: read once it is, merged with this run's. */
+const savedTabArchive = new UnreadSealedFile<ArchivedTab>({
+  exists: () => existsSync(tabArchiveFile()),
+  available: () => safeStorage.isEncryptionAvailable(),
+  read: (keep) => tabArchive.load(safeStorage.decryptString(readFileSync(tabArchiveFile())), keep),
+  setAside: () => { setAsideUnreadable(tabArchiveFile()) },
+  // What it held is merged in: shown and saved with this run's archived tabs.
+  onRead: () => saveTabArchive(),
+})
 const tabArchiveWriter = new LatestWriter<string>(async (payload) => {
   if (!safeStorage.isEncryptionAvailable()) return
+  // Archived tabs that could not be read at startup are read now, before anything is written over them.
+  if (savedTabArchive.isUnread) {
+    if (!(await savedTabArchive.settle())) return
+    payload = tabArchive.serialize()
+  }
   mkdirSync(dirname(tabArchiveFile()), { recursive: true })
   await writeFileAtomic(tabArchiveFile(), safeStorage.encryptString(payload))
 })
@@ -2530,8 +2553,12 @@ function saveTabArchive(): void {
 }
 function loadTabArchive(): void {
   try {
-    // Archived tabs that cannot be read are kept aside, never replaced by the next save.
-    if (existsSync(tabArchiveFile()) && safeStorage.isEncryptionAvailable() && !tabArchive.load(safeStorage.decryptString(readFileSync(tabArchiveFile())))) setAsideUnreadable(tabArchiveFile())
+    // Archived tabs that cannot be read are kept aside, never replaced by the next save. Without encryption
+    // (the Keychain unavailable) they are read later, once they can be, and nothing is written over them until then.
+    if (existsSync(tabArchiveFile())) {
+      if (!safeStorage.isEncryptionAvailable()) savedTabArchive.markUnread()
+      else if (!tabArchive.load(safeStorage.decryptString(readFileSync(tabArchiveFile())))) setAsideUnreadable(tabArchiveFile())
+    }
   } catch (error) {
     console.error('Could not read archived tabs:', error)
     setAsideUnreadable(tabArchiveFile())
@@ -3097,7 +3124,8 @@ function blockedPopup(opener: WebContentsView, url: string): void {
   const contents = opener.webContents
   const isPrivate = privateViews.has(opener)
   const scope = scopeOfView(opener)
-  sitePermissions.request({ origin: originOf(contents.getURL()), kinds: ['popups'], isPrivate, owner: contents.id, scope }, (granted) => {
+  const asking = tabOfView(opener)
+  sitePermissions.request({ origin: originOf(contents.getURL()), kinds: ['popups'], isPrivate, owner: contents.id, scope, ...(asking ? { tab: { id: asking.id, title: asking.title } } : {}) }, (granted) => {
     if (!granted || viewGone(opener) || !popupLimiter.allow(contents.id)) return
     const tab = createBrowserTab(target.toString(), true, isPrivate, true, false, opener)
     if (tab) void tab.webContents.loadURL(target.toString()).catch(() => undefined)
@@ -4486,6 +4514,8 @@ async function handleBrowserCommand(
     case 'get-tab-sidebar':
       return tabSidebar
     case 'get-archived-tabs':
+      // Archived tabs left unread at startup (the Keychain was unavailable) are read first if they can be now.
+      await savedTabArchive.settle()
       return tabArchive.list()
     case 'get-tab-folders':
       return tabFolders.map((folder) => ({ ...folder }))
@@ -5543,10 +5573,37 @@ app.whenReady().then(async () => {
 
 /** Quitting waits (briefly) for saves already on their way, so the last library edit and tabs are kept. */
 const QUIT_FLUSH_LIMIT_MS = 5_000
-let quitFlushStarted = false
+/** When the quit stops waiting for saves (set by the first before-quit), and whether it is waiting now. */
+let quitDeadline = 0
+let quitWaiting = false
+
+/** Every save still on its way to disk: the app's own, each LatestWriter's (library, history, archived tabs…) and any atomic write. */
+function savesInFlight(): Promise<unknown>[] {
+  return [...writesInFlight, ...latestWritesInFlight(), ...atomicWritesInFlight()]
+}
+
+/**
+ * Holds the quit while saves are on their way, including ones that start while it waits, until they are
+ * done or the time limit is up; then quits again. False when there is nothing to wait for.
+ */
+function holdQuitForSaves(event: Electron.Event): boolean {
+  if (quitWaiting) {
+    event.preventDefault()
+    return true
+  }
+  if (Date.now() >= quitDeadline || savesInFlight().length === 0) return false
+  event.preventDefault()
+  quitWaiting = true
+  void waitForSaves(savesInFlight, quitDeadline).finally(() => {
+    quitWaiting = false
+    app.quit()
+  })
+  return true
+}
 
 app.on('before-quit', (event) => {
   if (!app.isReady()) return
+  if (!quitDeadline) quitDeadline = Date.now() + QUIT_FLUSH_LIMIT_MS
   shellClosing = true
   // A workspace deleted moments ago is gone for good: Undo ends with the app, and its own sign-ins are deleted before it quits.
   finishWorkspaceDelete()
@@ -5557,19 +5614,21 @@ app.on('before-quit', (event) => {
   const news = newsService
   newsService = null
   const newsFlush = news?.stop()
-  if (!quitFlushStarted && (libraryWriter.pending || writesInFlight.size > 0 || newsFlush)) {
-    // Once only: the second before-quit (from app.quit() below) goes straight through.
-    quitFlushStarted = true
-    event.preventDefault()
-    const flushed = Promise.allSettled([libraryWriter.flush(), ...writesInFlight, ...(newsFlush ? [newsFlush] : [])])
-    const limit = new Promise((resolve) => setTimeout(resolve, QUIT_FLUSH_LIMIT_MS))
-    void Promise.race([flushed, limit]).finally(() => app.quit())
-    return
+  if (newsFlush) {
+    writesInFlight.add(newsFlush)
+    void newsFlush.catch(() => undefined).finally(() => writesInFlight.delete(newsFlush))
   }
+  if (holdQuitForSaves(event)) return
   if (stateWritesClosed) return
   writeFinalState()
   stateWritesClosed = true
 })
+
+// Saves that start as the window closes (a late library or history save) are waited for too, within the same limit.
+app.on('will-quit', (event) => { holdQuitForSaves(event) })
+
+// The end of the quit: a save still unfinished after the limit leaves its file as it was, and no temporary file behind.
+app.on('quit', () => { removeUnfinishedTemporaries() })
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
