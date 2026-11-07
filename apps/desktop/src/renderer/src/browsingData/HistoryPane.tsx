@@ -6,6 +6,7 @@ import { dayLabel, mergeDays } from './browsingDataModel'
 import { onOpenHistory } from './historyAccess'
 import { holdPage } from './pageHold'
 import './browsingData.css'
+import { useWorkspaceNames } from '../workspaceNames'
 
 const PAGE_SIZE = 100
 
@@ -76,6 +77,7 @@ export function HistoryPane({ footprints, onClose, onOpenUrl, onForget, onNotice
   const [total, setTotal] = useState(0)
   const [cursor, setCursor] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
+  const workspaceNames = useWorkspaceNames()
   const [clearing, setClearing] = useState(false)
   const dialog = useRef<HTMLDivElement>(null)
   const search = useRef<HTMLInputElement>(null)
@@ -187,6 +189,7 @@ export function HistoryPane({ footprints, onClose, onOpenUrl, onForget, onNotice
                         <SiteIcon url={visit.url} />
                         <strong>{visit.title || visit.host}</strong>
                         <span>{visit.host}</span>
+                        {visit.workspaceId && <span className="history-visit-workspace">{workspaceNames[visit.workspaceId] ?? 'Deleted workspace'}</span>}
                       </button>
                       <button type="button" className="downloads-icon-button" aria-label={`Remove ${visit.title || visit.host} from history`} onClick={() => removeVisit(visit)}>
                         <Trash2 size={14} />

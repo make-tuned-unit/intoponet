@@ -101,17 +101,18 @@ export class HistoryStore {
   }
 
   /** Record a visit. Returns false when the rules say it is not kept. */
-  record(input: { url: string; title: string; isPrivate: boolean }): boolean {
+  record(input: { url: string; title: string; isPrivate: boolean; workspaceId?: string }): boolean {
     if (input.isPrivate || !this.policyValue.footprints || !recordable(input.url)) return false
     if (isExcludedSite(input.url, this.options.excludedSites())) return false
     const now = this.now()
     const title = input.title.trim().slice(0, 1_000)
     const last = this.visits[0]
-    if (last && last.url === input.url && now - last.visitedAt < SAME_VISIT_MS) {
+    // A reload in the same workspace is the same visit; the same page in another workspace is a new one.
+    if (last && last.url === input.url && last.workspaceId === input.workspaceId && now - last.visitedAt < SAME_VISIT_MS) {
       last.visitedAt = now
       if (title) last.title = title
     } else {
-      this.visits.unshift({ id: randomUUID(), url: input.url, title, host: hostOf(input.url), visitedAt: now })
+      this.visits.unshift({ id: randomUUID(), url: input.url, title, host: hostOf(input.url), visitedAt: now, ...(input.workspaceId ? { workspaceId: input.workspaceId } : {}) })
       if (this.visits.length > this.maxVisits) this.visits.length = this.maxVisits
     }
     this.options.onChange?.()

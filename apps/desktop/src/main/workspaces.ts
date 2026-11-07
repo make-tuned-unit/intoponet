@@ -22,7 +22,7 @@ import { MAX_FOLDERS, type TabFolder } from './tabOrder'
  * Private tabs never enter a workspace: they stay with the window whichever workspace is shown.
  */
 
-export type Workspace = { id: string; name: string; icon: WorkspaceIcon; accent: WorkspaceAccent }
+export type Workspace = { id: string; name: string; icon: WorkspaceIcon; accent: WorkspaceAccent; separateSignIns?: boolean }
 export type Favourite = FavouriteSnapshot
 export type ParkedWorkspace<T> = { tabs: T[]; folders: TabFolder[]; activeTabId: string | null }
 export type RemovedWorkspace<T> = { workspace: Workspace; index: number; parked: ParkedWorkspace<T>; favourites: Favourite[] }
@@ -118,6 +118,10 @@ export class WorkspaceSet<T extends { id: string }> {
         ;(workspace as Record<typeof key, string>)[key] = value
         changed = true
       }
+    }
+    if (changes.separateSignIns !== undefined && workspace.separateSignIns !== changes.separateSignIns) {
+      workspace.separateSignIns = changes.separateSignIns
+      changed = true
     }
     return changed
   }
@@ -284,6 +288,7 @@ export function parseSavedWorkspaces(state: Record<string, unknown>): SavedWorks
         name,
         icon: isWorkspaceIcon(entry['icon']) ? entry['icon'] : 'globe',
         accent: isWorkspaceAccent(entry['accent']) ? entry['accent'] : WORKSPACE_ACCENTS[workspaces.length % WORKSPACE_ACCENTS.length]!,
+        ...(entry['separateSignIns'] === true ? { separateSignIns: true } : {}),
         ...(isId(entry['activeTabId']) ? { activeTabId: entry['activeTabId'] } : {}),
       })
     }

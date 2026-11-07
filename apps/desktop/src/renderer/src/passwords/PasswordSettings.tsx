@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Copy, Eye, EyeOff, KeyRound, Trash2 } from 'lucide-react'
 import { siteLabel, type PasswordVaultStatus, type SavedLogin } from '../../../shared/passwords'
 import { PASSWORD_PRIVACY } from './PasswordBar'
+import { useWorkspaceNames } from '../workspaceNames'
 
 const clean = (caught: unknown): string => (caught instanceof Error ? caught.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : 'Something went wrong.')
 
@@ -12,6 +13,7 @@ export function PasswordSettings() {
   const [never, setNever] = useState<string[]>([])
   const [status, setStatus] = useState<PasswordVaultStatus | null>(null)
   const [query, setQuery] = useState('')
+  const workspaceNames = useWorkspaceNames()
   const [shown, setShown] = useState<Record<string, string>>({})
   const [message, setMessage] = useState('')
 
@@ -77,6 +79,7 @@ export function PasswordSettings() {
                 <span className="password-entry">
                   <strong>{siteLabel(login.origin)}</strong>
                   <small>{login.username || '(no username)'}</small>
+                  {login.workspaceId && <small className="password-workspace">{workspaceNames[login.workspaceId] ?? 'Deleted workspace'}</small>}
                   {shown[login.id] !== undefined && <code className="password-shown">{shown[login.id]}</code>}
                 </span>
                 <span className="password-actions">

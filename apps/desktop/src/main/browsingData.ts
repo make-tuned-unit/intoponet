@@ -30,6 +30,8 @@ export type BrowsingDataOptions = {
   excludedSites: () => readonly string[]
   normalPartition: string
   privatePartition: string
+  /** Sessions of workspaces with sign-ins of their own: "Clear browsing data" clears them with the shared one. */
+  workspacePartitions?: () => readonly string[]
   seal: {
     available: () => Promise<boolean>
     encrypt: (text: string) => Promise<Buffer>
@@ -48,7 +50,8 @@ export type BrowsingData = {
   downloads: DownloadManager
   history: HistoryStore
   wireSession: (partition: string) => void
-  attachPage: (contents: WebContents, isPrivate: () => boolean) => void
+  /** `workspaceOf` names the workspace a page is in now (undefined: none), for the visit's record. */
+  attachPage: (contents: WebContents, isPrivate: () => boolean, workspaceOf?: () => string | undefined) => void
   /** Sites left out changed: forget their visits. */
   excludedSitesChanged: () => void
   /** Private browsing ended: its downloads leave the list. */
@@ -115,7 +118,7 @@ export function installBrowsingData(options: BrowsingDataOptions): BrowsingData 
         console.error('Could not mark a download as quarantined:', error)
       }
     },
-    restart: (url, isPrivate) => session.fromPartition(isPrivate ? options.privatePartition : options.normalPartition).downloadURL(url),
+    restart: (url, isPrivate, partition) => session.fromPartition(partition ?? (isPrivate ? options.privatePartition : options.normalPartition)).downloadURL(url),
     ...(options.onDownloadDone ? { onDone: options.onDownloadDone } : {}),
   })
   try {
@@ -185,17 +188,20 @@ export function installBrowsingData(options: BrowsingDataOptions): BrowsingData 
     const since = clearRangeStart(request.range, Date.now())
     const cleared: string[] = []
     const notes: string[] = []
-    const browsing = session.fromPartition(options.normalPartition)
+    // The shared sessions and every workspace's own: a workspace's sign-ins are cleared with the rest.
+    const browsers = [session.fromPartition(options.normalPartition), ...(options.workspacePartitions?.() ?? []).map((partition) => session.fromPartition(partition))]
     // Sites visited in the range, read before history is removed.
     const origins = history.originsSince(since)
     if (request.siteData) {
       const dataTypes = ['cookies', 'localStorage', 'indexedDB', 'serviceWorkers', 'fileSystems', 'webSQL', 'backgroundFetch'] as const
       if (request.range === 'all') {
-        await browsing.clearData({ dataTypes: [...dataTypes] })
-        await browsing.clearStorageData()
+        for (const browsing of browsers) {
+          await browsing.clearData({ dataTypes: [...dataTypes] })
+          await browsing.clearStorageData()
+        }
         cleared.push('cookies and site data')
       } else if (origins.length) {
-        await browsing.clearData({ dataTypes: [...dataTypes], origins: origins.slice(0, 1_000) })
+        for (const browsing of browsers) await browsing.clearData({ dataTypes: [...dataTypes], origins: origins.slice(0, 1_000) })
         cleared.push(`cookies and site data for ${origins.length} site${origins.length === 1 ? '' : 's'}`)
         notes.push('For a time range, cookies and site data are removed for the sites you visited in that range.')
       } else {
@@ -203,8 +209,10 @@ export function installBrowsingData(options: BrowsingDataOptions): BrowsingData 
       }
     }
     if (request.cache) {
-      await browsing.clearCache()
-      await browsing.clearData({ dataTypes: ['cache'] })
+      for (const browsing of browsers) {
+        await browsing.clearCache()
+        await browsing.clearData({ dataTypes: ['cache'] })
+      }
       cleared.push('cache')
       if (request.range !== 'all') notes.push('The cache is cleared for all time (it is not kept by date).')
     }
@@ -261,14 +269,15 @@ export function installBrowsingData(options: BrowsingDataOptions): BrowsingData 
       const isPrivate = partition === options.privatePartition
       session.fromPartition(partition).on('will-download', (_event, item, contents) => {
         const pageKey = contents && !contents.isDestroyed() ? String(contents.id) : null
-        downloads.track(item, { isPrivate, pageKey })
+        downloads.track(item, { isPrivate, pageKey, partition })
       })
     },
-    attachPage: (contents, isPrivate) => {
+    attachPage: (contents, isPrivate, workspaceOf) => {
       const pageKey = String(contents.id)
       const record = (url: string): void => {
         const title = contents.getTitle()
-        history.record({ url, title: title === url ? '' : title, isPrivate: isPrivate() })
+        const workspaceId = workspaceOf?.()
+        history.record({ url, title: title === url ? '' : title, isPrivate: isPrivate(), ...(workspaceId ? { workspaceId } : {}) })
       }
       contents.on('did-navigate', (_event, url, responseCode) => {
         if (responseCode && (responseCode < 200 || responseCode >= 400)) return

@@ -22,6 +22,8 @@ export type WorkspaceSnapshot = {
   accent: WorkspaceAccent
   /** Tabs it holds (pinned, in folders and open; never private tabs). */
   tabCount: number
+  /** Its own sign-ins, site data and saved logins, apart from the other workspaces (never Main). */
+  separateSignIns?: boolean
 }
 
 /** A site in the favourites row: shared by every workspace (workspaceId null) or owned by one. */
@@ -40,7 +42,8 @@ export type WorkspaceSwitch = { id: string } | { index: number } | { step: 1 | -
 export type WorkspaceCommand =
   | { type: 'get-workspaces' }
   | { type: 'create-workspace'; name?: string; icon?: WorkspaceIcon; accent?: WorkspaceAccent }
-  | { type: 'update-workspace'; id: string; name?: string; icon?: WorkspaceIcon; accent?: WorkspaceAccent }
+  | { type: 'update-workspace'; id: string; name?: string; icon?: WorkspaceIcon; accent?: WorkspaceAccent; separateSignIns?: boolean }
+  | { type: 'clear-workspace-sign-ins'; id: string }
   | { type: 'move-workspace'; id: string; toIndex: number }
   | { type: 'delete-workspace'; id: string }
   | { type: 'undo-delete-workspace' }
@@ -56,6 +59,7 @@ export type WorkspaceCommandType = WorkspaceCommand['type']
 export const WORKSPACE_COMMAND_TYPES: ReadonlySet<string> = new Set<WorkspaceCommandType>([
   'get-workspaces', 'create-workspace', 'update-workspace', 'move-workspace', 'delete-workspace', 'undo-delete-workspace',
   'switch-workspace', 'move-tab-to-workspace', 'add-favourite', 'update-favourite', 'remove-favourite', 'open-favourite',
+  'clear-workspace-sign-ins',
 ])
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -98,8 +102,13 @@ export function parseWorkspaceCommand(value: unknown): WorkspaceCommand {
       return { type }
     case 'create-workspace':
       return { type, ...look(value) }
-    case 'update-workspace':
-      return { type, id: shortId(value['id'], 'workspace'), ...look(value) }
+    case 'update-workspace': {
+      const separate = value['separateSignIns']
+      if (separate !== undefined && typeof separate !== 'boolean') throw new Error('Invalid sign-in setting.')
+      return { type, id: shortId(value['id'], 'workspace'), ...look(value), ...(separate !== undefined ? { separateSignIns: separate } : {}) }
+    }
+    case 'clear-workspace-sign-ins':
+      return { type, id: shortId(value['id'], 'workspace') }
     case 'move-workspace': {
       const toIndex = value['toIndex']
       if (typeof toIndex !== 'number' || !Number.isInteger(toIndex) || toIndex < 0 || toIndex >= MAX_WORKSPACES) throw new Error('Invalid workspace position.')
@@ -134,7 +143,9 @@ export interface WorkspacesApi {
   get(): Promise<WorkspacesState>
   /** A new workspace (named "Workspace N" unless given a name), shown at once. */
   create(look?: { name?: string; icon?: WorkspaceIcon; accent?: WorkspaceAccent }): Promise<WorkspacesState>
-  update(id: string, changes: { name?: string; icon?: WorkspaceIcon; accent?: WorkspaceAccent }): Promise<WorkspacesState>
+  update(id: string, changes: { name?: string; icon?: WorkspaceIcon; accent?: WorkspaceAccent; separateSignIns?: boolean }): Promise<WorkspacesState>
+  /** Clears the workspace's own sign-ins and site data (its tabs reload signed out); the others are untouched. */
+  clearSignIns(id: string): Promise<WorkspacesState>
   move(id: string, toIndex: number): Promise<WorkspacesState>
   /** Deletes it and closes its tabs, after a short time in which undoDelete brings it all back. */
   delete(id: string): Promise<WorkspacesState>

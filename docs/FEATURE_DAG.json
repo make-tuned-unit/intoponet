@@ -596,6 +596,18 @@
       "tier": "core",
       "kind": "e2e",
       "promise": "Dragging a tab to the page's edge, or choosing Split with…, shows two tabs side by side with a draggable divider; each side navigates, finds and zooms on its own, the address bar and toolbar follow the focused side, the pair stays together in the tab list and on relaunch, and closing one side returns the other to full size."
+    },
+    {
+      "id": "WORKSPACE_IDENTITIES",
+      "title": "Separate sign-ins per workspace",
+      "deps": [
+        "WORKSPACES",
+        "PRIVATE_BROWSING",
+        "SAVED_PASSWORDS"
+      ],
+      "tier": "core",
+      "kind": "e2e",
+      "promise": "A workspace can keep its own cookies, site storage, saved passwords and permissions, so being signed in to a site in one workspace does not sign you in to it in another; clearing one workspace's data leaves the others untouched, and history records which workspace a page was visited in."
     }
   ]
 }

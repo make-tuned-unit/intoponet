@@ -185,3 +185,44 @@ describe('parseVaultData', () => {
     expect(await vault.list()).toEqual([])
   })
 })
+
+describe('PasswordVault workspace scope', () => {
+  it('keeps a workspace\'s sign-in apart from the shared ones for the same site', async () => {
+    const vault = new PasswordVault(fakeCrypto(), memoryFile())
+    const shared = await vault.save('https://example.com', 'ada', 'shared-pw')
+    const work = await vault.save('https://example.com', 'ada', 'work-pw', 'work')
+    expect(work.id).not.toBe(shared.id)
+    expect(work).toMatchObject({ workspaceId: 'work' })
+    expect((await vault.forSite('https://example.com')).map((login) => login.password)).toEqual(['shared-pw'])
+    expect((await vault.forSite('https://example.com', 'work')).map((login) => login.password)).toEqual(['work-pw'])
+    expect(await vault.forSite('https://example.com', 'home')).toEqual([])
+    expect(await vault.find('https://example.com', 'ada', 'work')).toMatchObject({ password: 'work-pw' })
+  })
+
+  it('updates a password within its own scope only', async () => {
+    const vault = new PasswordVault(fakeCrypto(), memoryFile())
+    await vault.save('https://example.com', 'ada', 'shared-pw')
+    await vault.save('https://example.com', 'ada', 'work-old', 'work')
+    await vault.save('https://example.com', 'ada', 'work-new', 'work')
+    expect(await vault.list()).toHaveLength(2)
+    expect((await vault.forSite('https://example.com')).map((login) => login.password)).toEqual(['shared-pw'])
+    expect((await vault.forSite('https://example.com', 'work')).map((login) => login.password)).toEqual(['work-new'])
+  })
+
+  it('forgets one workspace\'s logins and nothing else', async () => {
+    const vault = new PasswordVault(fakeCrypto(), memoryFile())
+    await vault.save('https://example.com', 'ada', 'shared-pw')
+    await vault.save('https://example.com', 'ada', 'work-pw', 'work')
+    await vault.save('https://other.example', 'bob', 'other-pw', 'home')
+    expect(await vault.removeWorkspace('work')).toBe(1)
+    expect((await vault.list()).map((login) => `${login.origin}:${login.workspaceId ?? 'shared'}`)).toEqual(['https://example.com:shared', 'https://other.example:home'])
+  })
+
+  it('reads a file from before workspaces as shared logins, and drops a damaged scope', () => {
+    const shared = { id: 'abcdefgh', origin: 'https://example.com', username: 'ada', password: 'pw', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' }
+    const text = JSON.stringify({ schema: 'intoponet.passwords.v1', logins: [shared, { ...shared, id: 'ijklmnop', workspaceId: 'bad id' }], never: [] })
+    const data = parseVaultData(text)
+    expect(data.logins.map((login) => login.id)).toEqual(['abcdefgh'])
+    expect(data.logins[0]!.workspaceId).toBeUndefined()
+  })
+})
