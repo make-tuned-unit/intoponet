@@ -1,0 +1,158 @@
+.tidy-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / 0.22);
+}
+
+.tidy-sheet {
+  width: min(520px, calc(100vw - 32px));
+  max-height: min(640px, calc(100vh - 48px));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 20px;
+  border-radius: 18px;
+  overflow: hidden;
+  color: inherit;
+}
+
+.tidy-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tidy-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.tidy-close {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 4px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.tidy-note,
+.tidy-status,
+.tidy-explain p {
+  margin: 0;
+  font-size: 13px;
+  opacity: 0.8;
+  line-height: 1.45;
+}
+
+.tidy-explain {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+}
+
+.tidy-groups {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+  overflow: auto;
+  min-height: 0;
+}
+
+.tidy-group {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.tidy-group.is-off {
+  opacity: 0.5;
+}
+
+.tidy-include input {
+  margin-top: 8px;
+}
+
+.tidy-group-body {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.tidy-name {
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 1px solid rgb(127 127 127 / 0.35);
+  background: rgb(255 255 255 / 0.5);
+  color: inherit;
+}
+
+.tidy-tabs {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 2px;
+  font-size: 12px;
+  opacity: 0.75;
+  display: grid;
+  gap: 2px;
+}
+
+.tidy-tabs li {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tidy-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.tidy-cancel,
+.tidy-accept {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: inherit;
+  font-size: 13px;
+  padding: 7px 12px;
+  border-radius: 10px;
+  border: 1px solid rgb(127 127 127 / 0.35);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.tidy-accept {
+  background: rgb(127 127 127 / 0.14);
+  font-weight: 600;
+}
+
+.tidy-accept:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tidy-sheet {
+    animation: tidy-in 160ms ease-out;
+  }
+}
+
+@keyframes tidy-in {
+  from { opacity: 0; transform: scale(0.98); }
+}

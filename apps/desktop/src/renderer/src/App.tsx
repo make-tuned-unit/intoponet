@@ -728,6 +728,7 @@ export function App() {
   /** A story folder hovered or focused in the sidebar: its summit and strands are drawn, the camera stays put. */
   const [storyHighlightId, setStoryHighlightId] = useState<string | null>(null)
   const [groupRequest, setGroupRequest] = useState<number | undefined>(undefined)
+  const [tidyRequest, setTidyRequest] = useState<number | undefined>(undefined)
   const storyMode = fieldView === 'public' && !designPreview && globeLayerSet.has('news') && storyStories.length > 0
   const storyKey = storyMode ? storyTerrainKey(storyStories) : ''
   // Rebuilt only when a height or story changes, not on every digest.
@@ -2577,8 +2578,9 @@ export function App() {
       app('my-map', 'Open My map', showLibrary, '', 'pins places'),
       hasPage && app('full-width', fullWidth ? 'Exit full width' : 'Full width', () => setBrowserFullWidth(!fullWidth), '', 'maximise'),
       storyStories.length > 0 && app('highest-peak', 'Fly to the highest story peak', () => findPeak(0), 'H', 'mountain news story'),
-      // Group by story acts on the sidebar, so it is offered only while the sidebar is shown.
+      // Tidy and Group by story act on the sidebar, so they are offered only while it is shown.
       tabs.length > 1 && sidebar.mode !== 'hidden' && app('group-tabs-by-story', 'Group tabs by story', () => setGroupRequest((n) => (n ?? 0) + 1), '', 'folder story match mountain'),
+      tabs.length > 1 && sidebar.mode !== 'hidden' && app('tidy-tabs', 'Tidy tabs', () => setTidyRequest((n) => (n ?? 0) + 1), '', 'folders group suggest laya'),
       app('tour', 'Take the tour', () => setTourOpen(true), '', 'help guide'),
       // Workspaces: switch (⌃1–9 do the same), make, rename and delete. The sidebar asks for names and confirmation.
       ...(workspaces && workspaces.workspaces.length > 1 ? workspaces.workspaces.map((workspace, index) => workspace.id !== workspaces.activeId && app(
@@ -2947,6 +2949,7 @@ export function App() {
         storyMatches={tabStories}
         onStoryHighlight={setStoryHighlightId}
         groupRequest={groupRequest}
+        tidyRequest={tidyRequest}
       />
       <BookmarkPane
         open={bookmarksOpen && !fieldLabOpen}

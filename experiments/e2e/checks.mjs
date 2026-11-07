@@ -3760,10 +3760,108 @@ export const checks = {
       server.close()
     }
   },
+
+  async TAB_TIDY_LOCAL(ctx) {
+    const host = 'window.intoponet.browserHost'
+    const tabs = async () => JSON.parse(await ctx.evaluate(`${host}.getTabs().then((t) => JSON.stringify(t))`))
+    const folders = async () => JSON.parse(await ctx.evaluate(`${host}.getTabFolders().then((f) => JSON.stringify(f))`))
+    const escape = (text) => text.replace(/[&<>"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[char])
+    const COOKING = ['Cooking pasta sauces at home', 'Cooking rice and grains every week', 'Cooking bread from scratch']
+    const ASTRONOMY = ['Astronomy: watching Jupiter through a telescope', 'Astronomy guide to the night sky', 'Astronomy planets visible this month']
+    const SECRET = 'Cooking secret recipe private notes'
+    const titles = { '/c1': COOKING[0], '/c2': COOKING[1], '/c3': COOKING[2], '/a1': ASTRONOMY[0], '/a2': ASTRONOMY[1], '/a3': ASTRONOMY[2], '/secret': SECRET }
+    const hits = new Map()
+    const requestCounts = () => JSON.stringify([...hits].sort())
+    const server = createServer((request, response) => {
+      const path = new URL(request.url, 'http://localhost').pathname
+      hits.set(path, (hits.get(path) ?? 0) + 1)
+      const title = titles[path] ?? 'Not found'
+      response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
+      response.end(`<!doctype html><meta charset="utf-8"><title>${escape(title)}</title><body style="font:16px system-ui;margin:40px"><h1>${escape(title)}</h1></body>`)
+    })
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+    const origin = `http://127.0.0.1:${server.address().port}`
+    const byPrivate = async () => (await tabs()).find((tab) => tab.url === `${origin}/secret`) ?? {}
+    // Counts the main process's net.request and fetch calls (Tidy must make none).
+    const netCalls = () => ctx.main(`globalThis.__netCalls ?? 0`)
+    try {
+      writeFileSync(TIDY_DEBUG_FILE, '')
+      await ctx.main(`(() => { const net = electron.net; if (!globalThis.__netWrapped) { globalThis.__netWrapped = true; globalThis.__netCalls = 0; const request = net.request; net.request = function (...args) { globalThis.__netCalls += 1; return request.apply(this, args) }; const fetchOnce = globalThis.fetch; globalThis.fetch = (...args) => { globalThis.__netCalls += 1; return fetchOnce(...args) } } globalThis.__netCalls = 0; return true })()`)
+      await ctx.click('button[aria-label="Pin tabs open"]')
+      for (const path of Object.keys(titles).filter((path) => path !== '/secret')) await openPage(ctx, `${origin}${path}`, 900)
+      await ctx.wait(`window.intoponet.browserHost.getTabs().then((t) => t.filter((x) => x.title).length >= 6)`, 30_000, 'six titled tabs')
+      await ctx.delay(1500)
+      // Laya off: Tidy says why and offers Group by story. Nothing moves.
+      const status = await ctx.evaluate(`window.intoponet.laya.status().then((s) => JSON.stringify(s))`).then(JSON.parse)
+      if (status.enabled) await ctx.evaluate(`window.intoponet.laya.disable({ deleteModel: false }).then(() => true)`)
+      await ctx.click('button[aria-label="Tidy tabs"]')
+      await ctx.wait(`!!document.querySelector('.tidy-explain') && document.querySelector('.tidy-explain').innerText.includes('Turn it on in Settings › Laya')`, 20_000, 'Tidy to explain that Laya is off')
+      expect(await ctx.evaluate(`[...document.querySelectorAll('.tidy-explain button')].some((b) => b.innerText.includes('Group by story'))`), 'Tidy with Laya off does not offer Group by story.')
+      await axeAudit(ctx, 'the Tidy preview with Laya off', '.tidy-sheet')
+      await ctx.press('Escape')
+      await ctx.wait(`!document.querySelector('.tidy-sheet')`, 5000, 'the Tidy preview to close')
+      expect((await folders()).length === 0, 'Tidy with Laya off moved tabs.')
+      // Laya on (its model downloads here, which the full tier allows). Not awaited: the download can take minutes.
+      await ctx.evaluate(`void window.intoponet.laya.enable().catch(() => undefined), true`)
+      await ctx.wait(`window.intoponet.laya.status().then((s) => s.enabled && s.model.downloaded && s.model.verified)`, 900_000, 'Laya to be on with its model ready')
+      const orderBefore = (await tabs()).map((tab) => tab.id).join(' ')
+      // The suggestion is shown and nothing moves until accepted.
+      const suggestion = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.tidyTabsSuggest().then((s) => JSON.stringify(s))`))
+      expect(suggestion.available === true && suggestion.groups.length >= 2, `Tidy proposed ${JSON.stringify(suggestion)}; expected at least two groups.`)
+      const byId = new Map((await tabs()).map((tab) => [tab.id, tab.title]))
+      const topicOf = (title) => (title.startsWith('Cooking') ? 'cooking' : title.startsWith('Astronomy') ? 'astronomy' : 'other')
+      for (const group of suggestion.groups) {
+        const topics = new Set(group.tabIds.map((id) => topicOf(byId.get(id) ?? '')))
+        expect(topics.size === 1 && !topics.has('other'), `Tidy mixed topics in "${group.name}": ${group.tabIds.map((id) => byId.get(id)).join(' | ')}.`)
+      }
+      expect(new Set(suggestion.groups.flatMap((group) => group.tabIds.map((id) => topicOf(byId.get(id))))).size === 2, 'Tidy did not separate cooking from astronomy.')
+      expect((await folders()).length === 0, 'Tidy moved tabs before they were accepted.')
+      // A private tab about cooking is open during a suggestion: its title must not reach the model, and nothing may be requested.
+      await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(true).then(() => true)`)
+      await openPage(ctx, `${origin}/secret`, 900)
+      expect((await byPrivate()).isPrivate === true, 'The private test tab is not private.')
+      await ctx.main(`(globalThis.__netCalls = 0, true)`)
+      const tidyBaseline = requestCounts()
+      await ctx.evaluate(`window.intoponet.browserHost.tidyTabsSuggest().then(() => true)`)
+      const sent = readFileSync(TIDY_DEBUG_FILE, 'utf8').trim().split('\n').filter(Boolean).map((line) => JSON.parse(line)).filter((record) => record.texts).map((record) => record.texts)
+      expect(sent.length > 0 && sent.every((texts) => texts.length === 6), `The model was given ${JSON.stringify(sent.map((texts) => texts.length))} texts; expected the six loose tabs.`)
+      expect(!readFileSync(TIDY_DEBUG_FILE, 'utf8').includes('secret'), 'A private tab’s title reached the model.')
+      expect(requestCounts() === tidyBaseline, 'A page was requested during tidy.')
+      expect((await netCalls()) === 0, `Tidy made ${await netCalls()} network calls in the main process.`)
+      await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
+      await ctx.delay(800)
+      // Ending private browsing shows the globe; show a page again so the sidebar (and Tidy) is back.
+      await ctx.evaluate(`window.intoponet.browserHost.activateTab(${JSON.stringify(orderBefore.split(' ')[0])}).then(() => true)`)
+      await ctx.wait(`!!document.querySelector('.tab-rail')`, 10_000, 'the tab sidebar to be shown again')
+      // The preview shows the same groups, then Accept makes them; Undo restores the order.
+      await ctx.click('button[aria-label="Tidy tabs"]')
+      await ctx.wait(`document.querySelectorAll('.tidy-groups > li').length >= 2`, 20_000, 'the Tidy preview groups').catch(async (error) => {
+        const sheet = await ctx.evaluate(`(document.querySelector('.tidy-sheet')?.innerText ?? ('no Tidy sheet on screen; button present: ' + !!document.querySelector('button[aria-label="Tidy tabs"]') + '; rail: ' + document.querySelector('.tab-rail')?.className + '; tabs: ' + document.querySelectorAll('[data-tab-id]').length)).slice(0, 300)`)
+        await ctx.shot('tidy-missing')
+        throw new CheckFailure(`${error.message} The sheet says: ${sheet}`)
+      })
+      await ctx.shot('tidy-preview')
+      await axeAudit(ctx, 'the Tidy preview', '.tidy-sheet')
+      await ctx.click('.tidy-accept')
+      await ctx.wait(`window.intoponet.browserHost.getTabFolders().then((f) => f.length === ${suggestion.groups.length})`, 10_000, 'the accepted Tidy folders')
+      const accepted = await tabs()
+      expect(accepted.filter((tab) => tab.folderId).length === suggestion.groups.reduce((n, group) => n + group.tabIds.length, 0), 'Accepting did not move exactly the suggested tabs.')
+      await ctx.click('.tab-rail-archived .tab-rail-undo')
+      await ctx.wait(`window.intoponet.browserHost.getTabFolders().then((f) => f.length === 0)`, 10_000, 'Undo to remove the Tidy folders')
+      expect((await tabs()).map((tab) => tab.id).join(' ') === orderBefore, 'Undo did not restore the tab order.')
+      return `Laya off: Tidy explained it and offered Group by story. Laya on: ${suggestion.groups.length} groups (${suggestion.groups.map((group) => group.name).join('; ')}) separated cooking from astronomy; nothing moved before Accept; Undo restored the order.`
+    } finally {
+      server.close()
+    }
+  },
 }
+
+// Quality checks only: what the Tidy model was given, one JSON line per suggestion (see tabTidy in the app).
+const TIDY_DEBUG_FILE = join(tmpdir(), `intoponet-tidy-e2e-${process.pid}.jsonl`)
 
 checks.TAB_SLEEP.env = { INTOPONET_TAB_SLEEP_MINUTE_MS: '200' }
 checks.TAB_ARCHIVE.env = { INTOPONET_TAB_ARCHIVE_HOUR_MS: '200' }
 checks.BROWSER_IMPORT.env = { INTOPONET_IMPORT_ROOT: IMPORT_ROOT, INTOPONET_IMPORT_TEST_KEY: IMPORT_TEST_KEY }
 checks.IMPORT_WORKSPACES.env = { INTOPONET_IMPORT_ROOT: IMPORT_WS_ROOT, INTOPONET_IMPORT_TEST_KEY: IMPORT_TEST_KEY }
 checks.AUTO_PIP.env = { INTOPONET_TAB_SLEEP_MINUTE_MS: '200', INTOPONET_TAB_ARCHIVE_HOUR_MS: '200' }
+checks.TAB_TIDY_LOCAL.env = { INTOPONET_TIDY_DEBUG: TIDY_DEBUG_FILE }

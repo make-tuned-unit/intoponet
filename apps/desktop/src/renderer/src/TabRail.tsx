@@ -1,9 +1,10 @@
 import { AnimatePresence, motion, useReducedMotion, type Transition } from 'motion/react'
-import { Columns2, Ellipsis, Folder, FolderOpen, FolderPlus, Layers, Mountain, PanelLeftClose, PanelLeftDashed, PanelLeftOpen, Plus, Undo2, X } from 'lucide-react'
+import { Columns2, Ellipsis, Folder, FolderOpen, FolderPlus, Layers, Mountain, PanelLeftClose, PanelLeftDashed, PanelLeftOpen, Plus, Undo2, Wand2, X } from 'lucide-react'
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type WheelEvent } from 'react'
 import { MAX_WORKSPACES, TAB_SIDEBAR_WIDTH, type NowPlayingSnapshot, type PageTabSnapshot, type TabFolderSnapshot, type WorkspacesState } from '@intoponet/browser-api'
 import { folderTree } from './tabFolders'
 import { storyGroupRequests } from './storyGroups'
+import { TidySheet } from './TidySheet'
 import type { StoryMatch } from '../../shared/news/storyTabs'
 import { NowPlayingControl } from './nowPlaying/NowPlayingControl'
 import { useGlassSheen } from './glass/useGlassSheen'
@@ -54,8 +55,9 @@ export type TabRailProps = {
   storyMatches?: ReadonlyMap<string, StoryMatch>
   /** A story folder's hover or focus: the globe highlights that story's summit (null when it ends). */
   onStoryHighlight?: ((storyId: string | null) => void) | undefined
-  /** Command menu request (a changing number): Group by story. */
+  /** Command menu requests (a changing number): Group by story, and Tidy. */
   groupRequest?: number | undefined
+  tidyRequest?: number | undefined
 }
 
 /** A sideways two-finger swipe on the sidebar this far (in wheel pixels) shows the next or previous workspace. */
@@ -70,7 +72,7 @@ const SWIPE_GAP_MS = 220
  * keeps it expanded as vertical tabs. Pinned tabs sit first as icons; tabs
  * can be dragged (or moved with ⌥⇧↑ / ⌥⇧↓) into a new order.
  */
-export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange, onHide, onExpandedChange, onPinnedChange, onNewTab, archivedCount = 0, onUndoArchive, folders = [], renameFolderId = null, onRenameHandled, onSaveFolder, message = '', workspaces = null, workspaceRequest = null, nowPlaying = null, storyMatches = EMPTY_MATCHES, onStoryHighlight, groupRequest }: TabRailProps) {
+export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange, onHide, onExpandedChange, onPinnedChange, onNewTab, archivedCount = 0, onUndoArchive, folders = [], renameFolderId = null, onRenameHandled, onSaveFolder, message = '', workspaces = null, workspaceRequest = null, nowPlaying = null, storyMatches = EMPTY_MATCHES, onStoryHighlight, groupRequest, tidyRequest }: TabRailProps) {
   const reduceMotion = useReducedMotion()
   const surface = useGlassSheen<HTMLDivElement>()
   const list = useRef<HTMLDivElement>(null)
@@ -124,6 +126,7 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
   const [folderMenu, setFolderMenu] = useState<string | null>(null)
   /** The last grouping (Group by story, or accepted Tidy folders), with Undo while main still keeps it. */
   const [notice, setNotice] = useState<{ text: string; undoId?: string } | null>(null)
+  const [tidyOpen, setTidyOpen] = useState(false)
   useEffect(() => {
     if (!renameFolderId) return
     setRenaming(renameFolderId)
@@ -173,16 +176,29 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
     )
   }
 
+  /** Accepted Tidy folders: the same grouping, so Undo is the same. */
+  const acceptTidy = (groups: Array<{ name: string; tabIds: string[] }>): void => {
+    setTidyOpen(false)
+    const count = groups.reduce((total, group) => total + group.tabIds.length, 0)
+    void window.intoponet.browserHost.groupTabs(groups).then(
+      ({ undoId }) => setNotice({ text: `Made ${groups.length} ${groups.length === 1 ? 'folder' : 'folders'} (${count} ${count === 1 ? 'tab' : 'tabs'})`, undoId }),
+      () => setNotice({ text: 'Those tabs could not be grouped.' }),
+    )
+  }
+
   const undoNotice = (): void => {
     const undoId = notice?.undoId
     setNotice(null)
     if (undoId) void window.intoponet.browserHost.undoGroupTabs(undoId).catch(() => setNotice({ text: 'Nothing to undo any more.' }))
   }
 
-  // The command menu's Group by story (App's request number).
+  // The command menu's Group by story and Tidy (App's request numbers).
   useEffect(() => {
     if (groupRequest !== undefined) { onExpandedChange(true); groupByStory() }
   }, [groupRequest]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (tidyRequest !== undefined) { setTidyOpen(true) }
+  }, [tidyRequest]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
     // Keys in a folder's name field or menu are theirs.
@@ -463,7 +479,7 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
           onPointerLeave={(event) => {
             if (intent.current) window.clearTimeout(intent.current)
             intent.current = null
-            if (!pinned && !event.currentTarget.contains(document.activeElement)) onExpandedChange(false)
+            if (!pinned && !tidyOpen && !event.currentTarget.contains(document.activeElement)) onExpandedChange(false)
           }}
           onPointerDownCapture={() => {
             // A click means the favicon was enough: don't expand after it.
@@ -475,7 +491,7 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
             if (!pinned && (event.target as HTMLElement).matches(':focus-visible')) onExpandedChange(true)
           }}
           onBlurCapture={(event) => {
-            if (!pinned && !event.currentTarget.contains(event.relatedTarget as Node | null)) onExpandedChange(false)
+            if (!pinned && !tidyOpen && !event.currentTarget.contains(event.relatedTarget as Node | null)) onExpandedChange(false)
           }}
         >
           <div ref={surface} className="tab-rail-surface lg-surface lg-sheen" style={activeWorkspace ? { "--workspace-accent": ACCENT_COLOURS[activeWorkspace.accent] } as CSSProperties : {}}>
@@ -540,6 +556,10 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
                   <span className="tab-rail-title" aria-hidden={!open}>Group by story</span>
                 </button>
               )}
+              <button type="button" className="tab-rail-action" aria-label="Tidy tabs" title="Tidy: suggest folders for loose tabs, computed on this Mac with Laya" onClick={() => setTidyOpen(true)}>
+                <Wand2 size={15} />
+                <span className="tab-rail-title" aria-hidden={!open}>Tidy</span>
+              </button>
               <button
                 type="button"
                 className={`tab-rail-action${pinned ? ' is-active' : ''}`}
@@ -557,6 +577,14 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
               </button>
             </div>
           </div>
+          {tidyOpen && (
+            <TidySheet
+              tabs={tabs}
+              onAccept={acceptTidy}
+              onGroupByStory={() => { setTidyOpen(false); groupByStory() }}
+              onClose={() => setTidyOpen(false)}
+            />
+          )}
           {pinned && (
             <div
               className="tab-rail-resize"

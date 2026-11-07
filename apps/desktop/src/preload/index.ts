@@ -28,6 +28,7 @@ import {
   type TabSidebarState,
   type ArchivedTabSnapshot,
   type TabFolderSnapshot,
+  type TidySuggestion,
   type PageTabSnapshot,
   type PdfExportOptions,
   type PrivateLibraryReadResult,
@@ -55,6 +56,7 @@ const invoke = (
   | TabFolderSnapshot
   | TabFolderSnapshot[]
   | { undoId: string }
+  | TidySuggestion
   | PrivateLibraryReadResult
   | PublicFieldStatus
   | PdfExportOptions
@@ -163,6 +165,7 @@ const browserHost: BrowserHostApi = {
   undoGroupTabs: async (undoId) => {
     await invoke({ type: 'undo-group-tabs', undoId })
   },
+  tidyTabsSuggest: () => invoke({ type: 'tidy-tabs-suggest' }) as Promise<TidySuggestion>,
   reopenArchivedTabs: async (ids) => {
     await invoke({ type: 'reopen-archived-tabs', ids })
   },

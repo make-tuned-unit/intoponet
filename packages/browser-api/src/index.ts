@@ -144,6 +144,9 @@ export type TabFolderSnapshot = { id: string; name: string; parentId: string | n
 /** Tabs to put in one folder (a story's folder, or a folder with this name), for Group by story and Tidy. */
 export type TabGroupRequest = { name: string; tabIds: string[]; storyId?: string }
 
+/** Tidy's suggestion: the folders it would make (nothing moves until they are accepted), or why it cannot suggest any. */
+export type TidySuggestion = { available: true; groups: Array<{ name: string; tabIds: string[] }> } | { available: false; reason: string }
+
 /** The tab sidebar: icons (expands on hover), kept open (also in full width), or hidden (the left edge brings it back). */
 export const TAB_SIDEBAR_MODES = ['icons', 'open', 'hidden'] as const
 export type TabSidebarMode = (typeof TAB_SIDEBAR_MODES)[number]
@@ -353,6 +356,7 @@ export interface BrowserHostApi {
   openTabFolder(name: string, urls: string[]): Promise<void>
   groupTabs(groups: TabGroupRequest[]): Promise<{ undoId: string }>
   undoGroupTabs(undoId: string): Promise<void>
+  tidyTabsSuggest(): Promise<TidySuggestion>
   reopenArchivedTabs(ids: string[]): Promise<void>
   setTabSidebar(sidebar: TabSidebarState): Promise<void>
   getState(): Promise<BrowserPanelSnapshot>
@@ -468,6 +472,8 @@ export type BrowserHostCommand =
   /** Loose tabs grouped into folders (tabGrouping.ts); returns the undo id. */
   | { type: 'group-tabs'; groups: TabGroupRequest[] }
   | { type: 'undo-group-tabs'; undoId: string }
+  /** Tidy's folder suggestions from Laya on this Mac (tabTidy.ts); moves nothing. */
+  | { type: 'tidy-tabs-suggest' }
   /** Reopen archived tabs (shown when one id; all in the background otherwise). */
   | { type: 'reopen-archived-tabs'; ids: string[] }
   | { type: 'set-tab-sidebar'; sidebar: TabSidebarState }
@@ -580,6 +586,7 @@ const commandTypes = new Set<BrowserHostCommand['type']>([
   'open-tab-folder',
   'group-tabs',
   'undo-group-tabs',
+  'tidy-tabs-suggest',
   'reopen-archived-tabs',
   'set-tab-sidebar',
   'get-state',
@@ -799,6 +806,8 @@ export function parseBrowserHostCommand(value: unknown): BrowserHostCommand {
     case 'undo-group-tabs':
       if (!isShortId(value['undoId'])) throw new Error('Invalid undo.')
       return { type, undoId: value['undoId'] }
+    case 'tidy-tabs-suggest':
+      return { type }
     case 'run-menu-command':
       if (typeof value['id'] !== 'string' || !/^[a-z][a-z-]{1,40}$/.test(value['id'])) throw new Error('Invalid menu command.')
       return { type, id: value['id'] }
