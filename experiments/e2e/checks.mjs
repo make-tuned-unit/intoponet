@@ -1077,8 +1077,7 @@ export const checks = {
         // The window in front: losing focus blurs the bar, which drops an inline completion (as it should).
         await ctx.main(`(() => { electron.app.focus({ steal: true }); electron.BrowserWindow.getAllWindows()[0].focus(); return true })()`)
         await ctx.evaluate(`(() => { const i = document.querySelector('.command-input input'); i.focus(); i.select(); return true })()`)
-        // Emptied first: typing over the same text changes nothing, so it would not complete. (After ⌘↵ the bar
-        // keeps its text until the background tab has loaded, which a busy Mac can make slow.)
+        // Emptied first: typing over the same text changes nothing, so it would not complete.
         if (await ctx.evaluate(`document.querySelector('.command-input input').value !== ''`)) {
           for (const type of ['keyDown', 'keyUp']) await ctx.send('Input.dispatchKeyEvent', { type, key: 'Backspace', code: 'Backspace', windowsVirtualKeyCode: 8 })
         }
@@ -1154,6 +1153,22 @@ export const checks = {
         void ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: ${JSON.stringify(slowUrl)} }).then(() => true, () => true)`).catch(() => undefined)
         await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.isVisible && s.isLoading && s.url === ${JSON.stringify(slowUrl)} && ${toolbarAddress} === ${JSON.stringify(slowUrl)})`, 2_500, `the address bar of ${label} to show the address it is loading, before the page arrives`)
       }
+
+      // After Enter (⌘↵ here: the shown tab stays in front) the bar clears once the navigation starts, not when the
+      // page has loaded; and what is typed meanwhile is never wiped when it does load.
+      const behindUrl = `http://${host}/slow-behind`
+      const typedBehind = await typeHost(behindUrl)
+      expect(typedBehind.value === behindUrl, `The bar reads "${typedBehind.value}" instead of the typed address.`)
+      await ctx.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, modifiers: 4, text: '\r' })
+      await ctx.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, modifiers: 4 })
+      await ctx.wait(`window.intoponet.browserHost.getTabs().then((t) => t.some((x) => x.url === ${JSON.stringify(behindUrl)} && x.title !== 'Slow landing')) && document.querySelector('.command-input input').value === ''`, 2_500, 'the bar to clear once the page behind has started loading, before it arrives')
+      const meanwhile = `${behindUrl} and more`
+      await ctx.evaluate(`(() => { document.querySelector('.command-input input').focus(); return true })()`)
+      await ctx.type(meanwhile)
+      await ctx.wait(`window.intoponet.browserHost.getTabs().then((t) => t.some((x) => x.url === ${JSON.stringify(behindUrl)} && x.title === 'Slow landing' && !x.loading))`, 15_000, 'the page behind to arrive')
+      await ctx.delay(500)
+      const typedSince = await read()
+      expect(typedSince.value.startsWith(meanwhile), `The page loading behind wiped what was typed since Enter (the bar reads "${typedSince.value}").`)
       return `"localh" completed to ${host}; history row opened in a background tab with ⌘↵; then "Switch to tab" landed on it (1 tab); Backspace removed the completion; "Fredericton" flew the globe.`
     } finally {
       server.close()

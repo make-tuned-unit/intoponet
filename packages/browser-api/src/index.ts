@@ -278,6 +278,8 @@ export type BrowserHostEvent =
   | { type: 'frequency-visit'; url: string; title: string; rating: string | null; navigationId: string }
   | { type: 'panel-state'; panel: BrowserPanelSnapshot }
   | { type: 'navigation-failed'; url: string; reason: string }
+  /** An `open` started loading `url` (as `resolveNavigationIntent` gave it): the address bar clears then. */
+  | { type: 'navigation-started'; url: string }
   | ({ type: 'find-result' } & FindInPageResult)
   | ({ type: 'download-finished' } & DownloadFinishedEvent)
   | { type: 'pdf-export'; event: PdfExportEvent }

@@ -4057,6 +4057,16 @@ function appMenuState(): AppMenuState {
   }
 }
 
+/**
+ * Loads an address asked for with `open`: says so once the load has started (the address bar clears
+ * then, not when the page has finished loading), and settles when it has loaded or failed.
+ */
+function loadOpened(view: WebContentsView, url: string): Promise<void> {
+  const loading = view.webContents.loadURL(url)
+  emit({ type: 'navigation-started', url })
+  return loading
+}
+
 function createPageView(attach = true): WebContentsView {
   if (pageView) return pageView
   const view = buildView()
@@ -4156,7 +4166,7 @@ async function handleBrowserCommand(
       // ⌘↵ / ⌥↵ from the address bar: always a fresh tab, behind or in front.
       if (command.disposition) {
         const view = createBrowserTab(url, command.disposition === 'foreground-tab')
-        if (view) await view.webContents.loadURL(url)
+        if (view) await loadOpened(view, url)
         break
       }
       // From a new tab's start page, the page opens in that same tab.
@@ -4164,7 +4174,7 @@ async function handleBrowserCommand(
         const view = pageView
         leaveStartPage(view, url)
         lastKnownUrl = url
-        await view.webContents.loadURL(url)
+        await loadOpened(view, url)
         break
       }
       // Reuse an open tab only when it matches the current mode (private tabs and normal tabs never mix).
@@ -4174,7 +4184,7 @@ async function handleBrowserCommand(
         break
       }
       const view = createBrowserTab(url)
-      if (view) await view.webContents.loadURL(url)
+      if (view) await loadOpened(view, url)
       break
     }
     case 'new-tab':

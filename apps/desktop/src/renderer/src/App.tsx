@@ -230,7 +230,8 @@ import { FeedbackPrompt } from './FeedbackPrompt'
 import { startBookmarks, startNews, startRecents } from './startPageModel'
 import { buildStoryTerrain, storyAt, storyTerrainKey } from './globe/storyTerrain'
 import { HighestPeakButton, STORY_MARKER_PREFIX, StoryCardContent, StoryPanel, SUMMIT_COLOR, storyLabel, storyMarkerId, storyMarkers, strandEnds } from './globe/StoryPeaks'
-import { inferLauncherIntent } from '@intoponet/browser-api'
+import { inferLauncherIntent, resolveNavigationIntent } from '@intoponet/browser-api'
+import { LauncherClear } from './launcherClear'
 
 const bookmarkPaneOpenKey = 'intoponet.bookmark-pane.open.v1'
 const globePrefsKey = 'intoponet.globe.v2'
@@ -331,7 +332,14 @@ function tabCaption(tab: PageTabSnapshot): string {
 type OldsEntry = { query: OldsQuery; label: string; article?: CoverageArticle }
 
 export function App() {
-  const [query, setQuery] = useState('')
+  const [query, setQueryNow] = useState('')
+  // After Enter the bar clears once the navigation starts; anything that changes the bar since (typing,
+  // ⌘L) goes through setQuery, which keeps that late clear from wiping it.
+  const launcherClear = useRef(new LauncherClear())
+  const setQuery = (value: string): void => {
+    launcherClear.current.edited()
+    setQueryNow(value)
+  }
   const [panel, setPanel] = useState<BrowserPanelSnapshot>(emptyPanel)
   const translation = useTranslate(panel.isVisible ? panel.url : '', panel.isLoading)
   // Paywalled articles: offer the same story from other (free) outlets.
@@ -922,6 +930,10 @@ export function App() {
         setTabs(event.tabs)
         return
       }
+      if (event.type === 'navigation-started') {
+        if (launcherClear.current.started(event.url)) setQueryNow('')
+        return
+      }
       if (event.type === 'navigation-failed') {
         setError(`${event.reason} (${event.url})`)
         return
@@ -1364,8 +1376,11 @@ export function App() {
     rememberScale('topic', scaleDistance.topic, topic)
   }
 
-  /** Shared by the field launcher and the full-screen dock search. */
-  const navigateFromLauncher = (raw: string, options: { intent?: NavigationIntent; disposition?: OpenDisposition } = {}): Promise<void> => {
+  /**
+   * Shared by the field launcher and the full-screen dock search. `clear`: Enter in the address bar,
+   * which clears it once the navigation has started (launcherClear.ts).
+   */
+  const navigateFromLauncher = (raw: string, options: { intent?: NavigationIntent; disposition?: OpenDisposition; clear?: boolean } = {}): Promise<void> => {
     const value = raw.trim()
     if (!value) return Promise.resolve()
     setError('')
@@ -1376,15 +1391,27 @@ export function App() {
       setError(reason instanceof Error ? reason.message : 'Could not understand that search or address.')
       return Promise.reject(reason)
     }
+    let started: string | null = null
+    try {
+      started = intent.kind === 'topic' ? null : resolveNavigationIntent(intent)
+    } catch {
+      started = null
+    }
+    const ticket = options.clear ? launcherClear.current.submit(started) : 0
+    const settled = (): void => {
+      if (options.clear && launcherClear.current.settled(ticket)) setQueryNow('')
+    }
     if (intent.kind === 'topic') {
       rememberTopic(intent.value)
       setBrowserFullWidth(false)
       void window.intoponet.browserHost.close()
+      settled()
       return Promise.resolve()
     }
     // A search tags what is browsed and saved next with its words; one made privately leaves nothing behind.
     if (intent.kind === 'search' && !privacyState?.privateMode && !panel.isPrivate) setResearchTopic(intent.value)
-    return window.intoponet.browserHost.open(intent, options.disposition).catch((reason: unknown) => {
+    return window.intoponet.browserHost.open(intent, options.disposition).then(settled, (reason: unknown) => {
+      if (options.clear) launcherClear.current.failed(ticket)
       setError(navigationErrorMessage(reason))
       throw reason
     })
@@ -1393,10 +1420,7 @@ export function App() {
   const submit = (event: FormEvent): void => {
     event.preventDefault()
     if (omnibox.submit()) return
-    const submittedDraft = query
-    void navigateFromLauncher(submittedDraft).then(() => {
-      if (input.current?.value === submittedDraft) setQuery('')
-    }).catch(() => undefined)
+    void navigateFromLauncher(query, { clear: true }).catch(() => undefined)
   }
 
   const setBookmarksOpen = (open: boolean): void => {
@@ -2596,15 +2620,12 @@ export function App() {
       void window.intoponet.browserHost.activateTab(row.tabId).catch(() => setError('That tab could not be shown.'))
       return
     }
-    const submittedDraft = query
     const intent: NavigationIntent =
       row.kind === 'search' ? { kind: 'search', value: row.value }
         : row.kind === 'topic' ? { kind: 'topic', value: row.value }
           : row.kind === 'url' ? { kind: 'url', value: row.value }
             : { kind: 'url', value: row.url }
-    void navigateFromLauncher(intent.value, { intent, ...(disposition && intent.kind !== 'topic' ? { disposition } : {}) }).then(() => {
-      if (input.current?.value.startsWith(submittedDraft)) setQuery('')
-    }).catch(() => undefined)
+    void navigateFromLauncher(intent.value, { intent, clear: true, ...(disposition && intent.kind !== 'topic' ? { disposition } : {}) }).catch(() => undefined)
   }
   const omniboxTabs = useMemo(() => tabs.filter((tab) => !tab.isStartPage), [tabs])
   /**
@@ -2674,7 +2695,7 @@ export function App() {
     onDismiss: () => setPlacesDismissed(true),
     onPasteAndGo: (text) => {
       setQuery(text)
-      void navigateFromLauncher(text).then(() => setQuery('')).catch(() => undefined)
+      void navigateFromLauncher(text, { clear: true }).catch(() => undefined)
     },
   })
 
