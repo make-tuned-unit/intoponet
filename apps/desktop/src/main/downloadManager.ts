@@ -92,6 +92,8 @@ type Tracked = {
   note: string | null
   error: string | null
   sample: { at: number; bytes: number } | null
+  /** Private browsing ended while it ran: it leaves the list once it finishes. */
+  forgetWhenDone?: boolean
 }
 
 const FINISHED: ReadonlySet<DownloadState> = new Set(['completed', 'cancelled', 'interrupted'])
@@ -264,6 +266,10 @@ export class DownloadManager {
     // A file that finished while waiting keeps only the dangerous-type question (Discard deletes it).
     if (state !== 'completed') entry.attention = null
     else if (entry.attention === 'multiple-downloads') entry.attention = entry.dangerous ? 'dangerous-type' : null
+    if (entry.forgetWhenDone && !entry.attention) {
+      const index = this.entries.indexOf(entry)
+      if (index >= 0) this.entries.splice(index, 1)
+    }
     this.save()
     this.scheduleEmit()
   }
@@ -468,11 +474,13 @@ export class DownloadManager {
     return this.emitNow()
   }
 
-  /** Private browsing ended: its downloads leave the list. */
+  /** Private browsing ended: its downloads leave the list (one still running finishes first, then goes too). */
   forgetPrivate(): void {
     for (let index = this.entries.length - 1; index >= 0; index -= 1) {
       const entry = this.entries[index]!
-      if (entry.isPrivate && FINISHED.has(entry.state)) this.entries.splice(index, 1)
+      if (!entry.isPrivate) continue
+      if (FINISHED.has(entry.state)) this.entries.splice(index, 1)
+      else entry.forgetWhenDone = true
     }
     this.emitNow()
   }
