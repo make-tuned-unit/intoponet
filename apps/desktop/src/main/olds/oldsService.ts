@@ -115,6 +115,8 @@ export class OldsService {
   private readonly responses = new Map<string, { at: number; bytes: number; value: Promise<unknown> }>()
   private responseBytes = 0
   private readonly slots = new Map<string, { active: number; waiting: Array<() => void> }>()
+  /** Requests that failed for want of a network (no connection, a dropped one, a timeout), counted since start. */
+  private networkFailures = 0
 
   constructor(private readonly options: OldsServiceOptions) {
     this.fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis)
@@ -129,14 +131,22 @@ export class OldsService {
       return cached
     }
     const lang = query.kind === 'wikipedia' ? query.lang ?? 'en' : 'en'
-    const thread = query.kind === 'country'
-      ? await this.countryThread(query.countryCode)
-      : query.kind === 'headline'
-        ? await this.headlineThread(query)
-        : query.kind === 'chapter'
-          ? await this.chapterThread(query.article, query.section)
-        : await this.itemThread(query.kind === 'qid' ? query.qid : await this.resolveTitle(query.title, lang), lang)
-    if (query.kind !== 'country' && query.kind !== 'chapter' && lang === 'en') await this.addHistoricalContext(thread)
+    const failures = this.networkFailures
+    let thread: OldsThread
+    try {
+      thread = query.kind === 'country'
+        ? await this.countryThread(query.countryCode)
+        : query.kind === 'headline'
+          ? await this.headlineThread(query)
+          : query.kind === 'chapter'
+            ? await this.chapterThread(query.article, query.section)
+          : await this.itemThread(query.kind === 'qid' ? query.qid : await this.resolveTitle(query.title, lang), lang)
+      if (query.kind !== 'country' && query.kind !== 'chapter' && lang === 'en') await this.addHistoricalContext(thread)
+    } catch (error) {
+      // Searches that failed for want of a network find nothing: that is no reason to say there is no history.
+      if (this.networkFailures > failures) throw new Error('Wikipedia could not be reached over the network. Try again once you are online.')
+      throw error
+    }
     // A thread whose history article could not be fetched is shown but not kept, so the next open retries.
     if (!(thread as { partial?: boolean }).partial) {
       this.remember(key, thread)
@@ -220,6 +230,7 @@ export class OldsService {
           await new Promise((resolve) => setTimeout(resolve, 500 + Math.random() * 500))
           continue
         }
+        if (error instanceof TypeError || timedOut) this.networkFailures += 1
         throw error
       }
       if ((response.status === 429 || response.status === 503) && attempt < 4) {

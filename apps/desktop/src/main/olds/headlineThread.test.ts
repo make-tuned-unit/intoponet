@@ -104,3 +104,24 @@ describe('headline event selection through the service', () => {
     expect(thread.context?.matchedBy).toMatch(/^Geographic fallback: the headline matched Bailiwick of Guernsey, a broad place, but no specific subject or event was verified\./)
   })
 })
+
+describe('a headline looked up without a network', () => {
+  const service = async (fetchImpl: typeof fetch): Promise<OldsService> => {
+    const dir = await mkdtemp(join(tmpdir(), 'olds-offline-'))
+    dirs.push(dir)
+    return new OldsService({ cacheDir: dir, fetchImpl, now: () => Date.parse('2026-10-28T12:00:00Z') })
+  }
+  const headline = { kind: 'headline' as const, text: 'Paraguay president impeached over banking crisis', countryCode: 'PY' }
+
+  it('says Wikipedia could not be reached, not that there is no history', async () => {
+    const offline = await service(async () => { throw new TypeError('fetch failed') })
+    // The shell tells "Could not reach…" from "No sourced history…" by these words.
+    await expect(offline.thread(headline)).rejects.toThrow(/network/)
+    await expect(offline.thread({ kind: 'country', countryCode: 'FO' })).rejects.toThrow(/network/)
+  }, 30_000)
+
+  it('still says nothing matched when Wikipedia answered', async () => {
+    const answered = await service(async () => new Response('{}'))
+    await expect(answered.thread(headline)).rejects.toThrow(/^No Wikipedia topic matched/)
+  }, 30_000)
+})
