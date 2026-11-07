@@ -3510,7 +3510,14 @@ export const checks = {
       await until(async () => (await tabAt('/video'))?.asleep === true, 30_000, 'the video tab to sleep once its small window was closed')
       await ctx.evaluate(`window.intoponet.browsing.setTabSleep('never').then(() => true)`)
       await setPip(false)
-      return 'Off by default; with it on, leaving a playing tab floated its canvas video (playback went on), returning docked it; the now-playing control listed it (labelled, axe clean) and pause, play, mute, unmute and go-to worked from the keyboard; a page with disablePictureInPicture kept playing in place; a floating tab was not put to sleep or archived while other tabs were; once the person closed the small window, the control stopped saying it floats and the tab slept.'
+      // A background tab playing a video, closed from the sidebar, leaves the now-playing control at once.
+      pages['/video-bg'] = VIDEO_PAGE('Background video', '')
+      await openPage(ctx, `${origin}/video-bg`, 3000)
+      await openPage(ctx, `${origin}/plain?after-bg`, 1500)
+      await ctx.wait(`(document.querySelector('.now-playing')?.textContent ?? '').includes('Background video')`, 8000, 'the control to list the video playing in a background tab')
+      await ctx.evaluate(`${host}.closeTab(${JSON.stringify((await tabAt('/video-bg')).id)}).then(() => true)`)
+      await ctx.wait(`!(document.querySelector('.now-playing')?.textContent ?? '').includes('Background video')`, 5000, 'the control to drop a playing tab once it was closed')
+      return 'Off by default; with it on, leaving a playing tab floated its canvas video (playback went on), returning docked it; the now-playing control listed it (labelled, axe clean) and pause, play, mute, unmute and go-to worked from the keyboard; a page with disablePictureInPicture kept playing in place; a floating tab was not put to sleep or archived while other tabs were; once the person closed the small window, the control stopped saying it floats and the tab slept; a playing background tab, closed, left the control.'
     } finally {
       server.close()
     }

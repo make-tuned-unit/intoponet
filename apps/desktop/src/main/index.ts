@@ -2869,6 +2869,8 @@ async function sleepIdleTabs(): Promise<void> {
 function unloadTab(tab: OpenTab, options: { keepHistory: boolean; url?: string }): void {
   if (tab.start || tab.asleep || viewGone(tab.view) || pageView === tab.view || companionView === tab.view) return
   nowPlaying.forget(tab.id)
+  // Its media stops with its page: the now-playing control no longer lists it.
+  emitNowPlaying()
   const old = tab.view
   const liveUrl = old.webContents.getURL()
   let history: TabHistory | undefined
@@ -2940,6 +2942,7 @@ function discardTab(id: string, remember = true): void {
   if (!tab) return
   if (index < 0) emitWorkspaces()
   nowPlaying.forget(tab.id)
+  emitNowPlaying()
   if (remember) rememberClosedTab(tab)
   crashRecovery.forget(tab.id)
   // Its partner, if any, is whole again (its side of the split goes with this tab).
