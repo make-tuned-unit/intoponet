@@ -460,3 +460,20 @@
   outline: none;
   background: rgba(32, 244, 228, 0.14);
 }
+
+/* A tab that is an article of a world story (storyTabs.ts): a small mountain beside its title. */
+.tab-rail-story {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  margin-left: 4px;
+  color: rgba(255, 209, 102, 0.95);
+}
+
+.tab-rail:not(.is-open) .tab-rail-story {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  margin: 0;
+}

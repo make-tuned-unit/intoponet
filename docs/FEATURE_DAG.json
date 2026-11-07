@@ -630,6 +630,29 @@
       "tier": "network",
       "kind": "e2e",
       "promise": "A workspace can be anchored to a place you choose (never your device's location); switching to it flies the globe there and the sidebar offers that place's latest headlines; tabs opened from those headlines stay in that workspace, and the anchor shows only on your own map."
+    },
+    {
+      "id": "STORY_TABS",
+      "title": "Tabs that know their story",
+      "deps": [
+        "WORLD_STORIES",
+        "TAB_FOLDERS"
+      ],
+      "tier": "network",
+      "kind": "e2e",
+      "promise": "Open articles that match a world story are marked with that story in the sidebar; Group by story gathers them into a folder named for it, with a strand to the story's summit on the globe; matching runs on this Mac against the public digest and sends nothing about your tabs."
+    },
+    {
+      "id": "TAB_TIDY_LOCAL",
+      "title": "Tidy tabs with Laya",
+      "deps": [
+        "TAB_FOLDERS",
+        "ABSORB",
+        "STORY_TABS"
+      ],
+      "tier": "full",
+      "kind": "e2e",
+      "promise": "With Laya on, Tidy suggests folders and names for loose tabs from their titles and addresses, computed on this Mac with nothing sent anywhere; nothing moves until you accept, and Undo restores the previous order."
     }
   ]
 }

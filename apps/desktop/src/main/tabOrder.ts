@@ -74,7 +74,8 @@ export function duplicateIndex(tabs: readonly OrderedTab[], sourceId: string): n
  * tabs in folder order (depth first), then the tabs in no folder. A tab moves within its own
  * folder; moving it among another folder's tabs moves it into that folder.
  */
-export type TabFolder = { id: string; name: string; parentId: string | null; collapsed?: boolean }
+/** `storyId`: the world story the folder was made for (Group by story), which its hover highlights. */
+export type TabFolder = { id: string; name: string; parentId: string | null; collapsed?: boolean; storyId?: string }
 export type FolderedTab = OrderedTab & { folderId?: string }
 export const MAX_FOLDER_DEPTH = 6
 export const MAX_FOLDERS = 60

@@ -152,7 +152,13 @@ export type PageTabSnapshot = {
 }
 
 /** A folder in the tab sidebar (folders nest through parentId). */
-export type TabFolderSnapshot = { id: string; name: string; parentId: string | null; collapsed?: boolean }
+export type TabFolderSnapshot = { id: string; name: string; parentId: string | null; collapsed?: boolean; storyId?: string }
+
+/** Tabs to put in one folder (a story's folder, or a folder with this name), for Group by story and Tidy. */
+export type TabGroupRequest = { name: string; tabIds: string[]; storyId?: string }
+
+/** Tidy's suggestion: the folders it would make (nothing moves until they are accepted), or why it cannot suggest any. */
+export type TidySuggestion = { available: true; groups: Array<{ name: string; tabIds: string[] }> } | { available: false; reason: string }
 
 /** The tab sidebar: icons (expands on hover), kept open (also in full width), or hidden (the left edge brings it back). */
 export const TAB_SIDEBAR_MODES = ['icons', 'open', 'hidden'] as const
@@ -361,6 +367,9 @@ export interface BrowserHostApi {
   deleteTabFolder(id: string): Promise<void>
   moveTabToFolder(tabId: string, folderId: string | null): Promise<void>
   openTabFolder(name: string, urls: string[]): Promise<void>
+  groupTabs(groups: TabGroupRequest[]): Promise<{ undoId: string }>
+  undoGroupTabs(undoId: string): Promise<void>
+  tidyTabsSuggest(): Promise<TidySuggestion>
   reopenArchivedTabs(ids: string[]): Promise<void>
   setTabSidebar(sidebar: TabSidebarState): Promise<void>
   getState(): Promise<BrowserPanelSnapshot>
@@ -475,6 +484,11 @@ export type BrowserHostCommand =
   | { type: 'move-tab-to-folder'; tabId: string; folderId: string | null }
   /** A saved collection opened as a folder of (unloaded) tabs. */
   | { type: 'open-tab-folder'; name: string; urls: string[] }
+  /** Loose tabs grouped into folders (tabGrouping.ts); returns the undo id. */
+  | { type: 'group-tabs'; groups: TabGroupRequest[] }
+  | { type: 'undo-group-tabs'; undoId: string }
+  /** Tidy's folder suggestions from Laya on this Mac (tabTidy.ts); moves nothing. */
+  | { type: 'tidy-tabs-suggest' }
   /** Reopen archived tabs (shown when one id; all in the background otherwise). */
   | { type: 'reopen-archived-tabs'; ids: string[] }
   | { type: 'set-tab-sidebar'; sidebar: TabSidebarState }
@@ -587,6 +601,9 @@ const commandTypes = new Set<BrowserHostCommand['type']>([
   'delete-tab-folder',
   'move-tab-to-folder',
   'open-tab-folder',
+  'group-tabs',
+  'undo-group-tabs',
+  'tidy-tabs-suggest',
   'reopen-archived-tabs',
   'set-tab-sidebar',
   'get-state',
@@ -810,6 +827,25 @@ export function parseBrowserHostCommand(value: unknown): BrowserHostCommand {
       if (!Array.isArray(urls) || urls.length === 0 || urls.length > 50 || !urls.every((url) => typeof url === 'string' && url.length <= 8_192)) throw new Error('Invalid folder pages.')
       return { type, name: folderName(value['name']), urls: urls as string[] }
     }
+    case 'group-tabs': {
+      const groups = value['groups']
+      if (!Array.isArray(groups) || groups.length === 0 || groups.length > 20) throw new Error('Invalid tab groups.')
+      return {
+        type,
+        groups: groups.map((group: unknown) => {
+          if (!isRecord(group)) throw new Error('Invalid tab group.')
+          const tabIds = group['tabIds']
+          if (!Array.isArray(tabIds) || tabIds.length === 0 || tabIds.length > 300 || !tabIds.every(isShortId)) throw new Error('Invalid tab group.')
+          if (group['storyId'] !== undefined && !isShortId(group['storyId'])) throw new Error('Invalid tab group.')
+          return { name: folderName(group['name']), tabIds: tabIds as string[], ...(group['storyId'] !== undefined ? { storyId: group['storyId'] as string } : {}) }
+        }),
+      }
+    }
+    case 'undo-group-tabs':
+      if (!isShortId(value['undoId'])) throw new Error('Invalid undo.')
+      return { type, undoId: value['undoId'] }
+    case 'tidy-tabs-suggest':
+      return { type }
     case 'run-menu-command':
       if (typeof value['id'] !== 'string' || !/^[a-z][a-z-]{1,40}$/.test(value['id'])) throw new Error('Invalid menu command.')
       return { type, id: value['id'] }
