@@ -327,6 +327,14 @@ export const TOUR_STEPS: TourStep[] = [
     seconds: 9,
   },
   {
+    id: 'compare-outlets',
+    chapter: 'Browsing',
+    title: 'Two outlets, side by side',
+    body: 'In a world story’s sources, choose Compare and pick another outlet: the two articles sit side by side, each labelled with its outlet and country, each translatable on its own, with The Olds for the story one click away.',
+    target: '.browser-body',
+    seconds: 9,
+  },
+  {
     id: 'done',
     chapter: 'That’s the tour',
     title: 'The world is your start page',

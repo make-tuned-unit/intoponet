@@ -182,6 +182,7 @@ import { browserContextActions, type BrowserContextAction } from './browserConte
 import { canNest, deleteFolder, duplicateIndex, folderDepth, folderedOrder, folderTreeOrder, MAX_FOLDER_DEPTH, MAX_FOLDERS, moveFolderedTab, moveTab, otherTabIds, pinnedFirst, setPinned, setTabFolder, tabIdsToRight, type TabFolder } from './tabOrder'
 import { tabMenuTemplate, type TabMenuAction, type TabMenuSplit } from './tabMenu'
 import { canSplit, partnerOf, repairSplits, setSplitRatio, splitBounds, splitPreviewArea, splitWith, storableRatio, unsplit, DEFAULT_SPLIT_RATIO, type SplitLayout, type SplitSide, type TabSplit } from './splitPages'
+import { compareCountryName, compareLabelFor, savedCompareOf, tabCompareFor, type CompareSideInput, type TabCompare } from './compare'
 import { liveTabFlags } from './tabState'
 import { groupSavedFolders, parseSavedWorkspaces, savedWorkspaceOf, WorkspaceSet, type RemovedWorkspace, type SavedWorkspace, type SavedWorkspaces } from './workspaces'
 import { BrowserImportService, wireBrowserImport } from './browserImport/service'
@@ -307,6 +308,8 @@ type OpenTab = {
   pictureInPicture?: boolean
   /** Side by side with its partner tab (splitPages.ts); both tabs carry the same ratio. */
   split?: TabSplit
+  /** Opened by Compare (compare.ts): its outlet and country, shown while the page stays on the article's site. */
+  compare?: TabCompare
 }
 
 /** Video follows you (Settings › Browsing): a tab left while its video plays floats that video. */
@@ -321,7 +324,7 @@ const pageAppearance = new PageAppearanceController('system')
 /** Certificate problems, kept until the failed load that follows shows them. */
 const certificateErrors = new CertificateErrorMemo()
 
-type SavedTab = { id: string; url: string; title: string; pinned?: boolean; home?: string; folderId?: string; workspaceId: string; split?: TabSplit }
+type SavedTab = { id: string; url: string; title: string; pinned?: boolean; home?: string; folderId?: string; workspaceId: string; split?: TabSplit; compare?: TabCompare }
 
 /** browser-state.v1.json (the file keeps its name); version 3 added workspaces (see workspaces.ts). */
 type PersistentBrowserState = {
@@ -389,6 +392,7 @@ function persistentState(): PersistentBrowserState {
     ...(tab.pinned && tab.home ? { home: tab.home } : {}),
     ...(tab.folderId ? { folderId: tab.folderId } : {}),
     ...(splitOfTab(tab.id) ? { split: splitOfTab(tab.id)! } : {}),
+    ...(compareOfTab(tab.id) ? { compare: compareOfTab(tab.id)! } : {}),
     workspaceId: shownId,
   }))
   const parked: SavedTab[] = []
@@ -414,6 +418,7 @@ function persistentState(): PersistentBrowserState {
         ...(tab.pinned && tab.home ? { home: capUrl(tab.home) } : {}),
         ...(tab.folderId && !tab.pinned ? { folderId: tab.folderId } : {}),
         ...(tab.split ? { split: { ...tab.split } } : {}),
+        ...(tab.compare ? { compare: { ...tab.compare } } : {}),
         workspaceId: workspace.id,
       })
     }
@@ -548,6 +553,7 @@ async function loadPersistentState(): Promise<RestoredBrowserState | null> {
               ...(record['pinned'] === true && typeof record['home'] === 'string' && record['home'].length <= 8_192 && safeHttpUrl(record['home']) ? { home: record['home'] } : {}),
               workspaceId: savedWorkspaceOf(record, saved.workspaces),
               ...savedSplitOf(record['split']),
+              ...(savedCompareOf(record['compare']) ? { compare: savedCompareOf(record['compare'])! } : {}),
             },
           ]
         })
@@ -1079,6 +1085,11 @@ function splitOfTab(id: string): TabSplit | undefined {
   return openTabs.find((tab) => tab.id === id)?.split
 }
 
+/** The Compare record of a tab in any workspace (for the saved state). */
+function compareOfTab(id: string): TabCompare | undefined {
+  return allTabs().find((tab) => tab.id === id)?.compare
+}
+
 /** Pages side by side, for the panel: each side's tab and origin, the focused side, and the layout. */
 function splitPanelState(): SplitPanelSnapshot | undefined {
   const pair = shownSplit(pageAreaBounds())
@@ -1087,7 +1098,8 @@ function splitPanelState(): SplitPanelSnapshot | undefined {
   const sideOf = (tab: OpenTab): SplitSideSnapshot => {
     const snapshot = snapshots.find((item) => item.id === tab.id)
     const url = snapshot?.url ?? ''
-    return { id: tab.id, url, title: snapshot?.title ?? '', secure: safeHttpUrl(url)?.protocol === 'https:' }
+    const compare = compareLabelFor(tab.compare, url)
+    return { id: tab.id, url, title: snapshot?.title ?? '', secure: safeHttpUrl(url)?.protocol === 'https:', ...(compare ? { compare } : {}) }
   }
   const left = pair.focused === 'left' ? pair.focusedTab : pair.otherTab
   const right = pair.focused === 'left' ? pair.otherTab : pair.focusedTab
@@ -1144,6 +1156,40 @@ function splitTabs(command: { id?: string; partnerId?: string; side?: SplitSide 
   }
   splitPreviewSide = null
   if (pageAttached) showTab(created ? partner.id : tab.id)
+  emitTabs()
+  emitPanelState()
+  schedulePersistentStateSave()
+}
+
+/** A country's name for a Compare label (the Mac's language), or the code when there is no name. */
+function countryNameFor(code: string): string | undefined {
+  try {
+    return new Intl.DisplayNames(undefined, { type: 'region' }).of(code) ?? undefined
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Compare (COMPARE_COVERAGE): two outlets' articles for one story, as two new tabs in the shown
+ * workspace, split with the left one on the left. Both are private when private mode is on.
+ */
+function openCompare(command: { story: { id: string; title: string }; left: CompareSideInput; right: CompareSideInput }): void {
+  const leftCompare = tabCompareFor(command.left, command.story, compareCountryName(command.left, countryNameFor))
+  const rightCompare = tabCompareFor(command.right, command.story, compareCountryName(command.right, countryNameFor))
+  if (!leftCompare || !rightCompare) throw new Error('Those articles cannot be opened.')
+  if (openTabs.length + 2 > MAX_TABS) throw new Error(`${MAX_TABS} tabs are already open. Close a tab and try again.`)
+  const leftView = createBrowserTab(command.left.url, false, privateMode)
+  const rightView = createBrowserTab(command.right.url, false, privateMode)
+  const left = tabOfView(leftView)
+  const right = tabOfView(rightView)
+  if (!left || !right) throw new Error('Those articles cannot be opened.')
+  left.compare = leftCompare
+  right.compare = rightCompare
+  if (!splitWith(openTabs, left.id, right.id, 'left')) throw new Error('Those tabs cannot sit side by side.')
+  // The left side loads when it is shown; the right side loads now, in the background.
+  void right.view.webContents.loadURL(command.right.url).catch(() => undefined)
+  showTab(left.id)
   emitTabs()
   emitPanelState()
   schedulePersistentStateSave()
@@ -3687,6 +3733,9 @@ async function handleBrowserCommand(
     case 'unsplit-tab':
       unsplitTabCommand(command.id)
       break
+    case 'open-compare':
+      openCompare(command)
+      break
     case 'set-split-ratio':
       setShownSplitRatio(command.ratio)
       break
@@ -4485,6 +4534,7 @@ app.whenReady().then(async () => {
         ...(savedTab.pinned ? { pinned: true, home: savedTab.home ?? savedTab.url } : {}),
         ...(!savedTab.pinned && savedTab.folderId && folders.some((folder) => folder.id === savedTab.folderId) ? { folderId: savedTab.folderId } : {}),
         ...(savedTab.split ? { split: { ...savedTab.split } } : {}),
+        ...(savedTab.compare ? { compare: { ...savedTab.compare } } : {}),
       }
       const list = byWorkspace.get(savedTab.workspaceId) ?? []
       list.push(tab)

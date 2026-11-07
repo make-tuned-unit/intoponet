@@ -199,3 +199,56 @@
 .page-tab-pair .page-tab-main.is-split-half + .page-tab-main.is-split-half {
   border-left: 1px solid rgba(127, 127, 127, 0.3);
 }
+
+/* Compare (COMPARE_COVERAGE): a side opened from a story's sources shows its outlet and country, and its tools. */
+.split-header-host {
+  flex: none;
+  opacity: 0.7;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.split-compare-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+
+.split-compare-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid rgba(127, 127, 127, 0.4);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 11px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.split-compare-button:focus-visible {
+  outline: 2px solid var(--accent, #0a84ff);
+  outline-offset: 1px;
+}
+
+.split-compare-paywall {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: none;
+  font-size: 11px;
+  font-weight: 600;
+  color: #ffd27a;
+  white-space: nowrap;
+}
+
+@media (prefers-color-scheme: light) {
+  .split-compare-paywall {
+    color: #8a5a00;
+  }
+}

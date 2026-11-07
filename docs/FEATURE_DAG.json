@@ -596,6 +596,17 @@
       "tier": "core",
       "kind": "e2e",
       "promise": "Dragging a tab to the page's edge, or choosing Split with…, shows two tabs side by side with a draggable divider; each side navigates, finds and zooms on its own, the address bar and toolbar follow the focused side, the pair stays together in the tab list and on relaunch, and closing one side returns the other to full size."
+    },
+    {
+      "id": "COMPARE_COVERAGE",
+      "title": "Compare two outlets side by side",
+      "deps": [
+        "SPLIT_PAGES",
+        "SOURCE_CAROUSEL"
+      ],
+      "tier": "network",
+      "kind": "e2e",
+      "promise": "From a world story's sources carousel, Compare opens two outlets' articles side by side, each labelled with its outlet and country, each side translatable on its own, and The Olds for that story one click away."
     }
   ]
 }

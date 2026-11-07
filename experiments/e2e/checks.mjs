@@ -3684,6 +3684,110 @@ export const checks = {
       server.close()
     }
   },
+
+  async COMPARE_COVERAGE(ctx) {
+    await ctx.waitForNews()
+    expect(await ctx.click('.globe-tabs button', 'World'), 'The World tab is missing.')
+    await ctx.wait(`document.querySelectorAll('.world-list .world-row').length > 0`, 90_000, 'stories covered across the world')
+    const rows = await ctx.evaluate(`document.querySelectorAll('.world-list .world-row').length`)
+    // The first story whose sources carousel offers Compare (sources from two or more outlets).
+    let compareReady = false
+    for (let i = 0; i < Math.min(rows, 8) && !compareReady; i += 1) {
+      await ctx.evaluate(`(() => { document.querySelectorAll('.world-list > li')[${i}]?.querySelector('.world-expand')?.click(); return true })()`)
+      await ctx.delay(400)
+      const opened = await ctx.evaluate(`!!document.querySelectorAll('.world-list > li')[${i}]?.querySelector('.world-sources-button')`)
+      if (!opened) continue
+      await ctx.evaluate(`(() => { document.querySelectorAll('.world-list > li')[${i}].querySelector('.world-sources-button').click(); return true })()`)
+      await ctx.wait(`document.querySelectorAll('.sc-card').length >= 2`, 8_000, 'the carousel cards')
+      compareReady = await ctx.evaluate(`!!document.querySelector('.sc-compare')`)
+      if (!compareReady) {
+        await ctx.evaluate(`(() => { document.querySelector('.sc-close').click(); return true })()`)
+        await ctx.wait(`!document.querySelector('.sources-carousel')`, 8_000, 'the carousel to close')
+      }
+    }
+    expect(compareReady, 'No world story has sources from two or more outlets to compare.')
+    // The Compare chooser: the other outlets, one of them preselected, from another country than the front card.
+    await ctx.click('.sc-compare')
+    await ctx.wait(`!!document.querySelector('.sc-chooser-item.is-preselected')`, 5_000, 'the Compare chooser')
+    const choices = await ctx.evaluate(`[...document.querySelectorAll('.sc-chooser-item')].map((b) => b.getAttribute('aria-label'))`)
+    expect(choices.length >= 1, 'The Compare chooser lists no other outlet.')
+    const front = await ctx.evaluate(`document.querySelector('.sc-card.is-front .sc-outlet strong')?.innerText ?? ''`)
+    const preselected = await ctx.evaluate(`document.querySelector('.sc-chooser-item.is-preselected').getAttribute('aria-label')`)
+    expect(!!preselected, 'The chooser preselected nothing.')
+    await axeAudit(ctx, 'the Compare chooser', '.sc-chooser')
+    await ctx.shot('compare-chooser')
+    await ctx.evaluate(`(() => { document.querySelector('.sc-chooser-item.is-preselected').click(); return true })()`)
+    await ctx.wait(`!document.querySelector('.sources-carousel')`, 10_000, 'the carousel to hand over to the browser')
+
+    // Two outlets, both sides' articles, side by side in the app window.
+    const stateOf = async () => JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getState().then((s) => JSON.stringify(s))`))
+    const pagesNow = () => ctx.main(`(() => {
+      const win = electron.BrowserWindow.getAllWindows()[0]
+      const kids = win.contentView.children.filter((v) => v.webContents && !v.webContents.isDestroyed())
+      return JSON.stringify({
+        content: win.getContentSize(),
+        pages: kids.filter((v) => /^https?:/.test(v.webContents.getURL())).map((v) => ({ url: v.webContents.getURL(), id: v.webContents.id, bounds: v.getBounds(), visible: v.getVisible(), focused: v.webContents.isFocused() })),
+      })
+    })()`).then(JSON.parse)
+    let state = null
+    let views = null
+    for (let i = 0; i < 100; i += 1) {
+      state = await stateOf()
+      views = await pagesNow()
+      if (state.split?.left?.compare && state.split?.right?.compare && views.pages.length === 2) break
+      await ctx.delay(250)
+    }
+    expect(state.split?.left?.compare && state.split?.right?.compare, 'The pair is not side by side with outlet labels.')
+    const { split } = state
+    expect(views.pages.length === 2, `${views.pages.length} pages are on screen, not two.`)
+    const [left, right] = views.pages.slice().sort((p, q) => p.bounds.x - q.bounds.x)
+    expect(left.url === split.left.url && right.url === split.right.url, `The pages on screen (${left.url}, ${right.url}) are not the pair's left and right sides.`)
+    const a = left.bounds
+    const b = right.bounds
+    expect(left.visible && right.visible, 'A compared page is hidden.')
+    expect(a.x + a.width <= b.x, `The pages overlap or sit one above the other (left ${JSON.stringify(a)}, right ${JSON.stringify(b)}).`)
+    expect(a.y === b.y, `The pages are stacked, not side by side (left y ${a.y}, right y ${b.y}).`)
+    expect(a.height === b.height && a.height >= views.content[1] * 0.5, `The pages are not full height (${a.height} and ${b.height} of ${views.content[1]}).`)
+    expect(a.width > 0 && b.width > 0, 'A compared page has no width.')
+
+    // Each header names its outlet and country.
+    const headers = await ctx.evaluate(`[...document.querySelectorAll('.split-header[data-split-side]')].map((h) => ({ side: h.getAttribute('data-split-side'), origin: h.querySelector('.split-header-origin')?.innerText ?? '' }))`)
+    for (const [side, tab] of [['left', split.left], ['right', split.right]]) {
+      const header = headers.find((item) => item.side === side)
+      const label = `${tab.compare.outlet} · ${tab.compare.country}`
+      expect(header?.origin === label, `The ${side} header reads "${header?.origin}", not "${label}".`)
+    }
+    await axeAudit(ctx, 'the Compare headers', '.split-header')
+    await ctx.shot('compare-pair')
+
+    // Translate acts on one side: it focuses that side (the right one when it offers Translate), then opens the bar.
+    const translateButton = (side) => `(() => [...document.querySelectorAll('.split-header[data-split-side="${side}"] .split-compare-button')].find((x) => x.textContent.includes('Translate')))()`
+    const offersTranslate = async (side) => ctx.evaluate(`!!${translateButton(side)}`)
+    const translateSide = (await offersTranslate('right')) ? 'right' : (await offersTranslate('left')) ? 'left' : null
+    let translateNote = 'Neither side is in another language from the reader, so Translate is not offered'
+    if (translateSide) {
+      await ctx.evaluate(`(() => { ${translateButton(translateSide)}.click(); return true })()`)
+      for (let i = 0; i < 40; i += 1) {
+        const now = await stateOf()
+        if (now.split?.focused === translateSide) break
+        await ctx.delay(200)
+      }
+      // Translate acts on the focused side's page, so the shell's focus must be on that side (the bar itself takes the keyboard).
+      const focusedNow = await stateOf()
+      expect(focusedNow.split?.focused === translateSide, `Translate on the ${translateSide} side did not focus that side (focused: ${focusedNow.split?.focused}).`)
+      const focusedUrl = focusedNow.split[translateSide].url
+      await ctx.wait(`!!document.querySelector('.translate-bar')`, 8_000, 'the translate bar')
+      translateNote = `Translate on the ${translateSide} side focused that side's page (${focusedUrl}) and opened the translate bar`
+    }
+
+    // The Olds for the story, from the left side's header.
+    const oldsClicked = await ctx.evaluate(`(() => { const b = [...document.querySelectorAll('.split-header[data-split-side="left"] .split-compare-button')].find((x) => x.textContent.includes('The Olds')); if (!b) return false; b.click(); return true })()`)
+    expect(oldsClicked, 'The pair has no The Olds button.')
+    await ctx.wait(`!!document.querySelector('.olds-sheet')`, 15_000, 'The Olds to open for the story')
+    await ctx.shot('compare-olds')
+    const paywalls = await ctx.evaluate(`document.querySelectorAll('.split-compare-paywall').length`)
+    return `Compared "${front}" with ${split.right.compare.outlet} (${split.right.compare.country}): two pages ${a.width}×${a.height} and ${b.width}×${b.height}, side by side at y ${a.y}; headers read "${headers.map((h) => h.origin).join('" and "')}"; ${translateNote}; The Olds opened for the story; ${paywalls} paywall badge(s) on the pair.`
+  },
 }
 
 checks.TAB_SLEEP.env = { INTOPONET_TAB_SLEEP_MINUTE_MS: '200' }
