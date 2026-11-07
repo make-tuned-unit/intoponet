@@ -71,6 +71,8 @@ export function WorldStories({
   translation?: TranslateModel | undefined
 }) {
   const [expanded, setExpanded] = useState<string | null>(focusedId)
+  // A story focused from outside the list (the guided tour opens one) shows its sources too.
+  useEffect(() => { if (focusedId) setExpanded(focusedId) }, [focusedId])
   const [carousel, setCarousel] = useState<CarouselLaunch | null>(null)
   // Story titles in your language (same Original ↔ English choice as the headlines inside).
   const titleItems = useMemo(() => stories.map((story) => ({ key: story.id, title: story.title, lang: story.headlines.find((item) => item.url === story.url)?.lang ?? null })), [stories])

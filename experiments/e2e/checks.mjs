@@ -2360,30 +2360,9 @@ export const checks = {
     await ctx.wait(`!!document.querySelector('.story-highest')`, 60_000, 'story mountains to rise')
     const tabList = `window.intoponet.browserHost.getTabs().then((t) => t.map((x) => x.id).sort().join(','))`
     const tabsBefore = await ctx.evaluate(tabList)
-    await ctx.click('.settings-button')
-    await ctx.click('button', 'Take the tour')
-    await ctx.wait(`!!document.querySelector('.tour-card')`, 5000, 'the tour to start')
-    const total = Number((await ctx.evaluate(`document.querySelector('.tour-count').textContent`)).split(' of ')[1])
-    const missed = []
-    // The step's own name (its progress dot); the card's heading animates from one step to the next.
-    const stepTitle = `(document.querySelector('.tour-progress [aria-current="step"]')?.getAttribute('aria-label') ?? '').replace(/^Step \\d+: /, '')`
-    for (let step = 1; step <= total; step += 1) {
-      await ctx.wait(`document.querySelector('.tour-count')?.textContent.startsWith('${step} of') && !document.querySelector('.tour-next')?.textContent.includes('Showing')`, 45_000, `tour step ${step} to finish showing`)
-      await ctx.wait(`document.getElementById('tour-title')?.textContent === ${stepTitle}`, 5000, `tour step ${step}'s card`)
-      await ctx.delay(700)
-      const state = JSON.parse(await ctx.evaluate(`JSON.stringify({ title: ${stepTitle}, lit: !!document.querySelector('.tour-spotlight'), centred: !!document.querySelector('.tour-dim') })`))
-      const centred = ['A browser with the whole world in view', 'The everyday things, done carefully'].includes(state.title)
-      if (!centred && !state.lit) missed.push(`${step}. ${state.title}`)
-      if (['The news rises as mountains', 'Follow a story around the world', 'Two outlets, side by side', 'Tabs down the side, in every view', 'Save any page as a clean PDF', 'Tabs that know their story', 'Tidy suggests the folders', 'Anchor a workspace to a place', 'Links from other apps go where they belong'].includes(state.title)) await ctx.shot(`step-${step}`)
-      if (step < total) await ctx.click('.tour-next')
-    }
-    expect(missed.length === 0, `These tour steps point at nothing: ${missed.join('; ')}.`)
-    await ctx.click('.tour-next')
-    await ctx.wait(`!document.querySelector('.tour-card') && !document.querySelector('.story-panel')`, 5000, 'the tour to finish and tidy up')
-    // Everything it opened is closed again: none of its pages is left in the sidebar.
-    const tidy = await ctx.wait(`${tabList}.then((ids) => ids === ${JSON.stringify(tabsBefore)})`, 5000).then(() => true, () => false)
-    expect(tidy, `The tour left a tab open: ${await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => t.map((x) => x.title || x.url).join(', '))`)}.`)
-    // The Olds step moves on once The Olds has looked, even when it finds nothing: here Wikipedia cannot be reached.
+    // The Olds step moves on as soon as The Olds has looked, even when it finds nothing: here Wikipedia cannot be reached.
+    // First, before any story's history is kept (the Olds step looks up the tour's own story even when jumped to). How long
+    // The Olds takes to give up depends on the story and the network; the step must not wait longer than that.
     await ctx.main(`(() => {
       const dns = process.mainModule.require('dns')
       dns.__tourLookup ??= dns.lookup
@@ -2399,10 +2378,11 @@ export const checks = {
     try {
       await ctx.click('.settings-button')
       await ctx.click('button', 'Take the tour')
-      await ctx.wait(`!!document.querySelector('.tour-card')`, 5000, 'the tour to start again')
+      await ctx.wait(`!!document.querySelector('.tour-card')`, 5000, 'the tour to start')
       await ctx.evaluate(`(() => {
         const step = window.__oldsStep = { start: performance.now() }
         const timer = setInterval(() => {
+          if (!step.looked && document.querySelector('.olds-sheet') && !document.querySelector('.olds-sheet .olds-status[role="status"]')) step.looked = Math.round(performance.now() - step.start)
           if (document.querySelector('.tour-next')?.textContent.includes('Showing')) step.showing = true
           else if (step.showing) {
             step.ms = Math.round(performance.now() - step.start)
@@ -2415,13 +2395,64 @@ export const checks = {
       })()`)
       await ctx.wait(`!!window.__oldsStep.ms`, 45_000, 'The Olds step to finish with Wikipedia unreachable')
       offline = JSON.parse(await ctx.evaluate(`JSON.stringify(window.__oldsStep)`))
-      expect(offline.ms < 12_000, `With Wikipedia unreachable, The Olds step kept showing for ${Math.round(offline.ms / 1000)} s (The Olds: "${offline.olds}").`)
+      expect(offline.looked && offline.ms - offline.looked < 2_000, `With Wikipedia unreachable, The Olds step kept showing for ${Math.round(offline.ms / 1000)} s, ${offline.looked ? `${((offline.ms - offline.looked) / 1000).toFixed(1)} s after The Olds had looked` : 'and The Olds never finished looking'} (The Olds: "${offline.olds}").`)
       await ctx.press('Escape')
       await ctx.wait(`!document.querySelector('.tour-card') && !document.querySelector('.olds-sheet')`, 5000, 'the tour to close on Escape')
     } finally {
       await ctx.main(`(() => { const dns = process.mainModule.require('dns'); if (dns.__tourLookup) dns.lookup = dns.__tourLookup; return true })()`)
     }
-    return `All ${total} steps shown, each spotlight on what it describes; the tour put everything back at the end, its own tab closed. With Wikipedia unreachable The Olds step moved on after ${(offline.ms / 1000).toFixed(1)} s ("${offline.olds}").`
+    await ctx.click('.settings-button')
+    await ctx.click('button', 'Take the tour')
+    await ctx.wait(`!!document.querySelector('.tour-card')`, 5000, 'the tour to start again')
+    const total = Number((await ctx.evaluate(`document.querySelector('.tour-count').textContent`)).split(' of ')[1])
+    const missed = []
+    // The step's own name (its progress dot); the card's heading animates from one step to the next.
+    const stepTitle = `(document.querySelector('.tour-progress [aria-current="step"]')?.getAttribute('aria-label') ?? '').replace(/^Step \\d+: /, '')`
+    // What a step shows: the selector its spotlight found, and what is open behind it.
+    const scene = `JSON.stringify({ title: ${stepTitle}, lit: document.querySelector('.tour-spotlight')?.dataset.target ?? null, page: !!document.querySelector('.browser-actions'), olds: !!document.querySelector('.olds-sheet'), bookmarks: !!document.querySelector('.bookmark-pane'), library: !!document.querySelector('.bookmark-drawer'), knowledge: !!document.querySelector('.knowledge-sheet'), typed: document.querySelector('.command-input input')?.value ?? '' })`
+    const settle = async (step) => {
+      await ctx.wait(`document.querySelector('.tour-count')?.textContent.startsWith('${step} of') && !document.querySelector('.tour-next')?.textContent.includes('Showing')`, 45_000, `tour step ${step} to finish showing`)
+      await ctx.wait(`document.getElementById('tour-title')?.textContent === ${stepTitle}`, 5000, `tour step ${step}'s card`)
+      await ctx.delay(700)
+      return JSON.parse(await ctx.evaluate(scene))
+    }
+    const shown = []
+    for (let step = 1; step <= total; step += 1) {
+      const state = shown[step] = await settle(step)
+      const centred = ['A browser with the whole world in view', 'The everyday things, done carefully'].includes(state.title)
+      if (!centred && !state.lit) missed.push(`${step}. ${state.title}`)
+      if (['The news rises as mountains', 'Follow a story around the world', 'Two outlets, side by side', 'Tabs down the side, in every view', 'Save any page as a clean PDF', 'Tabs that know their story', 'Tidy suggests the folders', 'Anchor a workspace to a place', 'Links from other apps go where they belong'].includes(state.title)) await ctx.shot(`step-${step}`)
+      if (step < total) await ctx.click('.tour-next')
+    }
+    expect(missed.length === 0, `These tour steps point at nothing: ${missed.join('; ')}.`)
+    // Gone back to, or jumped to by its dot, every step shows what it showed played forward.
+    const elsewhere = []
+    const compare = async (step, how) => {
+      const state = await settle(step)
+      const diff = Object.keys(shown[step]).filter((key) => state[key] !== shown[step][key]).map((key) => `${key} ${JSON.stringify(shown[step][key])} → ${JSON.stringify(state[key])}`)
+      if (diff.length) {
+        elsewhere.push(`${how} ${step}. ${state.title}: ${diff.join(', ')}`)
+        await ctx.shot(`${how.replace(/ /g, '-')}-${step}`)
+      }
+    }
+    for (let step = total - 1; step >= 1; step -= 1) {
+      await ctx.click('.tour-back')
+      await compare(step, 'back to')
+    }
+    const jump = (step) => ctx.evaluate(`document.querySelectorAll('.tour-progress button')[${step - 1}].click(); true`)
+    for (const step of [33, 10, 20, 9, 31, 12, 3, 8]) {
+      await jump(step)
+      await compare(step, 'jump to')
+    }
+    expect(elsewhere.length === 0, `Reached another way, these tour steps showed something else: ${elsewhere.join('; ')}.`)
+    await jump(total)
+    await settle(total)
+    await ctx.click('.tour-next')
+    await ctx.wait(`!document.querySelector('.tour-card') && !document.querySelector('.story-panel')`, 5000, 'the tour to finish and tidy up')
+    // Everything it opened is closed again: none of its pages is left in the sidebar.
+    const tidy = await ctx.wait(`${tabList}.then((ids) => ids === ${JSON.stringify(tabsBefore)})`, 5000).then(() => true, () => false)
+    expect(tidy, `The tour left a tab open: ${await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => t.map((x) => x.title || x.url).join(', '))`)}.`)
+    return `All ${total} steps shown, each spotlight on what it describes, the same played forward, gone back to and jumped to; the tour put everything back at the end, its own tab closed. With Wikipedia unreachable The Olds step moved on ${((offline.ms - offline.looked) / 1000).toFixed(1)} s after The Olds had looked (${(offline.ms / 1000).toFixed(1)} s in all: "${offline.olds}").`
   },
   async TAB_ARCHIVE(ctx) {
     // Started with an "hour" of 200 ms (TAB_ARCHIVE.env below), so "12 hours" is 2.4 seconds.

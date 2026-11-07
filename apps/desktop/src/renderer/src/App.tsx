@@ -429,6 +429,10 @@ export function App() {
   const [tourOpen, setTourOpen] = useState(false)
   /** The page the tour opened: false, true (shown in a tab it did not make), or the id of the tab it made (closed at the end). */
   const tourOpenedPage = useRef<boolean | string>(false)
+  /** Counts the tour's scene changes: a step's setup still running stops once a later step has set up its own. */
+  const tourScene = useRef(0)
+  /** The tour opens or shows its page one step at a time (so two quick steps never open two tabs). */
+  const tourPageQueue = useRef<Promise<unknown>>(Promise.resolve())
   const [beaconDraft, setBeaconDraft] = useState<BeaconDraft | null>(null)
   const [appSettings, setAppSettingsState] = useState(readAppSettings)
   // Headlines and titles in your language (default) or as published; shared with every headline list.
@@ -2754,8 +2758,28 @@ export function App() {
   }
 
   // What the tour can do with the app. Nothing here saves, shares or absorbs anything.
+  /** Every tour scene starts from nothing open over it: no panel, no typed text. */
+  const tourClear = (keepOlds = false): void => {
+    tourScene.current += 1
+    if (!keepOlds) closeOlds()
+    setBookmarksOpen(false)
+    setKnowledgeView(null)
+    setLibraryOpen(false)
+    setSettingsOpen(false)
+    setQuery('')
+    input.current?.blur()
+  }
+  /** Back on the globe, the tour's page is closed (a later page step opens it again), as it was before the first. */
+  const tourPageAway = (): void => {
+    const page = tourOpenedPage.current
+    tourOpenedPage.current = false
+    if (page || panel.isVisible) void window.intoponet.browserHost.close()
+    if (typeof page === 'string') void window.intoponet.browserHost.closeTab(page)
+  }
   const tourControls: TourControls = {
     reset: () => {
+      tourScene.current += 1
+      tourPageAway()
       setPinnedStoryId(null)
       setPeakIndex(-1)
       if (olds) closeOlds()
@@ -2765,6 +2789,10 @@ export function App() {
       setSettingsOpen(false)
       setWorldStory(null)
       showEarth()
+    },
+    showGlobe: () => {
+      tourClear()
+      tourPageAway()
     },
     spin: (degrees, ms) => new Promise<void>((resolve) => {
       const started = performance.now()
@@ -2784,13 +2812,16 @@ export function App() {
     flyTo: async (name) => {
       const place = searchPlaces(name, 1)[0]
       if (!place) return false
+      const scene = tourScene.current
       // Typed into the search, a letter at a time, then flown to.
       input.current?.focus()
       for (let i = 1; i <= name.length; i += 1) {
+        if (tourScene.current !== scene) return false
         setQuery(name.slice(0, i))
         await new Promise((resolve) => setTimeout(resolve, 110))
       }
       await new Promise((resolve) => setTimeout(resolve, 500))
+      if (tourScene.current !== scene) return false
       flyToPlace(place)
       input.current?.blur()
       return true
@@ -2808,8 +2839,10 @@ export function App() {
         input.current?.blur()
         return
       }
+      const scene = tourScene.current
       input.current?.focus()
       for (let i = 1; i <= text.length; i += 1) {
+        if (tourScene.current !== scene) return
         setQuery(text.slice(0, i))
         await new Promise((resolve) => setTimeout(resolve, 120))
       }
@@ -2824,29 +2857,57 @@ export function App() {
     },
     prepareOlds: (headline) => { void window.intoponet.olds.thread({ kind: 'headline', text: headline }).catch(() => undefined) },
     openOlds: async (headline) => {
-      loadOlds([{ query: { kind: 'headline', text: headline }, label: headline.length > 60 ? `${headline.slice(0, 57)}…` : headline }])
+      tourClear(true)
+      tourPageAway()
+      const top = olds?.stack[olds.stack.length - 1]?.query
+      if (top?.kind !== 'headline' || top.text !== headline) {
+        loadOlds([{ query: { kind: 'headline', text: headline }, label: headline.length > 60 ? `${headline.slice(0, 57)}…` : headline }])
+      }
       // Until it has finished looking: its story, or why there is none (no network, nothing found). At most 30 s.
       for (let i = 0; i < 300; i += 1) {
         await new Promise((resolve) => setTimeout(resolve, 100))
         if (document.querySelector('.olds-sheet') && !document.querySelector('.olds-sheet .olds-status[role="status"]')) break
       }
     },
-    closeOlds: () => { if (olds) closeOlds() },
     showBookmarks: (open) => setBookmarksOpen(open),
     showMyMap: (open) => (open ? showLibrary() : setLibraryOpen(false)),
-    openPage: async (url) => {
-      // In a tab of its own (never one of yours), closed again at the end; going back over this step shows that tab again.
-      const made = typeof tourOpenedPage.current === 'string' ? tourOpenedPage.current : null
-      const before = await window.intoponet.browserHost.getTabs().catch(() => [])
-      if (made && before.some((tab) => tab.id === made)) await window.intoponet.browserHost.activateTab(made).catch(() => undefined)
-      else {
-        await window.intoponet.browserHost.open({ kind: 'url', value: url }, 'foreground-tab').catch(() => undefined)
-        const after = await window.intoponet.browserHost.getTabs().catch(() => [])
-        tourOpenedPage.current = after.find((tab) => !before.some((item) => item.id === tab.id))?.id ?? true
-      }
-      for (let i = 0; i < 40 && !document.querySelector('.browser-actions'); i += 1) await new Promise((resolve) => setTimeout(resolve, 100))
+    showPage: (url) => {
+      tourClear()
+      const scene = tourScene.current
+      const current = (): boolean => tourScene.current === scene
+      const shown = tourPageQueue.current.then(async () => {
+        if (!current()) return
+        // In a tab of its own (never one of yours), closed again at the end; the next page step shows that tab again.
+        const made = typeof tourOpenedPage.current === 'string' ? tourOpenedPage.current : null
+        const before = await window.intoponet.browserHost.getTabs().catch(() => [])
+        let tab = made && before.some((item) => item.id === made) ? made : null
+        if (!tab) {
+          // Made behind the globe, then shown already hidden (below): the page never covers the tour.
+          const opening = window.intoponet.browserHost.open({ kind: 'url', value: url }, 'background-tab').catch(() => undefined)
+          // Main makes the tab before it answers this (it handles the two in order); the page loads once shown.
+          let after = await window.intoponet.browserHost.getTabs().catch(() => [])
+          if (after.length === before.length) {
+            await opening
+            after = await window.intoponet.browserHost.getTabs().catch(() => [])
+          }
+          const opened = after.find((item) => !before.some((other) => other.id === item.id))?.id ?? null
+          // A later step set up its own scene meanwhile: this page is not wanted any more.
+          if (!current()) {
+            if (opened) void window.intoponet.browserHost.closeTab(opened)
+            return
+          }
+          tab = opened
+          tourOpenedPage.current = tab ?? true
+        }
+        if (!current()) return
+        // Shown and hidden in one go (main handles the two in this order), so it never shows over the tour.
+        if (tab) void window.intoponet.browserHost.activateTab(tab).catch(() => undefined)
+        void window.intoponet.captures.setPageHidden(true)
+        for (let i = 0; i < 40 && current() && !document.querySelector('.browser-actions'); i += 1) await new Promise((resolve) => setTimeout(resolve, 100))
+      })
+      tourPageQueue.current = shown.catch(() => undefined)
+      return shown
     },
-    hidePage: (hidden) => { void window.intoponet.captures.setPageHidden(hidden) },
     showKnowledge: (open) => {
       if (open) openKnowledge(null)
       else {
@@ -2856,11 +2917,10 @@ export function App() {
       }
     },
     finish: () => {
+      tourScene.current += 1
+      // Its page goes before it is shown again, so it never flashes up as the tour ends.
+      tourPageAway()
       void window.intoponet.captures.setPageHidden(false)
-      const page = tourOpenedPage.current
-      tourOpenedPage.current = false
-      if (page) void window.intoponet.browserHost.close()
-      if (typeof page === 'string') void window.intoponet.browserHost.closeTab(page)
       if (olds) closeOlds()
       setBookmarksOpen(false)
       setKnowledgeView(null)
