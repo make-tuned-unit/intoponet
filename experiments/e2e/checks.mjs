@@ -3684,6 +3684,176 @@ export const checks = {
       server.close()
     }
   },
+
+  async LINK_ROUTES(ctx) {
+    // One server, three hosts: localhost (a rule), docs.localhost and temp.localhost (under localhost), and 127.0.0.1 (no rule).
+    const server = createServer((request, response) => {
+      const path = new URL(request.url, 'http://localhost').pathname
+      response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
+      response.end(`<!doctype html><title>Route ${path}</title><body style="font:16px system-ui;margin:40px"><h1>Route ${path}</h1><p><a id="next" href="/route-next">Next</a></p><input id="field" aria-label="Field"></body>`)
+    })
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+    const port = server.address().port
+    const local = `http://localhost:${port}`
+    const docs = `http://docs.localhost:${port}`
+    const temp = `http://temp.localhost:${port}`
+    const plain = `http://127.0.0.1:${port}`
+    const ws = 'window.intoponet.workspaces'
+    const browse = 'window.intoponet.browsing'
+    const PRELUDE = `const isQuick = (w) => w.contentView.children.some((v) => !v.webContents.isDestroyed() && v.webContents.getURL().startsWith('data:text/html'))
+      const quick = () => electron.BrowserWindow.getAllWindows().filter((w) => !w.isDestroyed() && isQuick(w))
+      const toolbarOf = (w) => w.contentView.children[0].webContents
+      const pageOf = (w) => w.contentView.children[1].webContents`
+    const mainCall = (expression) => ctx.main(`(() => { ${PRELUDE}; return (${expression}) })()`)
+    const quickCount = () => mainCall('quick().length')
+    const workspaceState = () => ctx.evaluate(`${ws}.get().then((s) => JSON.stringify(s))`).then(JSON.parse)
+    const activeName = async () => { const s = await workspaceState(); return s.workspaces.find((w) => w.id === s.activeId)?.name }
+    const idOf = async (name) => (await workspaceState()).workspaces.find((w) => w.name === name)?.id
+    const switchTo = (id) => ctx.evaluate(`${ws}.switchTo({ id: ${JSON.stringify(id)} }).then(() => true)`)
+    const tabUrls = () => ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => JSON.stringify(t.map((x) => x.url)))`).then(JSON.parse)
+    const openFromOtherApp = (url) => ctx.main(`electron.app.emit('open-url', { preventDefault() {} }, ${JSON.stringify(url)})`)
+    const setOtherApps = (choice) => ctx.evaluate(`${browse}.setLinksFromOtherApps(${JSON.stringify(choice)}).then(() => true)`)
+    const routes = (method, ...args) => ctx.evaluate(`${browse}.${method}(${args.map((a) => JSON.stringify(a)).join(', ')}).then((s) => JSON.stringify(s))`).then(JSON.parse)
+    const savedRules = () => (existsSync(join(ctx.profile, 'link-routes.json')) ? JSON.parse(readFileSync(join(ctx.profile, 'link-routes.json'), 'utf8')).rules : [])
+    const until = async (check, label, ms = 15_000) => {
+      const end = Date.now() + ms
+      while (Date.now() < end) {
+        if (await check()) return
+        await ctx.delay(250)
+      }
+      throw new CheckFailure(`Timed out waiting for ${label}.`)
+    }
+    const landed = (workspace, part) => async () => (await activeName()) === workspace && (await tabUrls()).some((url) => url.endsWith(part))
+    try {
+      await ctx.evaluate(`${ws}.create({ name: 'Work' }).then(() => true)`)
+      const workId = await idOf('Work')
+      await switchTo('main')
+      expect((await activeName()) === 'Main', 'Could not show Main before the rules were made.')
+
+      // A rule for localhost: a link to localhost opens in Work, as a tab, and Work is shown. Saved to link-routes.json.
+      const first = await routes('addLinkRoute', 'localhost', workId)
+      expect(first.rules.length === 1 && first.rules[0].workspaceName === 'Work', `The rule did not show with its workspace: ${JSON.stringify(first.rules)}.`)
+      await until(async () => savedRules().some((rule) => rule.site === 'localhost' && rule.workspaceId === workId), 'the rule to be saved to link-routes.json')
+      await openFromOtherApp(`${local}/route-1`)
+      await until(landed('Work', '/route-1'), 'the matching link to open in Work')
+
+      // Subdomains match the rule. 127.0.0.1 matches no rule and follows the default: a tab in the shown workspace (Main).
+      await switchTo('main')
+      await openFromOtherApp(`${docs}/route-2`)
+      await until(landed('Work', '/route-2'), 'a subdomain link to open in Work')
+      await switchTo('main')
+      await openFromOtherApp(`${plain}/route-3`)
+      await until(async () => (await tabUrls()).some((url) => url.endsWith('/route-3')), 'the unmatched link to open as a tab')
+      expect((await activeName()) === 'Main', 'A link that matches no rule switched workspace.')
+
+      // Quick window setting on: the matching link still goes to Work with no quick window; the unmatched one opens a quick window.
+      await setOtherApps('quick-window')
+      await ctx.delay(300)
+      await switchTo('main')
+      await openFromOtherApp(`${local}/route-4`)
+      await until(landed('Work', '/route-4'), 'the matching link to open in Work with the quick-window setting on')
+      expect((await quickCount()) === 0, 'A matching link opened a quick window.')
+      await switchTo('main')
+      await openFromOtherApp(`${plain}/route-5`)
+      await until(async () => (await quickCount()) === 1, 'the unmatched link to open a quick window')
+      await mainCall("toolbarOf(quick()[0]).executeJavaScript(\"document.getElementById('close').click()\")")
+      await until(async () => (await quickCount()) === 0, 'the quick window to close')
+      await setOtherApps('tab')
+      await ctx.delay(300)
+
+      // Private browsing: no routing. The link opens privately in the shown workspace (Main).
+      await switchTo('main')
+      await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(true).then(() => true)`)
+      await openFromOtherApp(`${local}/route-private`)
+      await ctx.delay(1200)
+      expect((await activeName()) === 'Main', 'A link opened in private browsing was routed to a workspace.')
+      await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
+      await ctx.delay(800)
+
+      // Order: docs.localhost → Main is added after the localhost rule, so localhost wins; moved to the top, it wins.
+      const docsWith = await routes('addLinkRoute', 'docs.localhost', 'main')
+      const docsId = docsWith.rules.find((rule) => rule.site === 'docs.localhost').id
+      await switchTo('main')
+      await openFromOtherApp(`${docs}/route-6`)
+      await until(landed('Work', '/route-6'), 'the earlier localhost rule to win')
+      await switchTo('main')
+      await routes('moveLinkRoute', docsId, 0)
+      await openFromOtherApp(`${docs}/route-7`)
+      await until(landed('Main', '/route-7'), 'the moved docs.localhost rule to win')
+
+      // A rule for a deleted workspace is skipped: temp.localhost → Temp (deleted) falls to the localhost rule, then to the default.
+      await ctx.evaluate(`${ws}.create({ name: 'Temp' }).then(() => true)`)
+      const tempId = await idOf('Temp')
+      const withTemp = await routes('addLinkRoute', 'temp.localhost', tempId)
+      const tempRuleId = withTemp.rules.find((rule) => rule.site === 'temp.localhost').id
+      await switchTo('main')
+      await ctx.evaluate(`${ws}.delete(${JSON.stringify(tempId)}).then(() => true)`)
+      const afterDelete = await routes('linkRoutes')
+      expect(afterDelete.rules.find((rule) => rule.id === tempRuleId)?.workspaceName === null, 'A rule for a deleted workspace does not say so.')
+      await switchTo('main')
+      await openFromOtherApp(`${temp}/route-8`)
+      await until(landed('Work', '/route-8'), 'the link to fall through the deleted rule to the localhost rule')
+      await switchTo('main')
+      await routes('removeLinkRoute', docsId)
+      await routes('removeLinkRoute', afterDelete.rules.find((rule) => rule.site === 'localhost').id)
+      await switchTo('main')
+      await openFromOtherApp(`${temp}/route-9`)
+      await until(landed('Main', '/route-9'), 'the default when only a deleted workspace\'s rule matches')
+
+      // Always open here…: a quick window on localhost (no rule matches now) offers the workspaces. Choosing Work saves the
+      // rule, shows Work and moves the same page there with its history.
+      await setOtherApps('quick-window')
+      await ctx.delay(300)
+      await switchTo('main')
+      await openFromOtherApp(`${local}/always-1`)
+      await until(async () => (await quickCount()) === 1, 'the quick window for the always-here link')
+      await until(async () => (await mainCall("pageOf(quick()[0]).getURL()")).endsWith('/always-1'), 'the always-here page to load')
+      await until(async () => (await mainCall("toolbarOf(quick()[0]).executeJavaScript(\"document.getElementById('always').hidden\")")) === false, 'Always open here to show on a page')
+      await (await ctx.page('/always-1')).evaluate(`(() => { document.getElementById('next').click(); return true })()`, { userGesture: true })
+      await until(async () => (await mainCall("pageOf(quick()[0]).getURL()")).endsWith('/route-next'), 'the link inside the quick window to load')
+      const quickPageId = await mainCall('pageOf(quick()[0]).id')
+      await mainCall("(() => { globalThis.__routeMenu = null; electron.Menu.prototype.popup = function () { globalThis.__routeMenu = this }; return true })()")
+      await mainCall("toolbarOf(quick()[0]).executeJavaScript(\"document.getElementById('always').click()\")")
+      await until(async () => mainCall('globalThis.__routeMenu !== null'), 'the Always open here menu to appear')
+      const labels = await mainCall('globalThis.__routeMenu.items.map((i) => i.label)')
+      expect(labels.includes('Always open localhost in Work'), `The menu offered ${labels.join(', ')}.`)
+      await mainCall("globalThis.__routeMenu.items.find((i) => i.label === 'Always open localhost in Work').click()")
+      await until(async () => (await quickCount()) === 0, 'the quick window to go after Always open here')
+      await until(landed('Work', '/route-next'), 'the page to land in Work')
+      const moved = await mainCall(`(() => { const page = electron.webContents.getAllWebContents().find((c) => !c.isDestroyed() && c.getURL().endsWith('/route-next') && c.id === ${quickPageId}); return page ? { id: page.id, back: page.navigationHistory.canGoBack() } : null })()`)
+      expect(moved?.id === quickPageId, 'Always open here did not move the same page into Work.')
+      expect(moved.back === true, 'Always open here lost the page history.')
+      await until(async () => savedRules().some((rule) => rule.site === 'localhost' && rule.workspaceId === workId), 'the always-here rule to be saved')
+
+      // A private quick window has no Always open here.
+      await setOtherApps('quick-window')
+      await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(true).then(() => true)`)
+      await openFromOtherApp(`${local}/always-private`)
+      await until(async () => (await quickCount()) === 1, 'the private quick window to open')
+      await until(async () => (await mainCall("toolbarOf(quick()[0]).executeJavaScript(\"document.getElementById('private').hidden\")")) === false, 'the private quick window to say so')
+      expect(await mainCall("toolbarOf(quick()[0]).executeJavaScript(\"document.getElementById('always').hidden\")") === true, 'A private quick window offers Always open here.')
+      await mainCall("toolbarOf(quick()[0]).executeJavaScript(\"document.getElementById('close').click()\")")
+      await until(async () => (await quickCount()) === 0, 'the private quick window to close')
+      await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
+      await setOtherApps('tab')
+      await ctx.delay(500)
+
+      // Settings › Browsing lists the rules, and the list passes axe.
+      await openPanel(ctx, 'Settings')
+      const settingsText = await ctx.evaluate(`document.querySelector('.settings-pane')?.innerText ?? ''`)
+      expect(settingsText.includes('Links from other apps go to'), 'Settings › Browsing has no list of links from other apps.')
+      expect(await ctx.evaluate(`!!document.querySelector('.link-route-site[aria-label="Site for rule 1"]')`), 'Settings does not list the rule.')
+      await axeAudit(ctx, 'the link routes list', '.link-routes')
+      await ctx.press('Escape')
+      await ctx.delay(300)
+
+      // Clear the rules this check made, so the next run starts clean.
+      for (const rule of savedRules()) await routes('removeLinkRoute', rule.id)
+      return 'Rule localhost → Work: a matching link (and a subdomain) opens in Work as a tab and shows it, and the rule is saved to link-routes.json; 127.0.0.1 follows the default. With the quick-window setting, the match still goes to Work and the unmatched link opens a quick window. Private browsing is not routed. The first matching rule wins (moving a rule changes that); a rule for a deleted workspace is skipped. Always open here… offers the workspaces, saves the rule, and moves the same page (history kept) into Work; a private quick window has none. Settings lists the rules; axe clean.'
+    } finally {
+      server.close()
+    }
+  },
 }
 
 checks.TAB_SLEEP.env = { INTOPONET_TAB_SLEEP_MINUTE_MS: '200' }

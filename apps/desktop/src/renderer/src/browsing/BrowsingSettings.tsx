@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Globe2 } from 'lucide-react'
 import type { BrowsingSettings as Settings, LinksFromOtherApps, PageAppearance, TabArchiveAfter, TabSleepAfter, TabSwitchOrder } from '@intoponet/browser-api'
+import { LinkRoutesSettings } from './LinkRoutesSettings'
 import './browsing.css'
 
 const APPEARANCES: Array<{ value: PageAppearance; label: string }> = [
@@ -121,6 +122,7 @@ export function BrowsingSettings() {
           </button>
         ))}
       </div>
+      <LinkRoutesSettings />
       <p id="auto-pip-label">Video follows you: when you leave a tab whose video is playing, the video floats in a small window on top, and returning to the tab docks it again. Sites that refuse keep playing where they are.</p>
       <label className="browsing-switch">
         <input

@@ -72,3 +72,22 @@
   margin: 8px 0;
   cursor: pointer;
 }
+
+/* Links from other apps by site (LinkRoutesSettings). */
+.link-routes { margin: 8px 0 14px; }
+.link-routes-list { margin: 6px 0; padding: 0; list-style: none; }
+.link-route { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 0 0 6px; }
+.link-route-site, .link-route select {
+  height: 28px; min-width: 0; padding: 0 8px; color: var(--warm-white); font: inherit; font-size: 12px;
+  border: 1px solid rgba(214, 246, 241, 0.18); border-radius: 8px; background: rgba(205, 245, 240, 0.06);
+}
+.link-route-site { flex: 1 1 180px; }
+.link-route button {
+  height: 28px; padding: 0 10px; color: var(--warm-white); font: inherit; font-size: 12px; cursor: pointer;
+  border: 1px solid rgba(214, 246, 241, 0.18); border-radius: 8px; background: rgba(205, 245, 240, 0.06);
+}
+.link-route button:disabled { opacity: 0.4; cursor: default; }
+.link-route-deleted { color: var(--muted); font-size: 12px; }
+.link-route-label { color: var(--muted); font-size: 12px; }
+.link-route-add { margin-top: 8px; }
+.link-routes-empty { color: var(--muted); font-size: 12px; }
