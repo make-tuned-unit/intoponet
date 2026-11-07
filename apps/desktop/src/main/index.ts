@@ -242,6 +242,8 @@ let pageView: WebContentsView | null = null
 let companionView: WebContentsView | null = null
 /** A tab dragged over a page edge: the side it would take (splitPages.ts). */
 let splitPreviewSide: SplitSide | null = null
+/** Page views whose main frame is starting a new document (until it is ready, fails or stops loading). */
+const loadingDocument = new WeakSet<WebContentsView>()
 let translateService: TranslateService | null = null
 /** Saved passwords (sealed on this Mac); null until the app is ready. */
 let passwords: PasswordService | null = null
@@ -3249,6 +3251,14 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
       tabRailExpanded = false
       emit({ type: 'tab-rail-state', expanded: false })
     }
+    // A click in the other side of a split chooses that side, whether the keyboard focus came first or not.
+    if (input.type === 'mouseDown' && companionView === view) {
+      const tab = tabOfView(view)
+      if (tab) {
+        showTab(tab.id)
+        view.webContents.focus()
+      }
+    }
   })
   // Browser keys pressed in a page: carried out here, so a page cannot swallow them. preventDefault
   // also keeps the menu bar from running the same key a second time.
@@ -3301,6 +3311,7 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
   })
   view.webContents.on('did-start-navigation', (_event, _url, inPlace, mainFrame) => {
     if (!mainFrame || inPlace) return
+    loadingDocument.add(view)
     // The page is about to be replaced: its inserted style and any previewed element go with it.
     previewSelectors.delete(view.webContents.id)
     blockedAdAddresses.delete(view.webContents.id)
@@ -3314,7 +3325,10 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
   })
   view.webContents.on('did-fail-load', (_event, _code, _description, _url, mainFrame) => {
     if (mainFrame) frequencyLoadSucceeded = false
+    if (mainFrame) loadingDocument.delete(view)
   })
+  view.webContents.on('dom-ready', () => loadingDocument.delete(view))
+  view.webContents.on('did-stop-loading', () => loadingDocument.delete(view))
   view.webContents.on('did-finish-load', () => {
     if (pageView !== view || !frequencyLoadSucceeded) return
     const url = view.webContents.getURL()
@@ -3453,6 +3467,13 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
   // A side of a split that takes the keyboard becomes the focused side (the toolbar and find follow it).
   view.webContents.on('focus', () => {
     if (companionView !== view) return
+    // Chromium hands the keyboard to a page starting a new document (a redirect, a page that reloads
+    // itself) even beside the focused side. That is not the person choosing this side: the keyboard
+    // goes back. A click in it still chooses it (before-mouse-event).
+    if (loadingDocument.has(view)) {
+      if (pageView && pageAttached && !viewGone(pageView)) pageView.webContents.focus()
+      return
+    }
     const tab = tabOfView(view)
     if (tab) showTab(tab.id)
   })

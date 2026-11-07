@@ -3680,6 +3680,16 @@ export const checks = {
       await expectLayout('after a workspace switch and back')
       await snap('08-after-workspace-switch')
 
+      // The other side loads a new page by itself (a redirect, a page reloading itself): the focused side keeps the focus.
+      const pageOf = (part) => `electron.webContents.getAllWebContents().find((c) => /^https?:/.test(c.getURL()) && c.getURL().includes(${JSON.stringify(part)}))`
+      await ctx.evaluate(`${host}.focusSplitSide('right').then(() => true)`)
+      await waitFor('focus on the right side again', async () => (await stateOf()).split?.focused === 'right')
+      await ctx.main(`(() => { electron.app.focus({ steal: true }); electron.BrowserWindow.getAllWindows()[0].focus(); return true })()`)
+      await ctx.main(`(() => { void ${pageOf('/split-left')}.executeJavaScript("location.href = '/split-left?again'"); return true })()`)
+      await waitFor('the left page loaded again', async () => (await stateOf()).split?.left.url.includes('?again'))
+      await ctx.delay(500)
+      expect((await stateOf()).split.focused === 'right', 'The left page loading a new page by itself took the focus from the right side.')
+
       // ⌘W on the focused side: the other side goes back to full size and shows.
       const focusedBeforeClose = (await stateOf()).split.focused
       await ctx.evaluate(`${host}.closeActiveTab().then(() => true)`)
