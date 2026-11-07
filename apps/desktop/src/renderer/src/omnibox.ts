@@ -92,13 +92,28 @@ export function normalizeTyped(text: string): string {
   return text.trim().toLocaleLowerCase('en').replace(/^[a-z][a-z\d+.-]*:\/\//, '').replace(/^www\./, '')
 }
 
+/**
+ * Percent escapes shown as the characters they stand for ("/wiki/%D0%9C%D0%BE…" → "/wiki/Мо…"), so addresses in
+ * other scripts read, and match what is typed. Escaped separators (%2F, %3F, %26…) stay escaped, and so does any
+ * part that would show spaces, control or direction-changing characters, or does not decode.
+ */
+function readablePart(part: string): string {
+  if (!part.includes('%')) return part
+  try {
+    const decoded = decodeURI(part)
+    return /[\s\p{Cc}\p{Cf}]/u.test(decoded) ? part : decoded
+  } catch {
+    return part
+  }
+}
+
 /** "https://www.Example.org/a/?q#x" → "example.org/a/?q": host without www., path (no lone "/"), query. */
 export function displayUrl(url: string): string {
   try {
     const parsed = new URL(url)
     const host = parsed.host.toLocaleLowerCase('en').replace(/^www\./, '')
     const path = parsed.pathname === '/' ? '' : parsed.pathname
-    return `${host}${path}${parsed.search}`
+    return `${host}${readablePart(path)}${readablePart(parsed.search)}`
   } catch {
     return url
   }

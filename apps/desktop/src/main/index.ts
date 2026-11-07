@@ -2,7 +2,10 @@ import { randomUUID } from 'node:crypto'
 import { basename, dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { readFile } from 'node:fs/promises'
-import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, unlinkSync } from 'node:fs'
+import { appendFileSync, createWriteStream, existsSync, mkdirSync, readFileSync, rmSync, statSync, unlinkSync } from 'node:fs'
+import { Readable } from 'node:stream'
+import { pipeline } from 'node:stream/promises'
+import type { ReadableStream as NodeReadableStream } from 'node:stream/web'
 import {
   app,
   BrowserWindow,
@@ -141,7 +144,7 @@ import { boundedHistory, ClosedTabs, type TabHistory } from './closedTabs'
 import { stepZoom, ZoomStore } from './zoomStore'
 import { CANCEL_PICK_SCRIPT, hideCss, listItem, PICK_ELEMENT_SCRIPT, selectorProblem, siteOf, SiteTweakStore, SiteTweaks, tweakCss } from './siteTweaks'
 import type { SiteTweakListItem, SiteTweakPick, SiteTweakSaveResult, SiteTweakState } from '@intoponet/browser-api'
-import { savePageFilename } from './savePage'
+import { isPdfDocument, savePageFilename } from './savePage'
 import { TRACKER_STUB_SCRIPT } from './trackerStubs'
 import { addressMenuTemplate, pasteAndGoText } from './addressMenu'
 import { bindPermissionOwnerLifecycle, kindsFor, originOf, SitePermissionBroker, SitePermissionStore } from './sitePermissions'
@@ -163,6 +166,7 @@ import { CLIENT_CERTIFICATE_NOTICE, declineClientCertificate, rejectCertificateE
 import { reserveDownloadPath, sanitizeDownloadFilename } from './downloadReservation'
 import { downloadsDirectory, installBrowsingData, openHistoryPane, type BrowsingData } from './browsingData'
 import { exportPagePdf } from './pdfExport/exportPdf'
+import { PDF_WORLD_ID } from './pdfExport/pageScripts'
 import { SavedPdfList } from './pdfExport/savedPdfs'
 import { DEFAULT_PDF_SETTINGS, parsePdfSettings, type PdfExportSettings } from './pdfExport/settings'
 import { CrashRecoveryPolicy } from './crashRecovery'
@@ -3870,6 +3874,11 @@ async function runPdfExport(view: WebContentsView | null = pageView, options?: P
     emit({ type: 'pdf-export', event: { state: 'failed', reason: 'Only web pages can be saved as PDF.' } })
     return
   }
+  // An error page is drawn by the shell; the view under it holds only Chromium's blank error page.
+  if (tabOfView(view)?.loadError) {
+    emit({ type: 'pdf-export', event: { state: 'failed', reason: 'This page did not load, so there is nothing to save.' } })
+    return
+  }
   const settings = currentPdfSettings()
   const isPrivate = privateViews.has(view)
   const job = { cancelled: false }
@@ -3934,19 +3943,36 @@ async function openSavedFile(path: string, reveal: boolean): Promise<void> {
 async function savePageAs(): Promise<void> {
   const view = pageView
   if (!view || !pageAttached || viewGone(view) || isStartView(view) || !window || window.isDestroyed()) return
+  // An error page has nothing of the site's to save (the view under it holds Chromium's blank error page).
+  if (tabOfView(view)?.loadError) return
   const url = view.webContents.getURL()
   if (!safeHttpUrl(url)) return
-  const filename = savePageFilename(view.webContents.getTitle(), url)
+  // A PDF is saved as the PDF itself, not as the viewer's wrapper page.
+  const pdf = await isPdfDocument(view.webContents, PDF_WORLD_ID)
+  if (viewGone(view) || !window || window.isDestroyed()) return
+  const filename = savePageFilename(view.webContents.getTitle(), url, pdf ? 'pdf' : 'html')
   const { canceled, filePath } = await dialog.showSaveDialog(window, {
     title: 'Save Page As',
     defaultPath: join(app.getPath('downloads'), filename),
-    filters: [{ name: 'Web Page, Complete', extensions: ['html', 'htm'] }],
+    filters: [pdf ? { name: 'PDF', extensions: ['pdf'] } : { name: 'Web Page, Complete', extensions: ['html', 'htm'] }],
     properties: ['createDirectory', 'showOverwriteConfirmation'],
   })
   if (canceled || !filePath || viewGone(view)) return
   const name = basename(filePath)
   try {
-    await view.webContents.savePage(filePath, 'HTMLComplete')
+    if (pdf) {
+      // Fetched again through the tab's own session (its sign-ins), straight to the chosen file.
+      const response = await view.webContents.session.fetch(url, { credentials: 'include' })
+      if (!response.ok || !response.body) throw new Error(`The PDF could not be fetched (${response.status}).`)
+      try {
+        await pipeline(Readable.fromWeb(response.body as NodeReadableStream<Uint8Array>), createWriteStream(filePath))
+      } catch (error) {
+        rmSync(filePath, { force: true })
+        throw error
+      }
+    } else {
+      await view.webContents.savePage(filePath, 'HTMLComplete')
+    }
     emit({ type: 'download-finished', filename: name, path: filePath, state: 'completed' })
   } catch {
     emit({ type: 'download-finished', filename: name, path: '', state: 'interrupted' })
@@ -4359,7 +4385,9 @@ async function handleBrowserCommand(
       pageView?.webContents.stopFindInPage('clearSelection')
       break
     case 'print':
-      pageView?.webContents.print({})
+      // Not a start page, and not an error page (its view holds only Chromium's blank error page).
+      if (!pageView || viewGone(pageView) || isStartView(pageView) || tabOfView(pageView)?.loadError) break
+      pageView.webContents.print({})
       break
     case 'zoom': {
       if (!pageView || viewGone(pageView) || isStartView(pageView)) break
@@ -5136,7 +5164,7 @@ app.whenReady().then(async () => {
       process.env['INTOPONET_CAPTURE_ROOT'] || join(app.getPath('pictures'), 'Intoponet'),
       { trash: (path) => shell.trashItem(path) },
     )
-    captures = new CaptureService(captureLibrary, { window: () => window, pageView: () => pageView, pageAttached: () => pageAttached })
+    captures = new CaptureService(captureLibrary, { window: () => window, pageView: () => pageView, pageAttached: () => pageAttached, isPrivate: (view) => privateViews.has(view) })
     // Import anything saved by the earlier encrypted store, once.
     void migrateEncryptedCaptures(join(app.getPath('userData'), 'captures'), captureLibrary, async (sealed) => (await safeStorage.decryptStringAsync(sealed)).result)
       .catch(() => 0)

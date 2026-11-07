@@ -56,7 +56,8 @@ function pixelImage(image: NativeImage): NativeImage {
 
 export class CaptureService {
   private pending = new Map<string, Pending>()
-  private recording: { webContentsId: number; crop: CaptureCrop; lastFrameAt: number } | null = null
+  /** The page being recorded: not always the one shown (the other side of a split can take focus meanwhile). */
+  private recording: { contents: Electron.WebContents; crop: CaptureCrop; lastFrameAt: number; onGone: () => void } | null = null
   private recordingLimit: ReturnType<typeof setTimeout> | null = null
 
   constructor(
@@ -65,6 +66,8 @@ export class CaptureService {
       window: () => BrowserWindow | null
       pageView: () => WebContentsView | null
       pageAttached: () => boolean
+      /** A private tab's page (its captures keep nothing about the page). */
+      isPrivate?: (view: WebContentsView) => boolean
     },
   ) {}
 
@@ -99,8 +102,11 @@ export class CaptureService {
     if (captured.isEmpty()) throw new Error('This page could not be captured.')
     const image = pixelImage(captured)
     const pendingId = randomUUID()
-    const title = (view.webContents.getTitle() || view.webContents.getURL() || 'Capture').slice(0, CAPTURE_LIMITS.titleLength)
-    const sourceUrl = view.webContents.getURL().slice(0, CAPTURE_LIMITS.urlLength)
+    // A private tab's capture is named neutrally and keeps no address (as Save as PDF does), so nothing about
+    // the page shows up in Finder, Spotlight or the capture library.
+    const isPrivate = this.host.isPrivate?.(view) === true
+    const title = isPrivate ? 'Capture' : (view.webContents.getTitle() || view.webContents.getURL() || 'Capture').slice(0, CAPTURE_LIMITS.titleLength)
+    const sourceUrl = isPrivate ? '' : view.webContents.getURL().slice(0, CAPTURE_LIMITS.urlLength)
     this.pending.set(pendingId, { image, title, sourceUrl, createdAt: Date.now() })
     while (this.pending.size > 4) this.pending.delete(this.pending.keys().next().value as string)
     // The native page view sits above the UI; hide it so the crop overlay
@@ -143,7 +149,16 @@ export class CaptureService {
     if (!view || !liveContents(view)) throw new Error('The page closed before recording started.')
     this.stopFrames()
     this.setPageHidden(false)
-    this.recording = { webContentsId: view.webContents.id, crop, lastFrameAt: 0 }
+    const contents = view.webContents
+    // Its tab closing ends the recording (it is saved), whichever tab is shown by then.
+    const onGone = (): void => {
+      if (this.recording?.contents !== contents) return
+      this.clearRecordingLimit()
+      this.recording = null
+      this.emit({ type: 'recording-interrupted', reason: 'page-closed' })
+    }
+    contents.once('destroyed', onGone)
+    this.recording = { contents, crop, lastFrameAt: 0, onGone }
     this.recordingLimit = setTimeout(() => {
       this.recordingLimit = null
       if (!this.recording) return
@@ -153,9 +168,9 @@ export class CaptureService {
     this.recordingLimit.unref?.()
     // Seed the encoder with the frozen frame so a static page still records.
     this.sendFrame(entry.image, crop)
-    view.webContents.beginFrameSubscription(false, (image) => {
+    contents.beginFrameSubscription(false, (image) => {
       const recording = this.recording
-      if (!recording || recording.webContentsId !== view.webContents.id) return
+      if (!recording || recording.contents !== contents) return
       const now = Date.now()
       if (now - recording.lastFrameAt < FRAME_INTERVAL_MS) return
       recording.lastFrameAt = now
@@ -179,23 +194,24 @@ export class CaptureService {
     this.clearRecordingLimit()
     const recording = this.recording
     this.recording = null
-    if (!recording) return
-    const view = this.host.pageView()
-    const contents = liveContents(view)
-    if (contents && contents.id === recording.webContentsId) {
-      try { contents.endFrameSubscription() } catch { /* already ended */ }
-    }
+    if (recording) this.endRecording(recording)
+  }
+
+  /** Frames stop coming from the page that was recorded (whichever page is shown now). */
+  private endRecording(recording: NonNullable<CaptureService['recording']>): void {
+    const { contents } = recording
+    if (contents.isDestroyed()) return
+    contents.removeListener('destroyed', recording.onGone)
+    try { contents.endFrameSubscription() } catch { /* already ended */ }
   }
 
   /** Called when the active page view changes or closes. */
-  pageChanged(reason: 'tab-changed' | 'page-closed', previous: WebContentsView | null): void {
-    if (!this.recording) return
+  pageChanged(reason: 'tab-changed' | 'page-closed', _previous: WebContentsView | null): void {
+    const recording = this.recording
+    if (!recording) return
     this.clearRecordingLimit()
-    const contents = liveContents(previous)
-    if (contents) {
-      try { contents.endFrameSubscription() } catch { /* already ended */ }
-    }
     this.recording = null
+    this.endRecording(recording)
     this.emit({ type: 'recording-interrupted', reason })
   }
 

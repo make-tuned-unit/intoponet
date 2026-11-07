@@ -27,6 +27,23 @@ describe('address helpers', () => {
     expect(displayUrl('http://localhost:5173/a/b?x=1#top')).toBe('localhost:5173/a/b?x=1')
     expect(pageKey('https://www.example.org/docs/')).toBe(pageKey('http://example.org/docs#intro'))
   })
+
+  it('shows addresses in other scripts as their characters, never spaces, controls or direction changes', () => {
+    expect(displayUrl('https://ru.wikipedia.org/wiki/%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0')).toBe('ru.wikipedia.org/wiki/Москва')
+    expect(displayUrl('https://example.jp/search?q=%E6%97%A5%E6%9C%AC')).toBe('example.jp/search?q=日本')
+    // Escaped separators keep their meaning.
+    expect(displayUrl('https://example.org/a%2Fb?q=x%26y')).toBe('example.org/a%2Fb?q=x%26y')
+    expect(displayUrl('https://example.org/a%20b')).toBe('example.org/a%20b')
+    expect(displayUrl('https://example.org/%E2%80%AEtxt.exe')).toBe('example.org/%E2%80%AEtxt.exe')
+    expect(displayUrl('https://example.org/%E0%A4%A')).toBe('example.org/%E0%A4%A')
+  })
+
+  it('completes a visited page by the address as it reads', () => {
+    const input = sources({ recents: [{ url: 'https://ru.wikipedia.org/wiki/%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0', title: 'Москва — Википедия', visitedAt: hoursAgo(1) }] })
+    const result = rankOmnibox('ru.wikipedia.org/wiki/Мос', input, { allowInline: true })
+    expect(result.inlineCompletion).toBe('ква')
+    expect(result.suggestions[0]).toMatchObject({ kind: 'history', url: 'https://ru.wikipedia.org/wiki/%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0' })
+  })
 })
 
 describe('site ranking', () => {

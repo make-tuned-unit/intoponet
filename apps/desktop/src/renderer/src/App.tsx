@@ -953,6 +953,9 @@ export function App() {
 
   useEffect(() => {
     if (!panel.url || !/^https?:\/\//.test(panel.url)) return
+    // An address that failed to load (a typo, a site that is down) is not a page visited, and would come back
+    // as an address bar completion. (Its address reaches the panel only with the error.)
+    if (panel.loadError) return
     if (panel.isPrivate || !privacySettings.footprints || isExcludedSite(panel.url, privacyState?.excludedSites ?? [])) return
     setRecents((current) =>
       rememberRecent(current, {
@@ -961,7 +964,7 @@ export function App() {
         visitedAt: new Date().toISOString(),
       }),
     )
-  }, [panel.title, panel.url, panel.isPrivate, privacySettings.footprints, privacyState?.excludedSites])
+  }, [panel.title, panel.url, panel.loadError, panel.isPrivate, privacySettings.footprints, privacyState?.excludedSites])
 
   useEffect(() => {
     void window.intoponet.passwords.pageState().then(setPasswordState, () => undefined)
@@ -1374,7 +1377,8 @@ export function App() {
       void window.intoponet.browserHost.close()
       return Promise.resolve()
     }
-    if (intent.kind === 'search') setResearchTopic(intent.value)
+    // A search tags what is browsed and saved next with its words; one made privately leaves nothing behind.
+    if (intent.kind === 'search' && !privacyState?.privateMode && !panel.isPrivate) setResearchTopic(intent.value)
     return window.intoponet.browserHost.open(intent, options.disposition).catch((reason: unknown) => {
       setError(navigationErrorMessage(reason))
       throw reason
@@ -1414,7 +1418,7 @@ export function App() {
       setError('Could not understand that search or address.')
       return Promise.reject(reason)
     }
-    if (intent.kind === 'search') setResearchTopic(intent.value)
+    if (intent.kind === 'search' && !privacyState?.privateMode && !panel.isPrivate) setResearchTopic(intent.value)
     return window.intoponet.browserHost.open(intent).catch((reason: unknown) => {
       setError(navigationErrorMessage(reason))
       throw reason
@@ -1496,7 +1500,8 @@ export function App() {
 
   const startCapture = async (mode: CaptureMode = 'image'): Promise<void> => {
     if (captureSession || recorder.state.status !== 'idle') return
-    if (!panel.isVisible || !panel.url) {
+    // An error page is drawn here, over a blank view: there is no page to capture.
+    if (!panel.isVisible || !panel.url || panel.loadError) {
       setNotice('Open a page to capture it')
       return
     }

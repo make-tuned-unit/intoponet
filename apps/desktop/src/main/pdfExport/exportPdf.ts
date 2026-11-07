@@ -214,6 +214,28 @@ async function printAsSeen(contents: WebContents, meta: PageMeta, settings: PdfE
   }
 }
 
+/** The parts of a page's WebContents that settleLoading uses (tests pass a fake). */
+export type LoadingContents = Pick<WebContents, 'isLoadingMainFrame' | 'isDestroyed' | 'stop' | 'once' | 'removeListener'>
+
+/**
+ * Electron runs scripts in a page only once it has stopped loading, so a page still loading (an image, ad or
+ * stream that never finishes) would leave the export waiting and then failing with "did not respond". It gets
+ * `waitMs` to finish, then is stopped where it is: what the person sees is what is saved.
+ */
+export async function settleLoading(contents: LoadingContents, waitMs = 5_000): Promise<void> {
+  if (contents.isDestroyed() || !contents.isLoadingMainFrame()) return
+  await new Promise<void>((resolve) => {
+    const done = (): void => {
+      clearTimeout(timer)
+      contents.removeListener('did-stop-loading', done)
+      resolve()
+    }
+    const timer = setTimeout(done, waitMs)
+    contents.once('did-stop-loading', done)
+  })
+  if (!contents.isDestroyed() && contents.isLoadingMainFrame()) contents.stop()
+}
+
 /** Page count straight from the PDF (used if the post-processing pass did not run). */
 export function countPdfPages(bytes: Uint8Array): number | null {
   const text = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).toString('latin1')
@@ -236,6 +258,8 @@ export async function exportPagePdf(deps: PdfExportDeps): Promise<PdfExportOutco
   }
   try {
     deps.progress?.('preparing')
+    await settleLoading(contents)
+    check()
     const wantClean = settings.mode !== 'asSeen'
     const prepared = await withTimeout(
       contents.executeJavaScriptInIsolatedWorld(PDF_WORLD_ID, [{ code: prepareScript({ clone: wantClean, images: settings.images, scroll: true, budgetMs: 20_000 }, deps.adSelectors) }], true) as Promise<PrepareResult>,

@@ -168,6 +168,26 @@ describe('DownloadManager', () => {
     expect(downloads.list()).toHaveLength(0)
   })
 
+  it('a private download still running when private browsing ends leaves the list once it finishes', () => {
+    const { manager: downloads } = manager()
+    const running = new FakeItem('private-running.zip')
+    const kept = new FakeItem('normal.zip')
+    downloads.track(running, { isPrivate: true, pageKey: '1' })
+    downloads.track(kept, { isPrivate: false, pageKey: '2' })
+    downloads.forgetPrivate()
+    // Still running: listed (it can be cancelled) until it is done.
+    expect(downloads.list().map((entry) => entry.filename)).toEqual(['normal.zip', 'private-running.zip'])
+    running.finish('completed')
+    kept.finish('completed')
+    expect(downloads.list().map((entry) => entry.filename)).toEqual(['normal.zip'])
+    expect(persisted.at(-1)?.map((record) => record.filename)).toEqual(['normal.zip'])
+    // A later private session's downloads are not affected by the earlier one ending.
+    const next = new FakeItem('private-next.zip')
+    downloads.track(next, { isPrivate: true, pageKey: '3' })
+    next.finish('completed')
+    expect(downloads.list().map((entry) => entry.filename)).toEqual(['private-next.zip', 'normal.zip'])
+  })
+
   it('removes entries and clears finished ones without touching active downloads', () => {
     const { manager: downloads } = manager()
     const done = new FakeItem('done.txt')
