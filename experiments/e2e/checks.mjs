@@ -3730,6 +3730,16 @@ export const checks = {
       expect(remaining.url.includes(focusedBeforeClose === 'left' ? '/split-right' : '/split-left'), `After closing the ${focusedBeforeClose} side, the page on screen is ${remaining.url}.`)
       await snap('09-after-close')
 
+      // With one tab, a split opens a new tab's start page beside it, in its own half.
+      await ctx.evaluate(`${host}.splitTab().then(() => true)`)
+      const started = await waitFor('a start page beside the page', async () => { const s = await stateOf(); return s.split && s.isStartPage ? s : null })
+      await ctx.delay(500)
+      const startFrame = JSON.parse(await shellEval(`JSON.stringify(document.querySelector('.split-start-frame')?.getBoundingClientRect() ?? null)`))
+      const startHalf = started.split.sides[started.split.focused]
+      expect(startFrame && ['x', 'y', 'width', 'height'].every((key) => Math.abs(startFrame[key] - startHalf[key]) <= 1), `The start page beside the page is not over its half (${JSON.stringify(startFrame)}, its half ${JSON.stringify(startHalf)}).`)
+      await ctx.evaluate(`${host}.closeActiveTab().then(() => true)`)
+      await waitFor('back to one page', async () => !(await stateOf()).split && (await viewsNow()).pages.length === 1)
+
       // Put the pair back (the left tab shown, the right one next), then ⌃⇧- ends it.
       await ctx.evaluate(`${host}.open({ kind: 'url', value: ${JSON.stringify(rightUrl)} }, 'background-tab').then(() => true)`)
       await ctx.delay(1000)
