@@ -214,12 +214,16 @@ export function SourceCarousel({ launch, now, translation, countryName, onRead, 
   // The page view is drawn above the shell: keep it hidden while the carousel is up.
   useEffect(() => {
     void window.intoponet.browserHost.holdPage(true)
+    const opener = document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null
     dialog.current?.focus()
     const onResize = (): void => setSize({ w: window.innerWidth, h: window.innerHeight })
     window.addEventListener('resize', onResize)
     return () => {
       window.removeEventListener('resize', onResize)
-      if (!released.current) void window.intoponet.browserHost.holdPage(false)
+      if (released.current) return
+      void window.intoponet.browserHost.holdPage(false)
+      // Closed without opening a page: focus goes back to what opened the carousel, not to the top of the window.
+      if (opener?.isConnected && (!document.activeElement || document.activeElement === document.body)) opener.focus({ preventScroll: true })
     }
   }, [])
 
@@ -248,6 +252,13 @@ export function SourceCarousel({ launch, now, translation, countryName, onRead, 
     window.setTimeout(onClose, 90)
   }
 
+  const compareButton = useRef<HTMLButtonElement>(null)
+  /** Closes the Compare chooser; focus goes back to Compare (the chooser's items are gone). */
+  const closeChooser = useCallback((): void => {
+    setChooser(false)
+    compareButton.current?.focus({ preventScroll: true })
+  }, [])
+
   // Keys: flip, read, close. Handled here first so the shell's own shortcuts stay out of the way.
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
@@ -256,7 +267,7 @@ export function SourceCarousel({ launch, now, translation, countryName, onRead, 
         if (event.key === 'Escape') {
           event.preventDefault()
           event.stopPropagation()
-          setChooser(false)
+          closeChooser()
         }
         return
       }
@@ -276,7 +287,7 @@ export function SourceCarousel({ launch, now, translation, countryName, onRead, 
     }
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
-  }, [chooser, close, headlines.length, index, phase, read])
+  }, [chooser, close, closeChooser, headlines.length, index, phase, read])
 
   /** Opens the front card and the chosen outlet's article side by side, then hands the screen to the browser. */
   const compareWith = (other: GlobalStoryHeadline): void => {
@@ -293,7 +304,7 @@ export function SourceCarousel({ launch, now, translation, countryName, onRead, 
       released.current = true
       void window.intoponet.browserHost.holdPage(false)
       onClose()
-    }, () => setChooser(false))
+    }, closeChooser)
   }
 
   const onWheel = (event: React.WheelEvent): void => {
@@ -463,6 +474,7 @@ export function SourceCarousel({ launch, now, translation, countryName, onRead, 
         {outlets >= 2 && (
           <button
             type="button"
+            ref={compareButton}
             className="sc-compare"
             aria-expanded={chooser}
             title="Put this article and another outlet's side by side"
@@ -497,7 +509,7 @@ export function SourceCarousel({ launch, now, translation, countryName, onRead, 
               )
             })}
           </ul>
-          <button type="button" className="sc-chooser-cancel" onClick={() => setChooser(false)}>Cancel</button>
+          <button type="button" className="sc-chooser-cancel" onClick={closeChooser}>Cancel</button>
         </div>
       )}
 
