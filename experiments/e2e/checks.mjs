@@ -1374,7 +1374,31 @@ export const checks = {
       await key('ArrowUp', 38, 1 | 8)
       await ctx.delay(700)
       expect(await unpinned() === [last, left, right, below].join(' ') && await paired(), `⌥⇧↑ on the tab below a pair did not move it above the pair with the pair kept (order: ${await unpinned()}).`)
-      return 'Moved by command, drag and ⌥⇧↓ (focus kept); pinned tab first, icon-only and saved; speaker muted and unmuted a playing tab; spinner while a slow page loaded; a tab dragged or moved past a pair went round it and the pair held; no axe violations in rail or strip.'
+      // The keyboard goes through a pair: ↓ reaches each side, then the tab after it (rail); → does the same in the strip.
+      const focusedTab = () => ctx.evaluate(`(() => { const e = document.activeElement; return (e?.getAttribute('aria-label')?.includes('right side by side') ? 'right:' : '') + (e?.closest('[data-tab-id]')?.dataset.tabId ?? '') })()`)
+      await ctx.evaluate(`document.querySelector('.tab-rail-list [data-tab-id=${JSON.stringify(left)}] [role="tab"]').focus()`)
+      await key('ArrowDown', 40, 0)
+      await ctx.delay(300)
+      expect(await focusedTab() === `right:${left}`, `↓ from a pair's left side did not reach its right side (focus: ${await focusedTab()}).`)
+      await key('ArrowDown', 40, 0)
+      await ctx.delay(300)
+      expect(await focusedTab() === below, `↓ from a pair's right side did not reach the next tab (focus: ${await focusedTab()}).`)
+      await ctx.evaluate(`${host}.close().then(() => true)`)
+      await ctx.wait(`!!document.querySelector('.page-tabs [data-tab-id=${JSON.stringify(left)}] [role="tab"]')`, 10_000, 'the strip with the pair')
+      await ctx.evaluate(`document.querySelector('.page-tabs [data-tab-id=${JSON.stringify(left)}] [role="tab"]').focus()`)
+      await key('ArrowRight', 39, 0)
+      await key('ArrowRight', 39, 0)
+      await ctx.delay(300)
+      expect(await focusedTab() === below, `→ in the strip did not go through the pair to the next tab (focus: ${await focusedTab()}).`)
+      await ctx.evaluate(`${host}.restore().then(() => true)`)
+      await ctx.delay(800)
+      // Delete on a pair's right side closes that side, not the left one.
+      await ctx.evaluate(`document.querySelectorAll('.tab-rail-list [data-tab-id=${JSON.stringify(left)}] [role="tab"]')[1].focus()`)
+      await key('Delete', 46, 0)
+      await ctx.delay(800)
+      const remaining = (await tabs()).map((tab) => tab.id)
+      expect(!remaining.includes(right) && remaining.includes(left), `Delete on a pair's right side closed ${remaining.includes(left) ? 'nothing' : 'its left side'}.`)
+      return 'Moved by command, drag and ⌥⇧↓ (focus kept); pinned tab first, icon-only and saved; speaker muted and unmuted a playing tab; spinner while a slow page loaded; a tab dragged or moved past a pair went round it and the pair held; arrows went through a pair in rail and strip, and Delete closed the focused side; no axe violations in rail or strip.'
     } finally {
       server.close()
     }

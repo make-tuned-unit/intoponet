@@ -1,5 +1,5 @@
 import { EyeOff, X } from 'lucide-react'
-import { useEffect, useRef, useState, type RefObject } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react'
 import type { PageTabSnapshot } from '@intoponet/browser-api'
 import { moveTabByKey, openTabMenu, TabAudioButton, TabHomeButton, TabIcon, tabSoundLabel, tabStateLabel, useTabDrag } from './tabControls'
 
@@ -33,6 +33,29 @@ export function PageTabStrip({ tabs, stripRef, caption, label }: PageTabStripPro
     buttons.current.get(id)?.focus()
   }, [tabs])
 
+  /** Keys on a focused tab (either side of a pair too): ⌥⇧←/→ move it, arrows move between tabs, Delete closes it. */
+  const onTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>, tab: PageTabSnapshot, index: number): void => {
+    if (moveTabByKey(event, tabs, index, 'x') !== null) {
+      refocus.current = tab.id
+      return
+    }
+    // One stop in the Tab order; arrows move between tabs, Delete closes one.
+    const focusAt = (at: number): void => {
+      const next = tabs[Math.max(0, Math.min(tabs.length - 1, at))]
+      if (next) buttons.current.get(next.id)?.focus()
+    }
+    if (event.key === 'ArrowRight') focusAt(index + 1)
+    else if (event.key === 'ArrowLeft') focusAt(index - 1)
+    else if (event.key === 'Home') focusAt(0)
+    else if (event.key === 'End') focusAt(tabs.length - 1)
+    else if (event.key === 'Delete' || event.key === 'Backspace') {
+      const neighbour = tabs[index + 1] ?? tabs[index - 1]
+      refocus.current = neighbour?.id ?? null
+      void window.intoponet.browserHost.closeTab(tab.id)
+    } else return
+    event.preventDefault()
+  }
+
   return (
     <div className="page-tabs" ref={stripRef} role="tablist" aria-label="Open screens">
       {tabs.map((tab, index) => {
@@ -58,6 +81,7 @@ export function PageTabStrip({ tabs, stripRef, caption, label }: PageTabStripPro
                   onFocus={() => setFocusId(half.id)}
                   onClick={() => void window.intoponet.browserHost.activateTab(half.id)}
                   onContextMenu={(event) => openTabMenu(event, half.id)}
+                  onKeyDown={(event) => onTabKeyDown(event, half, tabs.indexOf(half))}
                   {...dragHandlers(half, index)}
                 >
                   <TabIcon tab={half} size={14} />
@@ -100,27 +124,7 @@ export function PageTabStrip({ tabs, stripRef, caption, label }: PageTabStripPro
                 if (event.button === 1) void window.intoponet.browserHost.closeTab(tab.id)
               }}
               onContextMenu={(event) => openTabMenu(event, tab.id)}
-              onKeyDown={(event) => {
-                if (moveTabByKey(event, tabs, index, 'x') !== null) {
-                  refocus.current = tab.id
-                  return
-                }
-                // One stop in the Tab order; arrows move between tabs, Delete closes one.
-                const focusAt = (at: number): void => {
-                  const next = tabs[Math.max(0, Math.min(tabs.length - 1, at))]
-                  if (next) buttons.current.get(next.id)?.focus()
-                }
-                if (event.key === 'ArrowRight') focusAt(index + 1)
-                else if (event.key === 'ArrowLeft') focusAt(index - 1)
-                else if (event.key === 'Home') focusAt(0)
-                else if (event.key === 'End') focusAt(tabs.length - 1)
-                else if (event.key === 'Delete' || event.key === 'Backspace') {
-                  const neighbour = tabs[index + 1] ?? tabs[index - 1]
-                  refocus.current = neighbour?.id ?? null
-                  void window.intoponet.browserHost.closeTab(tab.id)
-                } else return
-                event.preventDefault()
-              }}
+              onKeyDown={(event) => onTabKeyDown(event, tab, index)}
               {...dragHandlers(tab, index)}
             >
               <TabIcon tab={tab} size={14} />

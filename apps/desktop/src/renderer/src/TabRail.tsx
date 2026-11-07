@@ -390,7 +390,7 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
                 aria-label={`${title}, ${at === 0 ? 'left' : 'right'} side by side${half.active ? ', focused' : ''}`}
                 tabIndex={half.active || (!focused && at === 0) ? 0 : -1}
                 title={title}
-                onFocus={() => setFocusIndex(Math.max(0, visibleTabs.indexOf(left)))}
+                onFocus={() => setFocusIndex(Math.max(0, visibleTabs.indexOf(half)))}
                 onClick={() => void window.intoponet.browserHost.activateTab(half.id)}
                 onContextMenu={(event) => openTabMenu(event, half.id)}
                 {...dragHandlers(half, Math.max(0, visibleTabs.indexOf(half)))}
