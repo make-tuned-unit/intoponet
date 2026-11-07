@@ -4390,6 +4390,8 @@ export const checks = {
       await showIn(workId, 'who=bob')
       await askLocation('who=bob')
       await ctx.wait(`!!document.querySelector('[aria-label$="asks for permission"]')`, 15_000, 'the location prompt to be asked again in Work')
+      const workAsk = await ctx.evaluate(`document.querySelector('[aria-label$="asks for permission"]')?.innerText ?? ''`)
+      expect(workAsk.includes('remembered for this site in Work'), `The location prompt in Work does not say the answer is kept for Work: "${workAsk.replace(/\s+/g, ' ')}".`)
       expect(await ctx.click('[aria-label$="asks for permission"] button', 'Allow'), 'The location prompt in Work has no Allow button.')
       await ctx.delay(800)
 

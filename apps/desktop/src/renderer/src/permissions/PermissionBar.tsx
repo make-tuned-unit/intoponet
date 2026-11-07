@@ -17,7 +17,7 @@ export function PermissionBar({ request, more, onDecide }: { request: SitePermis
         <Icon size={15} aria-hidden="true" />
         <span>
           {popup ? 'Pop-up blocked: ' : null}<strong>{hostOf(request.origin)}</strong>{request.topOrigin ? <> on <strong>{hostOf(request.topOrigin)}</strong></> : null} wants to {describePermissionKinds(request.kinds)}.
-          {popup ? '' : request.isPrivate ? ' Private tab: your answer is forgotten when private browsing ends.' : ' Your answer is remembered for this site.'}
+          {popup ? '' : request.isPrivate ? ' Private tab: your answer is forgotten when private browsing ends.' : request.workspace ? ` Your answer is remembered for this site in ${request.workspace}.` : ' Your answer is remembered for this site.'}
           {more > 0 ? ` (${more} more waiting)` : ''}
         </span>
       </span>

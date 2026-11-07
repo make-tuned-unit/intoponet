@@ -142,7 +142,7 @@ export class SitePermissionBroker {
     return null
   }
 
-  request(input: { origin: string | null; topOrigin?: string | null; kinds: SitePermissionKind[] | 'always' | null; isPrivate: boolean; owner: number; scope?: string }, callback: (granted: boolean) => void): void {
+  request(input: { origin: string | null; topOrigin?: string | null; kinds: SitePermissionKind[] | 'always' | null; isPrivate: boolean; owner: number; scope?: string; workspace?: string }, callback: (granted: boolean) => void): void {
     const scope = input.scope ?? 'default'
     const known = this.check(input.origin, input.kinds, input.isPrivate, input.topOrigin, scope)
     if (known !== null || !input.origin || !Array.isArray(input.kinds)) {
@@ -158,7 +158,9 @@ export class SitePermissionBroker {
       return
     }
     const embedded = input.topOrigin && input.topOrigin !== input.origin ? { topOrigin: input.topOrigin } : {}
-    const request: SitePermissionRequest = { id: randomUUID(), origin: input.origin, ...embedded, kinds, isPrivate: input.isPrivate }
+    // A workspace with its own answers is named in the bar: its page may be asking while another workspace is shown.
+    const workspace = !input.isPrivate && input.workspace ? { workspace: input.workspace } : {}
+    const request: SitePermissionRequest = { id: randomUUID(), origin: input.origin, ...embedded, kinds, isPrivate: input.isPrivate, ...workspace }
     const timer = setTimeout(() => this.finish(request.id, false), this.options.timeoutMs ?? 120_000)
     timer.unref?.()
     this.pending.set(request.id, { request, scope, callbacks: [callback], owner: input.owner, timer, decisionVersion: 0, allowing: false })

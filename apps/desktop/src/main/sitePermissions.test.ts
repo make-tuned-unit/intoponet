@@ -242,6 +242,16 @@ describe('permission broker scopes', () => {
     expect(answers).toEqual([])
   })
 
+  it('names the workspace that asks, so the bar says whose answer it is (never for a private tab)', () => {
+    const events: SitePermissionEvent[] = []
+    const broker = new SitePermissionBroker({ store: () => new SitePermissionStore(null), emit: (event) => events.push(event), timeoutMs: 50 })
+    broker.request({ origin: 'https://meet.test', kinds: ['camera'], isPrivate: false, owner: 1, scope: 'ws:work', workspace: 'Work' }, () => undefined)
+    broker.request({ origin: 'https://other.test', kinds: ['camera'], isPrivate: true, owner: 2, scope: 'private', workspace: 'Work' }, () => undefined)
+    broker.request({ origin: 'https://third.test', kinds: ['camera'], isPrivate: false, owner: 3 }, () => undefined)
+    const asked = events.flatMap((event) => (event.type === 'request' ? [event.request] : []))
+    expect(asked.map((request) => request.workspace ?? null)).toEqual(['Work', null, null])
+  })
+
   it('clears one scope without touching another', () => {
     const shared = new SitePermissionStore(null)
     const work = new SitePermissionStore(null)

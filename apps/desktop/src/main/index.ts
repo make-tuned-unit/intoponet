@@ -1578,7 +1578,10 @@ function wireDownloadSession(partition = DEFAULT_PARTITION): void {
       contents.once('destroyed', () => capturingContents.delete(id))
     }
     // Answers are kept per (asking site, page it is in): an embedded frame is named with its page.
-    sitePermissions.request({ origin: originOf(details.requestingUrl || contents.getURL()), topOrigin: originOf(contents.getURL()), kinds: kindsFor(permission, mediaTypes), isPrivate, owner: contents.id, scope }, callback)
+    // A workspace with its own sign-ins is named in the bar, which may show while another workspace is in front.
+    const ownWorkspace = scopeWorkspaceId(scope)
+    const workspace = ownWorkspace ? workspaces.get(ownWorkspace)?.name : undefined
+    sitePermissions.request({ origin: originOf(details.requestingUrl || contents.getURL()), topOrigin: originOf(contents.getURL()), kinds: kindsFor(permission, mediaTypes), isPrivate, owner: contents.id, scope, ...(workspace ? { workspace } : {}) }, callback)
   })
   browsing.setPermissionCheckHandler((contents, permission, requestingOrigin, details) => {
     const mediaType = (details as { mediaType?: string }).mediaType
