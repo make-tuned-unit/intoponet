@@ -2392,6 +2392,8 @@ export const checks = {
       await ctx.wait(`${ws}.get().then((s) => s.workspaces[0].id === ${JSON.stringify(researchId)})`, 3000, '⌥⇧← to move Research first')
 
       // Rename from the workspace's actions.
+      // Menus close when focus leaves the app window: bring it forward first (other checks' windows may be in front).
+      await ctx.main(`(() => { electron.app.focus({ steal: true }); electron.BrowserWindow.getAllWindows()[0].focus(); return true })()`)
       await ctx.click('button[aria-label="Actions for workspace Research"]')
       await ctx.wait(`!!document.querySelector('.tab-rail-folder-menu [role="menuitem"]')`, 2000, 'the workspace menu')
       await ctx.click('.tab-rail-folder-menu [role="menuitem"]', 'Rename')
@@ -2469,6 +2471,8 @@ export const checks = {
 
       // Delete, after confirming (focus starts on Cancel), and Undo brings it back with its tabs, unreloaded.
       const researchC = (await byTitle('research-c')).id
+      // Menus close when focus leaves the app window: bring it forward first (other checks' windows may be in front).
+      await ctx.main(`(() => { electron.app.focus({ steal: true }); electron.BrowserWindow.getAllWindows()[0].focus(); return true })()`)
       await ctx.click('button[aria-label="Actions for workspace Reading"]')
       await ctx.wait(`!!document.querySelector('.tab-rail-folder-menu [role="menuitem"]')`, 2000, 'the workspace menu')
       await ctx.click('.tab-rail-folder-menu [role="menuitem"]', 'Delete workspace')
