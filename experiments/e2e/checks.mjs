@@ -3451,8 +3451,14 @@ export const checks = {
       '/split-left': `<!doctype html><html lang="en"><title>Left story</title><body style="font:16px system-ui;margin:24px"><h1>Left story</h1><p>alpha text here</p></body></html>`,
       '/split-right': `<!doctype html><html lang="en"><title>Right story</title><body style="font:16px system-ui;margin:24px"><h1>Right story</h1><p>beta needle here</p></body></html>`,
     }
+    // A page that fails (the connection drops) until it is told to work.
+    let flakyFails = true
     const server = createServer((request, response) => {
       const path = new URL(request.url, 'http://localhost').pathname
+      if (path === '/split-flaky' && flakyFails) {
+        request.socket.destroy()
+        return
+      }
       response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
       response.end(pages[path] ?? `<!doctype html><title>Page ${path}</title><h1>${path}</h1>`)
     })
@@ -3698,6 +3704,18 @@ export const checks = {
       })
       await expectLayout('after the other side crashed')
       expect((await stateOf()).split.focused === 'right', 'A crash on the left side moved the focus.')
+      // The other side fails to load: hidden while it fails, shown again once its page loads.
+      await ctx.main(`(() => { void ${pageOf('/split-left')}.loadURL('http://127.0.0.1:${port}/split-flaky?left').catch(() => undefined); return true })()`)
+      const flakySide = async () => (await viewsNow()).pages.find((p) => p.url.includes('/split-flaky'))
+      await waitFor('the failing left side hidden', async () => (await flakySide())?.visible === false)
+      expect((await stateOf()).split.focused === 'right', 'The left page failing to load took the focus.')
+      flakyFails = false
+      await ctx.main(`(() => { ${pageOf('/split-flaky')}.reload(); return true })()`)
+      await waitFor('the left side shown again once it loads', async () => (await flakySide())?.visible === true)
+      await expectLayout('after the other side recovered')
+      await ctx.main(`(() => { void ${pageOf('/split-flaky')}.loadURL(${JSON.stringify(leftUrl)}).catch(() => undefined); return true })()`)
+      await waitFor('the left page back', async () => (await stateOf()).split?.left.url === leftUrl)
+      await snap('08b-after-crash-and-error')
 
       // ⌘W on the focused side: the other side goes back to full size and shows.
       const focusedBeforeClose = (await stateOf()).split.focused

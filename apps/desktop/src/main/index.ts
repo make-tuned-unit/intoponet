@@ -1483,7 +1483,9 @@ function setLoadError(view: WebContentsView, error: PageLoadError | null): void 
     tab.autoRetried = false
   }
   if (pageView === view && pageAttached) view.setVisible(pageViewShown(view))
-  if (pageView === view) emitPanelState()
+  // The other side of a split on screen too: hidden while it fails, shown again once its page loads.
+  if (companionView === view && panelBoundsReported) view.setVisible(pageViewShown(view))
+  if (pageView === view || companionView === view) emitPanelState()
   // "Offline" while the Mac reports a network (it changed under the load): one quiet retry.
   if (error?.autoRetry && net.isOnline() && !tab.autoRetried) {
     tab.autoRetried = true
