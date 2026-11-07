@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { MAX_FAVOURITES, MAX_WORKSPACES, parseBrowserHostCommand } from '@intoponet/browser-api'
 import { groupSavedFolders, MAIN_WORKSPACE, nextWorkspaceLook, parseSavedWorkspaces, savedWorkspaceOf, WorkspaceSet, type ParkedWorkspace } from './workspaces'
+import { pagePartition } from './workspaceIdentity'
 
 type Tab = { id: string; asleep?: boolean }
 const parked = (ids: string[], activeTabId: string | null = null): ParkedWorkspace<Tab> => ({ tabs: ids.map((id) => ({ id })), folders: [], activeTabId })
@@ -215,6 +216,26 @@ describe('workspace separate sign-ins', () => {
       ['work', true],
       ['home', undefined],
     ])
+  })
+
+  it('treats a saved id that cannot name a partition as not having separate sign-ins', () => {
+    const saved = parseSavedWorkspaces({
+      activeWorkspaceId: 'main',
+      workspaces: [
+        { id: 'main', name: 'Main', icon: 'globe', accent: 'teal' },
+        { id: 'my work', name: 'Edited', icon: 'briefcase', accent: 'cyan', separateSignIns: true },
+        { id: '../x', name: 'Escape', icon: 'house', accent: 'mint', separateSignIns: true },
+        { id: 'w-2', name: 'Fine', icon: 'house', accent: 'mint', separateSignIns: true },
+      ],
+    })
+    // The workspaces themselves are kept; only the setting goes, so restoring builds their tabs in the shared partition.
+    expect(saved.workspaces.map((workspace) => [workspace.id, workspace.separateSignIns])).toEqual([
+      ['main', undefined],
+      ['my work', undefined],
+      ['../x', undefined],
+      ['w-2', true],
+    ])
+    for (const workspace of saved.workspaces) expect(() => pagePartition(workspace, false)).not.toThrow()
   })
 })
 

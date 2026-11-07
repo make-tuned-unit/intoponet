@@ -15,6 +15,7 @@ import {
   type WorkspacesState,
 } from '@intoponet/browser-api'
 import { MAX_FOLDERS, type TabFolder } from './tabOrder'
+import { isWorkspaceIdentityId } from './workspaceIdentity'
 
 /**
  * Workspaces, kept apart from Electron so they can be tested. The workspace being shown keeps its
@@ -311,7 +312,8 @@ export function parseSavedWorkspaces(state: Record<string, unknown>): SavedWorks
         icon: isWorkspaceIcon(entry['icon']) ? entry['icon'] : 'globe',
         accent: isWorkspaceAccent(entry['accent']) ? entry['accent'] : WORKSPACE_ACCENTS[workspaces.length % WORKSPACE_ACCENTS.length]!,
         ...(anchor ? { anchor } : {}),
-        ...(entry['separateSignIns'] === true ? { separateSignIns: true } : {}),
+        // An id that cannot name a partition (a hand-edited file) means no separate sign-ins, never an error on restore.
+        ...(entry['separateSignIns'] === true && isWorkspaceIdentityId(entry['id']) ? { separateSignIns: true } : {}),
         ...(isId(entry['activeTabId']) ? { activeTabId: entry['activeTabId'] } : {}),
       })
     }

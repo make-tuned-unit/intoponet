@@ -154,6 +154,7 @@ import {
   PRIVATE_PARTITION,
   hasSeparateSignIns,
   identityScope,
+  isWorkspaceIdentityId,
   pagePartition,
   scopeWorkspaceId,
   signInsChange,
@@ -2317,6 +2318,8 @@ async function setSeparateSignIns(workspaceId: string, separate: boolean): Promi
   const workspace = workspaces.get(workspaceId)
   if (!workspace) throw new Error('That workspace is gone.')
   if (separate && workspaceId === MAIN_WORKSPACE_ID) throw new Error('Main always shares its sign-ins.')
+  // A hand-edited id that cannot name a partition: refused before the setting changes, so its tabs keep a session.
+  if (separate && !isWorkspaceIdentityId(workspaceId)) throw new Error('This workspace cannot keep its own sign-ins.')
   if (hasSeparateSignIns(workspace) === separate) return
   workspaces.update(workspaceId, { separateSignIns: separate })
   if (separate) ensurePageSession(workspacePartition(workspaceId))
