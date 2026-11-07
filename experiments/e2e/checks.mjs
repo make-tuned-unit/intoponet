@@ -676,6 +676,9 @@ export const checks = {
     const enriched = JSON.parse(await ctx.evaluate(`JSON.stringify({ images: document.querySelectorAll('.sc-card .sc-media img').length, bylines: [...document.querySelectorAll('.sc-card .sc-authors')].length, summaries: document.querySelectorAll('.sc-card .sc-summary').length })`))
     await ctx.shot('carousel')
     await axeAudit(ctx, 'the sources carousel')
+    // Each headline is laid out in its own direction (Arabic, Persian and Hebrew ones right to left, punctuation in place).
+    const misdirected = JSON.parse(await ctx.evaluate(`JSON.stringify([...document.querySelectorAll('.sc-card .sc-headline, .sc-card .sc-original, .sc-card .sc-summary')].filter((el) => el.dir !== 'auto' || (/^[\\u0590-\\u08FF]/.test(el.textContent.trim()) && getComputedStyle(el).direction !== 'rtl')).map((el) => el.textContent.slice(0, 40)))`))
+    expect(!misdirected.length, `These card texts are not laid out in their own direction: ${misdirected.join(' | ')}`)
     const state0 = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getState().then((s) => JSON.stringify(s))`))
     const first = await ctx.evaluate(`document.querySelector('.sc-card.is-front .sc-outlet strong').innerText`)
     await ctx.evaluate(`(() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })); return true })()`)

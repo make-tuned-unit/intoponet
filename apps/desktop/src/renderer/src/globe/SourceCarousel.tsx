@@ -71,12 +71,12 @@ function SourceCardBody({ headline, preview, loading, title, original, summary, 
       </span>
       <span className="sc-body">
         <span className="sc-card-top">
-          <span className="sc-outlet"><SiteIcon url={headline.url} size={18} /><strong>{preview?.siteName ?? headline.publisher}</strong></span>
+          <span className="sc-outlet"><SiteIcon url={headline.url} size={18} /><strong dir="auto">{preview?.siteName ?? headline.publisher}</strong></span>
           <span className="sc-where">{where}</span>
         </span>
-        <span className="sc-headline" lang={original ? undefined : headline.lang}>{title}</span>
-        {original && <span className="sc-original" lang={headline.lang}>{original}</span>}
-        {summary && <span className="sc-summary">{summary}</span>}
+        <span className="sc-headline" dir="auto" lang={original ? undefined : headline.lang}>{title}</span>
+        {original && <span className="sc-original" dir="auto" lang={headline.lang}>{original}</span>}
+        {summary && <span className="sc-summary" dir="auto">{summary}</span>}
         <span className="sc-byline">
           {authors.length > 0 && <span className="sc-authors"><UserRound size={12} aria-hidden="true" /> {authors.slice(0, 2).join(', ')}{authors.length > 2 ? ` +${authors.length - 2}` : ''}</span>}
           <span>{formatDate(published)}</span>
@@ -363,7 +363,7 @@ export function SourceCarousel({ launch, now, translation, countryName, onRead, 
         <p className="sc-eyebrow">
           Covered in {countries} {countries === 1 ? 'country' : 'countries'}{story.internationalDesks ? ` and ${story.internationalDesks} international desk${story.internationalDesks === 1 ? '' : 's'}` : ''} · {headlines.length} headlines to compare
         </p>
-        <h2>{titles.get(story.url) ?? story.title}</h2>
+        <h2 dir="auto">{titles.get(story.url) ?? story.title}</h2>
         <button type="button" className="sc-close" aria-label="Close sources" onClick={close}><X size={18} aria-hidden="true" /></button>
       </motion.header>
 

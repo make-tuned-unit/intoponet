@@ -98,7 +98,7 @@ export function WorldStories({
                   >
                     <span className="world-rank">{index + 1}</span>
                     <span className="world-text">
-                      <strong title={shown ? `Original: ${story.title}` : undefined}>{shown ?? story.title}</strong>
+                      <strong dir="auto" title={shown ? `Original: ${story.title}` : undefined}>{shown ?? story.title}</strong>
                       <small>
                         <em>{story.countries.length} {story.countries.length === 1 ? 'country' : 'countries'}</em>{story.internationalDesks ? ` · ${story.internationalDesks} international desk${story.internationalDesks === 1 ? '' : 's'}` : ''} · {relativeTime(story.latestAt, now)}
                       </small>
