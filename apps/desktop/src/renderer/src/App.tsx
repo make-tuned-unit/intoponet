@@ -11,6 +11,7 @@ import type {
   TabSidebarState,
   ArchivedTabSnapshot,
   TabFolderSnapshot,
+  WorkspacesState,
 } from '@intoponet/browser-api'
 import { TAB_SIDEBAR_WIDTH } from '@intoponet/browser-api'
 import { demoFieldSnapshot, parseFieldSnapshot, snapshotLabel } from '@intoponet/field-snapshot'
@@ -136,6 +137,7 @@ import { aggregateTopicTraffic, topicTrafficDemoResult } from './topicTraffic'
 import { inferUnifiedLauncherIntent } from './launcherIntent'
 import { TabDock } from './TabDock'
 import { TabRail } from './TabRail'
+import type { WorkspaceRequest } from './WorkspaceBar'
 import { PageTabStrip } from './PageTabStrip'
 import './shellChrome.css'
 import { BookmarkPane, type PaneFilter } from './BookmarkPane'
@@ -554,6 +556,17 @@ export function App() {
       if (event.type !== 'tab-folders') return
       setTabFolders(event.folders)
       if (event.rename) setRenameFolderId(event.rename)
+    })
+    return () => { mounted = false; unsubscribe() }
+  }, [])
+  /** Workspaces and the favourites row (kept by main). */
+  const [workspaces, setWorkspaces] = useState<WorkspacesState | null>(null)
+  const [workspaceRequest, setWorkspaceRequest] = useState<WorkspaceRequest | null>(null)
+  useEffect(() => {
+    let mounted = true
+    void window.intoponet.workspaces.get().then((state) => { if (mounted) setWorkspaces(state) }, () => undefined)
+    const unsubscribe = window.intoponet.browserHost.subscribe((event) => {
+      if (event.type === 'workspaces') setWorkspaces(event.state)
     })
     return () => { mounted = false; unsubscribe() }
   }, [])
@@ -2528,9 +2541,20 @@ export function App() {
       hasPage && app('full-width', fullWidth ? 'Exit full width' : 'Full width', () => setBrowserFullWidth(!fullWidth), '', 'maximise'),
       storyStories.length > 0 && app('highest-peak', 'Fly to the highest story peak', () => findPeak(0), 'H', 'mountain news story'),
       app('tour', 'Take the tour', () => setTourOpen(true), '', 'help guide'),
+      // Workspaces: switch (⌃1–9 do the same), make, rename and delete. The sidebar asks for names and confirmation.
+      ...(workspaces && workspaces.workspaces.length > 1 ? workspaces.workspaces.map((workspace, index) => workspace.id !== workspaces.activeId && app(
+        `workspace-${workspace.id}`, `Switch to workspace ${workspace.name}`, () => void window.intoponet.workspaces.switchTo({ id: workspace.id }).catch(() => setError('That workspace could not be shown.')),
+        `⌃${index + 1}`, 'space workspaces',
+      )) : []),
+      app('new-workspace', 'New workspace', () => {
+        if (document.querySelector('.tab-rail')) setWorkspaceRequest({ kind: 'new', at: Date.now() })
+        else void window.intoponet.workspaces.create().then((state) => setNotice(`Made ${state.workspaces.find((workspace) => workspace.id === state.activeId)?.name ?? 'a workspace'}`), (reason: unknown) => setError(reason instanceof Error ? reason.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : 'No new workspace could be made.'))
+      }, '', 'space workspaces add'),
+      tabs.length > 0 && panel.isVisible && app('rename-workspace', 'Rename workspace…', () => setWorkspaceRequest({ kind: 'edit', at: Date.now() }), '', 'space workspaces icon colour'),
+      tabs.length > 0 && panel.isVisible && !!workspaces && workspaces.workspaces.length > 1 && app('delete-workspace', 'Delete workspace…', () => setWorkspaceRequest({ kind: 'delete', at: Date.now() }), '', 'space workspaces remove'),
     ]
     return list.filter((item): item is OmniboxAction & { run: () => void } => !!item)
-  }, [hasPage, panel.canGoBack, panel.canGoForward, panel.isVisible, panel.isLoading, tabs.length, privacyState?.privateMode, sidebar.mode, protection.enabled, fullWidth, storyStories.length]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [hasPage, panel.canGoBack, panel.canGoForward, panel.isVisible, panel.isLoading, tabs.length, privacyState?.privateMode, sidebar.mode, protection.enabled, fullWidth, storyStories.length, workspaces]) // eslint-disable-line react-hooks/exhaustive-deps
   const commandActionsRef = useRef(commandActions)
   commandActionsRef.current = commandActions
   /** ⌘K: the address bar in command mode (out of full width, where it is hidden). */
@@ -2878,6 +2902,8 @@ export function App() {
         onRenameHandled={() => setRenameFolderId(null)}
         onSaveFolder={saveTabFolder}
         message={railMessage}
+        workspaces={workspaces}
+        workspaceRequest={workspaceRequest}
       />
       <BookmarkPane
         open={bookmarksOpen && !fieldLabOpen}

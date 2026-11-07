@@ -20,6 +20,7 @@ export type TabMenuTab = OrderedTab & {
   isStartPage?: boolean
   muted?: boolean
   awayFromHome?: boolean
+  isPrivate?: boolean
 }
 
 type Entry = { action: TabMenuAction; label: string; enabled: boolean } | { separator: true }
@@ -72,12 +73,32 @@ export function folderSubmenu(choices: TabMenuFolders): MenuItemConstructorOptio
   ]
 }
 
+/** The other workspaces a tab can move to, and its place in the favourites row. */
+export type TabMenuWorkspaces = {
+  /** Every workspace but the one shown. */
+  others: ReadonlyArray<{ id: string; name: string }>
+  move: (workspaceId: string) => void
+  /** A new workspace, with this tab moved into it. */
+  moveToNew: (() => void) | null
+  favourite: { added: boolean; toggle: () => void } | null
+}
+
+/** "Move to Workspace": every other workspace, then a new one. */
+export function workspaceSubmenu(choices: TabMenuWorkspaces): MenuItemConstructorOptions[] {
+  return [
+    ...choices.others.map((workspace): MenuItemConstructorOptions => ({ label: workspace.name, click: () => choices.move(workspace.id) })),
+    ...(choices.others.length && choices.moveToNew ? [{ type: 'separator' as const }] : []),
+    ...(choices.moveToNew ? [{ label: 'New Workspace', click: choices.moveToNew }] : []),
+  ]
+}
+
 /** The native menu template; `run` performs an action for this tab. */
 export function tabMenuTemplate(
   tabs: readonly TabMenuTab[],
   id: string,
   run: (action: TabMenuAction, id: string) => void,
   folders?: TabMenuFolders,
+  workspaces?: TabMenuWorkspaces,
 ): MenuItemConstructorOptions[] {
   const items = tabMenuEntries(tabs, id).map((entry): MenuItemConstructorOptions =>
     'separator' in entry
@@ -85,9 +106,19 @@ export function tabMenuTemplate(
       : { label: entry.label, enabled: entry.enabled, click: () => run(entry.action, id) },
   )
   const tab = tabs.find((item) => item.id === id)
-  if (!folders || !tab || tab.pinned) return items
+  if (!tab) return items
   // After Pin/Unpin.
-  const at = items.findIndex((item) => item.label === 'Pin Tab') + 1
-  items.splice(at > 0 ? at : 3, 0, { label: 'Move to Folder', submenu: folderSubmenu(folders) })
+  const pinAt = (): number => {
+    const at = items.findIndex((item) => item.label === 'Pin Tab' || item.label === 'Unpin Tab') + 1
+    return at > 0 ? at : 3
+  }
+  // Private tabs belong to no workspace and never become favourites.
+  if (workspaces && !tab.isPrivate) {
+    const extra: MenuItemConstructorOptions[] = []
+    if (workspaces.others.length || workspaces.moveToNew) extra.push({ label: 'Move to Workspace', submenu: workspaceSubmenu(workspaces) })
+    if (workspaces.favourite) extra.push({ label: workspaces.favourite.added ? 'Remove from Favourites' : 'Add to Favourites', click: workspaces.favourite.toggle })
+    items.splice(pinAt(), 0, ...extra)
+  }
+  if (folders && !tab.pinned) items.splice(pinAt(), 0, { label: 'Move to Folder', submenu: folderSubmenu(folders) })
   return items
 }

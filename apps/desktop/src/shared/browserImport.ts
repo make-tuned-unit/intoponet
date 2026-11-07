@@ -5,7 +5,8 @@ export const browserImportChannels = {
   command: 'intoponet:browser-import',
 } as const
 
-export const IMPORT_CATEGORIES = ['bookmarks', 'pinned', 'open', 'history', 'passwords'] as const
+/** `workspaces`: a sidebar browser's spaces become workspaces (with their pinned tabs, folders and open tabs). */
+export const IMPORT_CATEGORIES = ['bookmarks', 'pinned', 'open', 'history', 'passwords', 'workspaces'] as const
 export type ImportCategory = (typeof IMPORT_CATEGORIES)[number]
 
 /** One browser profile found on this Mac. The shell only ever names it by id. */
@@ -33,6 +34,10 @@ export type ImportPreview = {
   counts: Record<ImportCategory, ImportCount>
   /** Folders (bookmark folders, sidebar spaces and folders) that become collections. */
   folders: number
+  /** The spaces that would become workspaces, as they would come over (sidebar browsers only). */
+  spaces?: Array<{ name: string; pinned: number; folders: number; foldered: number; open: number }>
+  /** Favourites the sidebar keeps above its spaces. */
+  favourites?: number
 }
 
 export type ImportSkip = { category: ImportCategory; count: number; reason: string }
@@ -40,7 +45,9 @@ export type ImportSkip = { category: ImportCategory; count: number; reason: stri
 export type ImportRunResult = {
   /** A private-library document with the bookmarks and collections to merge (no passwords), or null. */
   library: string | null
-  added: { pinned: number; open: number; history: number; passwords: number }
+  added: { pinned: number; open: number; history: number; passwords: number; workspaces?: number; foldered?: number; favourites?: number }
+  /** Workspaces made or added to, by name. */
+  workspaceNames?: string[]
   skipped: ImportSkip[]
 }
 

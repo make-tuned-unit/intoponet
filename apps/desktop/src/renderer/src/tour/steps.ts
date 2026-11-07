@@ -279,6 +279,14 @@ export const TOUR_STEPS: TourStep[] = [
     run: (controls) => controls.showKnowledge(false),
   },
   {
+    id: 'workspaces',
+    chapter: 'Tabs',
+    title: 'Workspaces keep things apart',
+    body: 'Make a workspace for work, a trip or a story you follow: each has its own name, colour, pinned tabs, folders and open tabs. Switch with ⌃1–9, a sideways swipe on the sidebar, or the command menu; sleeping tabs stay asleep. A favourites row can be shared by every workspace, and private browsing is never part of one.',
+    target: '.tab-rail',
+    seconds: 10,
+  },
+  {
     id: 'link-preview',
     chapter: 'Browsing',
     title: 'Peek at a link first',

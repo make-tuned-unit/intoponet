@@ -33,6 +33,8 @@ declare global {
       history: HistoryApi
       /** Links to other apps, default browser, page appearance. */
       browsing: BrowsingApi
+      /** Workspaces and the favourites row. */
+      workspaces: import('@intoponet/browser-api').WorkspacesApi
     }
   }
 }

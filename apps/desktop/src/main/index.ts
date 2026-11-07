@@ -159,11 +159,12 @@ protocol.registerSchemesAsPrivileged([
 ])
 let captures: CaptureService | null = null
 import { browserContextActions, type BrowserContextAction } from './browserContextMenu'
-import { canNest, deleteFolder, duplicateIndex, folderDepth, folderedOrder, folderTreeOrder, MAX_FOLDERS, moveFolderedTab, moveTab, otherTabIds, pinnedFirst, setPinned, setTabFolder, tabIdsToRight, type TabFolder } from './tabOrder'
+import { canNest, deleteFolder, duplicateIndex, folderDepth, folderedOrder, folderTreeOrder, MAX_FOLDER_DEPTH, MAX_FOLDERS, moveFolderedTab, moveTab, otherTabIds, pinnedFirst, setPinned, setTabFolder, tabIdsToRight, type TabFolder } from './tabOrder'
 import { tabMenuTemplate, type TabMenuAction } from './tabMenu'
 import { liveTabFlags } from './tabState'
+import { groupSavedFolders, parseSavedWorkspaces, savedWorkspaceOf, WorkspaceSet, type RemovedWorkspace, type SavedWorkspace, type SavedWorkspaces } from './workspaces'
 import { BrowserImportService, wireBrowserImport } from './browserImport/service'
-import type { ImportedTab } from './browserImport/plan'
+import type { FolderPlan, ImportedTab, WorkspaceImportPlan } from './browserImport/plan'
 import { importRoot } from './browserImport/sources'
 import {
   browserHostChannels,
@@ -178,6 +179,12 @@ import {
   type ShellShortcut,
   type ProtectionSnapshot,
   type PublicFieldStatus,
+  type WorkspaceCommand,
+  type WorkspacesState,
+  type WorkspaceSwitch,
+  MAX_FAVOURITES,
+  MAX_WORKSPACES,
+  WORKSPACE_COMMAND_TYPES,
   parseBrowserHostCommand,
   resolveNavigationIntent,
 } from '@intoponet/browser-api'
@@ -219,7 +226,20 @@ let removeFullscreenNotice: (() => void) | null = null
 /** Animated dock reservation; null when resting at its target. */
 let dockReserveNow: number | null = null
 let dockTweenTimer: ReturnType<typeof setTimeout> | null = null
+/** The tabs of the workspace shown, and private tabs (which belong to no workspace). */
 const openTabs: OpenTab[] = []
+/** Workspaces (workspaces.ts): openTabs and tabFolders hold the shown one's tabs and folders; the others are parked. */
+let workspaces = new WorkspaceSet<OpenTab>()
+/** A workspace deleted moments ago: Undo brings it back (its tabs stay open, unseen) until the timer closes them. */
+let deletedWorkspace: { removed: RemovedWorkspace<OpenTab>; timer: ReturnType<typeof setTimeout> } | null = null
+/** Every tab in every workspace, and private tabs. */
+function allTabs(): OpenTab[] {
+  return [...openTabs, ...workspaces.parkedTabs()]
+}
+function tabOfView(view: WebContentsView | null): OpenTab | undefined {
+  if (!view) return undefined
+  return openTabs.find((tab) => tab.view === view) ?? workspaces.parkedTabs().find((tab) => tab.view === view)
+}
 let lastBounds: BrowserPanelBounds = { x: 40, y: 104, width: 900, height: 600 }
 let lastKnownUrl = ''
 let persistenceTimer: ReturnType<typeof setTimeout> | null = null
@@ -263,16 +283,34 @@ const pageAppearance = new PageAppearanceController('system')
 /** Certificate problems, kept until the failed load that follows shows them. */
 const certificateErrors = new CertificateErrorMemo()
 
+type SavedTab = { id: string; url: string; title: string; pinned?: boolean; home?: string; folderId?: string; workspaceId: string }
+
+/** browser-state.v1.json (the file keeps its name); version 3 added workspaces (see workspaces.ts). */
 type PersistentBrowserState = {
-  version: 2
+  version: 3
   url: string
   bounds: BrowserPanelBounds
   wasVisible: boolean
-  tabs: { id: string; url: string; title: string; pinned?: boolean; home?: string; folderId?: string }[]
+  /** Every workspace's tabs, each naming its workspace. */
+  tabs: SavedTab[]
   /** The tab sidebar's mode and width (absent until first changed). */
   sidebar?: TabSidebarState
-  /** Sidebar folders; saved tabs name theirs by folderId. */
-  folders?: TabFolder[]
+  /** Sidebar folders of every workspace; saved tabs name theirs by folderId. */
+  folders?: Array<TabFolder & { workspaceId: string }>
+  workspaces: SavedWorkspace[]
+  activeWorkspaceId: string
+  favourites?: SavedWorkspaces['favourites']
+}
+
+/** What a saved state brings back: tabs and folders by workspace, and the workspaces themselves. */
+type RestoredBrowserState = {
+  url: string
+  bounds: BrowserPanelBounds
+  wasVisible: boolean
+  tabs: SavedTab[]
+  sidebar?: TabSidebarState
+  folders: Map<string, TabFolder[]>
+  workspaces: SavedWorkspaces
 }
 
 const defaultPanelState = (): BrowserPanelSnapshot => ({
@@ -304,23 +342,54 @@ function safeHttpUrl(value: string): URL | null {
 
 function persistentState(): PersistentBrowserState {
   // Private tabs are never saved or restored; nor are empty new tabs.
-  const tabs = tabSnapshots().filter((tab) => !tab.isPrivate && !tab.isStartPage).map((tab) => ({
+  const shownId = workspaces.activeId
+  const shown: SavedTab[] = tabSnapshots().filter((tab) => !tab.isPrivate && !tab.isStartPage).map((tab) => ({
     id: tab.id,
     url: tab.url,
     title: tab.title,
     ...(tab.pinned ? { pinned: true } : {}),
     ...(tab.pinned && tab.home ? { home: tab.home } : {}),
     ...(tab.folderId ? { folderId: tab.folderId } : {}),
+    workspaceId: shownId,
   }))
+  const parked: SavedTab[] = []
+  const folders: Array<TabFolder & { workspaceId: string }> = tabFolders.map((folder) => ({ ...folder, workspaceId: shownId }))
+  const records: SavedWorkspace[] = []
+  for (const workspace of workspaces.workspaces) {
+    const held = workspace.id === shownId ? null : workspaces.parkedOf(workspace.id)
+    const lastTab = held ? held.activeTabId : openTabs.some((tab) => tab.id === activeTabId && !privateViews.has(tab.view)) ? activeTabId : null
+    records.push({ ...workspace, ...(lastTab ? { activeTabId: lastTab } : {}) })
+    if (!held) continue
+    for (const folder of held.folders) folders.push({ ...folder, workspaceId: workspace.id })
+    for (const tab of held.tabs) {
+      if (tab.start) continue
+      const live = !viewGone(tab.view)
+      const current = live ? tab.view.webContents.getURL() : ''
+      const url = capUrl(safeHttpUrl(current) ? current : tab.url)
+      if (!safeHttpUrl(url)) continue
+      parked.push({
+        id: tab.id,
+        url,
+        title: capTitle((live ? tab.view.webContents.getTitle() : '') || tab.title),
+        ...(tab.pinned ? { pinned: true } : {}),
+        ...(tab.pinned && tab.home ? { home: capUrl(tab.home) } : {}),
+        ...(tab.folderId && !tab.pinned ? { folderId: tab.folderId } : {}),
+        workspaceId: workspace.id,
+      })
+    }
+  }
   return {
-    version: 2,
+    version: 3,
     // The open page only when it is a saved tab: a private page's address never reaches the disk.
-    url: persistedActiveUrl(tabs, activeTabId, lastKnownUrl),
+    url: persistedActiveUrl(shown, activeTabId, lastKnownUrl),
     bounds: lastBounds,
     wasVisible: pageAttached,
-    tabs,
+    tabs: [...shown, ...parked],
     ...(tabSidebar ? { sidebar: tabSidebar } : {}),
-    ...(tabFolders.length ? { folders: tabFolders } : {}),
+    ...(folders.length ? { folders } : {}),
+    workspaces: records,
+    activeWorkspaceId: shownId,
+    ...(workspaces.favourites.length ? { favourites: workspaces.favourites.map((favourite) => ({ ...favourite })) } : {}),
   }
 }
 
@@ -390,13 +459,13 @@ function parseSavedFolders(value: unknown): TabFolder[] {
   return folders
 }
 
-async function loadPersistentState(): Promise<PersistentBrowserState | null> {
+async function loadPersistentState(): Promise<RestoredBrowserState | null> {
   try {
     const parsed = JSON.parse(await readFile(stateFilePath(), 'utf8')) as unknown
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null
     const candidate = parsed as Record<string, unknown>
     if (
-      (candidate['version'] !== 1 && candidate['version'] !== 2) ||
+      (candidate['version'] !== 1 && candidate['version'] !== 2 && candidate['version'] !== 3) ||
       typeof candidate['wasVisible'] !== 'boolean'
     ) {
       return null
@@ -410,7 +479,9 @@ async function loadPersistentState(): Promise<PersistentBrowserState | null> {
       bounds: candidate['bounds'],
     })
     if (boundsCommand.type !== 'set-bounds') return null
-    const tabs = Array.isArray(candidate['tabs'])
+    // Versions 1 and 2 had no workspaces: everything they kept goes into "Main".
+    const saved = parseSavedWorkspaces(candidate)
+    const tabs: SavedTab[] = Array.isArray(candidate['tabs'])
       ? candidate['tabs'].flatMap((entry) => {
           if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) return []
           const record = entry as Record<string, unknown>
@@ -423,26 +494,28 @@ async function loadPersistentState(): Promise<PersistentBrowserState | null> {
               ...(record['pinned'] === true ? { pinned: true } : {}),
               ...(record['pinned'] !== true && typeof record['folderId'] === 'string' && record['folderId'].length <= 80 ? { folderId: record['folderId'] } : {}),
               ...(record['pinned'] === true && typeof record['home'] === 'string' && record['home'].length <= 8_192 && safeHttpUrl(record['home']) ? { home: record['home'] } : {}),
+              workspaceId: savedWorkspaceOf(record, saved.workspaces),
             },
           ]
         })
       : url
-        ? [{ id: randomUUID(), url, title: '' }]
+        ? [{ id: randomUUID(), url, title: '', workspaceId: saved.activeId }]
         : []
     let sidebar: TabSidebarState | undefined
     try {
       const parsedSidebar = parseBrowserHostCommand({ type: 'set-tab-sidebar', sidebar: candidate['sidebar'] })
       if (parsedSidebar.type === 'set-tab-sidebar') sidebar = parsedSidebar.sidebar
     } catch { /* never set, or damaged: the default */ }
-    const folders = parseSavedFolders(candidate['folders'])
+    const folders = new Map<string, TabFolder[]>()
+    for (const [workspaceId, group] of groupSavedFolders(candidate['folders'], saved.workspaces)) folders.set(workspaceId, parseSavedFolders(group))
     return {
-      version: 2,
       url,
       bounds: boundsCommand.bounds,
       wasVisible: candidate['wasVisible'],
       tabs,
       ...(sidebar ? { sidebar } : {}),
-      ...(folders.length ? { folders } : {}),
+      folders,
+      workspaces: saved,
     }
   } catch {
     return null
@@ -660,7 +733,7 @@ function scheduleAdCollapse(contentsId: number, url?: string, delay = 250): void
 function wireProtectionSession(partition = 'persist:intoponet-default'): void {
   const guest = session.fromPartition(partition)
   guest.webRequest.onBeforeRequest((details, callback) => {
-    const routed = routeProtectionRequest(protection, protectionPages, details, linkPreview ? [...openTabs, { url: linkPreview.url, view: linkPreview.view }] : openTabs)
+    const routed = routeProtectionRequest(protection, protectionPages, details, linkPreview ? [...allTabs(), { url: linkPreview.url, view: linkPreview.view }] : allTabs())
     if (!routed) {
       callback({})
       return
@@ -877,7 +950,7 @@ function wirePasswords(): void {
   })
   // Only the top frame of a normal tab may report a sign-in; its origin is read here, not trusted from the page.
   ipcMain.on(passwordPageChannels.report, (event, value: unknown) => {
-    const tab = openTabs.find((item) => !viewGone(item.view) && item.view.webContents === event.sender)
+    const tab = allTabs().find((item) => !viewGone(item.view) && item.view.webContents === event.sender)
     if (!tab || !event.senderFrame || event.senderFrame !== event.sender.mainFrame) return
     const message = parsePasswordPageMessage(value)
     if (!message) return
@@ -910,13 +983,13 @@ function wirePasswords(): void {
 // ---- The in-tab error page (errorPage.ts says why it is drawn by the shell) ----
 
 function loadErrorOf(view: WebContentsView): { loadError?: PageLoadError } {
-  const error = openTabs.find((tab) => tab.view === view)?.loadError
+  const error = tabOfView(view)?.loadError
   return error ? { loadError: error } : {}
 }
 
 /** Show (or, with null, take away) a tab's error page. */
 function setLoadError(view: WebContentsView, error: PageLoadError | null): void {
-  const tab = openTabs.find((item) => item.view === view)
+  const tab = tabOfView(view)
   if (!tab || (!error && !tab.loadError)) return
   if (error) tab.loadError = error
   else {
@@ -1108,7 +1181,7 @@ function updateTabIcon(view: WebContentsView, iconUrl: string): void {
   if (!memory) tabIconMemory.set(view, (memory = new TabIconMemory()))
   const apply = (data: string): void => {
     if (tabIconWanted.get(view) !== iconUrl) return
-    const tab = openTabs.find((item) => item.view === view)
+    const tab = tabOfView(view)
     if (!tab || tab.favicon === data) return
     tab.favicon = data
     emitTabs()
@@ -1164,7 +1237,7 @@ function createStartTab(): void {
 
 /** The tab is about to load a page: stop drawing the start page and show the view. */
 function leaveStartPage(view: WebContentsView): void {
-  const tab = openTabs.find((item) => item.view === view)
+  const tab = tabOfView(view)
   if (!tab?.start) return
   tab.start = false
   if (pageView === view && pageAttached) view.setVisible(pageViewShown(view))
@@ -1207,7 +1280,7 @@ function samePage(left: string, right: string): boolean {
 }
 
 function rememberTab(view: WebContentsView): void {
-  const tab = openTabs.find((item) => item.view === view)
+  const tab = tabOfView(view)
   if (!tab) return
   const url = view.webContents.getURL()
   const title = view.webContents.getTitle()
@@ -1303,6 +1376,231 @@ function createTabFolder(name: string, parentId: string | null, tabIds: string[]
   return folder
 }
 
+// ---- Workspaces (workspaces.ts) ----------------------------------------------------------------
+
+/** How long a deleted workspace can be brought back before its tabs close. */
+const WORKSPACE_UNDO_MS = 10_000
+
+/** Tabs a workspace holds, as its row in the sidebar counts them (new, empty tabs and private tabs never count). */
+function workspaceTabCount(id: string): number {
+  const tabs = id === workspaces.activeId ? openTabs.filter((tab) => !privateViews.has(tab.view)) : workspaces.parkedOf(id)?.tabs ?? []
+  return tabs.filter((tab) => !tab.start).length
+}
+
+function workspacesState(): WorkspacesState {
+  const pending = deletedWorkspace?.removed
+  return workspaces.snapshot(workspaceTabCount, pending ? { id: pending.workspace.id, name: pending.workspace.name, tabCount: pending.parked.tabs.filter((tab) => !tab.start).length } : null)
+}
+
+function emitWorkspaces(switchedMs?: number): void {
+  emit({ type: 'workspaces', state: workspacesState(), ...(switchedMs !== undefined ? { switchedMs: Math.round(switchedMs * 10) / 10 } : {}) })
+  appMenu.schedule()
+}
+
+/**
+ * Shows another workspace: the shown one's tabs and folders are parked as they are (loaded pages
+ * stay loaded, sleeping ones asleep) and the other's come back. Only the tab it last showed is shown
+ * (and so loaded, if it slept); its other tabs are not touched. Private tabs stay where they are.
+ */
+function switchWorkspace(target: WorkspaceSwitch): boolean {
+  const started = performance.now()
+  const workspace = workspaces.resolve(target)
+  if (!workspace || workspace.id === workspaces.activeId) return false
+  if (tabSwitcher.open) endTabSwitcher('cancel')
+  const showing = pageAttached
+  const privateTabs = openTabs.filter((tab) => privateViews.has(tab.view))
+  const leaving = openTabs.filter((tab) => !privateViews.has(tab.view))
+  const shownTab = leaving.find((tab) => tab.id === activeTabId)
+  const next = workspaces.switchTo(workspace.id, { tabs: leaving, folders: tabFolders, activeTabId: shownTab?.id ?? null })
+  if (!next) return false
+  // What was shown goes out of sight (a private page too: the workspace asked for is what shows).
+  const previous = openTabs.find((tab) => tab.id === activeTabId)
+  if (previous) previous.lastShownAt = Date.now()
+  detachActive()
+  pageView = null
+  activeTabId = null
+  openTabs.splice(0, openTabs.length, ...next.tabs, ...privateTabs)
+  tabFolders = next.folders
+  const show = next.tabs.find((tab) => tab.id === next.activeTabId) ?? next.tabs.find((tab) => !tab.asleep) ?? next.tabs[0]
+  if (showing) {
+    if (show) showTab(show.id)
+    // An empty workspace opens on a new tab, so the sidebar (and its way back) stays.
+    else createStartTab()
+  } else if (show) {
+    // The globe is in front: the workspace's tab is ready to show, but nothing loads until it is.
+    activeTabId = show.id
+    pageView = show.view
+    lastKnownUrl = show.url
+  } else lastKnownUrl = ''
+  emitTabFolders()
+  emitTabs()
+  emitPanelState()
+  emitProtectionState()
+  emitWorkspaces(performance.now() - started)
+  schedulePersistentStateSave()
+  return true
+}
+
+/** The tabs a deleted workspace held are closed for good (Undo can no longer bring them back). */
+function finishWorkspaceDelete(): void {
+  const pending = deletedWorkspace
+  if (!pending) return
+  clearTimeout(pending.timer)
+  deletedWorkspace = null
+  for (const tab of pending.removed.parked.tabs) {
+    crashRecovery.forget(tab.id)
+    const contentsId = viewContentsIds.get(tab.view)
+    if (contentsId !== undefined) {
+      protectionPages.remove(contentsId)
+      translateService?.forgetPage(contentsId)
+    }
+    if (!viewGone(tab.view)) tab.view.webContents.close()
+  }
+  emitWorkspaces()
+}
+
+function deleteWorkspace(id: string): void {
+  if (!workspaces.get(id)) throw new Error('That workspace is gone.')
+  if (workspaces.workspaces.length < 2) throw new Error('The last workspace cannot be deleted.')
+  // Only one Undo at a time: an earlier deletion is now final.
+  finishWorkspaceDelete()
+  if (id === workspaces.activeId) {
+    const at = workspaces.workspaces.findIndex((workspace) => workspace.id === id)
+    const neighbour = workspaces.workspaces[at + 1] ?? workspaces.workspaces[at - 1]
+    if (neighbour) switchWorkspace({ id: neighbour.id })
+  }
+  const removed = workspaces.remove(id)
+  if (!removed) return
+  deletedWorkspace = { removed, timer: setTimeout(finishWorkspaceDelete, WORKSPACE_UNDO_MS) }
+  deletedWorkspace.timer.unref?.()
+  emitWorkspaces()
+  schedulePersistentStateSave()
+}
+
+function undoWorkspaceDelete(): void {
+  const pending = deletedWorkspace
+  if (!pending) return
+  clearTimeout(pending.timer)
+  deletedWorkspace = null
+  if (!workspaces.restore(pending.removed)) {
+    deletedWorkspace = pending
+    finishWorkspaceDelete()
+    throw new Error('The workspace could not be brought back.')
+  }
+  switchWorkspace({ id: pending.removed.workspace.id })
+  emitWorkspaces()
+  schedulePersistentStateSave()
+}
+
+/** Moves a tab of the shown workspace into another one (out of its folder: folders belong to a workspace). */
+function moveTabToWorkspace(tabId: string, workspaceId: string): void {
+  const index = openTabs.findIndex((tab) => tab.id === tabId)
+  const tab = openTabs[index]
+  if (!tab || privateViews.has(tab.view)) throw new Error('Private tabs are not part of any workspace.')
+  if (workspaceId === workspaces.activeId || !workspaces.get(workspaceId)) return
+  if (activeTabId === tabId) {
+    const next = openTabs.find((other, at) => at > index && !privateViews.has(other.view)) ?? [...openTabs.slice(0, index)].reverse().find((other) => !privateViews.has(other.view))
+    if (next && pageAttached) showTab(next.id)
+    else {
+      detachActive()
+      pageView = null
+      activeTabId = null
+    }
+  }
+  openTabs.splice(openTabs.indexOf(tab), 1)
+  delete tab.folderId
+  tab.lastShownAt = Date.now()
+  workspaces.addToParked(workspaceId, tab)
+  emitTabs()
+  emitPanelState()
+  emitWorkspaces()
+  schedulePersistentStateSave()
+}
+
+/** A favourite opens in the shown workspace: its tab if one is at that page, otherwise a new one. */
+async function openFavourite(id: string): Promise<void> {
+  const favourite = workspaces.visibleFavourites().find((item) => item.id === id)
+  if (!favourite) throw new Error('That favourite is gone.')
+  const existing = openTabs.find((tab) => !viewGone(tab.view) && privateViews.has(tab.view) === privateMode && samePage(tab.view.webContents.getURL() || tab.url, favourite.url))
+  if (existing) {
+    showTab(existing.id)
+    return
+  }
+  const view = createBrowserTab(favourite.url)
+  if (view) await view.webContents.loadURL(favourite.url).catch(() => undefined)
+}
+
+async function handleWorkspaceCommand(command: WorkspaceCommand): Promise<WorkspacesState> {
+  switch (command.type) {
+    case 'get-workspaces':
+      break
+    case 'create-workspace': {
+      const { type: _type, ...look } = command
+      const workspace = workspaces.create(look)
+      if (!workspace) throw new Error(`At most ${MAX_WORKSPACES} workspaces.`)
+      switchWorkspace({ id: workspace.id })
+      emitWorkspaces()
+      schedulePersistentStateSave()
+      break
+    }
+    case 'update-workspace': {
+      const { type: _type, id, ...changes } = command
+      if (workspaces.update(id, changes)) {
+        emitWorkspaces()
+        schedulePersistentStateSave()
+      }
+      break
+    }
+    case 'move-workspace':
+      if (workspaces.move(command.id, command.toIndex)) {
+        emitWorkspaces()
+        schedulePersistentStateSave()
+      }
+      break
+    case 'delete-workspace':
+      deleteWorkspace(command.id)
+      break
+    case 'undo-delete-workspace':
+      undoWorkspaceDelete()
+      break
+    case 'switch-workspace': {
+      const { type: _type, ...target } = command
+      switchWorkspace(target)
+      break
+    }
+    case 'move-tab-to-workspace':
+      moveTabToWorkspace(command.tabId, command.workspaceId)
+      break
+    case 'add-favourite': {
+      const tab = openTabs.find((item) => item.id === command.tabId)
+      if (!tab || privateViews.has(tab.view)) throw new Error('Private tabs cannot become favourites.')
+      const live = !viewGone(tab.view)
+      const url = live && safeHttpUrl(tab.view.webContents.getURL()) ? tab.view.webContents.getURL() : tab.url
+      if (!safeHttpUrl(url)) throw new Error('Only web pages can be favourites.')
+      if (!workspaces.addFavourite(capUrl(url), capTitle((live ? tab.view.webContents.getTitle() : '') || tab.title), command.shared)) throw new Error(`At most ${MAX_FAVOURITES} favourites.`)
+      emitWorkspaces()
+      schedulePersistentStateSave()
+      break
+    }
+    case 'update-favourite':
+      if (workspaces.setFavouriteShared(command.id, command.shared)) {
+        emitWorkspaces()
+        schedulePersistentStateSave()
+      }
+      break
+    case 'remove-favourite':
+      if (workspaces.removeFavourite(command.id)) {
+        emitWorkspaces()
+        schedulePersistentStateSave()
+      }
+      break
+    case 'open-favourite':
+      await openFavourite(command.id)
+      break
+  }
+  return workspacesState()
+}
+
 /** The tab sidebar's mode and width, saved with the tabs (null until first changed). */
 let tabSidebar: TabSidebarState | null = null
 /** Full width with the sidebar hidden: the pointer resting at the left edge of the page brings it back. */
@@ -1365,7 +1663,7 @@ function reopenArchivedTabs(ids: string[]): void {
     const entry = tabArchive.take(id)
     if (!entry) continue
     const view = createBrowserTab(entry.url, false, false)
-    const tab = view && openTabs.find((item) => item.view === view)
+    const tab = view && tabOfView(view)
     if (!view || !tab) continue
     tab.title = entry.title
     tab.favicon = entry.favicon
@@ -1720,7 +2018,8 @@ async function sleepIdleTabs(): Promise<void> {
         saveTabArchive()
       }
     }
-    const due = tabsDueForSleep(openTabs.map((tab) => {
+    // Every workspace's tabs sleep alike (a workspace not shown is out of sight too).
+    const due = tabsDueForSleep(allTabs().map((tab) => {
       const live = !viewGone(tab.view)
       const contentsId = live ? tab.view.webContents.id : -1
       return {
@@ -1735,7 +2034,7 @@ async function sleepIdleTabs(): Promise<void> {
       }
     }), now, sleepAfterMs(tabSleepAfter, TAB_SLEEP_MINUTE_MS))
     for (const id of due) {
-      const tab = openTabs.find((item) => item.id === id)
+      const tab = allTabs().find((item) => item.id === id)
       if (!tab || viewGone(tab.view)) continue
       // Typed text not yet sent keeps a tab awake (it would be lost); so does a page that will not answer.
       const typed = await tab.view.webContents.executeJavaScriptInIsolatedWorld(KEYS_WORLD_ID, [{ code: TYPED_FORM_SCRIPT }]).catch(() => true)
@@ -1813,9 +2112,10 @@ function closeTab(id: string): void {
 
 function discardTab(id: string, remember = true): void {
   const index = openTabs.findIndex((tab) => tab.id === id)
-  if (index < 0) return
-  const [tab] = openTabs.splice(index, 1)
+  // A tab in a workspace not shown (its page closed itself, say) goes from there.
+  const tab = index >= 0 ? openTabs.splice(index, 1)[0] : workspaces.takeParkedTab(id)
   if (!tab) return
+  if (index < 0) emitWorkspaces()
   if (remember) rememberClosedTab(tab)
   crashRecovery.forget(tab.id)
   if (pageView === tab.view) {
@@ -2244,7 +2544,7 @@ function buildView(isPrivate = privateMode): WebContentsView {
     // The page closed itself (window.close()) or its contents went away: drop its tab, unless the
     // whole window is closing (then the tabs are kept to be restored next launch).
     if (shellClosing) return
-    const tab = openTabs.find((item) => item.view === view)
+    const tab = tabOfView(view)
     if (tab) discardTab(tab.id)
   })
   bindPermissionOwnerLifecycle(view.webContents, (owner) => sitePermissions?.dropOwner(owner))
@@ -2339,7 +2639,7 @@ function buildView(isPrivate = privateMode): WebContentsView {
     'did-fail-load',
     (_event, code, description, validatedUrl, isMainFrame) => {
       if (!isMainFrame) return
-      const tab = openTabs.find((item) => item.view === view)
+      const tab = tabOfView(view)
       protectionPages.failNavigation(
         view.webContents.id,
         validatedUrl,
@@ -2360,7 +2660,7 @@ function buildView(isPrivate = privateMode): WebContentsView {
     },
   )
   view.webContents.on('render-process-gone', (_event, details) => {
-    const tab = openTabs.find((item) => item.view === view)
+    const tab = tabOfView(view)
     const currentUrl = view.webContents.getURL()
     const crashedUrl = safeHttpUrl(currentUrl) ? currentUrl : tab?.url || lastKnownUrl
     const mayAutoRecover = tab ? crashRecovery.recordCrash(tab.id) : false
@@ -2410,7 +2710,7 @@ async function runTabMenuAction(action: TabMenuAction, id: string): Promise<void
       const at = duplicateIndex(openTabs, id)
       // A private tab's duplicate stays private.
       const view = createBrowserTab(url, true, privateViews.has(tab.view))
-      const copy = view && openTabs.find((item) => item.view === view)
+      const copy = view && tabOfView(view)
       if (copy) await handleBrowserCommand({ type: 'move-tab', id: copy.id, toIndex: at })
       if (view) void view.webContents.loadURL(url).catch(() => undefined)
       break
@@ -2515,7 +2815,7 @@ function reopenClosedTab(id?: string): void {
   const entry = closedTabs.take(id)
   if (!entry) return
   const view = createBrowserTab(entry.url, false, false)
-  const tab = view && openTabs.find((item) => item.view === view)
+  const tab = view && tabOfView(view)
   if (!view || !tab) return
   tab.title = entry.title
   tab.favicon = entry.favicon
@@ -2693,6 +2993,7 @@ function appMenuState(): AppMenuState {
     tabCount: openTabs.length,
     privateMode,
     recentlyClosed: closedTabs.list(),
+    workspaceCount: workspaces.workspaces.length,
     developer: developerBuild(),
   }
 }
@@ -2778,9 +3079,11 @@ async function handleBrowserCommand(
   | PublicFieldStatus
   | PdfExportSettings
   | SavedPdfRecord[]
+  | WorkspacesState
   | string
   | null
 > {
+  if (WORKSPACE_COMMAND_TYPES.has(command.type)) return handleWorkspaceCommand(command as WorkspaceCommand)
   switch (command.type) {
     case 'open': {
       const url = resolveNavigationIntent(command.intent)
@@ -2895,6 +3198,23 @@ async function handleBrowserCommand(
         current: target?.folderId ?? null,
         move: (folderId) => void handleBrowserCommand({ type: 'move-tab-to-folder', tabId: command.id, folderId }),
         createFolder: () => { createTabFolder(newFolderName(), null, [command.id], true) },
+      }, {
+        others: workspaces.workspaces.filter((workspace) => workspace.id !== workspaces.activeId).map(({ id, name }) => ({ id, name })),
+        move: (workspaceId) => void handleBrowserCommand({ type: 'move-tab-to-workspace', tabId: command.id, workspaceId }).catch(() => undefined),
+        moveToNew: workspaces.workspaces.length < MAX_WORKSPACES ? () => {
+          const workspace = workspaces.create()
+          if (workspace) moveTabToWorkspace(command.id, workspace.id)
+        } : null,
+        favourite: (() => {
+          const live = target && !viewGone(target.view) ? target.view.webContents.getURL() : ''
+          const url = safeHttpUrl(live) ? live : target?.url ?? ''
+          if (!safeHttpUrl(url)) return null
+          const existing = workspaces.visibleFavourites().find((favourite) => samePage(favourite.url, url))
+          return {
+            added: !!existing,
+            toggle: () => void handleBrowserCommand(existing ? { type: 'remove-favourite', id: existing.id } : { type: 'add-favourite', tabId: command.id, shared: true }).catch(() => undefined),
+          }
+        })(),
       }))
       menu.popup({ window, ...(command.x !== undefined && command.y !== undefined ? { x: command.x, y: command.y } : {}) })
       break
@@ -2956,7 +3276,7 @@ async function handleBrowserCommand(
       if (!target) throw new Error('Only HTTP and HTTPS destinations are supported.')
       const view = createPageView()
       leaveStartPage(view)
-      const tab = openTabs.find((item) => item.view === view)
+      const tab = tabOfView(view)
       if (tab) crashRecovery.manualRetry(tab.id)
       attachPageView()
       lastKnownUrl = target.toString()
@@ -3074,7 +3394,7 @@ async function handleBrowserCommand(
       const ids: string[] = []
       for (const url of urls.slice(0, room)) {
         const view = createBrowserTab(url, false, false)
-        const tab = view && openTabs.find((item) => item.view === view)
+        const tab = view && tabOfView(view)
         if (!tab) continue
         tab.asleep = {}
         ids.push(tab.id)
@@ -3202,6 +3522,7 @@ function createWindow(): void {
     openTabs.splice(openTabs.indexOf(tab), 1)
     if (activeTabId === tab.id) activeTabId = null
   }
+  for (const tab of workspaces.parkedTabs().filter((item) => viewGone(item.view))) workspaces.takeParkedTab(tab.id)
   window = new BrowserWindow({
     minWidth: 900,
     minHeight: 620,
@@ -3381,6 +3702,45 @@ function openIncoming(target: IncomingTarget): void {
 }
 
 /** One part of the app failing to start (a damaged settings file, say) must not keep the window from opening. */
+/**
+ * A sidebar browser's spaces, as workspaces (browserImport/plan.ts worked out what to add): each
+ * workspace made or added to, its pinned tabs, its folders nested as they were (matched by name in
+ * a workspace already here), its open tabs, and the favourites. Tabs come unloaded, like restored
+ * ones. Nothing here can fail part way: the plan already fits every limit.
+ */
+function addImportedWorkspaces(plan: WorkspaceImportPlan): void {
+  const unloaded = (page: { url: string; title: string }, extra: Partial<OpenTab> = {}): OpenTab => ({ id: randomUUID(), url: page.url, title: page.title, favicon: '', view: buildView(false), asleep: {}, lastShownAt: Date.now(), ...extra })
+  for (const planned of plan.workspaces) {
+    const id = planned.existingId ?? workspaces.create({ name: planned.name })?.id
+    if (!id) continue
+    const target = id === workspaces.activeId ? { tabs: openTabs, folders: tabFolders } : workspaces.parkedOf(id)
+    if (!target) continue
+    const added: OpenTab[] = planned.pinned.map((page) => unloaded(page, { pinned: true, home: page.url }))
+    const addFolders = (list: readonly FolderPlan[], parentId: string | null): void => {
+      for (const folder of list) {
+        let made = target.folders.find((item) => item.name === folder.name && item.parentId === parentId)
+        if (!made && target.folders.length < MAX_FOLDERS) {
+          made = { id: randomUUID(), name: folder.name, parentId }
+          target.folders.push(made)
+        }
+        // No room for another folder: its tabs join the folder it was in.
+        const home = made?.id ?? parentId
+        for (const page of folder.tabs) added.push(unloaded(page, home ? { folderId: home } : {}))
+        addFolders(folder.children, home)
+      }
+    }
+    addFolders(planned.folders, null)
+    for (const page of planned.open) added.push(unloaded(page))
+    target.tabs.push(...added)
+    target.tabs.splice(0, target.tabs.length, ...folderedOrder(pinnedFirst(target.tabs), target.folders))
+  }
+  for (const favourite of plan.favourites) workspaces.addFavourite(favourite.url, favourite.title, true)
+  emitTabFolders()
+  emitTabs()
+  emitWorkspaces()
+  schedulePersistentStateSave()
+}
+
 /** Settings › Import from another browser (browserImport/service.ts). */
 function wireImportFromBrowsers(): void {
   const addImportedTabs = (tabs: ImportedTab[]): void => {
@@ -3399,6 +3759,19 @@ function wireImportFromBrowsers(): void {
     history: () => browsingData?.history ?? null,
     passwords: () => passwords,
     toOrigin: passwordOrigin,
+    workspaces: {
+      existing: () => workspaces.workspaces.map((workspace) => {
+        const shown = workspace.id === workspaces.activeId
+        const held = shown ? openTabs.filter((tab) => !privateViews.has(tab.view)) : workspaces.parkedOf(workspace.id)?.tabs ?? []
+        return { id: workspace.id, name: workspace.name, urls: held.map((tab) => tab.url), room: MAX_TABS - (shown ? openTabs.length : held.length) }
+      }),
+      favouriteUrls: () => workspaces.favourites.map((favourite) => favourite.url),
+      freeWorkspaces: () => MAX_WORKSPACES - workspaces.workspaces.length,
+      favouriteRoom: () => MAX_FAVOURITES - workspaces.favourites.length,
+      tabLimit: MAX_TABS,
+      maxFolderDepth: MAX_FOLDER_DEPTH,
+      apply: addImportedWorkspaces,
+    },
   }))
 }
 
@@ -3430,13 +3803,31 @@ app.whenReady().then(async () => {
     lastKnownUrl = restoredState.url
     lastBounds = restoredState.bounds
     tabSidebar = restoredState.sidebar ?? null
-    tabFolders = restoredState.folders ?? []
-    for (const saved of restoredState.tabs) {
-      const view = buildView(false)
+    const saved = restoredState.workspaces
+    workspaces = new WorkspaceSet<OpenTab>(saved.workspaces.map(({ id, name, icon, accent }) => ({ id, name, icon, accent })), saved.activeId, saved.favourites)
+    tabFolders = restoredState.folders.get(workspaces.activeId) ?? []
+    const byWorkspace = new Map<string, OpenTab[]>()
+    for (const savedTab of restoredState.tabs) {
+      const folders = restoredState.folders.get(savedTab.workspaceId) ?? []
       // Restored tabs are unloaded until shown (their pages load on the first click), and look it.
-      openTabs.push({ id: saved.id, url: saved.url, title: saved.title, favicon: '', view, asleep: {}, lastShownAt: Date.now(), ...(saved.pinned ? { pinned: true, home: saved.home ?? saved.url } : {}) })
+      // Parked workspaces' tabs stay that way until their workspace is shown and they are clicked.
+      const tab: OpenTab = {
+        id: savedTab.id, url: savedTab.url, title: savedTab.title, favicon: '', view: buildView(false), asleep: {}, lastShownAt: Date.now(),
+        ...(savedTab.pinned ? { pinned: true, home: savedTab.home ?? savedTab.url } : {}),
+        ...(!savedTab.pinned && savedTab.folderId && folders.some((folder) => folder.id === savedTab.folderId) ? { folderId: savedTab.folderId } : {}),
+      }
+      const list = byWorkspace.get(savedTab.workspaceId) ?? []
+      list.push(tab)
+      byWorkspace.set(savedTab.workspaceId, list)
     }
+    openTabs.push(...(byWorkspace.get(workspaces.activeId) ?? []))
     openTabs.splice(0, openTabs.length, ...folderedOrder(pinnedFirst(openTabs), tabFolders))
+    for (const workspace of saved.workspaces) {
+      if (workspace.id === workspaces.activeId) continue
+      const folders = restoredState.folders.get(workspace.id) ?? []
+      const tabs = folderedOrder(pinnedFirst(byWorkspace.get(workspace.id) ?? []), folders)
+      workspaces.park(workspace.id, { tabs, folders, activeTabId: tabs.some((tab) => tab.id === workspace.activeTabId) ? workspace.activeTabId! : null })
+    }
     const active =
       openTabs.find((tab) => samePage(tab.url, restoredState.url)) ?? openTabs[0]
     if (active) {

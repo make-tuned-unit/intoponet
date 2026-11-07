@@ -12,6 +12,7 @@ const CATEGORY_LABELS: Record<ImportCategory, string> = {
   open: 'Open tabs',
   history: 'History',
   passwords: 'Passwords',
+  workspaces: 'Workspaces',
 }
 const SKIP_LABELS: Record<ImportCategory, [string, string]> = {
   bookmarks: ['bookmark', 'bookmarks'],
@@ -19,8 +20,9 @@ const SKIP_LABELS: Record<ImportCategory, [string, string]> = {
   open: ['open tab', 'open tabs'],
   history: ['history page', 'history pages'],
   passwords: ['password', 'passwords'],
+  workspaces: ['item', 'items'],
 }
-const ORDER: ImportCategory[] = ['bookmarks', 'pinned', 'open', 'history', 'passwords']
+const ORDER: ImportCategory[] = ['bookmarks', 'workspaces', 'pinned', 'open', 'history', 'passwords']
 
 const plural = (count: number, one: string, many = `${one}s`): string => `${count.toLocaleString('en')} ${count === 1 ? one : many}`
 
@@ -33,6 +35,7 @@ function countText(category: ImportCategory, preview: ImportPreview): string {
   if (category === 'bookmarks') return `${plural(count, 'page')} in ${plural(preview.folders, 'collection')}`
   if (category === 'history') return plural(count, 'page')
   if (category === 'passwords') return plural(count, 'sign-in')
+  if (category === 'workspaces') return `${plural(count, 'space')}${preview.favourites ? ` and ${plural(preview.favourites, 'favourite')}` : ''}`
   return plural(count, 'tab')
 }
 
@@ -87,7 +90,7 @@ export function BrowserImportSettings({ libraryReady, onImportLibrary }: {
     void api.preview(id).then((next) => {
       setPreview(next)
       // Bookmarks and tabs are ticked when there are some; history and passwords only by you.
-      setTicked(new Set(ORDER.filter((category) => (category === 'bookmarks' || category === 'pinned' || category === 'open') && (next.counts[category].count ?? 0) > 0)))
+      setTicked(new Set(ORDER.filter((category) => (category === 'bookmarks' || category === 'pinned' || category === 'open' || category === 'workspaces') && (next.counts[category].count ?? 0) > 0)))
       setPhase('idle')
     }, (caught: unknown) => {
       setError(clean(caught))
@@ -129,6 +132,10 @@ export function BrowserImportSettings({ libraryReady, onImportLibrary }: {
 
   const busy = phase !== 'idle'
   const added = summary ? [
+    summary.result.added.workspaces ? `${plural(summary.result.added.workspaces, 'new workspace')} (${summary.result.workspaceNames?.join(', ') ?? ''})` : '',
+    !summary.result.added.workspaces && summary.result.workspaceNames?.length ? `tabs into ${summary.result.workspaceNames.join(', ')}` : '',
+    summary.result.added.foldered ? `${plural(summary.result.added.foldered, 'tab')} in folders` : '',
+    summary.result.added.favourites ? plural(summary.result.added.favourites, 'favourite') : '',
     summary.library && summary.library.bookmarks > 0 && `${plural(summary.library.bookmarks, 'page')} into your library`,
     summary.library && summary.library.collections > 0 && plural(summary.library.collections, 'new collection'),
     summary.library && summary.library.filed > 0 && !summary.library.collections && `${plural(summary.library.filed, 'page')} filed in collections`,
@@ -162,7 +169,10 @@ export function BrowserImportSettings({ libraryReady, onImportLibrary }: {
         <fieldset className="browser-import-group">
           <legend>What to bring</legend>
           {ORDER.map((category) => {
-            const { count, note } = preview.counts[category]
+            const { count, note: given } = preview.counts[category]
+            // With spaces becoming workspaces, their tabs go there rather than into the workspace open now.
+            const intoWorkspaces = ticked.has('workspaces') && (category === 'pinned' || category === 'open') && count !== null
+            const note = intoWorkspaces ? (category === 'pinned' ? 'Pinned tabs, and tabs in folders, go into the workspace made from their space.' : 'Open tabs go into the workspace made from their space, unloaded until first shown.') : given
             const id = `browser-import-${category}`
             // One note for both kinds of tab when they say the same thing.
             const repeated = category === 'open' && note === preview.counts.pinned.note
@@ -174,6 +184,19 @@ export function BrowserImportSettings({ libraryReady, onImportLibrary }: {
                   <span>{CATEGORY_LABELS[category]} <small>{countText(category, preview)}</small></span>
                 </label>
                 {showNote && <p id={`${id}-note`} className="browser-import-note">{note}</p>}
+                {category === 'workspaces' && preview.spaces && preview.spaces.length > 0 && (
+                  <ul className="browser-import-spaces" aria-label="Spaces that become workspaces">
+                    {preview.spaces.map((space, index) => (
+                      <li key={`${space.name}-${index}`}>
+                        <strong>{space.name}</strong>: {[
+                          space.pinned && plural(space.pinned, 'pinned tab'),
+                          space.folders && `${plural(space.folders, 'folder')} (${plural(space.foldered, 'tab')})`,
+                          space.open && plural(space.open, 'open tab'),
+                        ].filter(Boolean).join(', ') || 'empty'}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             )
           })}

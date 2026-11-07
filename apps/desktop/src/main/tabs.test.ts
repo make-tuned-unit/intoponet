@@ -171,3 +171,32 @@ describe('tab menu: Move to Folder', () => {
   })
 })
 
+describe('tab menu: Move to Workspace and favourites', () => {
+  const tabs: TabMenuTab[] = [{ id: 'a', url: 'https://a.example/' }, { id: 'x', url: 'https://x.example/', isPrivate: true }]
+  const workspaces = (moves: string[]) => ({
+    others: [{ id: 'w2', name: 'Work' }, { id: 'w3', name: 'Home' }],
+    move: (id: string) => { moves.push(id) },
+    moveToNew: () => { moves.push('new') },
+    favourite: { added: false, toggle: () => { moves.push('fav') } },
+  })
+
+  it('lists the other workspaces and a new one, and offers favourites, after Pin Tab', () => {
+    const moves: string[] = []
+    const items = tabMenuTemplate(tabs, 'a', () => undefined, undefined, workspaces(moves))
+    const pinIndex = items.findIndex((item) => item.label === 'Pin Tab')
+    expect(items[pinIndex + 1]!.label).toBe('Move to Workspace')
+    expect(items[pinIndex + 2]!.label).toBe('Add to Favourites')
+    const submenu = items[pinIndex + 1]!.submenu as Array<{ label?: string; type?: string; click?: () => void }>
+    expect(submenu.map((item) => item.label ?? item.type)).toEqual(['Work', 'Home', 'separator', 'New Workspace'])
+    submenu[1]!.click?.()
+    submenu[3]!.click?.()
+    ;(items[pinIndex + 2]!.click as () => void)()
+    expect(moves).toEqual(['w3', 'new', 'fav'])
+  })
+
+  it('never offers them for a private tab', () => {
+    const items = tabMenuTemplate(tabs, 'x', () => undefined, undefined, workspaces([]))
+    expect(items.some((item) => item.label === 'Move to Workspace' || item.label === 'Add to Favourites')).toBe(false)
+  })
+})
+

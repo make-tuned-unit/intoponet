@@ -13,3 +13,4 @@
 /* Each choice is a comfortable target (WCAG 2.2 target size). */
 .browser-import .privacy-switch { min-height: 26px; }
 .browser-import .privacy-switch input { width: 16px; height: 16px; flex: none; }
+.privacy-pane .browser-import-spaces { margin: 2px 0 4px 23px; padding-left: 14px; font-size: 11px; color: var(--muted); }

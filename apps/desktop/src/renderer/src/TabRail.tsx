@@ -1,9 +1,11 @@
 import { AnimatePresence, motion, useReducedMotion, type Transition } from 'motion/react'
-import { Ellipsis, Folder, FolderOpen, FolderPlus, PanelLeftClose, PanelLeftDashed, PanelLeftOpen, Plus, Undo2, X } from 'lucide-react'
-import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
-import { TAB_SIDEBAR_WIDTH, type PageTabSnapshot, type TabFolderSnapshot } from '@intoponet/browser-api'
+import { Ellipsis, Folder, FolderOpen, FolderPlus, Layers, PanelLeftClose, PanelLeftDashed, PanelLeftOpen, Plus, Undo2, X } from 'lucide-react'
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type WheelEvent } from 'react'
+import { MAX_WORKSPACES, TAB_SIDEBAR_WIDTH, type PageTabSnapshot, type TabFolderSnapshot, type WorkspacesState } from '@intoponet/browser-api'
 import { folderTree } from './tabFolders'
 import { useGlassSheen } from './glass/useGlassSheen'
+import { RailMenu } from './RailMenu'
+import { ACCENT_COLOURS, WorkspaceBar, type WorkspaceRequest } from './WorkspaceBar'
 import { moveTabByKey, openTabMenu, TabAudioButton, TabHomeButton, TabIcon, tabSoundLabel, tabStateLabel, useTabDrag } from './tabControls'
 import './glass/glass.css'
 import './tabRail.css'
@@ -36,7 +38,16 @@ export type TabRailProps = {
   onSaveFolder?: (folderId: string) => void
   /** A short message for the sidebar's status line (e.g. a folder was saved). */
   message?: string
+  /** Workspaces and favourites (null until main has said). */
+  workspaces?: WorkspacesState | null
+  /** The command menu asked to edit, delete or make a workspace. */
+  workspaceRequest?: WorkspaceRequest | null
 }
+
+/** A sideways two-finger swipe on the sidebar this far (in wheel pixels) shows the next or previous workspace. */
+const SWIPE_DISTANCE = 60
+/** Wheel events further apart than this start a new swipe. */
+const SWIPE_GAP_MS = 220
 
 /**
  * Vertical favicon rail beside the browser panel (visionOS-ornament style).
@@ -45,7 +56,7 @@ export type TabRailProps = {
  * keeps it expanded as vertical tabs. Pinned tabs sit first as icons; tabs
  * can be dragged (or moved with ⌥⇧↑ / ⌥⇧↓) into a new order.
  */
-export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange, onHide, onExpandedChange, onPinnedChange, onNewTab, archivedCount = 0, onUndoArchive, folders = [], renameFolderId = null, onRenameHandled, onSaveFolder, message = '' }: TabRailProps) {
+export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange, onHide, onExpandedChange, onPinnedChange, onNewTab, archivedCount = 0, onUndoArchive, folders = [], renameFolderId = null, onRenameHandled, onSaveFolder, message = '', workspaces = null, workspaceRequest = null }: TabRailProps) {
   const reduceMotion = useReducedMotion()
   const surface = useGlassSheen<HTMLDivElement>()
   const list = useRef<HTMLDivElement>(null)
@@ -68,6 +79,29 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
     ...tree.flatMap(({ folder }) => (shownFolder(folder.id) ? tabs.filter((tab) => inFolder(tab) === folder.id) : [])),
     ...tabs.filter((tab) => !tab.pinned && !inFolder(tab)),
   ]
+  // The footer's New workspace and the command menu's requests reach the workspace bar the same way.
+  const [barRequest, setBarRequest] = useState<WorkspaceRequest | null>(null)
+  useEffect(() => { if (workspaceRequest) setBarRequest(workspaceRequest) }, [workspaceRequest?.at]) // eslint-disable-line react-hooks/exhaustive-deps
+  const activeWorkspace = workspaces?.workspaces.find((workspace) => workspace.id === workspaces.activeId)
+  /** A sideways swipe in progress: how far it has gone, and whether it already switched. */
+  const swipe = useRef({ distance: 0, at: 0, done: false })
+  const onWheel = (event: WheelEvent<HTMLElement>): void => {
+    if (!workspaces || workspaces.workspaces.length < 2) return
+    // Mostly sideways only: scrolling the tab list up and down is left alone.
+    if (Math.abs(event.deltaX) <= Math.abs(event.deltaY) * 1.5) return
+    const now = performance.now()
+    const state = swipe.current
+    if (now - state.at > SWIPE_GAP_MS) {
+      state.distance = 0
+      state.done = false
+    }
+    state.at = now
+    state.distance += event.deltaX
+    if (state.done || Math.abs(state.distance) < SWIPE_DISTANCE) return
+    // One switch per swipe (the trackpad keeps sending events as it coasts).
+    state.done = true
+    void window.intoponet.workspaces.switchTo({ step: state.distance > 0 ? 1 : -1 }).catch(() => undefined)
+  }
   const [focusIndex, setFocusIndex] = useState(() => Math.max(0, visibleTabs.findIndex((tab) => tab.active)))
   const dragHandlers = useTabDrag('y', { indexOf: (id) => tabs.findIndex((tab) => tab.id === id) })
   const [renaming, setRenaming] = useState<string | null>(null)
@@ -201,7 +235,7 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
           )}
         </div>
         {folderMenu === folder.id && (
-          <FolderMenu
+          <RailMenu
             onClose={() => setFolderMenu(null)}
             items={[
               { label: 'Rename', run: () => setRenaming(folder.id) },
@@ -287,7 +321,9 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
         <motion.nav
           key="tab-rail"
           className={`tab-rail${open ? ' is-open' : ''}${pinned ? ' is-pinned' : ''}`}
-          aria-label="Open tabs"
+          aria-label={activeWorkspace && workspaces && workspaces.workspaces.length > 1 ? `Open tabs in ${activeWorkspace.name}` : 'Open tabs'}
+          data-workspace={workspaces?.activeId}
+          onWheel={onWheel}
           initial={reduceMotion ? { opacity: 0 } : { opacity: 0, x: -18, filter: 'blur(8px)' }}
           animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
           exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: -14, filter: 'blur(6px)' }}
@@ -314,7 +350,8 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
             if (!pinned && !event.currentTarget.contains(event.relatedTarget as Node | null)) onExpandedChange(false)
           }}
         >
-          <div ref={surface} className="tab-rail-surface lg-surface lg-sheen">
+          <div ref={surface} className="tab-rail-surface lg-surface lg-sheen" style={activeWorkspace ? { "--workspace-accent": ACCENT_COLOURS[activeWorkspace.accent] } as CSSProperties : {}}>
+            {workspaces && <WorkspaceBar state={workspaces} open={open} onExpand={() => onExpandedChange(true)} request={barRequest} />}
             <div ref={list} className="tab-rail-list" data-tab-container onKeyDown={onKeyDown}>
               {pinnedTabs.length > 0 && open && <span className="tab-rail-section" aria-hidden="true">Pinned</span>}
               {pinnedTabs.length > 0 && (
@@ -347,6 +384,12 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
                 <Plus size={15} />
                 <span className="tab-rail-title" aria-hidden={!open}>New tab</span>
               </button>
+              {workspaces && workspaces.workspaces.length < MAX_WORKSPACES && (
+                <button type="button" className="tab-rail-action" aria-label="New workspace" title="New workspace: its own pinned tabs, folders and open tabs (⌃1–9 switch)" onClick={() => setBarRequest({ kind: 'new', at: Date.now() })}>
+                  <Layers size={15} />
+                  <span className="tab-rail-title" aria-hidden={!open}>New workspace</span>
+                </button>
+              )}
               <button type="button" className="tab-rail-action" aria-label="New folder" title="New folder: drag tabs onto it, or use a tab’s menu › Move to Folder" onClick={() => newFolder()}>
                 <FolderPlus size={15} />
                 <span className="tab-rail-title" aria-hidden={!open}>New folder</span>
@@ -405,37 +448,5 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
         </motion.nav>
       )}
     </AnimatePresence>
-  )
-}
-
-/** A folder's actions: a small menu in the sidebar (↑ ↓ to move, Enter to choose, Escape to close). */
-function FolderMenu({ items, onClose }: { items: Array<{ label: string; run: () => void }>; onClose: () => void }) {
-  const root = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    const opener = document.activeElement as HTMLElement | null
-    root.current?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus()
-    return () => opener?.focus?.()
-  }, [])
-  return (
-    <div
-      ref={root}
-      className="tab-rail-folder-menu"
-      role="menu"
-      onKeyDown={(event) => {
-        const entries = [...(root.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? [])]
-        const at = entries.indexOf(document.activeElement as HTMLButtonElement)
-        if (event.key === 'ArrowDown') entries[(at + 1) % entries.length]?.focus()
-        else if (event.key === 'ArrowUp') entries[(at - 1 + entries.length) % entries.length]?.focus()
-        else if (event.key === 'Escape') onClose()
-        else return
-        event.preventDefault()
-        event.stopPropagation()
-      }}
-      onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) onClose() }}
-    >
-      {items.map((item) => (
-        <button key={item.label} type="button" role="menuitem" tabIndex={-1} onClick={() => { onClose(); item.run() }}>{item.label}</button>
-      ))}
-    </div>
   )
 }

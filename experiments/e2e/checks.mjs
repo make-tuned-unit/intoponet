@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os'
 import { createServer } from 'node:http'
 import { join } from 'node:path'
 import { deflateSync as zlibSync } from 'node:zlib'
-import { CheckFailure, expect, repo } from './lib.mjs'
+import { CheckFailure, expect, repo, runAppCheck } from './lib.mjs'
 
 // The app's default: the website's edge proxy in front of the Neon registry (see apps/desktop/src/main/beacons/defaults.ts).
 const LIVE_REGISTRY = 'https://intoponet.com/registry'
@@ -462,6 +462,60 @@ async function buildImportFixtures(root) {
       'U2', { id: 'U2', parentID: null, childrenIds: [], data: { itemContainer: {} } },
     ],
   }] } }))
+}
+
+// ---- Import a sidebar's spaces as workspaces: fixture sidebar files ---------------------------
+// Built by hand from the structure community exporters publicly document; NOT copies of real files.
+// The newer layout marks containers with objects and orders children with childrenIds; the older one
+// uses plain strings, no childrenIds (list order), and carries fields the importer must ignore.
+const IMPORT_WS_ROOT = join(tmpdir(), `intoponet-import-ws-e2e-${process.pid}`)
+const sidebarItem = (id, parentID, url, title) => ({ id, parentID, childrenIds: [], title: null, data: { tab: { savedURL: url, savedTitle: title } } })
+const NEWER_SIDEBAR = { sidebar: { containers: [{ global: {} }, {
+  topAppsContainerIDs: [{ default: true }, 'TOP'],
+  spaces: [
+    'S1', { id: 'S1', title: 'Work', profile: { default: true }, newContainerIDs: [{ pinned: {} }, 'P1', { unpinned: { _0: { shared: {} } } }, 'U1'], customInfo: { windowTheme: { semanticColor: 'x' } } },
+    'S2', { id: 'S2', title: 'Home', profile: { default: true }, newContainerIDs: [{ pinned: {} }, 'P2', { unpinned: {} }, 'U2'] },
+  ],
+  items: [
+    'TOP', { id: 'TOP', parentID: null, childrenIds: ['FAV1', 'FAV2'], data: { itemContainer: { containerType: { topApps: { _0: { default: true } } } } } },
+    'FAV1', sidebarItem('FAV1', 'TOP', 'https://mail.example.com/', 'Mail'),
+    'FAV2', sidebarItem('FAV2', 'TOP', 'https://maps.example.com/', 'Maps'),
+    'P1', { id: 'P1', parentID: null, childrenIds: ['T1', 'T2', 'F1'], data: { itemContainer: {} } },
+    'T1', sidebarItem('T1', 'P1', 'https://docs.example.com/', 'Docs'),
+    'T2', { ...sidebarItem('T2', 'P1', 'https://chat.example.com/team', 'Chat'), title: 'Team chat' },
+    'F1', { id: 'F1', parentID: 'P1', childrenIds: ['T3', 'F2'], title: 'Reading', data: { list: {} } },
+    'T3', sidebarItem('T3', 'F1', 'https://en.wikipedia.org/wiki/Tonga', 'Tonga'),
+    'F2', { id: 'F2', parentID: 'F1', childrenIds: ['T4'], title: 'Later', data: { list: {} } },
+    'T4', sidebarItem('T4', 'F2', 'https://en.wikipedia.org/wiki/Samoa', 'Samoa'),
+    'U1', { id: 'U1', parentID: null, childrenIds: ['O1'], data: { itemContainer: {} } },
+    'O1', sidebarItem('O1', 'U1', 'https://news.example.com/today', 'Today'),
+    'P2', { id: 'P2', parentID: null, childrenIds: ['T5'], data: { itemContainer: {} } },
+    'T5', sidebarItem('T5', 'P2', 'https://recipes.example.com/', 'Recipes'),
+    'U2', { id: 'U2', parentID: null, childrenIds: ['O2'], data: { itemContainer: {} } },
+    'O2', sidebarItem('O2', 'U2', 'https://weather.example.com/', 'Weather'),
+  ],
+}] } }
+const OLDER_SIDEBAR = { version: 1, sidebar: { containers: [{ global: {} }, {
+  topAppsContainerIDs: ['TOP'],
+  spaces: [{ id: 'A', title: 'Travel', containerIDs: ['pinned', 'AP', 'unpinned', 'AU'], createdAt: 700000000 }],
+  items: [
+    { id: 'TOP', parentID: null, data: { itemContainer: {} } },
+    { id: 'FAV', parentID: 'TOP', data: { tab: { savedURL: 'https://calendar.example.com/', savedTitle: 'Calendar' } }, isUnread: false },
+    { id: 'AP', parentID: null, data: { itemContainer: {} } },
+    { id: 'AT1', parentID: 'AP', data: { tab: { savedURL: 'https://flights.example.com/', savedTitle: 'Flights' } } },
+    { id: 'AF1', parentID: 'AP', title: 'Japan', data: { list: { color: 3 } } },
+    { id: 'AT2', parentID: 'AF1', data: { tab: { savedURL: 'https://en.wikipedia.org/wiki/Kyoto', savedTitle: 'Kyoto' } } },
+    { id: 'AS1', parentID: 'AF1', data: { splitView: {} } },
+    { id: 'AT3', parentID: 'AS1', data: { tab: { savedURL: 'https://en.wikipedia.org/wiki/Osaka', savedTitle: 'Osaka' } } },
+    { id: 'AU', parentID: null, data: { itemContainer: {} } },
+    { id: 'AO1', parentID: 'AU', data: { tab: { savedURL: 'https://hotels.example.com/', savedTitle: 'Hotels' }, someFutureField: 1 } },
+  ],
+}] } }
+function buildSidebarFixture(root, sidebar) {
+  const profile = join(root, 'Arc', 'User Data', 'Default')
+  mkdirSync(profile, { recursive: true })
+  writeFileSync(join(profile, 'Bookmarks'), JSON.stringify({ version: 1, roots: { bookmark_bar: { type: 'folder', name: 'Bookmarks bar', children: [] } } }))
+  writeFileSync(join(root, 'Arc', 'StorableSidebar.json'), typeof sidebar === 'string' ? sidebar : JSON.stringify(sidebar))
 }
 
 export const checks = {
@@ -1917,6 +1971,8 @@ export const checks = {
 
       // Arc: spaces' pinned tabs become pinned tabs with their home; folders and spaces become collections.
       await choose('Arc')
+      // Spaces as workspaces is IMPORT_WORKSPACES's check: here the flat import into the open workspace.
+      await ctx.evaluate(`(() => { const input = [...document.querySelectorAll('.browser-import-choice input')].find((i) => i.parentElement.innerText.startsWith('Workspaces')); if (input?.checked) input.click(); return true })()`)
       const arcPreview = await sectionText()
       expect(arcPreview.includes('Pinned tabs 2 tabs') && arcPreview.includes('Open tabs 1 tab'), `The Arc preview is wrong: ${arcPreview}`)
       const arcResult = await importNow('Arc')
@@ -2205,6 +2261,330 @@ export const checks = {
       server.close()
     }
   },
+  async WORKSPACES(ctx) {
+    const { server, origin } = await tabSite()
+    const host = 'window.intoponet.browserHost'
+    const ws = 'window.intoponet.workspaces'
+    const tabs = async () => JSON.parse(await ctx.evaluate(`${host}.getTabs().then((t) => JSON.stringify(t))`))
+    const state = async () => JSON.parse(await ctx.evaluate(`${ws}.get().then((s) => JSON.stringify(s))`))
+    const titles = async () => (await tabs()).map((tab) => tab.title.replace('Page /', '')).join(' ')
+    const byTitle = async (title) => (await tabs()).find((tab) => tab.title === `Page /${title}`)
+    const loaded = (path) => ctx.main(`electron.webContents.getAllWebContents().some((c) => c.getURL() === ${JSON.stringify(`${origin}/${path}`)})`)
+    const savedState = () => JSON.parse(readFileSync(join(ctx.profile, 'browser-state.v1.json'), 'utf8'))
+    const typeCommand = async (text) => {
+      await ctx.evaluate(`(() => { const input = document.querySelector('.command-input input'); input.focus(); input.select(); return true })()`)
+      await ctx.type(text)
+      await ctx.delay(300)
+    }
+    const key = async (key, code, keyCode, modifiers = 0) => {
+      await ctx.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', key, code, windowsVirtualKeyCode: keyCode, modifiers })
+      await ctx.send('Input.dispatchKeyEvent', { type: 'keyUp', key, code, windowsVirtualKeyCode: keyCode, modifiers })
+    }
+    /** ⌃N pressed in the page showing `fromPath`, timed until the sidebar shows the other workspace's tabs. */
+    const timedSwitch = async (digit, fromPath, targetId, expectTitle) => {
+      await ctx.evaluate(`(() => { window.__wsShown = 0; const done = () => { const rail = document.querySelector('.tab-rail'); if (rail?.dataset.workspace === ${JSON.stringify(targetId)} && [...rail.querySelectorAll('[data-tab-id] .tab-rail-title')].some((e) => e.textContent === ${JSON.stringify(expectTitle)})) { window.__wsShown = performance.now(); return true } return false }; const watch = new MutationObserver(() => { if (done()) watch.disconnect() }); watch.observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true }); window.__wsAsked = performance.now(); return true })()`)
+      expect(await ctx.keyInPage(`/${fromPath}`, digit, ['control']), `No page at /${fromPath} to press ⌃${digit} in.`)
+      await ctx.wait(`window.__wsShown > 0`, 3000, `⌃${digit} to show the workspace's tabs`)
+      return ctx.evaluate(`window.__wsShown - window.__wsAsked`)
+    }
+    /** The app opened again (as after quitting or a crash) with a saved browser state, in a profile of its own. */
+    const relaunch = async (saved, check) => {
+      const profile = mkdtempSync(join(tmpdir(), 'intoponet-e2e-relaunch-'))
+      writeFileSync(join(profile, 'browser-state.v1.json'), JSON.stringify(saved))
+      const before = process.env.E2E_PROFILE
+      process.env.E2E_PROFILE = profile
+      try {
+        return await runAppCheck(check, { timeoutMs: 60_000 })
+      } finally {
+        if (before === undefined) delete process.env.E2E_PROFILE
+        else process.env.E2E_PROFILE = before
+        rmSync(profile, { recursive: true, force: true })
+      }
+    }
+    try {
+      // Main: a pinned tab, a folder with a tab in it, and an open tab.
+      for (const name of ['main-a', 'main-b', 'main-pin']) await openPage(ctx, `${origin}/${name}`, 900)
+      await ctx.evaluate(`${host}.setTabPinned(${JSON.stringify((await byTitle('main-pin')).id)}, true).then(() => true)`)
+      await ctx.evaluate(`${host}.createTabFolder('Main folder', null, [${JSON.stringify((await byTitle('main-b')).id)}]).then(() => true)`)
+      await ctx.click('button[aria-label="Pin tabs open"]')
+      await ctx.delay(600)
+      let now = await state()
+      expect(now.workspaces.length === 1 && now.workspaces[0].name === 'Main', `A new profile starts with ${JSON.stringify(now.workspaces)}.`)
+      expect(!(await ctx.evaluate(`!!document.querySelector('.tab-rail-workspaces')`)), 'With one workspace the sidebar already shows a workspace switcher.')
+      const mainId = now.activeId
+
+      // Create one from the sidebar: it is shown at once and asks for its name, icon and colour.
+      await ctx.click('button[aria-label="New workspace"]')
+      await ctx.wait(`document.activeElement?.classList.contains('tab-rail-workspace-name-input')`, 4000, 'the new workspace to ask for its name')
+      await ctx.evaluate(`document.activeElement.select(); true`)
+      await ctx.type('Research')
+      await ctx.evaluate(`(() => { document.querySelector('.tab-rail-workspace-editor input[aria-label="Flask"]').click(); document.querySelector('.tab-rail-workspace-editor input[aria-label="Violet"]').click(); document.querySelector('.tab-rail-workspace-name-input').focus(); return true })()`)
+      await ctx.press('Enter')
+      await ctx.wait(`${ws}.get().then((s) => s.workspaces.some((w) => w.name === 'Research' && w.icon === 'flask' && w.accent === 'violet' && w.id === s.activeId))`, 4000, 'the new workspace to be named Research, with its icon and colour, and shown')
+      now = await state()
+      const researchId = now.activeId
+      expect((await tabs()).every((tab) => tab.isStartPage), `The new workspace opened with someone else's tabs: ${await titles()}.`)
+      await ctx.wait(`document.querySelector('.tab-rail-workspace.is-active')?.getAttribute('aria-label')?.startsWith('Research')`, 3000, 'the switcher to show Research as the current workspace')
+      // Its own pinned tab, folder and open tab.
+      await openPage(ctx, `${origin}/research-a`, 900)
+      await openPage(ctx, `${origin}/research-b`, 900)
+      await openPage(ctx, `${origin}/research-c`, 900)
+      await ctx.evaluate(`${host}.setTabPinned(${JSON.stringify((await byTitle('research-a')).id)}, true).then(() => true)`)
+      await ctx.evaluate(`${host}.createTabFolder('Papers', null, [${JSON.stringify((await byTitle('research-b')).id)}]).then(() => true)`)
+      await ctx.delay(500)
+      expect(await titles() === 'research-a research-b research-c', `Research holds: ${await titles()}.`)
+      const researchFolders = JSON.parse(await ctx.evaluate(`${host}.getTabFolders().then((f) => JSON.stringify(f))`))
+      expect(researchFolders.map((folder) => folder.name).join() === 'Papers', `Research's folders: ${researchFolders.map((folder) => folder.name).join()}.`)
+
+      // A sleeping tab in Main: its pinned tab, unloaded (its close button only unloads a pinned tab).
+      await ctx.evaluate(`${ws}.switchTo({ id: ${JSON.stringify(mainId)} }).then(() => true)`)
+      await ctx.delay(800)
+      expect(await titles() === 'main-pin main-b main-a', `Main holds: ${await titles()}.`)
+      const mainPin = await byTitle('main-pin')
+      await ctx.evaluate(`${host}.activateTab(${JSON.stringify((await byTitle('main-a')).id)}).then(() => ${host}.closeTab(${JSON.stringify(mainPin.id)})).then(() => true)`)
+      await ctx.wait(`${host}.getTabs().then((t) => t.find((x) => x.id === ${JSON.stringify(mainPin.id)})?.asleep === true)`, 4000, 'Main\'s pinned tab to sleep')
+      expect(!(await loaded('main-pin')), 'The sleeping tab\'s page is still loaded.')
+
+      // ⌃1 and ⌃2 from inside the page switch: timed until the sidebar shows the other workspace's tabs.
+      const times = []
+      for (let round = 0; round < 4; round += 1) {
+        times.push(await timedSwitch('2', 'main-a', researchId, 'Page /research-c'))
+        await ctx.delay(300)
+        times.push(await timedSwitch('1', 'research-c', mainId, 'Page /main-a'))
+        await ctx.delay(300)
+      }
+      times.sort((a, b) => a - b)
+      const slowest = times[times.length - 1]
+      expect(slowest < 150, `Switching workspaces took up to ${Math.round(slowest)} ms (must be under 150 ms): ${times.map(Math.round).join(', ')}.`)
+      // Main's sleeping tab never woke, however often Main was shown; Research's pages kept going (not reloaded).
+      expect(!(await loaded('main-pin')) && (await byTitle('main-pin')).asleep, 'Switching workspaces woke Main\'s sleeping tab.')
+      expect(await loaded('research-c'), 'Research\'s open page was unloaded while Main was shown.')
+      expect(await titles() === 'main-pin main-b main-a', `Back in Main the sidebar shows: ${await titles()}.`)
+      const mainFolders = JSON.parse(await ctx.evaluate(`${host}.getTabFolders().then((f) => JSON.stringify(f))`))
+      expect(mainFolders.map((folder) => folder.name).join() === 'Main folder' && (await byTitle('main-b')).folderId === mainFolders[0].id, `Main's folder did not come back with it: ${JSON.stringify(mainFolders)}.`)
+
+      // The command menu switches too.
+      await typeCommand('> research')
+      await ctx.wait(`[...document.querySelectorAll('[role="listbox"] [role="option"]')].some((e) => e.innerText.includes('Switch to workspace Research'))`, 3000, 'the command menu to offer Research')
+      expect(await ctx.evaluate(`document.querySelector('[role="listbox"] [role="option"]').innerText.includes('Switch to workspace Research')`), 'The command menu does not offer switching to Research first.')
+      await ctx.press('Enter')
+      await ctx.wait(`${ws}.get().then((s) => s.activeId === ${JSON.stringify(researchId)})`, 3000, 'the command menu to show Research')
+
+      // A sideways two-finger swipe on the sidebar shows the next workspace (one per swipe).
+      const rail = JSON.parse(await ctx.evaluate(`JSON.stringify(document.querySelector('.tab-rail').getBoundingClientRect())`))
+      for (let i = 0; i < 5; i += 1) {
+        await ctx.send('Input.dispatchMouseEvent', { type: 'mouseWheel', x: rail.x + rail.width / 2, y: rail.y + rail.height / 2, deltaX: 30, deltaY: 0 })
+        await ctx.delay(30)
+      }
+      await ctx.wait(`${ws}.get().then((s) => s.activeId === ${JSON.stringify(mainId)})`, 3000, 'a swipe on the sidebar to show the next workspace')
+      await ctx.delay(500)
+      expect((await state()).activeId === mainId, 'One swipe switched more than once.')
+
+      // Keyboard: the switcher's buttons take arrows and Enter; ⌥⇧← moves a workspace (⌃1–9 follow the order).
+      await ctx.evaluate(`document.querySelector('.tab-rail-workspace.is-active').focus(); true`)
+      await key('ArrowRight', 'ArrowRight', 39)
+      expect(await ctx.evaluate(`document.activeElement?.dataset.workspaceId === ${JSON.stringify(researchId)}`), 'The arrow key did not move to the next workspace.')
+      await ctx.press('Enter')
+      await ctx.wait(`${ws}.get().then((s) => s.activeId === ${JSON.stringify(researchId)})`, 3000, 'Enter on a workspace to show it')
+      await ctx.wait(`document.querySelector('.tab-rail-workspace.is-active')?.dataset.workspaceId === ${JSON.stringify(researchId)}`, 3000, 'the switcher to mark Research as current')
+      await ctx.evaluate(`document.querySelector('.tab-rail-workspace.is-active').focus(); true`)
+      await key('ArrowLeft', 'ArrowLeft', 37, 1 | 8)
+      await ctx.wait(`${ws}.get().then((s) => s.workspaces[0].id === ${JSON.stringify(researchId)})`, 3000, '⌥⇧← to move Research first')
+
+      // Rename from the workspace's actions.
+      await ctx.click('button[aria-label="Actions for workspace Research"]')
+      await ctx.wait(`!!document.querySelector('.tab-rail-folder-menu [role="menuitem"]')`, 2000, 'the workspace menu')
+      await ctx.click('.tab-rail-folder-menu [role="menuitem"]', 'Rename')
+      await ctx.wait(`document.activeElement?.classList.contains('tab-rail-workspace-name-input')`, 3000, 'the name field')
+      await ctx.evaluate(`document.activeElement.select(); true`)
+      await ctx.type('Reading')
+      await ctx.press('Enter')
+      await ctx.wait(`${ws}.get().then((s) => s.workspaces[0].name === 'Reading')`, 3000, 'the workspace to be renamed Reading')
+
+      // Favourites: one shared by every workspace, one owned by Main.
+      await ctx.evaluate(`${ws}.addFavourite(${JSON.stringify((await byTitle('research-c')).id)}, true).then(() => true)`)
+      await ctx.evaluate(`${ws}.switchTo({ id: ${JSON.stringify(mainId)} }).then(() => true)`)
+      await ctx.delay(600)
+      await ctx.evaluate(`${ws}.addFavourite(${JSON.stringify((await byTitle('main-a')).id)}, false).then(() => true)`)
+      await ctx.wait(`document.querySelectorAll('.tab-rail-favourite').length === 2`, 3000, 'Main to show both favourites')
+      await ctx.evaluate(`${ws}.switchTo({ id: ${JSON.stringify(researchId)} }).then(() => true)`)
+      await ctx.wait(`document.querySelectorAll('.tab-rail-favourite').length === 1`, 3000, 'Reading to show only the shared favourite')
+
+      // Private tabs belong to no workspace: never counted, never moved into one, never saved.
+      await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(true).then(() => true)`)
+      await openPage(ctx, `${origin}/private-page`, 900)
+      const privateTab = (await tabs()).find((tab) => tab.isPrivate)
+      expect(privateTab, 'No private tab opened.')
+      now = await state()
+      expect(now.workspaces.find((w) => w.id === researchId).tabCount === 3, `Reading counts ${now.workspaces.find((w) => w.id === researchId).tabCount} tabs with a private tab open.`)
+      const refused = await ctx.evaluate(`${ws}.moveTab(${JSON.stringify(privateTab.id)}, ${JSON.stringify(mainId)}).then(() => 'moved', () => 'refused')`)
+      expect(refused === 'refused', 'A private tab was moved into a workspace.')
+      await ctx.evaluate(`${ws}.switchTo({ id: ${JSON.stringify(mainId)} }).then(() => true)`)
+      await ctx.delay(600)
+      expect((await tabs()).some((tab) => tab.id === privateTab.id && tab.isPrivate), 'The private tab went away with the workspace.')
+      await ctx.delay(500)
+      expect(!JSON.stringify(savedState()).includes('private-page'), 'A private page was saved with the workspaces.')
+      await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
+      await ctx.delay(600)
+      expect(!(await tabs()).some((tab) => tab.isPrivate), 'Leaving private browsing left a private tab.')
+      await ctx.evaluate(`${ws}.switchTo({ id: ${JSON.stringify(researchId)} }).then(() => true)`)
+      await ctx.delay(600)
+      await axeAudit(ctx, 'the tab sidebar with workspaces and favourites', '.tab-rail')
+      await ctx.shot('workspaces')
+
+      // Saved for the next launch (version 3); kept during the session too, so a crash loses nothing.
+      await ctx.delay(500)
+      const saved = savedState()
+      expect(saved.version === 3 && saved.workspaces.map((w) => w.name).join() === 'Reading,Main' && saved.activeWorkspaceId === researchId, `Saved workspaces: ${JSON.stringify({ version: saved.version, workspaces: saved.workspaces, active: saved.activeWorkspaceId })}.`)
+      expect(saved.tabs.filter((tab) => tab.workspaceId === mainId).length === 3 && saved.tabs.filter((tab) => tab.workspaceId === researchId).length === 3, `Saved tabs by workspace: ${JSON.stringify(saved.tabs.map((tab) => [tab.title, tab.workspaceId]))}.`)
+      expect(saved.folders.some((folder) => folder.name === 'Papers' && folder.workspaceId === researchId) && saved.folders.some((folder) => folder.name === 'Main folder' && folder.workspaceId === mainId), `Saved folders: ${JSON.stringify(saved.folders)}.`)
+
+      // Opened again with that state: every workspace comes back with its own tabs, folders and favourites.
+      const restored = await relaunch(saved, async (next) => {
+        const nextState = JSON.parse(await next.evaluate(`${ws}.get().then((s) => JSON.stringify(s))`))
+        expect(nextState.workspaces.map((w) => `${w.name}:${w.icon}:${w.accent}`).join() === 'Reading:flask:violet,Main:globe:teal' && nextState.activeId === researchId, `After a restart: ${JSON.stringify(nextState.workspaces)}.`)
+        expect(nextState.favourites.length === 2 && nextState.favourites.filter((f) => f.workspaceId === null).length === 1, `Favourites after a restart: ${JSON.stringify(nextState.favourites)}.`)
+        const shown = JSON.parse(await next.evaluate(`${host}.getTabs().then((t) => JSON.stringify(t))`))
+        expect(shown.map((tab) => tab.title).join() === 'Page /research-a,Page /research-b,Page /research-c' && shown[0].pinned, `Reading after a restart: ${shown.map((tab) => tab.title).join()}.`)
+        await next.evaluate(`${ws}.switchTo({ index: 1 }).then(() => true)`)
+        await next.delay(600)
+        const other = JSON.parse(await next.evaluate(`${host}.getTabs().then((t) => JSON.stringify(t))`))
+        const folders = JSON.parse(await next.evaluate(`${host}.getTabFolders().then((f) => JSON.stringify(f))`))
+        // Only the tab Main shows may load; the others stay unloaded until clicked.
+        expect(other.map((tab) => tab.title).join() === 'Page /main-pin,Page /main-b,Page /main-a' && other[0].pinned && other.filter((tab) => !tab.active).every((tab) => tab.asleep) && other[0].asleep, `Main after a restart: ${JSON.stringify(other.map((tab) => [tab.title, tab.active, tab.asleep]))}.`)
+        expect(folders.length === 1 && other.find((tab) => tab.title === 'Page /main-b').folderId === folders[0].id, `Main's folder after a restart: ${JSON.stringify(folders)}.`)
+        return 'restored'
+      })
+      expect(restored === 'restored', 'The relaunched app did not check its workspaces.')
+
+      // A browser state from before workspaces (version 2) opens with all its tabs and folders in Main.
+      const migrated = await relaunch({ version: 2, url: `${origin}/old-a`, bounds: { x: 40, y: 104, width: 900, height: 600 }, wasVisible: false, tabs: [{ id: 'old-a', url: `${origin}/old-a`, title: 'Old A' }, { id: 'old-b', url: `${origin}/old-b`, title: 'Old B', folderId: 'old-f' }], folders: [{ id: 'old-f', name: 'Old folder', parentId: null }] }, async (next) => {
+        const nextState = JSON.parse(await next.evaluate(`${ws}.get().then((s) => JSON.stringify(s))`))
+        const shown = JSON.parse(await next.evaluate(`${host}.getTabs().then((t) => JSON.stringify(t))`))
+        expect(nextState.workspaces.length === 1 && nextState.workspaces[0].name === 'Main' && nextState.workspaces[0].tabCount === 2, `A version 2 state opened as ${JSON.stringify(nextState.workspaces)}.`)
+        expect(shown.map((tab) => tab.title).join() === 'Old B,Old A' && shown[0].folderId === 'old-f', `Its tabs in Main: ${JSON.stringify(shown.map((tab) => [tab.title, tab.folderId]))}.`)
+        return 'migrated'
+      })
+      expect(migrated === 'migrated', 'The relaunched app did not check the migration.')
+
+      // Delete, after confirming (focus starts on Cancel), and Undo brings it back with its tabs, unreloaded.
+      const researchC = (await byTitle('research-c')).id
+      await ctx.click('button[aria-label="Actions for workspace Reading"]')
+      await ctx.wait(`!!document.querySelector('.tab-rail-folder-menu [role="menuitem"]')`, 2000, 'the workspace menu')
+      await ctx.click('.tab-rail-folder-menu [role="menuitem"]', 'Delete workspace')
+      await ctx.wait(`!!document.querySelector('.tab-rail-workspace-confirm[role="alertdialog"]') && document.activeElement?.textContent === 'Cancel'`, 3000, 'the delete confirmation, with focus on Cancel')
+      expect((await state()).workspaces.length === 2, 'Asking to delete deleted before it was confirmed.')
+      await axeAudit(ctx, 'the delete confirmation', '.tab-rail')
+      await ctx.click('.tab-rail-workspace-confirm button', 'Delete workspace')
+      await ctx.wait(`${ws}.get().then((s) => s.workspaces.length === 1 && s.recentlyDeleted?.name === 'Reading')`, 3000, 'Reading to be deleted, with Undo offered')
+      expect(await titles() === 'main-pin main-b main-a', `After deleting Reading the sidebar shows: ${await titles()}.`)
+      await ctx.wait(`[...document.querySelectorAll('.tab-rail-workspace-undo')].some((e) => e.textContent.includes('Deleted “Reading”'))`, 3000, 'the sidebar to offer Undo')
+      await ctx.click('.tab-rail-workspace-undo button')
+      await ctx.wait(`${ws}.get().then((s) => s.workspaces.length === 2 && s.activeId === ${JSON.stringify(researchId)} && !s.recentlyDeleted)`, 3000, 'Undo to bring Reading back')
+      expect(await titles() === 'research-a research-b research-c' && (await tabs()).some((tab) => tab.id === researchC), `After Undo Reading holds: ${await titles()}.`)
+      return `Created, named (icon and colour), renamed, reordered, deleted with confirmation and Undo; each workspace kept its own pinned tab, folder and open tabs; ⌃1/⌃2 switched in ${Math.round(times[0])}–${Math.round(slowest)} ms with the other workspace's sleeping tab left asleep; command menu, swipe and keyboard switched; shared and own favourites; private tabs in no workspace and never saved; restored after a restart and migrated a version 2 state into Main; axe clean.`
+    } finally {
+      server.close()
+    }
+  },
+  async IMPORT_WORKSPACES(ctx) {
+    rmSync(IMPORT_WS_ROOT, { recursive: true, force: true })
+    buildSidebarFixture(IMPORT_WS_ROOT, NEWER_SIDEBAR)
+    const host = 'window.intoponet.browserHost'
+    const ws = 'window.intoponet.workspaces'
+    const section = `document.querySelector('.browser-import')`
+    const sectionText = () => ctx.evaluate(`${section}?.innerText ?? ''`)
+    const state = async () => JSON.parse(await ctx.evaluate(`${ws}.get().then((s) => JSON.stringify(s))`))
+    const tabs = async () => JSON.parse(await ctx.evaluate(`${host}.getTabs().then((t) => JSON.stringify(t))`))
+    const folders = async () => JSON.parse(await ctx.evaluate(`${host}.getTabFolders().then((f) => JSON.stringify(f))`))
+    const show = async (name) => {
+      await ctx.evaluate(`${ws}.get().then((s) => ${ws}.switchTo({ id: s.workspaces.find((w) => w.name === ${JSON.stringify(name)}).id })).then(() => true)`)
+      await ctx.delay(500)
+    }
+    /** Pick the profile again (the preview reads the sidebar file afresh). */
+    const choose = async () => {
+      await ctx.evaluate(`(() => { const radios = [...document.querySelectorAll('.browser-import input[type=radio]')]; const arc = radios.find((i) => i.parentElement.innerText.includes('Arc')); arc.checked = false; arc.focus(); arc.click(); return true })()`)
+      await ctx.wait(`(${section}?.innerText ?? '').includes('What to bring') && !(${section}?.innerText ?? '').includes('Looking at')`, 15_000, 'the preview')
+    }
+    const importNow = async (what) => {
+      await ctx.evaluate(`(() => { [...document.querySelectorAll('.browser-import button')].find((b) => b.innerText.trim() === 'Import').focus(); return true })()`)
+      await ctx.press('Enter')
+      await ctx.wait(`!!document.querySelector('.browser-import-result') || !!document.querySelector('.browser-import .settings-error')`, 30_000, `the import of ${what} to finish`)
+      const error = await ctx.evaluate(`document.querySelector('.browser-import .settings-error')?.innerText ?? ''`)
+      expect(!error, `Importing ${what} failed: ${error}`)
+      await ctx.delay(1200)
+      return ctx.evaluate(`document.querySelector('.browser-import-result').innerText`)
+    }
+    try {
+      await openPanel(ctx, 'Settings')
+      await ctx.wait(`!!${section}`, 5000, 'the Import section in Settings')
+      await ctx.evaluate(`(() => { ${section}.scrollIntoView({ block: 'start' }); return true })()`)
+      await ctx.click('.browser-import button', 'Find browsers')
+      // Named factually in the list of sources, and only there.
+      await ctx.wait(`(${section}?.innerText ?? '').includes('Arc · Default')`, 10_000, 'the sidebar browser in the list of sources')
+      await ctx.wait(`(${section}?.innerText ?? '').includes('What to bring')`, 15_000, 'the preview')
+
+      // The preview names each space and what it would bring, and nothing is written yet.
+      const preview = await sectionText()
+      for (const piece of ['Workspaces 2 spaces and 2 favourites', 'Work: 2 pinned tabs, 2 folders (2 tabs), 1 open tab', 'Home: 1 pinned tab, 1 open tab']) expect(preview.includes(piece), `The preview is missing "${piece}": ${preview}`)
+      expect(await ctx.evaluate(`[...document.querySelectorAll('.browser-import-choice input')].find((i) => i.parentElement.innerText.startsWith('Workspaces')).checked`), 'Workspaces is not ticked when spaces were found.')
+      expect((await state()).workspaces.length === 1, 'Something was written before Import was pressed.')
+      await axeAudit(ctx, 'Settings › Import (spaces preview)', '.browser-import')
+      await ctx.shot('preview')
+
+      // Imported: each space a workspace with its pinned tabs, nested folders and open tabs; favourites in the row.
+      const result = await importNow('the newer layout')
+      for (const piece of ['2 new workspaces (Work, Home)', '2 tabs in folders', '2 favourites']) expect(result.includes(piece), `The result does not say "${piece}": ${result}`)
+      let now = await state()
+      expect(now.workspaces.map((w) => w.name).join() === 'Main,Work,Home', `Workspaces after the import: ${now.workspaces.map((w) => w.name).join()}.`)
+      expect(now.favourites.map((f) => f.url).join() === 'https://mail.example.com/,https://maps.example.com/' && now.favourites.every((f) => f.workspaceId === null), `Favourites after the import: ${JSON.stringify(now.favourites)}.`)
+      expect((await tabs()).length === 0, 'Imported tabs went into the workspace that was open.')
+      await show('Work')
+      const work = await tabs()
+      const workFolders = await folders()
+      expect(work.map((tab) => tab.title).join() === 'Docs,Team chat,Tonga,Samoa,Today', `Work holds: ${work.map((tab) => tab.title).join()}.`)
+      expect(work.filter((tab) => tab.pinned).every((tab) => tab.home === tab.url) && work.filter((tab) => tab.pinned).length === 2, 'Work\'s pinned tabs did not come over with their home.')
+      const reading = workFolders.find((f) => f.name === 'Reading')
+      const later = workFolders.find((f) => f.name === 'Later')
+      expect(reading && later && reading.parentId === null && later.parentId === reading.id, `Work's folders lost their nesting: ${JSON.stringify(workFolders)}.`)
+      expect(work.find((tab) => tab.title === 'Tonga').folderId === reading.id && work.find((tab) => tab.title === 'Samoa').folderId === later.id, 'The tabs are not in their folders.')
+      expect(work.every((tab) => tab.asleep || tab.active), 'Imported tabs loaded before they were shown.')
+      await show('Home')
+      expect((await tabs()).map((tab) => tab.title).join() === 'Recipes,Weather', `Home holds: ${(await tabs()).map((tab) => tab.title).join()}.`)
+
+      // Again: nothing doubles.
+      const again = await importNow('the same file again')
+      expect(again.includes('Nothing new'), `A second import added something: ${again}`)
+      now = await state()
+      expect(now.workspaces.length === 3 && now.favourites.length === 2 && now.workspaces.find((w) => w.name === 'Work').tabCount === 5, `A second import changed the workspaces: ${JSON.stringify(now.workspaces)}.`)
+
+      // The older layout of the same file: its space comes over too, its favourite joins the row.
+      writeFileSync(join(IMPORT_WS_ROOT, 'Arc', 'StorableSidebar.json'), JSON.stringify(OLDER_SIDEBAR))
+      await choose()
+      expect((await sectionText()).includes('Travel: 1 pinned tab, 1 folder (2 tabs), 1 open tab'), `The older layout's preview: ${await sectionText()}`)
+      const older = await importNow('the older layout')
+      expect(older.includes('1 new workspace (Travel)') && older.includes('1 favourite'), `Unexpected result for the older layout: ${older}`)
+      await show('Travel')
+      const travel = await tabs()
+      expect(travel.map((tab) => tab.title).join() === 'Flights,Kyoto,Osaka,Hotels' && (await folders()).map((f) => f.name).join() === 'Japan', `Travel holds: ${travel.map((tab) => tab.title).join()} in ${(await folders()).map((f) => f.name).join()}.`)
+
+      // A file in a shape it does not know is reported, and nothing is read from it or written.
+      const before = JSON.stringify(await state())
+      writeFileSync(join(IMPORT_WS_ROOT, 'Arc', 'StorableSidebar.json'), JSON.stringify({ sidebar: { containers: [{ global: {} }, { spaces: 'not a list', items: {} }] } }))
+      await choose()
+      const refused = await sectionText()
+      expect(refused.includes('not in a format Intoponet knows'), `An unsupported sidebar file was not reported: ${refused}`)
+      expect(!(await ctx.evaluate(`[...document.querySelectorAll('.browser-import-choice input')].find((i) => i.parentElement.innerText.startsWith('Workspaces')).checked`)), 'Workspaces stayed ticked for an unreadable file.')
+      writeFileSync(join(IMPORT_WS_ROOT, 'Arc', 'StorableSidebar.json'), '{"sidebar": {"containers": [')
+      await choose()
+      expect((await sectionText()).includes('not in a format Intoponet knows'), 'A damaged sidebar file was not reported.')
+      expect(JSON.stringify(await state()) === before, 'An unreadable sidebar file changed the workspaces.')
+      await axeAudit(ctx, 'Settings › Import (unreadable sidebar)', '.browser-import')
+      return 'Previewed 2 spaces and 2 favourites with each space\'s pinned tabs, folders and open tabs; recreated Work and Home as workspaces (pinned tabs with homes, Reading › Later nesting kept, open tabs unloaded) and the favourites row; a second run added nothing; the older file layout added Travel (split view opened up); an unsupported and a damaged file were reported and changed nothing; keyboard and axe clean. Fixtures are hand-built, not real files.'
+    } finally {
+      rmSync(IMPORT_WS_ROOT, { recursive: true, force: true })
+    }
+  },
   async AD_SLOTS(ctx) {
     // A news-like page with three kinds of ad space, and one "ad" container that also holds the story.
     const page = `<!doctype html><title>Story with ads</title><body style="font:16px system-ui;margin:40px">
@@ -2465,3 +2845,4 @@ export const checks = {
 checks.TAB_SLEEP.env = { INTOPONET_TAB_SLEEP_MINUTE_MS: '200' }
 checks.TAB_ARCHIVE.env = { INTOPONET_TAB_ARCHIVE_HOUR_MS: '200' }
 checks.BROWSER_IMPORT.env = { INTOPONET_IMPORT_ROOT: IMPORT_ROOT, INTOPONET_IMPORT_TEST_KEY: IMPORT_TEST_KEY }
+checks.IMPORT_WORKSPACES.env = { INTOPONET_IMPORT_ROOT: IMPORT_WS_ROOT, INTOPONET_IMPORT_TEST_KEY: IMPORT_TEST_KEY }

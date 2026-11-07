@@ -18,6 +18,9 @@ import { httpUrl, joinLabel, type ImportedFolder } from './chromiumBookmarks'
 
 export type ArcTab = { url: string; title: string }
 
+/** The pinned part of a space as it is laid out: tabs and folders, folders nested as they were. */
+export type SidebarNode = { kind: 'tab'; url: string; title: string } | { kind: 'folder'; name: string; children: SidebarNode[] }
+
 export type ArcSpace = {
   title: string
   /** The profile folder the space belongs to (Default, Profile 1). */
@@ -28,6 +31,8 @@ export type ArcSpace = {
   folders: ImportedFolder[]
   /** The space's unpinned (open) tabs. */
   open: ArcTab[]
+  /** The pinned part in order, folders nested (for recreating the space as a workspace). */
+  tree: SidebarNode[]
 }
 
 export type ArcSidebar = {
@@ -158,6 +163,21 @@ export function parseArcSidebar(raw: string): ArcSidebar {
     return tabs
   }
 
+  /** The pinned part as a tree. Split views open up into their tabs; notes and the like are left out (counted above). */
+  const treeUnder = (parent: string, depth: number, seen: Set<string>): SidebarNode[] => {
+    if (depth > MAX_DEPTH) return []
+    const nodes: SidebarNode[] = []
+    for (const child of childrenOf(parent)) {
+      if (seen.has(child.id)) continue
+      seen.add(child.id)
+      const tab = asTab(child)
+      if (tab) nodes.push({ kind: 'tab', ...tab })
+      else if (isSplit(child)) nodes.push(...treeUnder(child.id, depth + 1, seen).filter((node) => node.kind === 'tab'))
+      else if (isFolder(child)) nodes.push({ kind: 'folder', name: text(child.title, 60) || 'Untitled folder', children: treeUnder(child.id, depth + 1, seen) })
+    }
+    return nodes
+  }
+
   const spaces: ArcSpace[] = []
   let untitled = 0
   for (const space of rawSpaces) {
@@ -176,7 +196,8 @@ export function parseArcSidebar(raw: string): ArcSidebar {
     }
     const pinnedTabs = pinned ? tabsUnder(pinned, 0, (folder) => addFolder([title], folder, 0), seen) : []
     const openTabs = unpinned ? tabsUnder(unpinned, 0, null, seen) : []
-    spaces.push({ title, profile: spaceProfile(space), pinned: pinnedTabs, folders, open: openTabs })
+    const tree = pinned ? treeUnder(pinned, 0, new Set()) : []
+    spaces.push({ title, profile: spaceProfile(space), pinned: pinnedTabs, folders, open: openTabs, tree })
   }
 
   const favourites: ArcTab[] = []
