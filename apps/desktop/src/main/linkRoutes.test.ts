@@ -18,6 +18,13 @@ describe('normalizeRouteSite', () => {
   it('accepts localhost', () => {
     expect(normalizeRouteSite('localhost')).toBe('localhost')
   })
+
+  it('names a site typed in its own script as its links do, so the rule matches them', () => {
+    expect(normalizeRouteSite('Bücher.de')).toBe('xn--bcher-kva.de')
+    expect(normalizeRouteSite('www.münchen.de')).toBe('xn--mnchen-3ya.de')
+    expect(routeFor('https://shop.bücher.de/x', [{ id: 'a', site: normalizeRouteSite('bücher.de')!, workspaceId: 'w' }], exists('w'))).toBe('w')
+    expect(normalizeRouteSite('bü cher.de')).toBeNull()
+  })
 })
 
 describe('routeFor', () => {
