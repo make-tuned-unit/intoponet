@@ -51,6 +51,16 @@ describe('permission broker', () => {
     broker.request({ origin: 'https://meet.test', kinds: ['camera'], isPrivate: false, owner: 2 }, (granted) => answers.push(granted))
     expect(answers.at(-1)).toBe(true)
   })
+  it('says which tab asked, in any workspace, so the bar can name it when it is not in front', () => {
+    const { events, broker } = setup()
+    broker.request({ origin: 'https://meet.test', kinds: ['camera'], isPrivate: false, owner: 1, tab: { id: 'tab-7', title: '  Team\n call  ' } }, () => undefined)
+    broker.request({ origin: 'https://popup.test', kinds: ['location'], isPrivate: false, owner: 2 }, () => undefined)
+    const [fromTab, fromWindow] = events.filter((event) => event.type === 'request').map((event) => (event as Extract<SitePermissionEvent, { type: 'request' }>).request)
+    expect(fromTab).toMatchObject({ tabId: 'tab-7', tabTitle: 'Team call' })
+    expect(fromTab).not.toHaveProperty('workspace')
+    // A page in a window of its own is not a tab: nothing to name.
+    expect(fromWindow).not.toHaveProperty('tabId')
+  })
   it('keys an embedded frame answer on (frame origin, page origin) and names both', async () => {
     const { events, normal, broker } = setup()
     const answers: boolean[] = []

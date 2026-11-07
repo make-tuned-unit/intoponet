@@ -301,6 +301,10 @@ function tabOfView(view: WebContentsView | null): OpenTab | undefined {
   if (!view) return undefined
   return openTabs.find((tab) => tab.view === view) ?? workspaces.parkedTabs().find((tab) => tab.view === view)
 }
+/** The tab (in any workspace) whose page this is; undefined for a page in its own window. */
+function tabOfContents(contents: Electron.WebContents): OpenTab | undefined {
+  return allTabs().find((tab) => !viewGone(tab.view) && tab.view.webContents === contents)
+}
 let lastBounds: BrowserPanelBounds = { x: 40, y: 104, width: 900, height: 600 }
 /** The shell has reported the page area at least once (until then lastBounds is only a default or a saved guess). */
 let panelBoundsReported = false
@@ -1626,7 +1630,9 @@ function wireDownloadSession(partition = DEFAULT_PARTITION): void {
     // A workspace with its own sign-ins is named in the bar, which may show while another workspace is in front.
     const ownWorkspace = scopeWorkspaceId(scope)
     const workspace = ownWorkspace ? workspaces.get(ownWorkspace)?.name : undefined
-    sitePermissions.request({ origin: originOf(details.requestingUrl || contents.getURL()), topOrigin: originOf(contents.getURL()), kinds: kindsFor(permission, mediaTypes), isPrivate, owner: contents.id, scope, ...(workspace ? { workspace } : {}) }, callback)
+    // The tab that asked is named in the bar when another tab is in front.
+    const asking = tabOfContents(contents)
+    sitePermissions.request({ origin: originOf(details.requestingUrl || contents.getURL()), topOrigin: originOf(contents.getURL()), kinds: kindsFor(permission, mediaTypes), isPrivate, owner: contents.id, scope, ...(workspace ? { workspace } : {}), ...(asking ? { tab: { id: asking.id, title: asking.title } } : {}) }, callback)
   })
   browsing.setPermissionCheckHandler((contents, permission, requestingOrigin, details) => {
     const mediaType = (details as { mediaType?: string }).mediaType
@@ -3077,7 +3083,8 @@ function blockedPopup(opener: WebContentsView, url: string): void {
   const contents = opener.webContents
   const isPrivate = privateViews.has(opener)
   const scope = scopeOfView(opener)
-  sitePermissions.request({ origin: originOf(contents.getURL()), kinds: ['popups'], isPrivate, owner: contents.id, scope }, (granted) => {
+  const asking = tabOfView(opener)
+  sitePermissions.request({ origin: originOf(contents.getURL()), kinds: ['popups'], isPrivate, owner: contents.id, scope, ...(asking ? { tab: { id: asking.id, title: asking.title } } : {}) }, (granted) => {
     if (!granted || viewGone(opener) || !popupLimiter.allow(contents.id)) return
     const tab = createBrowserTab(target.toString(), true, isPrivate, true, false, opener)
     if (tab) void tab.webContents.loadURL(target.toString()).catch(() => undefined)

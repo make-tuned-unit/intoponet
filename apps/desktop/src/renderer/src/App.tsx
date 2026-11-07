@@ -208,7 +208,7 @@ import { isExcludedSite, type PrivacyState } from '@intoponet/browser-api'
 import { PrivacyPane } from './privacy/PrivacyPane'
 import { SettingsPanel } from './settings/SettingsPanel'
 import { mergeImportedLibrary } from './browserImport/mergeImport'
-import { PermissionBar, SitePermissionChips } from './permissions/PermissionBar'
+import { backgroundTabLabel, PermissionBar, SitePermissionChips } from './permissions/PermissionBar'
 import { ExternalOpenBar, useExternalOpenRequests } from './browsing/ExternalOpenBar'
 import { ErrorPage, navigationErrorMessage } from './browsing/ErrorPage'
 import { SiteTweaksPanel } from './siteTweaks/SiteTweaksPanel'
@@ -4347,6 +4347,7 @@ export function App() {
             <PermissionBar
               request={permissionRequests[0]}
               more={permissionRequests.length - 1}
+              background={backgroundTabLabel(permissionRequests[0], tabs)}
               onDecide={(decision) => void window.intoponet.sitePermissions.decide(permissionRequests[0]!.id, decision)}
             />
           )}

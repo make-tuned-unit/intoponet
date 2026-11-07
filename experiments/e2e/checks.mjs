@@ -1220,6 +1220,14 @@ export const checks = {
     await ctx.wait(`window.intoponet.browserHost.getTabs().then((t) => t.some((x) => /example\.org/.test(x.url)))`, 10_000, 'the blocked pop-up to open after "Allow once"')
     await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => t.find((x) => !/example\.org/.test(x.url))).then((t) => t && window.intoponet.browserHost.activateTab(t.id)).then(() => true)`)
     await ctx.delay(1000)
+    // A tab in the background asks: the bar names that tab, so the answer is not taken for the page in front.
+    const behind = await ctx.page('example.org')
+    void behind.evaluate(`Notification.requestPermission()`).catch(() => undefined)
+    await ctx.wait(`(document.querySelector('.permission-bar')?.innerText ?? '').includes('example.org wants to')`, 15_000, 'the permission bar when a background tab asks to show notifications')
+    const named = await ctx.evaluate(`document.querySelector('.permission-bar').innerText`)
+    expect(/^Background tab “[^”]+” · example\.org wants to show notifications/.test(named), `The bar does not name the background tab that asked: "${named}"`)
+    expect(await ctx.click('.permission-bar button', 'Not now'), 'The permission bar has no "Not now" button.')
+    await ctx.wait(`!document.querySelector('.permission-bar')`, 5_000, 'the permission bar to go after "Not now"')
     // A real click in the page (not a scripted one) lets it open a sign-in window and a new tab.
     const clickPage = async (session) => {
       for (const type of ['mousePressed', 'mouseReleased']) await session.send('Input.dispatchMouseEvent', { type, x: 20, y: 20, button: 'left', clickCount: 1 })
@@ -1235,7 +1243,7 @@ export const checks = {
     await ctx.delay(2500)
     tabs = await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => t.map((x) => x.url).join(' '))`)
     expect(/iana\.org/.test(tabs), 'A target=_blank link clicked by the person did not open as a tab.')
-    return 'Location allowed via the bar; a pop-up without a click was blocked and opened with "Allow once"; a clicked popup kept its opener; a clicked _blank link opened a tab.'
+    return `Location allowed via the bar; a pop-up without a click was blocked and opened with "Allow once"; a background tab asking was named ("${named.split(' wants')[0]}"); a clicked popup kept its opener; a clicked _blank link opened a tab.`
   },
 
   async EXTERNAL_APPS(ctx) {
