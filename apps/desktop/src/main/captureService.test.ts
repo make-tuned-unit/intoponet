@@ -40,19 +40,22 @@ class FakeContents extends EventEmitter {
 
 const fakeView = (contents: FakeContents) => ({ webContents: contents, getBounds: () => ({ x: 0, y: 0, width: 200, height: 100 }), setVisible: vi.fn() })
 
-function setup() {
+function setup(options: { privateView?: 'left' | 'right' } = {}) {
   const left = new FakeContents()
   const right = new FakeContents()
   const views = { left: fakeView(left), right: fakeView(right) }
   let shown: ReturnType<typeof fakeView> = views.left
   const events: Array<{ type: string; reason?: string }> = []
   const window = { isDestroyed: () => false, webContents: { send: (_channel: string, event: { type: string; reason?: string }) => events.push(event) } }
-  const service = new CaptureService({} as never, {
+  const saved: Array<{ title: string; sourceUrl: string }> = []
+  const store = { add: async (meta: { title: string; sourceUrl: string }) => { saved.push({ title: meta.title, sourceUrl: meta.sourceUrl }); return { id: 'x', ...meta } }, list: async () => [] }
+  const service = new CaptureService(store as never, {
     window: () => window as never,
     pageView: () => shown as never,
     pageAttached: () => true,
+    isPrivate: (view) => !!options.privateView && view === (views[options.privateView] as never),
   })
-  return { service, left, right, views, events, show: (view: ReturnType<typeof fakeView>) => { shown = view } }
+  return { service, left, right, views, events, saved, show: (view: ReturnType<typeof fakeView>) => { shown = view } }
 }
 
 const crop = { x: 0, y: 0, width: 1, height: 1 }
@@ -92,5 +95,22 @@ describe('Recording a page', () => {
     expect(left.endFrameSubscription).toHaveBeenCalledTimes(1)
     left.destroy()
     expect(events.filter((event) => event.type === 'recording-interrupted')).toHaveLength(1)
+  })
+})
+
+describe('Capturing a private tab', () => {
+  it('names it neutrally and keeps no address; a normal tab keeps its title and address', async () => {
+    const { service, saved, views, show } = setup({ privateView: 'right' })
+    const normal = await service.handle({ type: 'begin' }) as { pendingId: string; title: string; sourceUrl: string }
+    await service.handle({ type: 'save-image', pendingId: normal.pendingId, crop, groupId: null })
+    show(views.right)
+    const secret = await service.handle({ type: 'begin' }) as { pendingId: string; title: string; sourceUrl: string }
+    expect(secret.title).toBe('Capture')
+    expect(secret.sourceUrl).toBe('')
+    await service.handle({ type: 'save-image', pendingId: secret.pendingId, crop, groupId: null })
+    expect(saved).toEqual([
+      { title: views.left.webContents.getTitle(), sourceUrl: views.left.webContents.getURL() },
+      { title: 'Capture', sourceUrl: '' },
+    ])
   })
 })

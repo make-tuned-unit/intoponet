@@ -66,6 +66,8 @@ export class CaptureService {
       window: () => BrowserWindow | null
       pageView: () => WebContentsView | null
       pageAttached: () => boolean
+      /** A private tab's page (its captures keep nothing about the page). */
+      isPrivate?: (view: WebContentsView) => boolean
     },
   ) {}
 
@@ -100,8 +102,11 @@ export class CaptureService {
     if (captured.isEmpty()) throw new Error('This page could not be captured.')
     const image = pixelImage(captured)
     const pendingId = randomUUID()
-    const title = (view.webContents.getTitle() || view.webContents.getURL() || 'Capture').slice(0, CAPTURE_LIMITS.titleLength)
-    const sourceUrl = view.webContents.getURL().slice(0, CAPTURE_LIMITS.urlLength)
+    // A private tab's capture is named neutrally and keeps no address (as Save as PDF does), so nothing about
+    // the page shows up in Finder, Spotlight or the capture library.
+    const isPrivate = this.host.isPrivate?.(view) === true
+    const title = isPrivate ? 'Capture' : (view.webContents.getTitle() || view.webContents.getURL() || 'Capture').slice(0, CAPTURE_LIMITS.titleLength)
+    const sourceUrl = isPrivate ? '' : view.webContents.getURL().slice(0, CAPTURE_LIMITS.urlLength)
     this.pending.set(pendingId, { image, title, sourceUrl, createdAt: Date.now() })
     while (this.pending.size > 4) this.pending.delete(this.pending.keys().next().value as string)
     // The native page view sits above the UI; hide it so the crop overlay

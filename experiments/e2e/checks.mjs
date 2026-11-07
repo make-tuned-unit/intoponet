@@ -1518,7 +1518,17 @@ export const checks = {
     expect(options.includes('New folder…'), 'Saving a capture has no "New folder…" option.')
     await ctx.click('.cap-primary')
     await ctx.wait(`window.intoponet.captures.list().then((l) => l.length > 0)`, 15_000, 'the screenshot to be saved')
-    return 'Screenshot saved; "New folder…" offered.'
+    // A private tab's capture says nothing about the page: a neutral name in Finder, no address kept.
+    await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(true).then(() => true)`)
+    await openAnyPage(ctx)
+    expect(await ctx.click('.browser-actions button', 'Capture'), 'The Capture button is missing in a private tab.')
+    await ctx.wait(`!!document.querySelector('.cap-primary')`, 10_000, 'the capture toolbar in a private tab')
+    await ctx.click('.cap-primary')
+    await ctx.wait(`window.intoponet.captures.list().then((l) => l.length > 1)`, 15_000, 'the private tab\'s screenshot to be saved')
+    const privateCapture = JSON.parse(await ctx.evaluate(`window.intoponet.captures.list().then((l) => JSON.stringify([...l].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]))`))
+    await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
+    expect(privateCapture.title === 'Capture' && privateCapture.sourceUrl === '' && /^Capture \d{4}-\d{2}-\d{2} at /.test(privateCapture.fileName), `A private tab's capture names the page: ${JSON.stringify({ title: privateCapture.title, sourceUrl: privateCapture.sourceUrl, fileName: privateCapture.fileName })}`)
+    return 'Screenshot saved; "New folder…" offered; a private tab\'s capture is named neutrally with no address.'
   },
 
   // ---- Private library -----------------------------------------------------

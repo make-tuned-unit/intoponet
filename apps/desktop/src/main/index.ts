@@ -5047,7 +5047,7 @@ app.whenReady().then(async () => {
       process.env['INTOPONET_CAPTURE_ROOT'] || join(app.getPath('pictures'), 'Intoponet'),
       { trash: (path) => shell.trashItem(path) },
     )
-    captures = new CaptureService(captureLibrary, { window: () => window, pageView: () => pageView, pageAttached: () => pageAttached })
+    captures = new CaptureService(captureLibrary, { window: () => window, pageView: () => pageView, pageAttached: () => pageAttached, isPrivate: (view) => privateViews.has(view) })
     // Import anything saved by the earlier encrypted store, once.
     void migrateEncryptedCaptures(join(app.getPath('userData'), 'captures'), captureLibrary, async (sealed) => (await safeStorage.decryptStringAsync(sealed)).result)
       .catch(() => 0)
