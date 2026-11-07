@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('electron', () => ({ BrowserWindow: class {}, WebContentsView: class {} }))
-const { jsonForScript, parseQuickToolbarMessage, quickToolbarHtml, quickWindowBounds, quickWindowKeyAction, QUICK_WINDOW_SIZE } = await import('./quickWindow')
+const { escapeIsTheAddressFields, jsonForScript, parseQuickToolbarMessage, quickToolbarHtml, quickWindowBounds, quickWindowKeyAction, QUICK_WINDOW_SIZE } = await import('./quickWindow')
 
 const state = (overrides: Partial<Parameters<typeof quickToolbarHtml>[0]> = {}) => ({
   address: 'https://example.org/',
@@ -83,6 +83,44 @@ describe('the toolbar page', () => {
     expect(scriptOf(html)).not.toContain('innerHTML')
     expect(scriptOf(html)).not.toContain('insertAdjacentHTML')
   })
+
+  it('keeps the address being edited while the window is in the back, and stops when the field is left', () => {
+    // The toolbar script against a small stand-in for its page: focus and blur as Chromium does them.
+    type Fake = { id: string; value: string; readOnly: boolean; hidden: boolean; textContent: string; listeners: Record<string, Array<(event: unknown) => void>>; addEventListener: (type: string, listener: (event: unknown) => void) => void; focus: () => void; blur: () => void; select: () => void }
+    const body = { id: 'body' }
+    const document = { activeElement: body as unknown, getElementById: (id: string) => elements[id] }
+    const fire = (element: Fake, type: string): void => { for (const listener of element.listeners[type] ?? []) listener({ key: '', preventDefault() {} }) }
+    const fake = (id: string): Fake => {
+      const element: Fake = {
+        id, value: '', readOnly: false, hidden: false, textContent: '', listeners: {},
+        addEventListener: (type, listener) => { (element.listeners[type] ??= []).push(listener) },
+        focus: () => { document.activeElement = element; fire(element, 'focus') },
+        // The field is left: focus is already elsewhere when blur arrives.
+        blur: () => { document.activeElement = body; fire(element, 'blur') },
+        select: () => undefined,
+      }
+      return element
+    }
+    const elements: Record<string, Fake> = Object.fromEntries(['address', 'secure', 'private', 'protection', 'error', 'always', 'open', 'close'].map((id) => [id, fake(id)]))
+    const sent: unknown[] = []
+    const window: Record<string, unknown> = {}
+    const console = { log: (line: string) => sent.push(parseQuickToolbarMessage(line)) }
+    new Function('document', 'window', 'console', scriptOf(quickToolbarHtml(state())))(document, window, console)
+    const address = elements['address']!
+    expect(address.readOnly).toBe(true)
+
+    ;(window['quickFocusAddress'] as () => void)()
+    expect(address.readOnly).toBe(false)
+    expect(sent.at(-1)).toEqual({ type: 'editing', on: true })
+    // Another app comes forward: the field gets blur but keeps focus (Chromium refocuses it on return).
+    fire(address, 'blur')
+    expect(address.readOnly).toBe(false)
+    expect(sent.at(-1)).toEqual({ type: 'editing', on: true })
+    // Leaving the field ends the edit.
+    address.blur()
+    expect(address.readOnly).toBe(true)
+    expect(sent.at(-1)).toEqual({ type: 'editing', on: false })
+  })
 })
 
 describe('jsonForScript', () => {
@@ -136,6 +174,13 @@ describe('keys in a quick window', () => {
     expect(quickWindowKeyAction(key({ key: 't' }))).toBe('main')
     expect(quickWindowKeyAction(key({ key: 'k' }))).toBe('main')
     expect(quickWindowKeyAction(key({ key: ',' }))).toBe('main')
+  })
+
+  it('leaves Escape to the address field only when it is typed there; in the page it still closes the window', () => {
+    expect(escapeIsTheAddressFields(true, true)).toBe(true)
+    // The field keeps focus in the toolbar when the page is clicked, so editing alone is not enough.
+    expect(escapeIsTheAddressFields(true, false)).toBe(false)
+    expect(escapeIsTheAddressFields(false, true)).toBe(false)
   })
 
   it('leaves ordinary typing and key-ups alone', () => {
