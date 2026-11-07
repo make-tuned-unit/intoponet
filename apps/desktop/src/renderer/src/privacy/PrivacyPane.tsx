@@ -90,7 +90,7 @@ export function PrivacyPane({
 
       <section>
         <h3><Ban size={13} aria-hidden="true" /> Sites to leave out</h3>
-        <p>Pages from these sites are never absorbed and leave no recent pages or interest signals. Banking, health, sign-in and payment pages are always left out.</p>
+        <p>Pages from these sites are never absorbed and leave no recent pages or interest signals. Banking, health, sign-in and payment pages are never absorbed, listed here or not.</p>
         <form className="privacy-site-form" onSubmit={(event) => { event.preventDefault(); addSite(siteDraft) }}>
           <input value={siteDraft} onChange={(event) => setSiteDraft(event.target.value)} placeholder="example.com" aria-label="Site to leave out" maxLength={253} />
           <button type="submit" disabled={!normalizeSite(siteDraft)}>Add</button>

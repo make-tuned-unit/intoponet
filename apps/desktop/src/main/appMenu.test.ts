@@ -168,7 +168,9 @@ describe('menu refreshes', () => {
 
   it('offers every menu command in the command menu (⌘K)', async () => {
     const { menuActions, COMMAND_MENU_LEFT_OUT } = await import('../renderer/src/commandMenu')
-    const offered = menuActions({ hasPage: true, pageShown: true, canGoBack: true, canGoForward: true, loading: true, tabCount: 3, privateMode: false, sidebarHidden: false }).map((action) => action.id)
+    // Split and Unsplit exclude each other: both states together offer every command.
+    const state = { hasPage: true, pageShown: true, canGoBack: true, canGoForward: true, loading: true, tabCount: 3, privateMode: false, sidebarHidden: false }
+    const offered = [...new Set([...menuActions(state), ...menuActions({ ...state, splitActive: true })].map((action) => action.id))]
     expect([...offered, ...COMMAND_MENU_LEFT_OUT].sort()).toEqual(Object.keys(APP_SHORTCUTS).sort())
     for (const id of offered) expect(menuCommandById(id)).toEqual({ type: id })
     expect(menuCommandById('shell-devtools')).toBeNull()

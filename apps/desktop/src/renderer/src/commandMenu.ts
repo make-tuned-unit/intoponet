@@ -53,7 +53,7 @@ export function menuActions(state: CommandMenuState): OmniboxAction[] {
     state.tabCount > 1 && { id: 'previous-tab', label: 'Previous tab', shortcut: '⌃⇧Tab', keywords: 'switch' },
     state.pageShown && state.tabCount > 0 && { id: 'toggle-tab-sidebar', label: state.sidebarHidden ? 'Show tab sidebar' : 'Hide tab sidebar', shortcut: '⌃⌘S', keywords: 'vertical tabs' },
     state.pageShown && state.tabCount > 1 && !state.splitActive && { id: 'split-tab', label: 'Split with next tab', shortcut: '⌃⇧=', keywords: 'side by side two pages' },
-    state.pageShown && { id: 'unsplit-tab', label: 'Unsplit tabs', shortcut: '⌃⇧-', keywords: 'side by side separate' },
+    state.pageShown && !!state.splitActive && { id: 'unsplit-tab', label: 'Unsplit tabs', shortcut: '⌃⇧-', keywords: 'side by side separate' },
     state.pageShown && { id: 'home', label: 'Show the globe', shortcut: '⇧⌘H', keywords: 'earth home map' },
     { id: 'settings', label: 'Settings…', shortcut: '⌘,', keywords: 'preferences options' },
   ]
