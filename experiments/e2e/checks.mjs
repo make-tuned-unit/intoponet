@@ -4475,6 +4475,19 @@ export const checks = {
       await showIn(workId, 'who=dan')
       await waitPage('who=dan', 'Signed in as dan')
 
+      // A link preview over the globe is Work's page: switching to Main closes it (Open as Tab would bring Work's sign-in into Main).
+      await ctx.evaluate(`${host}.close().then(() => true)`)
+      await ctx.evaluate(`${host}.previewLink(${JSON.stringify(`${base}/?who=preview`)}).then(() => true)`)
+      await waitPage('who=preview', 'Signed in as dan')
+      await ctx.evaluate(`${ws}.switchTo({ id: ${JSON.stringify(mainId)} }).then(() => true)`)
+      let previewLeft = true
+      for (let i = 0; i < 12 && previewLeft; i += 1) {
+        await ctx.delay(250)
+        previewLeft = await ctx.main(`electron.webContents.getAllWebContents().some((w) => !w.isDestroyed() && w.getURL().includes('link-preview-card'))`)
+      }
+      expect(!previewLeft, "A link preview opened in Work stayed open after switching to Main, where Open as Tab would keep Work's sign-in.")
+      await showIn(workId, 'who=dan')
+
       // A workspace with its own sign-ins deleted just before quitting (inside its Undo window) takes its sign-ins with it.
       const gone = JSON.parse(await ctx.evaluate(`${ws}.create({ name: 'Gone' }).then((s) => JSON.stringify(s))`)).activeId
       await ctx.evaluate(`${ws}.update(${JSON.stringify(gone)}, { separateSignIns: true }).then(() => true)`)

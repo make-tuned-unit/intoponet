@@ -2055,6 +2055,8 @@ function switchWorkspace(target: WorkspaceSwitch): boolean {
   const workspace = workspaces.resolve(target)
   if (!workspace || workspace.id === workspaces.activeId) return false
   if (tabSwitcher.open) endTabSwitcher('cancel')
+  // A link preview is the shown workspace's page (its sign-ins): it closes, even over the globe, so Open as Tab cannot bring it into another.
+  if (linkPreview) closeLinkPreview(false)
   const showing = pageAttached
   const privateTabs = openTabs.filter((tab) => privateViews.has(tab.view))
   const leaving = openTabs.filter((tab) => !privateViews.has(tab.view))
