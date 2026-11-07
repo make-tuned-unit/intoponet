@@ -35,6 +35,11 @@ describe('PDF file names', () => {
     expect(name.startsWith('.')).toBe(false)
     expect(pdfFilename({ title: 'x'.repeat(400), site: '', url: 'https://x.example/', isPrivate: false, date: day }).length).toBeLessThan(150)
   })
+  it('never cuts a character in half when it caps the length', () => {
+    const name = pdfFilename({ title: `${'a'.repeat(118)}🙂🙂🙂 more`, site: '', url: 'https://x.example/', isPrivate: false, date: day })
+    expect(name).toBe(`${'a'.repeat(118)}🙂… – 2026-11-05.pdf`)
+    expect(/\p{Cs}/u.test(name)).toBe(false)
+  })
   it('says nothing about the page for private tabs', () => {
     expect(pdfFilename({ title: 'Secret clinic results', site: 'Clinic', url: 'https://clinic.example/', isPrivate: true, date: day })).toBe('Saved page 2026-11-05.pdf')
   })

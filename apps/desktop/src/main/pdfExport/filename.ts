@@ -17,7 +17,9 @@ export function pdfFilename(input: { title: string; site: string; url: string; i
   // The site is left out when the title already names it ("BBC News – BBC News", "BBC News - Home – bbc.com").
   if (site && !namesSite(parts[0]!, site)) parts.push(site)
   let base = parts.join(' – ')
-  if (base.length > 120) base = `${base.slice(0, 119).trimEnd()}…`
+  // Cut by characters, not UTF-16 units: half an emoji is not a character, and Finder would show "�".
+  const characters = Array.from(base)
+  if (characters.length > 120) base = `${characters.slice(0, 119).join('').trimEnd()}…`
   return `${base} – ${day}.pdf`
 }
 

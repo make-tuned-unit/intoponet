@@ -15,7 +15,8 @@ export function savePageFilename(title: string, url: string, extension: 'html' |
   }
   if (extension === 'pdf') base = base.replace(/\.pdf$/i, '').trim()
   // Characters Finder and other apps handle badly in names.
-  const cleaned = base.replace(/[:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120) || 'Page'
+  // Cut by characters, not UTF-16 units (half an emoji would show as "�").
+  const cleaned = Array.from(base.replace(/[:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim()).slice(0, 120).join('').trim() || 'Page'
   return sanitizeDownloadFilename(`${cleaned}.${extension}`)
 }
 

@@ -18,6 +18,12 @@ describe('Save Page As file name', () => {
     expect(savePageFilename('x'.repeat(500), 'https://example.com/').length).toBeLessThanOrEqual(130)
   })
 
+  it('never cuts a character in half when it caps the length', () => {
+    const name = savePageFilename(`${'a'.repeat(119)}🙂🙂`, 'https://example.com/')
+    expect(name).toBe(`${'a'.repeat(119)}🙂.html`)
+    expect(/\p{Cs}/u.test(name)).toBe(false)
+  })
+
   it('names a PDF as a .pdf, without doubling the extension', () => {
     expect(savePageFilename('report.pdf', 'https://example.com/report.pdf', 'pdf')).toBe('report.pdf')
     expect(savePageFilename('Annual Report 2025', 'https://example.com/r?id=3', 'pdf')).toBe('Annual Report 2025.pdf')
