@@ -4284,6 +4284,11 @@ export const checks = {
       // Matching and grouping sent nothing for any tab's address or title.
       expect(requestCounts() === baseline, `A tab page was requested while matching: ${requestCounts()} (was ${baseline}).`)
       await axeAudit(ctx, 'the tab sidebar with a story folder', '.tab-rail')
+      // A folder that goes away under the pointer gets no pointer-leave: its story stops being highlighted all the same.
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: at.x, y: at.y })
+      await ctx.wait(`document.documentElement.dataset.storyHighlight === ${JSON.stringify(hovered.storyId)}`, 5000, 'the story to be highlighted again on hover')
+      await ctx.evaluate(`${host}.deleteTabFolder(${JSON.stringify(hovered.id)}).then(() => true)`)
+      await ctx.wait(`document.documentElement.dataset.storyHighlight === ''`, 5000, 'the highlight to clear when the hovered story folder was deleted')
       await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
       return `Two articles of "${storyName}" badged; the control and a private tab with a matching title not; Group by story made one folder for it holding only the two articles; Undo restored the order and removed the folder; hovering the folder highlighted the story (${hovered.storyId}) and leaving cleared it; no page was requested during matching; axe clean.`
     } finally {
