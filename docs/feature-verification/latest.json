@@ -1,14 +1,14 @@
 {
-  "started": "2026-11-07T00:54:10.353Z",
-  "finished": "2026-11-07T01:10:55.996Z",
+  "started": "2026-11-07T05:28:30.996Z",
+  "finished": "2026-11-07T05:48:46.015Z",
   "tier": "network",
   "only": null,
-  "summary": "51 passed, 0 failed, 0 blocked, 2 skipped",
+  "summary": "55 passed, 0 failed, 0 blocked, 2 skipped",
   "results": {
     "BUILD": {
       "status": "pass",
-      "notes": "npm run typecheck · npm test · npm run build",
-      "seconds": 29
+      "notes": "Skipped with --skip-build (current build reused).",
+      "seconds": 0
     },
     "APP_BOOT": {
       "status": "pass",
@@ -23,7 +23,7 @@
     "ACCESSIBILITY": {
       "status": "pass",
       "notes": "No WCAG 2.2 AA violations (axe); panels open with Enter, close with Escape, focus returns.",
-      "seconds": 17
+      "seconds": 18
     },
     "TABS": {
       "status": "pass",
@@ -38,52 +38,52 @@
     "COLLECTIONS_IMPORT": {
       "status": "pass",
       "notes": "Explained and split into 2. ",
-      "seconds": 9
+      "seconds": 10
     },
     "FLY_TO": {
       "status": "pass",
       "notes": "Charlottetown PEI and \"Fredericto\" flew on the globe, with the locator shown.",
-      "seconds": 11
+      "seconds": 12
     },
     "GLOBE_MOTION": {
       "status": "pass",
-      "notes": "Locator 735,473 → 758,490 after zoom.",
-      "seconds": 10
+      "notes": "Locator 733,473 → 747,484 after zoom.",
+      "seconds": 11
     },
     "COUNTRY_NAMES": {
       "status": "pass",
       "notes": "16 names at the start; clicked Venezuela → Venezuela; 7 flights named correctly.",
-      "seconds": 56
+      "seconds": 58
     },
     "GLOBE_LIVE": {
       "status": "pass",
-      "notes": "632 public signals across 4 active layers. Hover to preview, click to explore, or search a place below.",
-      "seconds": 31
+      "notes": "515 public signals across 4 active layers. Hover to preview, click to explore, or search a place below.",
+      "seconds": 18
     },
     "SOURCE_CAROUSEL": {
       "status": "pass",
-      "notes": "Cards with 10 images, 4 bylines, 5 summaries. Carousel flipped from La Nación to N Digital; chose \"N Digital: Servicio Secreto arresta hombre cerca de la Casa Blanca que dijo que \" and the browser opened https://n.com.do/2026/11/06/servicio-secreto-arresta-hombre-cerca-de-la-casa-blanca-que-dijo-que-voces-le-pedian-matar-a-trump/ (page was closed before).",
-      "seconds": 42
+      "notes": "Cards with 12 images, 2 bylines, 5 summaries. Carousel flipped from G1 to Al Jazeera; chose \"Al Jazeera English: Trump confirms new US strikes on Iran’s Qeshm Island. Press \" and the browser opened https://www.aljazeera.com/news/2026/11/7/trump-confirms-new-us-strikes-on-irans-qeshm-island?traffic_source=rss (page was closed before).",
+      "seconds": 31
     },
     "WORLD_STORIES": {
       "status": "pass",
       "notes": "20 world stories; scrolls 400px.",
-      "seconds": 30
+      "seconds": 12
     },
     "COUNTRY_PANEL": {
       "status": "pass",
       "notes": "Facts ok, recent history 2025, 2024, 2022, 2020, 12 headlines.",
-      "seconds": 59
+      "seconds": 48
     },
     "OLDS_HEADLINE": {
       "status": "pass",
       "notes": "Israel → 2026 Israeli legislative election: 19 dated events from 10 Apr 1973; Ebola, South Africa and Guernsey guards ok; related Judiciary of Israel, Israeli law, Politics of Israel, Elections in Israel. Brazil → 2026 Brazilian general election. Honduras → Honduras.",
-      "seconds": 79
+      "seconds": 114
     },
     "OLDS_COUNTRY": {
       "status": "pass",
       "notes": "Capital Tórshavn; 7 chapters; latest event 2025.",
-      "seconds": 4
+      "seconds": 5
     },
     "OLDS_DEBATE": {
       "status": "pass",
@@ -92,93 +92,93 @@
     },
     "OLDS_UI": {
       "status": "pass",
-      "notes": "Views Story/Timeline/List; sections: HOW WE GOT HERE, TOPICS BEHIND THIS STORY.",
-      "seconds": 31
+      "notes": "Views Story/Timeline/List; sections: HOW WE GOT HERE.",
+      "seconds": 28
     },
     "OLDS_COVERAGE": {
       "status": "pass",
-      "notes": "“MTG warns Miller-Wiles shakeup will sink Republican chances ”: 1 headlines (NOVEMBER 2026 – NOVEMBER 2026), then 1 reaching NOVEMBER 2026; Go further back",
-      "seconds": 38
+      "notes": "“Trump confirms new US strikes on Iran’s Qeshm Island”: 5 headlines (NOVEMBER 2026 – NOVEMBER 2026), then 14 reaching NOVEMBER 2026; Go further back",
+      "seconds": 48
     },
     "BROWSE": {
       "status": "pass",
       "notes": "Toolbar: Protected, Translate, Capture, PDF, Pin, Absorb, Bookmarks; pages see Chrome/156.0.8078.48; tab closed cleanly; a self-closing page took its tab; ⌘W closed tabs from inside the page, ⌘⇧T reopened one, ⌘= zoom shown and kept for the site, ⌘1/⌘9 picked tabs; the app window stayed on the app.",
-      "seconds": 31
+      "seconds": 40
     },
     "OMNIBOX": {
       "status": "pass",
-      "notes": "\"localh\" completed to localhost:57279; history row opened in a background tab with ⌘↵; then \"Switch to tab\" landed on it (1 tab); Backspace removed the completion; \"Fredericton\" flew the globe.",
-      "seconds": 14
+      "notes": "\"localh\" completed to localhost:52274; history row opened in a background tab with ⌘↵; then \"Switch to tab\" landed on it (1 tab); Backspace removed the completion; \"Fredericton\" flew the globe.",
+      "seconds": 17
     },
     "PROTECTION": {
       "status": "pass",
-      "notes": "Protected · 3 ads · 0 trackers blocked · Block ads · Block trackers · Encrypted DNS · Local IP hidden · No VPN · Pause on this site",
-      "seconds": 14
+      "notes": "Protected · 3 ads · 0 trackers blocked · Block ads · Block trackers · Encrypted DNS · Local IP hidden · No VPN · Customize site · Pause on this site",
+      "seconds": 16
     },
     "PERMISSIONS": {
       "status": "pass",
       "notes": "Location allowed via the bar; a pop-up without a click was blocked and opened with \"Allow once\"; a clicked popup kept its opener; a clicked _blank link opened a tab.",
-      "seconds": 13
+      "seconds": 16
     },
     "EXTERNAL_APPS": {
       "status": "pass",
-      "notes": "\"Open Mail? 127.0.0.1:58317 wants to open mailto:someone@example.com?subject=Hello\" asked for a mailto: link; the tab stayed on http://127.0.0.1:58317/; Cancel closed it and no prompt storm followed.",
-      "seconds": 7
+      "notes": "\"Open Mail? 127.0.0.1:53480 wants to open mailto:someone@example.com?subject=Hello\" asked for a mailto: link; the tab stayed on http://127.0.0.1:53480/; Cancel closed it and no prompt storm followed.",
+      "seconds": 10
     },
     "ERROR_PAGE": {
       "status": "pass",
-      "notes": "\"127.0.0.1:58542 refused to connect\" with Retry; toolbar kept http://127.0.0.1:58542/; Retry loaded the page once a server listened; a self-signed site showed \"Connection not secure\" with its certificate and Back returned.",
-      "seconds": 4
+      "notes": "\"127.0.0.1:53733 refused to connect\" with Retry; toolbar kept http://127.0.0.1:53733/; Retry loaded the page once a server listened; a self-signed site showed \"Connection not secure\" with its certificate and Back returned.",
+      "seconds": 7
     },
     "PDF_VIEWER": {
       "status": "pass",
       "notes": "doc.pdf opened in the tab in Chromium's viewer; the attachment downloaded as intoponet-e2e-attachment.pdf.",
-      "seconds": 6
+      "seconds": 10
     },
     "PAGE_APPEARANCE": {
       "status": "pass",
       "notes": "Pages: dark→dark, light→light, system→dark, dark mode canvas: plain 255,255,255, dark 18,18,18 (system is dark); Settings shows the choice and default-browser status.",
-      "seconds": 18
+      "seconds": 21
     },
     "PRIVATE_BROWSING": {
       "status": "pass",
       "notes": "Private tab marked, no footprints, closed when private mode ended.",
-      "seconds": 11
+      "seconds": 13
     },
     "SAVED_PASSWORDS": {
       "status": "pass",
-      "notes": "Failed sign-in not offered; offered, saved, bookmarked in Accounts (sealed file, no plaintext), filled one account (password only after a real click; a script click did not release it), asked between two, listed in Settings; private tab untouched (localhost:59534).",
-      "seconds": 25
+      "notes": "Failed sign-in not offered; offered, saved, bookmarked in Accounts (sealed file, no plaintext), filled one account (password only after a real click; a script click did not release it), asked between two, listed in Settings; private tab untouched (localhost:54996).",
+      "seconds": 27
     },
     "EXCLUDED_SITES": {
       "status": "pass",
       "notes": "Absorb refused; no recent page kept.",
-      "seconds": 12
+      "seconds": 11
     },
     "DOWNLOADS_HISTORY": {
       "status": "pass",
-      "notes": "Downloaded 640 KB with progress → done; on disk with quarantine \"0083;6aee793a;Intoponet;561AF170-147A-4A53-AF21-74D0A7565F53\"; History found and deleted a visit; private visit not kept.",
-      "seconds": 16
+      "notes": "Downloaded 640 KB with progress → done; on disk with quarantine \"0083;6aeeb98a;Intoponet;E9B04693-9E3F-42B4-9ED3-ED01BE4D71B2\"; History found and deleted a visit; private visit not kept.",
+      "seconds": 17
     },
     "CAPTURE": {
       "status": "pass",
       "notes": "Screenshot saved; \"New folder…\" offered.",
-      "seconds": 9
+      "seconds": 8
     },
     "PDF_EXPORT": {
       "status": "pass",
       "notes": "Article: 5 pages, 2 images, tagged with outline, ads/hidden/overlay text left out, bookmarked in \"Reading\" with the PDF linked; shop page saved as seen without ads; private tab asked where, neutral name, no Where-from or bookmark; 2 PDFs in Bookmarks › PDFs (private one not listed), removing one keeps the file.",
-      "seconds": 23
+      "seconds": 33
     },
     "PAYWALL_ALTERNATIVES": {
       "status": "pass",
       "notes": "nytimes.com section page: paywalled=false (no signals).",
-      "seconds": 28
+      "seconds": 25
     },
     "ABSORB": {
       "status": "pass",
       "notes": "Absorbed 10572 words; 40 claims; selection absorb ok.",
-      "seconds": 12
+      "seconds": 11
     },
     "BEACONS_REGISTRY": {
       "status": "pass",
@@ -195,8 +195,8 @@
     },
     "STORY_MOUNTAINS": {
       "status": "pass",
-      "notes": "60 story mountains; highest \"US midterm elections\" (32 outlets, 10 other countries).",
-      "seconds": 13
+      "notes": "60 story mountains; highest \"“They all must go”: Peña’s removal fails to calm anger on Paraguay’s streets\" (33 outlets, 14 other countries).",
+      "seconds": 14
     },
     "COPY_ADDRESS": {
       "status": "pass",
@@ -206,67 +206,87 @@
     "PINNED_HOME": {
       "status": "pass",
       "notes": "Pinned at home; same-site moves stay home, another site offers the way back; ⌘W unloads it in place and it reopens at home; saved with its home.",
-      "seconds": 13
+      "seconds": 14
     },
     "TAB_SLEEP": {
       "status": "pass",
-      "notes": "9 background tabs slept (typed text and the front tab stayed awake); their pages' memory 936 MB → 169 MB; woke on the same page, scroll and back list.",
-      "seconds": 19
+      "notes": "9 background tabs slept (typed text and the front tab stayed awake); their pages' memory 828 MB → 131 MB; woke on the same page, scroll and back list.",
+      "seconds": 30
     },
     "RECENT_TABS": {
       "status": "pass",
       "notes": "Hold ⌃, Tab and ⌃⇧Tab step most-recent-first over the page (announced); release shows it, a quick ⌃Tab goes back, Escape keeps the tab; tab-bar order unchanged.",
-      "seconds": 11
+      "seconds": 14
     },
     "SIDEBAR_TABS": {
       "status": "pass",
       "notes": "Kept open in full width with Pinned and Open sections (page after it, no tabs twice); resized to 331px and kept; ⌃⌘S hid it, the left edge peeked it back, ⌃⌘S restored it; keyboard and axe clean.",
-      "seconds": 12
+      "seconds": 14
     },
     "BROWSER_IMPORT": {
       "status": "pass",
       "notes": "Found Chrome (Person 1) and Arc; previewed counts with history and passwords off; imported 4 bookmarks as 4 collections, 2 history pages and 1 sealed password from Chrome, and 2 pinned tabs (with homes), 1 open tab and the Work, Home and Work › Reading collections from Arc; a second run added nothing; keyboard and axe clean.",
-      "seconds": 13
+      "seconds": 14
     },
     "TOUR": {
       "status": "pass",
-      "notes": "All 26 steps shown, each spotlight on what it describes; the tour put everything back at the end.",
-      "seconds": 55
+      "notes": "All 30 steps shown, each spotlight on what it describes; the tour put everything back at the end.",
+      "seconds": 65
     },
     "TAB_ARCHIVE": {
       "status": "pass",
       "notes": "Unseen unpinned tabs archived (pinned, typed and private ones stayed); \"2 tabs archived\" with Undo; found from the address bar and reopened with its back list; cleared with history.",
-      "seconds": 15
+      "seconds": 27
     },
     "COMMAND_MENU": {
       "status": "pass",
-      "notes": "⌘K from a page shows command mode in 31 ms (p95); \">\" too; no requests while typing; actions, tabs and places ranked; keyboard and Enter run them (copy, zoom, sidebar, protection, Knowledge); axe clean.",
-      "seconds": 20
+      "notes": "⌘K from a page shows command mode in 56 ms (p95); \">\" too; no requests while typing; actions, tabs and places ranked; keyboard and Enter run them (copy, zoom, sidebar, protection, Knowledge); axe clean.",
+      "seconds": 26
     },
     "TAB_FOLDERS": {
       "status": "pass",
       "notes": "Folder named from the sidebar; tab dragged in and moved by command; nested four deep; order follows the sidebar; folded and kept; saved as path-named collections; a collection opened as a folder; delete keeps tabs; axe clean.",
-      "seconds": 13
+      "seconds": 20
     },
     "AD_SLOTS": {
       "status": "pass",
       "notes": "Blocked ad frame, ad picture and empty slot collapsed (0 px); story text kept (19 px box with text stays); left alone with protection paused.",
-      "seconds": 12
+      "seconds": 15
     },
     "LINK_PREVIEW": {
       "status": "pass",
       "notes": "⇧-click and Preview Link opened a 80% × 80% card with no new window or tab and the page under it unchanged; ads blocked (pagead2.googlesyndication.com, securepubads.g.doubleclick.net) and their space hidden in the card; Escape, a click outside and ⌘W closed it with focus back on the link; Tab stayed in the card; Open as Tab kept the page and its back list; a private tab's preview was private; a World list headline was previewed over the globe; axe clean.",
-      "seconds": 27
+      "seconds": 36
     },
     "WORKSPACES": {
       "status": "pass",
-      "notes": "Created, named (icon and colour), renamed, reordered, deleted with confirmation and Undo; each workspace kept its own pinned tab, folder and open tabs; ⌃1/⌃2 switched in 6–11 ms with the other workspace's sleeping tab left asleep; command menu, swipe and keyboard switched; shared and own favourites; private tabs in no workspace and never saved; restored after a restart and migrated a version 2 state into Main; axe clean.",
-      "seconds": 30
+      "notes": "Created, named (icon and colour), renamed, reordered, deleted with confirmation and Undo; each workspace kept its own pinned tab, folder and open tabs; ⌃1/⌃2 switched in 6–52 ms with the other workspace's sleeping tab left asleep; command menu, swipe and keyboard switched; shared and own favourites; private tabs in no workspace and never saved; restored after a restart and migrated a version 2 state into Main; axe clean.",
+      "seconds": 38
     },
     "IMPORT_WORKSPACES": {
       "status": "pass",
       "notes": "Previewed 2 spaces and 2 favourites with each space's pinned tabs, folders and open tabs; recreated Work and Home as workspaces (pinned tabs with homes, Reading › Later nesting kept, open tabs unloaded) and the favourites row; a second run added nothing; the older file layout added Travel (split view opened up); an unsupported and a damaged file were reported and changed nothing; keyboard and axe clean. Fixtures are hand-built, not real files.",
-      "seconds": 11
+      "seconds": 10
+    },
+    "SITE_TWEAKS": {
+      "status": "pass",
+      "notes": "Escape stops picking; a picked element is previewed, saved, kept after reload, and not on site B. Width, font and dark colours change site A only, with no reload when turned off. @import and script markup are refused and nothing runs. A private tab sees the tweaks and writes nothing. Settings lists and removes the site, and the error page turns tweaks off.",
+      "seconds": 40
+    },
+    "QUICK_WINDOW": {
+      "status": "pass",
+      "notes": "Setting off: a tab. Settings › Browsing chooses Quick window (saved). A quick window is small and always on top, opens no tab and blocks the ad picture. Navigating inside, then ⌘O: the same page (same id, history kept, not reloaded) is a tab and the quick window is gone. A second one closed with its Close button leaves no tab and nothing to reopen. Private: private partition, labelled. ⌥⌘N opens an empty one; a typed address loads; Escape in an edited address field reverts it and keeps the window; ⌘T opens a tab in the main window; Escape outside the field closes it. Toolbar axe clean.",
+      "seconds": 13
+    },
+    "AUTO_PIP": {
+      "status": "pass",
+      "notes": "Off by default; with it on, leaving a playing tab floated its canvas video (playback went on), returning docked it; the now-playing control listed it (labelled, axe clean) and pause, play, mute, unmute and go-to worked from the keyboard; a page with disablePictureInPicture kept playing in place; a floating tab was not put to sleep or archived while other tabs were.",
+      "seconds": 31
+    },
+    "SPLIT_PAGES": {
+      "status": "pass",
+      "notes": "Shortcut split two pages side by side with the divider and headers (origins 127.0.0.1:53092 · localhost:53092); each side keeps its own address, find and zoom; arrow keys and dragging keep the minimum width; the pair is one row, half and half when narrow or full width; it survives a workspace switch; closing a side returns the other to full size; ⌃⇧- unsplits; an edge drop previews and splits; the relaunch restores the pair. Screenshots and bounds in /var/folders/hq/nx9hk1515831m37ff_h7zhc40000gn/T/intoponet-split-pages-shots.",
+      "seconds": 45
     }
   }
 }
