@@ -148,6 +148,21 @@ describe('HistoryStore', () => {
     next.load(payload, true)
     expect(next.policy).toEqual({ footprints: true, retentionDays: 0 })
   })
+
+  it('leaves out saved visits removed while the file could not be read yet', () => {
+    const { history, setNow } = store()
+    setNow(NOON - DAY)
+    history.record({ url: 'https://yesterday.example/', title: 'Yesterday', isPrivate: false })
+    setNow(NOON - 60_000)
+    history.record({ url: 'https://today.example/', title: 'Today', isPrivate: false })
+    const payload = history.serialize()
+    const { history: next, setNow: setNextNow } = store()
+    setNextNow(NOON)
+    next.record({ url: 'https://now.example/', title: 'Now', isPrivate: false })
+    // Today was deleted from History before the saved file could be read.
+    expect(next.load(payload, false, (visit) => dayKey(visit.visitedAt) !== dayKey(NOON))).toBe(true)
+    expect(next.search('').days.flatMap((day) => day.visits.map((visit) => visit.host))).toEqual(['now.example', 'yesterday.example'])
+  })
 })
 
 describe('history command validation', () => {

@@ -33,6 +33,7 @@ import { atomicWritesInFlight, pendingWrite, removeSetAside, removeUnfinishedTem
 import { isAppShellUrl, SHELL_PERMISSIONS } from './shellGuard'
 import { LatestWriter, latestWritesInFlight } from './latestWriter'
 import { waitForSaves } from './quitSaves'
+import { UnreadSealedFile } from './unreadSealedFile'
 import { fetchCurrentRelease, UpdateController } from './updates'
 import { FeedbackService, parseFeedbackCommand } from './feedback'
 import { PasswordVault } from './passwords/vault'
@@ -1734,6 +1735,7 @@ function installDownloadsAndHistory(): void {
     onDownloadDone: (entry) => emit({ type: 'download-finished', ...entry }),
     onHistoryCleared: (since) => {
       tabArchive.deleteSince(since)
+      savedTabArchive.removed((entry) => entry.archivedAt >= since)
       removeSetAside(tabArchiveFile())
       saveTabArchive()
     },
@@ -2478,8 +2480,22 @@ const tabArchive = new TabArchive()
 /** Archived tabs are kept like history: sealed on disk (in memory only when the Mac cannot seal). */
 const tabArchiveFile = (): string => join(app.getPath('userData'), 'personal', 'tab-archive.v1.seal')
 let tabArchiveLoaded = false
+/** Archived tabs saved before, while the Keychain is unavailable: read once it is, merged with this run's. */
+const savedTabArchive = new UnreadSealedFile<ArchivedTab>({
+  exists: () => existsSync(tabArchiveFile()),
+  available: () => safeStorage.isEncryptionAvailable(),
+  read: (keep) => tabArchive.load(safeStorage.decryptString(readFileSync(tabArchiveFile())), keep),
+  setAside: () => { setAsideUnreadable(tabArchiveFile()) },
+  // What it held is merged in: shown and saved with this run's archived tabs.
+  onRead: () => saveTabArchive(),
+})
 const tabArchiveWriter = new LatestWriter<string>(async (payload) => {
   if (!safeStorage.isEncryptionAvailable()) return
+  // Archived tabs that could not be read at startup are read now, before anything is written over them.
+  if (savedTabArchive.isUnread) {
+    if (!(await savedTabArchive.settle())) return
+    payload = tabArchive.serialize()
+  }
   mkdirSync(dirname(tabArchiveFile()), { recursive: true })
   await writeFileAtomic(tabArchiveFile(), safeStorage.encryptString(payload))
 })
@@ -2490,8 +2506,12 @@ function saveTabArchive(): void {
 }
 function loadTabArchive(): void {
   try {
-    // Archived tabs that cannot be read are kept aside, never replaced by the next save.
-    if (existsSync(tabArchiveFile()) && safeStorage.isEncryptionAvailable() && !tabArchive.load(safeStorage.decryptString(readFileSync(tabArchiveFile())))) setAsideUnreadable(tabArchiveFile())
+    // Archived tabs that cannot be read are kept aside, never replaced by the next save. Without encryption
+    // (the Keychain unavailable) they are read later, once they can be, and nothing is written over them until then.
+    if (existsSync(tabArchiveFile())) {
+      if (!safeStorage.isEncryptionAvailable()) savedTabArchive.markUnread()
+      else if (!tabArchive.load(safeStorage.decryptString(readFileSync(tabArchiveFile())))) setAsideUnreadable(tabArchiveFile())
+    }
   } catch (error) {
     console.error('Could not read archived tabs:', error)
     setAsideUnreadable(tabArchiveFile())
@@ -4415,6 +4435,8 @@ async function handleBrowserCommand(
     case 'get-tab-sidebar':
       return tabSidebar
     case 'get-archived-tabs':
+      // Archived tabs left unread at startup (the Keychain was unavailable) are read first if they can be now.
+      await savedTabArchive.settle()
       return tabArchive.list()
     case 'get-tab-folders':
       return tabFolders.map((folder) => ({ ...folder }))

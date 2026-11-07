@@ -68,9 +68,10 @@ export class HistoryStore {
 
   /**
    * Load a saved payload (unreadable payloads start empty). `keepPolicy`: a policy already set this run wins.
+   * `keep` leaves out saved visits removed while the file was still unread (history cleared meanwhile).
    * Returns false when the payload could not be read, so the caller can keep that file rather than save over it.
    */
-  load(payload: string | null, keepPolicy = false): boolean {
+  load(payload: string | null, keepPolicy = false, keep: (visit: HistoryVisit) => boolean = () => true): boolean {
     if (!payload) return true
     try {
       const raw = JSON.parse(payload) as Partial<StoredHistory>
@@ -87,6 +88,7 @@ export class HistoryStore {
           // The workspace a visit was made in is kept across a restart (absent for visits before workspaces).
           ...(typeof visit.workspaceId === 'string' && visit.workspaceId.length > 0 && visit.workspaceId.length <= 80 ? { workspaceId: visit.workspaceId } : {}),
         }))
+        .filter((visit) => keep(visit))
       this.visits = [...this.visits, ...loaded].sort((a, b) => b.visitedAt - a.visitedAt).slice(0, this.maxVisits)
       this.prune(false)
       this.forgetExcluded(false)

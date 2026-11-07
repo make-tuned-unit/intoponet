@@ -44,6 +44,20 @@ describe('tab archive', () => {
     expect(restored.size).toBe(0)
   })
 
+  it('merges a payload read late with tabs archived this run, leaving out what was removed meanwhile', () => {
+    let now = 10_000
+    const before = new TabArchive(() => now)
+    before.add({ url: 'https://a.example/', title: 'A', favicon: '' })
+    now = 20_000
+    before.add({ url: 'https://b.example/', title: 'B', favicon: '' })
+    const archive = new TabArchive(() => now)
+    now = 30_000
+    archive.add({ url: 'https://c.example/', title: 'C', favicon: '' })
+    // History was cleared from 15 000 while the saved archive could not be read yet.
+    expect(archive.load(before.serialize(), (entry) => entry.archivedAt < 15_000)).toBe(true)
+    expect(archive.list().map((entry) => entry.url)).toEqual(['https://c.example/', 'https://a.example/'])
+  })
+
   it('forgets tabs archived more than 90 days ago', () => {
     let now = 0
     const archive = new TabArchive(() => now)
