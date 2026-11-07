@@ -2124,6 +2124,8 @@ export const checks = {
     // Every step's spotlight must find what it shows (a renamed button would leave the tour pointing at nothing).
     await ctx.waitForNews()
     await ctx.wait(`!!document.querySelector('.story-highest')`, 60_000, 'story mountains to rise')
+    const tabList = `window.intoponet.browserHost.getTabs().then((t) => t.map((x) => x.id).sort().join(','))`
+    const tabsBefore = await ctx.evaluate(tabList)
     await ctx.click('.settings-button')
     await ctx.click('button', 'Take the tour')
     await ctx.wait(`!!document.querySelector('.tour-card')`, 5000, 'the tour to start')
@@ -2144,7 +2146,48 @@ export const checks = {
     expect(missed.length === 0, `These tour steps point at nothing: ${missed.join('; ')}.`)
     await ctx.click('.tour-next')
     await ctx.wait(`!document.querySelector('.tour-card') && !document.querySelector('.story-panel')`, 5000, 'the tour to finish and tidy up')
-    return `All ${total} steps shown, each spotlight on what it describes; the tour put everything back at the end.`
+    // Everything it opened is closed again: none of its pages is left in the sidebar.
+    const tidy = await ctx.wait(`${tabList}.then((ids) => ids === ${JSON.stringify(tabsBefore)})`, 5000).then(() => true, () => false)
+    expect(tidy, `The tour left a tab open: ${await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => t.map((x) => x.title || x.url).join(', '))`)}.`)
+    // The Olds step moves on once The Olds has looked, even when it finds nothing: here Wikipedia cannot be reached.
+    await ctx.main(`(() => {
+      const dns = process.mainModule.require('dns')
+      dns.__tourLookup ??= dns.lookup
+      const lookup = dns.__tourLookup
+      dns.lookup = function (host, options, callback) {
+        if (typeof options === 'function') { callback = options; options = {} }
+        if (/(^|\\.)(wikipedia|wikidata|wikimedia)\\.org$/.test(host)) return process.nextTick(callback, Object.assign(new Error('getaddrinfo ENOTFOUND ' + host), { code: 'ENOTFOUND', hostname: host }))
+        return lookup.call(this, host, options, callback)
+      }
+      return true
+    })()`)
+    let offline
+    try {
+      await ctx.click('.settings-button')
+      await ctx.click('button', 'Take the tour')
+      await ctx.wait(`!!document.querySelector('.tour-card')`, 5000, 'the tour to start again')
+      await ctx.evaluate(`(() => {
+        const step = window.__oldsStep = { start: performance.now() }
+        const timer = setInterval(() => {
+          if (document.querySelector('.tour-next')?.textContent.includes('Showing')) step.showing = true
+          else if (step.showing) {
+            step.ms = Math.round(performance.now() - step.start)
+            step.olds = (document.querySelector('.olds-sheet .olds-status') ?? document.querySelector('.olds-sheet h2'))?.innerText ?? 'not open'
+            clearInterval(timer)
+          }
+        }, 50)
+        ;[...document.querySelectorAll('.tour-progress button')].find((b) => b.getAttribute('aria-label').endsWith(': The history behind the news')).click()
+        return true
+      })()`)
+      await ctx.wait(`!!window.__oldsStep.ms`, 45_000, 'The Olds step to finish with Wikipedia unreachable')
+      offline = JSON.parse(await ctx.evaluate(`JSON.stringify(window.__oldsStep)`))
+      expect(offline.ms < 12_000, `With Wikipedia unreachable, The Olds step kept showing for ${Math.round(offline.ms / 1000)} s (The Olds: "${offline.olds}").`)
+      await ctx.press('Escape')
+      await ctx.wait(`!document.querySelector('.tour-card') && !document.querySelector('.olds-sheet')`, 5000, 'the tour to close on Escape')
+    } finally {
+      await ctx.main(`(() => { const dns = process.mainModule.require('dns'); if (dns.__tourLookup) dns.lookup = dns.__tourLookup; return true })()`)
+    }
+    return `All ${total} steps shown, each spotlight on what it describes; the tour put everything back at the end, its own tab closed. With Wikipedia unreachable The Olds step moved on after ${(offline.ms / 1000).toFixed(1)} s ("${offline.olds}").`
   },
   async TAB_ARCHIVE(ctx) {
     // Started with an "hour" of 200 ms (TAB_ARCHIVE.env below), so "12 hours" is 2.4 seconds.

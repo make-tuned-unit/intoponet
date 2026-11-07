@@ -427,7 +427,8 @@ export function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   // The guided tour (from Settings): it drives the app, then puts everything back.
   const [tourOpen, setTourOpen] = useState(false)
-  const tourOpenedPage = useRef(false)
+  /** The page the tour opened: false, true (shown in a tab it did not make), or the id of the tab it made (closed at the end). */
+  const tourOpenedPage = useRef<boolean | string>(false)
   const [beaconDraft, setBeaconDraft] = useState<BeaconDraft | null>(null)
   const [appSettings, setAppSettingsState] = useState(readAppSettings)
   // Headlines and titles in your language (default) or as published; shared with every headline list.
@@ -2809,14 +2810,25 @@ export function App() {
     prepareOlds: (headline) => { void window.intoponet.olds.thread({ kind: 'headline', text: headline }).catch(() => undefined) },
     openOlds: async (headline) => {
       loadOlds([{ query: { kind: 'headline', text: headline }, label: headline.length > 60 ? `${headline.slice(0, 57)}…` : headline }])
-      for (let i = 0; i < 300 && !document.querySelector('.olds-story, .olds-timeline > li, .olds-list li'); i += 1) await new Promise((resolve) => setTimeout(resolve, 100))
+      // Until it has finished looking: its story, or why there is none (no network, nothing found). At most 30 s.
+      for (let i = 0; i < 300; i += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 100))
+        if (document.querySelector('.olds-sheet') && !document.querySelector('.olds-sheet .olds-status[role="status"]')) break
+      }
     },
     closeOlds: () => { if (olds) closeOlds() },
     showBookmarks: (open) => setBookmarksOpen(open),
     showMyMap: (open) => (open ? showLibrary() : setLibraryOpen(false)),
     openPage: async (url) => {
-      tourOpenedPage.current = true
-      await window.intoponet.browserHost.open({ kind: 'url', value: url }).catch(() => undefined)
+      // In a tab of its own (never one of yours), closed again at the end; going back over this step shows that tab again.
+      const made = typeof tourOpenedPage.current === 'string' ? tourOpenedPage.current : null
+      const before = await window.intoponet.browserHost.getTabs().catch(() => [])
+      if (made && before.some((tab) => tab.id === made)) await window.intoponet.browserHost.activateTab(made).catch(() => undefined)
+      else {
+        await window.intoponet.browserHost.open({ kind: 'url', value: url }, 'foreground-tab').catch(() => undefined)
+        const after = await window.intoponet.browserHost.getTabs().catch(() => [])
+        tourOpenedPage.current = after.find((tab) => !before.some((item) => item.id === tab.id))?.id ?? true
+      }
       for (let i = 0; i < 40 && !document.querySelector('.browser-actions'); i += 1) await new Promise((resolve) => setTimeout(resolve, 100))
     },
     hidePage: (hidden) => { void window.intoponet.captures.setPageHidden(hidden) },
@@ -2830,8 +2842,10 @@ export function App() {
     },
     finish: () => {
       void window.intoponet.captures.setPageHidden(false)
-      if (tourOpenedPage.current) void window.intoponet.browserHost.close()
+      const page = tourOpenedPage.current
       tourOpenedPage.current = false
+      if (page) void window.intoponet.browserHost.close()
+      if (typeof page === 'string') void window.intoponet.browserHost.closeTab(page)
       if (olds) closeOlds()
       setBookmarksOpen(false)
       setKnowledgeView(null)
