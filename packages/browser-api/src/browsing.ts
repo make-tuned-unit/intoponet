@@ -31,12 +31,17 @@ export type TabSwitchOrder = (typeof TAB_SWITCH_ORDERS)[number]
 export const TAB_ARCHIVE_AFTER = ['off', '12h', '1d', '1w', '30d'] as const
 export type TabArchiveAfter = (typeof TAB_ARCHIVE_AFTER)[number]
 
+/** Where a link from another app (Mail, Slack, Finder) opens: a new tab, or a small floating quick window. */
+export const LINKS_FROM_OTHER_APPS = ['tab', 'quick-window'] as const
+export type LinksFromOtherApps = (typeof LINKS_FROM_OTHER_APPS)[number]
+
 export type BrowsingSettings = {
   pageAppearance: PageAppearance
   defaultBrowser: DefaultBrowserStatus
   tabSleep: TabSleepAfter
   tabSwitchOrder: TabSwitchOrder
   tabArchive: TabArchiveAfter
+  linksFromOtherApps: LinksFromOtherApps
 }
 
 /** A page asked to open another app. Shown as "Open <appName>?" in the shell. */
@@ -68,6 +73,7 @@ export type BrowsingCommand =
   | { type: 'set-tab-sleep'; after: TabSleepAfter }
   | { type: 'set-tab-switch-order'; order: TabSwitchOrder }
   | { type: 'set-tab-archive'; after: TabArchiveAfter }
+  | { type: 'set-links-from-other-apps'; choice: LinksFromOtherApps }
 
 export interface BrowsingApi {
   decideExternal(id: string, decision: 'open' | 'cancel', always?: boolean): Promise<void>
@@ -79,6 +85,7 @@ export interface BrowsingApi {
   setTabSleep(after: TabSleepAfter): Promise<BrowsingSettings>
   setTabSwitchOrder(order: TabSwitchOrder): Promise<BrowsingSettings>
   setTabArchive(after: TabArchiveAfter): Promise<BrowsingSettings>
+  setLinksFromOtherApps(choice: LinksFromOtherApps): Promise<BrowsingSettings>
   subscribe(listener: (event: BrowsingEvent) => void): () => void
 }
 
@@ -107,6 +114,9 @@ export function parseBrowsingCommand(value: unknown): BrowsingCommand {
     case 'set-tab-archive':
       if (typeof v['after'] !== 'string' || !(TAB_ARCHIVE_AFTER as readonly string[]).includes(v['after'])) break
       return { type: 'set-tab-archive', after: v['after'] as TabArchiveAfter }
+    case 'set-links-from-other-apps':
+      if (typeof v['choice'] !== 'string' || !(LINKS_FROM_OTHER_APPS as readonly string[]).includes(v['choice'])) break
+      return { type: 'set-links-from-other-apps', choice: v['choice'] as LinksFromOtherApps }
     case 'external-pending':
     case 'settings':
     case 'make-default-browser':

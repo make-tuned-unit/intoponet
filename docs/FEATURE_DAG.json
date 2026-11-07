@@ -564,6 +564,17 @@
       "tier": "core",
       "kind": "e2e",
       "promise": "From the site protection popover you can hide an element by pointing at it, choose a reading width, font and light or dark colours for that site, or add your own style rules; tweaks are stored only on this Mac, never run scripts, apply on every visit to that site (not to others), and can be turned off or removed per site."
+    },
+    {
+      "id": "QUICK_WINDOW",
+      "title": "Quick window for links from other apps",
+      "deps": [
+        "BROWSE",
+        "EXTERNAL_APPS"
+      ],
+      "tier": "core",
+      "kind": "e2e",
+      "promise": "With the setting on, a link opened from another app (Mail, Slack, Finder) shows in a small floating window with protection on; ⌘O moves it, with its history, into a tab of the main window (or a chosen workspace), closing it leaves no tab behind, and ⌥⌘N opens an empty one."
     }
   ]
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Globe2 } from 'lucide-react'
-import type { BrowsingSettings as Settings, PageAppearance, TabArchiveAfter, TabSleepAfter, TabSwitchOrder } from '@intoponet/browser-api'
+import type { BrowsingSettings as Settings, LinksFromOtherApps, PageAppearance, TabArchiveAfter, TabSleepAfter, TabSwitchOrder } from '@intoponet/browser-api'
 import './browsing.css'
 
 const APPEARANCES: Array<{ value: PageAppearance; label: string }> = [
@@ -22,6 +22,11 @@ const ARCHIVE_AFTER: Array<{ value: TabArchiveAfter; label: string }> = [
   { value: '1d', label: 'A day' },
   { value: '1w', label: 'A week' },
   { value: '30d', label: 'A month' },
+]
+
+const OTHER_APP_LINKS: Array<{ value: LinksFromOtherApps; label: string }> = [
+  { value: 'tab', label: 'New tab' },
+  { value: 'quick-window', label: 'Quick window' },
 ]
 
 const SWITCH_ORDERS: Array<{ value: TabSwitchOrder; label: string }> = [
@@ -60,6 +65,10 @@ export function BrowsingSettings() {
     setError('')
     void window.intoponet.browsing.setTabSwitchOrder(order).then(setSettings, () => setError('The tab order setting could not be changed.'))
   }
+  const chooseOtherAppLinks = (choice: LinksFromOtherApps): void => {
+    setError('')
+    void window.intoponet.browsing.setLinksFromOtherApps(choice).then(setSettings, () => setError('The setting for links from other apps could not be changed.'))
+  }
   const makeDefault = (): void => {
     setError('')
     void window.intoponet.browsing.makeDefaultBrowser().then(setSettings, () => setError('macOS did not change the default browser.'))
@@ -96,6 +105,14 @@ export function BrowsingSettings() {
       <div className="browsing-appearance" role="group" aria-labelledby="tab-order-label">
         {SWITCH_ORDERS.map((item) => (
           <button key={item.value} type="button" aria-pressed={settings?.tabSwitchOrder === item.value} disabled={!settings} onClick={() => chooseOrder(item.value)}>
+            {item.label}
+          </button>
+        ))}
+      </div>
+      <p id="other-app-links-label">Links from other apps open in: a quick window is small, floats above your work and has protection on. ⌘O moves it into a tab; closing it leaves nothing behind.</p>
+      <div className="browsing-appearance" role="group" aria-labelledby="other-app-links-label">
+        {OTHER_APP_LINKS.map((item) => (
+          <button key={item.value} type="button" aria-pressed={settings?.linksFromOtherApps === item.value} disabled={!settings} onClick={() => chooseOtherAppLinks(item.value)}>
             {item.label}
           </button>
         ))}

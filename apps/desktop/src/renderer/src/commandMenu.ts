@@ -5,7 +5,7 @@ import type { OmniboxAction } from './omnibox'
  * Every command in that table (main/appMenu.ts APP_SHORTCUTS) is here, except the bar itself (Open
  * Location, Commands) and the app window's own developer tools; a test keeps the two lists in step.
  */
-export const COMMAND_MENU_LEFT_OUT = ['open-location', 'command-menu', 'shell-devtools'] as const
+export const COMMAND_MENU_LEFT_OUT = ['open-location', 'command-menu', 'shell-devtools', 'open-quick-in-main'] as const
 
 export type CommandMenuState = {
   hasPage: boolean
@@ -23,6 +23,7 @@ export function menuActions(state: CommandMenuState): OmniboxAction[] {
   const page = state.hasPage
   const rows: Array<OmniboxAction | false> = [
     { id: 'new-tab', label: 'New tab', shortcut: '⌘T', keywords: 'open' },
+    { id: 'new-quick-window', label: 'New quick window', shortcut: '⌥⌘N', keywords: 'small floating window link' },
     { id: 'toggle-private', label: state.privateMode ? 'Leave private browsing' : 'Private browsing', shortcut: '⇧⌘N', keywords: 'incognito' },
     state.tabCount > 0 && { id: 'close-tab', label: 'Close tab', shortcut: '⌘W' },
     { id: 'reopen-closed-tab', label: 'Reopen closed tab', shortcut: '⇧⌘T', keywords: 'undo restore' },

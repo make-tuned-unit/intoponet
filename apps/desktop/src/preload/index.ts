@@ -504,6 +504,7 @@ const browsing: BrowsingApi = {
   setTabSleep: (after) => browsingInvoke({ type: 'set-tab-sleep', after }) as Promise<BrowsingSettings>,
   setTabSwitchOrder: (order) => browsingInvoke({ type: 'set-tab-switch-order', order }) as Promise<BrowsingSettings>,
   setTabArchive: (after) => browsingInvoke({ type: 'set-tab-archive', after }) as Promise<BrowsingSettings>,
+  setLinksFromOtherApps: (choice) => browsingInvoke({ type: 'set-links-from-other-apps', choice }) as Promise<BrowsingSettings>,
   makeDefaultBrowser: () => browsingInvoke({ type: 'make-default-browser' }) as Promise<BrowsingSettings>,
   subscribe: (listener) => {
     const handler = (_event: Electron.IpcRendererEvent, event: BrowsingEvent): void => listener(event)
