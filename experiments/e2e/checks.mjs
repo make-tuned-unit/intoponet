@@ -4277,12 +4277,20 @@ export const checks = {
       // Laya off: Tidy says why and offers Group by story. Nothing moves.
       const status = await ctx.evaluate(`window.intoponet.laya.status().then((s) => JSON.stringify(s))`).then(JSON.parse)
       if (status.enabled) await ctx.evaluate(`window.intoponet.laya.disable({ deleteModel: false }).then(() => true)`)
+      await ctx.evaluate(`(document.querySelector('button[aria-label="Tidy tabs"]').focus(), true)`)
       await ctx.click('button[aria-label="Tidy tabs"]')
       await ctx.wait(`!!document.querySelector('.tidy-explain') && document.querySelector('.tidy-explain').innerText.includes('Turn it on in Settings › Laya')`, 20_000, 'Tidy to explain that Laya is off')
       expect(await ctx.evaluate(`[...document.querySelectorAll('.tidy-explain button')].some((b) => b.innerText.includes('Group by story'))`), 'Tidy with Laya off does not offer Group by story.')
+      // The sheet is drawn by the shell, under the native page view: the page must be hidden while it is open.
+      const pageShown = () => ctx.main(`electron.BrowserWindow.getAllWindows()[0].contentView.children.some((view) => view.getVisible() && /^https?:/.test(view.webContents?.getURL?.() ?? ''))`)
+      expect(!(await pageShown()), 'The page view is drawn over the Tidy preview, hiding it.')
+      expect(await ctx.evaluate(`!!document.activeElement?.closest('.tidy-sheet')`), 'Focus did not move into the Tidy preview.')
       await axeAudit(ctx, 'the Tidy preview with Laya off', '.tidy-sheet')
       await ctx.press('Escape')
       await ctx.wait(`!document.querySelector('.tidy-sheet')`, 5000, 'the Tidy preview to close')
+      await ctx.delay(300)
+      expect(await pageShown(), 'The page did not come back after the Tidy preview closed.')
+      expect(await ctx.evaluate(`document.activeElement?.getAttribute('aria-label') === 'Tidy tabs'`), 'Focus did not go back to Tidy when the preview closed.')
       expect((await folders()).length === 0, 'Tidy with Laya off moved tabs.')
       // Laya on (its model downloads here, which the full tier allows). Not awaited: the download can take minutes.
       await ctx.evaluate(`void window.intoponet.laya.enable().catch(() => undefined), true`)

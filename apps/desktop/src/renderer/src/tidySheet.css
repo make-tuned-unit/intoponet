@@ -19,6 +19,11 @@
   color: inherit;
 }
 
+/* Focused when it opens (for screen readers); its controls show their own focus rings. */
+.tidy-sheet:focus {
+  outline: none;
+}
+
 .tidy-head {
   display: flex;
   align-items: center;
