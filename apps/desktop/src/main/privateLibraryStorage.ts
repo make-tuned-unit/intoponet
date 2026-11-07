@@ -8,10 +8,12 @@ export type DecryptedPrivateLibrary = {
 export async function readSealedPrivateLibrary(input: {
   encryptionAvailable: boolean
   fileExists: boolean
+  /** A file of zero bytes holds nothing (e.g. left by a crash): no library yet, not a damaged one. */
+  fileEmpty?: boolean
   decrypt: () => Promise<DecryptedPrivateLibrary>
   reEncrypt?: (payload: string) => Promise<void>
 }): Promise<PrivateLibraryReadResult> {
-  if (!input.fileExists) return { status: 'ok', payload: null }
+  if (!input.fileExists || input.fileEmpty) return { status: 'ok', payload: null }
   if (!input.encryptionAvailable) {
     return { status: 'error', reason: 'encryption-unavailable' }
   }

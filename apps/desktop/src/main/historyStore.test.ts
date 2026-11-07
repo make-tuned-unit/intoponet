@@ -127,13 +127,15 @@ describe('HistoryStore', () => {
     const { history: next, setNow } = store()
     setNow(NOON + 120_000)
     next.record({ url: 'https://early.example/', title: 'Early', isPrivate: false })
-    next.load(payload)
+    expect(next.load(payload)).toBe(true)
     expect(next.policy).toEqual({ footprints: true, retentionDays: 90 })
     expect(next.search('').days[0]!.visits.map((visit) => visit.host)).toEqual(['early.example', 'saved.example'])
 
     const { history: broken } = store()
-    broken.load('{not json')
-    broken.load(JSON.stringify({ schema: 'other', visits: [] }))
+    // An unreadable payload says so, so the caller keeps that file instead of saving over it.
+    expect(broken.load('{not json')).toBe(false)
+    expect(broken.load(JSON.stringify({ schema: 'other', visits: [] }))).toBe(false)
+    expect(broken.load(null)).toBe(true)
     expect(broken.size).toBe(0)
   })
 
@@ -199,5 +201,16 @@ describe('history workspaces', () => {
     const days = history.search('', 0, 10).days
     const visits = days.flatMap((day) => day.visits)
     expect(visits.map((visit) => visit.workspaceId).sort()).toEqual(['home', 'work'])
+  })
+
+  it('keeps each visit\'s workspace across a save and a restart', () => {
+    const { history } = store()
+    history.record({ url: 'https://example.com/a', title: 'A', isPrivate: false, workspaceId: 'work' })
+    history.record({ url: 'https://example.com/b', title: 'B', isPrivate: false })
+    const { history: restarted } = store()
+    restarted.load(history.serialize())
+    const visits = restarted.search('', 0, 10).days.flatMap((day) => day.visits)
+    expect(visits.find((visit) => visit.url.endsWith('/a'))?.workspaceId).toBe('work')
+    expect(visits.find((visit) => visit.url.endsWith('/b'))).not.toHaveProperty('workspaceId')
   })
 })

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
-import { closeSync, fsyncSync, openSync, renameSync, rmSync, writeSync } from 'node:fs'
+import { closeSync, fsyncSync, openSync, readdirSync, renameSync, rmSync, statSync, writeSync } from 'node:fs'
 import { open, rename, rm } from 'node:fs/promises'
+import { basename, dirname, join } from 'node:path'
 
 /**
  * Writes that never leave a half-written file: the data goes to a temporary file next to the
@@ -52,6 +53,41 @@ export function writeFileAtomicSync(path: string, data: string | Uint8Array, mod
   } catch (error) {
     rmSync(temporary, { force: true })
     throw error
+  }
+}
+
+/**
+ * A saved file that is there but could not be used (damaged, or written by a newer version) is
+ * moved aside as `<file>.unreadable-<time>` before the app starts that part over, so the next save
+ * cannot replace it and what it held stays on disk. An empty file holds nothing and is left as it
+ * is. Returns the new path, or null when nothing was moved.
+ */
+export function setAsideUnreadable(path: string, now: number = Date.now()): string | null {
+  try {
+    if (statSync(path).size === 0) return null
+  } catch {
+    return null
+  }
+  const aside = `${path}.unreadable-${now}`
+  try {
+    renameSync(path, aside)
+    return aside
+  } catch (error) {
+    console.error(`Could not keep the unreadable ${path} aside:`, error)
+    return null
+  }
+}
+
+/**
+ * Deletes the copies setAsideUnreadable kept of a file, when what they hold is being cleared (e.g.
+ * Clear browsing data): the app cannot clear part of a file it could not read, so the copy goes.
+ */
+export function removeSetAside(path: string): void {
+  const prefix = `${basename(path)}.unreadable-`
+  try {
+    for (const name of readdirSync(dirname(path))) if (name.startsWith(prefix)) rmSync(join(dirname(path), name), { force: true })
+  } catch {
+    // Nothing was kept.
   }
 }
 

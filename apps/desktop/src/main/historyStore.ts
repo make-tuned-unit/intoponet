@@ -66,12 +66,15 @@ export class HistoryStore {
     return this.policyValue
   }
 
-  /** Load a saved payload (unreadable payloads start empty). `keepPolicy`: a policy already set this run wins. */
-  load(payload: string | null, keepPolicy = false): void {
-    if (!payload) return
+  /**
+   * Load a saved payload (unreadable payloads start empty). `keepPolicy`: a policy already set this run wins.
+   * Returns false when the payload could not be read, so the caller can keep that file rather than save over it.
+   */
+  load(payload: string | null, keepPolicy = false): boolean {
+    if (!payload) return true
     try {
       const raw = JSON.parse(payload) as Partial<StoredHistory>
-      if (raw.schema !== 'intoponet.history.v1' || !Array.isArray(raw.visits)) return
+      if (raw.schema !== 'intoponet.history.v1' || !Array.isArray(raw.visits)) return false
       const policy = raw.policy
       if (!keepPolicy && policy && typeof policy.footprints === 'boolean' && [0, 7, 30, 90].includes(policy.retentionDays)) this.policyValue = { footprints: policy.footprints, retentionDays: policy.retentionDays }
       // Visits recorded while the file was still being read are kept too.
@@ -79,12 +82,18 @@ export class HistoryStore {
       const loaded = raw.visits
         .filter((visit): visit is HistoryVisit => typeof visit?.id === 'string' && typeof visit.url === 'string' && recordable(visit.url) && typeof visit.title === 'string' && typeof visit.visitedAt === 'number' && Number.isFinite(visit.visitedAt))
         .filter((visit) => !known.has(visit.id))
-        .map((visit) => ({ id: visit.id, url: visit.url, title: visit.title.slice(0, 1_000), host: hostOf(visit.url), visitedAt: visit.visitedAt }))
+        .map((visit) => ({
+          id: visit.id, url: visit.url, title: visit.title.slice(0, 1_000), host: hostOf(visit.url), visitedAt: visit.visitedAt,
+          // The workspace a visit was made in is kept across a restart (absent for visits before workspaces).
+          ...(typeof visit.workspaceId === 'string' && visit.workspaceId.length > 0 && visit.workspaceId.length <= 80 ? { workspaceId: visit.workspaceId } : {}),
+        }))
       this.visits = [...this.visits, ...loaded].sort((a, b) => b.visitedAt - a.visitedAt).slice(0, this.maxVisits)
       this.prune(false)
       this.forgetExcluded(false)
+      return true
     } catch {
       // Start empty rather than fail to open.
+      return false
     }
   }
 

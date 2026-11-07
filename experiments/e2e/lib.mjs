@@ -59,7 +59,8 @@ export async function runAppCheck(check, { port = 9400 + Math.floor(Math.random(
   const stopApp = (signal) => {
     try { process.kill(-app.pid, signal) } catch { /* gone */ }
     // Anything still holding this profile (Electron's helpers re-parent sometimes).
-    try { spawnSync('pkill', [signal === 'SIGKILL' ? '-9' : '-15', '-f', `--user-data-dir=${profile}`]) } catch { /* none */ }
+    // `--` first: without it pkill reads the pattern as an option, refuses it, and kills nothing.
+    try { spawnSync('pkill', [signal === 'SIGKILL' ? '-9' : '-15', '-f', '--', `--user-data-dir=${profile}`]) } catch { /* none */ }
   }
   // If this process is stopped or crashes, the app must not be left running.
   const onExit = () => stopApp('SIGKILL')
