@@ -38,7 +38,7 @@ import { parsePasswordCommand, passwordChannels, type PasswordEvent } from '../s
 import { parsePasswordPageMessage, passwordPageChannels } from '../shared/passwordPage'
 import { updateChannels, parseUpdateCommand } from '@intoponet/browser-api'
 import { browserUserAgent } from './browserUserAgent'
-import { capTitle, capUrl, coalesce, persistedActiveUrl } from './tabState'
+import { capTitle, capUrl, coalesce, persistedActiveUrl, restoredActiveTab } from './tabState'
 import { EXIT_FULLSCREEN_SCRIPT, FULLSCREEN_WORLD_ID, fullscreenSiteName, showFullscreenNotice } from './fullscreenNotice'
 import { bindLeavePrompt, SAFE_DIALOG_PREFERENCES } from './leavePrompt'
 import { fetchTabIcon, TabIconMemory } from './tabFavicon'
@@ -4970,8 +4970,7 @@ app.whenReady().then(async () => {
       const tabs = repairSplits(folderedOrder(pinnedFirst(byWorkspace.get(workspace.id) ?? []), folders))
       workspaces.park(workspace.id, { tabs, folders, activeTabId: tabs.some((tab) => tab.id === workspace.activeTabId) ? workspace.activeTabId! : null })
     }
-    const active =
-      openTabs.find((tab) => samePage(tab.url, restoredState.url)) ?? openTabs[0]
+    const active = restoredActiveTab(openTabs, saved.workspaces.find((workspace) => workspace.id === workspaces.activeId)?.activeTabId, restoredState.url)
     if (active) {
       delete active.asleep
       activeTabId = active.id
