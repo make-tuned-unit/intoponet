@@ -153,6 +153,9 @@ export async function runAppCheck(check, { port = 9400 + Math.floor(Math.random(
     const waitForNews = () => wait(`window.intoponet.browserHost.getNewsDigest().then((raw) => !!raw && JSON.parse(raw).countries.length > 100)`, 300_000, 'the local news digest to load')
     // Every check starts from a ready interface: header, globe and launcher rendered.
     await wait(`!!document.querySelector('.topbar') && !!document.querySelector('.command-input input') && !!document.querySelector('canvas')`, 45_000, 'the app interface to load')
+    // Test windows open in the same spot, and a covered window stops drawing (its exit animations never end):
+    // the shell keeps drawing so one check's window cannot stall another's.
+    await main(`(() => { electron.BrowserWindow.getAllWindows()[0]?.webContents.setBackgroundThrottling(false); return true })()`).catch(() => undefined)
     let timer
     const limit = new Promise((_, reject) => { timer = setTimeout(() => reject(new CheckFailure(`Took longer than ${Math.round(timeoutMs / 1000)} s.`)), timeoutMs) })
     try {
