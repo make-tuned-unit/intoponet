@@ -52,7 +52,7 @@ import { focusLinkScript, isLinkPreviewRequest, parsePreviewMessage, PREVIEW_FOC
 import { collapseAdSlotsScript, UNCOLLAPSE_AD_SLOTS_SCRIPT } from './adCollapse'
 import { archiveAfterMs, DEFAULT_TAB_ARCHIVE, TabArchive, type ArchivedTab } from './tabArchive'
 import { addLinkRoute, moveLinkRoute, parseLinkRoutes, removeLinkRoute, routeFor, serializeLinkRoutes, siteOfWebUrl, updateLinkRoute, type LinkRoute } from './linkRoutes'
-import { DEFAULT_TAB_SLEEP, parseBrowsingSettingsFile, parseLinksFromOtherApps, sleepAfterMs, tabsDueForSleep, TYPED_FORM_SCRIPT } from './tabSleep'
+import { answerWithin, DEFAULT_TAB_SLEEP, parseBrowsingSettingsFile, parseLinksFromOtherApps, sleepAfterMs, tabsDueForSleep, TYPED_CHECK_MS, TYPED_FORM_SCRIPT } from './tabSleep'
 import { QuickWindows, type QuickProtection } from './quickWindow'
 import { AUTO_PIP_WORLD_ID, ENTER_PIP_SCRIPT, EXIT_PIP_SCRIPT, NowPlaying, PIP_LEFT_SCRIPT, TOGGLE_PLAYBACK_SCRIPT, type PipEnterResult } from './autoPip'
 import type { NowPlayingSnapshot } from '@intoponet/browser-api'
@@ -2819,7 +2819,7 @@ async function sleepIdleTabs(): Promise<void> {
         if (live) {
           const contents = tab.view.webContents
           if (contents.isCurrentlyAudible() || capturingContents.has(contents.id) || browsingData?.downloads.activeForPage(String(contents.id))) continue
-          const typed = await contents.executeJavaScriptInIsolatedWorld(KEYS_WORLD_ID, [{ code: TYPED_FORM_SCRIPT }]).catch(() => true)
+          const typed = await answerWithin(contents.executeJavaScriptInIsolatedWorld(KEYS_WORLD_ID, [{ code: TYPED_FORM_SCRIPT }]), TYPED_CHECK_MS, true)
           if (typed !== false) continue
         }
         if (tab.id === activeTabId || !openTabs.includes(tab)) continue
@@ -2852,7 +2852,7 @@ async function sleepIdleTabs(): Promise<void> {
       const tab = allTabs().find((item) => item.id === id)
       if (!tab || viewGone(tab.view)) continue
       // Typed text not yet sent keeps a tab awake (it would be lost); so does a page that will not answer.
-      const typed = await tab.view.webContents.executeJavaScriptInIsolatedWorld(KEYS_WORLD_ID, [{ code: TYPED_FORM_SCRIPT }]).catch(() => true)
+      const typed = await answerWithin(tab.view.webContents.executeJavaScriptInIsolatedWorld(KEYS_WORLD_ID, [{ code: TYPED_FORM_SCRIPT }]), TYPED_CHECK_MS, true)
       if (typed !== false || tab.id === activeTabId || tab.view === companionView || tab.asleep) continue
       unloadTab(tab, { keepHistory: true })
     }

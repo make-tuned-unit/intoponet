@@ -1889,7 +1889,17 @@ export const checks = {
       const panel = JSON.parse(await ctx.evaluate(`${host}.getState().then((s) => JSON.stringify(s))`))
       expect(panel.canGoBack, 'The woken tab lost its back history.')
       await ctx.evaluate(`window.intoponet.browsing.setTabSleep('never').then(() => true)`)
-      return `9 background tabs slept (typed text and the front tab stayed awake); their pages' memory ${Math.round(awake / 1024)} MB → ${Math.round(asleep / 1024)} MB; woke on the same page, scroll and back list.`
+      // A background page that does not answer (busy for a while) stays awake without holding up the other tabs' sleep.
+      await ctx.evaluate(`${host}.getTabs().then((t) => Promise.all(t.filter((x) => !x.active).map((x) => ${host}.closeTab(x.id)))).then(() => true)`)
+      await openPage(ctx, `${origin}/busy`, 800)
+      await openPage(ctx, `${origin}/later`, 800)
+      await openPage(ctx, `${origin}/last`, 800)
+      await (await ctx.page('/busy')).evaluate(`setTimeout(() => { const end = Date.now() + 14000; while (Date.now() < end) {} }, 200); true`)
+      await ctx.delay(500)
+      await ctx.evaluate(`window.intoponet.browsing.setTabSleep('15m').then(() => true)`)
+      await ctx.wait(`${host}.getTabs().then((t) => t.some((x) => x.url.endsWith('/later') && x.asleep))`, 10_000, 'a background tab to sleep while another background page was busy')
+      await ctx.evaluate(`window.intoponet.browsing.setTabSleep('never').then(() => true)`)
+      return `9 background tabs slept (typed text and the front tab stayed awake); their pages' memory ${Math.round(awake / 1024)} MB → ${Math.round(asleep / 1024)} MB; woke on the same page, scroll and back list; a busy background page did not hold up the others.`
     } finally {
       server.close()
     }
