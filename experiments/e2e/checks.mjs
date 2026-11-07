@@ -3426,14 +3426,17 @@ export const checks = {
 
       // The error page can turn a site's tweaks off (the failed site is 127.0.0.1 too).
       await ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: ${JSON.stringify(urlA)} }).then(() => true)`)
-      await ctx.delay(2000)
-      await ctx.evaluate(`window.intoponet.browserHost.siteTweaks.save({ enabled: true, hidden: ['#promo'], css: '' }).then((r) => r.ok)`)
+      // Saved for the shown page's site: wait until site A is the page shown.
+      await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.isVisible && (s.url ?? '').startsWith(${JSON.stringify(urlA)}))`, 15_000, 'site A to be shown again')
+      expect(await ctx.evaluate(`window.intoponet.browserHost.siteTweaks.save({ enabled: true, hidden: ['#promo'], css: '' }).then((r) => r.ok)`), 'The tweak for site A could not be saved before its error page.')
       const probe = createServer()
       await new Promise((resolve) => probe.listen(0, '127.0.0.1', resolve))
       const closedPort = probe.address().port
       await new Promise((resolve) => probe.close(resolve))
       await ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: ${JSON.stringify(`http://127.0.0.1:${closedPort}/`)} }).then(() => true, () => true)`)
       await ctx.wait(`!!document.querySelector('.load-error-page')`, 15_000, 'the error page for a site that is not answering')
+      // The offer appears once the error page has looked up the failed site's tweaks (a moment after the page itself).
+      await ctx.wait(`[...document.querySelectorAll('.load-error-page button')].some((b) => b.innerText.includes('Turn off this site'))`, 8000, 'the error page to offer turning off the site tweaks')
       expect(await ctx.click('.load-error-page button', 'Turn off this site'), 'The error page does not offer to turn off the site tweaks.')
       await ctx.wait(`window.intoponet.browserHost.siteTweaks.list().then((l) => l.some((item) => item.site === '127.0.0.1' && !item.enabled))`, 10_000, 'the tweaks to be turned off from the error page')
 
@@ -4100,6 +4103,8 @@ export const checks = {
       await ctx.evaluate(`${host}.setSplitRatio(0.4).then(() => true)`)
       await ctx.delay(800)
       await ctx.main(`electron.app.quit()`).catch(() => undefined)
+      // A quitting app waits for its debugger to disconnect before it exits.
+      ctx.detachMain()
       await ctx.delay(2500)
       const saved = JSON.parse(readFileSync(join(ctx.profile, 'browser-state.v1.json'), 'utf8'))
       const savedLeft = saved.tabs.find((t) => t.url.startsWith(leftUrl))
@@ -4609,7 +4614,9 @@ export const checks = {
       const baseline = requestCounts()
       // Group by story: one folder named for the story, holding the two articles and nothing else.
       const orderBefore = (await tabs()).map((tab) => tab.id).join(' ')
-      await ctx.click('button[aria-label="Group by story"]')
+      // The button shows while a loose tab matches a story (news rebuilds can briefly change the matches).
+      await ctx.wait(`!!document.querySelector('button[aria-label="Group by story"]')`, 15_000, 'the Group by story button')
+      expect(await ctx.click('button[aria-label="Group by story"]'), 'Group by story could not be clicked.')
       await ctx.wait(`window.intoponet.browserHost.getTabFolders().then((f) => f.some((x) => x.storyId))`, 8000, 'the story folder')
       const made = (await folders()).find((folder) => folder.storyId)
       expect(made.name === storyName, `The folder is named "${made.name}", not for the story "${storyName}".`)
@@ -4907,6 +4914,8 @@ export const checks = {
       // The sign-ins are on disk before the quit (Chromium writes cookies a little after they are set).
       await ctx.main(`Promise.all([${JSON.stringify('persist:intoponet-default')}, ${JSON.stringify(`persist:intoponet-ws-${workId}`)}, ${JSON.stringify(`persist:intoponet-ws-${gone}`)}].map((name) => electron.session.fromPartition(name).cookies.flushStore())).then(() => true)`)
       await ctx.main('electron.app.quit()')
+      // A quitting app waits for its debugger to disconnect before it exits.
+      ctx.detachMain()
       await waitForQuit(ctx.profile)
       // The quit app has written its last files (its helpers outlive the main process for a moment).
       await new Promise((resolve) => setTimeout(resolve, 2500))

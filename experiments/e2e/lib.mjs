@@ -141,6 +141,11 @@ export async function runAppCheck(check, { port = 9400 + Math.floor(Math.random(
       }
       return mainSession.evaluate(`((electron) => (${expression}))(process.mainModule.require('electron'))`)
     }
+    /** Ends the main-process inspector session: an app that quits waits for its debugger to disconnect first. */
+    const detachMain = () => {
+      try { mainSession?.socket.close() } catch { /* closed */ }
+      mainSession = null
+    }
     /**
      * A key chord typed into the web page whose address contains `urlPart`, delivered as keyboard input to
      * that page (as when it has focus). `keyCode` and `modifiers` as in webContents.sendInputEvent.
@@ -160,7 +165,7 @@ export async function runAppCheck(check, { port = 9400 + Math.floor(Math.random(
     let timer
     const limit = new Promise((_, reject) => { timer = setTimeout(() => reject(new CheckFailure(`Took longer than ${Math.round(timeoutMs / 1000)} s.`)), timeoutMs) })
     try {
-      const notes = await Promise.race([check({ evaluate, send, delay, wait, click, type, press, shot, pageShot, page, main, keyInPage, flyTo, waitForNews, profile, port }), limit])
+      const notes = await Promise.race([check({ evaluate, send, delay, wait, click, type, press, shot, pageShot, page, main, detachMain, keyInPage, flyTo, waitForNews, profile, port }), limit])
       return notes ?? ''
     } finally {
       clearTimeout(timer)
