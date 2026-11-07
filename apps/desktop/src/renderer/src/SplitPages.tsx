@@ -24,7 +24,7 @@ export function fixedOrigin(box: { x: number; y: number }, placed: { x: number; 
  * placed) when it is beside another page, else as it is. Beside another page it measures the box
  * it is placed in and keeps to that rect.
  */
-export function SplitStartFrame({ rect, children }: { rect: BrowserPanelBounds | undefined; children: ReactNode }) {
+export function SplitStartFrame({ rect, className, children }: { rect: BrowserPanelBounds | undefined; className?: string; children: ReactNode }) {
   const frame = useRef<HTMLDivElement>(null)
   const [origin, setOrigin] = useState({ x: 0, y: 0 })
   useLayoutEffect(() => {
@@ -47,11 +47,33 @@ export function SplitStartFrame({ rect, children }: { rect: BrowserPanelBounds |
   return (
     <div
       ref={frame}
-      className={rect ? 'split-start-frame' : 'split-start-plain'}
+      className={`${rect ? 'split-start-frame' : 'split-start-plain'}${className ? ` ${className}` : ''}`}
       style={rect ? rectStyle({ ...rect, x: rect.x - origin.x, y: rect.y - origin.y }) : undefined}
     >
       {children}
     </div>
+  )
+}
+
+/** The side not in focus when the shell draws it (its error or start page, its view hidden), else null. */
+export function shellDrawnSide(split: SplitPanelSnapshot | undefined): { side: SplitSide; tab: SplitSideSnapshot } | null {
+  if (!split) return null
+  const side: SplitSide = split.focused === 'left' ? 'right' : 'left'
+  const tab = split[side]
+  return tab.loadError || tab.isStartPage ? { side, tab } : null
+}
+
+/**
+ * The side not in focus, drawn by the shell in its own half (an error card or the start page) so
+ * that half is never empty. A click anywhere in it gives that side the focus.
+ */
+export function OtherSideFrame({ split, side, children }: { split: SplitPanelSnapshot; side: SplitSide; children: ReactNode }) {
+  return (
+    <SplitStartFrame rect={split.sides[side]} className="split-other-frame">
+      <div className="split-other-side" data-split-side={side} onClick={() => void window.intoponet.browserHost.focusSplitSide(side)}>
+        {children}
+      </div>
+    </SplitStartFrame>
   )
 }
 

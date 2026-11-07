@@ -142,7 +142,7 @@ import { headlinesNearAnchor } from '../../shared/news/anchorHeadlines'
 import { useNowPlaying } from './nowPlaying/NowPlayingControl'
 import { PageTabStrip } from './PageTabStrip'
 import './shellChrome.css'
-import { SplitChrome, SplitStartFrame } from './SplitPages'
+import { OtherSideFrame, SplitChrome, SplitStartFrame, shellDrawnSide } from './SplitPages'
 import { BookmarkPane, type PaneFilter } from './BookmarkPane'
 import { groupOf, moveBookmarkToGroup, UNSORTED_GROUP_ID } from './bookmarkGroups'
 import { AnimatePresence } from 'motion/react'
@@ -210,7 +210,7 @@ import { SettingsPanel } from './settings/SettingsPanel'
 import { mergeImportedLibrary } from './browserImport/mergeImport'
 import { PermissionBar, SitePermissionChips } from './permissions/PermissionBar'
 import { ExternalOpenBar, useExternalOpenRequests } from './browsing/ExternalOpenBar'
-import { ErrorPage, navigationErrorMessage } from './browsing/ErrorPage'
+import { ErrorCard, ErrorPage, navigationErrorMessage } from './browsing/ErrorPage'
 import { SiteTweaksPanel } from './siteTweaks/SiteTweaksPanel'
 import { PasswordBar } from './passwords/PasswordBar'
 import { BookmarkSiteBar, type BookmarkSiteOffer } from './passwords/BookmarkSiteBar'
@@ -797,6 +797,8 @@ export function App() {
   )
   const isSecureOrigin = panel.url.startsWith('https:')
   const onStartPage = panel.isVisible && panel.isStartPage === true
+  // Pages side by side: the side not in focus whose error or start page the shell draws in its half.
+  const otherSide = shellDrawnSide(panel.split)
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)')
     const onChange = (): void => setReduceMotion(media.matches)
@@ -4436,6 +4438,31 @@ export function App() {
                   onOpen={(url) => void submitFromStartPage(url).catch(() => undefined)}
                 />
               </SplitStartFrame>
+            )}
+            {/* The side not in focus, when its own view is hidden: its error card or start page fills its half (a click focuses it). */}
+            {panel.isVisible && panel.split && otherSide && (
+              <OtherSideFrame split={panel.split} side={otherSide.side}>
+                {otherSide.tab.loadError ? (
+                  <ErrorCard
+                    error={otherSide.tab.loadError}
+                    label={otherSide.side === 'left' ? 'Left page' : 'Right page'}
+                    onRetry={() => void window.intoponet.browserHost.focusSplitSide(otherSide.side).then(() => window.intoponet.browserHost.reload(), () => undefined)}
+                  />
+                ) : (
+                  <div className="split-other-start" inert>
+                    <StartPage
+                      tabId={otherSide.tab.id}
+                      bookmarks={startPageBookmarks}
+                      recents={startPageRecents}
+                      news={startPageNews}
+                      newsLoaded={newsDigest !== null}
+                      isPrivate={panel.isPrivate === true}
+                      onSubmit={() => Promise.resolve()}
+                      onOpen={() => undefined}
+                    />
+                  </div>
+                )}
+              </OtherSideFrame>
             )}
           </div>
         </section>

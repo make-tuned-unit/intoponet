@@ -66,6 +66,34 @@ export function ErrorPage({ error, canGoBack, retrying, onRetry, onBack, onTurnO
 }
 
 /**
+ * A page that could not load, on the side of a pair that is not in focus: what failed and Retry,
+ * drawn in that side's half (the full error page shows once that side has the focus).
+ */
+export function ErrorCard({ error, label, onRetry }: { error: PageLoadError; label: string; onRetry: () => void }) {
+  const Icon = ICONS[error.kind] ?? CircleAlert
+  return (
+    <div className={`load-error-page load-error-compact is-${error.kind}`} role="group" aria-label={`${label}: ${error.title}`}>
+      <div className="load-error-card">
+        <Icon size={22} aria-hidden="true" className="load-error-icon" />
+        <strong className="load-error-card-title">{error.title}</strong>
+        {(error.host || error.url) && <span className="load-error-code" title={error.url}>{error.host || error.url}</span>}
+        <button
+          type="button"
+          className="load-error-card-retry"
+          onClick={(event) => {
+            // Retry is the card's own action, not only a click that focuses its side.
+            event.stopPropagation()
+            onRetry()
+          }}
+        >
+          <RotateCw size={13} aria-hidden="true" /> Retry
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/**
  * Banner text for a failed browser command. Page loads that failed show the error page in the
  * tab instead (an empty string clears the banner).
  */

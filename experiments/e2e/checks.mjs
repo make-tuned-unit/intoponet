@@ -3781,9 +3781,11 @@ export const checks = {
     }
     // A page that fails (the connection drops) until it is told to work.
     let flakyFails = true
+    let flakyHits = 0
     const server = createServer((request, response) => {
       const path = new URL(request.url, 'http://localhost').pathname
       if (path === '/split-flaky' && flakyFails) {
+        flakyHits += 1
         request.socket.destroy()
         return
       }
@@ -4037,6 +4039,35 @@ export const checks = {
       const flakySide = async () => (await viewsNow()).pages.find((p) => p.url.includes('/split-flaky'))
       await waitFor('the failing left side hidden', async () => (await flakySide())?.visible === false)
       expect((await stateOf()).split.focused === 'right', 'The left page failing to load took the focus.')
+      // Its half is not left empty: the shell draws a compact card there (what failed, Retry), the pages still two columns at full height.
+      const leftCard = async () => JSON.parse(await shellEval(`JSON.stringify((() => {
+        const card = document.querySelector('.split-other-side[data-split-side="left"] .load-error-compact')
+        return card ? { frame: card.closest('.split-other-frame').getBoundingClientRect(), text: card.innerText, retry: !!card.querySelector('.load-error-card-retry') } : null
+      })())`))
+      const card = await waitFor('the error card in the failing left half', leftCard)
+      const failing = await stateOf()
+      expect(failing.split.left.loadError, 'The shell state has no error for the failing left side.')
+      expect(card.retry && card.text.includes(failing.split.left.loadError.title), `The left half's card does not say what failed, with Retry: "${card.text}".`)
+      expect(['x', 'y', 'width', 'height'].every((key) => Math.abs(card.frame[key] - failing.split.sides.left[key]) <= 1), `The error card is not over the left half (${JSON.stringify(card.frame)}, the half ${JSON.stringify(failing.split.sides.left)}).`)
+      const hiddenPair = (await viewsNow()).pages.slice().sort((p, q) => p.bounds.x - q.bounds.x)
+      expect(hiddenPair.length === 2 && hiddenPair[0].bounds.x + hiddenPair[0].bounds.width <= hiddenPair[1].bounds.x && hiddenPair[0].bounds.y === hiddenPair[1].bounds.y && hiddenPair[0].bounds.height === hiddenPair[1].bounds.height, `With the left side failing, the pages are not two columns at full height: ${JSON.stringify(hiddenPair.map((p) => p.bounds))}.`)
+      await snap('08c-other-side-error-card')
+      // A click anywhere in that half focuses the failing side, whose full error page then fills it.
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: card.frame.x + 24, y: card.frame.y + 24, button: 'left', clickCount: 1 })
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: card.frame.x + 24, y: card.frame.y + 24, button: 'left', clickCount: 1 })
+      await waitFor('a click in the failing half to focus it', async () => (await stateOf()).split?.focused === 'left')
+      const fullError = await waitFor('the full error page in the left half', async () => JSON.parse(await shellEval(`JSON.stringify(document.querySelector('.split-start-frame:not(.split-other-frame) .load-error-page[role=main]')?.closest('.split-start-frame').getBoundingClientRect() ?? null)`)))
+      expect(['x', 'y', 'width', 'height'].every((key) => Math.abs(fullError[key] - failing.split.sides.left[key]) <= 1), `The focused side's error page is not over the left half (${JSON.stringify(fullError)}).`)
+      // Retry on the card focuses that side and loads it again (it still fails here).
+      await ctx.evaluate(`${host}.focusSplitSide('right').then(() => true)`)
+      await waitFor('focus back on the right side', async () => (await stateOf()).split?.focused === 'right')
+      await waitFor('the error card again', leftCard)
+      const hitsBefore = flakyHits
+      await shellEval(`document.querySelector('.split-other-side[data-split-side="left"] .load-error-card-retry').click(); true`)
+      await waitFor('Retry on the card to focus the failing side and load it again', async () => flakyHits > hitsBefore && (await stateOf()).split?.focused === 'left')
+      await ctx.evaluate(`${host}.focusSplitSide('right').then(() => true)`)
+      await waitFor('focus on the right side once more', async () => (await stateOf()).split?.focused === 'right')
+      await waitFor('the failing left side hidden again', async () => (await flakySide())?.visible === false)
       flakyFails = false
       await ctx.main(`(() => { ${pageOf('/split-flaky')}.reload(); return true })()`)
       await waitFor('the left side shown again once it loads', async () => (await flakySide())?.visible === true)
@@ -4065,6 +4096,24 @@ export const checks = {
       const startFrame = JSON.parse(await shellEval(`JSON.stringify(document.querySelector('.split-start-frame')?.getBoundingClientRect() ?? null)`))
       const startHalf = started.split.sides[started.split.focused]
       expect(startFrame && ['x', 'y', 'width', 'height'].every((key) => Math.abs(startFrame[key] - startHalf[key]) <= 1), `The start page beside the page is not over its half (${JSON.stringify(startFrame)}, its half ${JSON.stringify(startHalf)}).`)
+      // The page beside it takes the focus: the start page stays drawn in its own half, never an empty one.
+      const startSide = started.split.focused
+      const pageSide = startSide === 'left' ? 'right' : 'left'
+      await ctx.evaluate(`${host}.focusSplitSide(${JSON.stringify(pageSide)}).then(() => true)`)
+      await waitFor('focus on the page beside the start page', async () => (await stateOf()).split?.focused === pageSide)
+      const otherStart = await waitFor('the start page in its half while the page has the focus', async () => JSON.parse(await shellEval(`JSON.stringify(document.querySelector('.split-other-side[data-split-side="${startSide}"] .start-page')?.closest('.split-other-frame').getBoundingClientRect() ?? null)`)))
+      const pageFocused = await stateOf()
+      expect(['x', 'y', 'width', 'height'].every((key) => Math.abs(otherStart[key] - pageFocused.split.sides[startSide][key]) <= 1), `The start page not in focus is not over its half (${JSON.stringify(otherStart)}, its half ${JSON.stringify(pageFocused.split.sides[startSide])}).`)
+      const { left: halfL, right: halfR } = pageFocused.split.sides
+      expect(halfL.x + halfL.width <= halfR.x && halfL.y === halfR.y && halfL.height === halfR.height, `Beside a start page the halves are not two columns at full height: ${JSON.stringify(pageFocused.split.sides)}.`)
+      const besideStart = (await viewsNow()).pages
+      expect(besideStart.length === 1 && besideStart[0].visible && ['x', 'y', 'width', 'height'].every((key) => besideStart[0].bounds[key] === pageFocused.split.sides[pageSide][key]), `The page beside the start page is not in its own half: ${JSON.stringify(besideStart.map((p) => p.bounds))}, its half ${JSON.stringify(pageFocused.split.sides[pageSide])}.`)
+      await snap('09b-start-page-not-in-focus')
+      // A click in that half focuses the start page again, and its search box takes the keyboard.
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: otherStart.x + otherStart.width / 2, y: otherStart.y + 40, button: 'left', clickCount: 1 })
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: otherStart.x + otherStart.width / 2, y: otherStart.y + 40, button: 'left', clickCount: 1 })
+      await waitFor('a click in the start page half to focus it', async () => { const s = await stateOf(); return s.split?.focused === startSide && s.isStartPage })
+      await waitFor('the start page search box to take the keyboard', async () => shellEval(`!!document.activeElement?.closest('.split-start-frame:not(.split-other-frame) .start-search')`))
       await ctx.evaluate(`${host}.closeActiveTab().then(() => true)`)
       await waitFor('back to one page', async () => !(await stateOf()).split && (await viewsNow()).pages.length === 1)
 

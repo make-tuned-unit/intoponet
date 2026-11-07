@@ -1169,7 +1169,16 @@ function splitPanelState(): SplitPanelSnapshot | undefined {
     const snapshot = snapshots.find((item) => item.id === tab.id)
     const url = snapshot?.url ?? ''
     const compare = compareLabelFor(tab.compare, url)
-    return { id: tab.id, url, title: snapshot?.title ?? '', secure: safeHttpUrl(url)?.protocol === 'https:', ...(compare ? { compare } : {}) }
+    return {
+      id: tab.id,
+      url,
+      title: snapshot?.title ?? '',
+      secure: safeHttpUrl(url)?.protocol === 'https:',
+      ...(compare ? { compare } : {}),
+      // Drawn by the shell in that side's half (its view is hidden), focused or not.
+      ...(tab.loadError ? { loadError: tab.loadError } : {}),
+      ...(tab.start ? { isStartPage: true as const } : {}),
+    }
   }
   const left = pair.focused === 'left' ? pair.focusedTab : pair.otherTab
   const right = pair.focused === 'left' ? pair.otherTab : pair.focusedTab
@@ -1297,7 +1306,8 @@ function focusSplitSide(side: SplitSide): void {
   const target = openTabs.find((tab) => tab.split?.side === side && (tab.view === pageView || tab.view === companionView))
   if (!target || target.view === pageView) return
   showTab(target.id)
-  if (!viewGone(target.view)) target.view.webContents.focus()
+  // A start or error page is the shell's, drawn over a hidden view: the keyboard stays with the shell.
+  if (!viewGone(target.view) && !target.start && !target.loadError) target.view.webContents.focus()
 }
 
 /** The divider moved: the shown pair's ratio (both tabs keep it). */

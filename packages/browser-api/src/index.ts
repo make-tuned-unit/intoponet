@@ -39,6 +39,10 @@ export type SplitSideSnapshot = {
   secure: boolean
   /** A side opened by Compare (COMPARE_COVERAGE): its outlet and country, while the page is still on that outlet. */
   compare?: SplitCompareSnapshot
+  /** The side's page could not load: the shell draws its error in that half (the view stays hidden). */
+  loadError?: import('./browsing').PageLoadError
+  /** The side is a new tab on the start page: the shell draws the start page in that half. */
+  isStartPage?: true
 }
 
 /** The label a Compare side shows: its outlet and country name, and the story it was opened for. */
