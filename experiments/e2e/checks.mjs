@@ -954,7 +954,14 @@ export const checks = {
       const tabs = () => ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => JSON.stringify(t.map((x) => x.url)))`).then(JSON.parse)
       const read = () => ctx.evaluate(`JSON.stringify((() => { const i = document.querySelector('.command-input input'); return { value: i.value, selected: i.value.slice(i.selectionStart, i.selectionEnd), expanded: i.getAttribute('aria-expanded'), active: i.getAttribute('aria-activedescendant'), rows: [...document.querySelectorAll('#omnibox-suggestions [role=option]')].map((r) => ({ id: r.id, kind: r.dataset.kind, text: r.innerText.replace(/\\s+/g, ' '), selected: r.getAttribute('aria-selected') })) } })())`).then(JSON.parse)
       const typeHost = async (text) => {
+        // The window in front: losing focus blurs the bar, which drops an inline completion (as it should).
+        await ctx.main(`(() => { electron.app.focus({ steal: true }); electron.BrowserWindow.getAllWindows()[0].focus(); return true })()`)
         await ctx.evaluate(`(() => { const i = document.querySelector('.command-input input'); i.focus(); i.select(); return true })()`)
+        // Emptied first: typing over the same text changes nothing, so it would not complete. (After ⌘↵ the bar
+        // keeps its text until the background tab has loaded, which a busy Mac can make slow.)
+        if (await ctx.evaluate(`document.querySelector('.command-input input').value !== ''`)) {
+          for (const type of ['keyDown', 'keyUp']) await ctx.send('Input.dispatchKeyEvent', { type, key: 'Backspace', code: 'Backspace', windowsVirtualKeyCode: 8 })
+        }
         await ctx.type(text)
         await ctx.delay(600)
         return read()
@@ -966,6 +973,8 @@ export const checks = {
       }
       // Visit the page, then close its tab: it is only in history now.
       await openPage(ctx, url, 2500)
+      // Kept as a recent page once it has loaded (a busy Mac can take longer than the wait above).
+      await ctx.wait(`window.intoponet.browserHost.readPrivateLibrary().then((r) => r.status === 'ok' && !!r.payload && JSON.parse(r.payload).recents.some((p) => p.url.startsWith(${JSON.stringify(url)})))`, 15_000, 'the visited page to be kept as a recent page')
       for (const id of JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => JSON.stringify(t.map((x) => x.id)))`))) await ctx.evaluate(`window.intoponet.browserHost.closeTab(${JSON.stringify(id)}).then(() => true)`)
       await ctx.delay(1200)
       expect((await tabs()).length === 0, 'The test tab did not close.')
