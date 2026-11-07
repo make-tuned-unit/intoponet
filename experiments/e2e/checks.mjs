@@ -593,11 +593,13 @@ const waitForQuit = async (profile) => {
 }
 
 /** Second run, on a copy of the profile after a quit: the option, Work's sign-in and permissions, and Main's sign-in are kept. */
-const identityRelaunch = async (ctx, { workId, mainId }) => {
+const identityRelaunch = async (ctx, { workId, mainId, gone }) => {
   const { stateOf, showIn, waitPage } = identityHelpers(ctx)
   const ws = 'window.intoponet.workspaces'
   const state = await stateOf()
   expect(state.workspaces.find((item) => item.id === workId)?.separateSignIns === true, 'After a relaunch Work no longer has separate sign-ins.')
+  const goneCookies = await ctx.main(`electron.session.fromPartition(${JSON.stringify(`persist:intoponet-ws-${gone}`)}).cookies.get({}).then((list) => list.length)`)
+  expect(goneCookies === 0 && !state.workspaces.some((item) => item.id === gone), `A workspace deleted just before quitting still holds ${goneCookies} cookie(s) after a relaunch.`)
   const permissionsFile = join(ctx.profile, `site-permissions.ws-${workId}.json`)
   expect(existsSync(permissionsFile), "Work's permission answers were not kept across a relaunch.")
   await showIn(workId, 'who=dan')
@@ -2570,10 +2572,19 @@ export const checks = {
       const researchC = (await byTitle('research-c')).id
       // Menus close when focus leaves the app window: bring it forward first (other checks' windows may be in front).
       await ctx.main(`(() => { electron.app.focus({ steal: true }); electron.BrowserWindow.getAllWindows()[0].focus(); return true })()`)
+      // Focused first, as a real click on the button focuses it.
+      await ctx.evaluate(`document.querySelector('button[aria-label="Actions for workspace Reading"]').focus(); true`)
       await ctx.click('button[aria-label="Actions for workspace Reading"]')
       await ctx.wait(`!!document.querySelector('.tab-rail-folder-menu [role="menuitem"]')`, 2000, 'the workspace menu')
       await ctx.click('.tab-rail-folder-menu [role="menuitem"]', 'Delete workspace')
       await ctx.wait(`!!document.querySelector('.tab-rail-workspace-confirm[role="alertdialog"]') && document.activeElement?.textContent === 'Cancel'`, 3000, 'the delete confirmation, with focus on Cancel')
+      // Escape closes the question and focus goes back to the workspace's actions button (not lost to the page).
+      await ctx.press('Escape')
+      await ctx.wait(`!document.querySelector('.tab-rail-workspace-confirm') && document.activeElement?.getAttribute('aria-label') === 'Actions for workspace Reading'`, 3000, 'Escape to close the delete confirmation and return focus to the actions button')
+      await ctx.click('button[aria-label="Actions for workspace Reading"]')
+      await ctx.wait(`!!document.querySelector('.tab-rail-folder-menu [role="menuitem"]')`, 2000, 'the workspace menu again')
+      await ctx.click('.tab-rail-folder-menu [role="menuitem"]', 'Delete workspace')
+      await ctx.wait(`!!document.querySelector('.tab-rail-workspace-confirm[role="alertdialog"]') && document.activeElement?.textContent === 'Cancel'`, 3000, 'the delete confirmation again')
       expect((await state()).workspaces.length === 2, 'Asking to delete deleted before it was confirmed.')
       await axeAudit(ctx, 'the delete confirmation', '.tab-rail')
       await ctx.click('.tab-rail-workspace-confirm button', 'Delete workspace')
@@ -4388,6 +4399,8 @@ export const checks = {
       await showIn(workId, 'who=bob')
       await askLocation('who=bob')
       await ctx.wait(`!!document.querySelector('[aria-label$="asks for permission"]')`, 15_000, 'the location prompt to be asked again in Work')
+      const workAsk = await ctx.evaluate(`document.querySelector('[aria-label$="asks for permission"]')?.innerText ?? ''`)
+      expect(workAsk.includes('remembered for this site in Work'), `The location prompt in Work does not say the answer is kept for Work: "${workAsk.replace(/\s+/g, ' ')}".`)
       expect(await ctx.click('[aria-label$="asks for permission"] button', 'Allow'), 'The location prompt in Work has no Allow button.')
       await ctx.delay(800)
 
@@ -4462,9 +4475,32 @@ export const checks = {
       await showIn(workId, 'who=dan')
       await waitPage('who=dan', 'Signed in as dan')
 
+      // A link preview over the globe is Work's page: switching to Main closes it (Open as Tab would bring Work's sign-in into Main).
+      await ctx.evaluate(`${host}.close().then(() => true)`)
+      await ctx.evaluate(`${host}.previewLink(${JSON.stringify(`${base}/?who=preview`)}).then(() => true)`)
+      await waitPage('who=preview', 'Signed in as dan')
+      await ctx.evaluate(`${ws}.switchTo({ id: ${JSON.stringify(mainId)} }).then(() => true)`)
+      let previewLeft = true
+      for (let i = 0; i < 12 && previewLeft; i += 1) {
+        await ctx.delay(250)
+        previewLeft = await ctx.main(`electron.webContents.getAllWebContents().some((w) => !w.isDestroyed() && w.getURL().includes('link-preview-card'))`)
+      }
+      expect(!previewLeft, "A link preview opened in Work stayed open after switching to Main, where Open as Tab would keep Work's sign-in.")
+      await showIn(workId, 'who=dan')
+
+      // A workspace with its own sign-ins deleted just before quitting (inside its Undo window) takes its sign-ins with it.
+      const gone = JSON.parse(await ctx.evaluate(`${ws}.create({ name: 'Gone' }).then((s) => JSON.stringify(s))`)).activeId
+      await ctx.evaluate(`${ws}.update(${JSON.stringify(gone)}, { separateSignIns: true }).then(() => true)`)
+      await openPage(ctx, `${base}/?who=gone`, 300)
+      await waitPage('who=gone', 'Signed out')
+      await ctx.main(`electron.webContents.getAllWebContents().find((w) => w.getURL().includes('who=gone')).executeJavaScript("document.cookie = 'sid=gone; Max-Age=86400; Path=/'; true")`)
+      expect(await ctx.main(`electron.session.fromPartition(${JSON.stringify(`persist:intoponet-ws-${gone}`)}).cookies.get({}).then((list) => list.length)`) === 1, 'The Gone workspace did not keep its own sign-in.')
+      await ctx.evaluate(`${ws}.delete(${JSON.stringify(gone)}).then(() => true)`)
+      expect((await stateOf()).activeId === workId, 'Deleting the Gone workspace did not go back to Work.')
+
       // Quit, then open a copy of the profile again: the option, Work's sign-in and permissions, and Main's sign-in are all kept.
       // The sign-ins are on disk before the quit (Chromium writes cookies a little after they are set).
-      await ctx.main(`Promise.all([${JSON.stringify('persist:intoponet-default')}, ${JSON.stringify(`persist:intoponet-ws-${workId}`)}].map((name) => electron.session.fromPartition(name).cookies.flushStore())).then(() => true)`)
+      await ctx.main(`Promise.all([${JSON.stringify('persist:intoponet-default')}, ${JSON.stringify(`persist:intoponet-ws-${workId}`)}, ${JSON.stringify(`persist:intoponet-ws-${gone}`)}].map((name) => electron.session.fromPartition(name).cookies.flushStore())).then(() => true)`)
       await ctx.main('electron.app.quit()')
       await waitForQuit(ctx.profile)
       // The quit app has written its last files (its helpers outlive the main process for a moment).
@@ -4472,7 +4508,7 @@ export const checks = {
       const before = process.env.E2E_PROFILE
       process.env.E2E_PROFILE = ctx.profile
       try {
-        return await runAppCheck((again) => identityRelaunch(again, { workId, mainId }), { timeoutMs: 120_000 }) || 'Separate sign-ins: isolated in Work, asked again, ad blocked, download listed, history named, cleared, moved with a warning, private session, kept across a relaunch.'
+        return await runAppCheck((again) => identityRelaunch(again, { workId, mainId, gone }), { timeoutMs: 120_000 }) || 'Separate sign-ins: isolated in Work, asked again, ad blocked, download listed, history named, cleared, moved with a warning, private session, kept across a relaunch.'
       } finally {
         if (before === undefined) delete process.env.E2E_PROFILE
         else process.env.E2E_PROFILE = before

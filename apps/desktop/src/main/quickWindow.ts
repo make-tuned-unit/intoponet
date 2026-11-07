@@ -115,7 +115,12 @@ const toolbarScript = `(() => {
     send({ type: 'go', value })
   })
   address.addEventListener('focus', () => send({ type: 'editing', on: true }))
-  address.addEventListener('blur', () => { address.readOnly = hasPage; send({ type: 'editing', on: false }) })
+  address.addEventListener('blur', () => {
+    // The window went to the back (another app came forward): the field keeps focus and is still being edited when it returns.
+    if (document.activeElement === address) return
+    address.readOnly = hasPage
+    send({ type: 'editing', on: false })
+  })
   document.getElementById('always').addEventListener('click', () => send({ type: 'always-here' }))
   document.getElementById('open').addEventListener('click', () => send({ type: 'open-in-main' }))
   document.getElementById('close').addEventListener('click', () => send({ type: 'close' }))
@@ -173,6 +178,15 @@ export function parseQuickToolbarMessage(message: unknown): QuickToolbarMessage 
 }
 
 export type QuickKeyAction = 'open-in-main' | 'close' | 'focus-address' | 'new-window' | 'reload' | 'back' | 'forward' | 'main'
+
+/**
+ * Escape typed in the toolbar while its address is being edited reverts the edit (the field's own);
+ * typed anywhere else, the page included, it closes the window. The field stays the toolbar's focus
+ * when the window goes to the back or the page is clicked, so `editing` alone does not say where the key went.
+ */
+export function escapeIsTheAddressFields(editing: boolean, fromToolbar: boolean): boolean {
+  return editing && fromToolbar
+}
 
 /**
  * What a key does in a quick window. Its keys are handled before the menu bar sees them, so a
@@ -327,8 +341,8 @@ export class QuickWindows {
       const message = parseQuickToolbarMessage(details.message)
       if (message) this.toolbarMessage(entry, message)
     })
-    toolbar.webContents.on('before-input-event', (event, input) => this.key(entry, event, input))
-    page.webContents.on('before-input-event', (event, input) => this.key(entry, event, input))
+    toolbar.webContents.on('before-input-event', (event, input) => this.key(entry, event, input, true))
+    page.webContents.on('before-input-event', (event, input) => this.key(entry, event, input, false))
 
     const contents = page.webContents
     const update = (): void => this.refresh(entry)
@@ -408,12 +422,12 @@ export class QuickWindows {
   }
 
   /** Keys are handled here, before the page or the menu bar gets them (see quickWindowKeyAction). */
-  private key(entry: Entry, event: { preventDefault: () => void }, input: Input): void {
+  private key(entry: Entry, event: { preventDefault: () => void }, input: Input, fromToolbar: boolean): void {
     const keyInput: KeyInput = { type: input.type, key: input.key, code: input.code, meta: input.meta, control: input.control, shift: input.shift, alt: input.alt }
     const action = quickWindowKeyAction(keyInput, { developer: this.host.developer() })
     if (!action || entry.closed) return
     // Escape in the address field is the field's own (it reverts and leaves the field).
-    if (action === 'close' && input.key === 'Escape' && entry.editing) return
+    if (action === 'close' && input.key === 'Escape' && escapeIsTheAddressFields(entry.editing, fromToolbar)) return
     event.preventDefault()
     const contents = entry.page.webContents
     switch (action) {

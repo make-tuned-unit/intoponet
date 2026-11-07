@@ -1578,7 +1578,10 @@ function wireDownloadSession(partition = DEFAULT_PARTITION): void {
       contents.once('destroyed', () => capturingContents.delete(id))
     }
     // Answers are kept per (asking site, page it is in): an embedded frame is named with its page.
-    sitePermissions.request({ origin: originOf(details.requestingUrl || contents.getURL()), topOrigin: originOf(contents.getURL()), kinds: kindsFor(permission, mediaTypes), isPrivate, owner: contents.id, scope }, callback)
+    // A workspace with its own sign-ins is named in the bar, which may show while another workspace is in front.
+    const ownWorkspace = scopeWorkspaceId(scope)
+    const workspace = ownWorkspace ? workspaces.get(ownWorkspace)?.name : undefined
+    sitePermissions.request({ origin: originOf(details.requestingUrl || contents.getURL()), topOrigin: originOf(contents.getURL()), kinds: kindsFor(permission, mediaTypes), isPrivate, owner: contents.id, scope, ...(workspace ? { workspace } : {}) }, callback)
   })
   browsing.setPermissionCheckHandler((contents, permission, requestingOrigin, details) => {
     const mediaType = (details as { mediaType?: string }).mediaType
@@ -2052,6 +2055,8 @@ function switchWorkspace(target: WorkspaceSwitch): boolean {
   const workspace = workspaces.resolve(target)
   if (!workspace || workspace.id === workspaces.activeId) return false
   if (tabSwitcher.open) endTabSwitcher('cancel')
+  // A link preview is the shown workspace's page (its sign-ins): it closes, even over the globe, so Open as Tab cannot bring it into another.
+  if (linkPreview) closeLinkPreview(false)
   const showing = pageAttached
   const privateTabs = openTabs.filter((tab) => privateViews.has(tab.view))
   const leaving = openTabs.filter((tab) => !privateViews.has(tab.view))
@@ -2108,7 +2113,12 @@ function finishWorkspaceDelete(): void {
     if (!viewGone(tab.view)) tab.view.webContents.close()
   }
   // A workspace with its own sign-ins takes them with it, once Undo can no longer bring it back.
-  if (hasSeparateSignIns(pending.removed.workspace)) void forgetWorkspaceIdentity(pending.removed.workspace.id)
+  // Quitting waits for this (before-quit), or its cookies and logins would outlive it on disk.
+  if (hasSeparateSignIns(pending.removed.workspace)) {
+    const forgetting = forgetWorkspaceIdentity(pending.removed.workspace.id).catch(() => undefined)
+    writesInFlight.add(forgetting)
+    void forgetting.finally(() => writesInFlight.delete(forgetting))
+  }
   emitWorkspaces()
 }
 
@@ -5319,6 +5329,8 @@ let quitFlushStarted = false
 app.on('before-quit', (event) => {
   if (!app.isReady()) return
   shellClosing = true
+  // A workspace deleted moments ago is gone for good: Undo ends with the app, and its own sign-ins are deleted before it quits.
+  finishWorkspaceDelete()
   // A zoom changed just now is still waiting to be saved: start it so the flush below waits for it.
   void zoomStore?.flush().catch(() => undefined)
   void siteTweaks?.store.flush().catch(() => undefined)

@@ -1,3 +1,4 @@
+import { domainToASCII } from 'node:url'
 import { LINK_ROUTE_SITE_MAX } from '@intoponet/browser-api'
 
 /**
@@ -24,6 +25,8 @@ const isId = (value: unknown): value is string => typeof value === 'string' && v
 export function normalizeRouteSite(value: unknown): string | null {
   if (typeof value !== 'string') return null
   let site = value.trim().toLowerCase()
+  // A site typed in its own script (bücher.de) is named as links name it (xn--bcher-kva.de); a name that cannot be is refused.
+  if (/[^\x00-\x7f]/.test(site)) site = domainToASCII(site)
   if (site.startsWith('www.')) site = site.slice(4)
   if (site.length === 0 || site.length > LINK_ROUTE_SITE_MAX) return null
   if (site === 'localhost') return site

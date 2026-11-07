@@ -23,6 +23,8 @@ export type SitePermissionRequest = {
   kinds: SitePermissionKind[]
   /** Asked from a private tab: the answer is forgotten when private browsing ends. */
   isPrivate: boolean
+  /** Asked from a workspace with separate sign-ins: its name (the answer is kept for that workspace only). */
+  workspace?: string
 }
 
 export type SitePermissionEvent =
