@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { mkdtempSync, readFileSync } from 'node:fs'
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { EventEmitter } from 'node:events'
@@ -112,6 +112,20 @@ describe('permission broker', () => {
     new SitePermissionStore(file).set('https://a.test', ['notifications'], 'block')
     expect(new SitePermissionStore(file).get('https://a.test')).toEqual({ notifications: 'block' })
     expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({ 'https://a.test': { notifications: 'block' } })
+  })
+  it('keeps a damaged answers file aside instead of saving over it', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'perm-'))
+    const file = join(dir, 'site-permissions.json')
+    for (const damaged of ['{"https://a.test":{"camera":"allow"},"https://b.te', '["https://a.test"]']) {
+      writeFileSync(file, damaged)
+      const store = new SitePermissionStore(file)
+      expect(store.get('https://a.test')).toEqual({})
+      store.set('https://c.test', ['location'], 'allow')
+      const aside = readdirSync(dir).filter((name) => name.startsWith('site-permissions.json.unreadable-'))
+      expect(aside.map((name) => readFileSync(join(dir, name), 'utf8'))).toContain(damaged)
+      expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({ 'https://c.test': { location: 'allow' } })
+      for (const name of aside) rmSync(join(dir, name))
+    }
   })
 })
 

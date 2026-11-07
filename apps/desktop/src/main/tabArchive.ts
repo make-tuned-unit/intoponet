@@ -88,17 +88,20 @@ export class TabArchive {
     return JSON.stringify({ schema: 'intoponet.tab-archive.v1', entries: this.entries })
   }
 
-  /** A saved payload; anything unreadable or out of bounds is left out. */
-  load(payload: string | null): void {
-    if (!payload) return
+  /**
+   * A saved payload; anything unreadable or out of bounds is left out. Returns false when the payload
+   * as a whole could not be read, so the caller can keep that file rather than save over it.
+   */
+  load(payload: string | null): boolean {
+    if (!payload) return true
     let raw: unknown
     try {
       raw = JSON.parse(payload)
     } catch {
-      return
+      return false
     }
     const entries = (raw as { schema?: unknown; entries?: unknown })?.schema === 'intoponet.tab-archive.v1' ? (raw as { entries: unknown }).entries : null
-    if (!Array.isArray(entries)) return
+    if (!Array.isArray(entries)) return false
     const loaded: ArchivedTab[] = []
     for (const item of entries.slice(0, MAX_ARCHIVED)) {
       const record = item as Record<string, unknown>
@@ -117,5 +120,6 @@ export class TabArchive {
     const urls = new Set(this.entries.map((entry) => entry.url))
     this.entries = [...this.entries, ...loaded.filter((entry) => !urls.has(entry.url))].sort((a, b) => b.archivedAt - a.archivedAt).slice(0, MAX_ARCHIVED)
     this.prune()
+    return true
   }
 }

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { closeSync, fsyncSync, openSync, renameSync, rmSync, writeSync } from 'node:fs'
+import { closeSync, fsyncSync, openSync, renameSync, rmSync, statSync, writeSync } from 'node:fs'
 import { open, rename, rm } from 'node:fs/promises'
 
 /**
@@ -52,6 +52,28 @@ export function writeFileAtomicSync(path: string, data: string | Uint8Array, mod
   } catch (error) {
     rmSync(temporary, { force: true })
     throw error
+  }
+}
+
+/**
+ * A saved file that is there but could not be used (damaged, or written by a newer version) is
+ * moved aside as `<file>.unreadable-<time>` before the app starts that part over, so the next save
+ * cannot replace it and what it held stays on disk. An empty file holds nothing and is left as it
+ * is. Returns the new path, or null when nothing was moved.
+ */
+export function setAsideUnreadable(path: string, now: number = Date.now()): string | null {
+  try {
+    if (statSync(path).size === 0) return null
+  } catch {
+    return null
+  }
+  const aside = `${path}.unreadable-${now}`
+  try {
+    renameSync(path, aside)
+    return aside
+  } catch (error) {
+    console.error(`Could not keep the unreadable ${path} aside:`, error)
+    return null
   }
 }
 

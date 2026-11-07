@@ -3,7 +3,7 @@ import { readFileSync, mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 import type { SitePermissionAnswer, SitePermissionDecision, SitePermissionEvent, SitePermissionKind, SitePermissionMap, SitePermissionRequest } from '@intoponet/browser-api'
 import type { WebContents } from 'electron'
-import { writeFileAtomicSync } from './atomicFile'
+import { setAsideUnreadable, writeFileAtomicSync } from './atomicFile'
 
 /** Page and popup prompts expire with their owning document/process. */
 export function bindPermissionOwnerLifecycle(contents: Pick<WebContents, 'id' | 'on' | 'once'>, dropOwner: (owner: number) => void): void {
@@ -72,12 +72,23 @@ export class SitePermissionStore {
   private data: Saved = {}
   constructor(private readonly file: string | null) {
     if (!file) return
+    let text: string
     try {
-      const raw = JSON.parse(readFileSync(file, 'utf8')) as unknown
-      if (raw && typeof raw === 'object') this.data = raw as Saved
+      text = readFileSync(file, 'utf8')
     } catch {
-      // No saved answers yet.
+      return // No saved answers yet.
     }
+    try {
+      const raw = JSON.parse(text) as unknown
+      if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+        this.data = raw as Saved
+        return
+      }
+    } catch {
+      // Damaged: kept aside below.
+    }
+    // Answers that cannot be read are kept aside, never replaced by the next answer saved.
+    setAsideUnreadable(file)
   }
   get(origin: string): SitePermissionMap {
     return { ...(this.data[origin] ?? {}) }

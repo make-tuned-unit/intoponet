@@ -26,7 +26,7 @@ import {
   screen,
 } from 'electron'
 import type { IpcMainInvokeEvent, MenuItemConstructorOptions } from 'electron'
-import { pendingWrite, writeFileAtomic, writeFileAtomicSync } from './atomicFile'
+import { pendingWrite, setAsideUnreadable, writeFileAtomic, writeFileAtomicSync } from './atomicFile'
 import { isAppShellUrl, SHELL_PERMISSIONS } from './shellGuard'
 import { LatestWriter } from './latestWriter'
 import { fetchCurrentRelease, UpdateController } from './updates'
@@ -543,8 +543,21 @@ function savedSplitOf(value: unknown): { split?: TabSplit } {
 }
 
 async function loadPersistentState(): Promise<RestoredBrowserState | null> {
+  let text: string
   try {
-    const parsed = JSON.parse(await readFile(stateFilePath(), 'utf8')) as unknown
+    text = await readFile(stateFilePath(), 'utf8')
+  } catch {
+    return null // First launch: nothing saved yet.
+  }
+  const restored = parsePersistentState(text)
+  // Saved tabs and workspaces that cannot be read are kept aside, never replaced by the next save.
+  if (!restored) setAsideUnreadable(stateFilePath())
+  return restored
+}
+
+function parsePersistentState(text: string): RestoredBrowserState | null {
+  try {
+    const parsed = JSON.parse(text) as unknown
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null
     const candidate = parsed as Record<string, unknown>
     if (
@@ -752,7 +765,8 @@ async function loadExceptions(): Promise<void> {
       })
     }
   } catch {
-    // First launch or unreadable file — default-on.
+    // First launch or unreadable file — default-on. An unreadable one is kept aside, not saved over.
+    setAsideUnreadable(exceptionsFilePath())
   }
 }
 
@@ -2417,9 +2431,11 @@ function saveTabArchive(): void {
 }
 function loadTabArchive(): void {
   try {
-    if (existsSync(tabArchiveFile()) && safeStorage.isEncryptionAvailable()) tabArchive.load(safeStorage.decryptString(readFileSync(tabArchiveFile())))
+    // Archived tabs that cannot be read are kept aside, never replaced by the next save.
+    if (existsSync(tabArchiveFile()) && safeStorage.isEncryptionAvailable() && !tabArchive.load(safeStorage.decryptString(readFileSync(tabArchiveFile())))) setAsideUnreadable(tabArchiveFile())
   } catch (error) {
     console.error('Could not read archived tabs:', error)
+    setAsideUnreadable(tabArchiveFile())
   } finally {
     tabArchiveLoaded = true
   }
@@ -4610,6 +4626,8 @@ function linkRules(): LinkRoute[] {
       linkRouteRules = parseLinkRoutes(JSON.parse(readFileSync(linkRoutesFile(), 'utf8')) as unknown)
     } catch {
       linkRouteRules = []
+      // Rules that cannot be read are kept aside, never replaced by the next rule saved.
+      if (existsSync(linkRoutesFile())) setAsideUnreadable(linkRoutesFile())
     }
   }
   return linkRouteRules
@@ -4656,7 +4674,8 @@ function wireBrowsing(): void {
   const settingsFile = join(app.getPath('userData'), 'browsing-settings.json')
   const rememberedFile = join(app.getPath('userData'), 'external-apps.json')
   const readJson = (path: string): unknown => {
-    try { return JSON.parse(readFileSync(path, 'utf8')) as unknown } catch { return null }
+    // A settings file that cannot be read is kept aside, not saved over.
+    try { return JSON.parse(readFileSync(path, 'utf8')) as unknown } catch { setAsideUnreadable(path); return null }
   }
   const stored = parseBrowsingSettingsFile(readJson(settingsFile))
   pageAppearance.set(stored.pageAppearance)

@@ -621,7 +621,28 @@ export const checks = {
     await ctx.wait(`!!document.querySelector('.topbar') && !!document.querySelector('canvas')`, 30_000, 'the header and globe to render')
     const buttons = await ctx.evaluate(`[...document.querySelectorAll('.bookmark-library-button')].map((b) => (b.innerText || b.getAttribute('aria-label')).trim())`)
     for (const label of ['Private', 'Bookmarks', 'The Olds', 'Knowledge', 'My map', 'Settings']) expect(buttons.some((b) => b.includes(label)), `Header is missing "${label}". Found: ${buttons.join(', ')}`)
-    return `Header: ${buttons.join(' · ')}`
+    // A profile with damaged files still opens, and what it could not read is kept aside, never saved over.
+    const damagedProfile = mkdtempSync(join(tmpdir(), 'intoponet-e2e-damaged-'))
+    const damaged = {
+      'browser-state.v1.json': '{"version":3,"url":"https://example.org/","bounds":{"x":0,"y":0,"width":800,"height":600},"wasVisible":false,"tabs":[{"id":"t1","url":"https://exa',
+      'site-permissions.json': '{"https://example.org":{"camera":"al',
+    }
+    for (const [file, text] of Object.entries(damaged)) writeFileSync(join(damagedProfile, file), text)
+    const keptProfile = process.env.E2E_PROFILE
+    process.env.E2E_PROFILE = damagedProfile
+    try {
+      const kept = JSON.parse(await runAppCheck(async (next) => {
+        await next.evaluate(`window.intoponet.browserHost.newTab().then(() => true)`)
+        await next.delay(1500)
+        return next.main(`(() => { const fs = process.mainModule.require('fs'); const dir = ${JSON.stringify(damagedProfile)}; return JSON.stringify(Object.fromEntries(fs.readdirSync(dir).filter((n) => n.includes('.unreadable-')).map((n) => [n.replace(/\\.unreadable-\\d+$/, ''), fs.readFileSync(dir + '/' + n, 'utf8')]))) })()`)
+      }, { timeoutMs: 60_000 }))
+      for (const [file, text] of Object.entries(damaged)) expect(kept[file] === text, `A damaged ${file} was not kept aside when the app started over (kept: ${Object.keys(kept).join(', ') || 'nothing'}).`)
+    } finally {
+      if (keptProfile === undefined) delete process.env.E2E_PROFILE
+      else process.env.E2E_PROFILE = keptProfile
+      rmSync(damagedProfile, { recursive: true, force: true })
+    }
+    return `Header: ${buttons.join(' · ')}. A damaged profile opened, its unreadable files kept aside.`
   },
 
   async GLOBE_LIVE(ctx) {

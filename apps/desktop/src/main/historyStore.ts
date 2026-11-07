@@ -66,12 +66,15 @@ export class HistoryStore {
     return this.policyValue
   }
 
-  /** Load a saved payload (unreadable payloads start empty). `keepPolicy`: a policy already set this run wins. */
-  load(payload: string | null, keepPolicy = false): void {
-    if (!payload) return
+  /**
+   * Load a saved payload (unreadable payloads start empty). `keepPolicy`: a policy already set this run wins.
+   * Returns false when the payload could not be read, so the caller can keep that file rather than save over it.
+   */
+  load(payload: string | null, keepPolicy = false): boolean {
+    if (!payload) return true
     try {
       const raw = JSON.parse(payload) as Partial<StoredHistory>
-      if (raw.schema !== 'intoponet.history.v1' || !Array.isArray(raw.visits)) return
+      if (raw.schema !== 'intoponet.history.v1' || !Array.isArray(raw.visits)) return false
       const policy = raw.policy
       if (!keepPolicy && policy && typeof policy.footprints === 'boolean' && [0, 7, 30, 90].includes(policy.retentionDays)) this.policyValue = { footprints: policy.footprints, retentionDays: policy.retentionDays }
       // Visits recorded while the file was still being read are kept too.
@@ -87,8 +90,10 @@ export class HistoryStore {
       this.visits = [...this.visits, ...loaded].sort((a, b) => b.visitedAt - a.visitedAt).slice(0, this.maxVisits)
       this.prune(false)
       this.forgetExcluded(false)
+      return true
     } catch {
       // Start empty rather than fail to open.
+      return false
     }
   }
 

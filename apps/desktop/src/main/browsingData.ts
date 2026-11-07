@@ -12,7 +12,7 @@ import {
   type DownloadEvent,
   type HistoryEvent,
 } from '@intoponet/browser-api'
-import { writeFileAtomic, writeFileAtomicSync } from './atomicFile'
+import { setAsideUnreadable, writeFileAtomic, writeFileAtomicSync } from './atomicFile'
 import { LatestWriter } from './latestWriter'
 import { DownloadManager, type DownloadRecord } from './downloadManager'
 import { reserveDownloadPath, sanitizeDownloadFilename } from './downloadReservation'
@@ -160,10 +160,12 @@ export function installBrowsingData(options: BrowsingDataOptions): BrowsingData 
   void (async () => {
     try {
       if (existsSync(historyFile) && (await options.seal.available())) {
-        history.load(await options.seal.decrypt(readFileSync(historyFile)), policySet)
+        // History that cannot be read is kept aside, never replaced by the next save.
+        if (!history.load(await options.seal.decrypt(readFileSync(historyFile)), policySet)) setAsideUnreadable(historyFile)
       }
     } catch (error) {
       console.error('Could not read history:', error)
+      setAsideUnreadable(historyFile)
     } finally {
       historyLoaded = true
       if (historyDirty) saveHistory()

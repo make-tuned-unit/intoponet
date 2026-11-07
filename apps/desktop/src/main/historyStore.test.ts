@@ -127,13 +127,15 @@ describe('HistoryStore', () => {
     const { history: next, setNow } = store()
     setNow(NOON + 120_000)
     next.record({ url: 'https://early.example/', title: 'Early', isPrivate: false })
-    next.load(payload)
+    expect(next.load(payload)).toBe(true)
     expect(next.policy).toEqual({ footprints: true, retentionDays: 90 })
     expect(next.search('').days[0]!.visits.map((visit) => visit.host)).toEqual(['early.example', 'saved.example'])
 
     const { history: broken } = store()
-    broken.load('{not json')
-    broken.load(JSON.stringify({ schema: 'other', visits: [] }))
+    // An unreadable payload says so, so the caller keeps that file instead of saving over it.
+    expect(broken.load('{not json')).toBe(false)
+    expect(broken.load(JSON.stringify({ schema: 'other', visits: [] }))).toBe(false)
+    expect(broken.load(null)).toBe(true)
     expect(broken.size).toBe(0)
   })
 
