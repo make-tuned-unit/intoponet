@@ -200,7 +200,7 @@ import { planGrouping, snapshotGrouping, undoGrouping, UNDO_GROUPING_MS, type Gr
 import { suggestGroups, tidyCandidates, tidyText } from './tabTidy'
 import { dot } from './laya/retrieval'
 import { tabMenuTemplate, type TabMenuAction, type TabMenuSplit } from './tabMenu'
-import { canSplit, partnerOf, repairSplits, setSplitRatio, splitBounds, splitPreviewArea, splitWith, storableRatio, unsplit, DEFAULT_SPLIT_RATIO, type SplitLayout, type SplitSide, type TabSplit } from './splitPages'
+import { canSplit, keepOutOfPairs, pairMoveTarget, partnerOf, repairSplits, setSplitRatio, splitBounds, splitPreviewArea, splitWith, storableRatio, unsplit, DEFAULT_SPLIT_RATIO, type SplitLayout, type SplitSide, type TabSplit } from './splitPages'
 import { compareCountryName, compareLabelFor, savedCompareOf, tabCompareFor, type CompareSideInput, type TabCompare } from './compare'
 import { liveTabFlags } from './tabState'
 import { groupSavedFolders, parseSavedWorkspaces, savedWorkspaceOf, WorkspaceSet, type RemovedWorkspace, type SavedWorkspace, type SavedWorkspaces } from './workspaces'
@@ -4062,15 +4062,20 @@ async function handleBrowserCommand(
       if (next) showTab(next.id)
       break
     }
-    case 'move-tab':
-      if (moveFolderedTab(openTabs, tabFolders, command.id, command.toIndex)) {
+    case 'move-tab': {
+      // A pair moves as one row: a step onto its partner goes past it, and nothing lands between a pair's sides.
+      const from = openTabs.findIndex((item) => item.id === command.id)
+      const toIndex = pairMoveTarget(openTabs, command.id, command.toIndex)
+      if (moveFolderedTab(openTabs, tabFolders, command.id, toIndex)) {
         const moved = openTabs.find((item) => item.id === command.id)
         if (moved) keepPairTogether(moved)
+        keepOutOfPairs(openTabs, command.id, toIndex > from)
         tabsRearranged()
         emitTabs()
         schedulePersistentStateSave()
       }
       break
+    }
     case 'set-tab-pinned':
       if (setPinned(openTabs, command.id, command.pinned)) {
         // Pinning records where the tab is as its home; unpinning forgets it.

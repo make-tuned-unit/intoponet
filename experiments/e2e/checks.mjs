@@ -1349,7 +1349,32 @@ export const checks = {
       const loading = await ctx.evaluate(`${host}.getTabs().then((t) => t.some((x) => x.url.includes('/slow') && x.loading))`)
       expect(loading, 'The loading tab is not marked as loading.')
       await ctx.wait(`!document.querySelector('[data-tab-id] .tab-spinner')`, 20_000, 'the spinner to stop once the page loaded')
-      return 'Moved by command, drag and ⌥⇧↓ (focus kept); pinned tab first, icon-only and saved; speaker muted and unmuted a playing tab; spinner while a slow page loaded; no axe violations in rail or strip.'
+
+      // A pair side by side is one row: a tab dragged past it, or moved past it from the keyboard, goes round it and the pair holds.
+      const [left, right, below, last] = (await tabs()).filter((tab) => !tab.pinned).map((tab) => tab.id)
+      await ctx.evaluate(`${host}.splitTab(${JSON.stringify(left)}, ${JSON.stringify(right)}, 'left').then(() => true)`)
+      await ctx.delay(800)
+      const unpinned = async () => (await tabs()).filter((tab) => !tab.pinned).map((tab) => tab.id).join(' ')
+      const paired = async () => (await tabs()).filter((tab) => tab.split).map((tab) => tab.id).join(' ') === `${left} ${right}`
+      const rowOf = async (id) => JSON.parse(await ctx.evaluate(`JSON.stringify(document.querySelector('.tab-rail-list [data-tab-id=${JSON.stringify(id)}] [role="tab"]').getBoundingClientRect())`))
+      const start = await rowOf(below)
+      const end = await rowOf(last)
+      const grab = { x: start.x + start.width / 2, y: start.y + start.height / 2 }
+      const drop = end.y + end.height - 2
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: grab.x, y: grab.y })
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: grab.x, y: grab.y, button: 'left', buttons: 1, clickCount: 1 })
+      for (let step = 1; step <= 8; step += 1) {
+        await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: grab.x, y: grab.y + (drop - grab.y) * (step / 8), button: 'left', buttons: 1 })
+        await ctx.delay(30)
+      }
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: grab.x, y: drop, button: 'left', buttons: 0, clickCount: 1 })
+      await ctx.delay(700)
+      expect(await unpinned() === [left, right, last, below].join(' ') && await paired(), `A tab below a pair, dragged to the end, did not move there with the pair kept (order: ${await unpinned()}).`)
+      await ctx.evaluate(`document.querySelector('.tab-rail-list [data-tab-id=${JSON.stringify(last)}] [role="tab"]').focus()`)
+      await key('ArrowUp', 38, 1 | 8)
+      await ctx.delay(700)
+      expect(await unpinned() === [last, left, right, below].join(' ') && await paired(), `⌥⇧↑ on the tab below a pair did not move it above the pair with the pair kept (order: ${await unpinned()}).`)
+      return 'Moved by command, drag and ⌥⇧↓ (focus kept); pinned tab first, icon-only and saved; speaker muted and unmuted a playing tab; spinner while a slow page loaded; a tab dragged or moved past a pair went round it and the pair held; no axe violations in rail or strip.'
     } finally {
       server.close()
     }

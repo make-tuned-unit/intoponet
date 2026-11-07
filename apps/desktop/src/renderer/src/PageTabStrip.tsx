@@ -18,7 +18,7 @@ export type PageTabStripProps = {
  */
 export function PageTabStrip({ tabs, stripRef, caption, label }: PageTabStripProps) {
   // The page a dragged tab would be split in beside: the shown one (not a new tab's start page).
-  const dragHandlers = useTabDrag('x', { shownId: tabs.find((tab) => tab.active && !tab.isStartPage)?.id })
+  const dragHandlers = useTabDrag('x', { indexOf: (id) => tabs.findIndex((tab) => tab.id === id), shownId: tabs.find((tab) => tab.active && !tab.isStartPage)?.id })
   const buttons = useRef(new Map<string, HTMLButtonElement>())
   /** A tab moved from the keyboard keeps focus once the strip shows the new order. */
   const refocus = useRef<string | null>(null)
