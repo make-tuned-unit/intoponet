@@ -275,8 +275,13 @@ type IdentityChange = { workspace: WorkspaceSnapshot; action: 'on' | 'off' | 'cl
 function IdentityConfirm({ change, onConfirm, onCancel }: { change: IdentityChange; onConfirm: () => void; onCancel: () => void }) {
   const cancel = useRef<HTMLButtonElement>(null)
   useEffect(() => {
+    // When the question closes, focus goes back to where it was (the workspace's actions button), not to the page body.
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
     const frame = requestAnimationFrame(() => cancel.current?.focus())
-    return () => cancelAnimationFrame(frame)
+    return () => {
+      cancelAnimationFrame(frame)
+      if (opener?.isConnected) opener.focus()
+    }
   }, [])
   const name = change.workspace.name
   const copy = change.action === 'on'
@@ -311,8 +316,13 @@ function IdentityConfirm({ change, onConfirm, onCancel }: { change: IdentityChan
 function DeleteConfirm({ workspace, onDelete, onCancel }: { workspace: WorkspaceSnapshot; onDelete: () => void; onCancel: () => void }) {
   const cancel = useRef<HTMLButtonElement>(null)
   useEffect(() => {
+    // When the question closes, focus goes back to where it was (the workspace's actions button), not to the page body.
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
     const frame = requestAnimationFrame(() => cancel.current?.focus())
-    return () => cancelAnimationFrame(frame)
+    return () => {
+      cancelAnimationFrame(frame)
+      if (opener?.isConnected) opener.focus()
+    }
   }, [])
   return (
     <div

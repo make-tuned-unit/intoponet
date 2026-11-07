@@ -2572,10 +2572,19 @@ export const checks = {
       const researchC = (await byTitle('research-c')).id
       // Menus close when focus leaves the app window: bring it forward first (other checks' windows may be in front).
       await ctx.main(`(() => { electron.app.focus({ steal: true }); electron.BrowserWindow.getAllWindows()[0].focus(); return true })()`)
+      // Focused first, as a real click on the button focuses it.
+      await ctx.evaluate(`document.querySelector('button[aria-label="Actions for workspace Reading"]').focus(); true`)
       await ctx.click('button[aria-label="Actions for workspace Reading"]')
       await ctx.wait(`!!document.querySelector('.tab-rail-folder-menu [role="menuitem"]')`, 2000, 'the workspace menu')
       await ctx.click('.tab-rail-folder-menu [role="menuitem"]', 'Delete workspace')
       await ctx.wait(`!!document.querySelector('.tab-rail-workspace-confirm[role="alertdialog"]') && document.activeElement?.textContent === 'Cancel'`, 3000, 'the delete confirmation, with focus on Cancel')
+      // Escape closes the question and focus goes back to the workspace's actions button (not lost to the page).
+      await ctx.press('Escape')
+      await ctx.wait(`!document.querySelector('.tab-rail-workspace-confirm') && document.activeElement?.getAttribute('aria-label') === 'Actions for workspace Reading'`, 3000, 'Escape to close the delete confirmation and return focus to the actions button')
+      await ctx.click('button[aria-label="Actions for workspace Reading"]')
+      await ctx.wait(`!!document.querySelector('.tab-rail-folder-menu [role="menuitem"]')`, 2000, 'the workspace menu again')
+      await ctx.click('.tab-rail-folder-menu [role="menuitem"]', 'Delete workspace')
+      await ctx.wait(`!!document.querySelector('.tab-rail-workspace-confirm[role="alertdialog"]') && document.activeElement?.textContent === 'Cancel'`, 3000, 'the delete confirmation again')
       expect((await state()).workspaces.length === 2, 'Asking to delete deleted before it was confirmed.')
       await axeAudit(ctx, 'the delete confirmation', '.tab-rail')
       await ctx.click('.tab-rail-workspace-confirm button', 'Delete workspace')
