@@ -55,6 +55,12 @@ export function SplitStartFrame({ rect, children }: { rect: BrowserPanelBounds |
   )
 }
 
+/** What a side's header says about its connection: only a plain http page is not secure (a new tab's start page is neither). */
+export function sideSecurity(tab: Pick<SplitSideSnapshot, 'url' | 'secure'>): 'secure' | 'not-secure' | 'none' {
+  if (tab.secure) return 'secure'
+  return /^http:/i.test(tab.url) ? 'not-secure' : 'none'
+}
+
 /** The site a side shows: its host without "www.", or the address as it is. */
 export function sideHost(url: string): string {
   try {
@@ -97,12 +103,13 @@ function SideHeader({ side, tab, focused, rect, actions }: SideHeaderProps) {
   const name = side === 'left' ? 'Left page' : 'Right page'
   const compare = tab.compare
   const origin = compare ? `${compare.outlet} · ${compare.country}` : host
+  const security = sideSecurity(tab)
   return (
     <div
       className={`split-header${focused ? ' is-focused' : ''}${compare ? ' is-compare' : ''}`}
       style={rectStyle(rect)}
       role="group"
-      aria-label={`${name}: ${compare ? `${compare.outlet}, ${compare.country}, ` : ''}${host}${tab.secure ? ', secure' : ', not secure'}`}
+      aria-label={`${name}: ${compare ? `${compare.outlet}, ${compare.country}, ` : ''}${host}${security === 'secure' ? ', secure' : security === 'not-secure' ? ', not secure' : ''}`}
       data-split-side={side}
     >
       <button
@@ -112,10 +119,11 @@ function SideHeader({ side, tab, focused, rect, actions }: SideHeaderProps) {
         aria-label={`${focused ? 'Focused' : 'Focus'} ${name.toLowerCase()}, ${origin}`}
         onClick={() => { if (!focused) void window.intoponet.browserHost.focusSplitSide(side) }}
       >
-        {tab.secure ? <LockKeyhole size={12} aria-hidden="true" /> : <ShieldAlert size={12} aria-hidden="true" />}
+        {security === 'secure' && <LockKeyhole size={12} aria-hidden="true" />}
+        {security === 'not-secure' && <ShieldAlert size={12} aria-hidden="true" />}
         <span className="split-header-origin">{origin}</span>
         {compare && <span className="split-header-host">{host}</span>}
-        {!tab.secure && <strong className="split-header-insecure">Not secure</strong>}
+        {security === 'not-secure' && <strong className="split-header-insecure">Not secure</strong>}
       </button>
       {compare && actions && (
         <span className="split-compare-tools">

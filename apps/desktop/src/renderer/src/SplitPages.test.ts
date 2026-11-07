@@ -1,5 +1,19 @@
 import { describe, expect, it } from 'vitest'
-import { fixedOrigin } from './SplitPages'
+import { fixedOrigin, sideSecurity } from './SplitPages'
+
+describe('sideSecurity', () => {
+  it('calls https secure and plain http not secure', () => {
+    expect(sideSecurity({ url: 'https://example.org/a', secure: true })).toBe('secure')
+    expect(sideSecurity({ url: 'http://example.org/a', secure: false })).toBe('not-secure')
+    expect(sideSecurity({ url: 'HTTP://example.org/a', secure: false })).toBe('not-secure')
+  })
+
+  it('says nothing about a new tab or a page that is not on the web', () => {
+    expect(sideSecurity({ url: '', secure: false })).toBe('none')
+    expect(sideSecurity({ url: 'about:blank', secure: false })).toBe('none')
+    expect(sideSecurity({ url: 'file:///Users/me/report.pdf', secure: false })).toBe('none')
+  })
+})
 
 describe('fixedOrigin', () => {
   it('is the window corner when the frame lands where it was placed', () => {
