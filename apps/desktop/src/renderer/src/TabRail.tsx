@@ -7,6 +7,8 @@ import { NowPlayingControl } from './nowPlaying/NowPlayingControl'
 import { useGlassSheen } from './glass/useGlassSheen'
 import { RailMenu } from './RailMenu'
 import { ACCENT_COLOURS, WorkspaceBar, type WorkspaceRequest } from './WorkspaceBar'
+import { HeadlinesHere } from './HeadlinesHere'
+import type { AnchorHeadlines } from '../../shared/news/anchorHeadlines'
 import { moveTabByKey, openTabMenu, TabAudioButton, TabHomeButton, TabIcon, tabSoundLabel, tabStateLabel, useTabDrag } from './tabControls'
 import './glass/glass.css'
 import './tabRail.css'
@@ -45,6 +47,10 @@ export type TabRailProps = {
   workspaceRequest?: WorkspaceRequest | null
   /** What plays in a tab (the now-playing control at the foot of the rail); null hides it. */
   nowPlaying?: NowPlayingSnapshot | null
+  /** Latest headlines for the shown workspace's anchored place (null when it has none). */
+  anchorHeadlines?: AnchorHeadlines | null
+  /** Opens a headline as a tab in the shown workspace. */
+  onOpenHeadline?: (url: string) => void
 }
 
 /** A sideways two-finger swipe on the sidebar this far (in wheel pixels) shows the next or previous workspace. */
@@ -59,7 +65,7 @@ const SWIPE_GAP_MS = 220
  * keeps it expanded as vertical tabs. Pinned tabs sit first as icons; tabs
  * can be dragged (or moved with ⌥⇧↑ / ⌥⇧↓) into a new order.
  */
-export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange, onHide, onExpandedChange, onPinnedChange, onNewTab, archivedCount = 0, onUndoArchive, folders = [], renameFolderId = null, onRenameHandled, onSaveFolder, message = '', workspaces = null, workspaceRequest = null, nowPlaying = null }: TabRailProps) {
+export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange, onHide, onExpandedChange, onPinnedChange, onNewTab, archivedCount = 0, onUndoArchive, folders = [], renameFolderId = null, onRenameHandled, onSaveFolder, message = '', workspaces = null, workspaceRequest = null, nowPlaying = null, anchorHeadlines = null, onOpenHeadline }: TabRailProps) {
   const reduceMotion = useReducedMotion()
   const surface = useGlassSheen<HTMLDivElement>()
   const list = useRef<HTMLDivElement>(null)
@@ -423,6 +429,9 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
         >
           <div ref={surface} className="tab-rail-surface lg-surface lg-sheen" style={activeWorkspace ? { "--workspace-accent": ACCENT_COLOURS[activeWorkspace.accent] } as CSSProperties : {}}>
             {workspaces && <WorkspaceBar state={workspaces} open={open} onExpand={() => onExpandedChange(true)} request={barRequest} />}
+            {workspaces && anchorHeadlines && onOpenHeadline && (
+              <HeadlinesHere key={workspaces.activeId} workspaceId={workspaces.activeId} workspaceName={activeWorkspace?.name ?? ''} news={anchorHeadlines} open={open} onOpen={onOpenHeadline} />
+            )}
             <div ref={list} className="tab-rail-list" data-tab-container onKeyDown={onKeyDown}>
               {pinnedTabs.length > 0 && open && <span className="tab-rail-section" aria-hidden="true">Pinned</span>}
               {pinnedTabs.length > 0 && (

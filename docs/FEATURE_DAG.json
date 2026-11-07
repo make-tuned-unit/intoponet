@@ -596,6 +596,18 @@
       "tier": "core",
       "kind": "e2e",
       "promise": "Dragging a tab to the page's edge, or choosing Split with…, shows two tabs side by side with a draggable divider; each side navigates, finds and zooms on its own, the address bar and toolbar follow the focused side, the pair stays together in the tab list and on relaunch, and closing one side returns the other to full size."
+    },
+    {
+      "id": "PLACE_WORKSPACES",
+      "title": "Workspaces anchored to a place",
+      "deps": [
+        "WORKSPACES",
+        "FLY_TO",
+        "COUNTRY_PANEL"
+      ],
+      "tier": "network",
+      "kind": "e2e",
+      "promise": "A workspace can be anchored to a place you choose (never your device's location); switching to it flies the globe there and the sidebar offers that place's latest headlines; tabs opened from those headlines stay in that workspace, and the anchor shows only on your own map."
     }
   ]
 }

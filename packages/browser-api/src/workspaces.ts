@@ -15,6 +15,9 @@ export const MAX_WORKSPACES = 9
 export const MAX_FAVOURITES = 12
 export const WORKSPACE_NAME_MAX = 40
 
+/** A place a workspace is anchored to, chosen by the person (never their device's location). */
+export type WorkspaceAnchor = { lat: number; lon: number; label: string; placeId?: string }
+
 export type WorkspaceSnapshot = {
   id: string
   name: string
@@ -22,6 +25,8 @@ export type WorkspaceSnapshot = {
   accent: WorkspaceAccent
   /** Tabs it holds (pinned, in folders and open; never private tabs). */
   tabCount: number
+  /** The place it is anchored to, if any: switching to it flies the globe there. */
+  anchor?: WorkspaceAnchor
 }
 
 /** A site in the favourites row: shared by every workspace (workspaceId null) or owned by one. */
@@ -40,7 +45,7 @@ export type WorkspaceSwitch = { id: string } | { index: number } | { step: 1 | -
 export type WorkspaceCommand =
   | { type: 'get-workspaces' }
   | { type: 'create-workspace'; name?: string; icon?: WorkspaceIcon; accent?: WorkspaceAccent }
-  | { type: 'update-workspace'; id: string; name?: string; icon?: WorkspaceIcon; accent?: WorkspaceAccent }
+  | { type: 'update-workspace'; id: string; name?: string; icon?: WorkspaceIcon; accent?: WorkspaceAccent; anchor?: WorkspaceAnchor | null }
   | { type: 'move-workspace'; id: string; toIndex: number }
   | { type: 'delete-workspace'; id: string }
   | { type: 'undo-delete-workspace' }
@@ -78,6 +83,19 @@ export function workspaceName(value: unknown): string {
 export const isWorkspaceIcon = (value: unknown): value is WorkspaceIcon => typeof value === 'string' && (WORKSPACE_ICONS as readonly string[]).includes(value)
 export const isWorkspaceAccent = (value: unknown): value is WorkspaceAccent => typeof value === 'string' && (WORKSPACE_ACCENTS as readonly string[]).includes(value)
 
+/** A workspace's anchor: a finite latitude and longitude and a label of at most 80 characters (throws otherwise). */
+export function workspaceAnchor(value: unknown): WorkspaceAnchor {
+  if (!isRecord(value)) throw new Error('Invalid workspace place.')
+  const { lat, lon } = value
+  if (typeof lat !== 'number' || !Number.isFinite(lat) || lat < -90 || lat > 90) throw new Error('Invalid workspace place.')
+  if (typeof lon !== 'number' || !Number.isFinite(lon) || lon < -180 || lon > 180) throw new Error('Invalid workspace place.')
+  if (typeof value['label'] !== 'string') throw new Error('Invalid workspace place.')
+  const label = value['label'].replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80)
+  if (!label) throw new Error('Invalid workspace place.')
+  const placeId = value['placeId']
+  return { lat, lon, label, ...(typeof placeId === 'string' && placeId.length > 0 && placeId.length <= 80 ? { placeId } : {}) }
+}
+
 function look(value: Record<string, unknown>): { name?: string; icon?: WorkspaceIcon; accent?: WorkspaceAccent } {
   if (value['icon'] !== undefined && !isWorkspaceIcon(value['icon'])) throw new Error('Invalid workspace icon.')
   if (value['accent'] !== undefined && !isWorkspaceAccent(value['accent'])) throw new Error('Invalid workspace colour.')
@@ -99,7 +117,12 @@ export function parseWorkspaceCommand(value: unknown): WorkspaceCommand {
     case 'create-workspace':
       return { type, ...look(value) }
     case 'update-workspace':
-      return { type, id: shortId(value['id'], 'workspace'), ...look(value) }
+      return {
+        type,
+        id: shortId(value['id'], 'workspace'),
+        ...look(value),
+        ...(value['anchor'] === undefined ? {} : { anchor: value['anchor'] === null ? null : workspaceAnchor(value['anchor']) }),
+      }
     case 'move-workspace': {
       const toIndex = value['toIndex']
       if (typeof toIndex !== 'number' || !Number.isInteger(toIndex) || toIndex < 0 || toIndex >= MAX_WORKSPACES) throw new Error('Invalid workspace position.')
@@ -134,7 +157,8 @@ export interface WorkspacesApi {
   get(): Promise<WorkspacesState>
   /** A new workspace (named "Workspace N" unless given a name), shown at once. */
   create(look?: { name?: string; icon?: WorkspaceIcon; accent?: WorkspaceAccent }): Promise<WorkspacesState>
-  update(id: string, changes: { name?: string; icon?: WorkspaceIcon; accent?: WorkspaceAccent }): Promise<WorkspacesState>
+  /** `anchor: null` removes the workspace's anchor. */
+  update(id: string, changes: { name?: string; icon?: WorkspaceIcon; accent?: WorkspaceAccent; anchor?: WorkspaceAnchor | null }): Promise<WorkspacesState>
   move(id: string, toIndex: number): Promise<WorkspacesState>
   /** Deletes it and closes its tabs, after a short time in which undoDelete brings it all back. */
   delete(id: string): Promise<WorkspacesState>

@@ -137,7 +137,8 @@ import { aggregateTopicTraffic, topicTrafficDemoResult } from './topicTraffic'
 import { inferUnifiedLauncherIntent } from './launcherIntent'
 import { TabDock } from './TabDock'
 import { TabRail } from './TabRail'
-import type { WorkspaceRequest } from './WorkspaceBar'
+import { ACCENT_COLOURS, type WorkspaceRequest } from './WorkspaceBar'
+import { headlinesNearAnchor } from '../../shared/news/anchorHeadlines'
 import { useNowPlaying } from './nowPlaying/NowPlayingControl'
 import { PageTabStrip } from './PageTabStrip'
 import './shellChrome.css'
@@ -591,6 +592,10 @@ export function App() {
     })
     return () => { mounted = false; unsubscribe() }
   }, [])
+  /** The shown workspace's anchor place, and the latest headlines for it (from the public news digest only). */
+  const shownWorkspace = workspaces?.workspaces.find((workspace) => workspace.id === workspaces.activeId) ?? null
+  const shownAnchor = shownWorkspace?.anchor ?? null
+  const anchorHeadlines = useMemo(() => (shownAnchor ? headlinesNearAnchor(shownAnchor, newsDigest) : null), [shownAnchor, newsDigest])
   const undoArchive = (): void => {
     if (!justArchived) return
     void window.intoponet.browserHost.reopenArchivedTabs(justArchived.ids)
@@ -2149,6 +2154,12 @@ export function App() {
       ? [{ id: `pin:${bookmark.url}`, lat: bookmark.fieldAnchor.lat, lon: bookmark.fieldAnchor.lon, color: PIN_COLOR, size: 1, kind: 'pin' as const }]
       : [])
     : [], [bookmarks, globePrefs.pins])
+  // Anchored workspaces show on My map only, never in the public field. Clicking one switches to it.
+  const workspaceMarkers = useMemo<GlobeMarker[]>(() => fieldView === 'personal'
+    ? (workspaces?.workspaces ?? []).flatMap((workspace) => workspace.anchor
+      ? [{ id: `workspace:${workspace.id}`, lat: workspace.anchor.lat, lon: workspace.anchor.lon, color: ACCENT_COLOURS[workspace.accent], size: 1, kind: 'pin' as const }]
+      : [])
+    : [], [fieldView, workspaces])
   // Places mentioned in absorbed pages: a private overlay, shown only in Mine.
   const knowledgeMarkers = useMemo<GlobeMarker[]>(() => fieldView === 'personal'
     ? knowledgeRecords.flatMap((record) => record.places.slice(0, 8).map((place, index) => ({
@@ -2173,9 +2184,10 @@ export function App() {
     ...(storyMode ? storyMarkers(storyStories) : []),
     ...pinMarkers,
     ...knowledgeMarkers,
+    ...workspaceMarkers,
     // The place you flew to: projected like any marker so the locator can sit exactly on it.
     ...(focusedPlace ? [{ id: `locator:${focusedPlace.id}`, lat: focusedPlace.lat, lon: focusedPlace.lon, color: '#ffffff', size: 0, kind: 'pin' as const }] : []),
-  ], [publicGlobe, visibleGlobeSignals, pinMarkers, knowledgeMarkers, focusedPlace, storyMode, storyStories])
+  ], [publicGlobe, visibleGlobeSignals, pinMarkers, knowledgeMarkers, workspaceMarkers, focusedPlace, storyMode, storyStories])
   // What part of Earth is in view, sampled a few times a second: labels follow it as you zoom and turn.
   const [labelView, setLabelView] = useState<LabelView | null>(null)
   useEffect(() => {
@@ -2428,6 +2440,16 @@ export function App() {
     })
   }
 
+  // Switching to an anchored workspace flies the globe to its place. The browser panel stays open (flyToPlace would close it).
+  const shownWorkspaceId = workspaces?.activeId ?? null
+  const lastShownWorkspaceId = useRef<string | null>(null)
+  useEffect(() => {
+    const previous = lastShownWorkspaceId.current
+    lastShownWorkspaceId.current = shownWorkspaceId
+    if (!shownWorkspaceId || previous === null || previous === shownWorkspaceId || !shownAnchor) return
+    flyToPoint(shownAnchor.lat, shownAnchor.lon, radiusForSpan(60))
+  }, [shownWorkspaceId]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const selectGlobeSignal = (signal: GlobeSignal): void => {
     setSelectedSignalId(signal.id)
     flyToPoint(signal.lat, signal.lon, Math.min(pose.radius, 3.1))
@@ -2474,6 +2496,10 @@ export function App() {
     }
     if (id.startsWith('know:')) {
       openKnowledge(id.split(':')[1] ?? null)
+      return
+    }
+    if (id.startsWith('workspace:')) {
+      void window.intoponet.workspaces.switchTo({ id: id.slice('workspace:'.length) }).catch(() => undefined)
       return
     }
     const signal = allGlobeSignals.find((item) => item.id === id)
@@ -2810,7 +2836,7 @@ export function App() {
   }
 
   return (
-    <main className={`app-shell${panel.isVisible ? ' page-open' : ''}${fullWidth && panel.isVisible ? ' browser-full' : ''}${tabs.length > 0 ? ' tabs-open' : ''}${bookmarksOpen ? ' bookmarks-open' : ''}${railVisible ? ' rail-on' : ''}${railOpen ? ' rail-open' : ''}`} style={{ '--rail-open-width': `${sidebar.width}px` } as CSSProperties}>
+    <main className={`app-shell${panel.isVisible ? ' page-open' : ''}${fullWidth && panel.isVisible ? ' browser-full' : ''}${tabs.length > 0 ? ' tabs-open' : ''}${bookmarksOpen ? ' bookmarks-open' : ''}${railVisible ? ' rail-on' : ''}${railOpen ? ' rail-open' : ''}`} data-workspace-marks={workspaceMarkers.map((marker) => marker.id).join(' ')} style={{ '--rail-open-width': `${sidebar.width}px` } as CSSProperties}>
       {!fieldLabOpen && <FrequencyField
         paused={reduceMotion || (fullWidth && panel.isVisible)}
         panelOpen={panel.isVisible}
@@ -2926,6 +2952,8 @@ export function App() {
         message={railMessage}
         workspaces={workspaces}
         workspaceRequest={workspaceRequest}
+        anchorHeadlines={anchorHeadlines}
+        onOpenHeadline={(url) => void window.intoponet.browserHost.open({ kind: 'url', value: url })}
       />
       <BookmarkPane
         open={bookmarksOpen && !fieldLabOpen}
