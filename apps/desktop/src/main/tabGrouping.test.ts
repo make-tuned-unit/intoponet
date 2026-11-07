@@ -63,6 +63,32 @@ describe('planGrouping', () => {
     planGrouping({ tabs: tabs(), folders: input, groups: [{ name: 'Reading', tabIds: ['a'], storyId: 'x' }], maxFolders: 60, newId })
     expect(input).toEqual(folders())
   })
+
+  const pairOf = (partnerId: string, side: 'left' | 'right') => ({ split: { partnerId, side, ratio: 0.5 } })
+  const paired = (): GroupableTab[] => [{ id: 'l', ...pairOf('r', 'left') }, { id: 'r', ...pairOf('l', 'right') }, { id: 'a' }, { id: 'b' }]
+
+  it('leaves a pair side by side where it is unless both its sides go into the same folder', () => {
+    // One side asked for: neither side moves; the other tabs do.
+    const one = planGrouping({ tabs: paired(), folders: [], groups: [{ name: 'Story', tabIds: ['l', 'a', 'b'], storyId: 's' }], maxFolders: 60, newId })
+    expect([...one.folderOf.keys()]).toEqual(['a', 'b'])
+    // The two sides asked into different folders: neither moves.
+    const apart = planGrouping({ tabs: paired(), folders: [], groups: [{ name: 'One', tabIds: ['l', 'a'] }, { name: 'Two', tabIds: ['r', 'b'] }], maxFolders: 60, newId })
+    expect([...apart.folderOf.keys()].sort()).toEqual(['a', 'b'])
+    // Both sides into one folder: the pair moves together.
+    const both = planGrouping({ tabs: paired(), folders: [], groups: [{ name: 'Story', tabIds: ['l', 'r'], storyId: 's' }], maxFolders: 60, newId })
+    expect([both.folderOf.get('l'), both.folderOf.get('r')]).toEqual([both.created[0], both.created[0]])
+  })
+
+  it('makes no folder, and gives no folder a story, for a group left with nothing to move', () => {
+    const existing: TabFolder[] = [{ id: 'named', name: 'Vote', parentId: null }]
+    const plan = planGrouping({
+      tabs: paired(), folders: existing, maxFolders: 60, newId,
+      groups: [{ name: 'Vote', tabIds: ['l'], storyId: 'vote' }, { name: 'Fresh', tabIds: ['r'] }, { name: 'Kept', tabIds: ['a', 'b'] }],
+    })
+    expect(plan.folders.map((folder) => [folder.name, folder.storyId])).toEqual([['Vote', undefined], ['Kept', undefined]])
+    expect(plan.created).toHaveLength(1)
+    expect([...plan.folderOf.entries()]).toEqual([['a', plan.created[0]], ['b', plan.created[0]]])
+  })
 })
 
 describe('undoGrouping', () => {
@@ -133,10 +159,30 @@ describe('undoGrouping', () => {
     expect(currentTabs.find((tab) => tab.id === 'new')?.folderId).toBe('old')
   })
 
-  it('pairs side by side again the tabs whose pair the grouping ended', () => {
+  /** One side of a pair moved into a folder by itself, ending the pair (groupings no longer do this; undo still mends it). */
+  const moveOneSide = (currentTabs: GroupableTab[], ids: string[]) => {
+    const made: TabFolder[] = [{ id: 'made', name: 'Delta floods', parentId: null }]
+    const snapshot = snapshotGrouping(currentTabs, [], ['made'])
+    for (const tab of currentTabs) if (ids.includes(tab.id)) tab.folderId = 'made'
+    currentTabs.splice(0, currentTabs.length, ...(folderedOrder(currentTabs as unknown as FolderedTab[], made) as unknown as GroupableTab[]))
+    repairSplits(currentTabs as unknown as SplitTab[])
+    return snapshot
+  }
+
+  it('keeps a pair side by side through a grouping of both its sides, and undoes it', () => {
+    const pairOf = (partnerId: string, side: 'left' | 'right') => ({ split: { partnerId, side, ratio: 0.4 } })
+    const currentTabs: GroupableTab[] = [{ id: 'x' }, { id: 'a', ...pairOf('b', 'left') }, { id: 'b', ...pairOf('a', 'right') }, { id: 'c' }]
+    const currentFolders: TabFolder[] = []
+    const snapshot = group(currentTabs, currentFolders, ['a', 'b', 'c'])
+    expect(currentTabs.map((tab) => [tab.id, tab.split?.partnerId, tab.folderId === currentFolders[0]?.id])).toEqual([['a', 'b', true], ['b', 'a', true], ['c', undefined, true], ['x', undefined, false]])
+    undoGrouping(currentTabs, currentFolders, snapshot)
+    expect(currentTabs.map((tab) => [tab.id, tab.split?.partnerId, tab.folderId])).toEqual([['x', undefined, undefined], ['a', 'b', undefined], ['b', 'a', undefined], ['c', undefined, undefined]])
+  })
+
+  it('pairs side by side again the tabs whose pair was ended', () => {
     const pairOf = (partnerId: string, side: 'left' | 'right') => ({ split: { partnerId, side, ratio: 0.4 } })
     const currentTabs: GroupableTab[] = [{ id: 'a', ...pairOf('b', 'left') }, { id: 'b', ...pairOf('a', 'right') }, { id: 'c' }]
-    const snapshot = group(currentTabs, [], ['a', 'c'])
+    const snapshot = moveOneSide(currentTabs, ['a', 'c'])
     expect(currentTabs.every((tab) => !tab.split)).toBe(true)
     undoGrouping(currentTabs, [], snapshot)
     expect(currentTabs.map((tab) => tab.id)).toEqual(['a', 'b', 'c'])
@@ -147,12 +193,12 @@ describe('undoGrouping', () => {
   it('leaves alone a pair whose other side closed, or a side paired with another tab since', () => {
     const pairOf = (partnerId: string, side: 'left' | 'right') => ({ split: { partnerId, side, ratio: 0.5 } })
     const closed: GroupableTab[] = [{ id: 'a', ...pairOf('b', 'left') }, { id: 'b', ...pairOf('a', 'right') }, { id: 'c' }]
-    const first = group(closed, [], ['a', 'c'])
+    const first = moveOneSide(closed, ['a', 'c'])
     closed.splice(closed.findIndex((tab) => tab.id === 'b'), 1)
     undoGrouping(closed, [], first)
     expect(closed.every((tab) => !tab.split)).toBe(true)
     const repaired: GroupableTab[] = [{ id: 'a', ...pairOf('b', 'left') }, { id: 'b', ...pairOf('a', 'right') }, { id: 'c' }]
-    const second = group(repaired, [], ['a', 'c'])
+    const second = moveOneSide(repaired, ['a', 'c'])
     // `b` was put side by side with a new tab since.
     repaired.find((tab) => tab.id === 'b')!.split = { partnerId: 'n', side: 'left', ratio: 0.5 }
     repaired.push({ id: 'n', split: { partnerId: 'b', side: 'right', ratio: 0.5 } })

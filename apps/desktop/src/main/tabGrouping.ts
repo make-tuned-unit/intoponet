@@ -34,7 +34,11 @@ export type GroupingPlan = {
   created: string[]
 }
 
-/** The folder a group goes in: the one for its story, else one with the same name, else a new one (never past maxFolders). */
+/**
+ * The folder a group goes in: the one for its story, else one with the same name, else a new one (never past maxFolders).
+ * A tab side by side with another moves only when both sides go into the same folder; otherwise both stay where they
+ * are, and a folder that ends up with nothing to hold is neither made nor given a story.
+ */
 export function planGrouping(input: {
   tabs: readonly GroupableTab[]
   folders: readonly TabFolder[]
@@ -46,6 +50,8 @@ export function planGrouping(input: {
   const tabs = new Map(input.tabs.map((tab) => [tab.id, tab]))
   const folderOf = new Map<string, string>()
   const created: string[] = []
+  /** Folders given a story by this grouping. */
+  const adopted = new Set<string>()
   for (const group of input.groups) {
     const movable = group.tabIds
       .map((id) => tabs.get(id))
@@ -60,10 +66,25 @@ export function planGrouping(input: {
       created.push(folder.id)
     } else if (group.storyId && !folder.storyId) {
       folder.storyId = group.storyId
+      adopted.add(folder.id)
     }
     for (const tab of movable) folderOf.set(tab.id, folder.id)
   }
-  return { folders, folderOf, created }
+  // A pair is one row of the sidebar: moving one side alone would end it.
+  const destination = (tab: GroupableTab): string | undefined => folderOf.get(tab.id) ?? tab.folderId
+  for (const id of [...folderOf.keys()]) {
+    const tab = tabs.get(id)!
+    const partner = tab.split ? tabs.get(tab.split.partnerId) : undefined
+    if (!partner || partner.split?.partnerId !== id) continue
+    if (destination(partner) !== destination(tab)) folderOf.delete(id)
+  }
+  const used = new Set(folderOf.values())
+  for (const folder of folders) if (adopted.has(folder.id) && !used.has(folder.id)) delete folder.storyId
+  return {
+    folders: folders.filter((folder) => used.has(folder.id) || !created.includes(folder.id)),
+    folderOf,
+    created: created.filter((id) => used.has(id)),
+  }
 }
 
 /** The state a grouping is about to change, to restore with undoGrouping. */

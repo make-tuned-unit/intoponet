@@ -4668,6 +4668,21 @@ export const checks = {
       // Grouping tabs that are gone (closed while Tidy's preview was open) is refused, not reported as done with an Undo.
       expect(await ctx.evaluate(`${host}.groupTabs([{ name: 'Gone', tabIds: ['no-such-tab'] }]).then(() => 'grouped', () => 'refused')`) === 'refused', 'Grouping tabs that are gone was reported as done.')
       expect((await folders()).length === 0, 'Grouping tabs that are gone made a folder.')
+      // A pair side by side is never broken: with b beside the control page, Group by story leaves b (and so has one article, too few for a folder)...
+      await ctx.evaluate(`${host}.splitTab(${JSON.stringify(b.id)}, ${JSON.stringify(control.id)}, 'left').then(() => true)`)
+      await ctx.wait(`${host}.getTabs().then((t) => t.find((x) => x.id === ${JSON.stringify(b.id)})?.split?.partnerId === ${JSON.stringify(control.id)})`, 4000, 'b and the control page to be side by side')
+      await ctx.wait(`!!document.querySelector('.tab-rail-pair')`, 4000, 'the sidebar to show the pair')
+      await ctx.click('button[aria-label="Group by story"]')
+      await ctx.delay(800)
+      expect((await folders()).length === 0 && (await byUrl('/b'))?.split?.partnerId === control.id, `Group by story broke a pair or made a folder for one article: ${JSON.stringify({ folders: await folders(), b: await byUrl('/b') })}.`)
+      // ...and main, asked for both articles anyway, moves only the one not in a pair.
+      const pairUndo = JSON.parse(await ctx.evaluate(`${host}.groupTabs([{ name: ${JSON.stringify(label)}, tabIds: [${JSON.stringify(a.id)}, ${JSON.stringify(b.id)}], storyId: ${JSON.stringify(made.storyId)} }]).then((r) => JSON.stringify(r))`))
+      const [pairA, pairB] = [await byUrl('/a'), await byUrl('/b')]
+      expect(!!pairA?.folderId && !pairB?.folderId && pairB?.split?.partnerId === control.id && (await byUrl('/control'))?.split?.partnerId === b.id, `Grouping one side of a pair moved it out of the pair: ${JSON.stringify({ a: pairA, b: pairB })}.`)
+      await ctx.evaluate(`${host}.undoGroupTabs(${JSON.stringify(pairUndo.undoId)}).then(() => true)`)
+      await ctx.evaluate(`${host}.unsplitTab(${JSON.stringify(b.id)}).then(() => true)`)
+      await ctx.wait(`window.intoponet.browserHost.getTabFolders().then((f) => f.length === 0)`, 4000, 'the one-article folder to be undone')
+      await ctx.wait(`!document.querySelector('.tab-rail-pair') && !document.querySelector('.tab-rail-folder')`, 4000, 'the sidebar to show the pair ended and no folder')
       // Hovering the folder highlights its story on the globe; leaving clears it.
       await ctx.click('button[aria-label="Group by story"]')
       await ctx.wait(`window.intoponet.browserHost.getTabFolders().then((f) => f.some((x) => x.storyId))`, 8000, 'the story folder again')
@@ -4747,6 +4762,10 @@ export const checks = {
       // Laya on (its model downloads here, which the full tier allows). Not awaited: the download can take minutes.
       await ctx.evaluate(`void window.intoponet.laya.enable().catch(() => undefined), true`)
       await ctx.wait(`window.intoponet.laya.status().then((s) => s.enabled && s.model.downloaded && s.model.verified)`, 900_000, 'Laya to be on with its model ready')
+      // A cooking page side by side with an astronomy page: their topics differ, so Tidy suggests neither (it never breaks a pair).
+      const [c1, a1] = [(await tabs()).find((tab) => tab.url === `${origin}/c1`), (await tabs()).find((tab) => tab.url === `${origin}/a1`)]
+      await ctx.evaluate(`${host}.splitTab(${JSON.stringify(c1.id)}, ${JSON.stringify(a1.id)}, 'left').then(() => true)`)
+      await ctx.wait(`${host}.getTabs().then((t) => t.find((x) => x.id === ${JSON.stringify(c1.id)})?.split?.partnerId === ${JSON.stringify(a1.id)})`, 4000, 'the cooking and astronomy pages to be side by side')
       const orderBefore = (await tabs()).map((tab) => tab.id).join(' ')
       // The suggestion is shown and nothing moves until accepted.
       const suggestion = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.tidyTabsSuggest().then((s) => JSON.stringify(s))`))
@@ -4758,6 +4777,7 @@ export const checks = {
         expect(topics.size === 1 && !topics.has('other'), `Tidy mixed topics in "${group.name}": ${group.tabIds.map((id) => byId.get(id)).join(' | ')}.`)
       }
       expect(new Set(suggestion.groups.flatMap((group) => group.tabIds.map((id) => topicOf(byId.get(id))))).size === 2, 'Tidy did not separate cooking from astronomy.')
+      expect(!suggestion.groups.some((group) => group.tabIds.includes(c1.id) || group.tabIds.includes(a1.id)), `Tidy suggested moving one side of a pair: ${JSON.stringify(suggestion.groups)}.`)
       expect((await folders()).length === 0, 'Tidy moved tabs before they were accepted.')
       // A private tab about cooking is open during a suggestion: its title must not reach the model, and nothing may be requested.
       await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(true).then(() => true)`)
@@ -4789,9 +4809,11 @@ export const checks = {
       await ctx.wait(`window.intoponet.browserHost.getTabFolders().then((f) => f.length === ${suggestion.groups.length})`, 10_000, 'the accepted Tidy folders')
       const accepted = await tabs()
       expect(accepted.filter((tab) => tab.folderId).length === suggestion.groups.reduce((n, group) => n + group.tabIds.length, 0), 'Accepting did not move exactly the suggested tabs.')
+      expect(accepted.find((tab) => tab.id === c1.id)?.split?.partnerId === a1.id && !accepted.find((tab) => tab.id === c1.id)?.folderId, 'Accepting Tidy broke the pair side by side.')
       await ctx.click('.tab-rail-archived .tab-rail-undo')
       await ctx.wait(`window.intoponet.browserHost.getTabFolders().then((f) => f.length === 0)`, 10_000, 'Undo to remove the Tidy folders')
       expect((await tabs()).map((tab) => tab.id).join(' ') === orderBefore, 'Undo did not restore the tab order.')
+      expect((await tabs()).find((tab) => tab.id === a1.id)?.split?.partnerId === c1.id, 'Undoing Tidy broke the pair side by side.')
       return `Laya off: Tidy explained it and offered Group by story. Laya on: ${suggestion.groups.length} groups (${suggestion.groups.map((group) => group.name).join('; ')}) separated cooking from astronomy; nothing moved before Accept; Undo restored the order.`
     } finally {
       server.close()

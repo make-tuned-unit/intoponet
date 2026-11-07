@@ -25,4 +25,16 @@ describe('storyGroupRequests', () => {
     expect(storyGroupRequests(tabs, matches, [])).toEqual([])
     expect(storyGroupRequests(tabs, matches, [{ id: 'f', name: 'Floods', parentId: null, storyId: 'flood' }])).toEqual([{ name: 'Delta floods', tabIds: ['ok'], storyId: 'flood' }])
   })
+
+  it('takes a side of a pair only with its other side, and counts what is left', () => {
+    const pair = (id: string, partnerId: string, side: 'left' | 'right') => tab(id, { split: { partnerId, side } })
+    // l is beside r, which is from another story: l stays, and one tab left is not enough for a new folder.
+    const apart = [pair('l', 'r', 'left'), pair('r', 'l', 'right'), tab('a')]
+    expect(storyGroupRequests(apart, new Map([['l', delta], ['a', delta], ['r', vote]]), [])).toEqual([])
+    // Both sides from the same story: they go together.
+    const together = [pair('l', 'r', 'left'), pair('r', 'l', 'right'), tab('a')]
+    expect(storyGroupRequests(together, new Map([['l', delta], ['r', delta], ['a', delta]]), [])).toEqual([{ name: 'Delta floods', tabIds: ['l', 'r', 'a'], storyId: 'flood' }])
+    // A story with a folder and only a lone side of a pair: nothing to ask for.
+    expect(storyGroupRequests(apart, new Map([['l', delta]]), [{ id: 'f', name: 'Floods', parentId: null, storyId: 'flood' }])).toEqual([])
+  })
 })

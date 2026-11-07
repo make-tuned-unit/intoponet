@@ -205,7 +205,7 @@ let captures: CaptureService | null = null
 import { browserContextActions, type BrowserContextAction } from './browserContextMenu'
 import { canNest, deleteFolder, duplicateIndex, folderDepth, folderedOrder, folderTreeOrder, MAX_FOLDER_DEPTH, MAX_FOLDERS, moveFolderedTab, moveTab, otherTabIds, pinnedFirst, setPinned, setTabFolder, tabIdsToRight, type TabFolder } from './tabOrder'
 import { planGrouping, snapshotGrouping, undoGrouping, UNDO_GROUPING_MS, type GroupingSnapshot } from './tabGrouping'
-import { suggestGroups, tidyCandidates, tidyText } from './tabTidy'
+import { keepPairsWhole, suggestGroups, tidyCandidates, tidyText } from './tabTidy'
 import { dot } from './laya/retrieval'
 import { tabMenuTemplate, type TabMenuAction, type TabMenuSplit } from './tabMenu'
 import { canSplit, keepOutOfPairs, pairMoveTarget, partnerOf, repairSplits, setSplitRatio, splitBounds, splitPreviewArea, splitWith, storableRatio, unsplit, DEFAULT_SPLIT_RATIO, type SplitLayout, type SplitSide, type TabSplit } from './splitPages'
@@ -2033,7 +2033,7 @@ let lastGrouping: { undoId: string; at: number; snapshot: GroupingSnapshot } | n
 /** Put loose tabs into folders (tabGrouping.ts). Pinned and private tabs stay where they are. */
 function groupTabs(groups: TabGroupRequest[]): string {
   const plan = planGrouping({
-    tabs: openTabs.map((tab) => ({ id: tab.id, pinned: tab.pinned, isPrivate: privateViews.has(tab.view), folderId: tab.folderId })),
+    tabs: openTabs.map((tab) => ({ id: tab.id, pinned: tab.pinned, isPrivate: privateViews.has(tab.view), folderId: tab.folderId, split: tab.split })),
     folders: tabFolders,
     groups,
     maxFolders: MAX_FOLDERS,
@@ -2089,7 +2089,7 @@ async function tidyTabsSuggest(): Promise<TidySuggestion> {
   const vectors = await laya.embedTexts(texts)
   if (!vectors) return { available: false, reason: 'Laya could not read these tabs right now.' }
   if (process.env.INTOPONET_TIDY_DEBUG) appendFileSync(process.env.INTOPONET_TIDY_DEBUG, `${JSON.stringify({ similarity: vectors.map((a) => vectors.map((b) => Number(dot(a, b).toFixed(3)))) })}\n`)
-  return { available: true, groups: suggestGroups(vectors, candidates) }
+  return { available: true, groups: keepPairsWhole(suggestGroups(vectors, candidates), candidates) }
 }
 
 // ---- Workspaces (workspaces.ts) ----------------------------------------------------------------
