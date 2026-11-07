@@ -4250,6 +4250,9 @@ export const checks = {
       await ctx.click('.tab-rail-archived .tab-rail-undo')
       await ctx.wait(`window.intoponet.browserHost.getTabFolders().then((f) => !f.some((x) => x.storyId))`, 8000, 'the story folder to be removed by Undo')
       expect((await tabs()).map((tab) => tab.id).join(' ') === orderBefore, 'Undo did not restore the tab order.')
+      // Grouping tabs that are gone (closed while Tidy's preview was open) is refused, not reported as done with an Undo.
+      expect(await ctx.evaluate(`${host}.groupTabs([{ name: 'Gone', tabIds: ['no-such-tab'] }]).then(() => 'grouped', () => 'refused')`) === 'refused', 'Grouping tabs that are gone was reported as done.')
+      expect((await folders()).length === 0, 'Grouping tabs that are gone made a folder.')
       // Hovering the folder highlights its story on the globe; leaving clears it.
       await ctx.click('button[aria-label="Group by story"]')
       await ctx.wait(`window.intoponet.browserHost.getTabFolders().then((f) => f.some((x) => x.storyId))`, 8000, 'the story folder again')

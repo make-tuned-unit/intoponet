@@ -1970,6 +1970,8 @@ function groupTabs(groups: TabGroupRequest[]): string {
     maxFolders: MAX_FOLDERS,
     newId: randomUUID,
   })
+  // Nothing to move (the tabs closed or left while Tidy's preview was open, or the folder limit): say so, with no Undo.
+  if (plan.folderOf.size === 0) throw new Error(tabFolders.length >= MAX_FOLDERS ? `At most ${MAX_FOLDERS} folders.` : 'Those tabs are no longer open here.')
   const snapshot = snapshotGrouping(openTabs, tabFolders, plan.created)
   tabFolders = plan.folders
   for (const tab of openTabs) {
