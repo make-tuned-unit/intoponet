@@ -201,7 +201,7 @@ import { suggestGroups, tidyCandidates, tidyText } from './tabTidy'
 import { dot } from './laya/retrieval'
 import { tabMenuTemplate, type TabMenuAction, type TabMenuSplit } from './tabMenu'
 import { canSplit, partnerOf, repairSplits, setSplitRatio, splitBounds, splitPreviewArea, splitWith, storableRatio, unsplit, DEFAULT_SPLIT_RATIO, type SplitLayout, type SplitSide, type TabSplit } from './splitPages'
-import { compareCountryName, compareLabelFor, savedCompareOf, tabCompareFor, type CompareSideInput, type TabCompare } from './compare'
+import { compareCountryName, compareLabelFor, landedCompare, savedCompareOf, tabCompareFor, type CompareSideInput, type TabCompare } from './compare'
 import { liveTabFlags } from './tabState'
 import { groupSavedFolders, parseSavedWorkspaces, savedWorkspaceOf, WorkspaceSet, type RemovedWorkspace, type SavedWorkspace, type SavedWorkspaces } from './workspaces'
 import { BrowserImportService, wireBrowserImport } from './browserImport/service'
@@ -242,6 +242,8 @@ let pageView: WebContentsView | null = null
 let companionView: WebContentsView | null = null
 /** A tab dragged over a page edge: the side it would take (splitPages.ts). */
 let splitPreviewSide: SplitSide | null = null
+/** Page views whose main frame is starting a new document (until it is ready, fails or stops loading). */
+const loadingDocument = new WeakSet<WebContentsView>()
 let translateService: TranslateService | null = null
 /** Saved passwords (sealed on this Mac); null until the app is ready. */
 let passwords: PasswordService | null = null
@@ -633,9 +635,12 @@ function pagePanelState(): BrowserPanelSnapshot {
       isStartPage: true,
     }
   }
+  // A page whose renderer kept crashing waits, blank, for Reload: the toolbar keeps its address and title.
+  const tab = openTabs.find((item) => item.view === pageView)
+  const crashed = tab && !contents.getURL() && safeHttpUrl(tab.url) && !crashRecovery.canAutoRecover(tab.id) ? tab : undefined
   return {
-    url: capUrl(contents.getURL()),
-    title: capTitle(contents.getTitle()),
+    url: capUrl(crashed ? crashed.url : contents.getURL()),
+    title: capTitle(crashed ? crashed.title : contents.getTitle()),
     canGoBack: contents.navigationHistory.canGoBack(),
     canGoForward: contents.navigationHistory.canGoForward(),
     isLoading: contents.isLoading(),
@@ -763,14 +768,34 @@ function cosmeticInjection(css: string, styleId = cosmeticStyleId): string {
     const id = ${JSON.stringify(styleId)};
     const existing = document.getElementById(id);
     const css = ${JSON.stringify(css)};
+    // A page whose Content-Security-Policy forbids inline styles leaves the style element without a
+    // sheet. The same rules then go in a constructed sheet, which that policy does not cover.
+    const slot = Symbol.for(id);
+    const adopted = document[slot];
+    const unadopt = () => {
+      if (!adopted) return;
+      document.adoptedStyleSheets = document.adoptedStyleSheets.filter((sheet) => sheet !== adopted);
+      delete document[slot];
+    };
     if (!css) {
       existing?.remove();
+      unadopt();
       return;
     }
     const style = existing instanceof HTMLStyleElement ? existing : document.createElement('style');
     style.id = id;
     style.textContent = css;
     if (!style.isConnected) (document.head || document.documentElement).appendChild(style);
+    if (style.sheet) {
+      unadopt();
+      return;
+    }
+    try {
+      const sheet = adopted || new CSSStyleSheet();
+      sheet.replaceSync(css);
+      if (!adopted) Object.defineProperty(document, slot, { value: sheet, configurable: true });
+      if (!document.adoptedStyleSheets.includes(sheet)) document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
+    } catch {}
   })()`
 }
 
@@ -1068,7 +1093,8 @@ function syncCompanion(): void {
   companionView = want
   if (want && host) {
     if (!host.contentView.children.includes(want)) host.contentView.addChildView(want)
-    if (partner?.asleep) wakeTab(partner)
+    // Asleep, or blank since its page crashed off screen: it loads again as the shown tab would.
+    if (partner && (partner.asleep || !partner.view.webContents.isLoading())) wakeTab(partner)
     want.setVisible(pageViewShown(want))
     raiseLinkPreview()
   }
@@ -1187,6 +1213,9 @@ function splitTabs(command: { id?: string; partnerId?: string; side?: SplitSide 
   schedulePersistentStateSave()
 }
 
+/** Compare tabs whose article has not loaded yet: where it first lands is the outlet's site (landedCompare). */
+const compareLanding = new WeakSet<OpenTab>()
+
 /** A country's name for a Compare label (the Mac's language), or the code when there is no name. */
 function countryNameFor(code: string): string | undefined {
   try {
@@ -1212,6 +1241,8 @@ function openCompare(command: { story: { id: string; title: string }; left: Comp
   if (!left || !right) throw new Error('Those articles cannot be opened.')
   left.compare = leftCompare
   right.compare = rightCompare
+  compareLanding.add(left)
+  compareLanding.add(right)
   if (!splitWith(openTabs, left.id, right.id, 'left')) throw new Error('Those tabs cannot sit side by side.')
   // The left side loads when it is shown; the right side loads now, in the background.
   void right.view.webContents.loadURL(command.right.url).catch(() => undefined)
@@ -1480,7 +1511,9 @@ function setLoadError(view: WebContentsView, error: PageLoadError | null): void 
     tab.autoRetried = false
   }
   if (pageView === view && pageAttached) view.setVisible(pageViewShown(view))
-  if (pageView === view) emitPanelState()
+  // The other side of a split on screen too: hidden while it fails, shown again once its page loads.
+  if (companionView === view && panelBoundsReported) view.setVisible(pageViewShown(view))
+  if (pageView === view || companionView === view) emitPanelState()
   // "Offline" while the Mac reports a network (it changed under the load): one quiet retry.
   if (error?.autoRetry && net.isOnline() && !tab.autoRetried) {
     tab.autoRetried = true
@@ -3259,6 +3292,14 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
       tabRailExpanded = false
       emit({ type: 'tab-rail-state', expanded: false })
     }
+    // A click in the other side of a split chooses that side, whether the keyboard focus came first or not.
+    if (input.type === 'mouseDown' && companionView === view) {
+      const tab = tabOfView(view)
+      if (tab) {
+        showTab(tab.id)
+        view.webContents.focus()
+      }
+    }
   })
   // Browser keys pressed in a page: carried out here, so a page cannot swallow them. preventDefault
   // also keeps the menu bar from running the same key a second time.
@@ -3311,6 +3352,7 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
   })
   view.webContents.on('did-start-navigation', (_event, _url, inPlace, mainFrame) => {
     if (!mainFrame || inPlace) return
+    loadingDocument.add(view)
     // The page is about to be replaced: its inserted style and any previewed element go with it.
     previewSelectors.delete(view.webContents.id)
     blockedAdAddresses.delete(view.webContents.id)
@@ -3324,7 +3366,13 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
   })
   view.webContents.on('did-fail-load', (_event, _code, _description, _url, mainFrame) => {
     if (mainFrame) frequencyLoadSucceeded = false
+    if (mainFrame) loadingDocument.delete(view)
+    // Only a Compare article's first load can move its label (what loads after a failure is not that).
+    const failed = mainFrame ? tabOfView(view) : undefined
+    if (failed) compareLanding.delete(failed)
   })
+  view.webContents.on('dom-ready', () => loadingDocument.delete(view))
+  view.webContents.on('did-stop-loading', () => loadingDocument.delete(view))
   view.webContents.on('did-finish-load', () => {
     if (pageView !== view || !frequencyLoadSucceeded) return
     const url = view.webContents.getURL()
@@ -3458,15 +3506,29 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
     // A site's style tweak goes into every tab of that site, background tabs included.
     void applySiteStyle(view)
     if (pageView !== view && companionView !== view) return
-    void applyCosmeticFilters(view.webContents, { only: view.webContents.mainFrame })
+    // This page's own address: the other side of a split has its own site's rules, not the focused side's.
+    void applyCosmeticFilters(view.webContents, { only: view.webContents.mainFrame, url: view.webContents.getURL() })
   })
   // A side of a split that takes the keyboard becomes the focused side (the toolbar and find follow it).
   view.webContents.on('focus', () => {
     if (companionView !== view) return
+    // Chromium hands the keyboard to a page starting a new document (a redirect, a page that reloads
+    // itself) even beside the focused side. That is not the person choosing this side: the keyboard
+    // goes back. A click in it still chooses it (before-mouse-event).
+    if (loadingDocument.has(view)) {
+      if (pageView && pageAttached && !viewGone(pageView)) pageView.webContents.focus()
+      return
+    }
     const tab = tabOfView(view)
     if (tab) showTab(tab.id)
   })
   view.webContents.on('did-navigate', (_event, url) => {
+    // A Compare article that redirected to another host as it first loaded is still that outlet's article.
+    const landing = tabOfView(view)
+    if (landing?.compare && compareLanding.delete(landing)) {
+      landing.compare = landedCompare(landing.compare, url)
+      schedulePersistentStateSave()
+    }
     applySiteZoom(view, url)
     setLoadError(view, null)
     rememberTab(view)
@@ -3560,6 +3622,11 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
       lastKnownUrl = crashedUrl
       attachPageView()
       if (mayAutoRecover) void replacement.webContents.loadURL(crashedUrl)
+    } else if (companionView === view) {
+      // The other side of the pair on screen: its replacement takes its place beside the page.
+      if (mayAutoRecover) void replacement.webContents.loadURL(crashedUrl)
+      syncCompanion()
+      emitPanelState()
     }
     emitTabs()
     // Close the crashed contents so its 'destroyed' cleanup runs and its listeners go (the tab now

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compareCountryName, compareHost, compareLabelFor, savedCompareOf, tabCompareFor } from './compare'
+import { compareCountryName, compareHost, compareLabelFor, landedCompare, savedCompareOf, tabCompareFor } from './compare'
 
 const story = { id: 'story-1', title: 'Ferry fire off Lisbon' }
 const side = { url: 'https://www.publico.pt/2026/11/07/ferry', outlet: 'Público', countryCode: 'PT', lang: 'pt' }
@@ -54,6 +54,29 @@ describe('compareLabelFor', () => {
   })
   it('has no label without a compare record', () => {
     expect(compareLabelFor(undefined, 'https://publico.pt/')).toBeUndefined()
+  })
+})
+
+describe('landedCompare', () => {
+  const compare = tabCompareFor(side, story, 'Portugal')!
+  it('keeps the label on the host the article redirected to as it first loaded, and on the linked host', () => {
+    const landed = landedCompare(compare, 'https://edition.publico.pt/2026/11/07/ferry')
+    expect(landed.landedHost).toBe('edition.publico.pt')
+    const label = { outlet: 'Público', country: 'Portugal', storyId: 'story-1', lang: 'pt' }
+    expect(compareLabelFor(landed, 'https://edition.publico.pt/2026/11/07/ferry')).toEqual(label)
+    // A consent page that sends the reader back to the linked site keeps it there too.
+    expect(compareLabelFor(landed, 'https://www.publico.pt/2026/11/07/ferry')).toEqual(label)
+    // Moving on to another site still drops it.
+    expect(compareLabelFor(landed, 'https://example.org/')).toBeUndefined()
+  })
+  it('is kept with the saved record', () => {
+    const landed = landedCompare(compare, 'https://edition.publico.pt/2026/11/07/ferry')
+    expect(savedCompareOf(JSON.parse(JSON.stringify(landed)))).toEqual(landed)
+  })
+  it('changes nothing when the article loads where it was linked, or at an address that is not http(s)', () => {
+    expect(landedCompare(compare, 'https://www.publico.pt/2026/11/07/ferry')).toBe(compare)
+    expect(landedCompare(compare, 'chrome-error://chromewebdata/')).toBe(compare)
+    expect(landedCompare(compare, '')).toBe(compare)
   })
 })
 

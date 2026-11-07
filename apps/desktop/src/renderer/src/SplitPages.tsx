@@ -1,5 +1,5 @@
 import { History, Languages, LockKeyhole, ShieldAlert, Columns2, Lock } from 'lucide-react'
-import { useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react'
+import { useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
 import type { BrowserPanelBounds, SplitPanelSnapshot, SplitSide, SplitSideSnapshot } from '@intoponet/browser-api'
 import { hostIsPaywalled } from '../../shared/news/paywall'
 import { learnedPaywalls } from './access/learnedPaywalls'
@@ -8,6 +8,57 @@ import './splitPages.css'
 /** A rectangle as inline position styles (window coordinates: the shell covers the window). */
 export function rectStyle(rect: BrowserPanelBounds): CSSProperties {
   return { left: rect.x, top: rect.y, width: rect.width, height: rect.height }
+}
+
+/**
+ * Where a fixed element's left/top of 0 lands on screen, from where it is (`box`) and where it was
+ * placed (`placed`). That is the window's corner, unless an ancestor has a transform: the browser
+ * panel is centred with one, so a fixed element inside it is placed from the panel's corner.
+ */
+export function fixedOrigin(box: { x: number; y: number }, placed: { x: number; y: number }): { x: number; y: number } {
+  return { x: Math.round(box.x - placed.x), y: Math.round(box.y - placed.y) }
+}
+
+/**
+ * A start or error page: over its side's rect (window coordinates, as the native page views are
+ * placed) when it is beside another page, else as it is. Beside another page it measures the box
+ * it is placed in and keeps to that rect.
+ */
+export function SplitStartFrame({ rect, children }: { rect: BrowserPanelBounds | undefined; children: ReactNode }) {
+  const frame = useRef<HTMLDivElement>(null)
+  const [origin, setOrigin] = useState({ x: 0, y: 0 })
+  useLayoutEffect(() => {
+    const element = frame.current
+    if (!element || !rect) return
+    const measure = (): void => {
+      const box = element.getBoundingClientRect()
+      const next = fixedOrigin(box, { x: parseFloat(element.style.left) || 0, y: parseFloat(element.style.top) || 0 })
+      setOrigin((current) => (current.x === next.x && current.y === next.y ? current : next))
+    }
+    measure()
+    // The panel slides in when it opens, and the window can change size: measure again after either.
+    window.addEventListener('resize', measure)
+    window.addEventListener('animationend', measure, true)
+    return () => {
+      window.removeEventListener('resize', measure)
+      window.removeEventListener('animationend', measure, true)
+    }
+  }, [rect?.x, rect?.y, rect?.width, rect?.height])
+  return (
+    <div
+      ref={frame}
+      className={rect ? 'split-start-frame' : 'split-start-plain'}
+      style={rect ? rectStyle({ ...rect, x: rect.x - origin.x, y: rect.y - origin.y }) : undefined}
+    >
+      {children}
+    </div>
+  )
+}
+
+/** What a side's header says about its connection: only a plain http page is not secure (a new tab's start page is neither). */
+export function sideSecurity(tab: Pick<SplitSideSnapshot, 'url' | 'secure'>): 'secure' | 'not-secure' | 'none' {
+  if (tab.secure) return 'secure'
+  return /^http:/i.test(tab.url) ? 'not-secure' : 'none'
 }
 
 /** The site a side shows: its host without "www.", or the address as it is. */
@@ -52,12 +103,13 @@ function SideHeader({ side, tab, focused, rect, actions }: SideHeaderProps) {
   const name = side === 'left' ? 'Left page' : 'Right page'
   const compare = tab.compare
   const origin = compare ? `${compare.outlet} · ${compare.country}` : host
+  const security = sideSecurity(tab)
   return (
     <div
       className={`split-header${focused ? ' is-focused' : ''}${compare ? ' is-compare' : ''}`}
       style={rectStyle(rect)}
       role="group"
-      aria-label={`${name}: ${compare ? `${compare.outlet}, ${compare.country}, ` : ''}${host}${tab.secure ? ', secure' : ', not secure'}`}
+      aria-label={`${name}: ${compare ? `${compare.outlet}, ${compare.country}, ` : ''}${host}${security === 'secure' ? ', secure' : security === 'not-secure' ? ', not secure' : ''}`}
       data-split-side={side}
     >
       <button
@@ -67,10 +119,11 @@ function SideHeader({ side, tab, focused, rect, actions }: SideHeaderProps) {
         aria-label={`${focused ? 'Focused' : 'Focus'} ${name.toLowerCase()}, ${origin}`}
         onClick={() => { if (!focused) void window.intoponet.browserHost.focusSplitSide(side) }}
       >
-        {tab.secure ? <LockKeyhole size={12} aria-hidden="true" /> : <ShieldAlert size={12} aria-hidden="true" />}
+        {security === 'secure' && <LockKeyhole size={12} aria-hidden="true" />}
+        {security === 'not-secure' && <ShieldAlert size={12} aria-hidden="true" />}
         <span className="split-header-origin">{origin}</span>
         {compare && <span className="split-header-host">{host}</span>}
-        {!tab.secure && <strong className="split-header-insecure">Not secure</strong>}
+        {security === 'not-secure' && <strong className="split-header-insecure">Not secure</strong>}
       </button>
       {compare && actions && (
         <span className="split-compare-tools">

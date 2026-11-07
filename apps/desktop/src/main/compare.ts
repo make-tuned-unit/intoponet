@@ -19,6 +19,8 @@ export type TabCompare = {
   storyTitle: string
   /** The article's host without "www.": the label stays while the page is on this site. */
   host: string
+  /** Where the article first loaded, when its link redirected to another host: the label stays there too. */
+  landedHost?: string
   lang?: string
 }
 
@@ -68,13 +70,25 @@ export function tabCompareFor(side: CompareSideInput, story: CompareStoryInput, 
  */
 export function compareLabelFor(compare: TabCompare | undefined, currentUrl: string): CompareLabel | undefined {
   if (!compare) return undefined
-  if (compareHost(currentUrl) !== compare.host) return undefined
+  const here = compareHost(currentUrl)
+  if (!here || (here !== compare.host && here !== compare.landedHost)) return undefined
   return {
     outlet: compare.outlet,
     country: compare.country,
     storyId: compare.storyId,
     ...(compare.lang ? { lang: compare.lang } : {}),
   }
+}
+
+/**
+ * The record once the article has first loaded at `landedUrl`. A link that redirects to another host
+ * as it loads (a feed's tracking address, a regional edition) is still that outlet's article, so the
+ * label stays on that host as well as the linked one (a consent page that sends the reader back to
+ * the linked host keeps it too). Only the first load counts: other sites still drop the label.
+ */
+export function landedCompare(compare: TabCompare, landedUrl: string): TabCompare {
+  const host = compareHost(landedUrl)
+  return host && host !== compare.host ? { ...compare, landedHost: host } : compare
 }
 
 /** A saved Compare record, checked. Anything damaged is dropped (no label, never a crash). */
@@ -91,7 +105,8 @@ export function savedCompareOf(value: unknown): TabCompare | undefined {
   const storyId = text('storyId', 200)
   const storyTitle = text('storyTitle', 300)
   const host = text('host', 253)
+  const landedHost = text('landedHost', 253)
   const lang = text('lang', 35)
   if (!outlet || !countryCode || !country || !storyId || !storyTitle || !host) return undefined
-  return { outlet, countryCode, country, storyId, storyTitle, host, ...(lang ? { lang } : {}) }
+  return { outlet, countryCode, country, storyId, storyTitle, host, ...(landedHost ? { landedHost } : {}), ...(lang ? { lang } : {}) }
 }

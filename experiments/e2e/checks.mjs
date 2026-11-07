@@ -1186,6 +1186,17 @@ export const checks = {
       // Back to the error entry and forward again behave like normal history.
       const state = await panelState(ctx)
       expect(state.url === url, `After Retry the tab is at ${state.url}.`)
+      // A page whose renderer crashes twice in a row waits for Reload: the toolbar keeps its address, and Reload brings it back.
+      const crashPage = () => ctx.main(`(() => { const c = electron.webContents.getAllWebContents().find((c) => c.getURL() === ${JSON.stringify(url)}); if (!c) return false; c.forcefullyCrashRenderer(); return true })()`)
+      expect(await crashPage(), 'The page to crash is not open.')
+      await ctx.delay(1500)
+      await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.title === 'Browsing test' && !s.isLoading)`, 15_000, 'the page to load again after a crash')
+      expect(await crashPage(), 'The page that loaded again after a crash is not open.')
+      await ctx.delay(1500)
+      const paused = await panelState(ctx)
+      expect(paused.url === url, `After repeated crashes the toolbar shows "${paused.url}" instead of the page's address (${url}).`)
+      await ctx.evaluate(`window.intoponet.browserHost.reload().then(() => true)`)
+      await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.title === 'Browsing test' && s.url === ${JSON.stringify(url)})`, 15_000, 'Reload to bring the crashed page back')
     } finally {
       site.close()
     }
@@ -3058,7 +3069,8 @@ export const checks = {
     const markup = (name) => `<!doctype html><html><head><meta charset="utf-8"><title>${name}</title></head><body style="font:16px system-ui;margin:0">
       <header>${name} header</header><div id="wrap"><div id="promo" class="banner">PROMO-SENTINEL buy now</div>
       <main><article><h1>${name} story</h1><p id="para">The story text on ${name}.</p></article></main></div></body></html>`
-    const siteA = createServer((request, response) => { response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); response.end(markup('Site A')) })
+    // /strict-csp forbids inline styles, as some sites do: the tweaks must still apply there.
+    const siteA = createServer((request, response) => { response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', ...(request.url.startsWith('/strict-csp') ? { 'content-security-policy': "style-src 'self'" } : {}) }); response.end(markup('Site A')) })
     const siteB = createServer((request, response) => { response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); response.end(markup('Site B')) })
     await new Promise((resolve) => siteA.listen(0, '127.0.0.1', resolve))
     await new Promise((resolve) => siteB.listen(0, 'localhost', resolve))
@@ -3169,11 +3181,28 @@ export const checks = {
       await setTweakCss('#para { letter-spacing: 3px }')
       await saveStyles()
       await ctx.wait(statusIs('Styles saved'), 8000, 'the styles to be saved again')
+      // A page of site A whose Content-Security-Policy forbids inline styles gets the same tweaks.
+      await navigate(`http://127.0.0.1:${portA}/strict-csp`)
+      const strict = await pageStyles(await ctx.page(`127.0.0.1:${portA}/strict-csp`))
+      expect(strict.promo === 'none' && strict.wrapMax === '672px' && strict.spacing === '3px', `A page that forbids inline styles (CSP) did not get site A's tweaks: ${JSON.stringify(strict)}.`)
 
       // Site B has none of it.
       await navigate(urlB)
       const b1 = await pageStyles(await ctx.page(`localhost:${portB}/tweak`))
       expect(b1.wrapMax === 'none' && !/Georgia/.test(b1.font ?? '') && b1.bodyBg !== 'rgb(28, 28, 30)' && b1.promo === 'block', `Site B changed with site A's tweaks: ${JSON.stringify(b1)}.`)
+      // Nor when site B loads beside site A in a split, with site A focused.
+      await navigate(urlA)
+      await ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: ${JSON.stringify(urlB)} }, 'background-tab').then(() => true)`)
+      await ctx.delay(1500)
+      await ctx.evaluate(`window.intoponet.browserHost.splitTab().then(() => true)`)
+      await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.split?.focused === 'left')`, 8000, 'site A and site B side by side')
+      await ctx.main(`(() => { electron.webContents.getAllWebContents().find((c) => c.getURL().startsWith(${JSON.stringify(urlB)})).reload(); return true })()`)
+      await ctx.delay(2000)
+      const beside = await pageStyles(await ctx.page(`localhost:${portB}/tweak`))
+      expect(beside.promo === 'block', `Site B, loaded beside site A, got site A's hidden elements: ${JSON.stringify(beside)}.`)
+      expect(await ctx.evaluate(`window.intoponet.browserHost.getState().then((s) => s.split?.focused === 'left')`), 'Site B loading beside site A took the focus.')
+      await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => window.intoponet.browserHost.closeTab(t.find((x) => x.url.startsWith(${JSON.stringify(urlB)})).id)).then(() => true)`)
+      await ctx.delay(800)
       await navigate(urlA)
       await openCustomize()
       await axeAudit(ctx, 'the Customize site panel', '#site-tweaks-panel')
@@ -3560,8 +3589,14 @@ export const checks = {
       '/split-left': `<!doctype html><html lang="en"><title>Left story</title><body style="font:16px system-ui;margin:24px"><h1>Left story</h1><p>alpha text here</p></body></html>`,
       '/split-right': `<!doctype html><html lang="en"><title>Right story</title><body style="font:16px system-ui;margin:24px"><h1>Right story</h1><p>beta needle here</p></body></html>`,
     }
+    // A page that fails (the connection drops) until it is told to work.
+    let flakyFails = true
     const server = createServer((request, response) => {
       const path = new URL(request.url, 'http://localhost').pathname
+      if (path === '/split-flaky' && flakyFails) {
+        request.socket.destroy()
+        return
+      }
       response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
       response.end(pages[path] ?? `<!doctype html><title>Page ${path}</title><h1>${path}</h1>`)
     })
@@ -3789,6 +3824,37 @@ export const checks = {
       await expectLayout('after a workspace switch and back')
       await snap('08-after-workspace-switch')
 
+      // The other side loads a new page by itself (a redirect, a page reloading itself): the focused side keeps the focus.
+      const pageOf = (part) => `electron.webContents.getAllWebContents().find((c) => /^https?:/.test(c.getURL()) && c.getURL().includes(${JSON.stringify(part)}))`
+      await ctx.evaluate(`${host}.focusSplitSide('right').then(() => true)`)
+      await waitFor('focus on the right side again', async () => (await stateOf()).split?.focused === 'right')
+      await ctx.main(`(() => { electron.app.focus({ steal: true }); electron.BrowserWindow.getAllWindows()[0].focus(); return true })()`)
+      await ctx.main(`(() => { void ${pageOf('/split-left')}.executeJavaScript("location.href = '/split-left?again'"); return true })()`)
+      await waitFor('the left page loaded again', async () => (await stateOf()).split?.left.url.includes('?again'))
+      await ctx.delay(500)
+      expect((await stateOf()).split.focused === 'right', 'The left page loading a new page by itself took the focus from the right side.')
+      // The other side's page crashes: the pair stays side by side and that side loads again.
+      const crashedId = sideOf(await viewsNow(), '/split-left').id
+      await ctx.main(`(() => { ${pageOf('/split-left')}.forcefullyCrashRenderer(); return true })()`)
+      await waitFor('the crashed side back beside the page', async () => {
+        const views = await viewsNow()
+        return (await stateOf()).split && views.pages.length === 2 && views.pages.every((p) => p.visible) && views.pages.some((p) => p.url.includes('/split-left') && p.id !== crashedId)
+      })
+      await expectLayout('after the other side crashed')
+      expect((await stateOf()).split.focused === 'right', 'A crash on the left side moved the focus.')
+      // The other side fails to load: hidden while it fails, shown again once its page loads.
+      await ctx.main(`(() => { void ${pageOf('/split-left')}.loadURL('http://127.0.0.1:${port}/split-flaky?left').catch(() => undefined); return true })()`)
+      const flakySide = async () => (await viewsNow()).pages.find((p) => p.url.includes('/split-flaky'))
+      await waitFor('the failing left side hidden', async () => (await flakySide())?.visible === false)
+      expect((await stateOf()).split.focused === 'right', 'The left page failing to load took the focus.')
+      flakyFails = false
+      await ctx.main(`(() => { ${pageOf('/split-flaky')}.reload(); return true })()`)
+      await waitFor('the left side shown again once it loads', async () => (await flakySide())?.visible === true)
+      await expectLayout('after the other side recovered')
+      await ctx.main(`(() => { void ${pageOf('/split-flaky')}.loadURL(${JSON.stringify(leftUrl)}).catch(() => undefined); return true })()`)
+      await waitFor('the left page back', async () => (await stateOf()).split?.left.url === leftUrl)
+      await snap('08b-after-crash-and-error')
+
       // ⌘W on the focused side: the other side goes back to full size and shows.
       const focusedBeforeClose = (await stateOf()).split.focused
       await ctx.evaluate(`${host}.closeActiveTab().then(() => true)`)
@@ -3801,6 +3867,16 @@ export const checks = {
       // The focused side was closed, so the other side is the one left on screen.
       expect(remaining.url.includes(focusedBeforeClose === 'left' ? '/split-right' : '/split-left'), `After closing the ${focusedBeforeClose} side, the page on screen is ${remaining.url}.`)
       await snap('09-after-close')
+
+      // With one tab, a split opens a new tab's start page beside it, in its own half.
+      await ctx.evaluate(`${host}.splitTab().then(() => true)`)
+      const started = await waitFor('a start page beside the page', async () => { const s = await stateOf(); return s.split && s.isStartPage ? s : null })
+      await ctx.delay(500)
+      const startFrame = JSON.parse(await shellEval(`JSON.stringify(document.querySelector('.split-start-frame')?.getBoundingClientRect() ?? null)`))
+      const startHalf = started.split.sides[started.split.focused]
+      expect(startFrame && ['x', 'y', 'width', 'height'].every((key) => Math.abs(startFrame[key] - startHalf[key]) <= 1), `The start page beside the page is not over its half (${JSON.stringify(startFrame)}, its half ${JSON.stringify(startHalf)}).`)
+      await ctx.evaluate(`${host}.closeActiveTab().then(() => true)`)
+      await waitFor('back to one page', async () => !(await stateOf()).split && (await viewsNow()).pages.length === 1)
 
       // Put the pair back (the left tab shown, the right one next), then ⌃⇧- ends it.
       await ctx.evaluate(`${host}.open({ kind: 'url', value: ${JSON.stringify(rightUrl)} }, 'background-tab').then(() => true)`)
@@ -4162,6 +4238,31 @@ export const checks = {
     await ctx.wait(`!!document.querySelector('.olds-sheet')`, 15_000, 'The Olds to open for the story')
     await ctx.shot('compare-olds')
     const paywalls = await ctx.evaluate(`document.querySelectorAll('.split-compare-paywall').length`)
+
+    // An article whose link redirects to another host as it first loads keeps its outlet label there.
+    const redirects = createServer((request, response) => {
+      if (request.url.startsWith('/moved')) {
+        response.writeHead(302, { location: `http://127.0.0.1:${redirects.address().port}/article` })
+        response.end()
+        return
+      }
+      response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
+      response.end('<!doctype html><html lang="en"><title>Article</title><h1>Article</h1></html>')
+    })
+    await new Promise((resolve) => redirects.listen(0, '127.0.0.1', resolve))
+    try {
+      const port = redirects.address().port
+      await ctx.evaluate(`window.intoponet.browserHost.openCompare({ id: 'redirect-story', title: 'A story' }, { url: 'http://127.0.0.1:${port}/article', outlet: 'Left Outlet', countryCode: 'GB' }, { url: 'http://localhost:${port}/moved', outlet: 'Moved Outlet', countryCode: 'FR' }).then(() => true)`)
+      let moved = null
+      for (let i = 0; i < 40 && !moved; i += 1) {
+        const now = await stateOf()
+        if (now.split?.left?.compare?.outlet === 'Left Outlet' && now.split.right.url.startsWith(`http://127.0.0.1:${port}/article`)) moved = now.split.right
+        else await ctx.delay(250)
+      }
+      expect(moved?.compare?.outlet === 'Moved Outlet', `The right side lost its outlet label after its link redirected to another host: ${JSON.stringify(moved)}.`)
+    } finally {
+      redirects.close()
+    }
     return `Compared "${front}" with ${split.right.compare.outlet} (${split.right.compare.country}): two pages ${a.width}×${a.height} and ${b.width}×${b.height}, side by side at y ${a.y}; headers read "${headers.map((h) => h.origin).join('" and "')}"; ${translateNote}; The Olds opened for the story; ${paywalls} paywall badge(s) on the pair.`
   },
 

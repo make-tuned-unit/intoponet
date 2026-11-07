@@ -142,7 +142,7 @@ import { headlinesNearAnchor } from '../../shared/news/anchorHeadlines'
 import { useNowPlaying } from './nowPlaying/NowPlayingControl'
 import { PageTabStrip } from './PageTabStrip'
 import './shellChrome.css'
-import { SplitChrome, rectStyle as splitRectStyle } from './SplitPages'
+import { SplitChrome, SplitStartFrame } from './SplitPages'
 import { BookmarkPane, type PaneFilter } from './BookmarkPane'
 import { groupOf, moveBookmarkToGroup, UNSORTED_GROUP_ID } from './bookmarkGroups'
 import { AnimatePresence } from 'motion/react'
@@ -4407,7 +4407,7 @@ export function App() {
           <div ref={panelBody} className="browser-body">
             {/* Beside another page, a start or error page fills only its own half (the other is a page). */}
             {panel.isVisible && panel.loadError && !onStartPage && (
-              <div className={panel.split ? 'split-start-frame' : 'split-start-plain'} style={panel.split ? splitRectStyle(panel.split.sides[panel.split.focused]) : undefined}>
+              <SplitStartFrame rect={panel.split?.sides[panel.split.focused]}>
                 <ErrorPage
                   error={panel.loadError}
                   canGoBack={panel.canGoBack}
@@ -4416,10 +4416,10 @@ export function App() {
                   onBack={() => void window.intoponet.browserHost.back()}
                   onTurnOffTweaks={failedSiteHasTweaks ? () => void window.intoponet.browserHost.siteTweaks.setEnabled(false).then(() => window.intoponet.browserHost.reload()) : undefined}
                 />
-              </div>
+              </SplitStartFrame>
             )}
             {onStartPage && (
-              <div className={panel.split ? 'split-start-frame' : 'split-start-plain'} style={panel.split ? splitRectStyle(panel.split.sides[panel.split.focused]) : undefined}>
+              <SplitStartFrame rect={panel.split?.sides[panel.split.focused]}>
                 <StartPage
                   tabId={tabs.find((tab) => tab.active)?.id ?? ''}
                   bookmarks={startPageBookmarks}
@@ -4430,7 +4430,7 @@ export function App() {
                   onSubmit={submitFromStartPage}
                   onOpen={(url) => void submitFromStartPage(url).catch(() => undefined)}
                 />
-              </div>
+              </SplitStartFrame>
             )}
           </div>
         </section>
