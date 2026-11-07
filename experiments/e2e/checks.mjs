@@ -3628,6 +3628,21 @@ export const checks = {
       await ctx.delay(600)
       expect(await quickCount() === 1, 'Escape in an edited address field closed the quick window.')
       expect(await mainCall("toolbarOf(quick()[0]).executeJavaScript(\"document.getElementById('address').value\")") === `${origin}/typed`, 'Escape did not revert the edited address field.')
+      // ⌘L and some typing, then a click into the page and a link followed there: no stale typed text stays in the field.
+      await mainCall("toolbarOf(quick()[0]).focus()")
+      await mainCall("toolbarOf(quick()[0]).executeJavaScript('window.quickFocusAddress()')")
+      await ctx.delay(300)
+      await mainCall("toolbarOf(quick()[0]).insertText('stale words')")
+      await ctx.delay(300)
+      await mainCall("pageOf(quick()[0]).focus()")
+      await ctx.delay(300)
+      await clickLinkIn('/typed')
+      await until(async () => (await pageUrl()).endsWith('/quick-next'), 'the link followed in the page to load')
+      await ctx.delay(500)
+      const afterLink = JSON.parse(await mainCall(`toolbarOf(quick()[0]).executeJavaScript("JSON.stringify([document.getElementById('address').value, document.getElementById('address').readOnly])")`))
+      expect(afterLink[0] === `${origin}/quick-next` && afterLink[1] === true, `After typing, clicking into the page and following a link, the address field shows "${afterLink[0]}"${afterLink[1] ? '' : ' and is still being edited'}.`)
+      await mainCall('(() => { pageOf(quick()[0]).navigationHistory.goBack(); return true })()')
+      await until(async () => (await pageUrl()).endsWith('/typed'), 'Back to the typed page')
       // ⌘T in a quick window opens a tab in the main window, which comes forward; the quick window stays.
       const tabsBeforeNewTab = (await tabUrls()).length
       await ctx.keyInPage('/typed', 'T', ['meta'])

@@ -120,6 +120,49 @@ describe('the toolbar page', () => {
     address.blur()
     expect(address.readOnly).toBe(true)
     expect(sent.at(-1)).toEqual({ type: 'editing', on: false })
+
+    // ⌘L, some typing, then a click into the page: the typed text goes, and the field follows the page again.
+    ;(window['quickFocusAddress'] as () => void)()
+    address.value = 'stale words'
+    // The toolbar page loses focus to the page, but its field stays the toolbar's focus (as when the window goes to the back).
+    fire(address, 'blur')
+    expect(address.value).toBe('stale words')
+    ;(window['quickLeaveAddress'] as () => void)()
+    expect(address.value).toBe('https://example.org/')
+    expect(address.readOnly).toBe(true)
+    expect(sent.at(-1)).toEqual({ type: 'editing', on: false })
+    ;(window['quickRender'] as (next: ReturnType<typeof state>) => void)(state({ address: 'https://example.org/next' }))
+    expect(address.value).toBe('https://example.org/next')
+    // Not editing: a click into the page changes nothing.
+    sent.length = 0
+    ;(window['quickLeaveAddress'] as () => void)()
+    expect(sent).toEqual([])
+    expect(address.value).toBe('https://example.org/next')
+  })
+
+  it('keeps what is typed in an empty window when its blank page is clicked', () => {
+    type Fake = { value: string; readOnly: boolean; hidden: boolean; textContent: string; listeners: Record<string, Array<(event: unknown) => void>>; addEventListener: (type: string, listener: (event: unknown) => void) => void; focus: () => void; blur: () => void; select: () => void }
+    const body = {}
+    const document = { activeElement: body as unknown, getElementById: (id: string) => elements[id] }
+    const fake = (): Fake => {
+      const element: Fake = {
+        value: '', readOnly: false, hidden: false, textContent: '', listeners: {},
+        addEventListener: (type, listener) => { (element.listeners[type] ??= []).push(listener) },
+        focus: () => { document.activeElement = element },
+        blur: () => { document.activeElement = body },
+        select: () => undefined,
+      }
+      return element
+    }
+    const elements: Record<string, Fake> = Object.fromEntries(['address', 'secure', 'private', 'protection', 'error', 'always', 'open', 'close'].map((id) => [id, fake()]))
+    const window: Record<string, unknown> = {}
+    new Function('document', 'window', 'console', scriptOf(quickToolbarHtml(state({ address: '', hasPage: false }))))(document, window, { log: () => undefined })
+    const address = elements['address']!
+    expect(document.activeElement).toBe(address)
+    address.value = 'lisb'
+    ;(window['quickLeaveAddress'] as () => void)()
+    expect(address.value).toBe('lisb')
+    expect(document.activeElement).toBe(address)
   })
 })
 
