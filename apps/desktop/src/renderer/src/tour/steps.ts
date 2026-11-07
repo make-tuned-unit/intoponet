@@ -3,11 +3,20 @@
  * the app does to show it. Steps drive the real interface through TourControls,
  * and the tour leaves the user's data alone (nothing is saved, shared or
  * absorbed); everything it opens is closed again at the end.
+ *
+ * Each step sets up everything it shows, so it looks the same played forward,
+ * gone back to, or jumped to by its progress dot; a setup that finds its state
+ * already there changes nothing.
  */
 
 export type TourControls = {
   /** Back to the whole Earth, every panel closed. */
   reset(): void
+  /**
+   * The globe in front with no panel open: the tour's page put away, the address bar empty. The camera,
+   * the list and a pinned story stay as they are.
+   */
+  showGlobe(): void
   /** Turn the globe slowly by this many degrees. */
   spin(degrees: number, ms: number): Promise<void>
   /** Fly to a place by name, typing it into the search first so you see how. */
@@ -20,18 +29,26 @@ export type TourControls = {
   typeInAddressBar(text: string): Promise<void>
   /** Show the globe's list: World stories, Peaks… */
   showList(view: 'world' | 'top' | 'rising'): void
-  /** Open the most widely covered story in the World list; its headline, if any. */
-  openWorldStory(): Promise<string | null>
+  /**
+   * Open the most widely covered story in the World list, with its sources up for `sources` (and put away
+   * otherwise); its headline, if any. Already open, nothing changes.
+   */
+  openWorldStory(sources?: boolean): Promise<string | null>
   /** Look up a headline's history ahead of time (so its step opens at once). */
   prepareOlds(headline: string): void
-  /** Open The Olds for a headline; resolves when its story is showing. */
+  /**
+   * The Olds for a headline, over the globe (the page and other panels put away); resolves when it has
+   * finished looking. Already showing that headline, nothing changes.
+   */
   openOlds(headline: string): Promise<void>
-  closeOlds(): void
   showBookmarks(open: boolean): void
   showMyMap(open: boolean): void
-  /** Open a web page, and keep it out of the way while the tour talks. */
-  openPage(url: string): Promise<void>
-  hidePage(hidden: boolean): void
+  /**
+   * A web page in a tab of the tour's own, kept out of the way while the tour talks, with no panel over
+   * it; the same tab again when it is still open. `sidebar`: the tab sidebar shown open for this step
+   * (the saved sidebar is not changed).
+   */
+  showPage(url: string, options?: { sidebar?: boolean }): Promise<void>
   showKnowledge(open: boolean): void
   /** Put everything back as it was. */
   finish(): void
@@ -46,6 +63,7 @@ export type TourStep = {
   target?: string | string[]
   /** How long the step stays when playing. */
   seconds?: number
+  /** Sets up everything the step shows, whichever step came before; run again on a state already there, it changes nothing. */
   run?: (controls: TourControls, context: TourContext) => Promise<void> | void
 }
 
@@ -53,6 +71,18 @@ export type TourStep = {
 export type TourContext = { headline: string | null }
 
 const PAGE = 'https://en.wikipedia.org/wiki/Earth'
+
+/** The page behind the browsing, tab and workspace steps. */
+const showPage = (controls: TourControls): Promise<void> => controls.showPage(PAGE)
+/** The workspace steps: the page, with the sidebar open so its workspace controls show. */
+const showPageWithSidebar = (controls: TourControls): Promise<void> => controls.showPage(PAGE, { sidebar: true })
+
+/** The Olds for the world story the tour opened (looked up again when a step is reached by its dot). */
+const showOlds = async (controls: TourControls, context: TourContext): Promise<void> => {
+  const opened = await controls.openWorldStory()
+  context.headline ??= opened
+  await controls.openOlds(context.headline ?? 'Russia-Ukraine ceasefire talks')
+}
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -73,7 +103,10 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'Each ripple is public activity: local news from 450 outlets, what Wikipedia readers are opening, earthquakes and storms. Brighter and wider means more. Hover to preview, click to explore.',
     target: '.globe-panel',
     seconds: 9,
-    run: (controls) => controls.showList('top'),
+    run: (controls) => {
+      controls.showGlobe()
+      controls.showList('top')
+    },
   },
   {
     id: 'fly',
@@ -83,6 +116,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: '.command-dock',
     seconds: 9,
     run: async (controls) => {
+      controls.showGlobe()
       controls.closeStory()
       await controls.flyTo('Lisbon')
     },
@@ -94,7 +128,10 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'The same bar completes what you type from your open tabs, bookmarks, history and places, all ranked on this Mac. Nothing you type is sent anywhere until you choose a search.',
     target: '.command-dock',
     seconds: 9,
-    run: async (controls) => { await controls.typeInAddressBar('wiki') },
+    run: async (controls) => {
+      controls.showGlobe()
+      await controls.typeInAddressBar('wiki')
+    },
   },
   {
     id: 'commands',
@@ -103,7 +140,10 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'Press ⌘K, or type > first, and the bar lists what Intoponet can do — copy a clean link, save a PDF, translate, hide the sidebar, fly to the highest peak — with your tabs and places below. Type a few letters and press Return.',
     target: '.command-dock',
     seconds: 9,
-    run: async (controls) => { await controls.typeInAddressBar('> ') },
+    run: async (controls) => {
+      controls.showGlobe()
+      await controls.typeInAddressBar('> ')
+    },
   },
   {
     id: 'peaks',
@@ -125,7 +165,11 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'Hover a summit and strands run over the Earth to every country that covered it. Click to pin it: each country’s first headline, in the order coverage appeared. Height counts outlets, not importance.',
     target: '.story-panel',
     seconds: 11,
-    run: async (controls) => { await controls.findHighestPeak() },
+    run: async (controls) => {
+      await controls.typeInAddressBar('')
+      controls.reset()
+      await controls.findHighestPeak()
+    },
   },
   {
     id: 'world',
@@ -148,6 +192,12 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'Under a world story’s sources, choose Compare and pick another outlet: the two articles sit side by side, each labelled with its outlet and country, each translatable on its own, with The Olds for the story one click away.',
     target: ['.sc-compare', '.globe-panel'],
     seconds: 9,
+    run: async (controls, context) => {
+      await controls.typeInAddressBar('')
+      controls.reset()
+      const opened = await controls.openWorldStory(true)
+      context.headline ??= opened
+    },
   },
   {
     id: 'olds',
@@ -156,7 +206,7 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'The Olds finds the ongoing story a headline belongs to, then walks back through how we got here: dated events from Wikipedia and its daily Current events, with every step linked to its source.',
     target: '.olds-sheet',
     seconds: 12,
-    run: (controls, context) => controls.openOlds(context.headline ?? 'Russia-Ukraine ceasefire talks'),
+    run: showOlds,
   },
   {
     id: 'olds-views',
@@ -165,6 +215,7 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'Read it as a story, drag through it as a timeline, or scan it as a list. Pick any step to follow its own history. For a headline you open, The Olds also shows what that outlet wrote about the story before, from its topic pages and the Wayback Machine.',
     target: '.olds-sheet',
     seconds: 11,
+    run: showOlds,
   },
   {
     id: 'bookmarks',
@@ -174,7 +225,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: '.bookmark-pane',
     seconds: 9,
     run: (controls) => {
-      controls.closeOlds()
+      controls.showGlobe()
       controls.showBookmarks(true)
     },
   },
@@ -186,7 +237,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: '.topbar-actions [data-panel="library"]',
     seconds: 8,
     run: (controls) => {
-      controls.showBookmarks(false)
+      controls.showGlobe()
       controls.showMyMap(true)
     },
   },
@@ -197,11 +248,7 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'Open any site and the toolbar gives you protection from ads and trackers, translation, capture, PDF, pins and Absorb. The page is paused behind the tour while we look at them.',
     target: '.browser-actions',
     seconds: 10,
-    run: async (controls) => {
-      controls.showMyMap(false)
-      await controls.openPage(PAGE)
-      controls.hidePage(true)
-    },
+    run: showPage,
   },
   {
     id: 'translate',
@@ -210,6 +257,7 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'Pages and headlines in other languages translate themselves into yours, on this Mac: no text is sent to a translation service. Turn it off, or never translate a language, in Settings.',
     target: '.browser-actions [aria-label^="Translat"]',
     seconds: 9,
+    run: showPage,
   },
   {
     id: 'pdf',
@@ -218,6 +266,7 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'One click keeps a page as a tidy, searchable PDF without the ads and pop-ups, with links that still work. Add it to your bookmarks to find it on the map later.',
     target: '[aria-label="Save this page as PDF"]',
     seconds: 9,
+    run: showPage,
   },
   {
     id: 'capture',
@@ -226,6 +275,7 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'Capture a part of any page as an image, or record it as a video. Captures go into folders you name, on this Mac.',
     target: '[aria-label="Capture this page: screenshot or recording"]',
     seconds: 8,
+    run: showPage,
   },
   {
     id: 'link-preview',
@@ -234,6 +284,7 @@ export const TOUR_STEPS: TourStep[] = [
     body: '⇧-click a link, or a headline in the World list, and it opens in a card over the page or the globe, with the same protection. Escape puts it away; Open as Tab keeps it.',
     target: '.browser-body',
     seconds: 8,
+    run: showPage,
   },
   {
     id: 'site-tweaks',
@@ -242,6 +293,7 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'Open a site’s protection bar and choose Customize site: point at an element to hide it, pick a reading width, a font or light or dark colours, or add your own styles. They apply on every visit to that site, stay on this Mac, and never run a script.',
     target: '[aria-controls="protection-panel"]',
     seconds: 11,
+    run: showPage,
   },
   {
     id: 'split-pages',
@@ -250,6 +302,7 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'Drag a tab to the left or right edge of the page, or choose Split with Next Tab in a tab’s menu, and the two pages sit side by side with a divider you can drag. Each side has its own address, find and zoom; ⌃⇧- puts them back together.',
     target: '.browser-body',
     seconds: 9,
+    run: showPage,
   },
   {
     id: 'video-follows-you',
@@ -258,6 +311,7 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'Turn on “Float playing video when you switch tabs” in Settings › Browsing, and a video keeps playing in a small window when you leave its tab. The sidebar shows what is playing, with play, pause, mute and go-to-tab buttons.',
     target: '.tab-rail',
     seconds: 10,
+    run: showPage,
   },
   {
     id: 'quick-window',
@@ -266,6 +320,7 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'A link from Mail or Slack can open in a small quick window above your work; ⌘O moves it into a tab with its history, and closing it leaves nothing behind. Choose Always open here… and that site’s links go straight to a workspace from then on. Both are in Settings › Browsing.',
     target: '.settings-button',
     seconds: 11,
+    run: showPage,
   },
   {
     id: 'basics',
@@ -273,6 +328,7 @@ export const TOUR_STEPS: TourStep[] = [
     title: 'The everyday things, done carefully',
     body: 'Saved passwords that fill only when you click, downloads you can pause and check, History (⌘Y), reopening closed tabs (⇧⌘T), per-site zoom, and a real menu bar. Settings brings your bookmarks, tabs, history and passwords over from Chrome, Arc, Brave, Edge or Vivaldi, on this Mac, and makes Intoponet your default browser.',
     seconds: 10,
+    run: showPage,
   },
   {
     id: 'tabs',
@@ -281,6 +337,7 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'Keep the sidebar open, even full width, with pinned tabs on top. A pinned tab remembers its home and offers the way back; closing it only puts it to sleep. ⌃⌘S hides the sidebar — rest the pointer at the left edge to bring it back.',
     target: '.tab-rail',
     seconds: 11,
+    run: showPage,
   },
   {
     id: 'tab-care',
@@ -289,6 +346,7 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'Tabs you have not looked at for an hour sleep to save memory and wake where you left them. ⌃Tab can go most-recently-used first, and ⇧⌘C copies a page’s address without its tracking codes. All in Settings › Browsing.',
     target: '.tab-rail',
     seconds: 10,
+    run: showPage,
   },
   {
     id: 'tab-folders',
@@ -297,6 +355,7 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'Drag tabs into folders that nest and fold, and save a folder as a collection in your library. If you choose, tabs you have not looked at for a while close into Archived tabs: the address bar finds them and reopens them where they were.',
     target: '.tab-rail',
     seconds: 10,
+    run: showPage,
   },
   {
     id: 'tabs-story',
@@ -305,6 +364,7 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'An article in a tab that matches a world story wears a small mountain in the sidebar. Group by story puts those tabs in one folder, and hovering the folder shows the story’s peak on the globe. It all happens on this Mac.',
     target: ['[aria-label="Group by story"]', '.tab-rail'],
     seconds: 10,
+    run: showPage,
   },
   {
     id: 'tidy',
@@ -313,6 +373,7 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'With Laya on, Tidy reads your loose tabs’ titles on this Mac and suggests folders for them. You see every folder before anything moves, and Undo puts the tabs back. Private tabs are never read.',
     target: ['[aria-label="Tidy tabs"]', '.tab-rail'],
     seconds: 9,
+    run: showPage,
   },
   {
     id: 'workspaces',
@@ -321,6 +382,7 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'Make a workspace for work, a trip or a story you follow: each has its own name, colour, pinned tabs, folders and open tabs. Switch with ⌃1–9, a sideways swipe on the sidebar, or the command menu; sleeping tabs stay asleep. A favourites row can be shared by every workspace, and private browsing is never part of one.',
     target: ['.tab-rail-workspaces', '[aria-label="New workspace"]', '.tab-rail'],
     seconds: 10,
+    run: showPageWithSidebar,
   },
   {
     id: 'place-workspaces',
@@ -329,6 +391,7 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'Choose Anchor to a place from a workspace’s menu, and switching to it flies the globe there while your page stays open. Its sidebar lists that place’s latest headlines, and tabs you open from them stay in that workspace. Only your own map shows the anchor.',
     target: ['[aria-label^="Actions for workspace"]', '.tab-rail-workspaces', '[aria-label="New workspace"]', '.tab-rail'],
     seconds: 11,
+    run: showPageWithSidebar,
   },
   {
     id: 'sign-ins',
@@ -337,6 +400,7 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'Choose Separate sign-ins from a workspace’s menu and it keeps its own cookies, site data, saved passwords and permissions, so a site you are signed in to in Main does not know you there. Turning it off, or clearing it, deletes only that workspace’s data.',
     target: ['[aria-label^="Actions for workspace"]', '.tab-rail-workspaces', '[aria-label="New workspace"]', '.tab-rail'],
     seconds: 11,
+    run: showPageWithSidebar,
   },
   {
     id: 'absorb',
@@ -345,6 +409,7 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'Absorb keeps a page’s text — or just the passage you select — in your own knowledge: searchable, with its claims and figures checked against each other, and always cited back to the page.',
     target: '[aria-label="Absorb this page into your knowledge"]',
     seconds: 9,
+    run: showPage,
   },
   {
     id: 'knowledge',
@@ -353,8 +418,8 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'Everything you absorb is here. Turn on Laya and it finds pages by meaning and answers with quotes from them — all on this Mac, with no network.',
     target: '.knowledge-sheet',
     seconds: 10,
-    run: (controls) => {
-      controls.hidePage(true)
+    run: async (controls) => {
+      await controls.showPage(PAGE)
       controls.showKnowledge(true)
     },
   },
@@ -365,7 +430,7 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'Pin a page, then choose to publish it as a beacon: a signed, anonymous light on the public globe that others can follow. You see exactly what is shared before anything leaves this Mac, and you can withdraw it.',
     target: '[aria-label="Pin current page to My map"], [aria-label="Edit current page pin"]',
     seconds: 11,
-    run: (controls) => controls.showKnowledge(false),
+    run: showPage,
   },
   {
     id: 'done',

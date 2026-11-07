@@ -1,20 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { ArrowLeft, ArrowRight, Pause, Play, X } from 'lucide-react'
 import { TOUR_STEPS, type TourContext, type TourControls } from './steps'
 import './tour.css'
 
 type Box = { left: number; top: number; width: number; height: number }
+/** The spotlight: where it is, and the selector it found (the step's own target, or a fallback). */
+type Lit = { box: Box; target: string }
 
 const PAD = 10
 const CARD_WIDTH = 380
 
 /** Where the spotlight goes: the first visible match of the first target that has one, with a little room around it. */
-function boxOf(target: string | string[] | undefined): Box | null {
+function litOf(target: string | string[] | undefined): Lit | null {
   for (const selector of typeof target === 'string' ? [target] : target ?? []) {
     for (const element of document.querySelectorAll<HTMLElement>(selector)) {
       const rect = element.getBoundingClientRect()
-      if (rect.width > 4 && rect.height > 4) return { left: rect.left - PAD, top: rect.top - PAD, width: rect.width + PAD * 2, height: rect.height + PAD * 2 }
+      if (rect.width > 4 && rect.height > 4) return { box: { left: rect.left - PAD, top: rect.top - PAD, width: rect.width + PAD * 2, height: rect.height + PAD * 2 }, target: selector }
     }
   }
   return null
@@ -42,7 +45,8 @@ export function Tour({ controls, onClose }: { controls: TourControls; onClose: (
   const reduceMotion = useReducedMotion()
   const [index, setIndex] = useState(0)
   const [playing, setPlaying] = useState(false)
-  const [box, setBox] = useState<Box | null>(null)
+  const [lit, setLit] = useState<Lit | null>(null)
+  const box = lit?.box ?? null
   const [busy, setBusy] = useState(false)
   const [elapsed, setElapsed] = useState(0)
   const context = useRef<TourContext>({ headline: null })
@@ -55,7 +59,7 @@ export function Tour({ controls, onClose }: { controls: TourControls; onClose: (
     setBusy(true)
     setElapsed(0)
     void Promise.resolve(step.run?.(controls, context.current)).catch(() => undefined).finally(() => { if (!cancelled) setBusy(false) })
-    const follow = window.setInterval(() => setBox(boxOf(step.target)), 120)
+    const follow = window.setInterval(() => setLit(litOf(step.target)), 120)
     return () => {
       cancelled = true
       window.clearInterval(follow)
@@ -92,23 +96,28 @@ export function Tour({ controls, onClose }: { controls: TourControls; onClose: (
     return () => cancelAnimationFrame(frame)
   }, [playing, busy, index]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Listening from the start, never re-added: the tour hears its keys before anything a step opens (the
+  // sources carousel would otherwise take Enter and open an article).
+  const keys = useRef({ close, next, back })
+  keys.current = { close, next, back }
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') { event.preventDefault(); event.stopImmediatePropagation(); close() }
-      else if (event.key === 'ArrowRight' || event.key === 'Enter') { event.preventDefault(); event.stopImmediatePropagation(); next() }
-      else if (event.key === 'ArrowLeft') { event.preventDefault(); event.stopImmediatePropagation(); back() }
+      if (event.key === 'Escape') { event.preventDefault(); event.stopImmediatePropagation(); keys.current.close() }
+      else if (event.key === 'ArrowRight' || event.key === 'Enter') { event.preventDefault(); event.stopImmediatePropagation(); keys.current.next() }
+      else if (event.key === 'ArrowLeft') { event.preventDefault(); event.stopImmediatePropagation(); keys.current.back() }
       else if (event.key === ' ') { event.preventDefault(); event.stopImmediatePropagation(); setPlaying((value) => !value) }
     }
     window.addEventListener('keydown', onKey, { capture: true })
     return () => window.removeEventListener('keydown', onKey, { capture: true })
-  }, [close, next, back])
+  }, [])
 
   const place = cardPlace(box)
   const spring = reduceMotion ? { duration: 0 } : { type: 'spring' as const, stiffness: 170, damping: 24 }
-  return (
+  // Over everything, including what a step opens in a layer of its own (the sources carousel).
+  return createPortal(
     <div className="tour" role="dialog" aria-modal="true" aria-labelledby="tour-title" aria-describedby="tour-body">
       {box ? (
-        <motion.div className="tour-spotlight" aria-hidden="true" initial={false} animate={box} transition={spring} />
+        <motion.div className="tour-spotlight" aria-hidden="true" data-target={lit?.target} initial={false} animate={box} transition={spring} />
       ) : (
         <motion.div className="tour-dim" aria-hidden="true" initial={{ opacity: 0 }} animate={{ opacity: 1 }} />
       )}
@@ -151,6 +160,7 @@ export function Tour({ controls, onClose }: { controls: TourControls; onClose: (
           </button>
         </footer>
       </motion.section>
-    </div>
+    </div>,
+    document.body,
   )
 }

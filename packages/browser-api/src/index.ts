@@ -17,6 +17,8 @@ export type BrowserPanelSnapshot = {
   isVisible: boolean
   /** The page is in a private tab: nothing about it is recorded. */
   isPrivate?: boolean
+  /** The page is in a tab that leaves no trace (the guided tour's): no history, no recent page. */
+  untracked?: boolean
   /** The active tab is a new tab that has not loaded a page yet: the shell draws its start page. */
   isStartPage?: boolean
   /** No page has arrived in the tab yet (it is loading, or waits after a crash): `url` is the address it is loading. */
@@ -340,7 +342,11 @@ export type PublicSourceHealth = {
 }
 
 export interface BrowserHostApi {
-  open(intent: NavigationIntent, disposition?: OpenDisposition): Promise<void>
+  /**
+   * `untracked` (with a disposition): a tab that leaves no trace, for the guided tour: no history visit, no
+   * recent page, never in Recently closed or Archived tabs, never saved with the open tabs.
+   */
+  open(intent: NavigationIntent, disposition?: OpenDisposition, options?: { untracked?: boolean }): Promise<void>
   /** Open a new tab on the start page and switch to it. */
   newTab(): Promise<void>
   close(): Promise<void>
@@ -458,7 +464,7 @@ export type OpenDisposition = 'background-tab' | 'foreground-tab'
 
 export type BrowserHostCommand =
   /** `disposition`: open in a new tab — in the background, or brought to front even from a start page. */
-  | { type: 'open'; intent: NavigationIntent; disposition?: OpenDisposition }
+  | { type: 'open'; intent: NavigationIntent; disposition?: OpenDisposition; untracked?: true }
   | { type: 'new-tab' }
   | { type: 'close' }
   | { type: 'restore' }
@@ -759,7 +765,10 @@ export function parseBrowserHostCommand(value: unknown): BrowserHostCommand {
       if (disposition !== undefined && disposition !== 'background-tab' && disposition !== 'foreground-tab') {
         throw new Error('Invalid open disposition.')
       }
-      return { type, intent: parseIntent(value['intent']), ...(disposition ? { disposition } : {}) }
+      // A page that leaves no trace opens in a tab of its own, never in one of yours.
+      const untracked = value['untracked'] === true
+      if (untracked && !disposition) throw new Error('An untracked page needs a tab of its own.')
+      return { type, intent: parseIntent(value['intent']), ...(disposition ? { disposition } : {}), ...(untracked ? { untracked: true as const } : {}) }
     }
     case 'navigate':
       if (

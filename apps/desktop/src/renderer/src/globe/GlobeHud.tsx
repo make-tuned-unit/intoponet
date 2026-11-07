@@ -484,6 +484,8 @@ export function SignalPanel({
     stories: GlobalStory[]
     inTheNews: WikiNewsItem[]
     focusedId: string | null
+    /** The story whose sources the guided tour shows (its Compare step); null puts them away. */
+    sourcesFor?: string | null
     onFocus: (story: GlobalStory | null) => void
     onArticleHistory: (title: string) => void
   } | undefined
@@ -669,6 +671,7 @@ export function SignalPanel({
                     inTheNews={world?.inTheNews ?? []}
                     now={now}
                     focusedId={world?.focusedId ?? null}
+                    sourcesFor={world?.sourcesFor ?? null}
                     onFocus={(story) => world?.onFocus(story)}
                     onOpen={onOpen}
                     onHistory={(headline, english) => onHeadlineHistory?.(headline, english, null)}
