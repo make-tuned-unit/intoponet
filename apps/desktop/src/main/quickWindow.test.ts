@@ -97,6 +97,8 @@ describe('messages from the toolbar', () => {
   it('reads its own commands', () => {
     expect(parseQuickToolbarMessage('intoponet-quick:{"type":"open-in-main"}')).toEqual({ type: 'open-in-main' })
     expect(parseQuickToolbarMessage('intoponet-quick:{"type":"close"}')).toEqual({ type: 'close' })
+    expect(parseQuickToolbarMessage('intoponet-quick:{"type":"always-here"}')).toEqual({ type: 'always-here' })
+    expect(quickToolbarHtml({ address: '', hasPage: false, secure: false, isPrivate: false, blocked: 0, protectionOn: true, error: '' })).toContain('id="always"')
     expect(parseQuickToolbarMessage('intoponet-quick:{"type":"go","value":"lisbon"}')).toEqual({ type: 'go', value: 'lisbon' })
     expect(parseQuickToolbarMessage('intoponet-quick:{"type":"editing","on":true}')).toEqual({ type: 'editing', on: true })
     expect(parseQuickToolbarMessage('intoponet-quick:{"type":"editing","on":"yes"}')).toBeNull()

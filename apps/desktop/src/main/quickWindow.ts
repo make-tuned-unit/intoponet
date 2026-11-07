@@ -78,6 +78,7 @@ const toolbarScript = `(() => {
   const isPrivate = document.getElementById('private')
   const protection = document.getElementById('protection')
   const error = document.getElementById('error')
+  const always = document.getElementById('always')
   const send = (message) => console.log(${JSON.stringify(MESSAGE_PREFIX)} + JSON.stringify(message))
   let hasPage = false
   let shown = initialState.address
@@ -93,6 +94,8 @@ const toolbarScript = `(() => {
     isPrivate.hidden = !state.isPrivate
     protection.textContent = !state.hasPage ? '' : state.protectionOn ? state.blocked + ' blocked' : 'Protection paused'
     protection.hidden = !state.hasPage
+    // Rules never apply to private browsing, and an empty window has no site to file under.
+    always.hidden = state.isPrivate || !state.hasPage
     error.textContent = state.error
     error.hidden = !state.error
     return true
@@ -113,6 +116,7 @@ const toolbarScript = `(() => {
   })
   address.addEventListener('focus', () => send({ type: 'editing', on: true }))
   address.addEventListener('blur', () => { address.readOnly = hasPage; send({ type: 'editing', on: false }) })
+  document.getElementById('always').addEventListener('click', () => send({ type: 'always-here' }))
   document.getElementById('open').addEventListener('click', () => send({ type: 'open-in-main' }))
   document.getElementById('close').addEventListener('click', () => send({ type: 'close' }))
   window.quickFocusAddress = () => { address.readOnly = false; address.focus(); address.select(); return true }
@@ -139,6 +143,7 @@ export function quickToolbarHtml(state: QuickToolbarState): string {
     <input id="address" type="text" aria-label="Address" spellcheck="false" autocomplete="off" placeholder="Type an address or a search">
     <span id="protection" class="tag" hidden></span>
   </div>
+  <button id="always" type="button" hidden>Always open here…</button>
   <button id="open" type="button">Open in Intoponet <kbd>⌘O</kbd></button>
   <button id="close" type="button" aria-label="Close quick window">Close <kbd>Esc</kbd></button>
 </div>
@@ -146,7 +151,7 @@ export function quickToolbarHtml(state: QuickToolbarState): string {
 <script>${script}</script></body></html>`
 }
 
-export type QuickToolbarMessage = { type: 'open-in-main' } | { type: 'close' } | { type: 'go'; value: string } | { type: 'editing'; on: boolean }
+export type QuickToolbarMessage = { type: 'open-in-main' } | { type: 'always-here' } | { type: 'close' } | { type: 'go'; value: string } | { type: 'editing'; on: boolean }
 
 /** A line the toolbar page logged: its own commands only; anything else is ignored. */
 export function parseQuickToolbarMessage(message: unknown): QuickToolbarMessage | null {
@@ -160,6 +165,7 @@ export function parseQuickToolbarMessage(message: unknown): QuickToolbarMessage 
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return null
   const v = value as Record<string, unknown>
   if (v['type'] === 'open-in-main') return { type: 'open-in-main' }
+  if (v['type'] === 'always-here') return { type: 'always-here' }
   if (v['type'] === 'close') return { type: 'close' }
   if (v['type'] === 'editing' && typeof v['on'] === 'boolean') return { type: 'editing', on: v['on'] }
   if (v['type'] === 'go' && typeof v['value'] === 'string' && v['value'].length <= MAX_ADDRESS) return { type: 'go', value: v['value'] }
@@ -221,6 +227,8 @@ export type QuickWindowHost = {
   changed: () => void
   /** A menu command pressed in a quick window: the main window comes forward and runs it. */
   runInMain: (command: AppCommand) => void
+  /** "Always open here…": offers the workspaces in a menu over `win`; the choice runs `moveHere` (which makes the page a tab). */
+  alwaysOpenHere: (url: string, win: BrowserWindow, moveHere: () => boolean) => void
 }
 
 type Entry = {
@@ -370,8 +378,17 @@ export class QuickWindows {
   private toolbarMessage(entry: Entry, message: QuickToolbarMessage): void {
     if (message.type === 'close') this.dispose(entry)
     else if (message.type === 'open-in-main') this.adopt(entry)
+    else if (message.type === 'always-here') this.alwaysHere(entry)
     else if (message.type === 'editing') entry.editing = message.on
     else this.navigate(entry, message.value)
+  }
+
+  /** A site rule from this window's page; the chosen workspace shows the page as its tab. Private windows have no rules. */
+  private alwaysHere(entry: Entry): void {
+    if (entry.closed || entry.isPrivate || entry.page.webContents.isDestroyed()) return
+    const url = safeWebUrl(entry.page.webContents.getURL()) ?? entry.url
+    if (!url) return
+    this.host.alwaysOpenHere(url, entry.win, () => !entry.closed && this.adopt(entry))
   }
 
   /** The toolbar's address: a web address, or a search (as the address bar reads them). */

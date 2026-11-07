@@ -10,7 +10,7 @@ import { passwordChannels, type PasswordApi, type PasswordCommand, type Password
 import { browserImportChannels, type BrowserImportApi, type BrowserImportCommand, type ImportPreview, type ImportProfile, type ImportRunResult } from '../shared/browserImport'
 import { downloadChannels, historyChannels, type DownloadCommand, type DownloadEntry, type DownloadEvent, type DownloadsApi, type HistoryApi, type HistoryCommand, type HistoryEvent } from '@intoponet/browser-api'
 import { updateChannels, type UpdatesApi, type UpdateCommand, type UpdateStatus } from '@intoponet/browser-api'
-import { browsingChannels, type BrowsingApi, type BrowsingCommand, type BrowsingEvent, type BrowsingSettings, type ExternalOpenRequest } from '@intoponet/browser-api'
+import { browsingChannels, type BrowsingApi, type BrowsingCommand, type BrowsingEvent, type BrowsingSettings, type ExternalOpenRequest, type LinkRoutesState } from '@intoponet/browser-api'
 import {
   CAPTURE_SCHEME,
   captureChannels,
@@ -525,6 +525,11 @@ const browsing: BrowsingApi = {
   setLinksFromOtherApps: (choice) => browsingInvoke({ type: 'set-links-from-other-apps', choice }) as Promise<BrowsingSettings>,
   setAutoPictureInPicture: (enabled) => browsingInvoke({ type: 'set-auto-picture-in-picture', enabled }) as Promise<BrowsingSettings>,
   makeDefaultBrowser: () => browsingInvoke({ type: 'make-default-browser' }) as Promise<BrowsingSettings>,
+  linkRoutes: () => browsingInvoke({ type: 'get-link-routes' }) as Promise<LinkRoutesState>,
+  addLinkRoute: (site, workspaceId) => browsingInvoke({ type: 'add-link-route', site, workspaceId }) as Promise<LinkRoutesState>,
+  updateLinkRoute: (id, changes) => browsingInvoke({ type: 'update-link-route', id, ...changes }) as Promise<LinkRoutesState>,
+  moveLinkRoute: (id, toIndex) => browsingInvoke({ type: 'move-link-route', id, toIndex }) as Promise<LinkRoutesState>,
+  removeLinkRoute: (id) => browsingInvoke({ type: 'remove-link-route', id }) as Promise<LinkRoutesState>,
   subscribe: (listener) => {
     const handler = (_event: Electron.IpcRendererEvent, event: BrowsingEvent): void => listener(event)
     ipcRenderer.on(browsingChannels.event, handler)

@@ -72,10 +72,29 @@ export type ExternalOpenRequest = {
   isPrivate: boolean
 }
 
+/** A rule: a link from another app to `site` (or a subdomain of it) opens in `workspaceId`. Kept only on this Mac. */
+export type LinkRouteSnapshot = {
+  id: string
+  /** A host such as example.com: matches it and any subdomain. */
+  site: string
+  workspaceId: string
+  /** The workspace's name, or null when it was deleted (the rule is skipped until it is removed). */
+  workspaceName: string | null
+}
+
+export type LinkRoutesState = {
+  /** In order: the first rule that matches a link wins. */
+  rules: LinkRouteSnapshot[]
+  workspaces: { id: string; name: string }[]
+}
+
+export const LINK_ROUTE_SITE_MAX = 253
+
 export type BrowsingEvent =
   | { type: 'external-request'; request: ExternalOpenRequest }
   | { type: 'external-resolved'; id: string }
   | { type: 'settings'; settings: BrowsingSettings }
+  | { type: 'link-routes'; state: LinkRoutesState }
 
 export type BrowsingCommand =
   | { type: 'external-decide'; id: string; decision: 'open' | 'cancel'; always: boolean }
@@ -88,6 +107,11 @@ export type BrowsingCommand =
   | { type: 'set-tab-archive'; after: TabArchiveAfter }
   | { type: 'set-links-from-other-apps'; choice: LinksFromOtherApps }
   | { type: 'set-auto-picture-in-picture'; enabled: boolean }
+  | { type: 'get-link-routes' }
+  | { type: 'add-link-route'; site: string; workspaceId: string }
+  | { type: 'update-link-route'; id: string; site?: string; workspaceId?: string }
+  | { type: 'move-link-route'; id: string; toIndex: number }
+  | { type: 'remove-link-route'; id: string }
 
 export interface BrowsingApi {
   decideExternal(id: string, decision: 'open' | 'cancel', always?: boolean): Promise<void>
@@ -101,12 +125,20 @@ export interface BrowsingApi {
   setTabArchive(after: TabArchiveAfter): Promise<BrowsingSettings>
   setLinksFromOtherApps(choice: LinksFromOtherApps): Promise<BrowsingSettings>
   setAutoPictureInPicture(enabled: boolean): Promise<BrowsingSettings>
+  /** Rules for links from other apps (linkRoutes): the first matching rule's workspace wins. */
+  linkRoutes(): Promise<LinkRoutesState>
+  addLinkRoute(site: string, workspaceId: string): Promise<LinkRoutesState>
+  updateLinkRoute(id: string, changes: { site?: string; workspaceId?: string }): Promise<LinkRoutesState>
+  moveLinkRoute(id: string, toIndex: number): Promise<LinkRoutesState>
+  removeLinkRoute(id: string): Promise<LinkRoutesState>
   subscribe(listener: (event: BrowsingEvent) => void): () => void
 }
 
 export function isPageAppearance(value: unknown): value is PageAppearance {
   return typeof value === 'string' && (PAGE_APPEARANCES as readonly string[]).includes(value)
 }
+
+const linkRouteText = (value: unknown, max: number): value is string => typeof value === 'string' && value.length > 0 && value.length <= max
 
 export function parseBrowsingCommand(value: unknown): BrowsingCommand {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) throw new Error('Invalid browsing command.')
@@ -135,9 +167,29 @@ export function parseBrowsingCommand(value: unknown): BrowsingCommand {
     case 'set-auto-picture-in-picture':
       if (typeof v['enabled'] !== 'boolean') break
       return { type: 'set-auto-picture-in-picture', enabled: v['enabled'] }
+    case 'add-link-route':
+      if (!linkRouteText(v['site'], LINK_ROUTE_SITE_MAX) || !linkRouteText(v['workspaceId'], 80)) break
+      return { type: 'add-link-route', site: v['site'] as string, workspaceId: v['workspaceId'] as string }
+    case 'update-link-route':
+      if (!linkRouteText(v['id'], 80)) break
+      if (v['site'] !== undefined && !linkRouteText(v['site'], LINK_ROUTE_SITE_MAX)) break
+      if (v['workspaceId'] !== undefined && !linkRouteText(v['workspaceId'], 80)) break
+      return {
+        type: 'update-link-route',
+        id: v['id'] as string,
+        ...(v['site'] !== undefined ? { site: v['site'] as string } : {}),
+        ...(v['workspaceId'] !== undefined ? { workspaceId: v['workspaceId'] as string } : {}),
+      }
+    case 'move-link-route':
+      if (!linkRouteText(v['id'], 80) || typeof v['toIndex'] !== 'number' || !Number.isInteger(v['toIndex']) || v['toIndex'] < 0 || v['toIndex'] > 100) break
+      return { type: 'move-link-route', id: v['id'] as string, toIndex: v['toIndex'] }
+    case 'remove-link-route':
+      if (!linkRouteText(v['id'], 80)) break
+      return { type: 'remove-link-route', id: v['id'] as string }
     case 'external-pending':
     case 'settings':
     case 'make-default-browser':
+    case 'get-link-routes':
       return { type: v['type'] }
   }
   throw new Error('Invalid browsing command.')

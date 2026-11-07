@@ -42,7 +42,7 @@ import { capTitle, capUrl, coalesce, persistedActiveUrl } from './tabState'
 import { EXIT_FULLSCREEN_SCRIPT, FULLSCREEN_WORLD_ID, fullscreenSiteName, showFullscreenNotice } from './fullscreenNotice'
 import { bindLeavePrompt, SAFE_DIALOG_PREFERENCES } from './leavePrompt'
 import { fetchTabIcon, TabIconMemory } from './tabFavicon'
-import { browsingChannels, parseBrowsingCommand, type BrowsingEvent, type ArchivedTabSnapshot, type TabFolderSnapshot, type BrowsingSettings, type LinksFromOtherApps, type PageLoadError, type TabArchiveAfter, type TabSidebarState, type TabSleepAfter, type TabSwitchOrder } from '@intoponet/browser-api'
+import { browsingChannels, parseBrowsingCommand, type LinkRoutesState, type BrowsingEvent, type ArchivedTabSnapshot, type TabFolderSnapshot, type BrowsingSettings, type LinksFromOtherApps, type PageLoadError, type TabArchiveAfter, type TabSidebarState, type TabSleepAfter, type TabSwitchOrder } from '@intoponet/browser-api'
 import { ExternalOpenBroker, classifyExternalUrl } from './externalOpen'
 import { CertificateErrorMemo, classifyLoadError, isCertificateError, showsErrorPage, summarizeCertificate } from './errorPage'
 import { IncomingOpenQueue, LocalFileGrants, incomingFileTarget, incomingTargetsFromArgs, incomingWebUrl, type IncomingTarget } from './incomingOpen'
@@ -51,6 +51,7 @@ import { SWITCHER_KEYS_SCRIPT, switcherHtml, SWITCHER_ROW_HEIGHT, SWITCHER_ROWS,
 import { focusLinkScript, isLinkPreviewRequest, parsePreviewMessage, PREVIEW_FOCUS_LOOP_SCRIPT, PREVIEW_WORLD_ID, previewFrameHtml, previewHeading, previewLayout, previewSite, type PreviewRect } from './linkPreview'
 import { collapseAdSlotsScript, UNCOLLAPSE_AD_SLOTS_SCRIPT } from './adCollapse'
 import { archiveAfterMs, DEFAULT_TAB_ARCHIVE, TabArchive, type ArchivedTab } from './tabArchive'
+import { addLinkRoute, moveLinkRoute, parseLinkRoutes, removeLinkRoute, routeFor, serializeLinkRoutes, siteOfWebUrl, updateLinkRoute, type LinkRoute } from './linkRoutes'
 import { DEFAULT_TAB_SLEEP, parseBrowsingSettingsFile, parseLinksFromOtherApps, sleepAfterMs, tabsDueForSleep, TYPED_FORM_SCRIPT } from './tabSleep'
 import { QuickWindows, type QuickProtection } from './quickWindow'
 import { AUTO_PIP_WORLD_ID, ENTER_PIP_SCRIPT, EXIT_PIP_SCRIPT, NowPlaying, TOGGLE_PLAYBACK_SCRIPT, type PipEnterResult } from './autoPip'
@@ -89,6 +90,7 @@ const quickWindows: QuickWindows = new QuickWindows({
   },
   changed: () => appMenu.schedule(),
   runInMain: (command) => runInMainWindow(command),
+  alwaysOpenHere: (url, win, moveHere) => offerAlwaysOpenHere(url, win, moveHere),
 })
 /** Local files opened from Finder: the only files a tab may read (see servePageFiles). */
 const localFileGrants = new LocalFileGrants()
@@ -4245,6 +4247,58 @@ function browsingSettings(): BrowsingSettings {
   }
 }
 
+// ---- Link routes (linkRoutes.ts): links from other apps by site, to a workspace ----
+let linkRouteRules: LinkRoute[] | null = null
+const linkRoutesFile = (): string => join(app.getPath('userData'), 'link-routes.json')
+/** The saved rules, read once (a missing or damaged file gives none). */
+function linkRules(): LinkRoute[] {
+  if (!linkRouteRules) {
+    try {
+      linkRouteRules = parseLinkRoutes(JSON.parse(readFileSync(linkRoutesFile(), 'utf8')) as unknown)
+    } catch {
+      linkRouteRules = []
+    }
+  }
+  return linkRouteRules
+}
+function setLinkRules(rules: LinkRoute[]): void {
+  linkRouteRules = rules
+  void trackedWrite(linkRoutesFile(), serializeLinkRoutes(rules)).catch((error: unknown) => console.error('Could not save link routes:', error))
+}
+const workspaceExists = (id: string): boolean => !!workspaces.get(id)
+function linkRoutesState(): LinkRoutesState {
+  const list = workspacesState().workspaces
+  const names = new Map(list.map((workspace) => [workspace.id, workspace.name]))
+  return {
+    rules: linkRules().map((rule) => ({ ...rule, workspaceName: names.get(rule.workspaceId) ?? null })),
+    workspaces: list.map((workspace) => ({ id: workspace.id, name: workspace.name })),
+  }
+}
+/** The state after a change, sent to Settings (where it may be open) as well as returned. */
+function linkRoutesChanged(): LinkRoutesState {
+  const state = linkRoutesState()
+  emitBrowsing({ type: 'link-routes', state })
+  return state
+}
+/** The quick window's "Always open here…": a native menu of the workspaces; the choice saves the rule, shows that workspace and moves the page into it. */
+function offerAlwaysOpenHere(url: string, win: BrowserWindow, moveHere: () => boolean): void {
+  const site = siteOfWebUrl(url)
+  if (!site) return
+  const items = workspacesState().workspaces.map((workspace) => ({
+    label: `Always open ${site} in ${workspace.name}`,
+    click: () => {
+      const added = addLinkRoute(linkRules(), { site, workspaceId: workspace.id, id: randomUUID() }, workspaceExists)
+      if (!added) return
+      setLinkRules(added.rules)
+      linkRoutesChanged()
+      switchWorkspace({ id: workspace.id })
+      moveHere()
+    },
+  }))
+  if (items.length === 0) return
+  Menu.buildFromTemplate(items).popup({ window: win })
+}
+
 function wireBrowsing(): void {
   const settingsFile = join(app.getPath('userData'), 'browsing-settings.json')
   const rememberedFile = join(app.getPath('userData'), 'external-apps.json')
@@ -4303,6 +4357,32 @@ function wireBrowsing(): void {
         await saveSettings()
         emitBrowsing({ type: 'settings', settings: browsingSettings() })
         return browsingSettings()
+      case 'get-link-routes':
+        return linkRoutesState()
+      case 'add-link-route': {
+        const added = addLinkRoute(linkRules(), { site: command.site, workspaceId: command.workspaceId, id: randomUUID() }, workspaceExists)
+        if (!added) throw new Error('That is not a site, or its workspace is gone.')
+        setLinkRules(added.rules)
+        return linkRoutesChanged()
+      }
+      case 'update-link-route': {
+        const updated = updateLinkRoute(linkRules(), command.id, { site: command.site, workspaceId: command.workspaceId }, workspaceExists)
+        if (!updated) throw new Error('That rule cannot take this change.')
+        setLinkRules(updated)
+        return linkRoutesChanged()
+      }
+      case 'move-link-route': {
+        const moved = moveLinkRoute(linkRules(), command.id, command.toIndex)
+        if (!moved) throw new Error('That rule is gone.')
+        setLinkRules(moved)
+        return linkRoutesChanged()
+      }
+      case 'remove-link-route': {
+        const removed = removeLinkRoute(linkRules(), command.id)
+        if (!removed) throw new Error('That rule is gone.')
+        setLinkRules(removed)
+        return linkRoutesChanged()
+      }
       case 'set-tab-switch-order':
         tabSwitchOrder = command.order
         await saveSettings()
@@ -4355,11 +4435,14 @@ function runInMainWindow(command: AppCommand): void {
 
 /** A link or file from another app: a new tab (or a quick window, when Settings says so), with the window brought forward. */
 function openIncoming(target: IncomingTarget): void {
-  if (target.kind === 'web' && linksFromOtherApps === 'quick-window') {
+  // A rule sends the link to its workspace, as a tab, whatever the quick-window setting says. Private browsing is never routed.
+  const routed = target.kind === 'web' && !privateMode ? routeFor(target.url, linkRules(), (id) => !!workspaces.get(id)) : null
+  if (target.kind === 'web' && !routed && linksFromOtherApps === 'quick-window') {
     quickWindows.open(target.url, privateMode)
     return
   }
   if (!window || window.isDestroyed()) createWindow()
+  if (routed) switchWorkspace({ id: routed })
   if (target.kind === 'file') localFileGrants.grant(target.path)
   const view = createBrowserTab(target.url, true, privateMode, false, target.kind === 'file')
   if (view) void view.webContents.loadURL(target.url).catch(() => undefined)
