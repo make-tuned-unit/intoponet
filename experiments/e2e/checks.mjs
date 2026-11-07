@@ -2429,6 +2429,8 @@ export const checks = {
       await openPage(ctx, `${origin}/old-c`, 900)
       const [pinned] = await tabs()
       await ctx.evaluate(`${host}.setTabPinned(${JSON.stringify(pinned.id)}, true).then(() => true)`)
+      // One of the tabs to be archived is in a folder: it comes back there.
+      const kept = JSON.parse(await ctx.evaluate(`${host}.createTabFolder('Kept', null, [${JSON.stringify((await tabs()).find((tab) => tab.title === 'Page /old-c').id)}]).then((f) => JSON.stringify(f))`))
       // Private tabs: one in the background, one in front.
       await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(true).then(() => true)`)
       await openPage(ctx, `${origin}/private-bg`, 900)
@@ -2447,16 +2449,21 @@ export const checks = {
       await ctx.click('.tab-rail-undo')
       await ctx.wait(`${host}.getTabs().then((t) => t.some((x) => x.title === 'Page /old-b') && t.some((x) => x.title === 'Page /old-c'))`, 4000, 'Undo to reopen them')
       expect((await archived()).length === 0, 'Undo left the tabs in the archive.')
+      expect((await tabs()).find((tab) => tab.title === 'Page /old-c')?.folderId === kept.id, 'Undo brought the archived tab back outside its folder.')
       // Archived again, then found from the address bar and reopened with its back list.
       await ctx.wait(`${host}.getArchivedTabs().then((t) => t.length >= 2)`, 20_000, 'the tabs to be archived again')
       await ctx.evaluate(`window.intoponet.browsing.setTabArchive('off').then(() => true)`)
       await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
+      // Reopened while another workspace is shown, it comes back in the one it was archived from.
+      const homeId = JSON.parse(await ctx.evaluate(`window.intoponet.workspaces.get().then((s) => JSON.stringify(s.activeId))`))
+      await ctx.evaluate(`window.intoponet.workspaces.create({ name: 'Elsewhere' }).then(() => true)`)
       await ctx.delay(600)
       await ctx.evaluate(`(() => { const input = document.querySelector('.command-input input'); input.focus(); return true })()`)
       await ctx.type('old-b')
       await ctx.wait(`[...document.querySelectorAll('[role="option"]')].some((e) => e.textContent.includes('Reopen archived tab'))`, 4000, 'the address bar to offer the archived tab')
       await ctx.evaluate(`[...document.querySelectorAll('[role="option"]')].find((e) => e.textContent.includes('Reopen archived tab')).dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); [...document.querySelectorAll('[role="option"]')].find((e) => e.textContent.includes('Reopen archived tab'))?.click(); true`)
       await ctx.wait(`${host}.getTabs().then((t) => t.some((x) => x.active && x.title === 'Page /old-b'))`, 6000, 'the archived tab to reopen in front')
+      expect(JSON.parse(await ctx.evaluate(`window.intoponet.workspaces.get().then((s) => JSON.stringify(s.activeId))`)) === homeId, 'The archived tab reopened in the workspace shown, not the one it was archived from.')
       await ctx.delay(1500)
       const panel = JSON.parse(await ctx.evaluate(`${host}.getState().then((s) => JSON.stringify(s))`))
       expect(panel.canGoBack, 'The reopened tab lost its back list.')
@@ -2464,7 +2471,7 @@ export const checks = {
       expect((await archived()).length === 1, 'The reopened tab is still in the archive.')
       await ctx.evaluate(`window.intoponet.history.clearBrowsingData({ range: 'all', history: true, siteData: false, cache: false, downloads: false }).then(() => true)`)
       await ctx.wait(`${host}.getArchivedTabs().then((t) => t.length === 0)`, 4000, 'clearing history to clear the archive')
-      return 'Unseen unpinned tabs archived (pinned, typed and private ones stayed); "2 tabs archived" with Undo; found from the address bar and reopened with its back list; cleared with history.'
+      return 'Unseen unpinned tabs archived (pinned, typed and private ones stayed); "2 tabs archived" with Undo, back in their folder; found from the address bar in another workspace and reopened in its own, with its back list; cleared with history.'
     } finally {
       server.close()
     }
@@ -2887,7 +2894,22 @@ export const checks = {
       await ctx.click('.tab-rail-workspace-undo button')
       await ctx.wait(`${ws}.get().then((s) => s.workspaces.length === 2 && s.activeId === ${JSON.stringify(researchId)} && !s.recentlyDeleted)`, 3000, 'Undo to bring Reading back')
       expect(await titles() === 'research-a research-b research-c' && (await tabs()).some((tab) => tab.id === researchC), `After Undo Reading holds: ${await titles()}.`)
-      return `Created, named (icon and colour), renamed, reordered, deleted with confirmation and Undo; each workspace kept its own pinned tab, folder and open tabs; ⌃1/⌃2 switched in ${Math.round(times[0])}–${Math.round(slowest)} ms with the other workspace's sleeping tab left asleep; command menu, swipe and keyboard switched; shared and own favourites; private tabs in no workspace and never saved; restored after a restart and migrated a version 2 state into Main; axe clean.`
+
+      // A tab closed in Reading's folder, reopened while Main is shown, comes back in Reading and in that folder.
+      const papers = JSON.parse(await ctx.evaluate(`${host}.getTabFolders().then((f) => JSON.stringify(f))`)).find((folder) => folder.name === 'Papers')
+      const closing = await byTitle('research-b')
+      expect(papers && closing?.folderId === papers.id, `research-b is not in Papers before closing: ${JSON.stringify(closing)}.`)
+      await ctx.evaluate(`${host}.closeTab(${JSON.stringify(closing.id)}).then(() => true)`)
+      await ctx.delay(400)
+      await ctx.evaluate(`${ws}.switchTo({ id: ${JSON.stringify(mainId)} }).then(() => true)`)
+      await ctx.delay(600)
+      await ctx.evaluate(`${host}.reopenClosedTab().then(() => true)`)
+      await ctx.wait(`${ws}.get().then((s) => s.activeId === ${JSON.stringify(researchId)})`, 3000, 'reopening the closed tab to show Reading, where it was closed')
+      await ctx.wait(`${host}.getTabs().then((t) => t.some((x) => x.active && x.url.endsWith('/research-b')))`, 6000, 'the reopened tab to be shown in Reading')
+      const reopened = (await tabs()).find((tab) => tab.url.endsWith('/research-b'))
+      expect(reopened.folderId === papers.id, `The reopened tab came back outside its folder (folder ${reopened.folderId ?? 'none'}).`)
+      expect((await tabs()).map((tab) => tab.url.split('/').pop()).join(' ') === 'research-a research-b research-c', `After reopening, Reading holds: ${(await tabs()).map((tab) => tab.url).join(', ')}.`)
+      return `Created, named (icon and colour), renamed, reordered, deleted with confirmation and Undo; each workspace kept its own pinned tab, folder and open tabs; ⌃1/⌃2 switched in ${Math.round(times[0])}–${Math.round(slowest)} ms with the other workspace's sleeping tab left asleep; command menu, swipe and keyboard switched; shared and own favourites; private tabs in no workspace and never saved; restored after a restart and migrated a version 2 state into Main; a tab closed in a folder reopened from another workspace came back in its workspace and folder; axe clean.`
     } finally {
       server.close()
     }
@@ -4914,6 +4936,19 @@ export const checks = {
       }
       expect(!previewLeft, "A link preview opened in Work stayed open after switching to Main, where Open as Tab would keep Work's sign-in.")
       await showIn(workId, 'who=dan')
+
+      // A tab closed in Work and reopened while Main is shown comes back in Work, with Work's sign-ins (never Main's).
+      const popupTab = (await tabsOf()).find((item) => item.url.includes('who=popup'))
+      expect(popupTab, "Work's popup tab is missing.")
+      await ctx.evaluate(`${host}.closeTab(${JSON.stringify(popupTab.id)}).then(() => true)`)
+      await ctx.delay(500)
+      await ctx.evaluate(`${ws}.switchTo({ id: ${JSON.stringify(mainId)} }).then(() => true)`)
+      await ctx.delay(600)
+      await ctx.evaluate(`${host}.reopenClosedTab().then(() => true)`)
+      await ctx.wait(`${ws}.get().then((s) => s.activeId === ${JSON.stringify(workId)})`, 4000, 'reopening the closed tab to show Work, where it was closed')
+      await waitPage('who=popup', 'Signed in as dan')
+      const reopenedIn = await ctx.main(`(() => { const page = electron.webContents.getAllWebContents().find((w) => !w.isDestroyed() && w.getURL().includes('who=popup')); return page ? page.session === electron.session.fromPartition(${JSON.stringify(`persist:intoponet-ws-${workId}`)}) : null })()`)
+      expect(reopenedIn === true, `The tab reopened from Work is not in Work's session (${reopenedIn}).`)
 
       // A workspace with its own sign-ins deleted just before quitting (inside its Undo window) takes its sign-ins with it.
       const gone = JSON.parse(await ctx.evaluate(`${ws}.create({ name: 'Gone' }).then((s) => JSON.stringify(s))`)).activeId

@@ -7,7 +7,10 @@ export type TabHistory = {
   index: number
 }
 
-export type ClosedTab = ClosedTabSnapshot & { history?: TabHistory }
+/** Where a tab was when it closed (or was archived): its workspace, and its sidebar folder there. */
+export type TabPlace = { workspaceId?: string; folderId?: string }
+
+export type ClosedTab = ClosedTabSnapshot & TabPlace & { history?: TabHistory }
 
 export type ClosingTab = {
   url: string
@@ -16,6 +19,9 @@ export type ClosingTab = {
   /** Private tabs are never remembered. */
   isPrivate: boolean
   history?: TabHistory
+  /** The workspace it was in (null or absent for none) and its folder there. */
+  workspaceId?: string | null
+  folderId?: string
 }
 
 const MAX_HISTORY_ENTRIES = 50
@@ -29,6 +35,29 @@ function httpUrl(value: string): boolean {
   } catch {
     return false
   }
+}
+
+/** A workspace or folder id worth keeping with an entry (anything else is left out). */
+function placeId(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0 && value.length <= 80
+}
+
+/** The workspace and folder of an entry, as far as they are well formed (a folder only with its workspace). */
+export function tabPlace(place: { workspaceId?: unknown; folderId?: unknown }): TabPlace {
+  if (!placeId(place.workspaceId)) return {}
+  return { workspaceId: place.workspaceId, ...(placeId(place.folderId) ? { folderId: place.folderId } : {}) }
+}
+
+/**
+ * Where a reopened tab (Recently closed, Archived tabs) goes: the workspace it was closed in, and its
+ * folder if that is still there. With its workspace gone, or an entry that names none (kept before
+ * workspaces were recorded), the workspace shown, outside any folder. `foldersOf` gives a workspace's
+ * folders, or null when there is no such workspace.
+ */
+export function reopenPlace(entry: TabPlace, shownId: string, foldersOf: (workspaceId: string) => readonly { id: string }[] | null): { workspaceId: string; folderId?: string } {
+  const folders = entry.workspaceId ? foldersOf(entry.workspaceId) : null
+  if (!entry.workspaceId || !folders) return { workspaceId: shownId }
+  return { workspaceId: entry.workspaceId, ...(entry.folderId && folders.some((folder) => folder.id === entry.folderId) ? { folderId: entry.folderId } : {}) }
 }
 
 /** Only web entries, at most the 50 around the current one; the index follows them. */
@@ -69,6 +98,7 @@ export class ClosedTabs {
       url: tab.url,
       title: tab.title.slice(0, 300),
       favicon: tab.favicon.length <= 80_000 ? tab.favicon : '',
+      ...tabPlace(tab),
       ...(history ? { history } : {}),
     }
     this.items.unshift(entry)

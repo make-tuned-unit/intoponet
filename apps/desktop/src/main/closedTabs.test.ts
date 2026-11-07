@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ClosedTabs } from './closedTabs'
+import { ClosedTabs, reopenPlace } from './closedTabs'
 
 let counter = 0
 const ids = () => `id-${++counter}`
@@ -70,5 +70,34 @@ describe('recently closed tabs', () => {
     const closed = new ClosedTabs(25, ids)
     closed.remember(tab('https://a.example/', { history: { entries: [{ url: 'https://a.example/', title: 'A', pageState: 's' }], index: 0 } }))
     expect(Object.keys(closed.list()[0] ?? {}).sort()).toEqual(['favicon', 'id', 'title', 'url'])
+  })
+
+  it('remembers the workspace and folder a tab closed in, and lists neither', () => {
+    const closed = new ClosedTabs(25, ids)
+    closed.remember(tab('https://a.example/', { workspaceId: 'work', folderId: 'papers' }))
+    closed.remember(tab('https://b.example/', { workspaceId: 'work' }))
+    closed.remember(tab('https://c.example/', { workspaceId: null, folderId: 'orphan' }))
+    closed.remember(tab('https://d.example/', { workspaceId: 'x'.repeat(81), folderId: 'papers' }))
+    expect(Object.keys(closed.list()[0] ?? {}).sort()).toEqual(['favicon', 'id', 'title', 'url'])
+    expect([closed.take(), closed.take(), closed.take(), closed.take()].map((entry) => [entry?.workspaceId, entry?.folderId])).toEqual([
+      [undefined, undefined], [undefined, undefined], ['work', undefined], ['work', 'papers'],
+    ])
+  })
+})
+
+describe('where a reopened tab goes', () => {
+  const folders: Record<string, { id: string }[]> = { main: [{ id: 'm1' }], work: [{ id: 'papers' }] }
+  const foldersOf = (id: string) => folders[id] ?? null
+
+  it('back in the workspace it closed in, and into its folder while that is there', () => {
+    expect(reopenPlace({ workspaceId: 'work', folderId: 'papers' }, 'main', foldersOf)).toEqual({ workspaceId: 'work', folderId: 'papers' })
+    expect(reopenPlace({ workspaceId: 'work', folderId: 'deleted' }, 'main', foldersOf)).toEqual({ workspaceId: 'work' })
+    expect(reopenPlace({ workspaceId: 'main', folderId: 'm1' }, 'main', foldersOf)).toEqual({ workspaceId: 'main', folderId: 'm1' })
+  })
+
+  it('in the workspace shown, outside any folder, when its own is gone or was never recorded', () => {
+    expect(reopenPlace({ workspaceId: 'gone', folderId: 'papers' }, 'work', foldersOf)).toEqual({ workspaceId: 'work' })
+    expect(reopenPlace({}, 'work', foldersOf)).toEqual({ workspaceId: 'work' })
+    expect(reopenPlace({ folderId: 'papers' }, 'work', foldersOf)).toEqual({ workspaceId: 'work' })
   })
 })

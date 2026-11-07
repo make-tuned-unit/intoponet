@@ -140,7 +140,7 @@ import {
 import { FOCUS_TAKES_TYPING_SCRIPT, isPlainEscape, pageKeyAction, TEXT_FIELD_FIRST } from './shellShortcuts'
 import { cleanAddress } from '../shared/cleanAddress'
 import { createAppMenuController, menuCommandById, routeAppCommand, type AppCommand, type AppMenuState } from './appMenu'
-import { boundedHistory, ClosedTabs, type TabHistory } from './closedTabs'
+import { boundedHistory, ClosedTabs, reopenPlace, type TabHistory, type TabPlace } from './closedTabs'
 import { stepZoom, ZoomStore } from './zoomStore'
 import { CANCEL_PICK_SCRIPT, hideCss, listItem, PICK_ELEMENT_SCRIPT, selectorProblem, siteOf, SiteTweakStore, SiteTweaks, tweakCss } from './siteTweaks'
 import type { SiteTweakListItem, SiteTweakPick, SiteTweakSaveResult, SiteTweakState } from '@intoponet/browser-api'
@@ -2562,25 +2562,21 @@ function archiveTab(tab: OpenTab): ArchivedTab | null {
     url: safeHttpUrl(liveUrl) ? liveUrl : tab.url,
     title: (live ? tab.view.webContents.getTitle() : '') || tab.title,
     favicon: tab.favicon,
+    // Only the shown workspace's tabs are archived.
+    workspaceId: workspaces.activeId,
+    ...(tab.folderId ? { folderId: tab.folderId } : {}),
     ...(history ? { history } : {}),
   })
   if (entry) discardTab(tab.id, false)
   return entry
 }
 
-/** Reopens archived tabs: one is shown where it was; several come back asleep, in the background. */
+/** Reopens archived tabs where they were (reopenTab): one is shown, in its workspace; several come back asleep, in the background. */
 function reopenArchivedTabs(ids: string[]): void {
   const show = ids.length === 1
   for (const id of ids) {
     const entry = tabArchive.take(id)
-    if (!entry) continue
-    const view = createBrowserTab(entry.url, false, false)
-    const tab = view && tabOfView(view)
-    if (!view || !tab) continue
-    tab.title = entry.title
-    tab.favicon = entry.favicon
-    tab.asleep = entry.history ? { history: entry.history } : {}
-    if (show) showTab(tab.id)
+    if (entry) reopenTab(entry, show)
   }
   emitTabs()
   saveTabArchive()
@@ -3038,13 +3034,15 @@ function closeTab(id: string): void {
 
 function discardTab(id: string, remember = true): void {
   const index = openTabs.findIndex((tab) => tab.id === id)
+  // The workspace it is closed in, so Recently closed can bring it back there.
+  const workspaceId = index >= 0 ? workspaces.activeId : workspaces.workspaceOfParkedTab(id)
   // A tab in a workspace not shown (its page closed itself, say) goes from there.
   const tab = index >= 0 ? openTabs.splice(index, 1)[0] : workspaces.takeParkedTab(id)
   if (!tab) return
   if (index < 0) emitWorkspaces()
   nowPlaying.forget(tab.id)
   emitNowPlaying()
-  if (remember) rememberClosedTab(tab)
+  if (remember) rememberClosedTab(tab, workspaceId)
   crashRecovery.forget(tab.id)
   // Its partner, if any, is whole again (its side of the split goes with this tab).
   if (tab.split) {
@@ -3818,8 +3816,8 @@ function inspectPage(view: WebContentsView, at?: { x: number; y: number }): void
   if (at) contents.inspectElement(Math.round(at.x), Math.round(at.y))
 }
 
-/** A closing tab joins Recently Closed (with its back/forward list), unless it is private or a start page. */
-function rememberClosedTab(tab: OpenTab): void {
+/** A closing tab joins Recently Closed (with its back/forward list, workspace and folder), unless it is private or a start page. */
+function rememberClosedTab(tab: OpenTab, workspaceId: string | null): void {
   if (tab.start || privateViews.has(tab.view)) return
   const live = !viewGone(tab.view)
   const liveUrl = live ? tab.view.webContents.getURL() : ''
@@ -3836,29 +3834,50 @@ function rememberClosedTab(tab: OpenTab): void {
     title: (live ? tab.view.webContents.getTitle() : '') || tab.title,
     favicon: tab.favicon,
     isPrivate: false,
+    workspaceId,
+    ...(tab.folderId ? { folderId: tab.folderId } : {}),
     ...(history ? { history } : {}),
   })
 }
 
-/** Reopens the newest closed tab (or the one asked for) with its back/forward list, and shows it. */
+/**
+ * A tab reopened from Recently closed or Archived tabs comes back where it was (closedTabs.ts
+ * reopenPlace): in the workspace it was closed in, built with that workspace's sign-ins, and in its
+ * folder while that is there; with its workspace gone, in the one shown. It comes asleep with its
+ * back/forward list, so it loads where it was once shown. `show` shows it, and its workspace first.
+ */
+function reopenTab(entry: { url: string; title: string; favicon: string; history?: TabHistory } & TabPlace, show: boolean): OpenTab | null {
+  const url = safeHttpUrl(entry.url)
+  if (!url) return null
+  const place = reopenPlace(entry, workspaces.activeId, (id) => (id === workspaces.activeId ? tabFolders : workspaces.parkedOf(id)?.folders ?? null))
+  const parked = place.workspaceId === workspaces.activeId ? null : workspaces.parkedOf(place.workspaceId)!
+  if (!parked) makeRoomForTab()
+  const tab: OpenTab = {
+    id: randomUUID(), url: url.toString(), title: entry.title, favicon: entry.favicon, view: buildView(false, place.workspaceId),
+    asleep: entry.history ? { history: entry.history } : {}, lastShownAt: Date.now(),
+    ...(place.folderId ? { folderId: place.folderId } : {}),
+  }
+  if (parked) {
+    parked.tabs.splice(0, parked.tabs.length, ...folderedOrder([...parked.tabs, tab], parked.folders))
+    // Its workspace shows it first when switched to (nothing else there wakes, and no new tab is made).
+    if (show) parked.activeTabId = tab.id
+  } else {
+    openTabs.splice(0, openTabs.length, ...folderedOrder([...openTabs, tab], tabFolders))
+  }
+  if (show) {
+    if (parked) switchWorkspace({ id: place.workspaceId })
+    if (activeTabId !== tab.id || !pageAttached) showTab(tab.id)
+  }
+  if (parked) emitWorkspaces()
+  emitTabs()
+  schedulePersistentStateSave()
+  return tab
+}
+
+/** Reopens the newest closed tab (or the one asked for) where it was, with its back/forward list, and shows it. */
 function reopenClosedTab(id?: string): void {
   const entry = closedTabs.take(id)
-  if (!entry) return
-  const view = createBrowserTab(entry.url, false, false)
-  const tab = view && tabOfView(view)
-  if (!view || !tab) return
-  tab.title = entry.title
-  tab.favicon = entry.favicon
-  let loaded: Promise<void>
-  if (entry.history) {
-    restoringViews.add(view)
-    loaded = view.webContents.navigationHistory.restore(entry.history).catch(() => view.webContents.loadURL(entry.url))
-  } else {
-    loaded = view.webContents.loadURL(entry.url)
-  }
-  void loaded.catch(() => undefined).finally(() => restoringViews.delete(view))
-  showTab(tab.id)
-  lastKnownUrl = entry.url
+  if (entry) reopenTab(entry, true)
 }
 
 /** ⌘W: closes the tab being shown, then shows the tab that took its place, or the globe when none are left. */
