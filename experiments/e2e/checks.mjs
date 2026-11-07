@@ -124,6 +124,7 @@ async function pdfExport(ctx) {
         response.end(request.url.includes('lazy') ? lazy : top)
         return
       }
+      if (request.url?.startsWith('/doc.pdf')) { response.setHeader('content-type', 'application/pdf'); response.end(TEST_PDF); return }
       response.setHeader('content-type', 'text/html; charset=utf-8')
       response.end(request.url?.startsWith('/shop') ? PDF_SHOP : PDF_ARTICLE(sections))
     })
@@ -225,6 +226,24 @@ async function pdfExport(ctx) {
     await ctx.evaluate(`window.intoponet.browserHost.forgetSavedPdf(${JSON.stringify(forgetId)}).then(() => true)`)
     const afterForget = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.listSavedPdfs().then((list) => JSON.stringify(list))`))
     expect(!afterForget.some((item) => item.id === forgetId) && existsSync(path), 'Removing a PDF from the list did not work, or deleted the file.')
+
+    // An error page has nothing to save: it says so, and no PDF is written or listed.
+    const closedPort = await new Promise((resolve) => { const probe = createServer(); probe.listen(0, '127.0.0.1', () => { const { port } = probe.address(); probe.close(() => resolve(port)) }) })
+    await ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: 'http://127.0.0.1:${closedPort}/gone' }).then(() => true, () => true)`)
+    await ctx.wait(`window.intoponet.browserHost.getState().then((s) => !!s.loadError)`, 15_000, 'the error page')
+    await ctx.evaluate(`window.intoponet.browserHost.exportPdf().then(() => true)`)
+    await ctx.wait(`(document.querySelector('.pdf-failed')?.innerText ?? '').includes('did not load')`, 15_000, 'saving an error page as PDF to say there is nothing to save')
+    const afterError = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.listSavedPdfs().then((list) => JSON.stringify(list))`))
+    expect(afterError.length === afterForget.length, 'Saving an error page as PDF saved one anyway.')
+    // A PDF tab: Save Page As keeps the PDF itself, not the viewer's wrapper page.
+    const keptPdf = join(ctx.profile, 'kept-copy.pdf')
+    await ctx.main(`(() => { const d = electron.dialog; d.__asked = null; d.showSaveDialog = async (_w, o) => { d.__asked = JSON.stringify([o.defaultPath, o.filters]); return { canceled: false, filePath: ${JSON.stringify(keptPdf)} } }; return true })()`)
+    await openPage(ctx, `${base}/doc.pdf`, 3000)
+    await ctx.evaluate(`window.intoponet.browserHost.savePage().then(() => true)`)
+    for (let i = 0; i < 20 && !existsSync(keptPdf); i += 1) await ctx.delay(250)
+    const keptAsked = JSON.parse(await ctx.main(`electron.dialog.__asked`) ?? '[]')
+    expect(existsSync(keptPdf) && readFileSync(keptPdf).equals(TEST_PDF), `Save Page As on a PDF did not save the PDF itself (${existsSync(keptPdf) ? readFileSync(keptPdf).subarray(0, 40).toString('latin1') : 'no file'}).`)
+    expect(/doc\.pdf$/.test(keptAsked[0] ?? '') && JSON.stringify(keptAsked[1]).includes('"pdf"'), `Save Page As on a PDF suggested ${JSON.stringify(keptAsked)}.`)
     return `Article: ${pages} pages, ${images} images, tagged with outline, ads/hidden/overlay text left out, bookmarked in "Reading" with the PDF linked; shop page saved as seen without ads; private tab asked where, neutral name, no Where-from or bookmark; ${listed.length} PDFs in Bookmarks › PDFs (private one not listed), removing one keeps the file.`
   } finally {
     server.close()

@@ -1495,7 +1495,8 @@ export function App() {
 
   const startCapture = async (mode: CaptureMode = 'image'): Promise<void> => {
     if (captureSession || recorder.state.status !== 'idle') return
-    if (!panel.isVisible || !panel.url) {
+    // An error page is drawn here, over a blank view: there is no page to capture.
+    if (!panel.isVisible || !panel.url || panel.loadError) {
       setNotice('Open a page to capture it')
       return
     }
