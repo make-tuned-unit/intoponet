@@ -335,6 +335,14 @@ export const TOUR_STEPS: TourStep[] = [
     seconds: 9,
   },
   {
+    id: 'place-workspaces',
+    chapter: 'Tabs',
+    title: 'Anchor a workspace to a place',
+    body: 'Choose Anchor to a place from a workspace’s menu, and switching to it flies the globe there while your page stays open. Its sidebar lists that place’s latest headlines, and tabs you open from them stay in that workspace. Only your own map shows the anchor.',
+    target: '.tab-rail',
+    seconds: 11,
+  },
+  {
     id: 'done',
     chapter: 'That’s the tour',
     title: 'The world is your start page',

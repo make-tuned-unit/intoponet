@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type K
 import { MAX_WORKSPACES, WORKSPACE_ACCENTS, WORKSPACE_ICONS, type FavouriteSnapshot, type WorkspaceAccent, type WorkspaceIcon, type WorkspaceSnapshot, type WorkspacesState } from '@intoponet/browser-api'
 import { useFavicon } from './favicons'
 import { RailMenu } from './RailMenu'
+import { AnchorPicker } from './WorkspaceAnchor'
 import './workspaces.css'
 
 /** Accents from the brand tokens (brand/brand-tokens.css), by the names main keeps. */
@@ -67,6 +68,7 @@ export function WorkspaceBar({ state, open, onExpand, request }: {
   const [menu, setMenu] = useState<string | null>(null)
   const [editing, setEditing] = useState<string | null>(null)
   const [confirming, setConfirming] = useState<string | null>(null)
+  const [anchoring, setAnchoring] = useState<string | null>(null)
   const [message, setMessage] = useState('')
   const switcher = useRef<HTMLDivElement>(null)
   const active = state.workspaces.find((workspace) => workspace.id === state.activeId) ?? state.workspaces[0]
@@ -133,6 +135,7 @@ export function WorkspaceBar({ state, open, onExpand, request }: {
 
   const editingWorkspace = state.workspaces.find((workspace) => workspace.id === editing)
   const confirmingWorkspace = state.workspaces.find((workspace) => workspace.id === confirming)
+  const anchoringWorkspace = state.workspaces.find((workspace) => workspace.id === anchoring)
 
   return (
     <div className="tab-rail-workspace-bar">
@@ -190,7 +193,7 @@ export function WorkspaceBar({ state, open, onExpand, request }: {
             })}
           </div>
           <div className="tab-rail-workspace-head">
-            <span className="tab-rail-workspace-name tab-rail-title" aria-hidden={!open}>{active.name}</span>
+            <span className="tab-rail-workspace-name tab-rail-title" aria-hidden={!open} title={active.anchor ? `Anchored to ${active.anchor.label}` : undefined}>{active.name}</span>
             {open && (
               <button
                 type="button"
@@ -212,6 +215,8 @@ export function WorkspaceBar({ state, open, onExpand, request }: {
           onClose={() => setMenu(null)}
           items={[
             { label: 'Rename, icon and colour…', run: () => setEditing(active.id) },
+            { label: 'Anchor to a place…', run: () => setAnchoring(active.id) },
+            ...(active.anchor ? [{ label: 'Remove anchor', run: () => void api.update(active.id, { anchor: null }).catch(fail) }] : []),
             ...(state.workspaces.length < MAX_WORKSPACES ? [{ label: 'New workspace', run: createNew }] : []),
             ...(index > 0 ? [{ label: 'Move left', run: () => void api.move(active.id, index - 1).catch(fail) }] : []),
             ...(index < state.workspaces.length - 1 ? [{ label: 'Move right', run: () => void api.move(active.id, index + 1).catch(fail) }] : []),
@@ -220,6 +225,7 @@ export function WorkspaceBar({ state, open, onExpand, request }: {
         />
       )}
       {editingWorkspace && <WorkspaceEditor key={editingWorkspace.id} workspace={editingWorkspace} onDone={() => setEditing(null)} onError={fail} />}
+      {anchoringWorkspace && <AnchorPicker key={anchoringWorkspace.id} workspace={anchoringWorkspace} onDone={() => setAnchoring(null)} onError={fail} />}
       {confirmingWorkspace && (
         <DeleteConfirm
           workspace={confirmingWorkspace}

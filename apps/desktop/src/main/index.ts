@@ -4605,7 +4605,7 @@ app.whenReady().then(async () => {
     lastBounds = restoredState.bounds
     tabSidebar = restoredState.sidebar ?? null
     const saved = restoredState.workspaces
-    workspaces = new WorkspaceSet<OpenTab>(saved.workspaces.map(({ id, name, icon, accent }) => ({ id, name, icon, accent })), saved.activeId, saved.favourites)
+    workspaces = new WorkspaceSet<OpenTab>(saved.workspaces.map(({ id, name, icon, accent, anchor }) => ({ id, name, icon, accent, ...(anchor ? { anchor } : {}) })), saved.activeId, saved.favourites)
     tabFolders = restoredState.folders.get(workspaces.activeId) ?? []
     const byWorkspace = new Map<string, OpenTab[]>()
     for (const savedTab of restoredState.tabs) {

@@ -3958,6 +3958,118 @@ export const checks = {
     const paywalls = await ctx.evaluate(`document.querySelectorAll('.split-compare-paywall').length`)
     return `Compared "${front}" with ${split.right.compare.outlet} (${split.right.compare.country}): two pages ${a.width}×${a.height} and ${b.width}×${b.height}, side by side at y ${a.y}; headers read "${headers.map((h) => h.origin).join('" and "')}"; ${translateNote}; The Olds opened for the story; ${paywalls} paywall badge(s) on the pair.`
   },
+
+  async PLACE_WORKSPACES(ctx) {
+    await ctx.waitForNews()
+    const { server, origin } = await tabSite()
+    const host = 'window.intoponet.browserHost'
+    const ws = 'window.intoponet.workspaces'
+    const tabs = async () => JSON.parse(await ctx.evaluate(`${host}.getTabs().then((t) => JSON.stringify(t))`))
+    const state = async () => JSON.parse(await ctx.evaluate(`${ws}.get().then((s) => JSON.stringify(s))`))
+    const savedState = () => JSON.parse(readFileSync(join(ctx.profile, 'browser-state.v1.json'), 'utf8'))
+    const flownTo = `(() => { try { const s = JSON.parse(localStorage.getItem('intoponet.exploration-state.v1')); return !!s.geographicAnchor && Math.abs(s.geographicAnchor.lat - 38.72) < 0.5 && Math.abs(s.geographicAnchor.lon + 9.14) < 0.5 } catch { return false } })()`
+    const markerIds = () => ctx.evaluate(`document.querySelector('.app-shell').dataset.workspaceMarks ?? ''`).then((value) => value.split(' ').filter(Boolean))
+    /** Opens the globe's layer card if it is folded (focusing a folded icon expands it, as hovering does), then chooses the field: Public or Mine (My map). */
+    const chooseField = async (label) => {
+      // With a page open the globe's field is hidden (as My map does, the page goes away first).
+      if (await ctx.evaluate(`!!document.querySelector('.app-shell.page-open')`)) {
+        await ctx.evaluate(`window.intoponet.browserHost.close().then(() => true)`)
+        await ctx.delay(600)
+      }
+      if (!(await ctx.evaluate(`!!document.querySelector('[aria-label="Field"]')`))) {
+        // Hovering the folded card for a moment expands it (a real pointer move: focus may sit in the page).
+        const box = JSON.parse(await ctx.evaluate(`JSON.stringify(document.querySelector('.globe-layers').getBoundingClientRect())`))
+        await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: box.x + box.width / 2, y: box.y + box.height / 2 })
+        await ctx.delay(1400)
+      }
+      await ctx.wait(`!!document.querySelector('[aria-label="Field"]')`, 4000, 'the field choice on the globe')
+      expect(await ctx.click('[aria-label="Field"] button', label), `No "${label}" choice in the field.`)
+      await ctx.delay(300)
+    }
+    /** The app opened again with a saved browser state, in a profile of its own (as WORKSPACES does). */
+    const relaunch = async (saved, check) => {
+      const profile = mkdtempSync(join(tmpdir(), 'intoponet-e2e-place-'))
+      writeFileSync(join(profile, 'browser-state.v1.json'), JSON.stringify(saved))
+      const before = process.env.E2E_PROFILE
+      process.env.E2E_PROFILE = profile
+      try {
+        return await runAppCheck(check, { timeoutMs: 60_000 })
+      } finally {
+        if (before === undefined) delete process.env.E2E_PROFILE
+        else process.env.E2E_PROFILE = before
+        rmSync(profile, { recursive: true, force: true })
+      }
+    }
+    try {
+      // Pinned open, so the sidebar's workspace actions are there. A geolocation spy stays silent through the check.
+      await openPage(ctx, `${origin}/main-a`, 900)
+      await ctx.click('button[aria-label="Pin tabs open"]')
+      await ctx.delay(400)
+      await ctx.evaluate(`(() => { window.__geoAsked = 0; const asked = () => { window.__geoAsked += 1 }; navigator.geolocation.getCurrentPosition = asked; navigator.geolocation.watchPosition = asked; return true })()`)
+      const mainId = (await state()).activeId
+
+      // "Lisbon desk", with a page open in it.
+      await ctx.evaluate(`${ws}.create({ name: 'Lisbon desk' }).then(() => true)`)
+      await ctx.delay(400)
+      const lisbonId = (await state()).activeId
+      await openPage(ctx, `${origin}/lisbon-a`, 900)
+
+      // Anchor it through the place search, from the workspace's actions.
+      await ctx.main(`(() => { electron.app.focus({ steal: true }); electron.BrowserWindow.getAllWindows()[0].focus(); return true })()`)
+      await ctx.click('button[aria-label="Actions for workspace Lisbon desk"]')
+      await ctx.wait(`!!document.querySelector('.tab-rail-folder-menu [role="menuitem"]')`, 2000, 'the workspace menu')
+      await ctx.click('.tab-rail-folder-menu [role="menuitem"]', 'Anchor to a place')
+      await ctx.wait(`document.activeElement?.getAttribute('role') === 'combobox'`, 3000, 'the place search to take focus')
+      await ctx.type('Lisbon')
+      await ctx.wait(`[...document.querySelectorAll('[role="listbox"] [role="option"]')].some((e) => e.innerText.includes('Lisbon'))`, 5000, 'the place search to find Lisbon')
+      await axeAudit(ctx, 'the place picker', '[aria-label="Anchor Lisbon desk to a place"]')
+      await ctx.press('Enter')
+      await ctx.wait(`${ws}.get().then((s) => !!s.workspaces.find((w) => w.id === ${JSON.stringify(lisbonId)})?.anchor)`, 4000, 'Lisbon desk to be anchored')
+      const anchor = (await state()).workspaces.find((w) => w.id === lisbonId).anchor
+      expect(Math.abs(anchor.lat - 38.72) < 0.3 && Math.abs(anchor.lon + 9.14) < 0.3, `The anchor is ${JSON.stringify(anchor)}, not Lisbon.`)
+      expect((await ctx.evaluate('window.__geoAsked')) === 0, 'The device location was asked for while anchoring.')
+
+      // Switching away and back flies the globe to Lisbon; the browser panel stays open.
+      await ctx.evaluate(`${ws}.switchTo({ id: ${JSON.stringify(mainId)} }).then(() => true)`)
+      await ctx.delay(700)
+      await ctx.evaluate(`${ws}.switchTo({ id: ${JSON.stringify(lisbonId)} }).then(() => true)`)
+      await ctx.wait(flownTo, 5000, 'the globe to fly to Lisbon')
+      expect((await panelState(ctx)).isVisible, 'Switching to the anchored workspace closed the browser panel.')
+
+      // Headlines here: the place's latest headlines in the sidebar; one opens as a tab in this workspace.
+      await ctx.wait(`!!document.querySelector('.tab-rail-headlines-list .tab-rail-headline')`, 60_000, 'Headlines here to list Lisbon headlines')
+      const headlines = await ctx.evaluate(`document.querySelectorAll('.tab-rail-headlines-list .tab-rail-headline').length`)
+      expect(headlines >= 1 && headlines <= 5, `Headlines here lists ${headlines} headlines.`)
+      await axeAudit(ctx, 'Headlines here', '.tab-rail-headlines')
+      const countBefore = (await state()).workspaces.find((w) => w.id === lisbonId).tabCount
+      await ctx.click('.tab-rail-headline')
+      await ctx.wait(`${ws}.get().then((s) => s.workspaces.find((w) => w.id === ${JSON.stringify(lisbonId)}).tabCount === ${countBefore + 1} && s.activeId === ${JSON.stringify(lisbonId)})`, 8000, 'the headline to open as a tab in Lisbon desk')
+
+      // The anchor marker: only on My map (the Mine field), never in the public field.
+      expect(!(await markerIds()).includes(`workspace:${lisbonId}`), 'The anchor shows in the public field.')
+      await chooseField('Mine')
+      await ctx.wait(`(document.querySelector('.app-shell').dataset.workspaceMarks ?? '').includes('workspace:${lisbonId}')`, 4000, 'the anchor marker on My map')
+      await chooseField('Public')
+      expect(!(await markerIds()).includes(`workspace:${lisbonId}`), 'The anchor marker stayed on the globe after My map was closed.')
+      await chooseField('Mine')
+      await ctx.shot('place-workspaces')
+
+      // Relaunch keeps the anchor.
+      for (let i = 0; i < 40 && !savedState().workspaces?.some((w) => w.anchor); i += 1) await ctx.delay(250)
+      const saved = savedState()
+      expect(saved.workspaces.some((w) => w.name === 'Lisbon desk' && w.anchor?.lat === anchor.lat && w.anchor?.lon === anchor.lon), `Saved workspaces: ${JSON.stringify(saved.workspaces)}.`)
+      const restored = await relaunch(saved, async (next) => {
+        const nextState = JSON.parse(await next.evaluate(`${ws}.get().then((s) => JSON.stringify(s))`))
+        const restoredLisbon = nextState.workspaces.find((w) => w.name === 'Lisbon desk')
+        expect(restoredLisbon?.anchor?.lat === anchor.lat && restoredLisbon?.anchor?.lon === anchor.lon, `After a restart Lisbon desk's anchor is ${JSON.stringify(restoredLisbon?.anchor)}.`)
+        return 'restored'
+      })
+      expect(restored === 'restored', 'The relaunched app did not keep the anchor.')
+      return `Anchored "Lisbon desk" to ${anchor.label} from the place search (no device location asked); switching away and back flew the globe there with the panel open; Headlines here listed ${headlines} headlines and one opened as a tab in that workspace; its marker showed on My map only; the anchor survived a relaunch; axe clean on the picker and the section.`
+    } finally {
+      server.close()
+    }
+  },
 }
 
 checks.TAB_SLEEP.env = { INTOPONET_TAB_SLEEP_MINUTE_MS: '200' }

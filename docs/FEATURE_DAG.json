@@ -618,6 +618,18 @@
       "tier": "network",
       "kind": "e2e",
       "promise": "From a world story's sources carousel, Compare opens two outlets' articles side by side, each labelled with its outlet and country, each side translatable on its own, and The Olds for that story one click away."
+    },
+    {
+      "id": "PLACE_WORKSPACES",
+      "title": "Workspaces anchored to a place",
+      "deps": [
+        "WORKSPACES",
+        "FLY_TO",
+        "COUNTRY_PANEL"
+      ],
+      "tier": "network",
+      "kind": "e2e",
+      "promise": "A workspace can be anchored to a place you choose (never your device's location); switching to it flies the globe there and the sidebar offers that place's latest headlines; tabs opened from those headlines stay in that workspace, and the anchor shows only on your own map."
     }
   ]
 }
