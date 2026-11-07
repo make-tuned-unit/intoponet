@@ -2620,9 +2620,14 @@ export const checks = {
       // Folding a folder hides its tabs (and its folders); it is kept for the next launch.
       await ctx.click(`[data-folder-drop="${work.id}"] .tab-rail-folder-toggle`)
       await ctx.wait(`!document.querySelector('[data-tab-id="${docs.id}"]') && document.querySelector('[data-folder-drop="${work.id}"] .tab-rail-folder-toggle').getAttribute('aria-expanded') === 'false'`, 3000, 'Work to fold')
-      await ctx.delay(500)
-      const saved = JSON.parse(readFileSync(join(ctx.profile, 'browser-state.v1.json'), 'utf8'))
-      expect(saved.folders?.find((folder) => folder.id === work.id)?.collapsed === true && saved.folders.length === 4, `Saved folders: ${JSON.stringify(saved.folders)}.`)
+      // Saves are flushed to disk one after another: under heavy disk load the file can take a moment to catch up.
+      const folded = (state) => state.folders?.find((folder) => folder.id === work.id)?.collapsed === true && state.folders.length === 4
+      let saved = null
+      for (let i = 0; i < 25 && !folded(saved ?? {}); i += 1) {
+        await ctx.delay(200)
+        saved = JSON.parse(readFileSync(join(ctx.profile, 'browser-state.v1.json'), 'utf8'))
+      }
+      expect(folded(saved), `Saved folders: ${JSON.stringify(saved.folders)}.`)
       expect(saved.tabs.find((tab) => tab.title === 'Page /docs')?.folderId === work.id, 'A tab\'s folder was not saved.')
       await ctx.click(`[data-folder-drop="${work.id}"] .tab-rail-folder-toggle`)
       await ctx.delay(500)
