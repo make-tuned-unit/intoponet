@@ -3561,12 +3561,18 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
     if (companionView !== view) return
     // Chromium hands the keyboard to a page starting a new document (a redirect, a page that reloads
     // itself) even beside the focused side. That is not the person choosing this side: the keyboard
-    // goes back. A click in it still chooses it (before-mouse-event).
-    if (loadingDocument.has(view)) {
-      if (pageView && pageAttached && !viewGone(pageView)) pageView.webContents.focus()
+    // goes back. A click in it still chooses it (before-mouse-event). Nor is a failed load's error
+    // document, which can take the keyboard just after the failure is reported: that side's view is
+    // hidden behind the shell's error card, which is what a click chooses it by.
+    const tab = tabOfView(view)
+    if (loadingDocument.has(view) || tab?.loadError || tab?.start) {
+      // Back to the focused side, or to the shell when that side is the shell's own start or error page.
+      if (pageView && pageAttached && !viewGone(pageView)) {
+        if (pageViewShown(pageView) || !window || window.isDestroyed()) pageView.webContents.focus()
+        else window.webContents.focus()
+      }
       return
     }
-    const tab = tabOfView(view)
     if (tab) showTab(tab.id)
   })
   view.webContents.on('did-navigate', (_event, url) => {

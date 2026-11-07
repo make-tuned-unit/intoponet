@@ -4039,6 +4039,10 @@ export const checks = {
       const flakySide = async () => (await viewsNow()).pages.find((p) => p.url.includes('/split-flaky'))
       await waitFor('the failing left side hidden', async () => (await flakySide())?.visible === false)
       expect((await stateOf()).split.focused === 'right', 'The left page failing to load took the focus.')
+      // Chromium can hand the failed load's error document the keyboard after the failure is reported: it is handed back.
+      await ctx.main(`(() => { ${pageOf('/split-flaky')}.focus(); return true })()`)
+      await ctx.delay(500)
+      expect((await stateOf()).split.focused === 'right', 'The failing left side took the focus when its error document took the keyboard.')
       // Its half is not left empty: the shell draws a compact card there (what failed, Retry), the pages still two columns at full height.
       const leftCard = async () => JSON.parse(await shellEval(`JSON.stringify((() => {
         const card = document.querySelector('.split-other-side[data-split-side="left"] .load-error-compact')
