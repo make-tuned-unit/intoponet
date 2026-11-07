@@ -1070,7 +1070,8 @@ function syncCompanion(): void {
   companionView = want
   if (want && host) {
     if (!host.contentView.children.includes(want)) host.contentView.addChildView(want)
-    if (partner?.asleep) wakeTab(partner)
+    // Asleep, or blank since its page crashed off screen: it loads again as the shown tab would.
+    if (partner && (partner.asleep || !partner.view.webContents.isLoading())) wakeTab(partner)
     want.setVisible(pageViewShown(want))
     raiseLinkPreview()
   }
@@ -3571,6 +3572,11 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
       lastKnownUrl = crashedUrl
       attachPageView()
       if (mayAutoRecover) void replacement.webContents.loadURL(crashedUrl)
+    } else if (companionView === view) {
+      // The other side of the pair on screen: its replacement takes its place beside the page.
+      if (mayAutoRecover) void replacement.webContents.loadURL(crashedUrl)
+      syncCompanion()
+      emitPanelState()
     }
     emitTabs()
     // Close the crashed contents so its 'destroyed' cleanup runs and its listeners go (the tab now

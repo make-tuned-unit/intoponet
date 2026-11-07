@@ -3689,6 +3689,15 @@ export const checks = {
       await waitFor('the left page loaded again', async () => (await stateOf()).split?.left.url.includes('?again'))
       await ctx.delay(500)
       expect((await stateOf()).split.focused === 'right', 'The left page loading a new page by itself took the focus from the right side.')
+      // The other side's page crashes: the pair stays side by side and that side loads again.
+      const crashedId = sideOf(await viewsNow(), '/split-left').id
+      await ctx.main(`(() => { ${pageOf('/split-left')}.forcefullyCrashRenderer(); return true })()`)
+      await waitFor('the crashed side back beside the page', async () => {
+        const views = await viewsNow()
+        return (await stateOf()).split && views.pages.length === 2 && views.pages.every((p) => p.visible) && views.pages.some((p) => p.url.includes('/split-left') && p.id !== crashedId)
+      })
+      await expectLayout('after the other side crashed')
+      expect((await stateOf()).split.focused === 'right', 'A crash on the left side moved the focus.')
 
       // ⌘W on the focused side: the other side goes back to full size and shows.
       const focusedBeforeClose = (await stateOf()).split.focused
