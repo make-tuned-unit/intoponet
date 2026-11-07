@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { Layers, Sparkles, X } from 'lucide-react'
 import type { PageTabSnapshot, TidySuggestion } from '@intoponet/browser-api'
@@ -55,6 +55,18 @@ export function TidySheet({ tabs, onAccept, onGroupByStory, onClose }: {
     return () => window.removeEventListener('keydown', onKey, true)
   }, [onClose])
 
+  // Tab stays inside the sheet: it is modal, and the sidebar behind it is out of reach.
+  const keepFocusInside = (event: ReactKeyboardEvent<HTMLDivElement>): void => {
+    if (event.key !== 'Tab' || !sheen.current) return
+    const focusable = [...sheen.current.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled])')]
+    const first = focusable[0]
+    const last = focusable.at(-1)
+    if (!first || !last) return
+    const at = document.activeElement
+    if (event.shiftKey && (at === first || at === sheen.current)) { event.preventDefault(); last.focus() }
+    else if (!event.shiftKey && at === last) { event.preventDefault(); first.focus() }
+  }
+
   const groups = state.status === 'ready' ? state.groups : []
   const chosen = groups.filter((group) => group.include && group.name.trim() && group.tabIds.length)
   const moving = chosen.reduce((count, group) => count + group.tabIds.length, 0)
@@ -65,7 +77,7 @@ export function TidySheet({ tabs, onAccept, onGroupByStory, onClose }: {
 
   return createPortal(
     <div className="tidy-scrim" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
-      <div ref={sheen} className="tidy-sheet lg-surface lg-sheen" role="dialog" aria-modal="true" aria-labelledby="tidy-title" tabIndex={-1}>
+      <div ref={sheen} className="tidy-sheet lg-surface lg-sheen" role="dialog" aria-modal="true" aria-labelledby="tidy-title" tabIndex={-1} onKeyDown={keepFocusInside}>
         <header className="tidy-head">
           <h2 id="tidy-title"><Sparkles size={15} aria-hidden="true" /> Tidy tabs</h2>
           <button type="button" className="tidy-close" aria-label="Close" onClick={onClose}><X size={15} aria-hidden="true" /></button>

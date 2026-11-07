@@ -4364,6 +4364,10 @@ export const checks = {
       const pageShown = () => ctx.main(`electron.BrowserWindow.getAllWindows()[0].contentView.children.some((view) => view.getVisible() && /^https?:/.test(view.webContents?.getURL?.() ?? ''))`)
       expect(!(await pageShown()), 'The page view is drawn over the Tidy preview, hiding it.')
       expect(await ctx.evaluate(`!!document.activeElement?.closest('.tidy-sheet')`), 'Focus did not move into the Tidy preview.')
+      // It is modal: Tab from its last button stays in it (it does not reach the sidebar behind it).
+      await ctx.evaluate(`([...document.querySelectorAll('.tidy-sheet button')].at(-1).focus(), true)`)
+      await ctx.press('Tab')
+      expect(await ctx.evaluate(`!!document.activeElement?.closest('.tidy-sheet')`), 'Tab left the Tidy preview for the sidebar behind it.')
       await axeAudit(ctx, 'the Tidy preview with Laya off', '.tidy-sheet')
       await ctx.press('Escape')
       await ctx.wait(`!document.querySelector('.tidy-sheet')`, 5000, 'the Tidy preview to close')
