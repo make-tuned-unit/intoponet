@@ -832,7 +832,23 @@ export const checks = {
     await ctx.shot('story-mountains')
     await ctx.press('Escape')
     await ctx.wait(`!document.querySelector('.story-panel')`, 5_000, 'the story panel to close on Escape')
-    return `${digest.mountains.length} story mountains; highest "${panel}" (${top.outlets} outlets, ${top.countries.length} other countries).`
+    // A pinned story that wears away (a digest without it) is unpinned: it does not come back pinned by itself when it rises again.
+    await ctx.click('.story-highest')
+    await ctx.wait(`!!document.querySelector('.story-panel h2')`, 10_000, 'the pinned story panel again')
+    const pinnedLabel = await ctx.evaluate(`document.querySelector('.story-panel h2').innerText`)
+    const raw = await ctx.evaluate(`window.intoponet.browserHost.getNewsDigest()`)
+    const live = JSON.parse(raw)
+    const pinned = live.mountains.find((m) => (m.label ?? m.title) === pinnedLabel)
+    expect(pinned, `The pinned story "${pinnedLabel}" is not in the digest.`)
+    const sendDigest = (payload) => ctx.main(`(() => { electron.BrowserWindow.getAllWindows()[0].webContents.send('browser-host:event', { type: 'news-digest', payload: ${JSON.stringify(payload)} }); return true })()`)
+    await sendDigest(JSON.stringify({ ...live, mountains: live.mountains.filter((m) => m.id !== pinned.id) }))
+    await ctx.wait(`!document.querySelector('.story-panel')`, 5_000, 'the worn-away story\'s panel to close')
+    await sendDigest(raw)
+    await ctx.delay(1500)
+    expect(!(await ctx.evaluate(`!!document.querySelector('.story-panel')`)), `"${pinnedLabel}" wore away, then came back pinned by itself when it rose again.`)
+    const button = await ctx.evaluate(`document.querySelector('.story-highest')?.innerText ?? ''`)
+    expect(button.includes('Highest peak'), `After the pinned story wore away, the peak button reads "${button.replace(/\s+/g, ' ')}".`)
+    return `${digest.mountains.length} story mountains; highest "${panel}" (${top.outlets} outlets, ${top.countries.length} other countries); a pinned story that wore away stayed unpinned.`
   },
 
   async OLDS_HEADLINE(ctx) {

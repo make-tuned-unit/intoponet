@@ -2498,6 +2498,16 @@ export function App() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [storyMode, panel.isVisible, storyStories.length])
+  // New news moves the pinned story: "Next peak" counts on from where it stands now, and a story that has worn away
+  // (or merged into another) is unpinned, so its panel does not come back by itself if it rises again.
+  useEffect(() => {
+    if (!pinnedStoryId || !storyStories.length) return
+    const rank = storyStories.findIndex((story) => story.id === pinnedStoryId)
+    if (rank < 0) {
+      setPinnedStoryId(null)
+      setPeakIndex(-1)
+    } else if (peakIndex >= 0 && rank !== peakIndex) setPeakIndex(rank)
+  }, [storyStories]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectGlobeMarker = (id: string | null): void => {
     if (!id) {
