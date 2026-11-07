@@ -213,6 +213,12 @@ async function pdfExport(ctx) {
     await ctx.delay(1500)
     const after = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.readPrivateLibrary().then((r) => r.payload)`))
     expect(!after.bookmarks.some((item) => item.url.includes('?private')), 'A private page was bookmarked.')
+    // A search made while browsing privately (checked below: its words never become a later bookmark's topic).
+    await ctx.evaluate(`(() => { const i = document.querySelector('.command-input input'); i.focus(); i.select(); return true })()`)
+    await ctx.type('quokka private errand')
+    await ctx.delay(400)
+    await ctx.press('Enter')
+    await ctx.delay(1500)
     await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
     // Every saved PDF is listed in Bookmarks › PDFs (newest first); never the private one.
     const listed = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.listSavedPdfs().then((list) => JSON.stringify(list))`))
@@ -244,6 +250,15 @@ async function pdfExport(ctx) {
     const keptAsked = JSON.parse(await ctx.main(`electron.dialog.__asked`) ?? '[]')
     expect(existsSync(keptPdf) && readFileSync(keptPdf).equals(TEST_PDF), `Save Page As on a PDF did not save the PDF itself (${existsSync(keptPdf) ? readFileSync(keptPdf).subarray(0, 40).toString('latin1') : 'no file'}).`)
     expect(/doc\.pdf$/.test(keptAsked[0] ?? '') && JSON.stringify(keptAsked[1]).includes('"pdf"'), `Save Page As on a PDF suggested ${JSON.stringify(keptAsked)}.`)
+    // Saved into a group after private browsing ended: the private search left nothing in its bookmark.
+    await ctx.evaluate(`window.intoponet.browserHost.setPdfSettings({ mode: 'auto', paper: 'a4', textSize: 'medium', images: true, citation: true, groupId: 'pdfgroup' }).then(() => true)`)
+    await openPage(ctx, `${base}/article?after-private`, 3000)
+    await ctx.evaluate(`window.intoponet.browserHost.exportPdf().then(() => true)`)
+    await savedPath(await ctx.evaluate(`document.querySelector('.pdf-done .pdf-name')?.title ?? ''`))
+    await ctx.delay(1500)
+    const later = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.readPrivateLibrary().then((r) => r.payload)`))
+    const laterBookmark = later.bookmarks.find((item) => item.url.includes('?after-private'))
+    expect(laterBookmark && !/quokka/i.test(JSON.stringify(laterBookmark)), `A search made in private browsing became part of a later bookmark: ${JSON.stringify(laterBookmark)}`)
     return `Article: ${pages} pages, ${images} images, tagged with outline, ads/hidden/overlay text left out, bookmarked in "Reading" with the PDF linked; shop page saved as seen without ads; private tab asked where, neutral name, no Where-from or bookmark; ${listed.length} PDFs in Bookmarks › PDFs (private one not listed), removing one keeps the file.`
   } finally {
     server.close()

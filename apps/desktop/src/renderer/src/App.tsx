@@ -1376,7 +1376,8 @@ export function App() {
       void window.intoponet.browserHost.close()
       return Promise.resolve()
     }
-    if (intent.kind === 'search') setResearchTopic(intent.value)
+    // A search tags what is browsed and saved next with its words; one made privately leaves nothing behind.
+    if (intent.kind === 'search' && !privacyState?.privateMode && !panel.isPrivate) setResearchTopic(intent.value)
     return window.intoponet.browserHost.open(intent, options.disposition).catch((reason: unknown) => {
       setError(navigationErrorMessage(reason))
       throw reason
@@ -1416,7 +1417,7 @@ export function App() {
       setError('Could not understand that search or address.')
       return Promise.reject(reason)
     }
-    if (intent.kind === 'search') setResearchTopic(intent.value)
+    if (intent.kind === 'search' && !privacyState?.privateMode && !panel.isPrivate) setResearchTopic(intent.value)
     return window.intoponet.browserHost.open(intent).catch((reason: unknown) => {
       setError(navigationErrorMessage(reason))
       throw reason
