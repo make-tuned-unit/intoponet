@@ -29,9 +29,10 @@ import {
   screen,
 } from 'electron'
 import type { IpcMainInvokeEvent, MenuItemConstructorOptions } from 'electron'
-import { pendingWrite, removeSetAside, setAsideUnreadable, writeFileAtomic, writeFileAtomicSync } from './atomicFile'
+import { atomicWritesInFlight, pendingWrite, removeSetAside, removeUnfinishedTemporaries, setAsideUnreadable, writeFileAtomic, writeFileAtomicSync } from './atomicFile'
 import { isAppShellUrl, SHELL_PERMISSIONS } from './shellGuard'
-import { LatestWriter } from './latestWriter'
+import { LatestWriter, latestWritesInFlight } from './latestWriter'
+import { waitForSaves } from './quitSaves'
 import { fetchCurrentRelease, UpdateController } from './updates'
 import { FeedbackService, parseFeedbackCommand } from './feedback'
 import { PasswordVault } from './passwords/vault'
@@ -5471,10 +5472,37 @@ app.whenReady().then(async () => {
 
 /** Quitting waits (briefly) for saves already on their way, so the last library edit and tabs are kept. */
 const QUIT_FLUSH_LIMIT_MS = 5_000
-let quitFlushStarted = false
+/** When the quit stops waiting for saves (set by the first before-quit), and whether it is waiting now. */
+let quitDeadline = 0
+let quitWaiting = false
+
+/** Every save still on its way to disk: the app's own, each LatestWriter's (library, history, archived tabs…) and any atomic write. */
+function savesInFlight(): Promise<unknown>[] {
+  return [...writesInFlight, ...latestWritesInFlight(), ...atomicWritesInFlight()]
+}
+
+/**
+ * Holds the quit while saves are on their way, including ones that start while it waits, until they are
+ * done or the time limit is up; then quits again. False when there is nothing to wait for.
+ */
+function holdQuitForSaves(event: Electron.Event): boolean {
+  if (quitWaiting) {
+    event.preventDefault()
+    return true
+  }
+  if (Date.now() >= quitDeadline || savesInFlight().length === 0) return false
+  event.preventDefault()
+  quitWaiting = true
+  void waitForSaves(savesInFlight, quitDeadline).finally(() => {
+    quitWaiting = false
+    app.quit()
+  })
+  return true
+}
 
 app.on('before-quit', (event) => {
   if (!app.isReady()) return
+  if (!quitDeadline) quitDeadline = Date.now() + QUIT_FLUSH_LIMIT_MS
   shellClosing = true
   // A workspace deleted moments ago is gone for good: Undo ends with the app, and its own sign-ins are deleted before it quits.
   finishWorkspaceDelete()
@@ -5485,19 +5513,21 @@ app.on('before-quit', (event) => {
   const news = newsService
   newsService = null
   const newsFlush = news?.stop()
-  if (!quitFlushStarted && (libraryWriter.pending || writesInFlight.size > 0 || newsFlush)) {
-    // Once only: the second before-quit (from app.quit() below) goes straight through.
-    quitFlushStarted = true
-    event.preventDefault()
-    const flushed = Promise.allSettled([libraryWriter.flush(), ...writesInFlight, ...(newsFlush ? [newsFlush] : [])])
-    const limit = new Promise((resolve) => setTimeout(resolve, QUIT_FLUSH_LIMIT_MS))
-    void Promise.race([flushed, limit]).finally(() => app.quit())
-    return
+  if (newsFlush) {
+    writesInFlight.add(newsFlush)
+    void newsFlush.catch(() => undefined).finally(() => writesInFlight.delete(newsFlush))
   }
+  if (holdQuitForSaves(event)) return
   if (stateWritesClosed) return
   writeFinalState()
   stateWritesClosed = true
 })
+
+// Saves that start as the window closes (a late library or history save) are waited for too, within the same limit.
+app.on('will-quit', (event) => { holdQuitForSaves(event) })
+
+// The end of the quit: a save still unfinished after the limit leaves its file as it was, and no temporary file behind.
+app.on('quit', () => { removeUnfinishedTemporaries() })
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()

@@ -1,7 +1,7 @@
 // One end-to-end check per feature in docs/FEATURE_DAG.json. Each drives the
 // real built app and fails with a plain sentence when its promise isn't kept.
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { createServer as createHttpsServer } from 'node:https'
 import { tmpdir } from 'node:os'
 import { createServer } from 'node:http'
@@ -1827,7 +1827,34 @@ export const checks = {
       await ctx.press('Escape')
       await ctx.delay(400)
       expect(!(await ctx.evaluate(`!!document.querySelector('.history-pane')`)), 'Escape did not close History.')
-      return `Downloaded ${DOWNLOAD_BYTES / 1024} KB with progress → done; on disk with quarantine "${quarantine}"; History found and deleted a visit; private visit not kept.`
+
+      // Quitting just as saves start (sealing slowed here: 3 s for history, 0.3 s for the rest): the one-second history
+      // save of a visit and a library save sent after the quit began are both waited for, and no temporary file is left.
+      const library = await ctx.evaluate(`window.intoponet.browserHost.readPrivateLibrary().then((r) => r.payload ?? JSON.stringify({ schema: 'intoponet.private-library.v1', bookmarks: [], collections: [], recents: [], absorbed: [] }))`)
+      await ctx.main(`(() => { const s = electron.safeStorage; const seal = s.encryptStringAsync.bind(s); globalThis.__historySealing = 0; s.encryptStringAsync = (text) => { const history = text.includes('intoponet.history.v1'); if (history) globalThis.__historySealing = Date.now(); return new Promise((resolve) => setTimeout(resolve, history ? 3000 : 300)).then(() => seal(text)) }; return true })()`)
+      await openPage(ctx, `${base}/delta`, 0)
+      // The visit's one-second save starts sealing: the quit begins at once, with about 3 s of that save to go.
+      let sealing = 0
+      for (let i = 0; i < 50 && !sealing; i += 1) {
+        sealing = await ctx.main('globalThis.__historySealing')
+        if (!sealing) await ctx.delay(100)
+      }
+      expect(sealing > 0, 'The visit was never saved to history.')
+      const quitAt = Date.now()
+      await ctx.main('electron.app.quit()')
+      await ctx.delay(100)
+      await ctx.evaluate(`(() => { void window.intoponet.browserHost.writePrivateLibrary(${JSON.stringify(library)}).catch(() => undefined); return true })()`).catch(() => false)
+      // A quitting app waits for its debugger to disconnect before it exits.
+      ctx.detachMain()
+      await waitForQuit(ctx.profile)
+      const historyFile = join(ctx.profile, 'personal', 'history.v1.seal')
+      const libraryFile = join(ctx.profile, 'private-library.v1.seal')
+      // The quit waited for that save rather than end without it.
+      expect(existsSync(historyFile) && statSync(historyFile).mtimeMs >= sealing + 2900, `The history save started in the last moments of the quit was not waited for (history last written ${existsSync(historyFile) ? Math.round(statSync(historyFile).mtimeMs - sealing) : '—'} ms after it began sealing, which takes 3 s).`)
+      expect(existsSync(libraryFile) && statSync(libraryFile).mtimeMs >= quitAt + 100, 'A library save sent after the quit began was not waited for.')
+      const leftovers = ['', 'personal'].flatMap((sub) => readdirSync(join(ctx.profile, sub)).filter((name) => name.endsWith('.tmp')).map((name) => join(sub, name)))
+      expect(!leftovers.length, `Quitting left temporary files in the profile: ${leftovers.join(', ')}.`)
+      return `Downloaded ${DOWNLOAD_BYTES / 1024} KB with progress → done; on disk with quarantine "${quarantine}"; History found and deleted a visit; private visit not kept; a quit waited for the late history and library saves and left no temporary files.`
     } finally {
       server.close()
     }

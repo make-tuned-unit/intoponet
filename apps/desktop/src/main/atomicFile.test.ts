@@ -1,8 +1,22 @@
 import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { describe, expect, it } from 'vitest'
-import { removeSetAside, setAsideUnreadable, writeFileAtomic, writeFileAtomicSync } from './atomicFile'
+import { describe, expect, it, vi } from 'vitest'
+
+/** A rename can be held, so a write can be caught with its temporary file written but not yet in place. */
+const renames = vi.hoisted(() => ({ hold: null as Promise<void> | null }))
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const real = await importOriginal<typeof import('node:fs/promises')>()
+  return {
+    ...real,
+    rename: async (from: string, to: string) => {
+      if (renames.hold) await renames.hold
+      return real.rename(from, to)
+    },
+  }
+})
+
+const { atomicWritesInFlight, removeSetAside, removeUnfinishedTemporaries, setAsideUnreadable, writeFileAtomic, writeFileAtomicSync } = await import('./atomicFile')
 
 describe('unreadable files', () => {
   it('moves a damaged file aside so a later save cannot replace it', () => {
@@ -51,5 +65,33 @@ describe('atomic file writes', () => {
     await writeFileAtomic(path, 'old')
     await expect(writeFileAtomic(join(dir, 'missing', 'x.json'), 'new')).rejects.toThrow()
     expect(readFileSync(path, 'utf8')).toBe('old')
+  })
+  // Last in this file: it ends async writes for the module, as the end of a quit does.
+  it('lists writes on their way, and the end of a quit deletes the temporary file of one still unfinished', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'atomic-'))
+    const path = join(dir, 'history.v1.seal')
+    writeFileSync(path, 'old')
+    let release = (): void => undefined
+    renames.hold = new Promise<void>((resolve) => { release = resolve })
+    const outcome = writeFileAtomic(path, 'new').then(() => 'written', () => 'failed')
+    // The temporary file is there; the write is waiting to put it in place.
+    for (let i = 0; i < 200 && !readdirSync(dir).some((name) => name.endsWith('.tmp')); i += 1) await new Promise((resolve) => setTimeout(resolve, 5))
+    expect(readdirSync(dir).filter((name) => name.endsWith('.tmp'))).toHaveLength(1)
+    expect(atomicWritesInFlight()).toHaveLength(1)
+    expect(removeUnfinishedTemporaries()).toBe(1)
+    expect(readdirSync(dir)).toEqual(['history.v1.seal'])
+    renames.hold = null
+    release()
+    expect(await outcome).toBe('failed')
+    expect(readFileSync(path, 'utf8')).toBe('old')
+    expect(readdirSync(dir)).toEqual(['history.v1.seal'])
+    await Promise.all(atomicWritesInFlight())
+    expect(atomicWritesInFlight()).toEqual([])
+    // After the end of the quit no async write starts (it could not finish); the last word is a synchronous write.
+    await expect(writeFileAtomic(path, 'late')).rejects.toThrow('quitting')
+    expect(removeUnfinishedTemporaries()).toBe(0)
+    writeFileAtomicSync(path, 'newest')
+    expect(readFileSync(path, 'utf8')).toBe('newest')
+    expect(readdirSync(dir)).toEqual(['history.v1.seal'])
   })
 })

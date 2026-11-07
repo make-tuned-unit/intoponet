@@ -173,9 +173,7 @@ export function installBrowsingData(options: BrowsingDataOptions): BrowsingData 
   })()
   const pruneTimer = setInterval(() => history.prune(), 3_600_000)
   pruneTimer.unref?.()
-  app.on('before-quit', () => {
-    if (saveTimer) clearTimeout(saveTimer)
-    saveTimer = null
+  const writeHistoryNow = (): void => {
     if (!historyDirty || !historyLoaded || !options.seal.availableSync()) return
     historyDirty = false
     try {
@@ -183,7 +181,17 @@ export function installBrowsingData(options: BrowsingDataOptions): BrowsingData 
     } catch (error) {
       console.error('Could not save history on quit:', error)
     }
+  }
+  app.on('before-quit', () => {
+    if (saveTimer) clearTimeout(saveTimer)
+    saveTimer = null
+    // A save already on its way (the one-second save, started just now) would land after a write made here
+    // and replace it with older visits: quitting waits for it, and what is left is written as the app ends.
+    if (!historyWriter.pending) writeHistoryNow()
   })
+  // The very end of the quit, after the saves on their way were waited for (any still unfinished at the time
+  // limit can no longer land): what is left is written last, so nothing older replaces it.
+  app.on('quit', writeHistoryNow)
 
   // ---- Clear browsing data ----------------------------------------------------------------------
   const clearBrowsingData = async (request: ClearBrowsingDataRequest): Promise<ClearBrowsingDataResult> => {
