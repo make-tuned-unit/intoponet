@@ -575,6 +575,16 @@
       "tier": "core",
       "kind": "e2e",
       "promise": "With the setting on, a link opened from another app (Mail, Slack, Finder) shows in a small floating window with protection on; ⌘O moves it, with its history, into a tab of the main window (or a chosen workspace), closing it leaves no tab behind, and ⌥⌘N opens an empty one."
+    },
+    {
+      "id": "AUTO_PIP",
+      "title": "Video follows you",
+      "deps": [
+        "TABS"
+      ],
+      "tier": "core",
+      "kind": "e2e",
+      "promise": "With the setting on, switching away from a tab playing a video floats that video in picture-in-picture; returning to the tab docks it again; the sidebar shows a now-playing control that pauses, mutes or jumps to the tab; sites that refuse picture-in-picture keep playing in place."
     }
   ]
 }

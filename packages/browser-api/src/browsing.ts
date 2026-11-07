@@ -42,6 +42,19 @@ export type BrowsingSettings = {
   tabSwitchOrder: TabSwitchOrder
   tabArchive: TabArchiveAfter
   linksFromOtherApps: LinksFromOtherApps
+  /** Video follows you: leaving a tab whose video plays floats that video in picture-in-picture (off by default). */
+  autoPictureInPicture: boolean
+}
+
+/** The tab the now-playing control stands for (null in the event when nothing plays). */
+export type NowPlayingSnapshot = {
+  tabId: string
+  title: string
+  /** Its media is playing now (false: paused, or floating and paused). */
+  playing: boolean
+  muted: boolean
+  /** The tab's video floats in picture-in-picture. */
+  pip: boolean
 }
 
 /** A page asked to open another app. Shown as "Open <appName>?" in the shell. */
@@ -74,6 +87,7 @@ export type BrowsingCommand =
   | { type: 'set-tab-switch-order'; order: TabSwitchOrder }
   | { type: 'set-tab-archive'; after: TabArchiveAfter }
   | { type: 'set-links-from-other-apps'; choice: LinksFromOtherApps }
+  | { type: 'set-auto-picture-in-picture'; enabled: boolean }
 
 export interface BrowsingApi {
   decideExternal(id: string, decision: 'open' | 'cancel', always?: boolean): Promise<void>
@@ -86,6 +100,7 @@ export interface BrowsingApi {
   setTabSwitchOrder(order: TabSwitchOrder): Promise<BrowsingSettings>
   setTabArchive(after: TabArchiveAfter): Promise<BrowsingSettings>
   setLinksFromOtherApps(choice: LinksFromOtherApps): Promise<BrowsingSettings>
+  setAutoPictureInPicture(enabled: boolean): Promise<BrowsingSettings>
   subscribe(listener: (event: BrowsingEvent) => void): () => void
 }
 
@@ -117,6 +132,9 @@ export function parseBrowsingCommand(value: unknown): BrowsingCommand {
     case 'set-links-from-other-apps':
       if (typeof v['choice'] !== 'string' || !(LINKS_FROM_OTHER_APPS as readonly string[]).includes(v['choice'])) break
       return { type: 'set-links-from-other-apps', choice: v['choice'] as LinksFromOtherApps }
+    case 'set-auto-picture-in-picture':
+      if (typeof v['enabled'] !== 'boolean') break
+      return { type: 'set-auto-picture-in-picture', enabled: v['enabled'] }
     case 'external-pending':
     case 'settings':
     case 'make-default-browser':

@@ -3188,9 +3188,169 @@ export const checks = {
       site.close()
     }
   },
+
+  async AUTO_PIP(ctx) {
+    // Video follows you. The video is a canvas stream (no network): one page lets picture-in-picture, one refuses it.
+    const host = 'window.intoponet.browserHost'
+    const VIDEO_PAGE = (title, attributes) => `<!doctype html><meta charset="utf-8"><title>${title}</title><body style="font:16px system-ui;margin:40px">
+      <h1>${title}</h1><script>
+        const canvas = document.createElement('canvas'); canvas.width = 320; canvas.height = 180
+        const g = canvas.getContext('2d'); let frame = 0
+        setInterval(() => { g.fillStyle = 'hsl(' + (frame++ % 360) + ' 80% 50%)'; g.fillRect(0, 0, 320, 180) }, 33)
+        const video = document.createElement('video')
+        video.srcObject = canvas.captureStream(30); video.muted = true; video.autoplay = true; video.playsInline = true; video.width = 320; video.height = 180
+        ${attributes}
+        document.querySelector('h1').after(video)
+      </script></body>`
+    const pages = {
+      '/video': VIDEO_PAGE('Test video', ''),
+      '/refuses': VIDEO_PAGE('Refused video', 'video.disablePictureInPicture = true'),
+      '/plain': '<!doctype html><meta charset="utf-8"><title>Plain page</title><body style="font:16px system-ui;margin:40px"><h1>Plain page</h1><p>No video here.</p></body>',
+    }
+    const server = createServer((request, response) => {
+      const path = new URL(request.url, 'http://localhost').pathname
+      response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
+      response.end(pages[path] ?? pages['/plain'])
+    })
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+    const origin = `http://127.0.0.1:${server.address().port}`
+    const tabs = async () => JSON.parse(await ctx.evaluate(`${host}.getTabs().then((t) => JSON.stringify(t))`))
+    const tabAt = async (path) => (await tabs()).find((tab) => new URL(tab.url || 'about:blank').pathname === path)
+    const setPip = (on) => ctx.evaluate(`window.intoponet.browsing.setAutoPictureInPicture(${on}).then(() => true)`)
+    const show = async (path) => {
+      const tab = await tabAt(path)
+      expect(tab, `No tab shows ${path}.`)
+      await ctx.evaluate(`${host}.activateTab(${JSON.stringify(tab.id)}).then(() => true)`)
+      await ctx.delay(1500)
+    }
+    const videoOf = async (path) => {
+      const session = await ctx.page(path)
+      return {
+        state: () => session.evaluate(`JSON.stringify((() => { const v = document.querySelector('video'); return { paused: v.paused, time: v.currentTime, ready: v.readyState, pip: !!document.pictureInPictureElement } })())`).then(JSON.parse),
+      }
+    }
+    const until = async (test, ms, label) => {
+      const end = Date.now() + ms
+      while (Date.now() < end) {
+        if (await test().catch(() => false)) return
+        await ctx.delay(300)
+      }
+      throw new CheckFailure(`Timed out waiting for ${label}.`)
+    }
+    const playing = async (path) => {
+      const video = await videoOf(path)
+      const before = await video.state()
+      await ctx.delay(700)
+      const after = await video.state()
+      return !before.paused && !after.paused && after.time > before.time
+    }
+    const pipOf = async (path) => (await (await videoOf(path)).state()).pip
+    // Moves keyboard focus onto one of the now-playing control's buttons (by its label's start), once the
+    // control shows that label (its state follows the tab a moment after the page changes).
+    const focusControl = async (prefix) => {
+      let result = 'no button yet'
+      for (let i = 0; i < 20 && result !== true; i += 1) {
+        result = await ctx.evaluate(`(() => {
+          const buttons = [...document.querySelectorAll('.now-playing-button')]
+          const button = buttons.find((item) => item.getAttribute('aria-label').startsWith(${JSON.stringify(prefix)}))
+          if (!button) return 'no button starts with "${prefix}"; buttons: ' + buttons.map((item) => item.getAttribute('aria-label')).join(' | ')
+          button.focus()
+          return document.activeElement === button ? true : 'focus did not move'
+        })()`)
+        if (result !== true) await ctx.delay(250)
+      }
+      expect(result === true, `Keyboard focus could not reach the control's ${prefix} button: ${result}`)
+    }
+    try {
+      expect((await ctx.evaluate(`window.intoponet.browsing.settings().then((s) => s.autoPictureInPicture)`)) === false, 'Video follows you is not off by default.')
+      await setPip(false)
+      await openPage(ctx, `${origin}/video`, 3000)
+      expect(await playing('/video'), 'The test video is not playing.')
+      await openPage(ctx, `${origin}/plain`, 1500)
+      expect(!(await pipOf('/video')), 'With the setting off, leaving a tab floated its video.')
+      expect(await playing('/video'), 'With the setting off, the video stopped when its tab was left.')
+
+      // On: leaving the playing tab floats the video; playback goes on.
+      await setPip(true)
+      await show('/video')
+      await show('/plain')
+      expect(await pipOf('/video'), 'Leaving a tab playing a video did not float it in picture-in-picture.')
+      expect(await playing('/video'), 'The floating video stopped playing.')
+      // The now-playing control lists it while it plays (in the sidebar, as one labelled group).
+      await ctx.wait(`!!document.querySelector('.now-playing')`, 6000, 'the now-playing control')
+      // textContent: the words are there even when the rail is icons-only (their text is hidden then).
+      const shown = await ctx.evaluate(`document.querySelector('.now-playing').textContent`)
+      expect(shown.includes('Playing') && shown.includes('Test video'), `The now-playing control says "${shown}".`)
+      await axeAudit(ctx, 'the now-playing control', '.now-playing')
+
+      // Pause and play from the control with the keyboard; mute and unmute too.
+      expect(await ctx.click('.now-playing-button', 'Pause'), 'The control has no Pause button.')
+      await until(async () => (await (await videoOf('/video')).state()).paused === true, 4000, 'the video to pause')
+      expect(await ctx.evaluate(`document.querySelector('.now-playing').textContent.includes('Paused')`), 'The control does not say Paused.')
+      await focusControl('Play')
+      await ctx.press('Enter')
+      await until(async () => !(await (await videoOf('/video')).state()).paused, 4000, 'the video to play again')
+      await focusControl('Mute')
+      await ctx.press('Enter')
+      await until(async () => (await tabAt('/video')).muted === true, 4000, 'the tab to mute')
+      await focusControl('Unmute')
+      await ctx.press('Enter')
+      await until(async () => (await tabAt('/video')).muted !== true, 4000, 'the tab to unmute')
+
+      // Go to tab (keyboard): the tab is shown and its video docks again.
+      await focusControl('Go to tab')
+      await ctx.press('Enter')
+      await until(async () => (await tabAt('/video')).active, 4000, 'the video tab to be shown')
+      await until(async () => !(await pipOf('/video')), 4000, 'the video to dock again')
+      expect(await playing('/video'), 'The video stopped when it docked again.')
+
+      // A page that refuses picture-in-picture keeps playing where it is, with no error.
+      await openPage(ctx, `${origin}/refuses`, 3000)
+      expect(await playing('/refuses'), 'The refusing page video is not playing.')
+      await show('/plain')
+      expect(!(await pipOf('/refuses')), 'A video that disallows picture-in-picture was floated.')
+      expect(await playing('/refuses'), 'A video that disallows picture-in-picture stopped when its tab was left.')
+      expect(await pipOf('/video') === true, 'Leaving the refusing tab docked the floating video.')
+
+      // A floating tab is neither put to sleep nor archived: tabs that are not floating are.
+      await ctx.evaluate(`window.intoponet.browsing.setTabArchive('off').then(() => true)`)
+      await ctx.evaluate(`window.intoponet.browsing.setTabSleep('15m').then(() => true)`)
+      for (let i = 0; i < 3; i += 1) await openPage(ctx, `${origin}/plain?${i}`, 600)
+      await ctx.wait(`${host}.getTabs().then((t) => t.some((x) => x.asleep && !x.active))`, 30_000, 'a background tab to sleep')
+      const slept = await tabs()
+      expect(!slept.find((tab) => new URL(tab.url || 'about:blank').pathname === '/video').asleep, 'The floating video tab was put to sleep.')
+      expect(await pipOf('/video'), 'The floating video was docked by sleeping.')
+      const openBefore = (await tabs()).length
+      await ctx.evaluate(`window.intoponet.browsing.setTabArchive('12h').then(() => true)`)
+      await ctx.delay(5000)
+      expect((await tabs()).length < openBefore, 'No background tab was archived, so the archive check proves nothing.')
+      expect((await tabAt('/video')) !== undefined, 'The floating video tab was archived.')
+      expect(await pipOf('/video'), 'The floating video was docked by archiving.')
+      await ctx.evaluate(`window.intoponet.browsing.setTabArchive('off').then(() => true)`)
+      await ctx.evaluate(`window.intoponet.browsing.setTabSleep('never').then(() => true)`)
+      // A workspace switch floats the shown video too, the control still finds it in the other workspace, and go-to brings it back.
+      await show('/video')
+      expect(await playing('/video') && !(await pipOf('/video')), 'The video was not shown and playing before the workspace switch.')
+      await ctx.evaluate(`window.intoponet.workspaces.create().then(() => true)`)
+      await until(async () => await pipOf('/video'), 6000, 'the video to float when its workspace was left')
+      expect(await playing('/video'), 'The video in the other workspace stopped playing.')
+      await ctx.wait(`!!document.querySelector('.now-playing') && document.querySelector('.now-playing').textContent.includes('Test video')`, 6000, 'the now-playing control to list the video in another workspace')
+      await focusControl('Go to tab')
+      await ctx.press('Enter')
+      await until(async () => (await tabAt('/video')).active, 6000, 'the video tab to be shown again')
+      await until(async () => !(await pipOf('/video')), 4000, 'the video to dock when its workspace came back')
+      expect(await playing('/video'), 'The video stopped when its workspace came back.')
+      await ctx.evaluate(`window.intoponet.workspaces.switchTo({ index: 0 }).then(() => true)`).catch(() => undefined)
+      await setPip(false)
+      return 'Off by default; with it on, leaving a playing tab floated its canvas video (playback went on), returning docked it; the now-playing control listed it (labelled, axe clean) and pause, play, mute, unmute and go-to worked from the keyboard; a page with disablePictureInPicture kept playing in place; a floating tab was not put to sleep or archived while other tabs were.'
+    } finally {
+      server.close()
+    }
+  },
 }
 
 checks.TAB_SLEEP.env = { INTOPONET_TAB_SLEEP_MINUTE_MS: '200' }
 checks.TAB_ARCHIVE.env = { INTOPONET_TAB_ARCHIVE_HOUR_MS: '200' }
 checks.BROWSER_IMPORT.env = { INTOPONET_IMPORT_ROOT: IMPORT_ROOT, INTOPONET_IMPORT_TEST_KEY: IMPORT_TEST_KEY }
 checks.IMPORT_WORKSPACES.env = { INTOPONET_IMPORT_ROOT: IMPORT_WS_ROOT, INTOPONET_IMPORT_TEST_KEY: IMPORT_TEST_KEY }
+checks.AUTO_PIP.env = { INTOPONET_TAB_SLEEP_MINUTE_MS: '200', INTOPONET_TAB_ARCHIVE_HOUR_MS: '200' }

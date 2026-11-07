@@ -1,8 +1,9 @@
 import { AnimatePresence, motion, useReducedMotion, type Transition } from 'motion/react'
 import { Ellipsis, Folder, FolderOpen, FolderPlus, Layers, PanelLeftClose, PanelLeftDashed, PanelLeftOpen, Plus, Undo2, X } from 'lucide-react'
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type WheelEvent } from 'react'
-import { MAX_WORKSPACES, TAB_SIDEBAR_WIDTH, type PageTabSnapshot, type TabFolderSnapshot, type WorkspacesState } from '@intoponet/browser-api'
+import { MAX_WORKSPACES, TAB_SIDEBAR_WIDTH, type NowPlayingSnapshot, type PageTabSnapshot, type TabFolderSnapshot, type WorkspacesState } from '@intoponet/browser-api'
 import { folderTree } from './tabFolders'
+import { NowPlayingControl } from './nowPlaying/NowPlayingControl'
 import { useGlassSheen } from './glass/useGlassSheen'
 import { RailMenu } from './RailMenu'
 import { ACCENT_COLOURS, WorkspaceBar, type WorkspaceRequest } from './WorkspaceBar'
@@ -42,6 +43,8 @@ export type TabRailProps = {
   workspaces?: WorkspacesState | null
   /** The command menu asked to edit, delete or make a workspace. */
   workspaceRequest?: WorkspaceRequest | null
+  /** What plays in a tab (the now-playing control at the foot of the rail); null hides it. */
+  nowPlaying?: NowPlayingSnapshot | null
 }
 
 /** A sideways two-finger swipe on the sidebar this far (in wheel pixels) shows the next or previous workspace. */
@@ -56,7 +59,7 @@ const SWIPE_GAP_MS = 220
  * keeps it expanded as vertical tabs. Pinned tabs sit first as icons; tabs
  * can be dragged (or moved with ⌥⇧↑ / ⌥⇧↓) into a new order.
  */
-export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange, onHide, onExpandedChange, onPinnedChange, onNewTab, archivedCount = 0, onUndoArchive, folders = [], renameFolderId = null, onRenameHandled, onSaveFolder, message = '', workspaces = null, workspaceRequest = null }: TabRailProps) {
+export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange, onHide, onExpandedChange, onPinnedChange, onNewTab, archivedCount = 0, onUndoArchive, folders = [], renameFolderId = null, onRenameHandled, onSaveFolder, message = '', workspaces = null, workspaceRequest = null, nowPlaying = null }: TabRailProps) {
   const reduceMotion = useReducedMotion()
   const surface = useGlassSheen<HTMLDivElement>()
   const list = useRef<HTMLDivElement>(null)
@@ -379,6 +382,7 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
                 </>
               )}
             </div>
+            <NowPlayingControl nowPlaying={nowPlaying} tabs={tabs} open={open} />
             <div className="tab-rail-footer">
               <button type="button" className="tab-rail-action" aria-label="New tab" title="New tab (⌘T)" onClick={onNewTab}>
                 <Plus size={15} />
