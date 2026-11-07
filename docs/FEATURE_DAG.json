@@ -607,6 +607,17 @@
       "tier": "core",
       "kind": "e2e",
       "promise": "Rules made in Settings or from a quick window (\"Always open docs.example.com in Work\") send matching links from other apps straight to that workspace; rules match by site, are kept only on this Mac, and a link that matches none follows the default."
+    },
+    {
+      "id": "COMPARE_COVERAGE",
+      "title": "Compare two outlets side by side",
+      "deps": [
+        "SPLIT_PAGES",
+        "SOURCE_CAROUSEL"
+      ],
+      "tier": "network",
+      "kind": "e2e",
+      "promise": "From a world story's sources carousel, Compare opens two outlets' articles side by side, each labelled with its outlet and country, each side translatable on its own, and The Olds for that story one click away."
     }
   ]
 }

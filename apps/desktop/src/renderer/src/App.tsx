@@ -4359,7 +4359,25 @@ export function App() {
         </section>
       )}
 
-      {panel.isVisible && <SplitChrome split={panel.split} preview={panel.splitPreview} />}
+      {panel.isVisible && (
+        <SplitChrome
+          split={panel.split}
+          preview={panel.splitPreview}
+          compare={{
+            // A side's Translate: focus that side (Translate acts on the focused page), then open the bar.
+            translate: (side) => { void window.intoponet.browserHost.focusSplitSide(side).then(() => setTranslateOpen(true), () => undefined) },
+            // The Olds for a Compare pair: the story's own history, as the world story's button opens it.
+            olds: (storyId) => {
+              const story = newsDigest?.global?.find((item) => item.id === storyId)
+              if (!story) return
+              // The Olds shows over the globe, so the browser steps aside (its pages stay open in their tabs).
+              void window.intoponet.browserHost.close()
+              const lang = story.headlines.find((item) => item.url === story.url)?.lang ?? 'en'
+              openOldsForHeadline({ title: story.title, url: story.url, publisher: story.publisher, publishedAt: story.latestAt, lang }, /^en/i.test(lang) ? story.title : null, null)
+            },
+          }}
+        />
+      )}
 
       <div className="command-dock">
         {tabs.length > 0 && !railVisible && (

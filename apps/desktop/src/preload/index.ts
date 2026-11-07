@@ -197,6 +197,9 @@ const browserHost: BrowserHostApi = {
   splitTab: async (id, partnerId, side) => {
     await invoke({ type: 'split-tab', ...(id ? { id } : {}), ...(partnerId ? { partnerId } : {}), ...(side ? { side } : {}) })
   },
+  openCompare: async (story, left, right) => {
+    await invoke({ type: 'open-compare', story, left, right })
+  },
   unsplitTab: async (id) => {
     await invoke({ type: 'unsplit-tab', ...(id ? { id } : {}) })
   },

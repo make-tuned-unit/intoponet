@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, useReducedMotion, type Transition } from 'motion/react'
-import { ArrowUpRight, ChevronLeft, ChevronRight, Clock3, Lock, Radio, UserRound, X } from 'lucide-react'
+import { ArrowUpRight, ChevronLeft, ChevronRight, Clock3, Columns2, Lock, Radio, UserRound, X } from 'lucide-react'
 import type { GlobalStory, GlobalStoryHeadline } from '../../../shared/news/globalStories'
 import { hostIsPaywalled } from '../../../shared/news/paywall'
 import { learnedPaywalls } from '../access/learnedPaywalls'
@@ -153,6 +153,22 @@ export function SourceCarousel({ launch, now, translation, countryName, onRead, 
       Number(hostIsPaywalled(a.url, paywalls)) - Number(hostIsPaywalled(b.url, paywalls)))
   }, [story])
   const [index, setIndex] = useState(0)
+  // Compare: the front card side by side with another outlet's headline (COMPARE_COVERAGE).
+  const [chooser, setChooser] = useState(false)
+  const front = headlines[index]
+  const frontOutlet = front?.publisher
+  const outlets = useMemo(() => new Set(headlines.map((item) => item.publisher)).size, [headlines])
+  const choices = useMemo(() => {
+    const seen = new Set<string>()
+    return headlines.filter((item) => {
+      if (item.publisher === frontOutlet || seen.has(item.publisher)) return false
+      seen.add(item.publisher)
+      return true
+    })
+  }, [headlines, frontOutlet])
+  // The outlet offered first: one in another country than the front card's.
+  const placeOf = (item: GlobalStoryHeadline): string => (item.international ? 'international' : item.countryCode)
+  const preselected = front ? choices.find((item) => placeOf(item) !== placeOf(front)) ?? choices[0] : undefined
   const urls = useMemo(() => headlines.map((item) => item.url), [headlines])
   const previews = useArticlePreviews(urls, index)
   // Headlines and summaries in your language.
@@ -235,6 +251,15 @@ export function SourceCarousel({ launch, now, translation, countryName, onRead, 
   // Keys: flip, read, close. Handled here first so the shell's own shortcuts stay out of the way.
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
+      if (chooser) {
+        // The Compare chooser is open: Escape closes it, and the cards do not flip under it.
+        if (event.key === 'Escape') {
+          event.preventDefault()
+          event.stopPropagation()
+          setChooser(false)
+        }
+        return
+      }
       if (phase !== 'browse') return
       let handled = true
       if (event.key === 'ArrowRight') setIndex((value) => stepIndex(value, 1, headlines.length))
@@ -251,7 +276,25 @@ export function SourceCarousel({ launch, now, translation, countryName, onRead, 
     }
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
-  }, [close, headlines.length, index, phase, read])
+  }, [chooser, close, headlines.length, index, phase, read])
+
+  /** Opens the front card and the chosen outlet's article side by side, then hands the screen to the browser. */
+  const compareWith = (other: GlobalStoryHeadline): void => {
+    if (!front || phase !== 'browse') return
+    const side = (headline: GlobalStoryHeadline) => ({
+      url: headline.url,
+      outlet: headline.publisher,
+      countryCode: headline.countryCode,
+      ...(headline.international ? { international: true } : {}),
+      ...(headline.lang ? { lang: headline.lang } : {}),
+    })
+    void window.intoponet.browserHost.openCompare({ id: story.id, title: story.title }, side(front), side(other)).then(() => {
+      // The pair is on the page now: the page can show, and the carousel is done.
+      released.current = true
+      void window.intoponet.browserHost.holdPage(false)
+      onClose()
+    }, () => setChooser(false))
+  }
 
   const onWheel = (event: React.WheelEvent): void => {
     if (phase !== 'browse') return
@@ -417,8 +460,46 @@ export function SourceCarousel({ launch, now, translation, countryName, onRead, 
         <button type="button" className="sc-nav" aria-label="Next source" disabled={index === headlines.length - 1} onClick={() => setIndex((value) => stepIndex(value, 1, headlines.length))}>
           <ChevronRight size={18} aria-hidden="true" />
         </button>
+        {outlets >= 2 && (
+          <button
+            type="button"
+            className="sc-compare"
+            aria-expanded={chooser}
+            title="Put this article and another outlet's side by side"
+            onClick={() => setChooser((open) => !open)}
+          >
+            <Columns2 size={14} aria-hidden="true" /> Compare
+          </button>
+        )}
         <p className="sc-hint">{index + 1} of {headlines.length} · ← → or swipe to flip · Enter to read</p>
       </motion.footer>
+
+      {chooser && front && (
+        <div className="sc-chooser" role="dialog" aria-label="Compare with another outlet">
+          <p className="sc-chooser-title">Compare <strong>{front.publisher}</strong> with…</p>
+          <ul className="sc-chooser-list">
+            {choices.map((item) => {
+              const picked = preselected?.publisher === item.publisher
+              const where = item.international ? 'International desk' : countryName(item.countryCode)
+              return (
+                <li key={item.publisher}>
+                  <button
+                    type="button"
+                    className={`sc-chooser-item${picked ? ' is-preselected' : ''}`}
+                    autoFocus={picked}
+                    aria-label={`${item.publisher}, ${where}`}
+                    onClick={() => compareWith(item)}
+                  >
+                    <span>{item.publisher}</span>
+                    <small>{where}</small>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+          <button type="button" className="sc-chooser-cancel" onClick={() => setChooser(false)}>Cancel</button>
+        </div>
+      )}
 
       {morph && (
         <motion.div

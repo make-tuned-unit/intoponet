@@ -32,7 +32,20 @@ export type BrowserPanelSnapshot = {
 export type SplitSide = 'left' | 'right'
 
 /** One side of a split: its tab, its address and whether it is secure (PRD WEB-006). */
-export type SplitSideSnapshot = { id: string; url: string; title: string; secure: boolean }
+export type SplitSideSnapshot = {
+  id: string
+  url: string
+  title: string
+  secure: boolean
+  /** A side opened by Compare (COMPARE_COVERAGE): its outlet and country, while the page is still on that outlet. */
+  compare?: SplitCompareSnapshot
+}
+
+/** The label a Compare side shows: its outlet and country name, and the story it was opened for. */
+export type SplitCompareSnapshot = { outlet: string; country: string; storyId: string; lang?: string }
+
+/** One outlet's article for Compare: where it is, who published it and where (a country code, or international). */
+export type CompareSide = { url: string; outlet: string; countryCode: string; international?: boolean; lang?: string }
 
 /** A pair of tabs side by side. Rectangles are window coordinates, like the page's bounds. */
 export type SplitPanelSnapshot = {
@@ -362,6 +375,8 @@ export interface BrowserHostApi {
   moveTab(id: string, toIndex: number): Promise<void>
   /** Pages side by side: pair `id` (default the shown tab) with `partnerId` (default the next tab). */
   splitTab(id?: string, partnerId?: string, side?: SplitSide): Promise<void>
+  /** Compare two outlets' articles for a story: two tabs side by side, labelled with outlet and country. */
+  openCompare(story: { id: string; title: string }, left: CompareSide, right: CompareSide): Promise<void>
   unsplitTab(id?: string): Promise<void>
   setSplitRatio(ratio: number): Promise<void>
   focusSplitSide(side: SplitSide): Promise<void>
@@ -489,6 +504,8 @@ export type BrowserHostCommand =
   | { type: 'split-tab'; id?: string; partnerId?: string; side?: SplitSide }
   /** End the pair `id` (default: the shown tab) is in; both tabs are whole again. */
   | { type: 'unsplit-tab'; id?: string }
+  /** Compare two outlets' articles for a story: two new tabs, side by side (left and right), each labelled. */
+  | { type: 'open-compare'; story: { id: string; title: string }; left: CompareSide; right: CompareSide }
   /** The divider's place: the left side's share of the two sides' width. */
   | { type: 'set-split-ratio'; ratio: number }
   /** Make the left or right side the one that has focus (its header was chosen). */
@@ -593,6 +610,7 @@ const commandTypes = new Set<BrowserHostCommand['type']>([
   'tab-home',
   'split-tab',
   'unsplit-tab',
+  'open-compare',
   'set-split-ratio',
   'focus-split-side',
   'split-preview',
@@ -620,6 +638,26 @@ const commandTypes = new Set<BrowserHostCommand['type']>([
 function parseTabId(value: unknown): string {
   if (typeof value !== 'string' || value.length === 0 || value.length > 80) throw new Error('Invalid tab.')
   return value
+}
+
+/** One Compare side: an http(s) address, its outlet and country (capped; anything else is refused). */
+function parseCompareSide(value: unknown): CompareSide {
+  if (!isRecord(value)) throw new Error('Invalid comparison side.')
+  const url = value['url']
+  if (typeof url !== 'string' || url.length === 0 || url.length > 8_192 || !/^https?:\/\//i.test(url)) throw new Error('Invalid comparison address.')
+  const outlet = value['outlet']
+  if (typeof outlet !== 'string' || outlet.trim().length === 0 || outlet.length > 120) throw new Error('Invalid outlet.')
+  const countryCode = value['countryCode']
+  if (typeof countryCode !== 'string' || countryCode.length === 0 || countryCode.length > 8) throw new Error('Invalid country.')
+  const international = value['international'] === true ? true : undefined
+  const lang = typeof value['lang'] === 'string' && value['lang'].length <= 35 ? value['lang'] : undefined
+  return {
+    url,
+    outlet: outlet.trim(),
+    countryCode,
+    ...(international ? { international } : {}),
+    ...(lang ? { lang } : {}),
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -858,6 +896,12 @@ export function parseBrowserHostCommand(value: unknown): BrowserHostCommand {
     }
     case 'unsplit-tab':
       return { type, ...(value['id'] === undefined ? {} : { id: parseTabId(value['id']) }) }
+    case 'open-compare': {
+      const story = value['story']
+      if (!isRecord(story) || typeof story['id'] !== 'string' || story['id'].length === 0 || story['id'].length > 200) throw new Error('Invalid story.')
+      if (typeof story['title'] !== 'string' || story['title'].length > 300) throw new Error('Invalid story.')
+      return { type, story: { id: story['id'], title: story['title'].slice(0, 300) }, left: parseCompareSide(value['left']), right: parseCompareSide(value['right']) }
+    }
     case 'set-split-ratio':
       if (typeof value['ratio'] !== 'number' || !Number.isFinite(value['ratio']) || value['ratio'] < 0 || value['ratio'] > 1) throw new Error('Invalid split ratio.')
       return { type, ratio: value['ratio'] }
