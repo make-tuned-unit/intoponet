@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import { basename, dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { readFile } from 'node:fs/promises'
-import { appendFileSync, createWriteStream, existsSync, mkdirSync, readFileSync, rmSync, statSync, unlinkSync } from 'node:fs'
+import { readFile, rm } from 'node:fs/promises'
+import { appendFileSync, createWriteStream, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, unlinkSync } from 'node:fs'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import type { ReadableStream as NodeReadableStream } from 'node:stream/web'
@@ -156,9 +156,12 @@ import {
   identityScope,
   isWorkspaceIdentityId,
   pagePartition,
+  partitionWorkspaceId,
   scopeWorkspaceId,
   signInsChange,
+  sweepLeftoverIdentities,
   workspacePartition,
+  workspacePartitionFolder,
   workspacePermissionsFile,
   type IdentityScope,
 } from './workspaceIdentity'
@@ -292,6 +295,8 @@ const openTabs: OpenTab[] = []
 let workspaces = new WorkspaceSet<OpenTab>()
 /** A workspace deleted moments ago: Undo brings it back (its tabs stay open, unseen) until the timer closes them. */
 let deletedWorkspace: { removed: RemovedWorkspace<OpenTab>; timer: ReturnType<typeof setTimeout> } | null = null
+/** Every saved workspace was read at startup (never with the state file missing, unreadable or set aside). */
+let savedWorkspacesLoaded = false
 /** Every tab in every workspace, and private tabs. */
 function allTabs(): OpenTab[] {
   return [...openTabs, ...workspaces.parkedTabs()]
@@ -2306,11 +2311,48 @@ function forgetWorkspacePermissions(workspaceId: string): void {
   }
 }
 
-/** Everything a workspace keeps apart: its sign-ins and site data, its permissions and its saved logins. */
-async function forgetWorkspaceIdentity(workspaceId: string): Promise<void> {
+/**
+ * Everything a workspace keeps apart: its sign-ins and site data, its permissions and its saved logins.
+ * `leftover`: found at startup with no page of this run using it, so its partition's folder is deleted
+ * outright instead of being opened to be cleared.
+ */
+async function forgetWorkspaceIdentity(workspaceId: string, leftover = false): Promise<void> {
   forgetWorkspacePermissions(workspaceId)
-  await clearPartitionData(workspacePartition(workspaceId))
+  if (leftover) await rm(join(app.getPath('userData'), 'Partitions', workspacePartitionFolder(workspaceId)), { recursive: true, force: true }).catch(() => undefined)
+  else await clearPartitionData(workspacePartition(workspaceId))
   await passwords?.forgetWorkspace(workspaceId).catch(() => undefined)
+}
+
+/** Names in a folder of the profile (none when it is not there). */
+function namesIn(folder: string): string[] {
+  try {
+    return readdirSync(folder)
+  } catch {
+    return []
+  }
+}
+
+/**
+ * At startup: sign-ins, site data, permission answers and saved logins of a workspace that is gone or
+ * no longer keeps its own, left when the app stopped before clearing them (a crash or force-quit in a
+ * deletion's Undo window). Only once the saved workspaces loaded (workspaceIdentity.ts). Quitting waits for it.
+ */
+function sweepLeftoverSignIns(): void {
+  const userData = app.getPath('userData')
+  const opened = (id: string): boolean => [...wiredPartitions].some((partition) => partitionWorkspaceId(partition)?.toLowerCase() === id.toLowerCase())
+  const sweep = sweepLeftoverIdentities(savedWorkspacesLoaded, {
+    workspaces: () => [...workspaces.workspaces, ...(deletedWorkspace ? [deletedWorkspace.removed.workspace] : [])],
+    partitionInUse: opened,
+    partitionFolders: () => namesIn(join(userData, 'Partitions')),
+    profileFiles: () => namesIn(userData),
+    loginWorkspaceIds: () => passwords?.workspaceIds().catch(() => []) ?? Promise.resolve([]),
+    forget: (id) => forgetWorkspaceIdentity(id, true),
+  }).catch((error: unknown) => {
+    console.error('Could not remove leftover sign-ins:', error)
+    return []
+  })
+  writesInFlight.add(sweep)
+  void sweep.finally(() => writesInFlight.delete(sweep))
 }
 
 /** Workspace actions menu: "Separate sign-ins" on or off (the shell has confirmed). */
@@ -5100,6 +5142,8 @@ app.whenReady().then(async () => {
       pageView = active.view
       lastKnownUrl = active.url
     }
+    // Restored to the end with every saved workspace read: only then may leftover sign-ins be removed.
+    savedWorkspacesLoaded = saved.complete
   })
 
   // The browser itself first: everything below may fail on its own without leaving the app without a window.
@@ -5158,6 +5202,8 @@ app.whenReady().then(async () => {
       if (pageView && !viewGone(pageView) && pageView.webContents === contents) emit({ type: 'navigation-failed', url, reason: CLIENT_CERTIFICATE_NOTICE })
     })
   })
+  // After passwords, permissions and every workspace's own session are set up (those in use are never touched).
+  startup('leftover sign-ins', sweepLeftoverSignIns)
 
   let laya: LayaService | null = null
   startup('captures', () => {

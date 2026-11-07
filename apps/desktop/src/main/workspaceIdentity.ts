@@ -77,3 +77,79 @@ export function workspacePermissionsFile(id: string): string {
 export function signInsChange(from: IdentityWorkspace | null | undefined, to: IdentityWorkspace | null | undefined): boolean {
   return pagePartition(from, false) !== pagePartition(to, false)
 }
+
+/**
+ * The folder (in userData/Partitions) a workspace's partition is kept in. Electron names it after
+ * the partition, lowercased; workspace ids need no escaping.
+ */
+export function workspacePartitionFolder(id: string): string {
+  if (!isWorkspaceIdentityId(id)) throw new Error('Invalid workspace identity.')
+  return `intoponet-ws-${id.toLowerCase()}`
+}
+
+const PARTITION_FOLDER = /^intoponet-ws-([A-Za-z0-9-]{1,80})$/
+const PERMISSIONS_FILE = /^site-permissions\.ws-([A-Za-z0-9-]{1,80})\.json$/
+
+/** The workspaces named by partition folders (in userData/Partitions) and permission files (in userData). */
+export function identitiesOnDisk(partitionFolders: readonly string[], profileFiles: readonly string[]): string[] {
+  const ids: string[] = []
+  for (const name of partitionFolders) {
+    const id = PARTITION_FOLDER.exec(name)?.[1]
+    if (id) ids.push(id.toLowerCase())
+  }
+  for (const name of profileFiles) {
+    const id = PERMISSIONS_FILE.exec(name)?.[1]
+    if (id) ids.push(id)
+  }
+  return ids
+}
+
+/**
+ * Of the workspace ids found (partition folders, permission files, saved logins), those no workspace
+ * keeps its own sign-ins under any more: it was deleted, or its separate sign-ins were turned off.
+ * Partition folders are lowercased, so a workspace keeps whatever matches its id in any case.
+ */
+export function leftoverIdentities(workspaces: readonly IdentityWorkspace[], found: readonly string[]): string[] {
+  const kept = new Set(workspaces.filter((workspace) => hasSeparateSignIns(workspace)).map((workspace) => workspace.id.toLowerCase()))
+  const leftover: string[] = []
+  for (const id of found) if (isWorkspaceIdentityId(id) && !kept.has(id.toLowerCase()) && !leftover.includes(id)) leftover.push(id)
+  return leftover
+}
+
+export type LeftoverIdentitySweep = {
+  /** Every workspace now (one deleted but still in its Undo window too). Asked again before each removal. */
+  workspaces: () => readonly IdentityWorkspace[]
+  /** Whether this run opened the workspace's partition: its data is then cleared through its session, never deleted under it. */
+  partitionInUse: (id: string) => boolean
+  /** Names in userData/Partitions, and in userData itself ([] when there is no such folder). */
+  partitionFolders: () => readonly string[]
+  profileFiles: () => readonly string[]
+  /** The workspace ids saved logins carry ([] when the saved passwords cannot be opened). */
+  loginWorkspaceIds: () => Promise<readonly string[]>
+  /** Removes one workspace's own sign-ins and site data, its permission answers and its saved logins. */
+  forget: (id: string) => Promise<void>
+}
+
+/**
+ * At startup: what a workspace left on disk when the app stopped before clearing it (a crash or a
+ * force-quit inside a deletion's Undo window, say). Only once the saved workspaces have loaded: with
+ * the state file missing, unreadable or set aside, the workspaces the app knows are not the person's,
+ * so nothing is listed or removed. Returns the ids whose data was removed.
+ */
+export async function sweepLeftoverIdentities(savedWorkspacesLoaded: boolean, sweep: LeftoverIdentitySweep): Promise<string[]> {
+  if (!savedWorkspacesLoaded) return []
+  const onDisk = identitiesOnDisk(sweep.partitionFolders(), sweep.profileFiles())
+  const logins = await sweep.loginWorkspaceIds()
+  const forgotten: string[] = []
+  for (const id of leftoverIdentities(sweep.workspaces(), [...onDisk, ...logins])) {
+    // The person may have acted while saved passwords were opening: checked again just before.
+    if (!leftoverIdentities(sweep.workspaces(), [id]).length || sweep.partitionInUse(id)) continue
+    try {
+      await sweep.forget(id)
+      forgotten.push(id)
+    } catch {
+      // Kept for the next launch.
+    }
+  }
+  return forgotten
+}

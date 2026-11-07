@@ -140,6 +140,7 @@ describe('saved workspaces', () => {
   it('moves everything saved before workspaces existed into Main', () => {
     const saved = parseSavedWorkspaces({ version: 2, tabs: [{ id: 't', url: 'https://a.example/' }] })
     expect(saved.migrated).toBe(true)
+    expect(saved.complete).toBe(false)
     expect(saved.workspaces).toEqual([MAIN_WORKSPACE])
     expect(saved.activeId).toBe('main')
     expect(savedWorkspaceOf({ id: 't' }, saved.workspaces)).toBe('main')
@@ -165,6 +166,8 @@ describe('saved workspaces', () => {
       ],
     })
     expect(saved.migrated).toBe(false)
+    // Some saved workspaces could not be read: these are not all of the person's workspaces.
+    expect(saved.complete).toBe(false)
     expect(saved.workspaces.map((workspace) => [workspace.id, workspace.name, workspace.icon])).toEqual([['main', 'Main', 'globe'], ['w2', 'Work stuff', 'globe']])
     expect(saved.workspaces[0]!.activeTabId).toBe('t1')
     expect(saved.activeId).toBe('w2')
@@ -175,6 +178,14 @@ describe('saved workspaces', () => {
 
   it('falls back to the first workspace when the shown one is missing', () => {
     expect(parseSavedWorkspaces({ workspaces: [{ id: 'a', name: 'A' }], activeWorkspaceId: 'b' }).activeId).toBe('a')
+  })
+
+  it('says the saved workspaces are complete only when every one was read', () => {
+    expect(parseSavedWorkspaces({ workspaces: [{ id: 'main', name: 'Main' }, { id: 'w', name: 'Work', separateSignIns: true }] }).complete).toBe(true)
+    expect(parseSavedWorkspaces({ workspaces: [{ id: 'main', name: 'Main' }, { id: 'w', name: '' }] }).complete).toBe(false)
+    expect(parseSavedWorkspaces({ workspaces: 'damaged' }).complete).toBe(false)
+    expect(parseSavedWorkspaces({ workspaces: [] }).complete).toBe(false)
+    expect(parseSavedWorkspaces({ workspaces: Array.from({ length: MAX_WORKSPACES + 1 }, (_, n) => ({ id: `w${n}`, name: `W${n}` })) }).complete).toBe(false)
   })
 })
 

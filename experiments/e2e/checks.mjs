@@ -654,6 +654,11 @@ const waitForQuit = async (profile) => {
 const identityRelaunch = async (ctx, { workId, mainId, gone }) => {
   const { stateOf, showIn, waitPage } = identityHelpers(ctx)
   const ws = 'window.intoponet.workspaces'
+  // Leftovers of workspaces that are gone are removed at startup (before anything opens Gone's partition again below); Work's stay.
+  const leftovers = [join(ctx.profile, 'Partitions', `intoponet-ws-${gone}`), join(ctx.profile, 'Partitions', 'intoponet-ws-crashed-e2e'), join(ctx.profile, 'site-permissions.ws-crashed-e2e.json')]
+  for (let i = 0; i < 40 && leftovers.some((path) => existsSync(path)); i += 1) await ctx.delay(250)
+  expect(!leftovers.some((path) => existsSync(path)), `Sign-in data of deleted workspaces is still on disk after a relaunch: ${leftovers.filter((path) => existsSync(path)).map((path) => path.slice(ctx.profile.length + 1)).join(', ')}.`)
+  expect(existsSync(join(ctx.profile, 'Partitions', `intoponet-ws-${workId}`)), "Work's own partition folder was removed at startup.")
   const state = await stateOf()
   expect(state.workspaces.find((item) => item.id === workId)?.separateSignIns === true, 'After a relaunch Work no longer has separate sign-ins.')
   const goneCookies = await ctx.main(`electron.session.fromPartition(${JSON.stringify(`persist:intoponet-ws-${gone}`)}).cookies.get({}).then((list) => list.length)`)
@@ -2666,9 +2671,10 @@ export const checks = {
       return ctx.evaluate(`window.__wsShown - window.__wsAsked`)
     }
     /** The app opened again (as after quitting or a crash) with a saved browser state, in a profile of its own. */
-    const relaunch = async (saved, check) => {
+    const relaunch = async (saved, check, prepare = () => {}) => {
       const profile = mkdtempSync(join(tmpdir(), 'intoponet-e2e-relaunch-'))
       writeFileSync(join(profile, 'browser-state.v1.json'), JSON.stringify(saved))
+      prepare(profile)
       const before = process.env.E2E_PROFILE
       process.env.E2E_PROFILE = profile
       try {
@@ -2843,7 +2849,15 @@ export const checks = {
         const shown = JSON.parse(await next.evaluate(`${host}.getTabs().then((t) => JSON.stringify(t))`))
         expect(nextState.workspaces.length === 1 && nextState.workspaces[0].name === 'Main' && nextState.workspaces[0].tabCount === 2, `A version 2 state opened as ${JSON.stringify(nextState.workspaces)}.`)
         expect(shown.map((tab) => tab.title).join() === 'Old B,Old A' && shown[0].folderId === 'old-f', `Its tabs in Main: ${JSON.stringify(shown.map((tab) => [tab.title, tab.folderId]))}.`)
+        // No saved workspaces were read (the state predates them): sign-in data on disk is never taken for leftovers then.
+        await next.delay(1500)
+        const kept = [join(next.profile, 'Partitions', 'intoponet-ws-unknown-e2e', 'Cookies'), join(next.profile, 'site-permissions.ws-unknown-e2e.json')]
+        expect(kept.every((path) => existsSync(path)), `Starting without saved workspaces removed sign-in data: ${kept.filter((path) => !existsSync(path)).map((path) => path.slice(next.profile.length + 1)).join(', ')} is gone.`)
         return 'migrated'
+      }, (profile) => {
+        mkdirSync(join(profile, 'Partitions', 'intoponet-ws-unknown-e2e'), { recursive: true })
+        writeFileSync(join(profile, 'Partitions', 'intoponet-ws-unknown-e2e', 'Cookies'), 'not ours to judge')
+        writeFileSync(join(profile, 'site-permissions.ws-unknown-e2e.json'), '{}')
       })
       expect(migrated === 'migrated', 'The relaunched app did not check the migration.')
 
@@ -4920,6 +4934,11 @@ export const checks = {
       await waitForQuit(ctx.profile)
       // The quit app has written its last files (its helpers outlive the main process for a moment).
       await new Promise((resolve) => setTimeout(resolve, 2500))
+      // What a crash inside a deletion's Undo window leaves: a workspace's partition folder and permission answers, with no workspace.
+      mkdirSync(join(ctx.profile, 'Partitions', 'intoponet-ws-crashed-e2e'), { recursive: true })
+      writeFileSync(join(ctx.profile, 'Partitions', 'intoponet-ws-crashed-e2e', 'Cookies'), 'left behind')
+      writeFileSync(join(ctx.profile, 'site-permissions.ws-crashed-e2e.json'), '{}')
+      expect(existsSync(join(ctx.profile, 'Partitions', `intoponet-ws-${gone}`)) && existsSync(join(ctx.profile, 'Partitions', `intoponet-ws-${workId}`)), 'The Gone and Work partition folders are not where the relaunch check looks for them.')
       const before = process.env.E2E_PROFILE
       process.env.E2E_PROFILE = ctx.profile
       try {

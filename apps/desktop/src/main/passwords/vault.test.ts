@@ -226,6 +226,30 @@ describe('PasswordVault workspace scope', () => {
     expect((await vault.list()).map((login) => `${login.origin}:${login.workspaceId ?? 'shared'}`)).toEqual(['https://example.com:shared', 'https://other.example:home'])
   })
 
+  it('lists the workspaces that have sign-ins of their own, and leaves the file alone when forgetting one with none', async () => {
+    const file = memoryFile()
+    const vault = new PasswordVault(fakeCrypto(), file)
+    expect(await vault.workspaceIds()).toEqual([])
+    await vault.save('https://example.com', 'ada', 'shared-pw')
+    await vault.save('https://example.com', 'ada', 'work-pw', 'work')
+    await vault.save('https://other.example', 'bob', 'other-pw', 'work')
+    await vault.save('https://other.example', 'cy', 'home-pw', 'home')
+    expect(await vault.workspaceIds()).toEqual(['work', 'home'])
+    const writes = file.writes
+    expect(await vault.removeWorkspace('gone')).toBe(0)
+    expect(file.writes).toBe(writes)
+    // No file yet: forgetting a workspace does not make one.
+    const empty = memoryFile()
+    expect(await new PasswordVault(fakeCrypto(), empty).removeWorkspace('gone')).toBe(0)
+    expect(empty.data).toBeNull()
+  })
+
+  it('lists no workspaces when the file cannot be opened', async () => {
+    const file = memoryFile()
+    await new PasswordVault(fakeCrypto(), file).save('https://example.com', 'ada', 'pw', 'work')
+    expect(await new PasswordVault(fakeCrypto(false), file).workspaceIds()).toEqual([])
+  })
+
   it('reads a file from before workspaces as shared logins, and drops a damaged scope', () => {
     const shared = { id: 'abcdefgh', origin: 'https://example.com', username: 'ada', password: 'pw', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' }
     const text = JSON.stringify({ schema: 'intoponet.passwords.v1', logins: [shared, { ...shared, id: 'ijklmnop', workspaceId: 'bad id' }], never: [] })

@@ -267,7 +267,8 @@ function sameSiteAddress(left: string, right: string): boolean {
  * Versions 1 and 2 had no workspaces: everything they saved moves into "Main".
  */
 export type SavedWorkspace = Workspace & { activeTabId?: string }
-export type SavedWorkspaces = { workspaces: SavedWorkspace[]; activeId: string; favourites: Favourite[]; migrated: boolean }
+/** `complete`: every saved workspace was read (none dropped as damaged or past the limit), so these are the person's workspaces. */
+export type SavedWorkspaces = { workspaces: SavedWorkspace[]; activeId: string; favourites: Favourite[]; migrated: boolean; complete: boolean }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -319,6 +320,7 @@ export function parseSavedWorkspaces(state: Record<string, unknown>): SavedWorks
     }
   }
   const migrated = workspaces.length === 0
+  const complete = !migrated && Array.isArray(state['workspaces']) && state['workspaces'].length === workspaces.length
   if (migrated) workspaces.push({ ...MAIN_WORKSPACE })
   const activeId = isId(state['activeWorkspaceId']) && workspaces.some((workspace) => workspace.id === state['activeWorkspaceId']) ? state['activeWorkspaceId'] : workspaces[0]!.id
   const known = new Set(workspaces.map((workspace) => workspace.id))
@@ -332,7 +334,7 @@ export function parseSavedWorkspaces(state: Record<string, unknown>): SavedWorks
       favourites.push({ id: entry['id'], url: entry['url'], title: typeof entry['title'] === 'string' ? entry['title'].slice(0, 180) : '', workspaceId: isId(owner) ? owner : null })
     }
   }
-  return { workspaces, activeId, favourites, migrated }
+  return { workspaces, activeId, favourites, migrated, complete }
 }
 
 /** The workspace a saved tab or folder belongs to: its own when that still exists, otherwise the first (Main, after a migration). */
