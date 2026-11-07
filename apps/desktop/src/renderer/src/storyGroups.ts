@@ -1,4 +1,4 @@
-import type { PageTabSnapshot, TabFolderSnapshot, TabGroupRequest } from '@intoponet/browser-api'
+import type { PageTabSnapshot, TabFolderSnapshot, TabGroupRequest, TabGroupResult } from '@intoponet/browser-api'
 import type { StoryMatch } from '../../shared/news/storyTabs'
 
 /**
@@ -28,4 +28,13 @@ export function storyGroupRequests(tabs: readonly PageTabSnapshot[], matches: Re
     groups.push({ name: label, tabIds, storyId })
   }
   return groups
+}
+
+const count = (n: number, one: string, many: string): string => `${n} ${n === 1 ? one : many}`
+
+/** The notice after a grouping, counting the tabs it moved (fewer than asked when some closed or stayed side by side). */
+export function groupingNotice(kind: 'story' | 'tidy', result: Pick<TabGroupResult, 'moved' | 'folders'>): string {
+  return kind === 'story'
+    ? `Grouped ${count(result.moved, 'tab', 'tabs')} by story`
+    : `Made ${count(result.folders, 'folder', 'folders')} (${count(result.moved, 'tab', 'tabs')})`
 }

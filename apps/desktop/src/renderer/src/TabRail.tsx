@@ -3,7 +3,7 @@ import { Columns2, Ellipsis, Folder, FolderOpen, FolderPlus, Layers, Mountain, P
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type WheelEvent } from 'react'
 import { MAX_WORKSPACES, TAB_SIDEBAR_WIDTH, type NowPlayingSnapshot, type PageTabSnapshot, type TabFolderSnapshot, type WorkspacesState } from '@intoponet/browser-api'
 import { folderTree } from './tabFolders'
-import { storyGroupRequests } from './storyGroups'
+import { groupingNotice, storyGroupRequests } from './storyGroups'
 import { TidySheet } from './TidySheet'
 import type { StoryMatch } from '../../shared/news/storyTabs'
 import { NowPlayingControl } from './nowPlaying/NowPlayingControl'
@@ -187,9 +187,8 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
       setNotice({ text: 'No loose tabs are from a story yet.' })
       return
     }
-    const count = groups.reduce((total, group) => total + group.tabIds.length, 0)
     void window.intoponet.browserHost.groupTabs(groups).then(
-      ({ undoId }) => setNotice({ text: `Grouped ${count} ${count === 1 ? 'tab' : 'tabs'} by story`, undoId }),
+      (result) => setNotice({ text: groupingNotice('story', result), undoId: result.undoId }),
       () => setNotice({ text: 'Those tabs could not be grouped.' }),
     )
   }
@@ -197,9 +196,9 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
   /** Accepted Tidy folders: the same grouping, so Undo is the same. */
   const acceptTidy = (groups: Array<{ name: string; tabIds: string[] }>): void => {
     setTidyOpen(false)
-    const count = groups.reduce((total, group) => total + group.tabIds.length, 0)
+    // Counted from what main moved: tabs closed while the preview was open are not in it.
     void window.intoponet.browserHost.groupTabs(groups).then(
-      ({ undoId }) => setNotice({ text: `Made ${groups.length} ${groups.length === 1 ? 'folder' : 'folders'} (${count} ${count === 1 ? 'tab' : 'tabs'})`, undoId }),
+      (result) => setNotice({ text: groupingNotice('tidy', result), undoId: result.undoId }),
       () => setNotice({ text: 'Those tabs could not be grouped.' }),
     )
   }

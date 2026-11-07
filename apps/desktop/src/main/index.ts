@@ -45,7 +45,7 @@ import { capTitle, capUrl, coalesce, persistedActiveUrl, restoredActiveTab } fro
 import { EXIT_FULLSCREEN_SCRIPT, FULLSCREEN_WORLD_ID, fullscreenSiteName, showFullscreenNotice } from './fullscreenNotice'
 import { bindLeavePrompt, SAFE_DIALOG_PREFERENCES } from './leavePrompt'
 import { fetchTabIcon, TabIconMemory } from './tabFavicon'
-import { browsingChannels, parseBrowsingCommand, type LinkRoutesState, type BrowsingEvent, type ArchivedTabSnapshot, type TabFolderSnapshot, type TabGroupRequest, type TidySuggestion, type BrowsingSettings, type LinksFromOtherApps, type PageLoadError, type TabArchiveAfter, type TabSidebarState, type TabSleepAfter, type TabSwitchOrder } from '@intoponet/browser-api'
+import { browsingChannels, parseBrowsingCommand, type LinkRoutesState, type BrowsingEvent, type ArchivedTabSnapshot, type TabFolderSnapshot, type TabGroupRequest, type TabGroupResult, type TidySuggestion, type BrowsingSettings, type LinksFromOtherApps, type PageLoadError, type TabArchiveAfter, type TabSidebarState, type TabSleepAfter, type TabSwitchOrder } from '@intoponet/browser-api'
 import { ExternalOpenBroker, classifyExternalUrl } from './externalOpen'
 import { CertificateErrorMemo, classifyLoadError, isCertificateError, showsErrorPage, summarizeCertificate } from './errorPage'
 import { IncomingOpenQueue, LocalFileGrants, incomingFileTarget, incomingTargetsFromArgs, incomingWebUrl, type IncomingTarget } from './incomingOpen'
@@ -2030,8 +2030,8 @@ function createTabFolder(name: string, parentId: string | null, tabIds: string[]
 /** The latest grouping, kept for Undo for two minutes (tabGrouping.ts). Cleared when the shown workspace changes. */
 let lastGrouping: { undoId: string; at: number; snapshot: GroupingSnapshot } | null = null
 
-/** Put loose tabs into folders (tabGrouping.ts). Pinned and private tabs stay where they are. */
-function groupTabs(groups: TabGroupRequest[]): string {
+/** Put loose tabs into folders (tabGrouping.ts). Pinned and private tabs, and pairs side by side, stay where they are. */
+function groupTabs(groups: TabGroupRequest[]): TabGroupResult {
   const plan = planGrouping({
     tabs: openTabs.map((tab) => ({ id: tab.id, pinned: tab.pinned, isPrivate: privateViews.has(tab.view), folderId: tab.folderId, split: tab.split })),
     folders: tabFolders,
@@ -2054,7 +2054,8 @@ function groupTabs(groups: TabGroupRequest[]): string {
   tabsRearranged()
   emitTabs()
   schedulePersistentStateSave()
-  return undoId
+  // What was moved, not what was asked for: the notice says so.
+  return { undoId, moved: plan.folderOf.size, folders: new Set(plan.folderOf.values()).size }
 }
 
 function undoGroupTabs(undoId: string): void {
@@ -4535,7 +4536,7 @@ async function handleBrowserCommand(
       return { ...folder }
     }
     case 'group-tabs':
-      return { undoId: groupTabs(command.groups) }
+      return groupTabs(command.groups)
     case 'undo-group-tabs':
       undoGroupTabs(command.undoId)
       break

@@ -4679,6 +4679,7 @@ export const checks = {
       const pairUndo = JSON.parse(await ctx.evaluate(`${host}.groupTabs([{ name: ${JSON.stringify(label)}, tabIds: [${JSON.stringify(a.id)}, ${JSON.stringify(b.id)}], storyId: ${JSON.stringify(made.storyId)} }]).then((r) => JSON.stringify(r))`))
       const [pairA, pairB] = [await byUrl('/a'), await byUrl('/b')]
       expect(!!pairA?.folderId && !pairB?.folderId && pairB?.split?.partnerId === control.id && (await byUrl('/control'))?.split?.partnerId === b.id, `Grouping one side of a pair moved it out of the pair: ${JSON.stringify({ a: pairA, b: pairB })}.`)
+      expect(pairUndo.moved === 1 && pairUndo.folders === 1, `Grouping reported ${JSON.stringify(pairUndo)}; one tab moved, into one folder.`)
       await ctx.evaluate(`${host}.undoGroupTabs(${JSON.stringify(pairUndo.undoId)}).then(() => true)`)
       await ctx.evaluate(`${host}.unsplitTab(${JSON.stringify(b.id)}).then(() => true)`)
       await ctx.wait(`window.intoponet.browserHost.getTabFolders().then((f) => f.length === 0)`, 4000, 'the one-article folder to be undone')
@@ -4686,6 +4687,7 @@ export const checks = {
       // Hovering the folder highlights its story on the globe; leaving clears it.
       await ctx.click('button[aria-label="Group by story"]')
       await ctx.wait(`window.intoponet.browserHost.getTabFolders().then((f) => f.some((x) => x.storyId))`, 8000, 'the story folder again')
+      await ctx.wait(`[...document.querySelectorAll('.tab-rail-archived')].some((e) => e.textContent.includes('Grouped 2 tabs by story'))`, 3000, 'the notice to count the two tabs grouped')
       const hovered = (await folders()).find((folder) => folder.storyId)
       const at = JSON.parse(await ctx.evaluate(`JSON.stringify((() => { const r = document.querySelector('[data-story-id="${hovered.storyId}"] .tab-rail-folder-head').getBoundingClientRect(); return { x: r.x + 40, y: r.y + r.height / 2 } })())`))
       await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: at.x, y: at.y })
@@ -4805,16 +4807,25 @@ export const checks = {
       })
       await ctx.shot('tidy-preview')
       await axeAudit(ctx, 'the Tidy preview', '.tidy-sheet')
+      // A suggested tab (not the one shown) closes while the preview is open: Accept moves the others, and says how many it moved.
+      const shownId = (await tabs()).find((tab) => tab.active)?.id
+      const closedMeanwhile = suggestion.groups.flatMap((group) => group.tabIds).find((id) => id !== shownId)
+      await ctx.evaluate(`${host}.closeTab(${JSON.stringify(closedMeanwhile)}).then(() => true)`)
+      await ctx.delay(500)
+      const moved = suggestion.groups.reduce((n, group) => n + group.tabIds.length, 0) - 1
       await ctx.click('.tidy-accept')
       await ctx.wait(`window.intoponet.browserHost.getTabFolders().then((f) => f.length === ${suggestion.groups.length})`, 10_000, 'the accepted Tidy folders')
       const accepted = await tabs()
-      expect(accepted.filter((tab) => tab.folderId).length === suggestion.groups.reduce((n, group) => n + group.tabIds.length, 0), 'Accepting did not move exactly the suggested tabs.')
+      expect(accepted.filter((tab) => tab.folderId).length === moved, 'Accepting did not move exactly the suggested tabs still open.')
+      await ctx.wait(`[...document.querySelectorAll('.tab-rail-archived')].some((e) => e.textContent.includes(${JSON.stringify(`(${moved} ${moved === 1 ? 'tab' : 'tabs'})`)}))`, 3000, `the Tidy notice to count the ${moved} tabs it moved`).catch(async (error) => {
+        throw new CheckFailure(`${error.message} The notice says: ${await ctx.evaluate(`[...document.querySelectorAll('.tab-rail-archived')].map((e) => e.textContent).join(' | ')`)}`)
+      })
       expect(accepted.find((tab) => tab.id === c1.id)?.split?.partnerId === a1.id && !accepted.find((tab) => tab.id === c1.id)?.folderId, 'Accepting Tidy broke the pair side by side.')
       await ctx.click('.tab-rail-archived .tab-rail-undo')
       await ctx.wait(`window.intoponet.browserHost.getTabFolders().then((f) => f.length === 0)`, 10_000, 'Undo to remove the Tidy folders')
-      expect((await tabs()).map((tab) => tab.id).join(' ') === orderBefore, 'Undo did not restore the tab order.')
+      expect((await tabs()).map((tab) => tab.id).join(' ') === orderBefore.split(' ').filter((id) => id !== closedMeanwhile).join(' '), 'Undo did not restore the tab order.')
       expect((await tabs()).find((tab) => tab.id === a1.id)?.split?.partnerId === c1.id, 'Undoing Tidy broke the pair side by side.')
-      return `Laya off: Tidy explained it and offered Group by story. Laya on: ${suggestion.groups.length} groups (${suggestion.groups.map((group) => group.name).join('; ')}) separated cooking from astronomy; nothing moved before Accept; Undo restored the order.`
+      return `Laya off: Tidy explained it and offered Group by story. Laya on: ${suggestion.groups.length} groups (${suggestion.groups.map((group) => group.name).join('; ')}) separated cooking from astronomy and left a pair side by side alone; nothing moved before Accept; with a suggested tab closed meanwhile, Accept moved the rest and its notice counted ${moved}; Undo restored the order.`
     } finally {
       server.close()
     }
