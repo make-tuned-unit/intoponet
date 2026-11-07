@@ -38,4 +38,8 @@ describe('PDF pages', () => {
     expect(await isPdfDocument(page('text/html'), 1)).toBe(false)
     expect(await isPdfDocument(page(new Error('gone')), 1)).toBe(false)
   })
+  it('takes a page too busy to answer for a web page, so Save Page As still opens', async () => {
+    const busy = { executeJavaScriptInIsolatedWorld: () => new Promise<unknown>(() => undefined) }
+    expect(await isPdfDocument(busy, 1, 20)).toBe(false)
+  })
 })

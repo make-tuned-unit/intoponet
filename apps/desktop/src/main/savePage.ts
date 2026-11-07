@@ -22,12 +22,20 @@ export function savePageFilename(title: string, url: string, extension: 'html' |
 
 /**
  * Whether the page is a PDF shown in Chromium's viewer. Saving it must keep the PDF itself:
- * the viewer's own page is only a wrapper that points back at the address.
+ * the viewer's own page is only a wrapper that points back at the address. A page too busy to
+ * answer within `waitMs` is taken for a web page, so Save Page As still opens.
  */
-export async function isPdfDocument(contents: { executeJavaScriptInIsolatedWorld: (worldId: number, scripts: Array<{ code: string }>) => Promise<unknown> }, worldId: number): Promise<boolean> {
+export async function isPdfDocument(contents: { executeJavaScriptInIsolatedWorld: (worldId: number, scripts: Array<{ code: string }>) => Promise<unknown> }, worldId: number, waitMs = 1_500): Promise<boolean> {
+  let timer: ReturnType<typeof setTimeout> | undefined
   try {
-    return (await contents.executeJavaScriptInIsolatedWorld(worldId, [{ code: 'document.contentType' }])) === 'application/pdf'
+    const answer = await Promise.race([
+      contents.executeJavaScriptInIsolatedWorld(worldId, [{ code: 'document.contentType' }]),
+      new Promise((resolve) => { timer = setTimeout(() => resolve(null), waitMs) }),
+    ])
+    return answer === 'application/pdf'
   } catch {
     return false
+  } finally {
+    clearTimeout(timer)
   }
 }
