@@ -187,6 +187,9 @@ const browserHost: BrowserHostApi = {
   tabSwitcher: async (action) => {
     await invoke({ type: 'tab-switcher', action })
   },
+  previewLink: async (url) => {
+    await invoke({ type: 'preview-link', url })
+  },
   goTabHome: async (id) => {
     await invoke({ type: 'tab-home', id })
   },

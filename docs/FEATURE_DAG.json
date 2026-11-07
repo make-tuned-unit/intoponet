@@ -519,6 +519,17 @@
       "tier": "core",
       "kind": "e2e",
       "promise": "With protection on, the space a page kept for a blocked ad (its frame, picture or an empty slot labelled Advertisement) is hidden, while anything holding the page's own text stays; with protection paused for the site, the page is left as it is."
+    },
+    {
+      "id": "LINK_PREVIEW",
+      "title": "Preview a link without leaving the page",
+      "deps": [
+        "BROWSE",
+        "PROTECTION"
+      ],
+      "tier": "network",
+      "kind": "e2e",
+      "promise": "⇧-clicking a link (or choosing Preview Link) opens it in a floating card over the page, with ad and tracker protection and the same private or normal session; Escape or a click outside closes it, and Open as Tab moves the same page, with its history, into a tab; headlines on the globe and in the World list can be previewed the same way."
     }
   ]
 }
