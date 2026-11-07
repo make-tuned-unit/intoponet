@@ -79,7 +79,11 @@ export class HistoryStore {
       const loaded = raw.visits
         .filter((visit): visit is HistoryVisit => typeof visit?.id === 'string' && typeof visit.url === 'string' && recordable(visit.url) && typeof visit.title === 'string' && typeof visit.visitedAt === 'number' && Number.isFinite(visit.visitedAt))
         .filter((visit) => !known.has(visit.id))
-        .map((visit) => ({ id: visit.id, url: visit.url, title: visit.title.slice(0, 1_000), host: hostOf(visit.url), visitedAt: visit.visitedAt }))
+        .map((visit) => ({
+          id: visit.id, url: visit.url, title: visit.title.slice(0, 1_000), host: hostOf(visit.url), visitedAt: visit.visitedAt,
+          // The workspace a visit was made in is kept across a restart (absent for visits before workspaces).
+          ...(typeof visit.workspaceId === 'string' && visit.workspaceId.length > 0 && visit.workspaceId.length <= 80 ? { workspaceId: visit.workspaceId } : {}),
+        }))
       this.visits = [...this.visits, ...loaded].sort((a, b) => b.visitedAt - a.visitedAt).slice(0, this.maxVisits)
       this.prune(false)
       this.forgetExcluded(false)

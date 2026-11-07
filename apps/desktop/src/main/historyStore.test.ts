@@ -200,4 +200,15 @@ describe('history workspaces', () => {
     const visits = days.flatMap((day) => day.visits)
     expect(visits.map((visit) => visit.workspaceId).sort()).toEqual(['home', 'work'])
   })
+
+  it('keeps each visit\'s workspace across a save and a restart', () => {
+    const { history } = store()
+    history.record({ url: 'https://example.com/a', title: 'A', isPrivate: false, workspaceId: 'work' })
+    history.record({ url: 'https://example.com/b', title: 'B', isPrivate: false })
+    const { history: restarted } = store()
+    restarted.load(history.serialize())
+    const visits = restarted.search('', 0, 10).days.flatMap((day) => day.visits)
+    expect(visits.find((visit) => visit.url.endsWith('/a'))?.workspaceId).toBe('work')
+    expect(visits.find((visit) => visit.url.endsWith('/b'))).not.toHaveProperty('workspaceId')
+  })
 })
