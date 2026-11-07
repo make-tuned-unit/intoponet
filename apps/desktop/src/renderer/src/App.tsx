@@ -812,7 +812,9 @@ export function App() {
     () => bookmarks.some((bookmark) => bookmark.url === panel.url),
     [bookmarks, panel.url],
   )
-  const isSecureOrigin = panel.url.startsWith('https:')
+  // The address the toolbar shows: the page's, or the one a tab is loading before its first page arrives.
+  const shownAddress = panel.pendingUrl ?? panel.url
+  const isSecureOrigin = shownAddress.startsWith('https:')
   const onStartPage = panel.isVisible && panel.isStartPage === true
   // Pages side by side: the side not in focus whose error or start page the shell draws in its half.
   const otherSide = shellDrawnSide(panel.split)
@@ -2168,8 +2170,8 @@ export function App() {
   }
 
   const fillLauncherFromPage = (): void => {
-    if (!panel.url) return
-    setQuery(panel.url)
+    if (!shownAddress) return
+    setQuery(shownAddress)
     input.current?.focus()
     input.current?.select()
   }
@@ -4119,11 +4121,11 @@ export function App() {
             {!onStartPage && <button
               type="button"
               className={`origin-badge ${isSecureOrigin ? '' : 'insecure'}`}
-              title={panel.url}
+              title={shownAddress}
               aria-label={
                 isSecureOrigin
-                  ? `Secure origin ${originLabel(panel.url)}. Edit address`
-                  : `Not secure: ${originLabel(panel.url)}. Edit address`
+                  ? `Secure origin ${originLabel(shownAddress)}. Edit address`
+                  : `Not secure: ${originLabel(shownAddress)}. Edit address`
               }
               onClick={fillLauncherFromPage}
             >
@@ -4133,7 +4135,7 @@ export function App() {
               </> : <>
                 {isSecureOrigin ? <LockKeyhole size={13} /> : <ShieldAlert size={13} />}
                 {!isSecureOrigin && <strong>Not secure</strong>}
-                <span>{originLabel(panel.url)}</span>
+                <span>{originLabel(shownAddress)}</span>
               </>}
             </button>}
             <span className="sr-only" role="status">{addressCopied}</span>

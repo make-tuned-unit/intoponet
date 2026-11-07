@@ -671,11 +671,15 @@ function pagePanelState(): BrowserPanelSnapshot {
     }
   }
   // Nothing committed yet: a new tab before its first page arrives, a page whose renderer crashed (or
-  // kept crashing, waiting blank for Reload). The toolbar shows the address it is loading or will load.
+  // kept crashing, waiting blank for Reload). The toolbar shows the address it is loading or will load
+  // (pendingUrl); `url` stays the page that has arrived, which is what the shell asks about the shown
+  // page for (site tweaks, permissions, passwords…), except a page waiting for Reload after crashing,
+  // which is still that page.
   const tab = openTabs.find((item) => item.view === pageView)
   const pending = tab && !contents.getURL() && safeHttpUrl(tab.url) ? tab : undefined
+  const crashed = pending && !crashRecovery.canAutoRecover(pending.id) ? pending : undefined
   return {
-    url: capUrl(pending ? pending.url : contents.getURL()),
+    url: capUrl(crashed ? crashed.url : contents.getURL()),
     title: capTitle(pending ? pending.title || contents.getTitle() : contents.getTitle()),
     canGoBack: contents.navigationHistory.canGoBack(),
     canGoForward: contents.navigationHistory.canGoForward(),
@@ -684,7 +688,7 @@ function pagePanelState(): BrowserPanelSnapshot {
     isPrivate: privateViews.has(pageView),
     ...(untrackedViews.has(pageView) ? { untracked: true } : {}),
     zoomFactor: Number(contents.getZoomFactor().toFixed(3)),
-    ...(pending ? { isPending: true as const } : {}),
+    ...(pending ? { isPending: true as const, pendingUrl: capUrl(pending.url) } : {}),
     ...loadErrorOf(pageView),
   }
 }

@@ -1180,7 +1180,7 @@ export const checks = {
           await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.isStartPage === true)`, 8_000, 'a new tab on its start page')
         }
         void ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: ${JSON.stringify(slowUrl)} }).then(() => true, () => true)`).catch(() => undefined)
-        await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.isVisible && s.isLoading && s.url === ${JSON.stringify(slowUrl)} && ${toolbarAddress} === ${JSON.stringify(slowUrl)})`, 2_500, `the address bar of ${label} to show the address it is loading, before the page arrives`)
+        await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.isVisible && s.isLoading && s.pendingUrl === ${JSON.stringify(slowUrl)} && !s.url && ${toolbarAddress} === ${JSON.stringify(slowUrl)})`, 2_500, `the address bar of ${label} to show the address it is loading, before the page arrives`)
       }
 
       // After Enter (⌘↵ here: the shown tab stays in front) the bar clears once the navigation starts, not when the
