@@ -4761,16 +4761,22 @@ function adoptQuickView(view: WebContentsView, url: string): boolean {
   makeRoomForTab()
   const tab: OpenTab = { id: randomUUID(), url, title: view.webContents.getTitle(), favicon: '', view, lastShownAt: Date.now() }
   openTabs.push(tab)
+  // The page now belongs to the shown workspace. A quick window's page runs with the shared
+  // sign-ins; in a workspace with its own, it reloads in that workspace's session (history kept,
+  // cookies not), so the shared identity never shows up there.
+  const isPrivate = privateViews.has(view)
+  viewWorkspaces.set(view, isPrivate ? null : workspaces.activeId)
+  if (partitionOfView(view) !== pagePartition(workspaces.active(), isPrivate)) repartitionTab(tab)
   showTab(tab.id)
   // The icon it already reported, now that it is a tab (as openLinkPreviewAsTab does).
   const icon = tabIconWanted.get(view)
-  if (icon) updateTabIcon(view, icon)
+  if (icon) updateTabIcon(tab.view, icon)
   if (window && !window.isDestroyed()) {
     if (window.isMinimized()) window.restore()
     window.show()
     window.focus()
   }
-  view.webContents.focus()
+  tab.view.webContents.focus()
   schedulePersistentStateSave()
   appMenu.schedule()
   return true
