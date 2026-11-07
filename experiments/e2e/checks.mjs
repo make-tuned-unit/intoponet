@@ -1004,6 +1004,15 @@ export const checks = {
       await ctx.flyTo('Fredericton')
       await ctx.wait(`document.querySelector('h1')?.innerText === 'Fredericton'`, 15_000, 'the globe to fly to Fredericton')
       expect(!(await state()).isVisible, 'Flying to a place left the page open.')
+
+      // An address that failed to load (a typo, a site that is down) is not kept, so it never comes back as a completion.
+      const closedPort = await new Promise((resolve) => { const probe = createServer(); probe.listen(0, '127.0.0.1', () => { const { port } = probe.address(); probe.close(() => resolve(port)) }) })
+      await ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: 'http://127.0.0.1:${closedPort}/never-loaded' }).then(() => true, () => true)`)
+      await ctx.wait(`window.intoponet.browserHost.getState().then((s) => !!s.loadError)`, 15_000, 'the error page')
+      await ctx.delay(2000)
+      const kept = await ctx.evaluate(`window.intoponet.browserHost.readPrivateLibrary().then((r) => r.status === 'ok' && r.payload ? JSON.parse(r.payload).recents.map((p) => p.url).join(' ') : '')`)
+      expect(kept.includes(host), `The visited page is not among recent pages (${kept}).`)
+      expect(!kept.includes('never-loaded'), 'An address that failed to load was kept as a recent page.')
       return `"localh" completed to ${host}; history row opened in a background tab with ⌘↵; then "Switch to tab" landed on it (1 tab); Backspace removed the completion; "Fredericton" flew the globe.`
     } finally {
       server.close()
