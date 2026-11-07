@@ -7,7 +7,7 @@ import { HistoryStore } from '../historyStore'
 import { passwordOrigin } from '../passwords/origin'
 import { PasswordVault, type VaultFile } from '../passwords/vault'
 import { safeStorageSecret } from './keychain'
-import type { ImportedTab } from './plan'
+import { folderPages, type ImportedTab, type WorkspaceImportPlan } from './plan'
 import { BrowserImportService } from './service'
 import { BROWSER_SOURCES, detectProfiles, importRoot } from './sources'
 import { buildFixtureRoot, FIXTURE_PASSWORD, FIXTURE_TEST_KEY } from './testFixtures'
@@ -33,17 +33,38 @@ function fixture() {
   const tabs = { urls: () => open.map((tab) => tab.url), room: () => 12 - open.length, limit: 12, add: vi.fn((list: ImportedTab[]) => { open.push(...list) }) }
   const env = { INTOPONET_IMPORT_ROOT: root, INTOPONET_IMPORT_TEST_KEY: FIXTURE_TEST_KEY }
   const runSecurity = vi.fn(async () => 'never asked')
+  // Workspaces as main keeps them, in memory: names and the addresses of their tabs.
+  const model = { workspaces: [{ id: 'main', name: 'Main', urls: [] as string[], folders: [] as string[] }], favourites: [] as string[] }
+  const workspaces = {
+    existing: () => model.workspaces.map((workspace) => ({ id: workspace.id, name: workspace.name, urls: workspace.urls, room: 12 - workspace.urls.length })),
+    favouriteUrls: () => model.favourites,
+    freeWorkspaces: () => 9 - model.workspaces.length,
+    favouriteRoom: () => 12 - model.favourites.length,
+    tabLimit: 12,
+    maxFolderDepth: 6,
+    apply: vi.fn((plan: WorkspaceImportPlan) => {
+      for (const planned of plan.workspaces) {
+        let workspace = model.workspaces.find((item) => item.id === planned.existingId)
+        if (!workspace) model.workspaces.push(workspace = { id: `w${model.workspaces.length}`, name: planned.name, urls: [], folders: [] })
+        const walk = (folders: typeof planned.folders, path: string): void => { for (const folder of folders) { workspace!.folders.push(`${path}${folder.name}`); walk(folder.children, `${path}${folder.name}/`) } }
+        walk(planned.folders, '')
+        workspace.urls.push(...[...planned.pinned, ...folderPages(planned.folders), ...planned.open].map((page) => page.url))
+      }
+      model.favourites.push(...plan.favourites.map((page) => page.url))
+    }),
+  }
   const service = new BrowserImportService({
     root: () => importRoot(env),
     tabs,
     history: () => history,
     passwords: () => ({ importLogins: (rows) => vault.importMany(rows) }),
     toOrigin: passwordOrigin,
+    workspaces,
     env,
     runSecurity,
     now: () => new Date('2026-11-06T00:00:00Z'),
   })
-  return { root, service, vault, file, history, open, tabs, runSecurity }
+  return { root, service, vault, file, history, open, tabs, runSecurity, model, workspaces }
 }
 
 describe('import root', () => {
@@ -140,10 +161,55 @@ describe('BrowserImportService', () => {
     expect(tabs.add).toHaveBeenCalledTimes(1)
     expect(open.filter((tab) => tab.pinned).map((tab) => tab.url)).toEqual(['https://mail.example.com/', 'https://docs.example.com/', 'https://chat.example.com/team', 'https://recipes.example.com/'])
     const labels = JSON.parse(first.library!).collections.map((collection: { label: string }) => collection.label)
-    expect(labels).toEqual(['Work › Reading › Later', 'Work › Reading', 'Arc favourites', 'Work', 'Home'])
+    expect(labels).toEqual(['Work › Reading › Later', 'Work › Reading', 'Imported favourites', 'Work', 'Home'])
     const second = await service.run('arc:Default', ['pinned', 'open'])
     expect(second.added).toEqual({ pinned: 0, open: 0, history: 0, passwords: 0 })
     expect(open).toHaveLength(7)
+  })
+
+  it('previews spaces as workspaces, and Chrome has none', () => {
+    const { service } = fixture()
+    const arc = service.preview('arc:Default')
+    expect(arc.counts.workspaces.count).toBe(2)
+    expect(arc.spaces).toEqual([{ name: 'Work', pinned: 2, folders: 2, foldered: 2, open: 1 }, { name: 'Home', pinned: 1, folders: 0, foldered: 0, open: 1 }])
+    expect(arc.favourites).toBe(1)
+    expect(service.preview('chrome:Default').counts.workspaces.count).toBeNull()
+  })
+
+  it('recreates spaces as workspaces with their folders and favourites, once', async () => {
+    const { service, model, open, tabs, workspaces } = fixture()
+    const first = await service.run('arc:Default', ['bookmarks', 'workspaces', 'pinned', 'open'])
+    expect(first.added).toMatchObject({ workspaces: 2, pinned: 3, foldered: 2, open: 2, favourites: 1 })
+    expect(first.workspaceNames).toEqual(['Work', 'Home'])
+    expect(model.workspaces.map((workspace) => workspace.name)).toEqual(['Main', 'Work', 'Home'])
+    expect(model.workspaces[1]!.folders).toEqual(['Reading', 'Reading/Later'])
+    expect(model.favourites).toEqual(['https://mail.example.com/'])
+    // Nothing went into the workspace open now; folders still become collections when Bookmarks is ticked.
+    expect(tabs.add).not.toHaveBeenCalled()
+    expect(open).toHaveLength(1)
+    expect(JSON.parse(first.library!).collections.map((collection: { label: string }) => collection.label)).toEqual(['Work › Reading › Later', 'Work › Reading'])
+    const second = await service.run('arc:Default', ['workspaces', 'pinned', 'open'])
+    expect(second.added).toMatchObject({ workspaces: 0, pinned: 0, foldered: 0, open: 0, favourites: 0 })
+    expect(workspaces.apply).toHaveBeenCalledTimes(1)
+    expect(model.workspaces).toHaveLength(3)
+  })
+
+  it('reads the older layout, and an unreadable sidebar writes nothing at all', async () => {
+    const { service, root, model, history, workspaces } = fixture()
+    const { writeFileSync } = await import('node:fs')
+    const { arcSidebarOlderLayout } = await import('./testFixtures')
+    const sidebar = join(root, 'Arc', 'StorableSidebar.json')
+    writeFileSync(sidebar, arcSidebarOlderLayout())
+    const older = await service.run('arc:Default', ['workspaces', 'pinned', 'open'])
+    expect(older.workspaceNames).toEqual(['Travel', 'Space 1'])
+    expect(model.workspaces.find((workspace) => workspace.name === 'Travel')!.urls).toHaveLength(5)
+    expect(model.favourites).toEqual(['https://maps.example.com/', 'https://calendar.example.com/'])
+    writeFileSync(sidebar, JSON.stringify({ sidebar: { containers: [{ global: {} }, { spaces: 'not a list' }] } }))
+    const preview = service.preview('arc:Default')
+    expect(preview.counts.workspaces).toEqual({ count: null, note: expect.stringMatching(/not in a format Intoponet knows/) })
+    await expect(service.run('arc:Default', ['workspaces', 'history', 'bookmarks'])).rejects.toThrow(/Nothing was imported/)
+    expect(workspaces.apply).toHaveBeenCalledTimes(1)
+    expect(history.size).toBe(0)
   })
 
   it('says how many tabs were left out over the limit', async () => {

@@ -58,7 +58,7 @@ export function writeLogins(path: string, secret: string, logins: Array<{ origin
   db.close()
 }
 
-/** Two spaces in Default (Work, Home) and one in Profile 1, with pinned tabs, nested folders, open tabs, a note and a favourite. */
+/** Two spaces in Default (Work, Home) and one in Profile 1, with pinned tabs, nested folders, open tabs, a note and a favourite (newer layout: object markers in `newContainerIDs`, `childrenIds` for order). Built by hand, not from a real file. */
 export const arcSidebar = (): string => JSON.stringify({
   sidebarSyncState: {},
   sidebar: {
@@ -91,6 +91,48 @@ export const arcSidebar = (): string => JSON.stringify({
           'P3', { id: 'P3', parentID: null, childrenIds: ['T6'], title: null, data: { itemContainer: {} } },
           'T6', { id: 'T6', parentID: 'P3', childrenIds: [], title: null, data: { tab: { savedURL: 'https://elsewhere.example.com/', savedTitle: 'Elsewhere' } } },
           'U3', { id: 'U3', parentID: null, childrenIds: [], title: null, data: { itemContainer: {} } },
+        ],
+      },
+    ],
+  },
+})
+
+/**
+ * The sidebar file in an older layout: spaces name their containers with plain strings
+ * (`containerIDs: ["pinned", id, "unpinned", id]`), items carry no `childrenIds` (their order is
+ * the order of the list), spaces have no `profile`, and favourites sit in a plain id list. Fields
+ * the importer does not know (`customInfo`, `createdAt`, `isUnread`…) are sprinkled through.
+ *
+ * Like arcSidebar() above, this is NOT a copy of a real file: both are built by hand from the
+ * structure community exporters publicly document, with made-up spaces and example addresses.
+ */
+export const arcSidebarOlderLayout = (): string => JSON.stringify({
+  version: 1,
+  sidebar: {
+    containers: [
+      { global: {}, unknownSetting: true },
+      {
+        topAppsContainerIDs: ['TOP'],
+        spaces: [
+          'A', { id: 'A', title: 'Travel', containerIDs: ['pinned', 'AP', 'unpinned', 'AU'], customInfo: { iconType: { emoji_v2: '✈️' } }, createdAt: 700000000 },
+          'B', { id: 'B', title: '', containerIDs: ['pinned', 'BP', 'unpinned', 'BU'] },
+        ],
+        items: [
+          'TOP', { id: 'TOP', parentID: null, data: { itemContainer: {} } },
+          { id: 'FAV1', parentID: 'TOP', data: { tab: { savedURL: 'https://maps.example.com/', savedTitle: 'Maps' } }, isUnread: false },
+          { id: 'FAV2', parentID: 'TOP', data: { tab: { savedURL: 'https://calendar.example.com/', savedTitle: 'Calendar' } } },
+          { id: 'AP', parentID: null, data: { itemContainer: {} } },
+          { id: 'AT1', parentID: 'AP', title: 'Flights', data: { tab: { savedURL: 'https://flights.example.com/', savedTitle: 'Flights – search' } } },
+          { id: 'AF1', parentID: 'AP', title: 'Japan', data: { list: { color: 3 } } },
+          { id: 'AT2', parentID: 'AF1', data: { tab: { savedURL: 'https://en.wikipedia.org/wiki/Kyoto', savedTitle: 'Kyoto' } } },
+          { id: 'AS1', parentID: 'AF1', data: { splitView: { layout: 'vertical' } } },
+          { id: 'AT3', parentID: 'AS1', data: { tab: { savedURL: 'https://en.wikipedia.org/wiki/Osaka', savedTitle: 'Osaka' } } },
+          { id: 'AT4', parentID: 'AS1', data: { tab: { savedURL: 'https://en.wikipedia.org/wiki/Nara', savedTitle: 'Nara' } } },
+          { id: 'AU', parentID: null, data: { itemContainer: {} } },
+          { id: 'AO1', parentID: 'AU', data: { tab: { savedURL: 'https://hotels.example.com/', savedTitle: 'Hotels' }, someFutureField: 1 } },
+          { id: 'BP', parentID: null, data: { itemContainer: {} } },
+          { id: 'BT1', parentID: 'BP', data: { tab: { savedURL: 'https://music.example.com/', savedTitle: 'Music' } } },
+          { id: 'BU', parentID: null, data: { itemContainer: {} } },
         ],
       },
     ],

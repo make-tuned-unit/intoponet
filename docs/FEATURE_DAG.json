@@ -531,6 +531,17 @@
       "tier": "core",
       "kind": "e2e",
       "promise": "Each workspace has its own name, icon, accent colour, pinned tabs, folders and open tabs, while a short favourites row can be shared by all of them; switching (⌃1–9, a two-finger swipe on the sidebar, or the command menu) swaps the sidebar in under 150 ms without reloading other workspaces' sleeping tabs, and every workspace is restored on the next launch; private browsing stays separate from all of them."
+    },
+    {
+      "id": "IMPORT_WORKSPACES",
+      "title": "Import a sidebar's spaces and folders",
+      "deps": [
+        "BROWSER_IMPORT",
+        "WORKSPACES"
+      ],
+      "tier": "core",
+      "kind": "e2e",
+      "promise": "When the sidebar layout of a supported sidebar-tab browser is found on this Mac, import previews and recreates its spaces as workspaces with their pinned tabs, folders (nesting kept) and favourites; unsupported or unreadable files are reported, never half-imported."
     }
   ]
 }

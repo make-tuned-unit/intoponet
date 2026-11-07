@@ -46,7 +46,162 @@ export function planTabs(pinned: Array<{ url: string; title: string }>, open: Ar
   return { add, duplicates, leftOut }
 }
 
-export type LibraryBookmark = { url: string; title: string; topic: string; savedAt: string }
+// ---- A sidebar's spaces, recreated as workspaces ------------------------------------------------
+
+type Page = { url: string; title: string }
+type TreeNode = { kind: 'tab'; url: string; title: string } | { kind: 'folder'; name: string; children: TreeNode[] }
+
+/** A folder to make in a workspace, with its tabs and the folders inside it. */
+export type FolderPlan = { name: string; tabs: Page[]; children: FolderPlan[] }
+
+export type WorkspacePlan = {
+  name: string
+  /** The workspace of the same name that is already here (it is added to), or null for a new one. */
+  existingId: string | null
+  pinned: Page[]
+  folders: FolderPlan[]
+  open: Page[]
+}
+
+export type WorkspaceImportPlan = {
+  workspaces: WorkspacePlan[]
+  /** For the favourites row (shared by every workspace). */
+  favourites: Page[]
+  counts: { workspaces: number; pinned: number; foldered: number; open: number; favourites: number }
+  skipped: { duplicates: number; overLimit: number; spaces: number }
+}
+
+export type ExistingWorkspace = { id: string; name: string; urls: string[]; room: number }
+
+/** Every page in a folder plan, depth first. */
+export function folderPages(folders: readonly FolderPlan[]): Page[] {
+  return folders.flatMap((folder) => [...folder.tabs, ...folderPages(folder.children)])
+}
+
+/**
+ * Works out the workspaces an import makes: each space becomes a workspace of the same name (or
+ * adds to the one already here with that name), keeping its pinned tabs, its folders as they nest
+ * (folders deeper than Intoponet allows keep their tabs in the deepest folder that fits) and its
+ * open tabs, each address once per workspace and within each workspace's tab limit. Favourites go
+ * to the favourites row while it has room; the rest become pinned tabs in the first workspace.
+ * Running it again with the same spaces plans nothing.
+ */
+export function planWorkspaces(input: {
+  spaces: ReadonlyArray<{ title: string; tree: readonly TreeNode[]; open: readonly Page[] }>
+  favourites: readonly Page[]
+  existing: readonly ExistingWorkspace[]
+  existingFavourites: readonly string[]
+  /** Workspaces that can still be made. */
+  freeWorkspaces: number
+  /** Tabs a new workspace may hold. */
+  tabLimit: number
+  favouriteRoom: number
+  include: { pinned: boolean; open: boolean }
+  maxFolderDepth: number
+}): WorkspaceImportPlan {
+  const plan: WorkspaceImportPlan = { workspaces: [], favourites: [], counts: { workspaces: 0, pinned: 0, foldered: 0, open: 0, favourites: 0 }, skipped: { duplicates: 0, overLimit: 0, spaces: 0 } }
+  let free = Math.max(0, input.freeWorkspaces)
+  const planned: Array<{ plan: WorkspacePlan; seen: Set<string>; room: { left: number } }> = []
+  const take = (page: Page, seen: Set<string>, room: { left: number }): Page | null => {
+    const url = sameAddress(page.url)
+    if (seen.has(url)) {
+      plan.skipped.duplicates += 1
+      return null
+    }
+    seen.add(url)
+    if (room.left <= 0) {
+      plan.skipped.overLimit += 1
+      return null
+    }
+    room.left -= 1
+    return { url, title: page.title.slice(0, 180) }
+  }
+  for (const space of input.spaces) {
+    const name = space.title.replace(/\s+/g, ' ').trim().slice(0, 40) || 'Imported'
+    // The same name twice in one import: one workspace.
+    const again = planned.find((entry) => entry.plan.name.toLowerCase() === name.toLowerCase())
+    const existing = input.existing.find((workspace) => workspace.name.toLowerCase() === name.toLowerCase())
+    let entry = again
+    if (!entry) {
+      if (!existing && free <= 0) {
+        plan.skipped.spaces += 1
+        continue
+      }
+      if (!existing) free -= 1
+      entry = {
+        plan: { name: existing?.name ?? name, existingId: existing?.id ?? null, pinned: [], folders: [], open: [] },
+        seen: new Set((existing?.urls ?? []).map(sameAddress)),
+        room: { left: existing ? existing.room : input.tabLimit },
+      }
+      planned.push(entry)
+    }
+    const { seen, room } = entry
+    const folder = (node: Extract<TreeNode, { kind: 'folder' }>, depth: number, into: FolderPlan | null): FolderPlan | null => {
+      const made: FolderPlan = into ?? { name: node.name.slice(0, 80) || 'Untitled folder', tabs: [], children: [] }
+      for (const child of node.children) {
+        if (child.kind === 'tab') {
+          const page = take(child, seen, room)
+          if (page) made.tabs.push(page)
+        } else if (depth >= input.maxFolderDepth) folder(child, depth, made)
+        else {
+          const inner = folder(child, depth + 1, null)
+          if (inner) made.children.push(inner)
+        }
+      }
+      return into || made.tabs.length || made.children.length ? made : null
+    }
+    if (input.include.pinned) {
+      for (const node of space.tree) {
+        if (node.kind !== 'tab') continue
+        const page = take(node, seen, room)
+        if (page) entry.plan.pinned.push(page)
+      }
+      for (const node of space.tree) {
+        if (node.kind !== 'folder') continue
+        const made = folder(node, 1, null)
+        if (made) entry.plan.folders.push(made)
+      }
+    }
+    if (input.include.open) {
+      for (const tab of space.open) {
+        const page = take(tab, seen, room)
+        if (page) entry.plan.open.push(page)
+      }
+    }
+  }
+  // Favourites: the row while it has room, then pinned tabs in the first workspace.
+  const known = new Set(input.existingFavourites.map(sameAddress))
+  let favouriteRoom = Math.max(0, input.favouriteRoom)
+  for (const favourite of input.favourites) {
+    const url = sameAddress(favourite.url)
+    if (known.has(url)) {
+      plan.skipped.duplicates += 1
+      continue
+    }
+    known.add(url)
+    if (favouriteRoom > 0) {
+      favouriteRoom -= 1
+      plan.favourites.push({ url, title: favourite.title.slice(0, 180) })
+      continue
+    }
+    const first = planned[0]
+    const page = first ? take(favourite, first.seen, first.room) : null
+    if (page) first!.plan.pinned.push(page)
+    else if (!first) plan.skipped.overLimit += 1
+  }
+  // An existing workspace that gains nothing is left alone; a new one is made even when empty (the space existed).
+  plan.workspaces = planned.map((entry) => entry.plan).filter((workspace) => workspace.existingId === null || workspace.pinned.length || workspace.folders.length || workspace.open.length)
+  for (const workspace of plan.workspaces) {
+    if (workspace.existingId === null) plan.counts.workspaces += 1
+    plan.counts.pinned += workspace.pinned.length
+    plan.counts.foldered += folderPages(workspace.folders).length
+    plan.counts.open += workspace.open.length
+  }
+  plan.counts.favourites = plan.favourites.length
+  return plan
+}
+
+export type LibraryBookmark ={ url: string; title: string; topic: string; savedAt: string }
 export type LibraryCollection = { id: string; label: string; createdAt: string; memberUrls: string[] }
 export type LibraryDocument = { schema: 'intoponet.private-library.v1'; bookmarks: LibraryBookmark[]; collections: LibraryCollection[]; recents: []; absorbed: [] }
 

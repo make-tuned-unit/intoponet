@@ -464,6 +464,60 @@ async function buildImportFixtures(root) {
   }] } }))
 }
 
+// ---- Import a sidebar's spaces as workspaces: fixture sidebar files ---------------------------
+// Built by hand from the structure community exporters publicly document; NOT copies of real files.
+// The newer layout marks containers with objects and orders children with childrenIds; the older one
+// uses plain strings, no childrenIds (list order), and carries fields the importer must ignore.
+const IMPORT_WS_ROOT = join(tmpdir(), `intoponet-import-ws-e2e-${process.pid}`)
+const sidebarItem = (id, parentID, url, title) => ({ id, parentID, childrenIds: [], title: null, data: { tab: { savedURL: url, savedTitle: title } } })
+const NEWER_SIDEBAR = { sidebar: { containers: [{ global: {} }, {
+  topAppsContainerIDs: [{ default: true }, 'TOP'],
+  spaces: [
+    'S1', { id: 'S1', title: 'Work', profile: { default: true }, newContainerIDs: [{ pinned: {} }, 'P1', { unpinned: { _0: { shared: {} } } }, 'U1'], customInfo: { windowTheme: { semanticColor: 'x' } } },
+    'S2', { id: 'S2', title: 'Home', profile: { default: true }, newContainerIDs: [{ pinned: {} }, 'P2', { unpinned: {} }, 'U2'] },
+  ],
+  items: [
+    'TOP', { id: 'TOP', parentID: null, childrenIds: ['FAV1', 'FAV2'], data: { itemContainer: { containerType: { topApps: { _0: { default: true } } } } } },
+    'FAV1', sidebarItem('FAV1', 'TOP', 'https://mail.example.com/', 'Mail'),
+    'FAV2', sidebarItem('FAV2', 'TOP', 'https://maps.example.com/', 'Maps'),
+    'P1', { id: 'P1', parentID: null, childrenIds: ['T1', 'T2', 'F1'], data: { itemContainer: {} } },
+    'T1', sidebarItem('T1', 'P1', 'https://docs.example.com/', 'Docs'),
+    'T2', { ...sidebarItem('T2', 'P1', 'https://chat.example.com/team', 'Chat'), title: 'Team chat' },
+    'F1', { id: 'F1', parentID: 'P1', childrenIds: ['T3', 'F2'], title: 'Reading', data: { list: {} } },
+    'T3', sidebarItem('T3', 'F1', 'https://en.wikipedia.org/wiki/Tonga', 'Tonga'),
+    'F2', { id: 'F2', parentID: 'F1', childrenIds: ['T4'], title: 'Later', data: { list: {} } },
+    'T4', sidebarItem('T4', 'F2', 'https://en.wikipedia.org/wiki/Samoa', 'Samoa'),
+    'U1', { id: 'U1', parentID: null, childrenIds: ['O1'], data: { itemContainer: {} } },
+    'O1', sidebarItem('O1', 'U1', 'https://news.example.com/today', 'Today'),
+    'P2', { id: 'P2', parentID: null, childrenIds: ['T5'], data: { itemContainer: {} } },
+    'T5', sidebarItem('T5', 'P2', 'https://recipes.example.com/', 'Recipes'),
+    'U2', { id: 'U2', parentID: null, childrenIds: ['O2'], data: { itemContainer: {} } },
+    'O2', sidebarItem('O2', 'U2', 'https://weather.example.com/', 'Weather'),
+  ],
+}] } }
+const OLDER_SIDEBAR = { version: 1, sidebar: { containers: [{ global: {} }, {
+  topAppsContainerIDs: ['TOP'],
+  spaces: [{ id: 'A', title: 'Travel', containerIDs: ['pinned', 'AP', 'unpinned', 'AU'], createdAt: 700000000 }],
+  items: [
+    { id: 'TOP', parentID: null, data: { itemContainer: {} } },
+    { id: 'FAV', parentID: 'TOP', data: { tab: { savedURL: 'https://calendar.example.com/', savedTitle: 'Calendar' } }, isUnread: false },
+    { id: 'AP', parentID: null, data: { itemContainer: {} } },
+    { id: 'AT1', parentID: 'AP', data: { tab: { savedURL: 'https://flights.example.com/', savedTitle: 'Flights' } } },
+    { id: 'AF1', parentID: 'AP', title: 'Japan', data: { list: { color: 3 } } },
+    { id: 'AT2', parentID: 'AF1', data: { tab: { savedURL: 'https://en.wikipedia.org/wiki/Kyoto', savedTitle: 'Kyoto' } } },
+    { id: 'AS1', parentID: 'AF1', data: { splitView: {} } },
+    { id: 'AT3', parentID: 'AS1', data: { tab: { savedURL: 'https://en.wikipedia.org/wiki/Osaka', savedTitle: 'Osaka' } } },
+    { id: 'AU', parentID: null, data: { itemContainer: {} } },
+    { id: 'AO1', parentID: 'AU', data: { tab: { savedURL: 'https://hotels.example.com/', savedTitle: 'Hotels' }, someFutureField: 1 } },
+  ],
+}] } }
+function buildSidebarFixture(root, sidebar) {
+  const profile = join(root, 'Arc', 'User Data', 'Default')
+  mkdirSync(profile, { recursive: true })
+  writeFileSync(join(profile, 'Bookmarks'), JSON.stringify({ version: 1, roots: { bookmark_bar: { type: 'folder', name: 'Bookmarks bar', children: [] } } }))
+  writeFileSync(join(root, 'Arc', 'StorableSidebar.json'), typeof sidebar === 'string' ? sidebar : JSON.stringify(sidebar))
+}
+
 export const checks = {
   // ---- Foundations ---------------------------------------------------------
   async APP_BOOT(ctx) {
@@ -1917,6 +1971,8 @@ export const checks = {
 
       // Arc: spaces' pinned tabs become pinned tabs with their home; folders and spaces become collections.
       await choose('Arc')
+      // Spaces as workspaces is IMPORT_WORKSPACES's check: here the flat import into the open workspace.
+      await ctx.evaluate(`(() => { const input = [...document.querySelectorAll('.browser-import-choice input')].find((i) => i.parentElement.innerText.startsWith('Workspaces')); if (input?.checked) input.click(); return true })()`)
       const arcPreview = await sectionText()
       expect(arcPreview.includes('Pinned tabs 2 tabs') && arcPreview.includes('Open tabs 1 tab'), `The Arc preview is wrong: ${arcPreview}`)
       const arcResult = await importNow('Arc')
@@ -2431,6 +2487,104 @@ export const checks = {
       server.close()
     }
   },
+  async IMPORT_WORKSPACES(ctx) {
+    rmSync(IMPORT_WS_ROOT, { recursive: true, force: true })
+    buildSidebarFixture(IMPORT_WS_ROOT, NEWER_SIDEBAR)
+    const host = 'window.intoponet.browserHost'
+    const ws = 'window.intoponet.workspaces'
+    const section = `document.querySelector('.browser-import')`
+    const sectionText = () => ctx.evaluate(`${section}?.innerText ?? ''`)
+    const state = async () => JSON.parse(await ctx.evaluate(`${ws}.get().then((s) => JSON.stringify(s))`))
+    const tabs = async () => JSON.parse(await ctx.evaluate(`${host}.getTabs().then((t) => JSON.stringify(t))`))
+    const folders = async () => JSON.parse(await ctx.evaluate(`${host}.getTabFolders().then((f) => JSON.stringify(f))`))
+    const show = async (name) => {
+      await ctx.evaluate(`${ws}.get().then((s) => ${ws}.switchTo({ id: s.workspaces.find((w) => w.name === ${JSON.stringify(name)}).id })).then(() => true)`)
+      await ctx.delay(500)
+    }
+    /** Pick the profile again (the preview reads the sidebar file afresh). */
+    const choose = async () => {
+      await ctx.evaluate(`(() => { const radios = [...document.querySelectorAll('.browser-import input[type=radio]')]; const arc = radios.find((i) => i.parentElement.innerText.includes('Arc')); arc.checked = false; arc.focus(); arc.click(); return true })()`)
+      await ctx.wait(`(${section}?.innerText ?? '').includes('What to bring') && !(${section}?.innerText ?? '').includes('Looking at')`, 15_000, 'the preview')
+    }
+    const importNow = async (what) => {
+      await ctx.evaluate(`(() => { [...document.querySelectorAll('.browser-import button')].find((b) => b.innerText.trim() === 'Import').focus(); return true })()`)
+      await ctx.press('Enter')
+      await ctx.wait(`!!document.querySelector('.browser-import-result') || !!document.querySelector('.browser-import .settings-error')`, 30_000, `the import of ${what} to finish`)
+      const error = await ctx.evaluate(`document.querySelector('.browser-import .settings-error')?.innerText ?? ''`)
+      expect(!error, `Importing ${what} failed: ${error}`)
+      await ctx.delay(1200)
+      return ctx.evaluate(`document.querySelector('.browser-import-result').innerText`)
+    }
+    try {
+      await openPanel(ctx, 'Settings')
+      await ctx.wait(`!!${section}`, 5000, 'the Import section in Settings')
+      await ctx.evaluate(`(() => { ${section}.scrollIntoView({ block: 'start' }); return true })()`)
+      await ctx.click('.browser-import button', 'Find browsers')
+      // Named factually in the list of sources, and only there.
+      await ctx.wait(`(${section}?.innerText ?? '').includes('Arc · Default')`, 10_000, 'the sidebar browser in the list of sources')
+      await ctx.wait(`(${section}?.innerText ?? '').includes('What to bring')`, 15_000, 'the preview')
+
+      // The preview names each space and what it would bring, and nothing is written yet.
+      const preview = await sectionText()
+      for (const piece of ['Workspaces 2 spaces and 2 favourites', 'Work: 2 pinned tabs, 2 folders (2 tabs), 1 open tab', 'Home: 1 pinned tab, 1 open tab']) expect(preview.includes(piece), `The preview is missing "${piece}": ${preview}`)
+      expect(await ctx.evaluate(`[...document.querySelectorAll('.browser-import-choice input')].find((i) => i.parentElement.innerText.startsWith('Workspaces')).checked`), 'Workspaces is not ticked when spaces were found.')
+      expect((await state()).workspaces.length === 1, 'Something was written before Import was pressed.')
+      await axeAudit(ctx, 'Settings › Import (spaces preview)', '.browser-import')
+      await ctx.shot('preview')
+
+      // Imported: each space a workspace with its pinned tabs, nested folders and open tabs; favourites in the row.
+      const result = await importNow('the newer layout')
+      for (const piece of ['2 new workspaces (Work, Home)', '2 tabs in folders', '2 favourites']) expect(result.includes(piece), `The result does not say "${piece}": ${result}`)
+      let now = await state()
+      expect(now.workspaces.map((w) => w.name).join() === 'Main,Work,Home', `Workspaces after the import: ${now.workspaces.map((w) => w.name).join()}.`)
+      expect(now.favourites.map((f) => f.url).join() === 'https://mail.example.com/,https://maps.example.com/' && now.favourites.every((f) => f.workspaceId === null), `Favourites after the import: ${JSON.stringify(now.favourites)}.`)
+      expect((await tabs()).length === 0, 'Imported tabs went into the workspace that was open.')
+      await show('Work')
+      const work = await tabs()
+      const workFolders = await folders()
+      expect(work.map((tab) => tab.title).join() === 'Docs,Team chat,Tonga,Samoa,Today', `Work holds: ${work.map((tab) => tab.title).join()}.`)
+      expect(work.filter((tab) => tab.pinned).every((tab) => tab.home === tab.url) && work.filter((tab) => tab.pinned).length === 2, 'Work\'s pinned tabs did not come over with their home.')
+      const reading = workFolders.find((f) => f.name === 'Reading')
+      const later = workFolders.find((f) => f.name === 'Later')
+      expect(reading && later && reading.parentId === null && later.parentId === reading.id, `Work's folders lost their nesting: ${JSON.stringify(workFolders)}.`)
+      expect(work.find((tab) => tab.title === 'Tonga').folderId === reading.id && work.find((tab) => tab.title === 'Samoa').folderId === later.id, 'The tabs are not in their folders.')
+      expect(work.every((tab) => tab.asleep || tab.active), 'Imported tabs loaded before they were shown.')
+      await show('Home')
+      expect((await tabs()).map((tab) => tab.title).join() === 'Recipes,Weather', `Home holds: ${(await tabs()).map((tab) => tab.title).join()}.`)
+
+      // Again: nothing doubles.
+      const again = await importNow('the same file again')
+      expect(again.includes('Nothing new'), `A second import added something: ${again}`)
+      now = await state()
+      expect(now.workspaces.length === 3 && now.favourites.length === 2 && now.workspaces.find((w) => w.name === 'Work').tabCount === 5, `A second import changed the workspaces: ${JSON.stringify(now.workspaces)}.`)
+
+      // The older layout of the same file: its space comes over too, its favourite joins the row.
+      writeFileSync(join(IMPORT_WS_ROOT, 'Arc', 'StorableSidebar.json'), JSON.stringify(OLDER_SIDEBAR))
+      await choose()
+      expect((await sectionText()).includes('Travel: 1 pinned tab, 1 folder (2 tabs), 1 open tab'), `The older layout's preview: ${await sectionText()}`)
+      const older = await importNow('the older layout')
+      expect(older.includes('1 new workspace (Travel)') && older.includes('1 favourite'), `Unexpected result for the older layout: ${older}`)
+      await show('Travel')
+      const travel = await tabs()
+      expect(travel.map((tab) => tab.title).join() === 'Flights,Kyoto,Osaka,Hotels' && (await folders()).map((f) => f.name).join() === 'Japan', `Travel holds: ${travel.map((tab) => tab.title).join()} in ${(await folders()).map((f) => f.name).join()}.`)
+
+      // A file in a shape it does not know is reported, and nothing is read from it or written.
+      const before = JSON.stringify(await state())
+      writeFileSync(join(IMPORT_WS_ROOT, 'Arc', 'StorableSidebar.json'), JSON.stringify({ sidebar: { containers: [{ global: {} }, { spaces: 'not a list', items: {} }] } }))
+      await choose()
+      const refused = await sectionText()
+      expect(refused.includes('not in a format Intoponet knows'), `An unsupported sidebar file was not reported: ${refused}`)
+      expect(!(await ctx.evaluate(`[...document.querySelectorAll('.browser-import-choice input')].find((i) => i.parentElement.innerText.startsWith('Workspaces')).checked`)), 'Workspaces stayed ticked for an unreadable file.')
+      writeFileSync(join(IMPORT_WS_ROOT, 'Arc', 'StorableSidebar.json'), '{"sidebar": {"containers": [')
+      await choose()
+      expect((await sectionText()).includes('not in a format Intoponet knows'), 'A damaged sidebar file was not reported.')
+      expect(JSON.stringify(await state()) === before, 'An unreadable sidebar file changed the workspaces.')
+      await axeAudit(ctx, 'Settings › Import (unreadable sidebar)', '.browser-import')
+      return 'Previewed 2 spaces and 2 favourites with each space\'s pinned tabs, folders and open tabs; recreated Work and Home as workspaces (pinned tabs with homes, Reading › Later nesting kept, open tabs unloaded) and the favourites row; a second run added nothing; the older file layout added Travel (split view opened up); an unsupported and a damaged file were reported and changed nothing; keyboard and axe clean. Fixtures are hand-built, not real files.'
+    } finally {
+      rmSync(IMPORT_WS_ROOT, { recursive: true, force: true })
+    }
+  },
   async AD_SLOTS(ctx) {
     // A news-like page with three kinds of ad space, and one "ad" container that also holds the story.
     const page = `<!doctype html><title>Story with ads</title><body style="font:16px system-ui;margin:40px">
@@ -2470,3 +2624,4 @@ export const checks = {
 checks.TAB_SLEEP.env = { INTOPONET_TAB_SLEEP_MINUTE_MS: '200' }
 checks.TAB_ARCHIVE.env = { INTOPONET_TAB_ARCHIVE_HOUR_MS: '200' }
 checks.BROWSER_IMPORT.env = { INTOPONET_IMPORT_ROOT: IMPORT_ROOT, INTOPONET_IMPORT_TEST_KEY: IMPORT_TEST_KEY }
+checks.IMPORT_WORKSPACES.env = { INTOPONET_IMPORT_ROOT: IMPORT_WS_ROOT, INTOPONET_IMPORT_TEST_KEY: IMPORT_TEST_KEY }

@@ -8,7 +8,7 @@ import { chromiumTime, parseChromiumBookmarks } from './chromiumBookmarks'
 import { countHistory, readHistory } from './chromiumHistory'
 import { chromiumKey, countLogins, decryptChromiumPassword, encryptChromiumPassword, readLogins } from './chromiumLogins'
 import { withDatabaseCopy } from './sqliteCopy'
-import { arcSidebar, chromeBookmarks, FIXTURE_PASSWORD, FIXTURE_TEST_KEY, toChromiumTime, writeHistory, writeLogins } from './testFixtures'
+import { arcSidebar, arcSidebarOlderLayout, chromeBookmarks, FIXTURE_PASSWORD, FIXTURE_TEST_KEY, toChromiumTime, writeHistory, writeLogins } from './testFixtures'
 
 const folders: string[] = []
 const temp = (): string => {
@@ -61,6 +61,37 @@ describe('Arc sidebar', () => {
     expect(home!.pinned.map((tab) => tab.url)).toEqual(['https://recipes.example.com/'])
     expect(sidebar.favourites.map((tab) => tab.url)).toEqual(['https://mail.example.com/'])
     expect(sidebar.skipped).toBe(1)
+  })
+
+  it('keeps each space\'s pinned part as laid out, folders nested (for workspaces)', () => {
+    const [work] = parseArcSidebar(arcSidebar()).spaces
+    expect(work!.tree).toEqual([
+      { kind: 'tab', url: 'https://docs.example.com/', title: 'Docs' },
+      { kind: 'tab', url: 'https://chat.example.com/team', title: 'Team chat' },
+      { kind: 'folder', name: 'Reading', children: [
+        { kind: 'tab', url: 'https://en.wikipedia.org/wiki/Tonga', title: 'Tonga' },
+        { kind: 'folder', name: 'Later', children: [{ kind: 'tab', url: 'https://en.wikipedia.org/wiki/Samoa', title: 'Samoa' }] },
+      ] },
+    ])
+  })
+
+  it('reads the older layout too, ignoring fields it does not know', () => {
+    const sidebar = parseArcSidebar(arcSidebarOlderLayout())
+    expect(sidebar.spaces.map((space) => [space.title, space.profile])).toEqual([['Travel', 'Default'], ['Space 1', 'Default']])
+    const [travel, untitled] = sidebar.spaces
+    // No childrenIds: the list's own order. A split view opens up into its tabs.
+    expect(travel!.tree).toEqual([
+      { kind: 'tab', url: 'https://flights.example.com/', title: 'Flights' },
+      { kind: 'folder', name: 'Japan', children: [
+        { kind: 'tab', url: 'https://en.wikipedia.org/wiki/Kyoto', title: 'Kyoto' },
+        { kind: 'tab', url: 'https://en.wikipedia.org/wiki/Osaka', title: 'Osaka' },
+        { kind: 'tab', url: 'https://en.wikipedia.org/wiki/Nara', title: 'Nara' },
+      ] },
+    ])
+    expect(travel!.open.map((tab) => tab.title)).toEqual(['Hotels'])
+    expect(untitled!.tree.map((node) => node.kind === 'tab' && node.url)).toEqual(['https://music.example.com/'])
+    expect(sidebar.favourites.map((tab) => tab.title)).toEqual(['Maps', 'Calendar'])
+    expect(sidebar.skipped).toBe(0)
   })
 
   it('splits spaces by profile; favourites belong to the default profile', () => {

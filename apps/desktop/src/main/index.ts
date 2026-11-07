@@ -158,12 +158,12 @@ protocol.registerSchemesAsPrivileged([
 ])
 let captures: CaptureService | null = null
 import { browserContextActions, type BrowserContextAction } from './browserContextMenu'
-import { canNest, deleteFolder, duplicateIndex, folderDepth, folderedOrder, folderTreeOrder, MAX_FOLDERS, moveFolderedTab, moveTab, otherTabIds, pinnedFirst, setPinned, setTabFolder, tabIdsToRight, type TabFolder } from './tabOrder'
+import { canNest, deleteFolder, duplicateIndex, folderDepth, folderedOrder, folderTreeOrder, MAX_FOLDER_DEPTH, MAX_FOLDERS, moveFolderedTab, moveTab, otherTabIds, pinnedFirst, setPinned, setTabFolder, tabIdsToRight, type TabFolder } from './tabOrder'
 import { tabMenuTemplate, type TabMenuAction } from './tabMenu'
 import { liveTabFlags } from './tabState'
 import { groupSavedFolders, parseSavedWorkspaces, savedWorkspaceOf, WorkspaceSet, type RemovedWorkspace, type SavedWorkspace, type SavedWorkspaces } from './workspaces'
 import { BrowserImportService, wireBrowserImport } from './browserImport/service'
-import type { ImportedTab } from './browserImport/plan'
+import type { FolderPlan, ImportedTab, WorkspaceImportPlan } from './browserImport/plan'
 import { importRoot } from './browserImport/sources'
 import {
   browserHostChannels,
@@ -3451,6 +3451,45 @@ function openIncoming(target: IncomingTarget): void {
 }
 
 /** One part of the app failing to start (a damaged settings file, say) must not keep the window from opening. */
+/**
+ * A sidebar browser's spaces, as workspaces (browserImport/plan.ts worked out what to add): each
+ * workspace made or added to, its pinned tabs, its folders nested as they were (matched by name in
+ * a workspace already here), its open tabs, and the favourites. Tabs come unloaded, like restored
+ * ones. Nothing here can fail part way: the plan already fits every limit.
+ */
+function addImportedWorkspaces(plan: WorkspaceImportPlan): void {
+  const unloaded = (page: { url: string; title: string }, extra: Partial<OpenTab> = {}): OpenTab => ({ id: randomUUID(), url: page.url, title: page.title, favicon: '', view: buildView(false), asleep: {}, lastShownAt: Date.now(), ...extra })
+  for (const planned of plan.workspaces) {
+    const id = planned.existingId ?? workspaces.create({ name: planned.name })?.id
+    if (!id) continue
+    const target = id === workspaces.activeId ? { tabs: openTabs, folders: tabFolders } : workspaces.parkedOf(id)
+    if (!target) continue
+    const added: OpenTab[] = planned.pinned.map((page) => unloaded(page, { pinned: true, home: page.url }))
+    const addFolders = (list: readonly FolderPlan[], parentId: string | null): void => {
+      for (const folder of list) {
+        let made = target.folders.find((item) => item.name === folder.name && item.parentId === parentId)
+        if (!made && target.folders.length < MAX_FOLDERS) {
+          made = { id: randomUUID(), name: folder.name, parentId }
+          target.folders.push(made)
+        }
+        // No room for another folder: its tabs join the folder it was in.
+        const home = made?.id ?? parentId
+        for (const page of folder.tabs) added.push(unloaded(page, home ? { folderId: home } : {}))
+        addFolders(folder.children, home)
+      }
+    }
+    addFolders(planned.folders, null)
+    for (const page of planned.open) added.push(unloaded(page))
+    target.tabs.push(...added)
+    target.tabs.splice(0, target.tabs.length, ...folderedOrder(pinnedFirst(target.tabs), target.folders))
+  }
+  for (const favourite of plan.favourites) workspaces.addFavourite(favourite.url, favourite.title, true)
+  emitTabFolders()
+  emitTabs()
+  emitWorkspaces()
+  schedulePersistentStateSave()
+}
+
 /** Settings › Import from another browser (browserImport/service.ts). */
 function wireImportFromBrowsers(): void {
   const addImportedTabs = (tabs: ImportedTab[]): void => {
@@ -3469,6 +3508,19 @@ function wireImportFromBrowsers(): void {
     history: () => browsingData?.history ?? null,
     passwords: () => passwords,
     toOrigin: passwordOrigin,
+    workspaces: {
+      existing: () => workspaces.workspaces.map((workspace) => {
+        const shown = workspace.id === workspaces.activeId
+        const held = shown ? openTabs.filter((tab) => !privateViews.has(tab.view)) : workspaces.parkedOf(workspace.id)?.tabs ?? []
+        return { id: workspace.id, name: workspace.name, urls: held.map((tab) => tab.url), room: MAX_TABS - (shown ? openTabs.length : held.length) }
+      }),
+      favouriteUrls: () => workspaces.favourites.map((favourite) => favourite.url),
+      freeWorkspaces: () => MAX_WORKSPACES - workspaces.workspaces.length,
+      favouriteRoom: () => MAX_FAVOURITES - workspaces.favourites.length,
+      tabLimit: MAX_TABS,
+      maxFolderDepth: MAX_FOLDER_DEPTH,
+      apply: addImportedWorkspaces,
+    },
   }))
 }
 
