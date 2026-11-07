@@ -4118,6 +4118,31 @@ export const checks = {
     await ctx.wait(`!!document.querySelector('.olds-sheet')`, 15_000, 'The Olds to open for the story')
     await ctx.shot('compare-olds')
     const paywalls = await ctx.evaluate(`document.querySelectorAll('.split-compare-paywall').length`)
+
+    // An article whose link redirects to another host as it first loads keeps its outlet label there.
+    const redirects = createServer((request, response) => {
+      if (request.url.startsWith('/moved')) {
+        response.writeHead(302, { location: `http://127.0.0.1:${redirects.address().port}/article` })
+        response.end()
+        return
+      }
+      response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
+      response.end('<!doctype html><html lang="en"><title>Article</title><h1>Article</h1></html>')
+    })
+    await new Promise((resolve) => redirects.listen(0, '127.0.0.1', resolve))
+    try {
+      const port = redirects.address().port
+      await ctx.evaluate(`window.intoponet.browserHost.openCompare({ id: 'redirect-story', title: 'A story' }, { url: 'http://127.0.0.1:${port}/article', outlet: 'Left Outlet', countryCode: 'GB' }, { url: 'http://localhost:${port}/moved', outlet: 'Moved Outlet', countryCode: 'FR' }).then(() => true)`)
+      let moved = null
+      for (let i = 0; i < 40 && !moved; i += 1) {
+        const now = await stateOf()
+        if (now.split?.left?.compare?.outlet === 'Left Outlet' && now.split.right.url.startsWith(`http://127.0.0.1:${port}/article`)) moved = now.split.right
+        else await ctx.delay(250)
+      }
+      expect(moved?.compare?.outlet === 'Moved Outlet', `The right side lost its outlet label after its link redirected to another host: ${JSON.stringify(moved)}.`)
+    } finally {
+      redirects.close()
+    }
     return `Compared "${front}" with ${split.right.compare.outlet} (${split.right.compare.country}): two pages ${a.width}×${a.height} and ${b.width}×${b.height}, side by side at y ${a.y}; headers read "${headers.map((h) => h.origin).join('" and "')}"; ${translateNote}; The Olds opened for the story; ${paywalls} paywall badge(s) on the pair.`
   },
 

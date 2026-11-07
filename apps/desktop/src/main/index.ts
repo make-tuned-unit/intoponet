@@ -201,7 +201,7 @@ import { suggestGroups, tidyCandidates, tidyText } from './tabTidy'
 import { dot } from './laya/retrieval'
 import { tabMenuTemplate, type TabMenuAction, type TabMenuSplit } from './tabMenu'
 import { canSplit, partnerOf, repairSplits, setSplitRatio, splitBounds, splitPreviewArea, splitWith, storableRatio, unsplit, DEFAULT_SPLIT_RATIO, type SplitLayout, type SplitSide, type TabSplit } from './splitPages'
-import { compareCountryName, compareLabelFor, savedCompareOf, tabCompareFor, type CompareSideInput, type TabCompare } from './compare'
+import { compareCountryName, compareLabelFor, landedCompare, savedCompareOf, tabCompareFor, type CompareSideInput, type TabCompare } from './compare'
 import { liveTabFlags } from './tabState'
 import { groupSavedFolders, parseSavedWorkspaces, savedWorkspaceOf, WorkspaceSet, type RemovedWorkspace, type SavedWorkspace, type SavedWorkspaces } from './workspaces'
 import { BrowserImportService, wireBrowserImport } from './browserImport/service'
@@ -1210,6 +1210,9 @@ function splitTabs(command: { id?: string; partnerId?: string; side?: SplitSide 
   schedulePersistentStateSave()
 }
 
+/** Compare tabs whose article has not loaded yet: where it first lands is the outlet's site (landedCompare). */
+const compareLanding = new WeakSet<OpenTab>()
+
 /** A country's name for a Compare label (the Mac's language), or the code when there is no name. */
 function countryNameFor(code: string): string | undefined {
   try {
@@ -1235,6 +1238,8 @@ function openCompare(command: { story: { id: string; title: string }; left: Comp
   if (!left || !right) throw new Error('Those articles cannot be opened.')
   left.compare = leftCompare
   right.compare = rightCompare
+  compareLanding.add(left)
+  compareLanding.add(right)
   if (!splitWith(openTabs, left.id, right.id, 'left')) throw new Error('Those tabs cannot sit side by side.')
   // The left side loads when it is shown; the right side loads now, in the background.
   void right.view.webContents.loadURL(command.right.url).catch(() => undefined)
@@ -3349,6 +3354,9 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
   view.webContents.on('did-fail-load', (_event, _code, _description, _url, mainFrame) => {
     if (mainFrame) frequencyLoadSucceeded = false
     if (mainFrame) loadingDocument.delete(view)
+    // Only a Compare article's first load can move its label (what loads after a failure is not that).
+    const failed = mainFrame ? tabOfView(view) : undefined
+    if (failed) compareLanding.delete(failed)
   })
   view.webContents.on('dom-ready', () => loadingDocument.delete(view))
   view.webContents.on('did-stop-loading', () => loadingDocument.delete(view))
@@ -3502,6 +3510,12 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
     if (tab) showTab(tab.id)
   })
   view.webContents.on('did-navigate', (_event, url) => {
+    // A Compare article that redirected to another host as it first loaded is still that outlet's article.
+    const landing = tabOfView(view)
+    if (landing?.compare && compareLanding.delete(landing)) {
+      landing.compare = landedCompare(landing.compare, url)
+      schedulePersistentStateSave()
+    }
     applySiteZoom(view, url)
     setLoadError(view, null)
     rememberTab(view)
