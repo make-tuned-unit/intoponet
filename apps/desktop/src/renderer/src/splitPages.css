@@ -1,0 +1,201 @@
+/* Pages side by side: the shell's layer over the page area (SplitPages.tsx). Rectangles are inline. */
+
+.split-header {
+  position: fixed;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0 4px 0 8px;
+  font-size: 12px;
+  color: #e8eaed;
+  background: rgba(24, 26, 30, 0.96);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+}
+
+.split-header.is-focused {
+  background: rgba(40, 44, 50, 0.98);
+  box-shadow: inset 0 -2px 0 #5ad6c4;
+}
+
+@media (prefers-color-scheme: light) {
+  .split-header {
+    color: #1d1d1f;
+    background: rgba(246, 247, 249, 0.97);
+    border-bottom-color: rgba(0, 0, 0, 0.12);
+  }
+  .split-header.is-focused {
+    background: #ffffff;
+  }
+}
+
+.split-header-focus {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  flex: 1 1 auto;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: default;
+}
+
+.split-header-origin {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.split-header-insecure {
+  flex: none;
+  color: #ffab9f;
+  font-weight: 600;
+}
+
+@media (prefers-color-scheme: light) {
+  .split-header-insecure {
+    color: #a3261b;
+  }
+}
+
+.split-header-unsplit {
+  flex: none;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid rgba(127, 127, 127, 0.4);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.split-header-unsplit:focus-visible,
+.split-header-focus:focus-visible,
+.split-divider:focus-visible {
+  outline: 2px solid var(--accent, #0a84ff);
+  outline-offset: 1px;
+}
+
+.split-divider {
+  position: fixed;
+  z-index: 41;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  cursor: col-resize;
+  color: rgba(127, 127, 127, 0.7);
+  background: rgba(127, 127, 127, 0.14);
+  touch-action: none;
+  user-select: none;
+}
+
+.split-divider:hover,
+.split-divider.is-dragging {
+  background: rgba(127, 127, 127, 0.3);
+}
+
+.split-drop-zone {
+  position: fixed;
+  z-index: 42;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border: 2px dashed var(--accent, #0a84ff);
+  border-radius: 12px;
+  margin: 8px;
+  background: rgba(10, 132, 255, 0.12);
+  color: var(--accent, #0a84ff);
+  font-size: 14px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+/* A new tab's start page (or an error page) beside another page sits in its own half. */
+.split-start-plain {
+  display: contents;
+}
+
+.split-start-frame {
+  position: fixed;
+  z-index: 30;
+  overflow: auto;
+  box-sizing: border-box;
+}
+
+/* A side of a pair in the tab list: one row, both halves. */
+.tab-rail-pair,
+.page-tab-pair {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.tab-rail-pair {
+  flex-wrap: nowrap;
+  width: 100%;
+}
+
+.tab-rail-pair .tab-rail-half {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* Icon-only sidebar: the two halves stay in one row, left then right, with smaller icons. */
+.tab-rail:not(.is-open) .tab-rail-pair .tab-rail-half {
+  flex: 0 1 auto;
+  justify-content: center;
+  padding-inline: 2px;
+}
+
+.tab-rail:not(.is-open) .tab-rail-pair .tab-rail-title,
+.tab-rail:not(.is-open) .tab-rail-pair .tab-rail-unsplit {
+  display: none;
+}
+
+.tab-rail:not(.is-open) .tab-rail-pair .tab-rail-icon img,
+.tab-rail:not(.is-open) .tab-rail-pair .tab-rail-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.tab-rail-split-mark {
+  flex: none;
+  display: flex;
+  align-items: center;
+  padding: 0 2px;
+  color: rgba(127, 127, 127, 0.8);
+}
+
+.tab-rail-half.is-focused .tab-rail-title {
+  font-weight: 600;
+}
+
+.page-tab-pair {
+  gap: 0;
+}
+
+.page-tab-pair .page-tab-main {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.page-tab-pair .page-tab-main.is-split-half {
+  border-radius: 0;
+}
+
+.page-tab-pair .page-tab-main.is-split-half + .page-tab-main.is-split-half {
+  border-left: 1px solid rgba(127, 127, 127, 0.3);
+}

@@ -194,6 +194,21 @@ const browserHost: BrowserHostApi = {
   moveTab: async (id, toIndex) => {
     await invoke({ type: 'move-tab', id, toIndex })
   },
+  splitTab: async (id, partnerId, side) => {
+    await invoke({ type: 'split-tab', ...(id ? { id } : {}), ...(partnerId ? { partnerId } : {}), ...(side ? { side } : {}) })
+  },
+  unsplitTab: async (id) => {
+    await invoke({ type: 'unsplit-tab', ...(id ? { id } : {}) })
+  },
+  setSplitRatio: async (ratio) => {
+    await invoke({ type: 'set-split-ratio', ratio })
+  },
+  focusSplitSide: async (side) => {
+    await invoke({ type: 'focus-split-side', side })
+  },
+  splitPreview: async (side) => {
+    await invoke({ type: 'split-preview', side })
+  },
   setTabPinned: async (id, pinned) => {
     await invoke({ type: 'set-tab-pinned', id, pinned })
   },

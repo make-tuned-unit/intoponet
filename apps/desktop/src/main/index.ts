@@ -180,7 +180,8 @@ protocol.registerSchemesAsPrivileged([
 let captures: CaptureService | null = null
 import { browserContextActions, type BrowserContextAction } from './browserContextMenu'
 import { canNest, deleteFolder, duplicateIndex, folderDepth, folderedOrder, folderTreeOrder, MAX_FOLDER_DEPTH, MAX_FOLDERS, moveFolderedTab, moveTab, otherTabIds, pinnedFirst, setPinned, setTabFolder, tabIdsToRight, type TabFolder } from './tabOrder'
-import { tabMenuTemplate, type TabMenuAction } from './tabMenu'
+import { tabMenuTemplate, type TabMenuAction, type TabMenuSplit } from './tabMenu'
+import { canSplit, partnerOf, repairSplits, setSplitRatio, splitBounds, splitPreviewArea, splitWith, storableRatio, unsplit, DEFAULT_SPLIT_RATIO, type SplitLayout, type SplitSide, type TabSplit } from './splitPages'
 import { liveTabFlags } from './tabState'
 import { groupSavedFolders, parseSavedWorkspaces, savedWorkspaceOf, WorkspaceSet, type RemovedWorkspace, type SavedWorkspace, type SavedWorkspaces } from './workspaces'
 import { BrowserImportService, wireBrowserImport } from './browserImport/service'
@@ -194,6 +195,8 @@ import {
   type BrowserPanelSnapshot,
   type ClosedTabSnapshot,
   type PageTabSnapshot,
+  type SplitPanelSnapshot,
+  type SplitSideSnapshot,
   type SavedPdfRecord,
   type PrivateLibraryReadResult,
   type ShellShortcut,
@@ -215,6 +218,10 @@ import {
 
 let window: BrowserWindow | null = null
 let pageView: WebContentsView | null = null
+/** The other side of a split, attached beside pageView (null unless the shown tab is side by side). */
+let companionView: WebContentsView | null = null
+/** A tab dragged over a page edge: the side it would take (splitPages.ts). */
+let splitPreviewSide: SplitSide | null = null
 let translateService: TranslateService | null = null
 /** Saved passwords (sealed on this Mac); null until the app is ready. */
 let passwords: PasswordService | null = null
@@ -261,6 +268,8 @@ function tabOfView(view: WebContentsView | null): OpenTab | undefined {
   return openTabs.find((tab) => tab.view === view) ?? workspaces.parkedTabs().find((tab) => tab.view === view)
 }
 let lastBounds: BrowserPanelBounds = { x: 40, y: 104, width: 900, height: 600 }
+/** The shell has reported the page area at least once (until then lastBounds is only a default or a saved guess). */
+let panelBoundsReported = false
 let lastKnownUrl = ''
 let persistenceTimer: ReturnType<typeof setTimeout> | null = null
 const protection = new LocalProtectionEngine()
@@ -296,6 +305,8 @@ type OpenTab = {
   folderId?: string
   /** Floating in picture-in-picture (Settings › Browsing: video follows you); docked again when shown. */
   pictureInPicture?: boolean
+  /** Side by side with its partner tab (splitPages.ts); both tabs carry the same ratio. */
+  split?: TabSplit
 }
 
 /** Video follows you (Settings › Browsing): a tab left while its video plays floats that video. */
@@ -310,7 +321,7 @@ const pageAppearance = new PageAppearanceController('system')
 /** Certificate problems, kept until the failed load that follows shows them. */
 const certificateErrors = new CertificateErrorMemo()
 
-type SavedTab = { id: string; url: string; title: string; pinned?: boolean; home?: string; folderId?: string; workspaceId: string }
+type SavedTab = { id: string; url: string; title: string; pinned?: boolean; home?: string; folderId?: string; workspaceId: string; split?: TabSplit }
 
 /** browser-state.v1.json (the file keeps its name); version 3 added workspaces (see workspaces.ts). */
 type PersistentBrowserState = {
@@ -377,6 +388,7 @@ function persistentState(): PersistentBrowserState {
     ...(tab.pinned ? { pinned: true } : {}),
     ...(tab.pinned && tab.home ? { home: tab.home } : {}),
     ...(tab.folderId ? { folderId: tab.folderId } : {}),
+    ...(splitOfTab(tab.id) ? { split: splitOfTab(tab.id)! } : {}),
     workspaceId: shownId,
   }))
   const parked: SavedTab[] = []
@@ -401,6 +413,7 @@ function persistentState(): PersistentBrowserState {
         ...(tab.pinned ? { pinned: true } : {}),
         ...(tab.pinned && tab.home ? { home: capUrl(tab.home) } : {}),
         ...(tab.folderId && !tab.pinned ? { folderId: tab.folderId } : {}),
+        ...(tab.split ? { split: { ...tab.split } } : {}),
         workspaceId: workspace.id,
       })
     }
@@ -486,6 +499,18 @@ function parseSavedFolders(value: unknown): TabFolder[] {
   return folders
 }
 
+/** A saved split: a partner and a side (with the pair's ratio). Anything else is dropped. */
+function savedSplitOf(value: unknown): { split?: TabSplit } {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return {}
+  const record = value as Record<string, unknown>
+  const partnerId = record['partnerId']
+  const side = record['side']
+  if (typeof partnerId !== 'string' || partnerId.length === 0 || partnerId.length > 80) return {}
+  if (side !== 'left' && side !== 'right') return {}
+  const ratio = typeof record['ratio'] === 'number' ? storableRatio(record['ratio']) : DEFAULT_SPLIT_RATIO
+  return { split: { partnerId, side, ratio } }
+}
+
 async function loadPersistentState(): Promise<RestoredBrowserState | null> {
   try {
     const parsed = JSON.parse(await readFile(stateFilePath(), 'utf8')) as unknown
@@ -522,6 +547,7 @@ async function loadPersistentState(): Promise<RestoredBrowserState | null> {
               ...(record['pinned'] !== true && typeof record['folderId'] === 'string' && record['folderId'].length <= 80 ? { folderId: record['folderId'] } : {}),
               ...(record['pinned'] === true && typeof record['home'] === 'string' && record['home'].length <= 8_192 && safeHttpUrl(record['home']) ? { home: record['home'] } : {}),
               workspaceId: savedWorkspaceOf(record, saved.workspaces),
+              ...savedSplitOf(record['split']),
             },
           ]
         })
@@ -550,6 +576,17 @@ async function loadPersistentState(): Promise<RestoredBrowserState | null> {
 }
 
 function panelState(): BrowserPanelSnapshot {
+  const base = pagePanelState()
+  const split = splitPanelState()
+  const preview = splitPreviewState()
+  return {
+    ...base,
+    ...(split ? { split } : {}),
+    ...(preview ? { splitPreview: preview } : {}),
+  }
+}
+
+function pagePanelState(): BrowserPanelSnapshot {
   if (!pageView || viewGone(pageView)) return defaultPanelState()
   const contents = pageView.webContents
   if (isStartView(pageView)) {
@@ -911,6 +948,7 @@ let pageHeld = false
 function setPageHeld(held: boolean): void {
   pageHeld = held
   if (pageView && pageAttached) pageView.setVisible(pageViewShown(pageView))
+  if (companionView) companionView.setVisible(pageViewShown(companionView))
 }
 
 /** The page view is drawn unless the shell draws over it (start page, error page, held). */
@@ -925,10 +963,27 @@ function attachPageView(): void {
   pageView.setVisible(pageViewShown(pageView))
   applyPageViewBounds()
   pageAttached = true
+  syncCompanion()
   raiseLinkPreview()
   updateWindowButtons()
   schedulePersistentStateSave()
   emitPanelState()
+}
+
+/** The page area for the shown tab: the panel rect, less the tab dock's reservation. */
+function pageAreaBounds(): BrowserPanelBounds {
+  const viewportHeight = window?.getContentSize()[1] ?? lastBounds.y + lastBounds.height
+  return pageViewBoundsForDock(lastBounds, viewportHeight, browserFullWidth, tabDockOpen, dockReserveNow ?? undefined)
+}
+
+/** The shown pair laid out in `area`: which side has focus, and the two tabs. Null unless two tabs are side by side on screen. */
+function shownSplit(area: BrowserPanelBounds): { layout: SplitLayout; focused: SplitSide; focusedTab: OpenTab; otherTab: OpenTab } | null {
+  if (!companionView || !pageView) return null
+  const focusedTab = openTabs.find((tab) => tab.view === pageView)
+  const otherTab = openTabs.find((tab) => tab.view === companionView)
+  const side = focusedTab?.split?.side
+  if (!focusedTab || !otherTab || !side) return null
+  return { layout: splitBounds(area, focusedTab.split!.ratio), focused: side, focusedTab, otherTab }
 }
 
 function applyPageViewBounds(): void {
@@ -936,10 +991,209 @@ function applyPageViewBounds(): void {
   if (htmlFullScreenView === pageView && window) {
     const [width = 0, height = 0] = window.getContentSize()
     pageView.setBounds({ x: 0, y: 0, width, height })
+    // A page in full screen covers the window: the other side of its split waits out of sight.
+    companionView?.setVisible(false)
     return
   }
-  const viewportHeight = window?.getContentSize()[1] ?? lastBounds.y + lastBounds.height
-  pageView.setBounds(pageViewBoundsForDock(lastBounds, viewportHeight, browserFullWidth, tabDockOpen, dockReserveNow ?? undefined))
+  const area = pageAreaBounds()
+  const pair = shownSplit(area)
+  // A companion without a valid pair (its tab gone, the focus moved on) must not stay on screen with a stale rect.
+  if (companionView && !pair) {
+    removeFromWindow(companionView)
+    companionView = null
+  }
+  if (pair && companionView) {
+    const focusedRect = pair.focused === 'left' ? pair.layout.left : pair.layout.right
+    const otherRect = pair.focused === 'left' ? pair.layout.right : pair.layout.left
+    // Before the shell has reported its page area, the rects are only defaults: nothing shows yet.
+    const ready = panelBoundsReported
+    pageView.setBounds(focusedRect)
+    companionView.setBounds(otherRect)
+    pageView.setVisible(ready && pageViewShown(pageView))
+    companionView.setVisible(ready && pageViewShown(companionView))
+    return
+  }
+  // A tab dragged over an edge: the page gives up that half so the shell can offer the drop there.
+  if (splitPreviewSide && !companionView) {
+    pageView.setBounds(splitPreviewArea(area, splitPreviewSide).page)
+    return
+  }
+  pageView.setBounds(area)
+  // Back to one page: it is shown again if a split had hidden it.
+  if (pageAttached) pageView.setVisible(pageViewShown(pageView))
+}
+
+/**
+ * Keeps the other side of the shown tab's split attached beside the page, or takes it away when the
+ * shown tab is no longer side by side. A side that was asleep wakes as it comes back on screen.
+ */
+function syncCompanion(): void {
+  const focusedTab = pageAttached ? openTabs.find((tab) => tab.view === pageView) : undefined
+  const partner = focusedTab ? partnerOf(openTabs, focusedTab) : undefined
+  const want = partner && !viewGone(partner.view) ? partner.view : null
+  const host = window && !window.isDestroyed() ? window : null
+  if (companionView && companionView !== want && companionView !== pageView) removeFromWindow(companionView)
+  companionView = want
+  if (want && host) {
+    if (!host.contentView.children.includes(want)) host.contentView.addChildView(want)
+    if (partner?.asleep) wakeTab(partner)
+    want.setVisible(pageViewShown(want))
+    raiseLinkPreview()
+  }
+  applyPageViewBounds()
+}
+
+/** Ends the pair `tab` is in: both tabs are ordinary again, and the side that has the screen keeps it. */
+function endSplit(tab: OpenTab): void {
+  if (!tab.split) return
+  unsplit(openTabs, tab.id)
+  syncCompanion()
+  emitTabs()
+  emitPanelState()
+  schedulePersistentStateSave()
+}
+
+/** Tabs moved, were pinned or changed folder: a pair that no longer sits together comes apart. */
+function tabsRearranged(): void {
+  repairSplits(openTabs)
+  syncCompanion()
+}
+
+/** A pair moved by one of its tabs moves together: the partner goes beside it, on the side it holds. */
+function keepPairTogether(tab: OpenTab): void {
+  const partner = partnerOf(openTabs, tab)
+  if (!partner) return
+  const rest = openTabs.filter((item) => item !== partner)
+  const at = rest.indexOf(tab) + (tab.split!.side === 'left' ? 1 : 0)
+  openTabs.splice(0, openTabs.length, ...rest.slice(0, at), partner, ...rest.slice(at))
+}
+
+/** The partner of the shown tab, when it is side by side with one. */
+function shownSplitPartner(): OpenTab | undefined {
+  const shown = openTabs.find((tab) => tab.id === activeTabId)
+  return shown ? partnerOf(openTabs, shown) : undefined
+}
+
+/** The split a tab is in (for the saved state, and the tab list). */
+function splitOfTab(id: string): TabSplit | undefined {
+  return openTabs.find((tab) => tab.id === id)?.split
+}
+
+/** Pages side by side, for the panel: each side's tab and origin, the focused side, and the layout. */
+function splitPanelState(): SplitPanelSnapshot | undefined {
+  const pair = shownSplit(pageAreaBounds())
+  if (!pair) return undefined
+  const snapshots = tabSnapshots()
+  const sideOf = (tab: OpenTab): SplitSideSnapshot => {
+    const snapshot = snapshots.find((item) => item.id === tab.id)
+    const url = snapshot?.url ?? ''
+    return { id: tab.id, url, title: snapshot?.title ?? '', secure: safeHttpUrl(url)?.protocol === 'https:' }
+  }
+  const left = pair.focused === 'left' ? pair.focusedTab : pair.otherTab
+  const right = pair.focused === 'left' ? pair.otherTab : pair.focusedTab
+  return {
+    left: sideOf(left),
+    right: sideOf(right),
+    focused: pair.focused,
+    ratio: pair.layout.ratio,
+    divider: pair.layout.divider,
+    headers: { left: pair.layout.leftHeader, right: pair.layout.rightHeader },
+    sides: { left: pair.layout.left, right: pair.layout.right },
+  }
+}
+
+/** The drop zone while a tab is dragged over an edge of the page (only when nothing is split yet). */
+function splitPreviewState(): { side: SplitSide; zone: BrowserPanelBounds } | undefined {
+  if (!splitPreviewSide || companionView || !pageView || !pageAttached) return undefined
+  return { side: splitPreviewSide, zone: splitPreviewArea(pageAreaBounds(), splitPreviewSide).zone }
+}
+
+/**
+ * Pages side by side (⌃⇧=, the tab menu, a tab dropped on the page's edge). `id` (default: the shown
+ * tab) takes `side` (left by default); its partner is the named tab, else the next tab that can pair,
+ * else a new tab on the start page, which takes the focus so it can be filled in. The tab `id` names
+ * keeps the focus otherwise.
+ */
+function splitTabs(command: { id?: string; partnerId?: string; side?: SplitSide }): void {
+  const tab = openTabs.find((item) => item.id === (command.id ?? activeTabId))
+  if (!tab || tab.split) return
+  if (tab.start || tab.loadError) throw new Error('Open a page in this tab first, then put it side by side.')
+  const side = command.side ?? 'left'
+  let partner: OpenTab | undefined
+  if (command.partnerId) {
+    partner = openTabs.find((item) => item.id === command.partnerId)
+    if (!partner) throw new Error('That tab is gone.')
+    if (partner.start || partner.loadError) throw new Error('Open a page in that tab first, then put it side by side.')
+  } else {
+    const at = openTabs.indexOf(tab)
+    partner = openTabs.find((other, index) => index > at && canSplit(tab, other) && !other.split && !other.start && !other.loadError)
+  }
+  let created = false
+  if (!partner) {
+    // A new tab is ordinary and unfolded, and must be in the same privacy as this one.
+    if (tab.pinned || tab.folderId || privateViews.has(tab.view) !== privateMode) {
+      throw new Error('There is no tab to put beside this one. Open a new tab, or pick the tab in the menu.')
+    }
+    if (openTabs.length >= MAX_TABS) throw new Error(`${MAX_TABS} tabs are already open. Close a tab and try again.`)
+    createStartTab()
+    partner = openTabs[openTabs.length - 1]!
+    created = true
+  }
+  if (!splitWith(openTabs, tab.id, partner.id, side)) {
+    throw new Error('Those tabs cannot sit side by side: both must be private or both not, both pinned or both not, and in the same folder.')
+  }
+  splitPreviewSide = null
+  if (pageAttached) showTab(created ? partner.id : tab.id)
+  emitTabs()
+  emitPanelState()
+  schedulePersistentStateSave()
+}
+
+/** The tab menu's split items for a tab: its partner, or the tabs it could pair with now. */
+function tabSplitChoices(target: OpenTab | undefined, id: string): TabMenuSplit | undefined {
+  if (!target) return undefined
+  const snapshots = tabSnapshots()
+  const titleOf = (tab: OpenTab): string => snapshots.find((item) => item.id === tab.id)?.title || tab.url || 'New tab'
+  const partner = partnerOf(openTabs, target)
+  return {
+    partner: partner ? { id: partner.id, title: titleOf(partner) } : null,
+    candidates: openTabs
+      .filter((other) => other.id !== id && !other.split && !other.start && !other.loadError && canSplit(target, other))
+      .map((other) => ({ id: other.id, title: titleOf(other) })),
+    split: (partnerId) => void handleBrowserCommand({ type: 'split-tab', id, ...(partnerId ? { partnerId } : {}) }).catch(() => undefined),
+    unsplit: () => void handleBrowserCommand({ type: 'unsplit-tab', id }).catch(() => undefined),
+  }
+}
+
+/** Ends the pair the tab (default: the shown one) is in. */
+function unsplitTabCommand(id?: string): void {
+  const tab = openTabs.find((item) => item.id === (id ?? activeTabId))
+  if (tab) endSplit(tab)
+}
+
+/** Makes the side (left or right) of the shown pair the focused one, as its header or a click does. */
+function focusSplitSide(side: SplitSide): void {
+  const target = openTabs.find((tab) => tab.split?.side === side && (tab.view === pageView || tab.view === companionView))
+  if (!target || target.view === pageView) return
+  showTab(target.id)
+  if (!viewGone(target.view)) target.view.webContents.focus()
+}
+
+/** The divider moved: the shown pair's ratio (both tabs keep it). */
+function setShownSplitRatio(ratio: number): void {
+  const tab = openTabs.find((item) => item.id === activeTabId)
+  if (!tab || !setSplitRatio(openTabs, tab.id, ratio)) return
+  applyPageViewBounds()
+  schedulePersistentStateSave()
+  emitPanelState()
+}
+
+/** A tab is dragged over an edge of the page (or away): the page makes room for the drop zone. */
+function setSplitPreview(side: SplitSide | null): void {
+  if (splitPreviewSide === side) return
+  splitPreviewSide = side
+  applyPageViewBounds()
+  emitPanelState()
 }
 
 function prefersReducedMotion(): boolean {
@@ -1371,6 +1625,7 @@ function tabSnapshots(): PageTabSnapshot[] {
       ...(tab.asleep ? { asleep: true } : {}),
       ...(tab.lastShownAt ? { lastShownAt: tab.lastShownAt } : {}),
       ...(tab.folderId && !tab.pinned ? { folderId: tab.folderId } : {}),
+      ...(tab.split ? { split: { partnerId: tab.split.partnerId, side: tab.split.side } } : {}),
     }
   })
 }
@@ -1452,6 +1707,15 @@ function detachActive(): void {
     pageAttached = false
     updateWindowButtons()
   }
+  // The other side of a split goes with the page that was shown.
+  if (companionView) removeFromWindow(companionView)
+  companionView = null
+}
+
+/** Takes a view out of the window, if it is in it (a view that is gone or never added is left alone). */
+function removeFromWindow(view: WebContentsView): void {
+  if (!window || window.isDestroyed()) return
+  if (window.contentView.children.includes(view)) window.contentView.removeChildView(view)
 }
 
 /**
@@ -1489,7 +1753,10 @@ function showTab(id: string): WebContentsView | null {
   if (!tab) return null
   const preview = linkPreview
   if (preview) setImmediate(() => { if (linkPreview === preview) closeLinkPreview(false) })
-  if (pageView && pageView !== tab.view) {
+  const partner = partnerOf(openTabs, tab)
+  // The tab is one side of a pair already on screen: only the focus moves, nothing detaches or reloads.
+  const sameSplit = pageAttached && companionView !== null && (companionView === tab.view || (partner !== undefined && companionView === partner.view))
+  if (pageView && pageView !== tab.view && !sameSplit) {
     floatLeavingTab(pageView)
     detachActive()
   }
@@ -1497,6 +1764,7 @@ function showTab(id: string): WebContentsView | null {
   const previous = openTabs.find((item) => item.id === activeTabId)
   if (previous) previous.lastShownAt = now
   tab.lastShownAt = now
+  if (partner) partner.lastShownAt = now
   activeTabId = tab.id
   pageView = tab.view
   const selectedUrl = tab.view.webContents.getURL()
@@ -1504,12 +1772,20 @@ function showTab(id: string): WebContentsView | null {
   attachPageView()
   // Returning to a tab docks its floating video again.
   dockFloatingTab(tab)
+  syncCompanion()
   emitTabs()
+  emitPanelState()
   emitNowPlaying()
   emitProtectionState()
   emitPasswordState()
   // A tab that loaded in the background missed its cosmetic rules and tracker stand-ins.
   if (!tab.start && !tab.view.webContents.isLoading()) void applyCosmeticFilters(tab.view.webContents)
+  wakeTab(tab)
+  return tab.view
+}
+
+/** A tab shown again after sleeping (or restored): its page comes back where it was, or loads. */
+function wakeTab(tab: OpenTab): void {
   const current = tab.view.webContents.getURL()
   const sleep = tab.asleep
   if (sleep) {
@@ -1527,7 +1803,6 @@ function showTab(id: string): WebContentsView | null {
   } else if ((!current || current === 'about:blank') && safeHttpUrl(tab.url) && !restoringViews.has(tab.view) && crashRecovery.canAutoRecover(tab.id)) {
     void tab.view.webContents.loadURL(tab.url)
   }
-  return tab.view
 }
 
 /** A pinned tab is away from home once it is on another site (moving around the same site is not leaving). */
@@ -1694,6 +1969,8 @@ function moveTabToWorkspace(tabId: string, workspaceId: string): void {
   const tab = openTabs[index]
   if (!tab || privateViews.has(tab.view)) throw new Error('Private tabs are not part of any workspace.')
   if (workspaceId === workspaces.activeId || !workspaces.get(workspaceId)) return
+  // A pair lives in one workspace: the tab that leaves is no longer side by side.
+  if (tab.split) endSplit(tab)
   if (activeTabId === tabId) {
     const next = openTabs.find((other, at) => at > index && !privateViews.has(other.view)) ?? [...openTabs.slice(0, index)].reverse().find((other) => !privateViews.has(other.view))
     if (next && pageAttached) showTab(next.id)
@@ -2199,7 +2476,7 @@ async function sleepIdleTabs(): Promise<void> {
     if (archiveMs !== null && (browsingData?.history.policy.footprints ?? true)) {
       const archived: ArchivedTab[] = []
       for (const tab of [...openTabs]) {
-        if (tab.id === activeTabId || tab.pinned || tab.start || tab.loadError || tab.pictureInPicture || privateViews.has(tab.view) || now - (tab.lastShownAt ?? now) < archiveMs) continue
+        if (tab.id === activeTabId || tab.view === companionView || tab.pinned || tab.start || tab.loadError || tab.pictureInPicture || privateViews.has(tab.view) || now - (tab.lastShownAt ?? now) < archiveMs) continue
         const live = !viewGone(tab.view) && !tab.asleep
         if (live) {
           const contents = tab.view.webContents
@@ -2222,7 +2499,8 @@ async function sleepIdleTabs(): Promise<void> {
       const contentsId = live ? tab.view.webContents.id : -1
       return {
         id: tab.id,
-        active: tab.id === activeTabId,
+        // Both sides of a split on screen are in use, not idle.
+        active: tab.id === activeTabId || (live && tab.view === companionView),
         asleep: !!tab.asleep || !live,
         start: !!tab.start || !!tab.loadError,
         lastShownAt: tab.lastShownAt ?? now,
@@ -2237,7 +2515,7 @@ async function sleepIdleTabs(): Promise<void> {
       if (!tab || viewGone(tab.view)) continue
       // Typed text not yet sent keeps a tab awake (it would be lost); so does a page that will not answer.
       const typed = await tab.view.webContents.executeJavaScriptInIsolatedWorld(KEYS_WORLD_ID, [{ code: TYPED_FORM_SCRIPT }]).catch(() => true)
-      if (typed !== false || tab.id === activeTabId || tab.asleep) continue
+      if (typed !== false || tab.id === activeTabId || tab.view === companionView || tab.asleep) continue
       unloadTab(tab, { keepHistory: true })
     }
   } finally {
@@ -2251,7 +2529,7 @@ async function sleepIdleTabs(): Promise<void> {
  * scroll); without, it starts again at `url`. The tab must not be the one showing.
  */
 function unloadTab(tab: OpenTab, options: { keepHistory: boolean; url?: string }): void {
-  if (tab.start || tab.asleep || viewGone(tab.view) || pageView === tab.view) return
+  if (tab.start || tab.asleep || viewGone(tab.view) || pageView === tab.view || companionView === tab.view) return
   nowPlaying.forget(tab.id)
   const old = tab.view
   const liveUrl = old.webContents.getURL()
@@ -2287,6 +2565,13 @@ function closeTab(id: string): void {
   const index = openTabs.findIndex((tab) => tab.id === id)
   const tab = openTabs[index]
   if (!tab) return
+  // Closing a side of a pair ends the pair first; the other side goes back to full size and, if this one had the screen, takes it.
+  const partner = partnerOf(openTabs, tab)
+  if (partner) {
+    const focused = pageAttached && activeTabId === id
+    endSplit(tab)
+    if (focused) showTab(partner.id)
+  }
   const showing = pageAttached && activeTabId === id
   if (!tab.pinned || !tab.home) {
     discardTab(id)
@@ -2319,12 +2604,20 @@ function discardTab(id: string, remember = true): void {
   nowPlaying.forget(tab.id)
   if (remember) rememberClosedTab(tab)
   crashRecovery.forget(tab.id)
+  // Its partner, if any, is whole again (its side of the split goes with this tab).
+  if (tab.split) {
+    const partner = openTabs.find((other) => other.id === tab.split!.partnerId)
+    if (partner?.split?.partnerId === tab.id) delete partner.split
+    delete tab.split
+  }
   if (pageView === tab.view) {
     detachActive()
     pageView = null
     activeTabId = null
     lastKnownUrl = ''
     tabDockOpen = false
+  } else if (companionView === tab.view) {
+    syncCompanion()
   }
   const contentsId = viewContentsIds.get(tab.view)
   if (contentsId !== undefined) {
@@ -2811,8 +3104,14 @@ function buildView(isPrivate = privateMode): WebContentsView {
   view.webContents.on('dom-ready', () => {
     // A site's style tweak goes into every tab of that site, background tabs included.
     void applySiteStyle(view)
-    if (pageView !== view) return
+    if (pageView !== view && companionView !== view) return
     void applyCosmeticFilters(view.webContents, { only: view.webContents.mainFrame })
+  })
+  // A side of a split that takes the keyboard becomes the focused side (the toolbar and find follow it).
+  view.webContents.on('focus', () => {
+    if (companionView !== view) return
+    const tab = tabOfView(view)
+    if (tab) showTab(tab.id)
   })
   view.webContents.on('did-navigate', (_event, url) => {
     applySiteZoom(view, url)
@@ -2820,7 +3119,11 @@ function buildView(isPrivate = privateMode): WebContentsView {
     rememberTab(view)
     protectionPages.commitNavigation(view.webContents.id, url)
     passwords?.navigated(view.webContents.id)
-    if (pageView !== view) return
+    if (pageView !== view) {
+      // The other side's address and title are in the panel too (its header).
+      if (companionView === view) emitPanelState()
+      return
+    }
     emitPasswordState()
     lastKnownUrl = url
     schedulePersistentStateSave()
@@ -2829,14 +3132,17 @@ function buildView(isPrivate = privateMode): WebContentsView {
   })
   view.webContents.on('did-navigate-in-page', (_event, url) => {
     rememberTab(view)
-    if (pageView !== view) return
+    if (pageView !== view) {
+      if (companionView === view) emitPanelState()
+      return
+    }
     lastKnownUrl = url
     schedulePersistentStateSave()
     emitPanelState()
   })
   view.webContents.on('page-title-updated', () => {
     rememberTab(view)
-    if (pageView === view) emitPanelState()
+    if (pageView === view || companionView === view) emitPanelState()
   })
   view.webContents.on('page-favicon-updated', (_event, favicons) => {
     // Private tabs leave nothing in favicons.json.
@@ -3216,6 +3522,7 @@ function appMenuState(): AppMenuState {
     privateMode,
     recentlyClosed: closedTabs.list(),
     workspaceCount: workspaces.workspaces.length,
+    splitActive: shownSplitPartner() !== undefined,
     developer: developerBuild(),
     quickWindowFocused: quickWindows.focused(),
   }
@@ -3249,6 +3556,7 @@ function setPanelBounds(bounds: BrowserPanelBounds): void {
     height: Math.min(maxHeight, Math.max(180, Math.floor(bounds.height))),
   }
   lastBounds = safeBounds
+  panelBoundsReported = true
   applyPageViewBounds()
   layoutLinkPreview()
   schedulePersistentStateSave()
@@ -3373,6 +3681,21 @@ async function handleBrowserCommand(
       }
       break
     }
+    case 'split-tab':
+      splitTabs(command)
+      break
+    case 'unsplit-tab':
+      unsplitTabCommand(command.id)
+      break
+    case 'set-split-ratio':
+      setShownSplitRatio(command.ratio)
+      break
+    case 'focus-split-side':
+      focusSplitSide(command.side)
+      break
+    case 'split-preview':
+      setSplitPreview(command.side)
+      break
     case 'tab-switcher':
       endTabSwitcher(command.action)
       break
@@ -3393,6 +3716,9 @@ async function handleBrowserCommand(
     }
     case 'move-tab':
       if (moveFolderedTab(openTabs, tabFolders, command.id, command.toIndex)) {
+        const moved = openTabs.find((item) => item.id === command.id)
+        if (moved) keepPairTogether(moved)
+        tabsRearranged()
         emitTabs()
         schedulePersistentStateSave()
       }
@@ -3409,6 +3735,7 @@ async function handleBrowserCommand(
         // Pinned tabs sit above folders.
         if (tab && command.pinned) delete tab.folderId
         openTabs.splice(0, openTabs.length, ...folderedOrder(openTabs, tabFolders))
+        tabsRearranged()
         emitTabs()
         schedulePersistentStateSave()
       }
@@ -3461,7 +3788,7 @@ async function handleBrowserCommand(
             toggle: () => void handleBrowserCommand(existing ? { type: 'remove-favourite', id: existing.id } : { type: 'add-favourite', tabId: command.id, shared: true }).catch(() => undefined),
           }
         })(),
-      }))
+      }, tabSplitChoices(target, command.id)))
       menu.popup({ window, ...(command.x !== undefined && command.y !== undefined ? { x: command.x, y: command.y } : {}) })
       break
     }
@@ -3602,6 +3929,7 @@ async function handleBrowserCommand(
     case 'create-tab-folder': {
       const folder = createTabFolder(command.name, command.parentId, command.tabIds)
       if (!folder) throw new Error(`At most ${MAX_FOLDERS} folders.`)
+      tabsRearranged()
       return { ...folder }
     }
     case 'update-tab-folder': {
@@ -3621,6 +3949,7 @@ async function handleBrowserCommand(
     }
     case 'delete-tab-folder':
       if (deleteFolder(openTabs, tabFolders, command.id)) {
+        tabsRearranged()
         emitTabFolders()
         emitTabs()
         schedulePersistentStateSave()
@@ -3628,6 +3957,7 @@ async function handleBrowserCommand(
       break
     case 'move-tab-to-folder':
       if (setTabFolder(openTabs, tabFolders, command.tabId, command.folderId)) {
+        tabsRearranged()
         emitTabs()
         schedulePersistentStateSave()
       }
@@ -4154,6 +4484,7 @@ app.whenReady().then(async () => {
         id: savedTab.id, url: savedTab.url, title: savedTab.title, favicon: '', view: buildView(false), asleep: {}, lastShownAt: Date.now(),
         ...(savedTab.pinned ? { pinned: true, home: savedTab.home ?? savedTab.url } : {}),
         ...(!savedTab.pinned && savedTab.folderId && folders.some((folder) => folder.id === savedTab.folderId) ? { folderId: savedTab.folderId } : {}),
+        ...(savedTab.split ? { split: { ...savedTab.split } } : {}),
       }
       const list = byWorkspace.get(savedTab.workspaceId) ?? []
       list.push(tab)
@@ -4161,10 +4492,12 @@ app.whenReady().then(async () => {
     }
     openTabs.push(...(byWorkspace.get(workspaces.activeId) ?? []))
     openTabs.splice(0, openTabs.length, ...folderedOrder(pinnedFirst(openTabs), tabFolders))
+    // A saved pair comes back only when both of its tabs did, in the same place.
+    repairSplits(openTabs)
     for (const workspace of saved.workspaces) {
       if (workspace.id === workspaces.activeId) continue
       const folders = restoredState.folders.get(workspace.id) ?? []
-      const tabs = folderedOrder(pinnedFirst(byWorkspace.get(workspace.id) ?? []), folders)
+      const tabs = repairSplits(folderedOrder(pinnedFirst(byWorkspace.get(workspace.id) ?? []), folders))
       workspaces.park(workspace.id, { tabs, folders, activeTabId: tabs.some((tab) => tab.id === workspace.activeTabId) ? workspace.activeTabId! : null })
     }
     const active =

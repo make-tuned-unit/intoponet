@@ -585,6 +585,17 @@
       "tier": "core",
       "kind": "e2e",
       "promise": "With the setting on, switching away from a tab playing a video floats that video in picture-in-picture; returning to the tab docks it again; the sidebar shows a now-playing control that pauses, mutes or jumps to the tab; sites that refuse picture-in-picture keep playing in place."
+    },
+    {
+      "id": "SPLIT_PAGES",
+      "title": "Pages side by side",
+      "deps": [
+        "TABS",
+        "BROWSE"
+      ],
+      "tier": "core",
+      "kind": "e2e",
+      "promise": "Dragging a tab to the page's edge, or choosing Split with…, shows two tabs side by side with a draggable divider; each side navigates, finds and zooms on its own, the address bar and toolbar follow the focused side, the pair stays together in the tab list and on relaunch, and closing one side returns the other to full size."
     }
   ]
 }

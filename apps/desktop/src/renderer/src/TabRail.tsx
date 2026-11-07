@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion, type Transition } from 'motion/react'
-import { Ellipsis, Folder, FolderOpen, FolderPlus, Layers, PanelLeftClose, PanelLeftDashed, PanelLeftOpen, Plus, Undo2, X } from 'lucide-react'
+import { Columns2, Ellipsis, Folder, FolderOpen, FolderPlus, Layers, PanelLeftClose, PanelLeftDashed, PanelLeftOpen, Plus, Undo2, X } from 'lucide-react'
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type WheelEvent } from 'react'
 import { MAX_WORKSPACES, TAB_SIDEBAR_WIDTH, type NowPlayingSnapshot, type PageTabSnapshot, type TabFolderSnapshot, type WorkspacesState } from '@intoponet/browser-api'
 import { folderTree } from './tabFolders'
@@ -106,7 +106,9 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
     void window.intoponet.workspaces.switchTo({ step: state.distance > 0 ? 1 : -1 }).catch(() => undefined)
   }
   const [focusIndex, setFocusIndex] = useState(() => Math.max(0, visibleTabs.findIndex((tab) => tab.active)))
-  const dragHandlers = useTabDrag('y', { indexOf: (id) => tabs.findIndex((tab) => tab.id === id) })
+  // The page a tab would be split in beside: the shown one (not a new tab's start page).
+  const shownTabId = tabs.find((tab) => tab.active && !tab.isStartPage)?.id
+  const dragHandlers = useTabDrag('y', { indexOf: (id) => tabs.findIndex((tab) => tab.id === id), shownId: shownTabId })
   const [renaming, setRenaming] = useState<string | null>(null)
   const [folderMenu, setFolderMenu] = useState<string | null>(null)
   useEffect(() => {
@@ -262,7 +264,73 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
     )
   }
 
+  /** A pair of tabs side by side is one row: drawn once, from its left side (the right side is in it). */
+  const pairPartner = (tab: PageTabSnapshot): PageTabSnapshot | null => {
+    if (!tab.split) return null
+    const partner = tabs.find((other) => other.id === tab.split!.partnerId)
+    return partner && partner.split?.partnerId === tab.id ? partner : null
+  }
+
+  const renderPair = (left: PageTabSnapshot, right: PageTabSnapshot, index: number, setSize: number) => {
+    const halves = [left, right]
+    const focused = halves.some((half) => half.active)
+    return (
+      <motion.div
+        key={left.id}
+        data-tab-id={left.id}
+        layout="position"
+        className={`tab-rail-item tab-rail-pair-item${focused ? ' is-active' : ''}`}
+        initial={{ opacity: 0, scale: 0.7 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.7, transition: { duration: 0.14 } }}
+        transition={spring}
+      >
+        {focused && <motion.span layoutId="tab-rail-active" className="tab-rail-indicator" transition={spring} aria-hidden="true" />}
+        <div className="tab-rail-pair">
+          {halves.map((half, at) => {
+            const title = half.title || half.url || 'Untitled page'
+            return (
+              <button
+                key={half.id}
+                type="button"
+                role="tab"
+                className={`tab-rail-tab tab-rail-half${half.active ? ' is-focused' : ''}`}
+                aria-selected={half.active}
+                aria-setsize={setSize}
+                aria-posinset={index + 1}
+                aria-label={`${title}, ${at === 0 ? 'left' : 'right'} side by side${half.active ? ', focused' : ''}`}
+                tabIndex={half.active || (!focused && at === 0) ? 0 : -1}
+                title={title}
+                onFocus={() => setFocusIndex(Math.max(0, visibleTabs.indexOf(left)))}
+                onClick={() => void window.intoponet.browserHost.activateTab(half.id)}
+                onContextMenu={(event) => openTabMenu(event, half.id)}
+                {...dragHandlers(half, Math.max(0, visibleTabs.indexOf(half)))}
+              >
+                <span className="tab-rail-icon">
+                  <TabIcon tab={half} size={18} />
+                </span>
+                <span className="tab-rail-title" aria-hidden={!open}>{title}</span>
+              </button>
+            )
+          })}
+        </div>
+        <button
+          type="button"
+          className="tab-rail-close tab-rail-unsplit"
+          aria-label="Unsplit these two pages"
+          title="Unsplit (⌃⇧-)"
+          tabIndex={-1}
+          onClick={() => void window.intoponet.browserHost.unsplitTab(left.id)}
+        >
+          <Columns2 size={12} />
+        </button>
+      </motion.div>
+    )
+  }
+
   const renderTab = (tab: PageTabSnapshot, index: number, setSize: number) => {
+    const partner = pairPartner(tab)
+    if (partner) return tab.split?.side === 'left' ? renderPair(tab, partner, index, setSize) : null
     const title = tab.title || tab.url || 'Untitled page'
     const label = `${title}${tab.pinned ? ', pinned' : ''}${tabStateLabel(tab)}${tabSoundLabel(tab)}${tab.loading ? ', loading' : ''}`
     return (

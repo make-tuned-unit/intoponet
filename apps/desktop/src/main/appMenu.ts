@@ -40,6 +40,10 @@ export type AppCommand =
   | { type: 'copy-address' }
   | { type: 'copy-address-raw' }
   | { type: 'toggle-tab-sidebar' }
+  /** Pages side by side: the shown tab with the next one (splitPages.ts). */
+  | { type: 'split-tab' }
+  /** End the split the shown tab is in. */
+  | { type: 'unsplit-tab' }
   | { type: 'command-menu' }
   /** An empty quick window (⌥⌘N). */
   | { type: 'new-quick-window' }
@@ -65,6 +69,8 @@ export type AppMenuState = {
   workspaceCount?: number
   /** A quick window (links from other apps) has keyboard focus: ⌘O can move its page into a tab. */
   quickWindowFocused: boolean
+  /** The shown tab is side by side with another (⌃⇧- unsplits). */
+  splitActive?: boolean
 }
 
 /**
@@ -104,6 +110,9 @@ export const APP_SHORTCUTS = {
   'copy-address-raw': ['CmdOrCtrl+Alt+Shift+C'],
   // The Mac's own "Show Sidebar" key (⇧⌘S is Capture).
   'toggle-tab-sidebar': ['Ctrl+Cmd+S'],
+  // Pages side by side: ⌃⇧= splits the shown tab with the next one, ⌃⇧- ends the split.
+  'split-tab': ['Ctrl+Shift+='],
+  'unsplit-tab': ['Ctrl+Shift+-'],
   'command-menu': ['CmdOrCtrl+K'],
   'new-quick-window': ['Alt+CmdOrCtrl+N'],
   'open-quick-in-main': ['CmdOrCtrl+O'],
@@ -163,6 +172,8 @@ export function routeAppCommand(command: AppCommand): AppCommandRoute {
     case 'select-workspace': return { kind: 'host', command: { type: 'switch-workspace', index: command.index } }
     case 'command-menu': return { kind: 'shell', action: 'command-menu' }
     case 'toggle-tab-sidebar': return { kind: 'shell', action: 'toggle-tab-sidebar' }
+    case 'split-tab': return { kind: 'host', command: { type: 'split-tab' } }
+    case 'unsplit-tab': return { kind: 'host', command: { type: 'unsplit-tab' } }
     case 'copy-address': return { kind: 'host', command: { type: 'copy-page-address', clean: true } }
     case 'copy-address-raw': return { kind: 'host', command: { type: 'copy-page-address', clean: false } }
     case 'help': return { kind: 'host', command: { type: 'open', intent: { kind: 'url', value: 'https://intoponet.com/' } } }
@@ -307,6 +318,9 @@ export function appMenuTemplate(state: AppMenuState, run: (command: AppCommand) 
       submenu: [
         ...item('Show or Hide Tab Sidebar', 'toggle-tab-sidebar'),
         { type: 'separator' },
+        ...item('Split with Next Tab', 'split-tab', state.tabShowing),
+        ...item('Unsplit Tabs', 'unsplit-tab', state.splitActive === true),
+        { type: 'separator' },
         ...item('Reload Page', 'reload', page),
         ...item('Reload Page Ignoring Cache', 'force-reload', page),
         ...item('Stop Loading', 'stop', page && state.isLoading),
@@ -370,7 +384,7 @@ export function appMenuTemplate(state: AppMenuState, run: (command: AppCommand) 
 export function appMenuStateKey(state: AppMenuState): string {
   return JSON.stringify([
     state.tabShowing, state.hasPage, state.canGoBack, state.canGoForward, state.isLoading,
-    Math.min(state.tabCount, 9), state.privateMode, state.developer, state.workspaceCount ?? 1, state.quickWindowFocused,
+    Math.min(state.tabCount, 9), state.privateMode, state.developer, state.workspaceCount ?? 1, state.quickWindowFocused, state.splitActive === true,
     state.recentlyClosed.slice(0, 15).map((entry) => [entry.id, closedLabel(entry)]),
   ])
 }
@@ -443,6 +457,9 @@ function inputKeys(input: KeyInput): Set<string> {
   keys.add(key)
   if (SHIFTED[key]) keys.add(SHIFTED[key])
   if (key === '+' || (input.code === 'Equal' && input.shift)) keys.add('+')
+  // With Shift, the key that is typed is "+" or "_", but ⌃⇧= and ⌃⇧- name the physical key: match it too.
+  if (input.code === 'Equal') keys.add('=')
+  if (input.code === 'Minus') keys.add('-')
   if (input.alt && input.code) {
     const letter = /^Key([A-Z])$/.exec(input.code)?.[1]
     const digit = /^Digit(\d)$/.exec(input.code)?.[1]

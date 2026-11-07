@@ -3347,6 +3347,343 @@ export const checks = {
       server.close()
     }
   },
+
+  async SPLIT_PAGES(ctx) {
+    // Two local sites (two hosts, so the two headers show different origins).
+    const pages = {
+      '/split-left': `<!doctype html><html lang="en"><title>Left story</title><body style="font:16px system-ui;margin:24px"><h1>Left story</h1><p>alpha text here</p></body></html>`,
+      '/split-right': `<!doctype html><html lang="en"><title>Right story</title><body style="font:16px system-ui;margin:24px"><h1>Right story</h1><p>beta needle here</p></body></html>`,
+    }
+    const server = createServer((request, response) => {
+      const path = new URL(request.url, 'http://localhost').pathname
+      response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
+      response.end(pages[path] ?? `<!doctype html><title>Page ${path}</title><h1>${path}</h1>`)
+    })
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+    const port = server.address().port
+    const leftUrl = `http://127.0.0.1:${port}/split-left`
+    const rightUrl = `http://localhost:${port}/split-right`
+    const host = 'window.intoponet.browserHost'
+    const shotDir = process.env.SPLIT_SHOTS_DIR ?? join(tmpdir(), 'intoponet-split-pages-shots')
+    mkdirSync(shotDir, { recursive: true })
+    const log = []
+    const stateOf = async () => JSON.parse(await ctx.evaluate(`${host}.getState().then((s) => JSON.stringify(s))`))
+    const waitFor = async (label, test) => {
+      for (let i = 0; i < 40; i += 1) {
+        const value = await test()
+        if (value) return value
+        await ctx.delay(200)
+      }
+      throw new CheckFailure(`Timed out waiting for: ${label}`)
+    }
+    /** The app window's native page views, read from Electron: bounds, visibility, zoom, focus. */
+    const viewsNow = () => ctx.main(`(() => {
+      const win = electron.BrowserWindow.getAllWindows()[0]
+      const kids = win.contentView.children.filter((v) => v.webContents && !v.webContents.isDestroyed())
+      return JSON.stringify({
+        windows: electron.BrowserWindow.getAllWindows().length,
+        content: win.getContentSize(),
+        pages: kids.filter((v) => /^https?:/.test(v.webContents.getURL())).map((v) => ({ url: v.webContents.getURL(), id: v.webContents.id, bounds: v.getBounds(), visible: v.getVisible(), zoom: v.webContents.getZoomFactor(), focused: v.webContents.isFocused() })),
+      })
+    })()`).then(JSON.parse)
+    const sideOf = (views, part) => views.pages.find((p) => p.url.includes(part))
+    /** Screenshots (the page views are native: the window's own capture, and the web contents'), plus the bounds at that moment. */
+    const snap = async (label) => {
+      const views = await viewsNow()
+      await ctx.main(`(async () => {
+        const fs = process.mainModule.require('fs')
+        const win = electron.BrowserWindow.getAllWindows()[0]
+        fs.writeFileSync(${JSON.stringify(join(shotDir, `${label}.png`))}, (await win.webContents.capturePage()).toPNG())
+        fs.writeFileSync(${JSON.stringify(join(shotDir, `${label}-window.png`))}, (await win.capturePage()).toPNG())
+        return true
+      })()`)
+      log.push({ label, views })
+      writeFileSync(join(shotDir, 'log.json'), JSON.stringify(log, null, 2))
+      return views
+    }
+    /** Both pages side by side, the divider between them, each side as tall as the page area less its header. */
+    const expectLayout = async (label) => {
+      const views = await viewsNow()
+      expect(views.pages.length === 2, `${label}: ${views.pages.length} pages are on screen, not two (${JSON.stringify(views.pages.map((p) => p.url))}).`)
+      // Left and right are read from where the pages are, then checked against the shell's own sides.
+      const [left, right] = views.pages.slice().sort((p, q) => p.bounds.x - q.bounds.x)
+      expect(left.visible && right.visible, `${label}: a page is hidden (${JSON.stringify([left.visible, right.visible])}).`)
+      const shellSplit = (await stateOf()).split
+      expect(shellSplit && left.url === shellSplit.left.url && right.url === shellSplit.right.url, `${label}: the pages on screen (${left.url}, ${right.url}) are not the shell's left and right sides.`)
+      const a = left.bounds
+      const b = right.bounds
+      expect(a.x + a.width <= b.x, `${label}: the pages overlap or sit one above the other (left ${JSON.stringify(a)}, right ${JSON.stringify(b)}).`)
+      expect(a.y === b.y, `${label}: the pages are stacked, not side by side (left y ${a.y}, right y ${b.y}).`)
+      expect(a.height === b.height, `${label}: the pages have different heights (${a.height}, ${b.height}).`)
+      expect(a.width > 0 && b.width > 0, `${label}: a page has no width (${a.width}, ${b.width}).`)
+      const split = (await stateOf()).split
+      expect(split, `${label}: the shell has no split state.`)
+      expect(b.x - (a.x + a.width) === split.divider.width, `${label}: the gap between the pages (${b.x - (a.x + a.width)}) is not the divider (${split.divider.width}).`)
+      expect(a.y === split.headers.left.y + split.headers.left.height, `${label}: the left page does not start under its header.`)
+      expect(a.height + split.headers.left.height === split.divider.height, `${label}: the left page is not the page area less its header (${a.height} + ${split.headers.left.height} != ${split.divider.height}).`)
+      return views
+    }
+    const probeLog = async (label) => {
+      const views = await viewsNow()
+      log.push({ label, views })
+      return views
+    }
+    const shellEval = (expression) => ctx.evaluate(expression)
+    const headerOrigins = () => shellEval(`JSON.stringify([...document.querySelectorAll('.split-header-origin')].map((e) => e.textContent))`).then(JSON.parse)
+    const tabsOfSplit = () => ctx.evaluate(`${host}.getTabs().then((t) => JSON.stringify(t))`).then(JSON.parse)
+    try {
+      await openPage(ctx, leftUrl, 1500)
+      await ctx.evaluate(`${host}.open({ kind: 'url', value: ${JSON.stringify(rightUrl)} }, 'background-tab').then(() => true)`)
+      await ctx.delay(1200)
+      expect(!(await stateOf()).split, 'Nothing is side by side before the shortcut.')
+
+      // ⌃⇧= splits the shown tab with the next one.
+      await ctx.keyInPage('/split-left', '=', ['control', 'shift'])
+      const split = await waitFor('the pair', async () => (await stateOf()).split)
+      expect(split.focused === 'left', 'The shown tab should keep the focus after ⌃⇧=.')
+      expect(split.right.url.startsWith(rightUrl) && !split.right.secure, `The right side shows ${split.right.url}.`)
+      await waitFor('two pages on screen', async () => (await viewsNow()).pages.length === 2)
+      await expectLayout('just after the split')
+      await snap('01-after-split')
+
+      // A click in the right page makes it the focused side: the address bar follows it.
+      await ctx.main(`(() => { electron.app.focus({ steal: true }); electron.BrowserWindow.getAllWindows()[0].focus(); return true })()`)
+      await ctx.delay(300)
+      const rightPage = await ctx.page(`localhost:${port}/split-right`)
+      await rightPage.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: 60, y: 60, button: 'left', clickCount: 1 })
+      await rightPage.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 60, y: 60, button: 'left', clickCount: 1 })
+      let viaClick = true
+      try {
+        await waitFor('focus on the right side by click', async () => (await stateOf()).split?.focused === 'right')
+      } catch {
+        // The click reached the page but did not move focus here: focus the page's view as the OS would on a click, and say so.
+        viaClick = false
+        await ctx.main(`(() => { const page = electron.webContents.getAllWebContents().find((c) => /^https?:/.test(c.getURL()) && c.getURL().includes('/split-right')); page.focus(); return true })()`)
+        await waitFor('focus on the right side', async () => (await stateOf()).split?.focused === 'right')
+      }
+      log.push({ label: 'focus-by-click', viaClick })
+      expect((await stateOf()).url.startsWith(rightUrl), 'The address bar does not show the focused right page.')
+      await expectLayout('after clicking into the right page')
+      await snap('02-right-focused')
+
+      // Find and zoom act on the focused side only.
+      await ctx.evaluate(`(() => { globalThis.__splitFind = []; window.intoponet.browserHost.subscribe((e) => { if (e.type === 'find-result') globalThis.__splitFind.push(e) }); return true })()`)
+      await ctx.evaluate(`${host}.find('needle').then(() => true)`)
+      await ctx.delay(800)
+      const beta = await ctx.evaluate(`JSON.stringify(globalThis.__splitFind.slice(-1)[0] ?? null)`).then(JSON.parse)
+      expect(beta && beta.matches === 1, `Find for "needle" in the right page reported ${JSON.stringify(beta)}.`)
+      await ctx.evaluate(`${host}.find('alpha').then(() => true)`)
+      await ctx.delay(800)
+      const alpha = await ctx.evaluate(`JSON.stringify(globalThis.__splitFind.slice(-1)[0] ?? null)`).then(JSON.parse)
+      expect(alpha && alpha.matches === 0, `Find for "alpha" (left only) matched in the focused right page: ${JSON.stringify(alpha)}.`)
+      await ctx.evaluate(`${host}.stopFind().then(() => true)`)
+      await ctx.evaluate(`${host}.zoom('in').then(() => true)`)
+      const zoomed = await waitFor('zoom on the right side', async () => {
+        const v = await viewsNow()
+        return sideOf(v, '/split-right').zoom > 1 ? v : null
+      })
+      expect(sideOf(zoomed, '/split-left').zoom === 1, 'Zoom on the right side changed the left side too.')
+      await ctx.evaluate(`${host}.zoom('reset').then(() => true)`)
+      await ctx.delay(300)
+
+      // Divider: arrow keys, then a pointer drag; the minimum width holds.
+      await shellEval(`document.querySelector('.split-divider').focus(); true`)
+      const beforeKeys = await viewsNow()
+      for (let i = 0; i < 4; i += 1) await ctx.press('ArrowLeft')
+      await ctx.delay(500)
+      const afterKeys = await viewsNow()
+      expect(sideOf(afterKeys, '/split-left').bounds.width < sideOf(beforeKeys, '/split-left').bounds.width, 'Arrow left did not narrow the left side.')
+      await expectLayout('after arrow keys')
+      await snap('03-after-arrow-keys')
+      const divider = JSON.parse(await shellEval(`JSON.stringify(document.querySelector('.split-divider').getBoundingClientRect())`))
+      const cx = divider.x + divider.width / 2
+      const cy = divider.y + divider.height / 2
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: cx, y: cy, button: 'left', clickCount: 1 })
+      for (let step = 1; step <= 10; step += 1) await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: cx + step * 15, y: cy, button: 'left', buttons: 1 })
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: cx + 150, y: cy, button: 'left', clickCount: 1 })
+      await ctx.delay(700)
+      const dragged = await viewsNow()
+      expect(sideOf(dragged, '/split-left').bounds.width > sideOf(afterKeys, '/split-left').bounds.width, 'Dragging the divider right did not widen the left side.')
+      await expectLayout('after the divider is dragged')
+      await snap('04-after-drag')
+      for (let i = 0; i < 90; i += 1) await ctx.press('ArrowLeft')
+      await ctx.delay(900)
+      const minimum = await viewsNow()
+      expect(sideOf(minimum, '/split-left').bounds.width >= 320, `The left side went below its minimum width: ${sideOf(minimum, '/split-left').bounds.width}.`)
+      await expectLayout('at the minimum width')
+      await snap('05-min-width')
+      await ctx.evaluate(`${host}.setSplitRatio(0.5).then(() => true)`)
+      await ctx.delay(700)
+
+      // The pair in the sidebar or strip is one row, left half then right half; each header shows its own origin.
+      const chrome = JSON.parse(await shellEval(`JSON.stringify({
+        rows: document.querySelectorAll('.tab-rail-pair-item, .page-tab-pair').length,
+        halves: [...document.querySelectorAll('.tab-rail-half, .is-split-half')].map((e) => e.getAttribute('aria-label')),
+        separators: document.querySelectorAll('[role=separator]').length,
+      })`))
+      expect(chrome.rows === 1, `Expected one row for the pair, found ${chrome.rows}.`)
+      expect(chrome.halves.length === 2 && chrome.halves[0].includes('left') && chrome.halves[1].includes('right'), `The halves are not left then right: ${JSON.stringify(chrome.halves)}.`)
+      expect(chrome.separators === 1, 'The divider is not a single separator.')
+      const origins = await headerOrigins()
+      expect(origins.includes(`127.0.0.1:${port}`) && origins.includes(`localhost:${port}`), `Headers show ${JSON.stringify(origins)}.`)
+      // Sidebar in open and icon-only modes: the two halves are one row, left then right, never stacked.
+      const halfRow = async (label) => {
+        const rows = JSON.parse(await shellEval(`JSON.stringify([...document.querySelectorAll('.tab-rail-half')].map((e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height } }))`))
+        expect(rows.length === 2 && rows[0].y === rows[1].y && rows[0].x < rows[1].x && rows[0].x + rows[0].w <= rows[1].x + 1, `${label}: the sidebar halves are not one row, left then right (${JSON.stringify(rows)}).`)
+        return rows
+      }
+      await ctx.evaluate(`${host}.setTabSidebar({ mode: 'open', width: 240 }).then(() => true)`)
+      await ctx.delay(900)
+      await halfRow('sidebar open')
+      await snap('12-sidebar-open')
+      await ctx.evaluate(`${host}.setTabSidebar({ mode: 'icons', width: 240 }).then(() => true)`)
+      await ctx.delay(900)
+      await halfRow('sidebar icons')
+      await snap('13-sidebar-icons')
+      await ctx.evaluate(`${host}.setTabSidebar({ mode: 'open', width: 240 }).then(() => true)`)
+      await ctx.delay(600)
+      await axeAudit(ctx, 'the split divider', '.split-divider')
+      await axeAudit(ctx, 'the split headers', '.split-header')
+
+      // Full-width view and a narrow window: still two columns, half and half when narrow.
+      await ctx.evaluate(`${host}.setFullWidth(true).then(() => true)`)
+      await ctx.delay(1000)
+      await expectLayout('full-width view')
+      await snap('06-full-width')
+      await ctx.evaluate(`${host}.setFullWidth(false).then(() => true)`)
+      await ctx.delay(900)
+      const contentBefore = (await viewsNow()).content
+      await ctx.main(`electron.BrowserWindow.getAllWindows()[0].setContentSize(720, 700)`)
+      await ctx.delay(1200)
+      const narrow = await expectLayout('window narrowed to 720 px')
+      expect(Math.abs(sideOf(narrow, '/split-left').bounds.width - sideOf(narrow, '/split-right').bounds.width) <= 1, 'Narrow window: the two pages are not half and half.')
+      await snap('07-narrow')
+      await ctx.main(`electron.BrowserWindow.getAllWindows()[0].setContentSize(${contentBefore[0]}, ${contentBefore[1]})`)
+      await ctx.delay(900)
+      await expectLayout('window restored')
+
+      // A workspace switch away and back keeps the pair.
+      // The pair's workspace is the one shown now (read before creating: creating a workspace may show it).
+      const mainWorkspace = JSON.parse(await ctx.evaluate(`window.intoponet.workspaces.get().then((s) => JSON.stringify(s))`)).activeId
+      await ctx.evaluate(`window.intoponet.workspaces.create().then(() => true)`)
+      await ctx.delay(400)
+      const workspaces = JSON.parse(await ctx.evaluate(`window.intoponet.workspaces.get().then((s) => JSON.stringify(s))`))
+      const other = workspaces.workspaces.find((w) => w.id !== mainWorkspace).id
+      await ctx.evaluate(`window.intoponet.workspaces.switchTo({ id: ${JSON.stringify(other)} }).then(() => true)`)
+      await ctx.delay(900)
+      await ctx.evaluate(`window.intoponet.workspaces.switchTo({ id: ${JSON.stringify(mainWorkspace)} }).then(() => true)`)
+      await ctx.delay(600)
+      if (!(await stateOf()).split) {
+        const diag = { state: await stateOf(), views: await viewsNow(), tabs: await tabsOfSplit(), workspaces: await ctx.evaluate(`window.intoponet.workspaces.get().then((s) => JSON.stringify(s))`).then(JSON.parse) }
+        writeFileSync(join(shotDir, 'diag-after-switch.json'), JSON.stringify(diag, null, 2))
+        throw new CheckFailure(`The pair did not come back after switching workspaces back (see ${join(shotDir, 'diag-after-switch.json')}).`)
+      }
+      await waitFor('two pages after switching back', async () => (await viewsNow()).pages.length === 2)
+      await ctx.delay(500)
+      await expectLayout('after a workspace switch and back')
+      await snap('08-after-workspace-switch')
+
+      // ⌘W on the focused side: the other side goes back to full size and shows.
+      const focusedBeforeClose = (await stateOf()).split.focused
+      await ctx.evaluate(`${host}.closeActiveTab().then(() => true)`)
+      await ctx.delay(900)
+      const closed = await viewsNow()
+      expect(!(await stateOf()).split, 'Closing a side left the pair in place.')
+      expect(closed.pages.length === 1, `After closing a side, ${closed.pages.length} pages are on screen.`)
+      const remaining = closed.pages[0]
+      expect(remaining.visible && remaining.bounds.width > 0, 'The remaining page is hidden after closing its partner.')
+      // The focused side was closed, so the other side is the one left on screen.
+      expect(remaining.url.includes(focusedBeforeClose === 'left' ? '/split-right' : '/split-left'), `After closing the ${focusedBeforeClose} side, the page on screen is ${remaining.url}.`)
+      await snap('09-after-close')
+
+      // Put the pair back (the left tab shown, the right one next), then ⌃⇧- ends it.
+      await ctx.evaluate(`${host}.open({ kind: 'url', value: ${JSON.stringify(rightUrl)} }, 'background-tab').then(() => true)`)
+      await ctx.delay(1000)
+      await ctx.evaluate(`${host}.splitTab().then(() => true)`)
+      await waitFor('the pair again', async () => (await stateOf()).split)
+      await expectLayout('the pair again')
+      await ctx.keyInPage('/split-left', '-', ['control', 'shift'])
+      await waitFor('the pair ended', async () => !(await stateOf()).split)
+      await ctx.delay(700)
+      const unsplit = await viewsNow()
+      expect(unsplit.pages.length === 1 && unsplit.pages[0].bounds.width > 400, 'After ⌃⇧- the shown page is not back to full size.')
+
+      // A tab dragged onto the page's edge: the page gives up that half for the drop zone.
+      await ctx.evaluate(`${host}.splitPreview('left').then(() => true)`)
+      await ctx.delay(600)
+      const preview = await viewsNow()
+      const previewState = await stateOf()
+      expect(previewState.splitPreview && previewState.splitPreview.side === 'left', 'The drop zone is not in the shell state.')
+      expect(preview.pages[0].bounds.x > unsplit.pages[0].bounds.x, 'The page did not give up the left half for the drop zone.')
+      await snap('10-edge-preview')
+      await ctx.evaluate(`${host}.splitPreview(null).then(() => true)`)
+      await ctx.delay(400)
+
+      // Dropping: the tab on the left, the shown one on the right (the drag path's own command).
+      const ids = (await tabsOfSplit()).map((t) => t.id)
+      expect(ids.length === 2, 'Expected both tabs open.')
+      await ctx.evaluate(`${host}.splitTab(${JSON.stringify(ids[1])}, ${JSON.stringify(ids[0])}, 'left').then(() => true)`)
+      await waitFor('the dropped pair', async () => (await stateOf()).split)
+      await waitFor('two pages after the drop', async () => (await viewsNow()).pages.length === 2)
+      await expectLayout('after a drop on the edge')
+      await snap('11-after-drop')
+
+      // Relaunch: the pair and its ratio come back. The app quits first so only one window is ever on screen.
+      await ctx.evaluate(`${host}.setSplitRatio(0.4).then(() => true)`)
+      await ctx.delay(800)
+      await ctx.main(`electron.app.quit()`).catch(() => undefined)
+      await ctx.delay(2500)
+      const saved = JSON.parse(readFileSync(join(ctx.profile, 'browser-state.v1.json'), 'utf8'))
+      const savedLeft = saved.tabs.find((t) => t.url.startsWith(leftUrl))
+      const savedRight = saved.tabs.find((t) => t.url.startsWith(rightUrl))
+      expect(savedLeft?.split && savedRight?.split && savedLeft.split.partnerId === savedRight.id, 'The saved state does not hold the pair.')
+      expect(Math.abs(savedLeft.split.ratio - 0.4) < 0.001, `The saved ratio is ${savedLeft.split.ratio}.`)
+      const profile = mkdtempSync(join(tmpdir(), 'intoponet-e2e-split-'))
+      writeFileSync(join(profile, 'browser-state.v1.json'), JSON.stringify(saved))
+      const before = process.env.E2E_PROFILE
+      process.env.E2E_PROFILE = profile
+      let restored
+      try {
+        restored = await runAppCheck(async (next) => {
+          const readSplit = async () => JSON.parse(await next.evaluate(`window.intoponet.browserHost.getState().then((s) => JSON.stringify(s))`)).split
+          const restoredSplit = await (async () => {
+            for (let i = 0; i < 60; i += 1) {
+              const value = await readSplit()
+              if (value) return value
+              await next.delay(200)
+            }
+            return null
+          })()
+          if (!restoredSplit) throw new CheckFailure('The relaunched app did not restore the pair.')
+          if (Math.abs(restoredSplit.ratio - 0.4) > 0.01) throw new CheckFailure(`The relaunched ratio is ${restoredSplit.ratio}.`)
+          // Sample the layout as the window comes up (before and after the shell's first bounds report): never stacked.
+          for (let sample = 0; sample < 6; sample += 1) {
+            const views = JSON.parse(await next.main(`(() => {
+              const win = electron.BrowserWindow.getAllWindows()[0]
+              const kids = win.contentView.children.filter((v) => v.webContents && !v.webContents.isDestroyed())
+              return JSON.stringify({ windows: electron.BrowserWindow.getAllWindows().length, pages: kids.filter((v) => /^https?:/.test(v.webContents.getURL())).map((v) => ({ url: v.webContents.getURL(), bounds: v.getBounds(), visible: v.getVisible() })) })
+            })()`))
+            expect(views.windows === 1, `The relaunch opened ${views.windows} windows.`)
+            if (views.pages.length === 2 && views.pages.every((p) => p.visible)) {
+              const [l, r] = views.pages.slice().sort((p, q) => p.bounds.x - q.bounds.x)
+              expect(l.bounds.y === r.bounds.y && l.bounds.x + l.bounds.width <= r.bounds.x, `After relaunch the pages are stacked or overlapping (${JSON.stringify(l.bounds)} / ${JSON.stringify(r.bounds)}).`)
+              expect(l.bounds.height === r.bounds.height, 'After relaunch the pages have different heights.')
+            }
+            await next.delay(300)
+          }
+          return `relaunch restored the pair at ratio ${restoredSplit.ratio.toFixed(2)}, side by side`
+        }, { timeoutMs: 60_000 })
+      } finally {
+        if (before === undefined) delete process.env.E2E_PROFILE
+        else process.env.E2E_PROFILE = before
+        rmSync(profile, { recursive: true, force: true })
+      }
+      expect(restored, 'The relaunch check did not run.')
+      return `Shortcut split two pages side by side with the divider and headers (origins ${origins.join(' · ')}); each side keeps its own address, find and zoom; arrow keys and dragging keep the minimum width; the pair is one row, half and half when narrow or full width; it survives a workspace switch; closing a side returns the other to full size; ⌃⇧- unsplits; an edge drop previews and splits; the relaunch restores the pair. Screenshots and bounds in ${shotDir}.`
+    } finally {
+      server.close()
+    }
+  },
 }
 
 checks.TAB_SLEEP.env = { INTOPONET_TAB_SLEEP_MINUTE_MS: '200' }

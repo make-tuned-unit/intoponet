@@ -175,3 +175,22 @@ describe('menu refreshes', () => {
     expect(menuCommandById('toString')).toBeNull()
   })
 })
+
+describe('pages side by side keys', () => {
+  const key = (typed: string, code: string, mods: { control?: boolean; shift?: boolean }) => ({
+    type: 'keyDown', key: typed, code, meta: false, control: !!mods.control, shift: !!mods.shift, alt: false,
+  })
+
+  it('⌃⇧= splits and ⌃⇧- unsplits, whether the key comes as "=" or as the shifted "+" (and ⌃⇧_ as well)', () => {
+    expect(appCommandForInput(key('=', 'Equal', { control: true, shift: true }), { platform: 'darwin' })).toEqual({ type: 'split-tab' })
+    expect(appCommandForInput(key('+', 'Equal', { control: true, shift: true }), { platform: 'darwin' })).toEqual({ type: 'split-tab' })
+    expect(appCommandForInput(key('-', 'Minus', { control: true, shift: true }), { platform: 'darwin' })).toEqual({ type: 'unsplit-tab' })
+    expect(appCommandForInput(key('_', 'Minus', { control: true, shift: true }), { platform: 'darwin' })).toEqual({ type: 'unsplit-tab' })
+  })
+
+  it('leaves ⌘= and ⌘- (zoom) alone', () => {
+    const cmd = (typed: string, code: string) => ({ type: 'keyDown', key: typed, code, meta: true, control: false, shift: false, alt: false })
+    expect(appCommandForInput(cmd('=', 'Equal'), { platform: 'darwin' })).toEqual({ type: 'zoom-in' })
+    expect(appCommandForInput(cmd('-', 'Minus'), { platform: 'darwin' })).toEqual({ type: 'zoom-out' })
+  })
+})
