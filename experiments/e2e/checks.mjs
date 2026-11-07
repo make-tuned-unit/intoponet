@@ -626,6 +626,7 @@ export const checks = {
     const damaged = {
       'browser-state.v1.json': '{"version":3,"url":"https://example.org/","bounds":{"x":0,"y":0,"width":800,"height":600},"wasVisible":false,"tabs":[{"id":"t1","url":"https://exa',
       'site-permissions.json': '{"https://example.org":{"camera":"al',
+      'excluded-sites.json': '["bank.example","clinic.exa',
     }
     for (const [file, text] of Object.entries(damaged)) writeFileSync(join(damagedProfile, file), text)
     const keptProfile = process.env.E2E_PROFILE

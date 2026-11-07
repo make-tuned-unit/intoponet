@@ -5111,8 +5111,10 @@ app.whenReady().then(async () => {
     try {
       const raw = JSON.parse(readFileSync(excludedSitesFile, 'utf8')) as unknown
       if (Array.isArray(raw)) excludedSites = raw.filter((site): site is string => typeof site === 'string').slice(0, 500)
+      else setAsideUnreadable(excludedSitesFile)
     } catch {
-      // None yet.
+      // None yet; a list that cannot be read is kept aside, not saved over.
+      setAsideUnreadable(excludedSitesFile)
     }
     const privacyState = async (): Promise<PrivacyState> => ({
       excludedSites,
