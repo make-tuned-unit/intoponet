@@ -74,7 +74,7 @@ const PAGE = 'https://en.wikipedia.org/wiki/Earth'
 
 /** The page behind the browsing, tab and workspace steps. */
 const showPage = (controls: TourControls): Promise<void> => controls.showPage(PAGE)
-/** The workspace steps: the page, with the sidebar open so its workspace controls show. */
+/** The tab and workspace steps: the page, with the sidebar open so what they point at shows (even if it is hidden). */
 const showPageWithSidebar = (controls: TourControls): Promise<void> => controls.showPage(PAGE, { sidebar: true })
 
 /** The Olds for the world story the tour opened (looked up again when a step is reached by its dot). */
@@ -311,7 +311,7 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'Turn on “Float playing video when you switch tabs” in Settings › Browsing, and a video keeps playing in a small window when you leave its tab. The sidebar shows what is playing, with play, pause, mute and go-to-tab buttons.',
     target: '.tab-rail',
     seconds: 10,
-    run: showPage,
+    run: showPageWithSidebar,
   },
   {
     id: 'quick-window',
@@ -337,7 +337,7 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'Keep the sidebar open, even full width, with pinned tabs on top. A pinned tab remembers its home and offers the way back; closing it only puts it to sleep. ⌃⌘S hides the sidebar — rest the pointer at the left edge to bring it back.',
     target: '.tab-rail',
     seconds: 11,
-    run: showPage,
+    run: showPageWithSidebar,
   },
   {
     id: 'tab-care',
@@ -346,7 +346,7 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'Tabs you have not looked at for an hour sleep to save memory and wake where you left them. ⌃Tab can go most-recently-used first, and ⇧⌘C copies a page’s address without its tracking codes. All in Settings › Browsing.',
     target: '.tab-rail',
     seconds: 10,
-    run: showPage,
+    run: showPageWithSidebar,
   },
   {
     id: 'tab-folders',
@@ -355,7 +355,7 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'Drag tabs into folders that nest and fold, and save a folder as a collection in your library. If you choose, tabs you have not looked at for a while close into Archived tabs: the address bar finds them and reopens them where they were.',
     target: '.tab-rail',
     seconds: 10,
-    run: showPage,
+    run: showPageWithSidebar,
   },
   {
     id: 'tabs-story',
@@ -364,7 +364,7 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'An article in a tab that matches a world story wears a small mountain in the sidebar. Group by story puts those tabs in one folder, and hovering the folder shows the story’s peak on the globe. It all happens on this Mac.',
     target: ['[aria-label="Group by story"]', '.tab-rail'],
     seconds: 10,
-    run: showPage,
+    run: showPageWithSidebar,
   },
   {
     id: 'tidy',
@@ -373,7 +373,7 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'With Laya on, Tidy reads your loose tabs’ titles on this Mac and suggests folders for them. You see every folder before anything moves, and Undo puts the tabs back. Private tabs are never read.',
     target: ['[aria-label="Tidy tabs"]', '.tab-rail'],
     seconds: 9,
-    run: showPage,
+    run: showPageWithSidebar,
   },
   {
     id: 'workspaces',

@@ -2408,6 +2408,9 @@ export const checks = {
     const tabsBefore = await ctx.evaluate(tabList)
     // The sidebar as saved, and the workspaces: the tour changes neither.
     const kept = `Promise.all([window.intoponet.browserHost.getTabSidebar(), window.intoponet.workspaces.get().then((s) => s.workspaces.map((w) => w.id))]).then((r) => JSON.stringify(r))`
+    // With the sidebar hidden (⌃⌘S), the tab and workspace steps must still open it onto what they point at.
+    await ctx.main(`(() => { electron.BrowserWindow.getAllWindows()[0].webContents.send('browser-host:event', { type: 'shortcut', action: 'toggle-tab-sidebar' }); return true })()`)
+    await ctx.wait(`window.intoponet.browserHost.getTabSidebar().then((s) => s?.mode === 'hidden')`, 5000, '⌃⌘S to hide the sidebar before the tour')
     const keptBefore = await ctx.evaluate(kept)
     // The Olds step moves on as soon as The Olds has looked, even when it finds nothing: here Wikipedia cannot be reached.
     // First, before any story's history is kept (the Olds step looks up the tour's own story even when jumped to). How long
@@ -2483,12 +2486,15 @@ export const checks = {
       if (step < total) await ctx.click('.tour-next')
     }
     expect(missed.length === 0, `These tour steps point at nothing: ${missed.join('; ')}.`)
-    // Exact spotlights: Compare under the world story's sources; the workspace steps with the sidebar open.
+    // Exact spotlights: Compare under the world story's sources; the tab and workspace steps with the (hidden) sidebar open.
     const compareStep = shown.find((state) => state?.title === 'Two outlets, side by side')
     expect(compareStep?.lit === '.sc-compare', `The Compare step lit ${compareStep?.lit}, not the Compare button under the story's sources.`)
     const workspaceSteps = shown.filter((state) => ['Workspaces keep things apart', 'Anchor a workspace to a place', 'A workspace with its own sign-ins'].includes(state?.title))
     expect(workspaceSteps.length === 3 && workspaceSteps.every((state) => state.rail === true && state.lit !== '.tab-rail'), `The workspace steps did not open the sidebar onto its workspace controls: ${JSON.stringify(workspaceSteps.map((state) => [state.lit, state.rail]))}.`)
-    expect(shown.filter((state) => state?.rail === true).length === 3, `The sidebar was open outside the workspace steps: ${shown.filter((state) => state?.rail === true).map((state) => state.title).join('; ')}.`)
+    const tabStepTitles = ['Video follows you', 'Tabs down the side, in every view', 'Tabs that look after themselves', 'Folders, and tabs that tidy away', 'Tabs that know their story', 'Tidy suggests the folders']
+    const tabSteps = shown.filter((state) => tabStepTitles.includes(state?.title))
+    expect(tabSteps.length === tabStepTitles.length && tabSteps.every((state) => state.rail === true && state.lit), `The tab steps did not open the hidden sidebar: ${JSON.stringify(tabSteps.map((state) => [state.title, state.lit, state.rail]))}.`)
+    expect(shown.filter((state) => state?.rail === true).length === 3 + tabStepTitles.length, `The sidebar was open outside the tab and workspace steps: ${shown.filter((state) => state?.rail === true).map((state) => state.title).join('; ')}.`)
     // Gone back to, or jumped to by its dot, every step shows what it showed played forward.
     const elsewhere = []
     const compare = async (step, how) => {
