@@ -2869,6 +2869,8 @@ export const checks = {
         expect(shown.map((tab) => tab.title).join() === 'Page /research-a,Page /research-b,Page /research-c' && shown[0].pinned, `Reading after a restart: ${shown.map((tab) => tab.title).join()}.`)
         await next.evaluate(`${ws}.switchTo({ index: 1 }).then(() => true)`)
         await next.delay(600)
+        // The tab Main shows wakes and loads; until its page's title arrives it is listed by its address (slow under heavy load).
+        await next.wait(`${host}.getTabs().then((t) => t.some((x) => x.active && x.title === 'Page /main-a'))`, 5000, 'the page Main shows to load its title').catch(() => undefined)
         const other = JSON.parse(await next.evaluate(`${host}.getTabs().then((t) => JSON.stringify(t))`))
         const folders = JSON.parse(await next.evaluate(`${host}.getTabFolders().then((f) => JSON.stringify(f))`))
         // Only the tab Main shows may load; the others stay unloaded until clicked.
