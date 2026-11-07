@@ -383,6 +383,12 @@ const selfSignedSite = async () => {
   }
 }
 const panelState = (ctx) => ctx.evaluate(`window.intoponet.browserHost.getState().then((s) => JSON.stringify(s))`).then(JSON.parse)
+/**
+ * Checks run side by side open their windows in the same place, so one can be covered by another. A covered shell is
+ * hidden: its animation frames stop, a closing panel's exit never ends and the panel that should replace it never
+ * mounts (a check then times out). The app catches up once shown; keep the shell drawing while covered instead.
+ */
+const keepDrawing = (ctx) => ctx.main(`(() => { electron.BrowserWindow.getAllWindows()[0]?.webContents.setBackgroundThrottling(false); return true })()`)
 
 /** Fails the check on any WCAG 2.2 AA violation axe finds in the app window right now. */
 async function axeAudit(ctx, where, selector = null) {
@@ -625,6 +631,7 @@ export const checks = {
   },
 
   async GLOBE_LIVE(ctx) {
+    await keepDrawing(ctx)
     await ctx.waitForNews()
     // Highlights open on World (story cards); signal rows are under Peaks.
     expect(await ctx.click('.globe-tabs button', 'Peaks'), 'Highlights tab "Peaks" is missing.')
@@ -638,6 +645,7 @@ export const checks = {
   },
 
   async SOURCE_CAROUSEL(ctx) {
+    await keepDrawing(ctx)
     await ctx.waitForNews()
     expect(await ctx.click('.globe-tabs button', 'World'), 'The World tab is missing.')
     await ctx.wait(`document.querySelectorAll('.world-list .world-row').length > 0`, 90_000, 'stories covered across the world')
@@ -690,6 +698,7 @@ export const checks = {
   },
 
   async FLY_TO(ctx) {
+    await keepDrawing(ctx)
     await ctx.flyTo('Charlottetown PEI')
     await ctx.wait(`document.querySelector('h1')?.innerText === 'Charlottetown'`, 15_000, 'the title to read Charlottetown')
     await ctx.wait(`getComputedStyle(document.querySelector('.globe-locator') ?? document.body).opacity === '1'`, 15_000, 'the locator to appear on the spot')
@@ -704,6 +713,7 @@ export const checks = {
   },
 
   async GLOBE_MOTION(ctx) {
+    await keepDrawing(ctx)
     await ctx.flyTo('Dar es Salaam')
     await ctx.wait(`getComputedStyle(document.querySelector('.globe-locator') ?? document.body).opacity === '1'`, 15_000, 'the locator')
     await ctx.delay(2500)
@@ -720,6 +730,7 @@ export const checks = {
 
   // ---- Places, news and history --------------------------------------------
   async COUNTRY_PANEL(ctx) {
+    await keepDrawing(ctx)
     await ctx.waitForNews()
     await ctx.flyTo('Canada')
     await ctx.delay(2500)
@@ -740,6 +751,7 @@ export const checks = {
   },
 
   async COUNTRY_NAMES(ctx) {
+    await keepDrawing(ctx)
     await ctx.delay(2000)
     const atStart = await ctx.evaluate(`document.querySelectorAll('.country-name.is-on').length`)
     expect(atStart >= 8, `Only ${atStart} country names at the default view.`)
@@ -773,6 +785,7 @@ export const checks = {
   },
 
   async WORLD_STORIES(ctx) {
+    await keepDrawing(ctx)
     await ctx.waitForNews()
     await ctx.click('.globe-tabs button', 'World')
     await ctx.wait(`document.querySelectorAll('.world-list > li').length >= 5`, 90_000, 'at least five stories covered across the world')
@@ -783,6 +796,7 @@ export const checks = {
   },
 
   async STORY_MOUNTAINS(ctx) {
+    await keepDrawing(ctx)
     await ctx.waitForNews()
     await ctx.wait(`window.intoponet.browserHost.getNewsDigest().then((raw) => (JSON.parse(raw).mountains ?? []).length >= 5)`, 120_000, 'story mountains in the news digest')
     const digest = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getNewsDigest()`))
@@ -833,6 +847,7 @@ export const checks = {
   },
 
   async OLDS_UI(ctx) {
+    await keepDrawing(ctx)
     await ctx.waitForNews()
     await ctx.flyTo('Canada')
     await ctx.delay(2500)
@@ -849,13 +864,14 @@ export const checks = {
     const clipped = await ctx.evaluate(`(() => { const t = document.querySelector('.olds-track')?.getBoundingClientRect(); if (!t) return 0; return [...document.querySelectorAll('.olds-card')].filter((c) => { const r = c.getBoundingClientRect(); return r.top < t.top - 1 || r.bottom > t.bottom + 1 }).length })()`)
     expect(clipped === 0, `${clipped} timeline cards are clipped.`)
     await ctx.press('Escape')
-    await ctx.delay(900)
-    expect(!(await ctx.evaluate(`!!document.querySelector('.olds-sheet')`)), 'Escape does not close The Olds.')
+    const closed = await ctx.wait(`!document.querySelector('.olds-sheet')`, 5000).then(() => true, () => false)
+    expect(closed, 'Escape does not close The Olds.')
     return `Views ${views.join('/')}; sections: ${sections.join(', ') || 'path only'}.`
   },
 
   // An outlet's earlier coverage of a story (its topic pages, then Wayback Machine snapshots), newest first.
   async OLDS_COVERAGE(ctx) {
+    await keepDrawing(ctx)
     await ctx.waitForNews()
     await ctx.click('.globe-tabs button', 'World')
     await ctx.wait(`document.querySelectorAll('.world-list > li').length > 0`, 90_000, 'world stories')
@@ -2104,6 +2120,7 @@ export const checks = {
   },
 
   async TOUR(ctx) {
+    await keepDrawing(ctx)
     // Every step's spotlight must find what it shows (a renamed button would leave the tour pointing at nothing).
     await ctx.waitForNews()
     await ctx.wait(`!!document.querySelector('.story-highest')`, 60_000, 'story mountains to rise')
@@ -2112,13 +2129,16 @@ export const checks = {
     await ctx.wait(`!!document.querySelector('.tour-card')`, 5000, 'the tour to start')
     const total = Number((await ctx.evaluate(`document.querySelector('.tour-count').textContent`)).split(' of ')[1])
     const missed = []
+    // The step's own name (its progress dot); the card's heading animates from one step to the next.
+    const stepTitle = `(document.querySelector('.tour-progress [aria-current="step"]')?.getAttribute('aria-label') ?? '').replace(/^Step \\d+: /, '')`
     for (let step = 1; step <= total; step += 1) {
       await ctx.wait(`document.querySelector('.tour-count')?.textContent.startsWith('${step} of') && !document.querySelector('.tour-next')?.textContent.includes('Showing')`, 45_000, `tour step ${step} to finish showing`)
+      await ctx.wait(`document.getElementById('tour-title')?.textContent === ${stepTitle}`, 5000, `tour step ${step}'s card`)
       await ctx.delay(700)
-      const state = JSON.parse(await ctx.evaluate(`JSON.stringify({ title: document.getElementById('tour-title').textContent, lit: !!document.querySelector('.tour-spotlight'), centred: !!document.querySelector('.tour-dim') })`))
+      const state = JSON.parse(await ctx.evaluate(`JSON.stringify({ title: ${stepTitle}, lit: !!document.querySelector('.tour-spotlight'), centred: !!document.querySelector('.tour-dim') })`))
       const centred = ['A browser with the whole world in view', 'The everyday things, done carefully'].includes(state.title)
       if (!centred && !state.lit) missed.push(`${step}. ${state.title}`)
-      if (['The news rises as mountains', 'Follow a story around the world', 'Tabs down the side, in every view', 'Save any page as a clean PDF'].includes(state.title)) await ctx.shot(`step-${step}`)
+      if (['The news rises as mountains', 'Follow a story around the world', 'Two outlets, side by side', 'Tabs down the side, in every view', 'Save any page as a clean PDF', 'Tabs that know their story', 'Tidy suggests the folders', 'Anchor a workspace to a place', 'Links from other apps go where they belong'].includes(state.title)) await ctx.shot(`step-${step}`)
       if (step < total) await ctx.click('.tour-next')
     }
     expect(missed.length === 0, `These tour steps point at nothing: ${missed.join('; ')}.`)
