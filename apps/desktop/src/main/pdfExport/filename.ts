@@ -23,6 +23,32 @@ export function pdfFilename(input: { title: string; site: string; url: string; i
   return `${base} – ${day}.pdf`
 }
 
+/**
+ * What a PDF shown in the viewer is called: its title (the tab's, from the PDF itself), else its file
+ * name, without ".pdf" ("Annual report.pdf" → "Annual report"). '' when it has neither. The viewer's own
+ * page has no title of its own, so without this the file would only be named after the site.
+ */
+export function pdfDocumentTitle(tabTitle: string, url: string): string {
+  const strip = (value: string): string => value.trim().replace(/\.pdf$/i, '').trim()
+  let address: URL | null = null
+  try {
+    address = new URL(url)
+  } catch {
+    // Not a URL: no file name either.
+  }
+  const title = tabTitle.trim()
+  // A page with no title of its own is titled with its address.
+  const untitled = !title || title === url || (address !== null && (title === `${address.host}${address.pathname}` || title === address.href.replace(/^https?:\/\//, '')))
+  if (!untitled && strip(title)) return strip(title)
+  if (!address) return ''
+  const last = address.pathname.split('/').filter(Boolean).pop() ?? ''
+  try {
+    return strip(decodeURIComponent(last))
+  } catch {
+    return strip(last)
+  }
+}
+
 function namesSite(title: string, site: string): boolean {
   const lower = title.toLowerCase()
   if (lower.includes(site.toLowerCase())) return true

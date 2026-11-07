@@ -257,6 +257,14 @@ async function pdfExport(ctx) {
     const keptAsked = JSON.parse(await ctx.main(`electron.dialog.__asked`) ?? '[]')
     expect(existsSync(keptPdf) && readFileSync(keptPdf).equals(TEST_PDF), `Save Page As on a PDF did not save the PDF itself (${existsSync(keptPdf) ? readFileSync(keptPdf).subarray(0, 40).toString('latin1') : 'no file'}).`)
     expect(/doc\.pdf$/.test(keptAsked[0] ?? '') && JSON.stringify(keptAsked[1]).includes('"pdf"'), `Save Page As on a PDF suggested ${JSON.stringify(keptAsked)}.`)
+    // Save as PDF on a PDF tab names the file after the PDF (here its file name), not only the site and date.
+    const beforePdfTab = await ctx.evaluate(`document.querySelector('.pdf-done .pdf-name')?.title ?? ''`)
+    await ctx.evaluate(`window.intoponet.browserHost.exportPdf().then(() => true)`)
+    await ctx.wait(`(() => { const done = document.querySelector('.pdf-done .pdf-name'); const failed = document.querySelector('.pdf-failed')?.innerText ?? ''; return (!!done && done.title !== ${JSON.stringify(beforePdfTab)}) || (!!failed && !failed.includes('did not load')) })()`, 90_000, 'the PDF tab to be saved as PDF')
+    const pdfTabFailure = await ctx.evaluate(`document.querySelector('.pdf-failed')?.innerText ?? ''`)
+    expect(!pdfTabFailure, `Save as PDF on a PDF tab failed: ${pdfTabFailure}`)
+    const pdfTabPath = await ctx.evaluate(`document.querySelector('.pdf-done .pdf-name').title`)
+    expect(/\/doc – 127\.0\.0\.1 – \d{4}-\d{2}-\d{2}\.pdf$/.test(pdfTabPath) && existsSync(pdfTabPath), `Save as PDF on a PDF tab was not named after the PDF: ${pdfTabPath}`)
     // Saved into a group after private browsing ended: the private search left nothing in its bookmark.
     await ctx.evaluate(`window.intoponet.browserHost.setPdfSettings({ mode: 'auto', paper: 'a4', textSize: 'medium', images: true, citation: true, groupId: 'pdfgroup' }).then(() => true)`)
     await openPage(ctx, `${base}/article?after-private`, 3000)

@@ -2,7 +2,8 @@ import { BrowserWindow, session, type Session, type WebContents } from 'electron
 import { randomUUID } from 'node:crypto'
 import { writeFile } from 'node:fs/promises'
 import { browserUserAgent } from '../browserUserAgent'
-import { pdfFilename } from './filename'
+import { isPdfDocument } from '../savePage'
+import { pdfDocumentTitle, pdfFilename } from './filename'
 import { postprocessOffThread } from './openPostprocess'
 import { printableImage, readLimited } from './printImages'
 import { cleanLiveScript, finalizeScript, PDF_WORLD_ID, prepareScript, REVERT_LIVE_SCRIPT } from './pageScripts'
@@ -269,6 +270,9 @@ export async function exportPagePdf(deps: PdfExportDeps): Promise<PdfExportOutco
     if (prepared === 'timeout' || !prepared || typeof prepared !== 'object') return { status: 'failed', reason: 'The page did not respond.' }
     const meta: PageMeta = { ...prepared.meta, url }
     if (contents.getURL() !== url) return { status: 'failed', reason: 'The page changed while it was being saved.' }
+    // A PDF in the viewer is named after itself (its title, else its file name), not only after its site.
+    if (await isPdfDocument(contents, PDF_WORLD_ID)) meta.title = pdfDocumentTitle(contents.getTitle(), url) || meta.title
+    check()
 
     let pdf: Buffer | null = null
     let mode: 'formatted' | 'asSeen' = 'asSeen'
