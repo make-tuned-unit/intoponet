@@ -627,17 +627,24 @@ export const checks = {
       'browser-state.v1.json': '{"version":3,"url":"https://example.org/","bounds":{"x":0,"y":0,"width":800,"height":600},"wasVisible":false,"tabs":[{"id":"t1","url":"https://exa',
       'site-permissions.json': '{"https://example.org":{"camera":"al',
       'excluded-sites.json': '["bank.example","clinic.exa',
+      'personal/history.v1.seal': 'not a sealed history',
     }
+    mkdirSync(join(damagedProfile, 'personal'))
     for (const [file, text] of Object.entries(damaged)) writeFileSync(join(damagedProfile, file), text)
     const keptProfile = process.env.E2E_PROFILE
     process.env.E2E_PROFILE = damagedProfile
     try {
-      const kept = JSON.parse(await runAppCheck(async (next) => {
+      const keptFiles = (next) => next.main(`(() => { const fs = process.mainModule.require('fs'); const dir = ${JSON.stringify(damagedProfile)}; return JSON.stringify(Object.fromEntries(['', 'personal/'].flatMap((sub) => fs.readdirSync(dir + '/' + sub).map((n) => sub + n)).filter((n) => n.includes('.unreadable-')).map((n) => [n.replace(/\\.unreadable-\\d+$/, ''), fs.readFileSync(dir + '/' + n, 'utf8')]))) })()`).then(JSON.parse)
+      const [kept, afterClear] = JSON.parse(await runAppCheck(async (next) => {
         await next.evaluate(`window.intoponet.browserHost.newTab().then(() => true)`)
         await next.delay(1500)
-        return next.main(`(() => { const fs = process.mainModule.require('fs'); const dir = ${JSON.stringify(damagedProfile)}; return JSON.stringify(Object.fromEntries(fs.readdirSync(dir).filter((n) => n.includes('.unreadable-')).map((n) => [n.replace(/\\.unreadable-\\d+$/, ''), fs.readFileSync(dir + '/' + n, 'utf8')]))) })()`)
+        const before = await keptFiles(next)
+        // Clear browsing data also clears the history it kept aside.
+        await next.evaluate(`window.intoponet.history.clearBrowsingData({ range: 'hour', history: true, siteData: false, cache: false, downloads: false }).then(() => true)`)
+        return JSON.stringify([before, await keptFiles(next)])
       }, { timeoutMs: 60_000 }))
       for (const [file, text] of Object.entries(damaged)) expect(kept[file] === text, `A damaged ${file} was not kept aside when the app started over (kept: ${Object.keys(kept).join(', ') || 'nothing'}).`)
+      expect(!afterClear['personal/history.v1.seal'], 'Clearing history left the copy of history the app had kept aside.')
     } finally {
       if (keptProfile === undefined) delete process.env.E2E_PROFILE
       else process.env.E2E_PROFILE = keptProfile

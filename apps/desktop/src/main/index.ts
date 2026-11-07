@@ -26,7 +26,7 @@ import {
   screen,
 } from 'electron'
 import type { IpcMainInvokeEvent, MenuItemConstructorOptions } from 'electron'
-import { pendingWrite, setAsideUnreadable, writeFileAtomic, writeFileAtomicSync } from './atomicFile'
+import { pendingWrite, removeSetAside, setAsideUnreadable, writeFileAtomic, writeFileAtomicSync } from './atomicFile'
 import { isAppShellUrl, SHELL_PERMISSIONS } from './shellGuard'
 import { LatestWriter } from './latestWriter'
 import { fetchCurrentRelease, UpdateController } from './updates'
@@ -1693,6 +1693,7 @@ function installDownloadsAndHistory(): void {
     onDownloadDone: (entry) => emit({ type: 'download-finished', ...entry }),
     onHistoryCleared: (since) => {
       tabArchive.deleteSince(since)
+      removeSetAside(tabArchiveFile())
       saveTabArchive()
     },
   })

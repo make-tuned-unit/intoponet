@@ -12,7 +12,7 @@ import {
   type DownloadEvent,
   type HistoryEvent,
 } from '@intoponet/browser-api'
-import { setAsideUnreadable, writeFileAtomic, writeFileAtomicSync } from './atomicFile'
+import { removeSetAside, setAsideUnreadable, writeFileAtomic, writeFileAtomicSync } from './atomicFile'
 import { LatestWriter } from './latestWriter'
 import { DownloadManager, type DownloadRecord } from './downloadManager'
 import { reserveDownloadPath, sanitizeDownloadFilename } from './downloadReservation'
@@ -220,6 +220,7 @@ export function installBrowsingData(options: BrowsingDataOptions): BrowsingData 
     }
     if (request.history) {
       history.deleteSince(since)
+      removeSetAside(historyFile)
       options.onHistoryCleared?.(since)
       cleared.push('history')
     }
@@ -255,7 +256,7 @@ export function installBrowsingData(options: BrowsingDataOptions): BrowsingData 
       case 'search': return history.search(command.query, command.cursor, command.limit)
       case 'delete': history.delete(command.ids); return undefined
       case 'delete-day': history.deleteDay(command.day); return undefined
-      case 'clear': history.clear(); return undefined
+      case 'clear': history.clear(); removeSetAside(historyFile); return undefined
       case 'set-policy': policySet = true; history.setPolicy(command.policy); return undefined
       case 'clear-browsing-data': return clearBrowsingData(command.request)
     }

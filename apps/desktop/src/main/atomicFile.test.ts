@@ -2,7 +2,7 @@ import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { setAsideUnreadable, writeFileAtomic, writeFileAtomicSync } from './atomicFile'
+import { removeSetAside, setAsideUnreadable, writeFileAtomic, writeFileAtomicSync } from './atomicFile'
 
 describe('unreadable files', () => {
   it('moves a damaged file aside so a later save cannot replace it', () => {
@@ -13,6 +13,18 @@ describe('unreadable files', () => {
     writeFileAtomicSync(path, '{"tabs":[]}')
     expect(readFileSync(`${path}.unreadable-42`, 'utf8')).toBe('{"tabs":[{"url":"https://exa')
     expect(readdirSync(dir).sort()).toEqual(['state.json', 'state.json.unreadable-42'])
+  })
+  it('deletes the kept copies of a file when what they hold is cleared', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'atomic-'))
+    const path = join(dir, 'history.v1.seal')
+    writeFileSync(path, 'old')
+    setAsideUnreadable(path, 1)
+    writeFileSync(path, 'older')
+    setAsideUnreadable(path, 2)
+    writeFileSync(path, 'new')
+    writeFileSync(join(dir, 'other.json.unreadable-3'), 'not this one')
+    removeSetAside(path)
+    expect(readdirSync(dir).sort()).toEqual(['history.v1.seal', 'other.json.unreadable-3'])
   })
   it('leaves a missing or empty file alone', () => {
     const dir = mkdtempSync(join(tmpdir(), 'atomic-'))
