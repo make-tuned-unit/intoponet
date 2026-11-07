@@ -765,14 +765,34 @@ function cosmeticInjection(css: string, styleId = cosmeticStyleId): string {
     const id = ${JSON.stringify(styleId)};
     const existing = document.getElementById(id);
     const css = ${JSON.stringify(css)};
+    // A page whose Content-Security-Policy forbids inline styles leaves the style element without a
+    // sheet. The same rules then go in a constructed sheet, which that policy does not cover.
+    const slot = Symbol.for(id);
+    const adopted = document[slot];
+    const unadopt = () => {
+      if (!adopted) return;
+      document.adoptedStyleSheets = document.adoptedStyleSheets.filter((sheet) => sheet !== adopted);
+      delete document[slot];
+    };
     if (!css) {
       existing?.remove();
+      unadopt();
       return;
     }
     const style = existing instanceof HTMLStyleElement ? existing : document.createElement('style');
     style.id = id;
     style.textContent = css;
     if (!style.isConnected) (document.head || document.documentElement).appendChild(style);
+    if (style.sheet) {
+      unadopt();
+      return;
+    }
+    try {
+      const sheet = adopted || new CSSStyleSheet();
+      sheet.replaceSync(css);
+      if (!adopted) Object.defineProperty(document, slot, { value: sheet, configurable: true });
+      if (!document.adoptedStyleSheets.includes(sheet)) document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
+    } catch {}
   })()`
 }
 

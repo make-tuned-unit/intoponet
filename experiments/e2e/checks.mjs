@@ -2949,7 +2949,8 @@ export const checks = {
     const markup = (name) => `<!doctype html><html><head><meta charset="utf-8"><title>${name}</title></head><body style="font:16px system-ui;margin:0">
       <header>${name} header</header><div id="wrap"><div id="promo" class="banner">PROMO-SENTINEL buy now</div>
       <main><article><h1>${name} story</h1><p id="para">The story text on ${name}.</p></article></main></div></body></html>`
-    const siteA = createServer((request, response) => { response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); response.end(markup('Site A')) })
+    // /strict-csp forbids inline styles, as some sites do: the tweaks must still apply there.
+    const siteA = createServer((request, response) => { response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', ...(request.url.startsWith('/strict-csp') ? { 'content-security-policy': "style-src 'self'" } : {}) }); response.end(markup('Site A')) })
     const siteB = createServer((request, response) => { response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); response.end(markup('Site B')) })
     await new Promise((resolve) => siteA.listen(0, '127.0.0.1', resolve))
     await new Promise((resolve) => siteB.listen(0, 'localhost', resolve))
@@ -3060,6 +3061,10 @@ export const checks = {
       await setTweakCss('#para { letter-spacing: 3px }')
       await saveStyles()
       await ctx.wait(statusIs('Styles saved'), 8000, 'the styles to be saved again')
+      // A page of site A whose Content-Security-Policy forbids inline styles gets the same tweaks.
+      await navigate(`http://127.0.0.1:${portA}/strict-csp`)
+      const strict = await pageStyles(await ctx.page(`127.0.0.1:${portA}/strict-csp`))
+      expect(strict.promo === 'none' && strict.wrapMax === '672px' && strict.spacing === '3px', `A page that forbids inline styles (CSP) did not get site A's tweaks: ${JSON.stringify(strict)}.`)
 
       // Site B has none of it.
       await navigate(urlB)
