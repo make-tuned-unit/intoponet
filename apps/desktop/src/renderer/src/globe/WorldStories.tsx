@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { BookOpen, ChevronDown, Eye, GalleryHorizontal, Globe2, History } from 'lucide-react'
 import type { GlobalStory } from '../../../shared/news/globalStories'
 import type { NewsHeadline, WikiNewsItem } from '../../../shared/news/newsDigest'
@@ -53,6 +53,7 @@ export function WorldStories({
   inTheNews,
   now,
   focusedId,
+  sourcesFor = null,
   onFocus,
   onOpen,
   onHistory,
@@ -63,6 +64,8 @@ export function WorldStories({
   inTheNews: WikiNewsItem[]
   now: number
   focusedId: string | null
+  /** Show this story's sources (the guided tour's Compare step); back to null puts them away again. */
+  sourcesFor?: string | null
   /** Highlight a story's countries on the globe (null clears). */
   onFocus: (story: GlobalStory | null) => void
   onOpen: (url: string) => void
@@ -74,6 +77,20 @@ export function WorldStories({
   // A story focused from outside the list (the guided tour opens one) shows its sources too.
   useEffect(() => { if (focusedId) setExpanded(focusedId) }, [focusedId])
   const [carousel, setCarousel] = useState<CarouselLaunch | null>(null)
+  const sourcesButton = useRef<HTMLButtonElement>(null)
+  const askedSources = useRef(false)
+  useEffect(() => {
+    const story = sourcesFor ? stories.find((item) => item.id === sourcesFor) : undefined
+    if (story) {
+      askedSources.current = true
+      setExpanded(story.id)
+      // From its "See all sources" button when that is on screen, else from the middle of the window.
+      setCarousel({ story, from: sourcesButton.current?.getBoundingClientRect() ?? new DOMRect(window.innerWidth / 2, window.innerHeight / 2, 0, 0) })
+    } else if (askedSources.current) {
+      askedSources.current = false
+      setCarousel(null)
+    }
+  }, [sourcesFor]) // eslint-disable-line react-hooks/exhaustive-deps
   // Story titles in your language (same Original ↔ English choice as the headlines inside).
   const titleItems = useMemo(() => stories.map((story) => ({ key: story.id, title: story.title, lang: story.headlines.find((item) => item.url === story.url)?.lang ?? null })), [stories])
   const titles = useTranslatedTitles(titleItems, translation)
@@ -149,6 +166,7 @@ export function WorldStories({
                       <div className="world-actions">
                         {story.headlines.length >= 3 && (
                           <button
+                            ref={sourcesButton}
                             type="button"
                             className="globe-history-button world-sources-button"
                             onClick={(event) => setCarousel({ story, from: event.currentTarget.getBoundingClientRect() })}

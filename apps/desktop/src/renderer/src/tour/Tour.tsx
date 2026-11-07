@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { ArrowLeft, ArrowRight, Pause, Play, X } from 'lucide-react'
 import { TOUR_STEPS, type TourContext, type TourControls } from './steps'
@@ -95,20 +96,25 @@ export function Tour({ controls, onClose }: { controls: TourControls; onClose: (
     return () => cancelAnimationFrame(frame)
   }, [playing, busy, index]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Listening from the start, never re-added: the tour hears its keys before anything a step opens (the
+  // sources carousel would otherwise take Enter and open an article).
+  const keys = useRef({ close, next, back })
+  keys.current = { close, next, back }
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') { event.preventDefault(); event.stopImmediatePropagation(); close() }
-      else if (event.key === 'ArrowRight' || event.key === 'Enter') { event.preventDefault(); event.stopImmediatePropagation(); next() }
-      else if (event.key === 'ArrowLeft') { event.preventDefault(); event.stopImmediatePropagation(); back() }
+      if (event.key === 'Escape') { event.preventDefault(); event.stopImmediatePropagation(); keys.current.close() }
+      else if (event.key === 'ArrowRight' || event.key === 'Enter') { event.preventDefault(); event.stopImmediatePropagation(); keys.current.next() }
+      else if (event.key === 'ArrowLeft') { event.preventDefault(); event.stopImmediatePropagation(); keys.current.back() }
       else if (event.key === ' ') { event.preventDefault(); event.stopImmediatePropagation(); setPlaying((value) => !value) }
     }
     window.addEventListener('keydown', onKey, { capture: true })
     return () => window.removeEventListener('keydown', onKey, { capture: true })
-  }, [close, next, back])
+  }, [])
 
   const place = cardPlace(box)
   const spring = reduceMotion ? { duration: 0 } : { type: 'spring' as const, stiffness: 170, damping: 24 }
-  return (
+  // Over everything, including what a step opens in a layer of its own (the sources carousel).
+  return createPortal(
     <div className="tour" role="dialog" aria-modal="true" aria-labelledby="tour-title" aria-describedby="tour-body">
       {box ? (
         <motion.div className="tour-spotlight" aria-hidden="true" data-target={lit?.target} initial={false} animate={box} transition={spring} />
@@ -154,6 +160,7 @@ export function Tour({ controls, onClose }: { controls: TourControls; onClose: (
           </button>
         </footer>
       </motion.section>
-    </div>
+    </div>,
+    document.body,
   )
 }

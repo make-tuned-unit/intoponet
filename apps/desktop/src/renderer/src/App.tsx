@@ -453,6 +453,8 @@ export function App() {
   /** The mode to return to when ⌃⌘S shows a hidden sidebar again. */
   const sidebarShownMode = useRef<'icons' | 'open'>('icons')
   const [railPeek, setRailPeek] = useState(false)
+  /** The guided tour's workspace steps show the sidebar open; the saved sidebar is left as it is. */
+  const [tourSidebar, setTourSidebar] = useState(false)
   const railPinned = sidebar.mode === 'open'
   const setSidebar = (next: TabSidebarState): void => {
     setSidebarState(next)
@@ -2301,6 +2303,8 @@ export function App() {
   }, [focusedPlace, newsDigest])
   const risingTerms = newsDigest?.rising ?? []
   const [worldStory, setWorldStory] = useState<GlobalStory | null>(null)
+  /** The world story whose sources the guided tour shows, so its Compare button is there to see. */
+  const [worldSources, setWorldSources] = useState<string | null>(null)
   const termEmphasis = useMemo(
     () => (activeTerm
       ? new Set(activeTerm.recentCountries.map((code) => `news:country:${code}`))
@@ -2766,6 +2770,8 @@ export function App() {
     setKnowledgeView(null)
     setLibraryOpen(false)
     setSettingsOpen(false)
+    setWorldSources(null)
+    setTourSidebar(false)
     setQuery('')
     input.current?.blur()
   }
@@ -2788,6 +2794,8 @@ export function App() {
       setLibraryOpen(false)
       setSettingsOpen(false)
       setWorldStory(null)
+      setWorldSources(null)
+      setTourSidebar(false)
       showEarth()
     },
     showGlobe: () => {
@@ -2848,11 +2856,12 @@ export function App() {
       }
     },
     showList: (view) => setListView(view),
-    openWorldStory: async () => {
+    openWorldStory: async (sources = false) => {
       const story = newsDigest?.global?.[0]
       if (!story) return null
       setListView('world')
       setWorldStory(story)
+      setWorldSources(sources ? story.id : null)
       return story.headlines.find((headline) => /^en/i.test(headline.lang ?? 'en'))?.title ?? story.title
     },
     prepareOlds: (headline) => { void window.intoponet.olds.thread({ kind: 'headline', text: headline }).catch(() => undefined) },
@@ -2871,8 +2880,9 @@ export function App() {
     },
     showBookmarks: (open) => setBookmarksOpen(open),
     showMyMap: (open) => (open ? showLibrary() : setLibraryOpen(false)),
-    showPage: (url) => {
+    showPage: (url, options) => {
       tourClear()
+      setTourSidebar(options?.sidebar === true)
       const scene = tourScene.current
       const current = (): boolean => tourScene.current === scene
       const shown = tourPageQueue.current.then(async () => {
@@ -2929,13 +2939,16 @@ export function App() {
       setPeakIndex(-1)
       setQuery('')
       setWorldStory(null)
+      setWorldSources(null)
+      setTourSidebar(false)
     },
   }
 
   // Kept open, the sidebar stays in full width too (the bottom dock then shows no tabs); hidden, only a peek shows it.
-  const railShown = sidebar.mode === 'hidden' ? railPeek : !fullWidth || sidebar.mode === 'open' || railPeek
+  // The tour's workspace steps show it open whatever its mode, without changing the mode.
+  const railShown = tourSidebar || (sidebar.mode === 'hidden' ? railPeek : !fullWidth || sidebar.mode === 'open' || railPeek)
   const railVisible = panel.isVisible && tabs.length > 0 && !fieldLabOpen && railShown
-  const railOpen = railVisible && (railExpanded || railPinned || railPeek)
+  const railOpen = railVisible && (railExpanded || railPinned || railPeek || tourSidebar)
   const startPageBookmarks = useMemo(() => startBookmarks(bookmarks, recents), [bookmarks, recents])
   const startPageRecents = useMemo(() => startRecents(recents, { isPrivate: panel.isPrivate === true }), [recents, panel.isPrivate])
   const startPageNews = useMemo(() => startNews(newsDigest), [newsDigest])
@@ -3041,7 +3054,7 @@ export function App() {
       <TabRail
         tabs={tabs}
         visible={railVisible}
-        expanded={railExpanded || railPeek}
+        expanded={railExpanded || railPeek || tourSidebar}
         pinned={railPinned}
         width={sidebar.width}
         onExpandedChange={(expanded) => {
@@ -3389,6 +3402,7 @@ export function App() {
             stories: newsDigest?.global ?? [],
             inTheNews: newsDigest?.inTheNews ?? [],
             focusedId: worldStory?.id ?? null,
+            sourcesFor: worldSources,
             onFocus: setWorldStory,
             onArticleHistory: (title) => loadOlds([{ query: { kind: 'wikipedia' as const, title }, label: title }]),
           }}

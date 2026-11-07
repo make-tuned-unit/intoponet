@@ -29,8 +29,11 @@ export type TourControls = {
   typeInAddressBar(text: string): Promise<void>
   /** Show the globe's list: World stories, Peaks… */
   showList(view: 'world' | 'top' | 'rising'): void
-  /** Open the most widely covered story in the World list; its headline, if any. Already open, nothing changes. */
-  openWorldStory(): Promise<string | null>
+  /**
+   * Open the most widely covered story in the World list, with its sources up for `sources` (and put away
+   * otherwise); its headline, if any. Already open, nothing changes.
+   */
+  openWorldStory(sources?: boolean): Promise<string | null>
   /** Look up a headline's history ahead of time (so its step opens at once). */
   prepareOlds(headline: string): void
   /**
@@ -42,9 +45,10 @@ export type TourControls = {
   showMyMap(open: boolean): void
   /**
    * A web page in a tab of the tour's own, kept out of the way while the tour talks, with no panel over
-   * it; the same tab again when it is still open.
+   * it; the same tab again when it is still open. `sidebar`: the tab sidebar shown open for this step
+   * (the saved sidebar is not changed).
    */
-  showPage(url: string): Promise<void>
+  showPage(url: string, options?: { sidebar?: boolean }): Promise<void>
   showKnowledge(open: boolean): void
   /** Put everything back as it was. */
   finish(): void
@@ -70,6 +74,8 @@ const PAGE = 'https://en.wikipedia.org/wiki/Earth'
 
 /** The page behind the browsing, tab and workspace steps. */
 const showPage = (controls: TourControls): Promise<void> => controls.showPage(PAGE)
+/** The workspace steps: the page, with the sidebar open so its workspace controls show. */
+const showPageWithSidebar = (controls: TourControls): Promise<void> => controls.showPage(PAGE, { sidebar: true })
 
 /** The Olds for the world story the tour opened (looked up again when a step is reached by its dot). */
 const showOlds = async (controls: TourControls, context: TourContext): Promise<void> => {
@@ -189,7 +195,7 @@ export const TOUR_STEPS: TourStep[] = [
     run: async (controls, context) => {
       await controls.typeInAddressBar('')
       controls.reset()
-      const opened = await controls.openWorldStory()
+      const opened = await controls.openWorldStory(true)
       context.headline ??= opened
     },
   },
@@ -376,7 +382,7 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'Make a workspace for work, a trip or a story you follow: each has its own name, colour, pinned tabs, folders and open tabs. Switch with ⌃1–9, a sideways swipe on the sidebar, or the command menu; sleeping tabs stay asleep. A favourites row can be shared by every workspace, and private browsing is never part of one.',
     target: ['.tab-rail-workspaces', '[aria-label="New workspace"]', '.tab-rail'],
     seconds: 10,
-    run: showPage,
+    run: showPageWithSidebar,
   },
   {
     id: 'place-workspaces',
@@ -385,7 +391,7 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'Choose Anchor to a place from a workspace’s menu, and switching to it flies the globe there while your page stays open. Its sidebar lists that place’s latest headlines, and tabs you open from them stay in that workspace. Only your own map shows the anchor.',
     target: ['[aria-label^="Actions for workspace"]', '.tab-rail-workspaces', '[aria-label="New workspace"]', '.tab-rail'],
     seconds: 11,
-    run: showPage,
+    run: showPageWithSidebar,
   },
   {
     id: 'sign-ins',
@@ -394,7 +400,7 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'Choose Separate sign-ins from a workspace’s menu and it keeps its own cookies, site data, saved passwords and permissions, so a site you are signed in to in Main does not know you there. Turning it off, or clearing it, deletes only that workspace’s data.',
     target: ['[aria-label^="Actions for workspace"]', '.tab-rail-workspaces', '[aria-label="New workspace"]', '.tab-rail'],
     seconds: 11,
-    run: showPage,
+    run: showPageWithSidebar,
   },
   {
     id: 'absorb',
