@@ -70,7 +70,7 @@ import { PdfBar } from './pdf/PdfBar'
 import type { PdfExportEvent } from '@intoponet/browser-api'
 import { formatPublicSourceHealth } from './globe/publicFieldStatus'
 import { SiteIcon } from './SiteIcon'
-import { FreeCoverageBar } from './access/FreeCoverageBar'
+import { FreeCoverageBar, freeCoverageFor } from './access/FreeCoverageBar'
 import { learnedPaywalls, mayRememberSite, rememberPaywall } from './access/learnedPaywalls'
 import { hostIsPaywalled } from '../../shared/news/paywall'
 import { hostOf } from './favicons'
@@ -142,7 +142,7 @@ import { headlinesNearAnchor } from '../../shared/news/anchorHeadlines'
 import { useNowPlaying } from './nowPlaying/NowPlayingControl'
 import { PageTabStrip } from './PageTabStrip'
 import './shellChrome.css'
-import { SplitChrome, SplitStartFrame } from './SplitPages'
+import { OtherSideFrame, SplitChrome, SplitStartFrame, shellDrawnSide } from './SplitPages'
 import { BookmarkPane, type PaneFilter } from './BookmarkPane'
 import { groupOf, moveBookmarkToGroup, UNSORTED_GROUP_ID } from './bookmarkGroups'
 import { AnimatePresence } from 'motion/react'
@@ -210,7 +210,7 @@ import { SettingsPanel } from './settings/SettingsPanel'
 import { mergeImportedLibrary } from './browserImport/mergeImport'
 import { PermissionBar, SitePermissionChips } from './permissions/PermissionBar'
 import { ExternalOpenBar, useExternalOpenRequests } from './browsing/ExternalOpenBar'
-import { ErrorPage, navigationErrorMessage } from './browsing/ErrorPage'
+import { ErrorCard, ErrorPage, navigationErrorMessage } from './browsing/ErrorPage'
 import { SiteTweaksPanel } from './siteTweaks/SiteTweaksPanel'
 import { PasswordBar } from './passwords/PasswordBar'
 import { BookmarkSiteBar, type BookmarkSiteOffer } from './passwords/BookmarkSiteBar'
@@ -230,7 +230,8 @@ import { FeedbackPrompt } from './FeedbackPrompt'
 import { startBookmarks, startNews, startRecents } from './startPageModel'
 import { buildStoryTerrain, storyAt, storyTerrainKey } from './globe/storyTerrain'
 import { HighestPeakButton, STORY_MARKER_PREFIX, StoryCardContent, StoryPanel, SUMMIT_COLOR, storyLabel, storyMarkerId, storyMarkers, strandEnds } from './globe/StoryPeaks'
-import { inferLauncherIntent } from '@intoponet/browser-api'
+import { inferLauncherIntent, resolveNavigationIntent } from '@intoponet/browser-api'
+import { LauncherClear } from './launcherClear'
 
 const bookmarkPaneOpenKey = 'intoponet.bookmark-pane.open.v1'
 const globePrefsKey = 'intoponet.globe.v2'
@@ -331,7 +332,14 @@ function tabCaption(tab: PageTabSnapshot): string {
 type OldsEntry = { query: OldsQuery; label: string; article?: CoverageArticle }
 
 export function App() {
-  const [query, setQuery] = useState('')
+  const [query, setQueryNow] = useState('')
+  // After Enter the bar clears once the navigation starts; anything that changes the bar since (typing,
+  // ⌘L) goes through setQuery, which keeps that late clear from wiping it.
+  const launcherClear = useRef(new LauncherClear())
+  const setQuery = (value: string): void => {
+    launcherClear.current.edited()
+    setQueryNow(value)
+  }
   const [panel, setPanel] = useState<BrowserPanelSnapshot>(emptyPanel)
   const translation = useTranslate(panel.isVisible ? panel.url : '', panel.isLoading)
   // Paywalled articles: offer the same story from other (free) outlets.
@@ -355,6 +363,9 @@ export function App() {
     }, 1_200)
     return () => clearTimeout(timer)
   }, [panel.url, panel.isLoading, panel.isVisible, panel.isPrivate])
+  // "Free coverage" in a Compare side's header: that side's page, whose choices show even if its bar was closed.
+  const [coverageAsked, setCoverageAsked] = useState<string | null>(null)
+  const freeCoverage = freeCoverageFor({ url: panel.url, title: panel.title }, pageAccess, accessHidden, coverageAsked)
   const [activeTopic, setActiveTopic] = useState(
     () => localStorage.getItem(topicKey) ?? 'Open knowledge',
   )
@@ -797,6 +808,8 @@ export function App() {
   )
   const isSecureOrigin = panel.url.startsWith('https:')
   const onStartPage = panel.isVisible && panel.isStartPage === true
+  // Pages side by side: the side not in focus whose error or start page the shell draws in its half.
+  const otherSide = shellDrawnSide(panel.split)
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)')
     const onChange = (): void => setReduceMotion(media.matches)
@@ -917,6 +930,10 @@ export function App() {
         setTabs(event.tabs)
         return
       }
+      if (event.type === 'navigation-started') {
+        if (launcherClear.current.started(event.url)) setQueryNow('')
+        return
+      }
       if (event.type === 'navigation-failed') {
         setError(`${event.reason} (${event.url})`)
         return
@@ -954,8 +971,8 @@ export function App() {
   useEffect(() => {
     if (!panel.url || !/^https?:\/\//.test(panel.url)) return
     // An address that failed to load (a typo, a site that is down) is not a page visited, and would come back
-    // as an address bar completion. (Its address reaches the panel only with the error.)
-    if (panel.loadError) return
+    // as an address bar completion. Nor is one still loading, before any page has arrived (isPending).
+    if (panel.loadError || panel.isPending) return
     if (panel.isPrivate || !privacySettings.footprints || isExcludedSite(panel.url, privacyState?.excludedSites ?? [])) return
     setRecents((current) =>
       rememberRecent(current, {
@@ -964,7 +981,7 @@ export function App() {
         visitedAt: new Date().toISOString(),
       }),
     )
-  }, [panel.title, panel.url, panel.loadError, panel.isPrivate, privacySettings.footprints, privacyState?.excludedSites])
+  }, [panel.title, panel.url, panel.loadError, panel.isPending, panel.isPrivate, privacySettings.footprints, privacyState?.excludedSites])
 
   useEffect(() => {
     void window.intoponet.passwords.pageState().then(setPasswordState, () => undefined)
@@ -1359,8 +1376,11 @@ export function App() {
     rememberScale('topic', scaleDistance.topic, topic)
   }
 
-  /** Shared by the field launcher and the full-screen dock search. */
-  const navigateFromLauncher = (raw: string, options: { intent?: NavigationIntent; disposition?: OpenDisposition } = {}): Promise<void> => {
+  /**
+   * Shared by the field launcher and the full-screen dock search. `clear`: Enter in the address bar,
+   * which clears it once the navigation has started (launcherClear.ts).
+   */
+  const navigateFromLauncher = (raw: string, options: { intent?: NavigationIntent; disposition?: OpenDisposition; clear?: boolean } = {}): Promise<void> => {
     const value = raw.trim()
     if (!value) return Promise.resolve()
     setError('')
@@ -1371,15 +1391,27 @@ export function App() {
       setError(reason instanceof Error ? reason.message : 'Could not understand that search or address.')
       return Promise.reject(reason)
     }
+    let started: string | null = null
+    try {
+      started = intent.kind === 'topic' ? null : resolveNavigationIntent(intent)
+    } catch {
+      started = null
+    }
+    const ticket = options.clear ? launcherClear.current.submit(started) : 0
+    const settled = (): void => {
+      if (options.clear && launcherClear.current.settled(ticket)) setQueryNow('')
+    }
     if (intent.kind === 'topic') {
       rememberTopic(intent.value)
       setBrowserFullWidth(false)
       void window.intoponet.browserHost.close()
+      settled()
       return Promise.resolve()
     }
     // A search tags what is browsed and saved next with its words; one made privately leaves nothing behind.
     if (intent.kind === 'search' && !privacyState?.privateMode && !panel.isPrivate) setResearchTopic(intent.value)
-    return window.intoponet.browserHost.open(intent, options.disposition).catch((reason: unknown) => {
+    return window.intoponet.browserHost.open(intent, options.disposition).then(settled, (reason: unknown) => {
+      if (options.clear) launcherClear.current.failed(ticket)
       setError(navigationErrorMessage(reason))
       throw reason
     })
@@ -1388,10 +1420,7 @@ export function App() {
   const submit = (event: FormEvent): void => {
     event.preventDefault()
     if (omnibox.submit()) return
-    const submittedDraft = query
-    void navigateFromLauncher(submittedDraft).then(() => {
-      if (input.current?.value === submittedDraft) setQuery('')
-    }).catch(() => undefined)
+    void navigateFromLauncher(query, { clear: true }).catch(() => undefined)
   }
 
   const setBookmarksOpen = (open: boolean): void => {
@@ -2591,15 +2620,12 @@ export function App() {
       void window.intoponet.browserHost.activateTab(row.tabId).catch(() => setError('That tab could not be shown.'))
       return
     }
-    const submittedDraft = query
     const intent: NavigationIntent =
       row.kind === 'search' ? { kind: 'search', value: row.value }
         : row.kind === 'topic' ? { kind: 'topic', value: row.value }
           : row.kind === 'url' ? { kind: 'url', value: row.value }
             : { kind: 'url', value: row.url }
-    void navigateFromLauncher(intent.value, { intent, ...(disposition && intent.kind !== 'topic' ? { disposition } : {}) }).then(() => {
-      if (input.current?.value.startsWith(submittedDraft)) setQuery('')
-    }).catch(() => undefined)
+    void navigateFromLauncher(intent.value, { intent, clear: true, ...(disposition && intent.kind !== 'topic' ? { disposition } : {}) }).catch(() => undefined)
   }
   const omniboxTabs = useMemo(() => tabs.filter((tab) => !tab.isStartPage), [tabs])
   /**
@@ -2669,7 +2695,7 @@ export function App() {
     onDismiss: () => setPlacesDismissed(true),
     onPasteAndGo: (text) => {
       setQuery(text)
-      void navigateFromLauncher(text).then(() => setQuery('')).catch(() => undefined)
+      void navigateFromLauncher(text, { clear: true }).catch(() => undefined)
     },
   })
 
@@ -4255,11 +4281,11 @@ export function App() {
             onShowAll={() => { setBookmarkFilterRequest({ filter: 'pdfs', at: Date.now() }); setBookmarksOpen(true) }}
           />
           {translateOpen && <TranslateBar model={translation} onClose={() => setTranslateOpen(false)} site={pageSite} neverSite={neverThisSite} onNeverSite={setNeverSite} />}
-          {pageAccess && pageAccess.url === panel.url && !accessHidden.includes(hostOf(pageAccess.url)) && (
+          {freeCoverage && (
             <FreeCoverageBar
-              title={pageAccess.title || panel.title}
-              url={pageAccess.url}
-              signals={pageAccess.signals}
+              title={freeCoverage.title || panel.title}
+              url={freeCoverage.url}
+              signals={freeCoverage.signals}
               candidates={[
                 ...(newsDigest?.global ?? []).flatMap((story) => story.headlines),
                 ...(newsDigest?.countries ?? []).flatMap((country) => country.headlines.map((headline) => ({ ...headline, countryCode: country.countryCode }))),
@@ -4269,15 +4295,16 @@ export function App() {
               onOpen={(url) => void window.intoponet.browserHost.open({ kind: 'url', value: url })}
               onSearch={(query) => void window.intoponet.browserHost.open({ kind: 'search', value: query })}
               onClose={() => {
-                const next = [...new Set([hostOf(pageAccess.url), ...accessHidden])].slice(0, 300)
+                setCoverageAsked(null)
+                const next = [...new Set([hostOf(freeCoverage.url), ...accessHidden])].slice(0, 300)
                 setAccessHidden(next)
                 // Hidden for this session only when the tab is private or the site is left out.
-                if (mayRememberSite(pageAccess.url, panel.isPrivate, excludedSitesRef.current)) {
+                if (mayRememberSite(freeCoverage.url, panel.isPrivate, excludedSitesRef.current)) {
                   try {
                     // From what is stored, not this session's list (which may hold private or left-out hosts).
                     const stored = JSON.parse(localStorage.getItem('intoponet.paywall-bar-hidden.v1') ?? '[]') as unknown
                     const kept = Array.isArray(stored) ? stored.filter((host): host is string => typeof host === 'string') : []
-                    localStorage.setItem('intoponet.paywall-bar-hidden.v1', JSON.stringify([...new Set([hostOf(pageAccess.url), ...kept])].slice(0, 300)))
+                    localStorage.setItem('intoponet.paywall-bar-hidden.v1', JSON.stringify([...new Set([hostOf(freeCoverage.url), ...kept])].slice(0, 300)))
                   } catch { /* convenience only */ }
                 }
               }}
@@ -4437,6 +4464,31 @@ export function App() {
                 />
               </SplitStartFrame>
             )}
+            {/* The side not in focus, when its own view is hidden: its error card or start page fills its half (a click focuses it). */}
+            {panel.isVisible && panel.split && otherSide && (
+              <OtherSideFrame split={panel.split} side={otherSide.side}>
+                {otherSide.tab.loadError ? (
+                  <ErrorCard
+                    error={otherSide.tab.loadError}
+                    label={otherSide.side === 'left' ? 'Left page' : 'Right page'}
+                    onRetry={() => void window.intoponet.browserHost.focusSplitSide(otherSide.side).then(() => window.intoponet.browserHost.reload(), () => undefined)}
+                  />
+                ) : (
+                  <div className="split-other-start" inert>
+                    <StartPage
+                      tabId={otherSide.tab.id}
+                      bookmarks={startPageBookmarks}
+                      recents={startPageRecents}
+                      news={startPageNews}
+                      newsLoaded={newsDigest !== null}
+                      isPrivate={panel.isPrivate === true}
+                      onSubmit={() => Promise.resolve()}
+                      onOpen={() => undefined}
+                    />
+                  </div>
+                )}
+              </OtherSideFrame>
+            )}
           </div>
         </section>
       )}
@@ -4448,6 +4500,13 @@ export function App() {
           compare={{
             // A side's Translate: focus that side (Translate acts on the focused page), then open the bar.
             translate: (side) => { void window.intoponet.browserHost.focusSplitSide(side).then(() => setTranslateOpen(true), () => undefined) },
+            // A side's Free coverage: that side takes the focus (if it has not) and its choices open, also where they were closed.
+            freeCoverage: (side) => {
+              const url = panel.split?.[side].url
+              if (!url) return
+              setCoverageAsked(url)
+              if (panel.split?.focused !== side) void window.intoponet.browserHost.focusSplitSide(side).catch(() => undefined)
+            },
             // The Olds for a Compare pair: the story's own history, as the world story's button opens it.
             olds: (storyId) => {
               const story = newsDigest?.global?.find((item) => item.id === storyId)

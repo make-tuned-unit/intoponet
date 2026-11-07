@@ -652,18 +652,20 @@ function pagePanelState(): BrowserPanelSnapshot {
       isStartPage: true,
     }
   }
-  // A page whose renderer kept crashing waits, blank, for Reload: the toolbar keeps its address and title.
+  // Nothing committed yet: a new tab before its first page arrives, a page whose renderer crashed (or
+  // kept crashing, waiting blank for Reload). The toolbar shows the address it is loading or will load.
   const tab = openTabs.find((item) => item.view === pageView)
-  const crashed = tab && !contents.getURL() && safeHttpUrl(tab.url) && !crashRecovery.canAutoRecover(tab.id) ? tab : undefined
+  const pending = tab && !contents.getURL() && safeHttpUrl(tab.url) ? tab : undefined
   return {
-    url: capUrl(crashed ? crashed.url : contents.getURL()),
-    title: capTitle(crashed ? crashed.title : contents.getTitle()),
+    url: capUrl(pending ? pending.url : contents.getURL()),
+    title: capTitle(pending ? pending.title || contents.getTitle() : contents.getTitle()),
     canGoBack: contents.navigationHistory.canGoBack(),
     canGoForward: contents.navigationHistory.canGoForward(),
     isLoading: contents.isLoading(),
     isVisible: pageAttached,
     isPrivate: privateViews.has(pageView),
     zoomFactor: Number(contents.getZoomFactor().toFixed(3)),
+    ...(pending ? { isPending: true as const } : {}),
     ...loadErrorOf(pageView),
   }
 }
@@ -1169,7 +1171,16 @@ function splitPanelState(): SplitPanelSnapshot | undefined {
     const snapshot = snapshots.find((item) => item.id === tab.id)
     const url = snapshot?.url ?? ''
     const compare = compareLabelFor(tab.compare, url)
-    return { id: tab.id, url, title: snapshot?.title ?? '', secure: safeHttpUrl(url)?.protocol === 'https:', ...(compare ? { compare } : {}) }
+    return {
+      id: tab.id,
+      url,
+      title: snapshot?.title ?? '',
+      secure: safeHttpUrl(url)?.protocol === 'https:',
+      ...(compare ? { compare } : {}),
+      // Drawn by the shell in that side's half (its view is hidden), focused or not.
+      ...(tab.loadError ? { loadError: tab.loadError } : {}),
+      ...(tab.start ? { isStartPage: true as const } : {}),
+    }
   }
   const left = pair.focused === 'left' ? pair.focusedTab : pair.otherTab
   const right = pair.focused === 'left' ? pair.otherTab : pair.focusedTab
@@ -1297,7 +1308,8 @@ function focusSplitSide(side: SplitSide): void {
   const target = openTabs.find((tab) => tab.split?.side === side && (tab.view === pageView || tab.view === companionView))
   if (!target || target.view === pageView) return
   showTab(target.id)
-  if (!viewGone(target.view)) target.view.webContents.focus()
+  // A start or error page is the shell's, drawn over a hidden view: the keyboard stays with the shell.
+  if (!viewGone(target.view) && !target.start && !target.loadError) target.view.webContents.focus()
 }
 
 /** The divider moved: the shown pair's ratio (both tabs keep it). */
@@ -1808,11 +1820,13 @@ function createStartTab(): void {
   emitPanelState()
 }
 
-/** The tab is about to load a page: stop drawing the start page and show the view. */
-function leaveStartPage(view: WebContentsView): void {
+/** The tab is about to load a page (`url`): stop drawing the start page and show the view. */
+function leaveStartPage(view: WebContentsView, url?: string): void {
   const tab = tabOfView(view)
   if (!tab?.start) return
   tab.start = false
+  // Until its first page commits, the tab and the toolbar show the address it is loading.
+  if (url && safeHttpUrl(url)) tab.url = url
   if (pageView === view && pageAttached) view.setVisible(pageViewShown(view))
   emitTabs()
   if (pageView === view) emitPanelState()
@@ -1980,8 +1994,28 @@ function wakeTab(tab: OpenTab): void {
       .catch(() => undefined)
       .finally(() => restoringViews.delete(view))
   } else if ((!current || current === 'about:blank') && safeHttpUrl(tab.url) && !restoringViews.has(tab.view) && crashRecovery.canAutoRecover(tab.id)) {
-    void tab.view.webContents.loadURL(tab.url)
+    loadBlankTab(tab)
   }
+}
+
+/**
+ * A tab whose view is blank loads its page: where it was when its renderer crashed (back/forward
+ * list and scroll restored, as a sleeping tab wakes), else at its address.
+ */
+function loadBlankTab(tab: OpenTab): void {
+  const view = tab.view
+  const history = crashRecovery.takeHistory(tab.id)
+  if (!history) {
+    void view.webContents.loadURL(tab.url).catch(() => undefined)
+    return
+  }
+  restoringViews.add(view)
+  void view.webContents.navigationHistory.restore(history)
+    // Only when the list could not be restored at all: a page that failed shows its error page, and a
+    // load stopped by a newer navigation (a click, an address typed meanwhile) must not be undone.
+    .catch(() => (viewGone(view) || view.webContents.getURL() ? undefined : view.webContents.loadURL(tab.url)))
+    .catch(() => undefined)
+    .finally(() => restoringViews.delete(view))
 }
 
 /** A pinned tab is away from home once it is on another site (moving around the same site is not leaving). */
@@ -3067,7 +3101,7 @@ function blockedPopup(opener: WebContentsView, url: string): void {
 function popupsAllowed(contents: Electron.WebContents, isPrivate: boolean, scope = 'default'): boolean {
   return sitePermissions?.check(originOf(contents.getURL()), ['popups'], isPrivate, null, scope) === true
 }
-const crashRecovery = new CrashRecoveryPolicy()
+const crashRecovery = new CrashRecoveryPolicy<TabHistory>()
 
 /** A popup window opened by a page: http(s) only, nested popups become tabs, closes with its page. */
 function wirePopupWindow(child: BrowserWindow, opener: WebContentsView): void {
@@ -3385,13 +3419,13 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
     event.preventDefault()
     Menu.buildFromTemplate(template).popup({ window })
   })
-  view.webContents.on('did-start-navigation', (_event, _url, inPlace, mainFrame) => {
+  view.webContents.on('did-start-navigation', (_event, startedUrl, inPlace, mainFrame) => {
     if (!mainFrame || inPlace) return
     loadingDocument.add(view)
     // The page is about to be replaced: its inserted style and any previewed element go with it.
     previewSelectors.delete(view.webContents.id)
     blockedAdAddresses.delete(view.webContents.id)
-    leaveStartPage(view)
+    leaveStartPage(view, startedUrl)
     translateService?.forgetPage(view.webContents.id)
     frequencyNavigation += 1
     frequencyLoadSucceeded = false
@@ -3551,12 +3585,18 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
     if (companionView !== view) return
     // Chromium hands the keyboard to a page starting a new document (a redirect, a page that reloads
     // itself) even beside the focused side. That is not the person choosing this side: the keyboard
-    // goes back. A click in it still chooses it (before-mouse-event).
-    if (loadingDocument.has(view)) {
-      if (pageView && pageAttached && !viewGone(pageView)) pageView.webContents.focus()
+    // goes back. A click in it still chooses it (before-mouse-event). Nor is a failed load's error
+    // document, which can take the keyboard just after the failure is reported: that side's view is
+    // hidden behind the shell's error card, which is what a click chooses it by.
+    const tab = tabOfView(view)
+    if (loadingDocument.has(view) || tab?.loadError || tab?.start) {
+      // Back to the focused side, or to the shell when that side is the shell's own start or error page.
+      if (pageView && pageAttached && !viewGone(pageView)) {
+        if (pageViewShown(pageView) || !window || window.isDestroyed()) pageView.webContents.focus()
+        else window.webContents.focus()
+      }
       return
     }
-    const tab = tabOfView(view)
     if (tab) showTab(tab.id)
   })
   view.webContents.on('did-navigate', (_event, url) => {
@@ -3639,6 +3679,16 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
     const currentUrl = view.webContents.getURL()
     const crashedUrl = safeHttpUrl(currentUrl) ? currentUrl : tab?.url || lastKnownUrl
     const mayAutoRecover = tab ? crashRecovery.recordCrash(tab.id) : false
+    // Its back/forward list outlives the renderer: the page comes back with it (loadBlankTab).
+    if (tab) {
+      let history: TabHistory | undefined
+      try {
+        history = boundedHistory({ entries: view.webContents.navigationHistory.getAllEntries(), index: view.webContents.navigationHistory.getActiveIndex() })
+      } catch {
+        history = undefined
+      }
+      crashRecovery.keepHistory(tab.id, history)
+    }
     if (pageView === view) detachActive()
     if (pageView === view) pageView = null
     protectionPages.remove(view.webContents.id)
@@ -3658,10 +3708,10 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
       pageView = replacement
       lastKnownUrl = crashedUrl
       attachPageView()
-      if (mayAutoRecover) void replacement.webContents.loadURL(crashedUrl)
+      if (mayAutoRecover) loadBlankTab(tab)
     } else if (companionView === view) {
       // The other side of the pair on screen: its replacement takes its place beside the page.
-      if (mayAutoRecover) void replacement.webContents.loadURL(crashedUrl)
+      if (mayAutoRecover) loadBlankTab(tab)
       syncCompanion()
       emitPanelState()
     }
@@ -4007,6 +4057,16 @@ function appMenuState(): AppMenuState {
   }
 }
 
+/**
+ * Loads an address asked for with `open`: says so once the load has started (the address bar clears
+ * then, not when the page has finished loading), and settles when it has loaded or failed.
+ */
+function loadOpened(view: WebContentsView, url: string): Promise<void> {
+  const loading = view.webContents.loadURL(url)
+  emit({ type: 'navigation-started', url })
+  return loading
+}
+
 function createPageView(attach = true): WebContentsView {
   if (pageView) return pageView
   const view = buildView()
@@ -4106,15 +4166,15 @@ async function handleBrowserCommand(
       // ⌘↵ / ⌥↵ from the address bar: always a fresh tab, behind or in front.
       if (command.disposition) {
         const view = createBrowserTab(url, command.disposition === 'foreground-tab')
-        if (view) await view.webContents.loadURL(url)
+        if (view) await loadOpened(view, url)
         break
       }
       // From a new tab's start page, the page opens in that same tab.
       if (pageView && pageAttached && isStartView(pageView)) {
         const view = pageView
-        leaveStartPage(view)
+        leaveStartPage(view, url)
         lastKnownUrl = url
-        await view.webContents.loadURL(url)
+        await loadOpened(view, url)
         break
       }
       // Reuse an open tab only when it matches the current mode (private tabs and normal tabs never mix).
@@ -4124,7 +4184,7 @@ async function handleBrowserCommand(
         break
       }
       const view = createBrowserTab(url)
-      if (view) await view.webContents.loadURL(url)
+      if (view) await loadOpened(view, url)
       break
     }
     case 'new-tab':
@@ -4337,7 +4397,7 @@ async function handleBrowserCommand(
       const target = safeHttpUrl(command.url)
       if (!target) throw new Error('Only HTTP and HTTPS destinations are supported.')
       const view = createPageView()
-      leaveStartPage(view)
+      leaveStartPage(view, target.toString())
       const tab = tabOfView(view)
       if (tab) crashRecovery.manualRetry(tab.id)
       attachPageView()
@@ -4363,7 +4423,7 @@ async function handleBrowserCommand(
       if (!currentUrl || currentUrl === 'about:blank') {
         if (tab && safeHttpUrl(tab.url)) {
           crashRecovery.manualRetry(tab.id)
-          void pageView.webContents.loadURL(tab.url)
+          loadBlankTab(tab)
         }
       } else {
         pageView.webContents.reload()

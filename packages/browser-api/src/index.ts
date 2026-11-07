@@ -19,6 +19,8 @@ export type BrowserPanelSnapshot = {
   isPrivate?: boolean
   /** The active tab is a new tab that has not loaded a page yet: the shell draws its start page. */
   isStartPage?: boolean
+  /** No page has arrived in the tab yet (it is loading, or waits after a crash): `url` is the address it is loading. */
+  isPending?: true
   /** The page's zoom (1 = 100%); the toolbar shows it when it is not 100%. */
   zoomFactor?: number
   /** The page could not load: the shell draws the error page in its place (the view stays hidden). */
@@ -39,6 +41,10 @@ export type SplitSideSnapshot = {
   secure: boolean
   /** A side opened by Compare (COMPARE_COVERAGE): its outlet and country, while the page is still on that outlet. */
   compare?: SplitCompareSnapshot
+  /** The side's page could not load: the shell draws its error in that half (the view stays hidden). */
+  loadError?: import('./browsing').PageLoadError
+  /** The side is a new tab on the start page: the shell draws the start page in that half. */
+  isStartPage?: true
 }
 
 /** The label a Compare side shows: its outlet and country name, and the story it was opened for. */
@@ -272,6 +278,8 @@ export type BrowserHostEvent =
   | { type: 'frequency-visit'; url: string; title: string; rating: string | null; navigationId: string }
   | { type: 'panel-state'; panel: BrowserPanelSnapshot }
   | { type: 'navigation-failed'; url: string; reason: string }
+  /** An `open` started loading `url` (as `resolveNavigationIntent` gave it): the address bar clears then. */
+  | { type: 'navigation-started'; url: string }
   | ({ type: 'find-result' } & FindInPageResult)
   | ({ type: 'download-finished' } & DownloadFinishedEvent)
   | { type: 'pdf-export'; event: PdfExportEvent }

@@ -1059,7 +1059,12 @@ export const checks = {
   // ---- Browsing ------------------------------------------------------------
   async OMNIBOX(ctx) {
     const server = await new Promise((resolve) => {
-      const site = createServer((_request, response) => { response.setHeader('content-type', 'text/html; charset=utf-8'); response.end('<!doctype html><title>Omnibox landing</title><h1>Omnibox landing</h1>') })
+      const site = createServer((request, response) => {
+        response.setHeader('content-type', 'text/html; charset=utf-8')
+        // A slow site: nothing arrives for 4 s.
+        if (request.url?.startsWith('/slow')) { setTimeout(() => response.end('<!doctype html><title>Slow landing</title><h1>Slow landing</h1>'), 4_000); return }
+        response.end('<!doctype html><title>Omnibox landing</title><h1>Omnibox landing</h1>')
+      })
       site.listen(0, 'localhost', () => resolve(site))
     })
     try {
@@ -1072,8 +1077,7 @@ export const checks = {
         // The window in front: losing focus blurs the bar, which drops an inline completion (as it should).
         await ctx.main(`(() => { electron.app.focus({ steal: true }); electron.BrowserWindow.getAllWindows()[0].focus(); return true })()`)
         await ctx.evaluate(`(() => { const i = document.querySelector('.command-input input'); i.focus(); i.select(); return true })()`)
-        // Emptied first: typing over the same text changes nothing, so it would not complete. (After ⌘↵ the bar
-        // keeps its text until the background tab has loaded, which a busy Mac can make slow.)
+        // Emptied first: typing over the same text changes nothing, so it would not complete.
         if (await ctx.evaluate(`document.querySelector('.command-input input').value !== ''`)) {
           for (const type of ['keyDown', 'keyUp']) await ctx.send('Input.dispatchKeyEvent', { type, key: 'Backspace', code: 'Backspace', windowsVirtualKeyCode: 8 })
         }
@@ -1137,6 +1141,34 @@ export const checks = {
       const kept = await ctx.evaluate(`window.intoponet.browserHost.readPrivateLibrary().then((r) => r.status === 'ok' && r.payload ? JSON.parse(r.payload).recents.map((p) => p.url).join(' ') : '')`)
       expect(kept.includes(host), `The visited page is not among recent pages (${kept}).`)
       expect(!kept.includes('never-loaded'), 'An address that failed to load was kept as a recent page.')
+
+      // A new tab's address bar shows the address it is loading before its first page arrives: a tab opened from the
+      // address bar, and a new tab's start page.
+      const toolbarAddress = `(document.querySelector('.origin-badge:not(.start-origin)')?.getAttribute('title') ?? '')`
+      for (const [label, slowUrl, fromStart] of [['a new tab', `${url}slow-tab`, false], ["a new tab's start page", `${url}slow-start`, true]]) {
+        if (fromStart) {
+          await ctx.evaluate(`window.intoponet.browserHost.newTab().then(() => true)`)
+          await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.isStartPage === true)`, 8_000, 'a new tab on its start page')
+        }
+        void ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: ${JSON.stringify(slowUrl)} }).then(() => true, () => true)`).catch(() => undefined)
+        await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.isVisible && s.isLoading && s.url === ${JSON.stringify(slowUrl)} && ${toolbarAddress} === ${JSON.stringify(slowUrl)})`, 2_500, `the address bar of ${label} to show the address it is loading, before the page arrives`)
+      }
+
+      // After Enter (⌘↵ here: the shown tab stays in front) the bar clears once the navigation starts, not when the
+      // page has loaded; and what is typed meanwhile is never wiped when it does load.
+      const behindUrl = `http://${host}/slow-behind`
+      const typedBehind = await typeHost(behindUrl)
+      expect(typedBehind.value === behindUrl, `The bar reads "${typedBehind.value}" instead of the typed address.`)
+      await ctx.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, modifiers: 4, text: '\r' })
+      await ctx.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, modifiers: 4 })
+      await ctx.wait(`window.intoponet.browserHost.getTabs().then((t) => t.some((x) => x.url === ${JSON.stringify(behindUrl)} && x.title !== 'Slow landing')) && document.querySelector('.command-input input').value === ''`, 2_500, 'the bar to clear once the page behind has started loading, before it arrives')
+      const meanwhile = `${behindUrl} and more`
+      await ctx.evaluate(`(() => { document.querySelector('.command-input input').focus(); return true })()`)
+      await ctx.type(meanwhile)
+      await ctx.wait(`window.intoponet.browserHost.getTabs().then((t) => t.some((x) => x.url === ${JSON.stringify(behindUrl)} && x.title === 'Slow landing' && !x.loading))`, 15_000, 'the page behind to arrive')
+      await ctx.delay(500)
+      const typedSince = await read()
+      expect(typedSince.value.startsWith(meanwhile), `The page loading behind wiped what was typed since Enter (the bar reads "${typedSince.value}").`)
       return `"localh" completed to ${host}; history row opened in a background tab with ⌘↵; then "Switch to tab" landed on it (1 tab); Backspace removed the completion; "Fredericton" flew the globe.`
     } finally {
       server.close()
@@ -1287,15 +1319,29 @@ export const checks = {
       expect(state.url === url, `After Retry the tab is at ${state.url}.`)
       // A page whose renderer crashes twice in a row waits for Reload: the toolbar keeps its address, and Reload brings it back.
       const crashPage = () => ctx.main(`(() => { const c = electron.webContents.getAllWebContents().find((c) => c.getURL() === ${JSON.stringify(url)}); if (!c) return false; c.forcefullyCrashRenderer(); return true })()`)
+      // It comes back with its back/forward list, as a sleeping tab wakes: an earlier page first, then this one again.
+      await ctx.evaluate(`window.intoponet.browserHost.navigate(${JSON.stringify(`${url}?earlier`)}).then(() => true, () => true)`)
+      await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.url === ${JSON.stringify(`${url}?earlier`)} && !s.isLoading)`, 15_000, 'the earlier page')
+      await ctx.evaluate(`window.intoponet.browserHost.navigate(${JSON.stringify(url)}).then(() => true, () => true)`)
+      await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.url === ${JSON.stringify(url)} && s.canGoBack && !s.isLoading)`, 15_000, 'the page again, with the earlier one behind it')
+      const historyOf = () => ctx.main(`(() => { const c = electron.webContents.getAllWebContents().find((c) => !c.isCrashed() && c.getURL() === ${JSON.stringify(url)}); return JSON.stringify(c ? { urls: c.navigationHistory.getAllEntries().map((e) => e.url), index: c.navigationHistory.getActiveIndex() } : null) })()`).then(JSON.parse)
+      const beforeCrash = await historyOf()
+      expect(beforeCrash && beforeCrash.urls.length >= 2 && beforeCrash.urls.includes(`${url}?earlier`), `The page has no back/forward list to keep: ${JSON.stringify(beforeCrash)}.`)
       expect(await crashPage(), 'The page to crash is not open.')
       await ctx.delay(1500)
       await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.title === 'Browsing test' && !s.isLoading)`, 15_000, 'the page to load again after a crash')
+      const afterCrash = await historyOf()
+      expect(JSON.stringify(afterCrash) === JSON.stringify(beforeCrash), `After a crash the page came back without its back/forward list: ${JSON.stringify(afterCrash)}, before ${JSON.stringify(beforeCrash)}.`)
+      expect((await panelState(ctx)).canGoBack, 'After a crash Back is not offered.')
       expect(await crashPage(), 'The page that loaded again after a crash is not open.')
       await ctx.delay(1500)
       const paused = await panelState(ctx)
       expect(paused.url === url, `After repeated crashes the toolbar shows "${paused.url}" instead of the page's address (${url}).`)
       await ctx.evaluate(`window.intoponet.browserHost.reload().then(() => true)`)
       await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.title === 'Browsing test' && s.url === ${JSON.stringify(url)})`, 15_000, 'Reload to bring the crashed page back')
+      await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.canGoBack && !s.isLoading)`, 15_000, 'Back to be offered once Reload has brought the crashed page back')
+      const afterReload = await historyOf()
+      expect(JSON.stringify(afterReload) === JSON.stringify(beforeCrash), `Reload after repeated crashes brought the page back without its back/forward list: ${JSON.stringify(afterReload)}.`)
     } finally {
       site.close()
     }
@@ -3781,9 +3827,11 @@ export const checks = {
     }
     // A page that fails (the connection drops) until it is told to work.
     let flakyFails = true
+    let flakyHits = 0
     const server = createServer((request, response) => {
       const path = new URL(request.url, 'http://localhost').pathname
       if (path === '/split-flaky' && flakyFails) {
+        flakyHits += 1
         request.socket.destroy()
         return
       }
@@ -4031,12 +4079,51 @@ export const checks = {
         return (await stateOf()).split && views.pages.length === 2 && views.pages.every((p) => p.visible) && views.pages.some((p) => p.url.includes('/split-left') && p.id !== crashedId)
       })
       await expectLayout('after the other side crashed')
+      // It came back where it was, with its back/forward list (the page it was on before it loaded again by itself).
+      const leftHistory = await waitFor('the crashed side\'s back/forward list', async () => {
+        const urls = JSON.parse(await ctx.main(`JSON.stringify(electron.webContents.getAllWebContents().find((c) => !c.isCrashed() && c.getURL().includes('/split-left'))?.navigationHistory.getAllEntries().map((e) => e.url) ?? [])`))
+        return urls.some((u) => u.endsWith('/split-left')) && urls.some((u) => u.includes('?again')) ? urls : null
+      }).catch(() => null)
+      expect(leftHistory, 'The crashed side came back without its back/forward list.')
       expect((await stateOf()).split.focused === 'right', 'A crash on the left side moved the focus.')
       // The other side fails to load: hidden while it fails, shown again once its page loads.
       await ctx.main(`(() => { void ${pageOf('/split-left')}.loadURL('http://127.0.0.1:${port}/split-flaky?left').catch(() => undefined); return true })()`)
       const flakySide = async () => (await viewsNow()).pages.find((p) => p.url.includes('/split-flaky'))
       await waitFor('the failing left side hidden', async () => (await flakySide())?.visible === false)
       expect((await stateOf()).split.focused === 'right', 'The left page failing to load took the focus.')
+      // Chromium can hand the failed load's error document the keyboard after the failure is reported: it is handed back.
+      await ctx.main(`(() => { ${pageOf('/split-flaky')}.focus(); return true })()`)
+      await ctx.delay(500)
+      expect((await stateOf()).split.focused === 'right', 'The failing left side took the focus when its error document took the keyboard.')
+      // Its half is not left empty: the shell draws a compact card there (what failed, Retry), the pages still two columns at full height.
+      const leftCard = async () => JSON.parse(await shellEval(`JSON.stringify((() => {
+        const card = document.querySelector('.split-other-side[data-split-side="left"] .load-error-compact')
+        return card ? { frame: card.closest('.split-other-frame').getBoundingClientRect(), text: card.innerText, retry: !!card.querySelector('.load-error-card-retry') } : null
+      })())`))
+      const card = await waitFor('the error card in the failing left half', leftCard)
+      const failing = await stateOf()
+      expect(failing.split.left.loadError, 'The shell state has no error for the failing left side.')
+      expect(card.retry && card.text.includes(failing.split.left.loadError.title), `The left half's card does not say what failed, with Retry: "${card.text}".`)
+      expect(['x', 'y', 'width', 'height'].every((key) => Math.abs(card.frame[key] - failing.split.sides.left[key]) <= 1), `The error card is not over the left half (${JSON.stringify(card.frame)}, the half ${JSON.stringify(failing.split.sides.left)}).`)
+      const hiddenPair = (await viewsNow()).pages.slice().sort((p, q) => p.bounds.x - q.bounds.x)
+      expect(hiddenPair.length === 2 && hiddenPair[0].bounds.x + hiddenPair[0].bounds.width <= hiddenPair[1].bounds.x && hiddenPair[0].bounds.y === hiddenPair[1].bounds.y && hiddenPair[0].bounds.height === hiddenPair[1].bounds.height, `With the left side failing, the pages are not two columns at full height: ${JSON.stringify(hiddenPair.map((p) => p.bounds))}.`)
+      await snap('08c-other-side-error-card')
+      // A click anywhere in that half focuses the failing side, whose full error page then fills it.
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: card.frame.x + 24, y: card.frame.y + 24, button: 'left', clickCount: 1 })
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: card.frame.x + 24, y: card.frame.y + 24, button: 'left', clickCount: 1 })
+      await waitFor('a click in the failing half to focus it', async () => (await stateOf()).split?.focused === 'left')
+      const fullError = await waitFor('the full error page in the left half', async () => JSON.parse(await shellEval(`JSON.stringify(document.querySelector('.split-start-frame:not(.split-other-frame) .load-error-page[role=main]')?.closest('.split-start-frame').getBoundingClientRect() ?? null)`)))
+      expect(['x', 'y', 'width', 'height'].every((key) => Math.abs(fullError[key] - failing.split.sides.left[key]) <= 1), `The focused side's error page is not over the left half (${JSON.stringify(fullError)}).`)
+      // Retry on the card focuses that side and loads it again (it still fails here).
+      await ctx.evaluate(`${host}.focusSplitSide('right').then(() => true)`)
+      await waitFor('focus back on the right side', async () => (await stateOf()).split?.focused === 'right')
+      await waitFor('the error card again', leftCard)
+      const hitsBefore = flakyHits
+      await shellEval(`document.querySelector('.split-other-side[data-split-side="left"] .load-error-card-retry').click(); true`)
+      await waitFor('Retry on the card to focus the failing side and load it again', async () => flakyHits > hitsBefore && (await stateOf()).split?.focused === 'left')
+      await ctx.evaluate(`${host}.focusSplitSide('right').then(() => true)`)
+      await waitFor('focus on the right side once more', async () => (await stateOf()).split?.focused === 'right')
+      await waitFor('the failing left side hidden again', async () => (await flakySide())?.visible === false)
       flakyFails = false
       await ctx.main(`(() => { ${pageOf('/split-flaky')}.reload(); return true })()`)
       await waitFor('the left side shown again once it loads', async () => (await flakySide())?.visible === true)
@@ -4065,6 +4152,24 @@ export const checks = {
       const startFrame = JSON.parse(await shellEval(`JSON.stringify(document.querySelector('.split-start-frame')?.getBoundingClientRect() ?? null)`))
       const startHalf = started.split.sides[started.split.focused]
       expect(startFrame && ['x', 'y', 'width', 'height'].every((key) => Math.abs(startFrame[key] - startHalf[key]) <= 1), `The start page beside the page is not over its half (${JSON.stringify(startFrame)}, its half ${JSON.stringify(startHalf)}).`)
+      // The page beside it takes the focus: the start page stays drawn in its own half, never an empty one.
+      const startSide = started.split.focused
+      const pageSide = startSide === 'left' ? 'right' : 'left'
+      await ctx.evaluate(`${host}.focusSplitSide(${JSON.stringify(pageSide)}).then(() => true)`)
+      await waitFor('focus on the page beside the start page', async () => (await stateOf()).split?.focused === pageSide)
+      const otherStart = await waitFor('the start page in its half while the page has the focus', async () => JSON.parse(await shellEval(`JSON.stringify(document.querySelector('.split-other-side[data-split-side="${startSide}"] .start-page')?.closest('.split-other-frame').getBoundingClientRect() ?? null)`)))
+      const pageFocused = await stateOf()
+      expect(['x', 'y', 'width', 'height'].every((key) => Math.abs(otherStart[key] - pageFocused.split.sides[startSide][key]) <= 1), `The start page not in focus is not over its half (${JSON.stringify(otherStart)}, its half ${JSON.stringify(pageFocused.split.sides[startSide])}).`)
+      const { left: halfL, right: halfR } = pageFocused.split.sides
+      expect(halfL.x + halfL.width <= halfR.x && halfL.y === halfR.y && halfL.height === halfR.height, `Beside a start page the halves are not two columns at full height: ${JSON.stringify(pageFocused.split.sides)}.`)
+      const besideStart = (await viewsNow()).pages
+      expect(besideStart.length === 1 && besideStart[0].visible && ['x', 'y', 'width', 'height'].every((key) => besideStart[0].bounds[key] === pageFocused.split.sides[pageSide][key]), `The page beside the start page is not in its own half: ${JSON.stringify(besideStart.map((p) => p.bounds))}, its half ${JSON.stringify(pageFocused.split.sides[pageSide])}.`)
+      await snap('09b-start-page-not-in-focus')
+      // A click in that half focuses the start page again, and its search box takes the keyboard.
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: otherStart.x + otherStart.width / 2, y: otherStart.y + 40, button: 'left', clickCount: 1 })
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: otherStart.x + otherStart.width / 2, y: otherStart.y + 40, button: 'left', clickCount: 1 })
+      await waitFor('a click in the start page half to focus it', async () => { const s = await stateOf(); return s.split?.focused === startSide && s.isStartPage })
+      await waitFor('the start page search box to take the keyboard', async () => shellEval(`!!document.activeElement?.closest('.split-start-frame:not(.split-other-frame) .start-search')`))
       await ctx.evaluate(`${host}.closeActiveTab().then(() => true)`)
       await waitFor('back to one page', async () => !(await stateOf()).split && (await viewsNow()).pages.length === 1)
 
@@ -4452,6 +4557,25 @@ export const checks = {
         else await ctx.delay(250)
       }
       expect(moved?.compare?.outlet === 'Moved Outlet', `The right side lost its outlet label after its link redirected to another host: ${JSON.stringify(moved)}.`)
+
+      // "Free coverage" on a paywalled side opens that side's free-coverage choices: from the other side, and
+      // again from that side once it has the focus and its bar was closed.
+      await ctx.evaluate(`(() => { localStorage.setItem('intoponet.paywalled-hosts.v1', JSON.stringify(['localhost'])); return true })()`)
+      await ctx.evaluate(`window.intoponet.browserHost.openCompare({ id: 'paywall-story', title: 'A paywalled story' }, { url: 'http://127.0.0.1:${port}/free', outlet: 'Free Outlet', countryCode: 'GB' }, { url: 'http://localhost:${port}/paywalled', outlet: 'Paid Outlet', countryCode: 'FR' }).then(() => true)`)
+      const freeButton = `[...document.querySelectorAll('.split-header[data-split-side="right"] .split-compare-button')].find((b) => b.textContent.includes('Free coverage'))`
+      for (let i = 0; i < 40; i += 1) {
+        const now = await stateOf()
+        if (now.split?.right?.compare?.outlet === 'Paid Outlet' && now.split.focused === 'left' && await ctx.evaluate(`!!${freeButton}`)) break
+        await ctx.delay(250)
+      }
+      expect(await ctx.evaluate(`!!${freeButton}`), 'The paywalled right side offers no Free coverage.')
+      await ctx.evaluate(`(() => { ${freeButton}.click(); return true })()`)
+      await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.split?.focused === 'right')`, 8_000, 'Free coverage to focus its side')
+      await ctx.wait(`!!document.querySelector('.free-coverage')`, 10_000, 'the free-coverage choices for the right side')
+      await ctx.evaluate(`(() => { document.querySelector('.free-coverage .fc-close').click(); return true })()`)
+      await ctx.wait(`!document.querySelector('.free-coverage')`, 5_000, 'the free-coverage bar to close')
+      await ctx.evaluate(`(() => { ${freeButton}.click(); return true })()`)
+      await ctx.wait(`!!document.querySelector('.free-coverage')`, 5_000, 'Free coverage on the focused side to open its choices again after the bar was closed')
     } finally {
       redirects.close()
     }

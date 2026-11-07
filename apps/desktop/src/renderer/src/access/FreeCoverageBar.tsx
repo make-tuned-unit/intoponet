@@ -1,8 +1,24 @@
 import { useMemo } from 'react'
 import { ExternalLink, Lock, Search, X } from 'lucide-react'
 import { alternativeCoverage, storyTitle, type Candidate } from '../../../shared/news/paywall'
+import { hostOf } from '../favicons'
 import { learnedPaywalls } from './learnedPaywalls'
 import './access.css'
+
+/** What the paywall check found on a page (or, asked for from a Compare header, the page itself). */
+export type PageAccessFinding = { url: string; title: string; signals: string[] }
+
+/**
+ * The free coverage to offer for the page in focus: what the paywall check found, unless the bar was
+ * hidden for that site. "Free coverage" in a Compare side's header asks for it (`askedUrl`): then it
+ * shows even for a hidden site, and before the check has reported, from the page's own title.
+ */
+export function freeCoverageFor(page: { url: string; title: string }, found: PageAccessFinding | null, hiddenHosts: readonly string[], askedUrl: string | null): PageAccessFinding | null {
+  const asked = askedUrl !== null && askedUrl === page.url
+  const finding = found && found.url === page.url ? found : asked ? { url: page.url, title: page.title, signals: [] } : null
+  if (!finding) return null
+  return asked || !hiddenHosts.includes(hostOf(finding.url)) ? finding : null
+}
 
 const regionNames = (() => {
   try {
