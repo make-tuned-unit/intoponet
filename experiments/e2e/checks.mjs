@@ -125,6 +125,13 @@ async function pdfExport(ctx) {
         return
       }
       if (request.url?.startsWith('/doc.pdf')) { response.setHeader('content-type', 'application/pdf'); response.end(TEST_PDF); return }
+      // The whole article, then the response is held open: the page shows everything but never finishes loading.
+      if (request.url?.startsWith('/still-loading')) {
+        response.setHeader('content-type', 'text/html; charset=utf-8')
+        response.write(PDF_ARTICLE(sections))
+        setTimeout(() => response.end(), 120_000).unref()
+        return
+      }
       response.setHeader('content-type', 'text/html; charset=utf-8')
       response.end(request.url?.startsWith('/shop') ? PDF_SHOP : PDF_ARTICLE(sections))
     })
@@ -259,6 +266,16 @@ async function pdfExport(ctx) {
     const later = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.readPrivateLibrary().then((r) => r.payload)`))
     const laterBookmark = later.bookmarks.find((item) => item.url.includes('?after-private'))
     expect(laterBookmark && !/quokka/i.test(JSON.stringify(laterBookmark)), `A search made in private browsing became part of a later bookmark: ${JSON.stringify(laterBookmark)}`)
+    // A page still loading (this one never finishes) is saved as it is, not left waiting until "did not respond".
+    void ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: '${base}/still-loading' }).then(() => true, () => true)`).catch(() => undefined)
+    await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.url.endsWith('/still-loading') && s.isLoading)`, 15_000, 'the page that never finishes loading')
+    await ctx.delay(1500)
+    const beforeLoading = await ctx.evaluate(`document.querySelector('.pdf-done .pdf-name')?.title ?? ''`)
+    await ctx.evaluate(`window.intoponet.browserHost.exportPdf().then(() => true)`)
+    await ctx.wait(`(() => { const done = document.querySelector('.pdf-done .pdf-name'); return (!!done && done.title !== ${JSON.stringify(beforeLoading)}) || !!document.querySelector('.pdf-failed') })()`, 90_000, 'a page still loading to be saved as PDF')
+    const loadingFailure = await ctx.evaluate(`document.querySelector('.pdf-failed')?.innerText ?? ''`)
+    expect(!loadingFailure, `A page still loading could not be saved as PDF: ${loadingFailure}`)
+    expect(text(await ctx.evaluate(`document.querySelector('.pdf-done .pdf-name').title`)).includes('START-SENTINEL'), 'The PDF of a page still loading is missing its article.')
     return `Article: ${pages} pages, ${images} images, tagged with outline, ads/hidden/overlay text left out, bookmarked in "Reading" with the PDF linked; shop page saved as seen without ads; private tab asked where, neutral name, no Where-from or bookmark; ${listed.length} PDFs in Bookmarks › PDFs (private one not listed), removing one keeps the file.`
   } finally {
     server.close()

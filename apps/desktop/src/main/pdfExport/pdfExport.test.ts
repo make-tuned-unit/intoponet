@@ -15,7 +15,7 @@ const { buildPrintDocument, cssString, readableDate } = await import('./template
 const { whereFromsPlist } = await import('./whereFrom')
 const { AD_SELECTORS, cleanLiveScript, finalizeScript, prepareScript, REVERT_LIVE_SCRIPT } = await import('./pageScripts')
 const { opaque } = await import('./printImages')
-const { countPdfPages } = await import('./exportPdf')
+const { countPdfPages, settleLoading } = await import('./exportPdf')
 
 const day = new Date(2026, 10, 5, 12)
 
@@ -152,5 +152,37 @@ describe('Export as PDF commands from the app window', async () => {
     for (const path of ['A.pdf', '/Applications/Calculator.app', '/tmp/a.pdf\0.app', 42]) {
       expect(() => parseBrowserHostCommand({ type: 'open-saved-file', path, reveal: false })).toThrow()
     }
+  })
+})
+
+describe('A page still loading', () => {
+  const page = (loading: boolean) => {
+    const listeners = new Map<string, () => void>()
+    const contents = {
+      loading,
+      stopped: false,
+      isLoadingMainFrame: () => contents.loading,
+      isDestroyed: () => false,
+      stop: () => { contents.stopped = true; contents.loading = false },
+      once: (event: string, listener: () => void) => { listeners.set(event, listener); return contents },
+      removeListener: (event: string) => { listeners.delete(event); return contents },
+      finish: () => { contents.loading = false; listeners.get('did-stop-loading')?.() },
+    }
+    return contents
+  }
+  it('is stopped where it is after a short wait, so its scripts can run', async () => {
+    const stuck = page(true)
+    await settleLoading(stuck as never, 20)
+    expect(stuck.stopped).toBe(true)
+  })
+  it('is left alone when it finishes in time, or has already loaded', async () => {
+    const quick = page(true)
+    const settled = settleLoading(quick as never, 5_000)
+    quick.finish()
+    await settled
+    expect(quick.stopped).toBe(false)
+    const loaded = page(false)
+    await settleLoading(loaded as never, 20)
+    expect(loaded.stopped).toBe(false)
   })
 })
