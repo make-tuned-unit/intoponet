@@ -3819,10 +3819,23 @@ async function runTabMenuAction(action: TabMenuAction, id: string): Promise<void
   const live = !viewGone(tab.view)
   const url = live && safeHttpUrl(tab.view.webContents.getURL()) ? tab.view.webContents.getURL() : tab.url
   switch (action) {
-    case 'reload':
-      if (activeTabId === id) await handleBrowserCommand({ type: 'reload' })
-      else if (live) tab.view.webContents.reload()
+    case 'reload': {
+      if (activeTabId === id) {
+        await handleBrowserCommand({ type: 'reload' })
+        break
+      }
+      if (!live) break
+      const current = tab.view.webContents.getURL()
+      if (current && current !== 'about:blank') tab.view.webContents.reload()
+      // Asleep: it wakes where it was, in the background.
+      else if (tab.asleep) wakeTab(tab)
+      // Its renderer crashed (beside the page or behind it): asked for, it loads again even after repeated crashes.
+      else if (!tab.start && safeHttpUrl(tab.url)) {
+        crashRecovery.manualRetry(tab.id)
+        loadBlankTab(tab)
+      }
       break
+    }
     case 'duplicate': {
       if (!safeHttpUrl(url)) break
       const at = duplicateIndex(openTabs, id)

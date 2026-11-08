@@ -1379,6 +1379,28 @@ export const checks = {
       await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.canGoBack && !s.isLoading)`, 15_000, 'Back to be offered once Reload has brought the crashed page back')
       const afterReload = await historyOf()
       expect(JSON.stringify(afterReload) === JSON.stringify(beforeCrash), `Reload after repeated crashes brought the page back without its back/forward list: ${JSON.stringify(afterReload)}.`)
+      // A tab behind another whose renderer crashed waits blank; Reload from its tab menu brings it back there, with its back/forward list.
+      const crashedTab = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => JSON.stringify(t.find((x) => x.active)))`))
+      const front = `${url}?front`
+      await ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: ${JSON.stringify(front)} }).then(() => true, () => true)`)
+      await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.url === ${JSON.stringify(front)} && !s.isLoading)`, 15_000, 'a page in front of the one to crash')
+      expect(await crashPage(), 'The background page to crash is not open.')
+      await ctx.delay(1500)
+      expect(!(await historyOf()), 'The crashed background page loaded again by itself.')
+      await ctx.main(`(() => { globalThis.__tabMenu = null; globalThis.__popup = electron.Menu.prototype.popup; electron.Menu.prototype.popup = function () { globalThis.__tabMenu = this }; return true })()`)
+      try {
+        await ctx.evaluate(`window.intoponet.browserHost.showTabMenu(${JSON.stringify(crashedTab.id)}).then(() => true)`)
+        for (let i = 0; i < 20 && !(await ctx.main('globalThis.__tabMenu !== null')); i += 1) await ctx.delay(100)
+        expect(await ctx.main(`globalThis.__tabMenu?.items.some((i) => i.label === 'Reload' && i.enabled) ?? false`), 'The crashed tab\'s menu offers no Reload.')
+        await ctx.main(`(() => { globalThis.__tabMenu.items.find((i) => i.label === 'Reload').click(); return true })()`)
+      } finally {
+        await ctx.main(`(() => { electron.Menu.prototype.popup = globalThis.__popup; return true })()`)
+      }
+      for (let i = 0; i < 50 && JSON.stringify(await historyOf()) !== JSON.stringify(beforeCrash); i += 1) await ctx.delay(200)
+      expect(JSON.stringify(await historyOf()) === JSON.stringify(beforeCrash), `Reload from the tab menu did not bring the crashed background tab back with its back/forward list: ${JSON.stringify(await historyOf())}.`)
+      expect((await panelState(ctx)).url === front, 'Reload from the menu of a background tab changed the page in front.')
+      await ctx.evaluate(`window.intoponet.browserHost.closeActiveTab().then(() => true)`)
+      await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.url === ${JSON.stringify(url)} && !s.isLoading)`, 15_000, 'the reloaded tab to be shown again')
     } finally {
       site.close()
     }
