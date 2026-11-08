@@ -2401,7 +2401,22 @@ export const checks = {
       const focus = await ctx.evaluate(`(document.activeElement?.innerText || document.activeElement?.getAttribute('aria-label') || '').trim()`)
       expect(focus.includes(label), `After closing ${label} with Escape, focus went to "${focus || 'nothing'}" instead of its button.`)
     }
-    return 'No WCAG 2.2 AA violations (axe); panels open with Enter, close with Escape, focus returns.'
+    // Link rules in Settings › Browsing, from the keyboard: a rule moved with Up keeps focus (on its Down button once it
+    // is first), and Remove passes focus to the rule now in its place. Focus is never dropped.
+    for (const site of ['a.example', 'b.example', 'c.example']) await ctx.evaluate(`window.intoponet.browsing.addLinkRoute(${JSON.stringify(site)}, 'main').then(() => true)`)
+    await ctx.evaluate(`document.querySelector('[data-panel="settings"]').focus(); true`)
+    await ctx.press('Enter')
+    await ctx.wait(`!!document.querySelector('button[aria-label="Move rule 2 up"]')`, 5000, 'the link rules in Settings')
+    await ctx.evaluate(`document.querySelector('button[aria-label="Move rule 2 up"]').focus(); true`)
+    await ctx.press('Enter')
+    await ctx.wait(`window.intoponet.browsing.linkRoutes().then((s) => s.rules.map((r) => r.site).join() === 'b.example,a.example,c.example')`, 3000, 'Up to move the second rule first')
+    await ctx.wait(`document.activeElement?.getAttribute('aria-label') === 'Move rule 1 down'`, 3000, 'focus to stay on the moved rule')
+    await ctx.evaluate(`document.querySelector('button[aria-label="Remove rule 2"]').focus(); true`)
+    await ctx.press('Enter')
+    await ctx.wait(`window.intoponet.browsing.linkRoutes().then((s) => s.rules.map((r) => r.site).join() === 'b.example,c.example')`, 3000, 'Remove to remove the second rule')
+    await ctx.wait(`document.activeElement?.getAttribute('aria-label') === 'Remove rule 2'`, 3000, 'focus to go to the rule in the removed one\'s place')
+    await ctx.press('Escape')
+    return 'No WCAG 2.2 AA violations (axe); panels open with Enter, close with Escape, focus returns; link rules keep focus as they move and go.'
   },
   async COPY_ADDRESS(ctx) {
     const { server, origin } = await tabSite()

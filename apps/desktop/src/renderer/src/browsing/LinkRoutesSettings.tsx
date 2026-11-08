@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { LinkRoutesState } from '@intoponet/browser-api'
 
 const SITE_HINT = 'That is not a site. Use a host such as docs.example.com (it also matches the sites under it).'
@@ -9,6 +9,26 @@ export function LinkRoutesSettings() {
   const [error, setError] = useState('')
   const [newSite, setNewSite] = useState('')
   const [newWorkspace, setNewWorkspace] = useState('')
+  const list = useRef<HTMLDivElement>(null)
+  /**
+   * Where focus goes once the list shows a change made from the keyboard: a moved rule keeps it (on the other
+   * move button at either end), a removed rule passes it to the rule in its place (or the new rule's site).
+   */
+  const refocus = useRef<{ act: 'up' | 'down' | 'remove' | 'add'; ruleId: string; index: number } | null>(null)
+  useEffect(() => {
+    const want = refocus.current
+    if (!want || !state) return
+    refocus.current = null
+    const button = (ruleId: string | undefined, act: string): HTMLButtonElement | null =>
+      ruleId ? list.current?.querySelector<HTMLButtonElement>(`button[data-rule="${CSS.escape(ruleId)}"][data-act="${act}"]:not(:disabled)`) ?? null : null
+    const site = list.current?.querySelector<HTMLInputElement>('#link-route-new-site')
+    if (want.act === 'up' || want.act === 'down') {
+      ;(button(want.ruleId, want.act) ?? button(want.ruleId, want.act === 'up' ? 'down' : 'up'))?.focus()
+    } else if (want.act === 'remove') {
+      const next = state.rules[want.index] ?? state.rules[want.index - 1]
+      ;(button(next?.id, 'remove') ?? site)?.focus()
+    } else site?.focus()
+  }, [state])
 
   useEffect(() => {
     let mounted = true
@@ -17,9 +37,13 @@ export function LinkRoutesSettings() {
     return () => { mounted = false; unsubscribe() }
   }, [])
 
-  const run = (change: () => Promise<LinkRoutesState>, message: string): void => {
+  const run = (change: () => Promise<LinkRoutesState>, message: string, after?: { act: 'up' | 'down' | 'remove' | 'add'; ruleId: string; index: number }): void => {
     setError('')
-    void change().then(setState, () => setError(message))
+    void change().then((next) => {
+      // Only when focus was on what changed: a change from elsewhere leaves focus where it is.
+      if (after && (list.current?.contains(document.activeElement) || document.activeElement === document.body)) refocus.current = after
+      setState(next)
+    }, () => setError(message))
   }
 
   const workspaces = state?.workspaces ?? []
@@ -27,7 +51,7 @@ export function LinkRoutesSettings() {
   const full = (state?.rules.length ?? 0) >= 100
 
   return (
-    <div className="link-routes" aria-labelledby="link-routes-label">
+    <div ref={list} className="link-routes" aria-labelledby="link-routes-label">
       <p id="link-routes-label">Links from other apps go to: a link whose site matches a rule opens in that workspace, as a tab, whichever way other links open. Routing goes by site: macOS does not say which app opened a link. The first rule that matches wins; a link that matches none follows the setting above. Rules are kept only on this Mac.</p>
       {state && state.rules.length === 0 && <p className="link-routes-empty">No rules yet.</p>}
       {state && state.rules.length > 0 && (
@@ -58,9 +82,9 @@ export function LinkRoutesSettings() {
                   {workspaces.map((workspace) => <option key={workspace.id} value={workspace.id}>{workspace.name}</option>)}
                 </select>
               )}
-              <button type="button" aria-label={`Move rule ${index + 1} up`} disabled={index === 0} onClick={() => run(() => window.intoponet.browsing.moveLinkRoute(rule.id, index - 1), 'That rule is gone.')}>Up</button>
-              <button type="button" aria-label={`Move rule ${index + 1} down`} disabled={index === state.rules.length - 1} onClick={() => run(() => window.intoponet.browsing.moveLinkRoute(rule.id, index + 1), 'That rule is gone.')}>Down</button>
-              <button type="button" aria-label={`Remove rule ${index + 1}`} onClick={() => run(() => window.intoponet.browsing.removeLinkRoute(rule.id), 'That rule is gone.')}>Remove</button>
+              <button type="button" data-rule={rule.id} data-act="up" aria-label={`Move rule ${index + 1} up`} disabled={index === 0} onClick={() => run(() => window.intoponet.browsing.moveLinkRoute(rule.id, index - 1), 'That rule is gone.', { act: 'up', ruleId: rule.id, index })}>Up</button>
+              <button type="button" data-rule={rule.id} data-act="down" aria-label={`Move rule ${index + 1} down`} disabled={index === state.rules.length - 1} onClick={() => run(() => window.intoponet.browsing.moveLinkRoute(rule.id, index + 1), 'That rule is gone.', { act: 'down', ruleId: rule.id, index })}>Down</button>
+              <button type="button" data-rule={rule.id} data-act="remove" aria-label={`Remove rule ${index + 1}`} onClick={() => run(() => window.intoponet.browsing.removeLinkRoute(rule.id), 'That rule is gone.', { act: 'remove', ruleId: rule.id, index })}>Remove</button>
             </li>
           ))}
         </ol>
@@ -72,7 +96,7 @@ export function LinkRoutesSettings() {
             event.preventDefault()
             const site = newSite.trim()
             if (!site || !addWorkspace) return
-            run(() => window.intoponet.browsing.addLinkRoute(site, addWorkspace).then((next) => { setNewSite(''); return next }), SITE_HINT)
+            run(() => window.intoponet.browsing.addLinkRoute(site, addWorkspace).then((next) => { setNewSite(''); return next }), SITE_HINT, { act: 'add', ruleId: '', index: 0 })
           }}
         >
           <label className="link-route-label" htmlFor="link-route-new-site">New rule: site</label>
