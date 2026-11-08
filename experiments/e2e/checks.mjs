@@ -1581,8 +1581,11 @@ export const checks = {
       const pinned = await tabs()
       expect(pinned[0]?.id === two && pinned[0]?.pinned === true, 'A pinned tab did not move to the front.')
       expect(await ctx.evaluate(`!!document.querySelector('.tab-rail-pinned [data-tab-id=${JSON.stringify(two)}]')`), 'The rail does not show the pinned tab among the pinned icons.')
-      const saved = JSON.parse(readFileSync(join(ctx.profile, 'browser-state.v1.json'), 'utf8'))
-      expect(saved.tabs?.[0]?.pinned === true && saved.tabs[0].url.includes('/two'), 'The pinned tab is not saved as pinned for the next launch.')
+      // Saved soon after, but a busy disk can take a while: wait for the file to show it.
+      const savedState = () => { try { return JSON.parse(readFileSync(join(ctx.profile, 'browser-state.v1.json'), 'utf8')) } catch { return null } }
+      const pinnedSaved = (saved) => saved?.tabs?.[0]?.pinned === true && saved.tabs[0].url.includes('/two')
+      for (let i = 0; i < 50 && !pinnedSaved(savedState()); i += 1) await ctx.delay(200)
+      expect(pinnedSaved(savedState()), `The pinned tab is not saved as pinned for the next launch (saved: ${JSON.stringify(savedState()?.tabs ?? null)}).`)
       await axeAudit(ctx, 'the tab rail with a pinned tab', '.tab-rail')
 
       // The strip under the launcher (page closed): pinned tab first, icon only, no close button.
@@ -2157,13 +2160,13 @@ export const checks = {
       // Its next click opens it at home.
       await ctx.evaluate(`${host}.activateTab(${JSON.stringify(mail.id)}).then(() => true)`)
       await ctx.wait(`${host}.getTabs().then((t) => { const x = t.find((y) => y.id === ${JSON.stringify(mail.id)}); return x.active && !x.asleep })`, 5000, 'the pinned tab to wake')
-      await ctx.wait(`true`, 100, '')
-      await ctx.delay(1200)
-      expect(await ctx.main(`electron.webContents.getAllWebContents().some((c) => c.getURL() === ${JSON.stringify(`${origin}/mail`)})`), 'The pinned tab did not load its home when clicked.')
-      // Saved for the next launch with its home.
-      await ctx.delay(500)
-      const saved = JSON.parse(readFileSync(join(ctx.profile, 'browser-state.v1.json'), 'utf8'))
-      expect(saved.tabs.some((tab) => tab.pinned && tab.home === `${origin}/mail`), 'The pinned tab\'s home was not saved.')
+      const homeLoaded = () => ctx.main(`electron.webContents.getAllWebContents().some((c) => c.getURL() === ${JSON.stringify(`${origin}/mail`)})`)
+      for (let i = 0; i < 40 && !(await homeLoaded()); i += 1) await ctx.delay(200)
+      expect(await homeLoaded(), 'The pinned tab did not load its home when clicked.')
+      // Saved for the next launch with its home (wait for the file rather than a fixed time).
+      const homeSaved = () => { try { return JSON.parse(readFileSync(join(ctx.profile, 'browser-state.v1.json'), 'utf8')).tabs.some((tab) => tab.pinned && tab.home === `${origin}/mail`) } catch { return false } }
+      for (let i = 0; i < 50 && !homeSaved(); i += 1) await ctx.delay(200)
+      expect(homeSaved(), 'The pinned tab\'s home was not saved.')
       await axeAudit(ctx, 'the tab rail with a pinned tab', '.tab-rail')
       // Unpinning forgets the home.
       await ctx.evaluate(`${host}.setTabPinned(${JSON.stringify(mail.id)}, false).then(() => true)`)
@@ -2212,10 +2215,15 @@ export const checks = {
       // Shown again, it wakes where it was: same page, back list and scroll position.
       await ctx.evaluate(`${host}.activateTab(${JSON.stringify(deep.id)}).then(() => true)`)
       await ctx.wait(`${host}.getTabs().then((t) => { const x = t.find((y) => y.id === ${JSON.stringify(deep.id)}); return x.active && !x.asleep && x.url.endsWith('/second') })`, 8000, 'the tab to wake on its page')
-      await ctx.delay(1500)
       const page = await ctx.page('/second')
-      const scroll = await page.evaluate('window.scrollY')
+      // Scroll comes back once the page has loaded: wait for it (a busy Mac takes longer) rather than a fixed time.
+      let scroll = await page.evaluate('window.scrollY')
+      for (let i = 0; i < 40 && Math.abs(scroll - 1400) >= 60; i += 1) {
+        await ctx.delay(200)
+        scroll = await page.evaluate('window.scrollY')
+      }
       expect(Math.abs(scroll - 1400) < 60, `The woken tab is scrolled to ${scroll}, not where it was (1400).`)
+      await ctx.wait(`${host}.getState().then((s) => s.canGoBack)`, 5000, 'the woken tab to offer Back').catch(() => undefined)
       const panel = JSON.parse(await ctx.evaluate(`${host}.getState().then((s) => JSON.stringify(s))`))
       expect(panel.canGoBack, 'The woken tab lost its back history.')
       await ctx.evaluate(`window.intoponet.browsing.setTabSleep('never').then(() => true)`)
@@ -2704,7 +2712,8 @@ export const checks = {
       await ctx.evaluate(`[...document.querySelectorAll('[role="option"]')].find((e) => e.textContent.includes('Reopen archived tab')).dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); [...document.querySelectorAll('[role="option"]')].find((e) => e.textContent.includes('Reopen archived tab'))?.click(); true`)
       await ctx.wait(`${host}.getTabs().then((t) => t.some((x) => x.active && x.title === 'Page /old-b'))`, 6000, 'the archived tab to reopen in front')
       expect(JSON.parse(await ctx.evaluate(`window.intoponet.workspaces.get().then((s) => JSON.stringify(s.activeId))`)) === homeId, 'The archived tab reopened in the workspace shown, not the one it was archived from.')
-      await ctx.delay(1500)
+      // Its back list is there once it has been restored (wait for it rather than a fixed time).
+      await ctx.wait(`${host}.getState().then((s) => s.canGoBack && !s.isLoading)`, 8000, 'the reopened tab to offer Back').catch(() => undefined)
       const panel = JSON.parse(await ctx.evaluate(`${host}.getState().then((s) => JSON.stringify(s))`))
       expect(panel.canGoBack, 'The reopened tab lost its back list.')
       // Clearing history clears the archive too.
@@ -3083,8 +3092,11 @@ export const checks = {
       await ctx.evaluate(`${ws}.switchTo({ id: ${JSON.stringify(mainId)} }).then(() => true)`)
       await ctx.delay(600)
       expect((await tabs()).some((tab) => tab.id === privateTab.id && tab.isPrivate), 'The private tab went away with the workspace.')
-      await ctx.delay(500)
-      expect(!JSON.stringify(savedState()).includes('private-page'), 'A private page was saved with the workspaces.')
+      // Once the switch is saved (waited for, not a fixed time), the private page is not in the file.
+      const savedNow = () => { try { return savedState() } catch { return null } }
+      for (let i = 0; i < 50 && savedNow()?.activeWorkspaceId !== mainId; i += 1) await ctx.delay(200)
+      expect(savedNow()?.activeWorkspaceId === mainId, 'Switching to Main with a private tab open was not saved.')
+      expect(!JSON.stringify(savedNow()).includes('private-page'), 'A private page was saved with the workspaces.')
       await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
       await ctx.delay(600)
       expect(!(await tabs()).some((tab) => tab.isPrivate), 'Leaving private browsing left a private tab.')
@@ -3093,8 +3105,8 @@ export const checks = {
       await axeAudit(ctx, 'the tab sidebar with workspaces and favourites', '.tab-rail')
       await ctx.shot('workspaces')
 
-      // Saved for the next launch (version 3); kept during the session too, so a crash loses nothing.
-      await ctx.delay(500)
+      // Saved for the next launch (version 3); kept during the session too, so a crash loses nothing. Waited for, not a fixed time.
+      for (let i = 0; i < 50 && savedNow()?.activeWorkspaceId !== researchId; i += 1) await ctx.delay(200)
       const saved = savedState()
       expect(saved.version === 3 && saved.workspaces.map((w) => w.name).join() === 'Reading,Main' && saved.activeWorkspaceId === researchId, `Saved workspaces: ${JSON.stringify({ version: saved.version, workspaces: saved.workspaces, active: saved.activeWorkspaceId })}.`)
       expect(saved.tabs.filter((tab) => tab.workspaceId === mainId).length === 3 && saved.tabs.filter((tab) => tab.workspaceId === researchId).length === 3, `Saved tabs by workspace: ${JSON.stringify(saved.tabs.map((tab) => [tab.title, tab.workspaceId]))}.`)
