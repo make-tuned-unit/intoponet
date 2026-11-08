@@ -2858,6 +2858,7 @@ export const checks = {
     const tourPage = 'en.wikipedia.org/wiki/Earth'
     const stateFile = join(ctx.profile, 'browser-state.v1.json')
     let savedWithTabs = null
+    let tourParity = null
     // Its page runs in a temporary session of its own (not the shared one, not private), set up as every page session is.
     const tourSessionNow = () => ctx.main(`(async () => {
       const page = electron.webContents.getAllWebContents().find((c) => !c.isDestroyed() && c.getURL().includes(${JSON.stringify(tourPage)}))
@@ -2872,6 +2873,8 @@ export const checks = {
       if (state.title === 'Every page, with tools built in') {
         await ctx.delay(600)
         savedWithTabs = existsSync(stateFile) && readFileSync(stateFile, 'utf8').includes(tourPage)
+        // Its page has a session of its own, with every protection a tab's session has.
+        tourParity = await pageSessionProblems(ctx)
         const page = await ctx.page(tourPage)
         await page.evaluate(`document.cookie = 'intoponet_tour=1; max-age=3600; path=/'; true`)
         tourSession = {
@@ -2899,6 +2902,7 @@ export const checks = {
       if (step < total) await ctx.click('.tour-next')
     }
     expect(missed.length === 0, `These tour steps do not show what they describe: ${missed.join("; ")}.`)
+    expect(tourParity?.problems.length === 0, `The tour's page is missing a tab's protections: ${(tourParity?.problems ?? ['never checked']).join(' ')}`)
     // Exact spotlights: Compare under the world story's sources; the tab and workspace steps with the (hidden) sidebar open.
     const compareStep = shown.find((state) => state?.title === 'Two outlets, side by side')
     expect(compareStep?.lit === '.sc-compare', `The Compare step lit ${compareStep?.lit}, not the Compare button under the story's sources.`)
