@@ -3335,6 +3335,14 @@ export const checks = {
       }
       throw new CheckFailure(`Timed out waiting for: ${label}`)
     }
+    /** Opens the menu and chooses an item; the menu closes if another check's window takes focus first, so it is opened again. */
+    const chooseInWorkspaceMenu = async (name, item, label) => {
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        await openWorkspaceMenu(name, label)
+        if (await ctx.click('.tab-rail-folder-menu [role="menuitem"]', item)) return
+      }
+      throw new CheckFailure(`"${item}" was not in the menu to choose (${label}).`)
+    }
     const typeCommand = async (text) => {
       await ctx.evaluate(`(() => { const input = document.querySelector('.command-input input'); input.focus(); input.select(); return true })()`)
       await ctx.type(text)
@@ -3476,8 +3484,7 @@ export const checks = {
       await ctx.wait(`${ws}.get().then((s) => s.workspaces[0].id === ${JSON.stringify(researchId)})`, 3000, '⌥⇧← to move Research first')
 
       // Rename from the workspace's actions.
-      await openWorkspaceMenu('Research', 'the workspace menu')
-      await ctx.click('.tab-rail-folder-menu [role="menuitem"]', 'Rename')
+      await chooseInWorkspaceMenu('Research', 'Rename', 'the workspace menu')
       await ctx.wait(`document.activeElement?.classList.contains('tab-rail-workspace-name-input')`, 3000, 'the name field')
       await ctx.evaluate(`document.activeElement.select(); true`)
       await ctx.type('Reading')
@@ -3587,14 +3594,12 @@ export const checks = {
 
       // Delete, after confirming (focus starts on Cancel), and Undo brings it back with its tabs, unreloaded.
       const researchC = (await byTitle('research-c')).id
-      await openWorkspaceMenu('Reading', 'the workspace menu')
-      await ctx.click('.tab-rail-folder-menu [role="menuitem"]', 'Delete workspace')
+      await chooseInWorkspaceMenu('Reading', 'Delete workspace', 'the workspace menu')
       await ctx.wait(`!!document.querySelector('.tab-rail-workspace-confirm[role="alertdialog"]') && document.activeElement?.textContent === 'Cancel'`, 3000, 'the delete confirmation, with focus on Cancel')
       // Escape closes the question and focus goes back to the workspace's actions button (not lost to the page).
       await ctx.press('Escape')
       await ctx.wait(`!document.querySelector('.tab-rail-workspace-confirm') && document.activeElement?.getAttribute('aria-label') === 'Actions for workspace Reading'`, 3000, 'Escape to close the delete confirmation and return focus to the actions button')
-      await openWorkspaceMenu('Reading', 'the workspace menu again')
-      await ctx.click('.tab-rail-folder-menu [role="menuitem"]', 'Delete workspace')
+      await chooseInWorkspaceMenu('Reading', 'Delete workspace', 'the workspace menu again')
       await ctx.wait(`!!document.querySelector('.tab-rail-workspace-confirm[role="alertdialog"]') && document.activeElement?.textContent === 'Cancel'`, 3000, 'the delete confirmation again')
       expect((await state()).workspaces.length === 2, 'Asking to delete deleted before it was confirmed.')
       await axeAudit(ctx, 'the delete confirmation', '.tab-rail')
