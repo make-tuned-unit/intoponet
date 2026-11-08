@@ -3886,13 +3886,17 @@ export const checks = {
         id: page ? page.webContents.id : null,
         bounds: page ? page.getBounds() : null,
         partition: page ? partition(page.webContents) : null,
-        pageFocused: page ? page.webContents.isFocused() : false,
-        frameFocused: frame ? frame.webContents.isFocused() : false,
-        shellFocused: win.webContents.isFocused(),
-        under: kids.filter((v) => v !== frame && v !== page).map((v) => ({ url: v.webContents.getURL(), bounds: v.getBounds(), focused: v.webContents.isFocused() })),
+        pageFocused: page ? page.webContents.id === globalThis.__lpKeyboard : false,
+        frameFocused: frame ? frame.webContents.id === globalThis.__lpKeyboard : false,
+        shellFocused: win.webContents.id === globalThis.__lpKeyboard,
+        under: kids.filter((v) => v !== frame && v !== page).map((v) => ({ url: v.webContents.getURL(), bounds: v.getBounds(), focused: v.webContents.id === globalThis.__lpKeyboard })),
       })
     })()`).then(JSON.parse)
-    /** Focus is only reported for the key window: bring the app forward first (other apps may be in front during checks). */
+    /**
+     * Which view has the keyboard is the one that took it last, told by focus events: they arrive whether or not the
+     * window is in front (isFocused() reads false for every view while another app's window is). The app is still
+     * brought forward first, as a person's window would be.
+     */
     const focusState = async () => {
       await ctx.main(`(() => { electron.app.focus({ steal: true }); electron.BrowserWindow.getAllWindows()[0].focus(); return true })()`)
       await ctx.delay(400)
@@ -3922,6 +3926,7 @@ export const checks = {
     }
     const focusedLink = (session) => session.evaluate(`document.activeElement?.id ?? ''`)
     try {
+      await ctx.main(`(() => { globalThis.__lpKeyboard = null; const watch = (c) => c.on('focus', () => { globalThis.__lpKeyboard = c.id }); for (const c of electron.webContents.getAllWebContents()) watch(c); electron.app.on('web-contents-created', (_event, c) => watch(c)); return true })()`)
       // Every request the protection blocks, in either session, with the page that asked for it.
       await ctx.main(`(() => { globalThis.__lpBlocked = []; for (const p of ['persist:intoponet-default', 'intoponet-private']) electron.session.fromPartition(p).webRequest.onErrorOccurred((d) => { if (d.error === 'net::ERR_BLOCKED_BY_CLIENT') globalThis.__lpBlocked.push({ id: d.webContentsId, url: d.url }) }); return true })()`)
       await openPage(ctx, `${origin}/home`, 2500)
