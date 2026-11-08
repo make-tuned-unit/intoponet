@@ -13,7 +13,11 @@ function band(overrides: Partial<FrequencyBand> = {}): FrequencyBand {
   }
 }
 
-describe('multiresolution field textures', () => {
+// These tests rasterize full textures (a topic detail tile is 1024 × 1024 pixels), pure CPU work:
+// up to ~1.6 s per test on a free performance core and ~4 s on an efficiency core, and longer still when
+// other processes share the CPU. Vitest's default 5 s is a hang guard, not a speed requirement, so these
+// get a hang guard sized for that work; no test here asserts how fast a texture builds.
+describe('multiresolution field textures', { timeout: 30_000 }, () => {
   it('produces deterministic pixels and version independent of input ordering', () => {
     const a = band({ id: 'a' })
     const b = band({ id: 'b', centerline: [{ lat: 2, lon: 40 }, { lat: 3, lon: 42 }], phase: 1.3 })
