@@ -212,6 +212,7 @@ import { backgroundTabLabel, PermissionBar, SitePermissionChips } from './permis
 import { ExternalOpenBar, useExternalOpenRequests } from './browsing/ExternalOpenBar'
 import { ErrorCard, ErrorPage, navigationErrorMessage, type OutletChoices } from './browsing/ErrorPage'
 import { countryNameOf, otherOutlets } from './browsing/compareOutlets'
+import { fitToolbarLabels } from './toolbarFit'
 import { SiteTweaksPanel } from './siteTweaks/SiteTweaksPanel'
 import { PasswordBar } from './passwords/PasswordBar'
 import { BookmarkSiteBar, type BookmarkSiteOffer } from './passwords/BookmarkSiteBar'
@@ -4157,7 +4158,7 @@ export function App() {
             <span className="sr-only" role="status">{addressCopied}</span>
             <span className="sr-only" aria-live="assertive">{tabSwitcherAnnouncement}</span>
             {onStartPage && <span className="origin-badge start-origin" aria-label="New tab"><Globe2 size={13} /><span>New tab</span></span>}
-            <div className="browser-actions">
+            <div className="browser-actions" ref={fitToolbarLabels}>
               {!onStartPage && panel.zoomFactor !== undefined && Math.abs(panel.zoomFactor - 1) > 0.005 && (
                 <button
                   type="button"

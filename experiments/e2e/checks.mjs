@@ -1431,6 +1431,38 @@ export const checks = {
     expect(tabs.length === 1 && tabs[0].url.includes(host), 'Opening a page did not create its tab.')
     const labels = await ctx.evaluate(`[...document.querySelectorAll('.browser-actions .chrome-label')].map((l) => l.textContent)`)
     for (const name of ['Translate', 'Capture', 'Pin', 'Absorb', 'Bookmarks']) expect(labels.some((l) => l.includes(name)), `Toolbar is missing "${name}".`)
+    // The toolbar keeps its spacing at every sidebar width: its labels give way to icons before any two tools touch.
+    const toolbar = () => ctx.evaluate(`JSON.stringify((() => {
+      const actions = document.querySelector('.browser-actions')
+      const items = [...actions.children].filter((el) => el.getClientRects().length > 0)
+      const boxes = items.map((el) => el.getBoundingClientRect())
+      const name = (el) => el.getAttribute('aria-label') || el.querySelector('button')?.getAttribute('aria-label') || el.className
+      return {
+        touching: boxes.slice(1).flatMap((box, i) => (box.left < boxes[i].right + 1 ? [name(items[i]) + ' / ' + name(items[i + 1])] : [])),
+        clipped: [...actions.querySelectorAll('button')].filter((b) => b.getClientRects().length > 0 && b.scrollWidth > b.clientWidth + 1).map(name),
+        outside: boxes.length > 0 && boxes[0].left < actions.getBoundingClientRect().left - 1,
+        labels: [...actions.querySelectorAll('.chrome-label')].some((label) => label.getClientRects().length > 0),
+      }
+    })())`).then(JSON.parse)
+    const widthKey = (key, shiftKey = false) => ctx.evaluate(`(() => { const handle = document.querySelector('.tab-rail-resize'); handle.focus(); handle.dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(key)}, shiftKey: ${shiftKey}, bubbles: true })); return true })()`)
+    expect(await ctx.click('button[aria-label="Pin tabs open"]'), 'The sidebar has no "Pin tabs open" button.')
+    await ctx.wait(`!!document.querySelector('.tab-rail-resize')`, 5000, 'the sidebar kept open, with its width handle')
+    for (let i = 0; i < 6; i += 1) await widthKey('ArrowLeft', true)
+    const cramped = []
+    const labelledAt = []
+    for (let step = 0; step <= 15; step += 1) {
+      await ctx.delay(450)
+      const width = await ctx.evaluate(`Number(document.querySelector('.tab-rail-resize').getAttribute('aria-valuenow'))`)
+      const now = await toolbar()
+      if (now.touching.length || now.clipped.length || now.outside) cramped.push(`${width} px (${JSON.stringify(now)})`)
+      if (now.labels) labelledAt.push(width)
+      await widthKey('ArrowRight')
+    }
+    expect(cramped.length === 0, `The toolbar is cramped with the sidebar at ${cramped.join('; ')}.`)
+    await ctx.click('button[aria-label="Unpin tabs: collapse to icons"]')
+    await ctx.delay(600)
+    const roomy = await toolbar()
+    expect(!roomy.touching.length && !roomy.clipped.length && !roomy.outside, `The toolbar is cramped with the sidebar as icons: ${JSON.stringify(roomy)}.`)
     // Pages see plain Chrome: some sites call "Electron" an outdated browser.
     const ua = await (await ctx.page(host)).evaluate(`navigator.userAgent`)
     expect(/Chrome\//.test(ua) && !/Electron|Intoponet/i.test(ua), `Pages see the user agent "${ua}".`)
@@ -1513,7 +1545,7 @@ export const checks = {
     await ctx.delay(2500)
     const stayed = await ctx.evaluate(`location.href === ${JSON.stringify(appUrl)} && !!document.querySelector('.topbar')`).catch(() => false)
     expect(stayed, 'The app window navigated away from the app.')
-    return `Toolbar: ${labels.join(', ')}; pages see ${ua.match(/Chrome\/\S+/)?.[0]}; tab closed cleanly; a self-closing page took its tab; a background tab loaded in ${(behindMs / 1000).toFixed(1)} s, was throttled again and stayed silent until shown; ${keys}; the app window stayed on the app.`
+    return `Toolbar: ${labels.join(', ')}, never cramped with the sidebar kept open from 180 to 420 px (labelled at ${labelledAt.length ? labelledAt.join(', ') : 'no'} px, icons otherwise) or as icons (${roomy.labels ? 'labelled' : 'icons'}); pages see ${ua.match(/Chrome\/\S+/)?.[0]}; tab closed cleanly; a self-closing page took its tab; a background tab loaded in ${(behindMs / 1000).toFixed(1)} s, was throttled again and stayed silent until shown; ${keys}; the app window stayed on the app.`
   },
 
   async PROTECTION(ctx) {
