@@ -129,6 +129,92 @@ export class IncomingOpenQueue {
   }
 }
 
+/** More links than this from other apps within INCOMING_BURST_WINDOW_MS is a burst: the rest wait for the person. */
+export const INCOMING_BURST_LIMIT = 6
+export const INCOMING_BURST_WINDOW_MS = 3_000
+/** Most links kept waiting in a burst; a flood beyond this is dropped. */
+export const MAX_HELD_INCOMING = 100
+
+/** A burst's notice: "Opened `opened` of `total` links from another app". */
+export type HeldIncomingCount = { opened: number; total: number }
+
+export type IncomingBurstOptions = {
+  /** Opens one link or file (a tab, or a quick window). */
+  open: (target: IncomingTarget) => void
+  /** The notice changed (null: no links are waiting). */
+  changed: (held: HeldIncomingCount | null) => void
+  now?: () => number
+}
+
+/**
+ * Links from other apps in a burst (more than 6 within 3 seconds: a selection of messages opened from
+ * Mail, a script, an app gone wrong): the first 6 open and the rest wait until the person chooses "Open
+ * the rest". Each workspace keeps at most 12 tabs and closes its oldest to make room, so a flood would
+ * otherwise push the person's own tabs out without their choosing it.
+ */
+export class IncomingBurst {
+  /** When the latest links arrived, within the window (at most INCOMING_BURST_LIMIT kept). */
+  private arrivals: number[] = []
+  private held: IncomingTarget[] = []
+  /** What the notice counts: the links of this burst opened, and all of them (null: no notice). */
+  private count: HeldIncomingCount | null = null
+
+  constructor(private readonly options: IncomingBurstOptions) {}
+
+  private now(): number {
+    return this.options.now?.() ?? Date.now()
+  }
+
+  push(target: IncomingTarget): void {
+    const now = this.now()
+    this.arrivals = this.arrivals.filter((at) => now - at < INCOMING_BURST_WINDOW_MS)
+    const burst = this.arrivals.length >= INCOMING_BURST_LIMIT
+    this.arrivals.push(now)
+    if (this.arrivals.length > INCOMING_BURST_LIMIT) this.arrivals.shift()
+    if (!burst) {
+      this.options.open(target)
+      // A link that opens while the notice shows is counted with it, so its numbers stay true.
+      if (this.count) {
+        this.count = { opened: this.count.opened + 1, total: this.count.total + 1 }
+        this.options.changed(this.count)
+      }
+      return
+    }
+    if (this.held.length >= MAX_HELD_INCOMING) return
+    this.held.push(target)
+    // The links that started the burst all opened (nothing waited before it, and the window restarts once the person answers).
+    const count = this.count ?? { opened: INCOMING_BURST_LIMIT, total: INCOMING_BURST_LIMIT }
+    this.count = { opened: count.opened, total: count.total + 1 }
+    this.options.changed(this.count)
+  }
+
+  /** The notice now (null: no links are waiting). */
+  state(): HeldIncomingCount | null {
+    return this.count
+  }
+
+  /** "Open the rest": every waiting link opens, in the order it came. */
+  openRest(): void {
+    const rest = this.held
+    this.clear()
+    for (const target of rest) this.options.open(target)
+  }
+
+  /** The notice was dismissed: the waiting links are dropped. */
+  dismiss(): void {
+    this.clear()
+  }
+
+  private clear(): void {
+    const had = this.count !== null
+    this.held = []
+    this.count = null
+    // The person answered: the next link from another app opens straight away.
+    this.arrivals = []
+    if (had) this.options.changed(null)
+  }
+}
+
 /** Web-page assets a saved page loads from beside it (its "_files" folder). */
 const PAGE_ASSET_EXTENSIONS = new Set([
   '.html', '.htm', '.xhtml', '.css', '.js', '.mjs', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.avif', '.svg', '.ico', '.bmp',

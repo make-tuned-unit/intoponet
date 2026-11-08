@@ -10,7 +10,7 @@ import { passwordChannels, type PasswordApi, type PasswordCommand, type Password
 import { browserImportChannels, type BrowserImportApi, type BrowserImportCommand, type ImportPreview, type ImportProfile, type ImportRunResult } from '../shared/browserImport'
 import { downloadChannels, historyChannels, type DownloadCommand, type DownloadEntry, type DownloadEvent, type DownloadsApi, type HistoryApi, type HistoryCommand, type HistoryEvent } from '@intoponet/browser-api'
 import { updateChannels, type UpdatesApi, type UpdateCommand, type UpdateStatus } from '@intoponet/browser-api'
-import { browsingChannels, type BrowsingApi, type BrowsingCommand, type BrowsingEvent, type BrowsingSettings, type ExternalOpenRequest, type LinkRoutesState } from '@intoponet/browser-api'
+import { browsingChannels, type BrowsingApi, type BrowsingCommand, type BrowsingEvent, type BrowsingSettings, type ExternalOpenRequest, type HeldIncomingLinks, type LinkRoutesState } from '@intoponet/browser-api'
 import {
   CAPTURE_SCHEME,
   captureChannels,
@@ -530,6 +530,9 @@ const browsingInvoke = (command: BrowsingCommand): Promise<unknown> => ipcRender
 const browsing: BrowsingApi = {
   decideExternal: async (id, decision, always) => { await browsingInvoke({ type: 'external-decide', id, decision, always: always === true }) },
   pendingExternal: () => browsingInvoke({ type: 'external-pending' }) as Promise<ExternalOpenRequest[]>,
+  heldIncoming: () => browsingInvoke({ type: 'get-held-incoming' }) as Promise<HeldIncomingLinks | null>,
+  openHeldIncoming: async () => { await browsingInvoke({ type: 'open-held-incoming' }) },
+  dismissHeldIncoming: async () => { await browsingInvoke({ type: 'dismiss-held-incoming' }) },
   settings: () => browsingInvoke({ type: 'settings' }) as Promise<BrowsingSettings>,
   setPageAppearance: (appearance) => browsingInvoke({ type: 'set-page-appearance', appearance }) as Promise<BrowsingSettings>,
   setTabSleep: (after) => browsingInvoke({ type: 'set-tab-sleep', after }) as Promise<BrowsingSettings>,

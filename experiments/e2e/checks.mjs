@@ -5157,6 +5157,33 @@ export const checks = {
       await setOtherApps('tab')
       await ctx.delay(500)
 
+      // A burst (more than 6 links within 3 seconds) opens the first 6; the rest wait for "Open the rest", and no tab closes
+      // to make room meanwhile. The notice is a bar under the toolbar over a page, and a notice on the globe.
+      await switchTo('main')
+      await ctx.delay(3200)
+      const burstTabs = async () => (await tabUrls()).filter((url) => url.includes('/burst-'))
+      const before = await tabUrls()
+      const closedCount = () => ctx.evaluate(`window.intoponet.browserHost.getClosedTabs().then((l) => l.length)`)
+      const closedBefore = await closedCount()
+      for (let i = 1; i <= 9; i += 1) await openFromOtherApp(`${plain}/burst-${i}`)
+      await until(async () => (await burstTabs()).length >= 6, 'the first 6 links of the burst to open')
+      await ctx.wait(`(document.querySelector('.incoming-links-bar')?.innerText ?? '').includes('Opened 6 of 9 links from another app')`, 5_000, 'the "Opened 6 of 9 links from another app" bar')
+      await ctx.delay(800)
+      const firstSix = await burstTabs()
+      expect(firstSix.length === 6 && [1, 2, 3, 4, 5, 6].every((n) => firstSix.some((url) => url.endsWith(`/burst-${n}`))), `A burst of 9 links opened ${JSON.stringify(firstSix)} instead of the first 6.`)
+      const now = await tabUrls()
+      expect(before.every((url) => now.includes(url)) && (await closedCount()) === closedBefore, `The burst closed tabs that were open: before ${JSON.stringify(before)}, now ${JSON.stringify(now)}.`)
+      await axeAudit(ctx, 'the held links bar', '.incoming-links-bar')
+      await ctx.shot('held-links')
+      await ctx.evaluate(`window.intoponet.browserHost.close().then(() => true)`)
+      await ctx.wait(`(document.querySelector('.incoming-links-notice')?.innerText ?? '').includes('Opened 6 of 9 links from another app')`, 5_000, 'the held links notice with no page shown')
+      expect(await ctx.click('.incoming-links-notice button', 'Open the rest'), 'The held links notice has no "Open the rest".')
+      await until(async () => (await burstTabs()).length === 9, 'the rest of the burst to open')
+      await ctx.wait(`!document.querySelector('.incoming-links-notice') && !document.querySelector('.incoming-links-bar')`, 5_000, 'the notice to go after Open the rest')
+      for (const tab of JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => JSON.stringify(t))`)).filter((item) => item.url.includes('/burst-'))) {
+        await ctx.evaluate(`window.intoponet.browserHost.closeTab(${JSON.stringify(tab.id)}).then(() => true)`)
+      }
+
       // Settings › Browsing lists the rules, and the list passes axe.
       await openPanel(ctx, 'Settings')
       const settingsText = await ctx.evaluate(`document.querySelector('.settings-pane')?.innerText ?? ''`)
@@ -5168,7 +5195,7 @@ export const checks = {
 
       // Clear the rules this check made, so the next run starts clean.
       for (const rule of savedRules()) await routes('removeLinkRoute', rule.id)
-      return 'Rule localhost → Work: a matching link (and a subdomain) opens in Work as a tab and shows it, and the rule is saved to link-routes.json; 127.0.0.1 follows the default. With the quick-window setting, the match still goes to Work and the unmatched link opens a quick window. Private browsing is not routed. The first matching rule wins (moving a rule changes that); a rule for a deleted workspace is skipped. Always open here… offers the workspaces, saves the rule, and moves the same page (history kept) into Work; a private quick window has none. Settings lists the rules; axe clean.'
+      return 'Rule localhost → Work: a matching link (and a subdomain) opens in Work as a tab and shows it, and the rule is saved to link-routes.json; 127.0.0.1 follows the default. With the quick-window setting, the match still goes to Work and the unmatched link opens a quick window. Private browsing is not routed. The first matching rule wins (moving a rule changes that); a rule for a deleted workspace is skipped. Always open here… offers the workspaces, saves the rule, and moves the same page (history kept) into Work; a private quick window has none. A burst of 9 links opened 6 and held 3 until "Open the rest", closing nothing. Settings lists the rules; axe clean.'
     } finally {
       server.close()
     }

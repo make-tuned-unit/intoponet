@@ -50,7 +50,7 @@ import { fetchTabIcon, TabIconMemory } from './tabFavicon'
 import { browsingChannels, parseBrowsingCommand, type LinkRoutesState, type BrowsingEvent, type ArchivedTabSnapshot, type TabFolderSnapshot, type TabGroupRequest, type TabGroupResult, type TidySuggestion, type BrowsingSettings, type LinksFromOtherApps, type PageLoadError, type TabArchiveAfter, type TabSidebarState, type TabSleepAfter, type TabSwitchOrder } from '@intoponet/browser-api'
 import { ExternalOpenBroker, classifyExternalUrl } from './externalOpen'
 import { CertificateErrorMemo, classifyLoadError, isCertificateError, showsErrorPage, summarizeCertificate } from './errorPage'
-import { IncomingOpenQueue, LocalFileGrants, incomingFileTarget, incomingTargetsFromArgs, incomingWebUrl, readSavedLinkFile, type IncomingTarget } from './incomingOpen'
+import { IncomingBurst, IncomingOpenQueue, LocalFileGrants, incomingFileTarget, incomingTargetsFromArgs, incomingWebUrl, readSavedLinkFile, type IncomingTarget } from './incomingOpen'
 import { PageAppearanceController } from './pageAppearance'
 import { SWITCHER_KEYS_SCRIPT, switcherHtml, SWITCHER_ROW_HEIGHT, SWITCHER_ROWS, TabSwitcher, type SwitcherTab } from './tabSwitcher'
 import { focusLinkScript, isLinkPreviewRequest, parsePreviewMessage, PREVIEW_FOCUS_LOOP_SCRIPT, PREVIEW_WORLD_ID, previewFrameHtml, previewHeading, previewLayout, previewSite, type PreviewRect } from './linkPreview'
@@ -87,6 +87,18 @@ if (!app.isReady()) {
 // ---- Links and files from other apps (default browser, Open With, a second launch) ----
 /** What arrived before the window was ready opens once it is (see whenReady). */
 const incomingOpens = new IncomingOpenQueue()
+/**
+ * More than 6 links within 3 seconds: the first 6 open and the rest wait for "Open the rest" in the app
+ * window (incomingOpen.ts), so a flood never closes the shown workspace's tabs to make room.
+ */
+const incomingBurst = new IncomingBurst({
+  open: (target) => openIncoming(target),
+  changed: (held) => {
+    // The notice is in the app window: it comes back if it was closed (links can go to quick windows).
+    if (held) reopenWindow()
+    emitBrowsing({ type: 'incoming-held', held })
+  },
+})
 const quickWindows: QuickWindows = new QuickWindows({
   // A quick window is not part of a workspace: its page uses the shared sign-ins (or private).
   buildView: (isPrivate) => buildView(isPrivate, null),
@@ -5275,6 +5287,14 @@ function wireBrowsing(): void {
         return null
       case 'external-pending':
         return externalOpener?.list() ?? []
+      case 'get-held-incoming':
+        return incomingBurst.state()
+      case 'open-held-incoming':
+        incomingBurst.openRest()
+        return null
+      case 'dismiss-held-incoming':
+        incomingBurst.dismiss()
+        return null
       case 'settings':
         return browsingSettings()
       case 'set-page-appearance':
@@ -5878,7 +5898,7 @@ app.whenReady().then(async () => {
   // Links and files handed over by other apps (and this launch's own arguments) open as tabs now.
   startup('opening links from other apps', () => {
     for (const target of incomingTargetsFromArgs(process.argv, process.cwd(), readSmallFile)) incomingOpens.push(target)
-    incomingOpens.ready(openIncoming)
+    incomingOpens.ready((target) => incomingBurst.push(target))
   })
 
   startup('public field', () => {

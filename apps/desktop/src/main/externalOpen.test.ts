@@ -235,6 +235,7 @@ describe('browsing commands from the shell', () => {
     expect(parseBrowsingCommand({ type: 'external-decide', id: 'x', decision: 'cancel' })).toEqual({ type: 'external-decide', id: 'x', decision: 'cancel', always: false })
     expect(parseBrowsingCommand({ type: 'set-page-appearance', appearance: 'dark' })).toEqual({ type: 'set-page-appearance', appearance: 'dark' })
     expect(parseBrowsingCommand({ type: 'make-default-browser' })).toEqual({ type: 'make-default-browser' })
+    for (const type of ['get-held-incoming', 'open-held-incoming', 'dismiss-held-incoming']) expect(parseBrowsingCommand({ type, extra: 'ignored' })).toEqual({ type })
   })
 
   it.each([
