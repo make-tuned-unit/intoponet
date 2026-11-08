@@ -150,4 +150,22 @@ describe('no plain-text library copy', () => {
     clearLegacyLibraryStorage()
     expect(hasLegacyLibraryStorage()).toBe(false)
   })
+
+  it('clears after a write only the old copy that write included, never one that appeared or changed meanwhile', async () => {
+    const { legacyLibrarySnapshot, clearLegacyLibraryStorage, hasLegacyLibraryStorage } = await import('./localLibrary')
+    expect(legacyLibrarySnapshot()).toBeNull()
+    // A write began with no old copy; one appears before it finishes (it was not in that write).
+    const none = legacyLibrarySnapshot() ?? undefined
+    localStorage.setItem(bookmarkKey, '[{"url":"https://a.test/"}]')
+    if (none) clearLegacyLibraryStorage(none)
+    expect(hasLegacyLibraryStorage()).toBe(true)
+    // A write began with it; the copy changed before the write finished: kept.
+    const first = legacyLibrarySnapshot()!
+    localStorage.setItem(bookmarkKey, '[{"url":"https://b.test/"}]')
+    clearLegacyLibraryStorage(first)
+    expect(localStorage.getItem(bookmarkKey)).toBe('[{"url":"https://b.test/"}]')
+    // A write that included the copy as it still is: cleared.
+    clearLegacyLibraryStorage(legacyLibrarySnapshot()!)
+    expect(hasLegacyLibraryStorage()).toBe(false)
+  })
 })

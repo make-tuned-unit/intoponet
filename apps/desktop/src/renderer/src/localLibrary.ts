@@ -223,10 +223,27 @@ export function hasLegacyLibraryStorage(): boolean {
   }
 }
 
-/** Remove the old plain-text copy; call only after the encrypted library has been written. */
-export function clearLegacyLibraryStorage(): void {
+/** The old plain-text copy as it stands (each key's raw text, null when absent), or null when there is none. */
+export function legacyLibrarySnapshot(): Record<string, string | null> | null {
   try {
-    for (const key of [bookmarkKey, collectionKey, recentKey]) localStorage.removeItem(key)
+    const snapshot = Object.fromEntries([bookmarkKey, collectionKey, recentKey].map((key) => [key, localStorage.getItem(key)]))
+    return Object.values(snapshot).some((value) => value !== null) ? snapshot : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Remove the old plain-text copy; call only after the encrypted library has been written. With `written` (the copy
+ * as it stood when that write began, which the write included), a key is removed only if it is still that copy:
+ * one that appeared or changed meanwhile was not in the write, so it stays for the next one.
+ */
+export function clearLegacyLibraryStorage(written?: Record<string, string | null>): void {
+  try {
+    for (const key of [bookmarkKey, collectionKey, recentKey]) {
+      if (written && localStorage.getItem(key) !== written[key]) continue
+      localStorage.removeItem(key)
+    }
   } catch {
     // Nothing to clear.
   }
