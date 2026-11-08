@@ -356,9 +356,15 @@ async function browserKeys(ctx) {
     panel = await state()
     expect(Math.abs((panel.zoomFactor ?? 1) - 1.1) < 0.01, `⌘= in a page did not zoom it (zoom ${panel.zoomFactor}).`)
     await ctx.wait(`(document.querySelector('.zoom-indicator')?.innerText ?? '').includes('110%')`, 5000, 'the 110% zoom indicator in the toolbar')
-    await ctx.delay(800)
-    const saved = JSON.parse(readFileSync(join(ctx.profile, 'site-zoom.json'), 'utf8'))
-    expect(saved.sites?.['127.0.0.1'] === 1.1, `The site zoom was not saved: ${JSON.stringify(saved)}`)
+    // Saved a moment after the change (and later under load): read once it is there, within a time limit.
+    const zoomFile = join(ctx.profile, 'site-zoom.json')
+    const readZoom = () => { try { return JSON.parse(readFileSync(zoomFile, 'utf8')) } catch { return null } }
+    let saved = readZoom()
+    for (let i = 0; i < 40 && saved?.sites?.['127.0.0.1'] !== 1.1; i += 1) {
+      await ctx.delay(250)
+      saved = readZoom()
+    }
+    expect(saved?.sites?.['127.0.0.1'] === 1.1, `The site zoom was not saved: ${JSON.stringify(saved)}`)
 
     // Closed and opened again: the site comes back at its zoom.
     await chord('/second', 'W')
