@@ -356,9 +356,11 @@ async function browserKeys(ctx) {
     panel = await state()
     expect(Math.abs((panel.zoomFactor ?? 1) - 1.1) < 0.01, `⌘= in a page did not zoom it (zoom ${panel.zoomFactor}).`)
     await ctx.wait(`(document.querySelector('.zoom-indicator')?.innerText ?? '').includes('110%')`, 5000, 'the 110% zoom indicator in the toolbar')
-    await ctx.delay(800)
-    const saved = JSON.parse(readFileSync(join(ctx.profile, 'site-zoom.json'), 'utf8'))
-    expect(saved.sites?.['127.0.0.1'] === 1.1, `The site zoom was not saved: ${JSON.stringify(saved)}`)
+    // Saved a moment after the change (a busy Mac takes longer): wait for the file to show it, up to 10 s.
+    const savedZoom = () => { try { return JSON.parse(readFileSync(join(ctx.profile, 'site-zoom.json'), 'utf8')) } catch { return null } }
+    for (let i = 0; i < 50 && savedZoom()?.sites?.['127.0.0.1'] !== 1.1; i += 1) await ctx.delay(200)
+    const saved = savedZoom()
+    expect(saved?.sites?.['127.0.0.1'] === 1.1, `The site zoom was not saved: ${JSON.stringify(saved)}`)
 
     // Closed and opened again: the site comes back at its zoom.
     await chord('/second', 'W')
@@ -4971,7 +4973,9 @@ export const checks = {
       await ctx.main(`electron.app.quit()`).catch(() => undefined)
       // A quitting app waits for its debugger to disconnect before it exits.
       ctx.detachMain()
-      await ctx.delay(2500)
+      // Gone once its DevTools stop answering (a busy Mac quits slower), up to 15 s; the quit writes the state last.
+      const quitting = async () => fetch(`http://127.0.0.1:${ctx.port}/json/version`).then(() => true, () => false)
+      for (let i = 0; i < 60 && await quitting(); i += 1) await ctx.delay(250)
       const saved = JSON.parse(readFileSync(join(ctx.profile, 'browser-state.v1.json'), 'utf8'))
       const savedLeft = saved.tabs.find((t) => t.url.startsWith(leftUrl))
       const savedRight = saved.tabs.find((t) => t.url.startsWith(rightUrl))
