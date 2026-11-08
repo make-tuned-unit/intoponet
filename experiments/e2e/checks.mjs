@@ -3805,16 +3805,22 @@ export const checks = {
     })()`).then(JSON.parse)
     /**
      * Focus is only reported for the key window: bring the app forward first (other apps may be in front during checks),
-     * and read it once the window is the key one (another check's window can take that back in between).
+     * and read it once the window is the key one. Other checks' windows take that back in between; with several runs
+     * side by side it stayed with them for over 4 s once, so this keeps asking for up to about 15 s.
      */
     const focusState = async () => {
       let state
-      for (let attempt = 0; attempt < 10; attempt += 1) {
+      for (let attempt = 0; attempt < 30; attempt += 1) {
         await ctx.main(`(() => { electron.app.focus({ steal: true }); electron.BrowserWindow.getAllWindows()[0].focus(); return true })()`)
         await ctx.delay(400)
         state = await card()
         if (state.windowFocused) break
       }
+      // Never the key window: which app held it says why.
+      if (!state.windowFocused) try {
+        const front = execFileSync('lsappinfo', ['front']).toString().trim()
+        state.frontApp = `${execFileSync('lsappinfo', ['info', '-only', 'name', front]).toString().trim()} ${execFileSync('lsappinfo', ['info', '-only', 'pid', front]).toString().trim()} (this app: pid ${await ctx.main('process.pid')})`
+      } catch { /* diagnostics only */ }
       return state
     }
     const waitOpen = async (part, label) => {
@@ -3862,7 +3868,7 @@ export const checks = {
       expect(share.every((s) => s >= 0.7 && s <= 0.85), `The card is not about 80% of the page (${share.map((s) => Math.round(s * 100)).join('% × ')}%).`)
       expect(shown.partition === 'normal', `The preview of a normal tab is in the "${shown.partition}" session.`)
       const entered = await focusState()
-      expect(entered.open && entered.pageFocused && !entered.under.some((view) => view.focused), `Focus did not move into the card (${JSON.stringify({ page: entered.pageFocused, frame: entered.frameFocused, shell: entered.shellFocused })}).`)
+      expect(entered.open && entered.pageFocused && !entered.under.some((view) => view.focused), `Focus did not move into the card (${JSON.stringify({ page: entered.pageFocused, frame: entered.frameFocused, shell: entered.shellFocused, window: entered.windowFocused, under: entered.under.filter((view) => view.focused).map((view) => view.url), ...(entered.frontApp ? { frontApp: entered.frontApp } : {}) })}).`)
       const previewId = shown.id
 
       // Protection: the ad frame and ad picture are blocked in the card, and their space is hidden.
