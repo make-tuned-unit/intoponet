@@ -79,6 +79,43 @@ export function removeUnfinishedTemporaries(): number {
   return removed
 }
 
+/** When this run began: a temporary file older than that belongs to a run that is over. */
+const startedAt = Date.now()
+/** `<file>.<uuid>.tmp`, the temporary file of an atomic write (this module's, and the news cache's). */
+const TEMPORARY_NAME = /^.+\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.tmp$/i
+
+/**
+ * At startup: deletes the temporary files a run that is over left in a folder of the profile, when it
+ * stopped in the middle of a write (a crash, a force-quit, or a version before 0.1.23 quitting while a
+ * late save was still being written). Only one app runs on a profile, so such a write can never finish;
+ * the file it was replacing is as it was. Without this they stay for good, each holding an old copy of
+ * what it was saving (history, the library) that clearing it later never reaches. Writes of this run
+ * are never touched. Returns how many were deleted.
+ */
+export function removeLeftoverTemporaries(folder: string, before: number = startedAt): number {
+  let names: string[]
+  try {
+    names = readdirSync(folder)
+  } catch {
+    return 0
+  }
+  let removed = 0
+  for (const name of names) {
+    if (!TEMPORARY_NAME.test(name)) continue
+    const path = join(folder, name)
+    if (temporaries.has(path)) continue
+    try {
+      const info = statSync(path)
+      if (!info.isFile() || info.mtimeMs >= before) continue
+      rmSync(path, { force: true })
+      removed += 1
+    } catch {
+      // Already gone.
+    }
+  }
+  return removed
+}
+
 /** Synchronous atomic write, for quit and window-close paths that cannot wait. */
 export function writeFileAtomicSync(path: string, data: string | Uint8Array, mode = 0o600): void {
   const temporary = `${path}.${randomUUID()}.tmp`

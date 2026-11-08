@@ -1,0 +1,238 @@
+{
+ "version": 3,
+ "url": "https://pages.example/p/front",
+ "bounds": {
+  "x": 351,
+  "y": 133,
+  "width": 1048,
+  "height": 680
+ },
+ "wasVisible": true,
+ "tabs": [
+  {
+   "id": "d1f544b2-377b-4b87-8602-b2f47e612fc3",
+   "url": "https://pages.example/p/pin1-away",
+   "title": "Page /p/pin1-away",
+   "pinned": true,
+   "home": "https://pages.example/p/pin1",
+   "workspaceId": "main"
+  },
+  {
+   "id": "b93f0c3f-f214-4f2e-a336-6b3dfe9e286c",
+   "url": "https://pages.example/p/pin2",
+   "title": "Page /p/pin2",
+   "pinned": true,
+   "home": "https://pages.example/p/pin2",
+   "workspaceId": "main"
+  },
+  {
+   "id": "c4f1e374-8d4b-4c95-b825-0b6e7002a06f",
+   "url": "https://pages.example/p/c",
+   "title": "Page /p/c",
+   "folderId": "e51388ad-2eae-4ebf-ba18-3d5b74177fc2",
+   "workspaceId": "main"
+  },
+  {
+   "id": "6b1efeb8-74dd-45f8-be66-ac842e3bd9d3",
+   "url": "https://pages.example/p/d",
+   "title": "Page /p/d",
+   "folderId": "3a038577-2930-4a38-8b28-3ef7b6460c82",
+   "workspaceId": "main"
+  },
+  {
+   "id": "e8944bc9-144b-4656-a893-795f43424619",
+   "url": "https://pages.example/p/s1?t=Harbour%20lights%20return%20%7C%20Harbour%20Daily",
+   "title": "Harbour lights return | Harbour Daily",
+   "folderId": "11996c2a-4a2d-4116-a50d-5ab5b17c8064",
+   "workspaceId": "main"
+  },
+  {
+   "id": "525b5956-d6d8-4493-bd96-1d3bca155b9a",
+   "url": "https://pages.example/p/s2?t=Lamps%20lit%20again%20on%20the%20wharf%20%7C%20Tide%20Wire",
+   "title": "Lamps lit again on the wharf | Tide Wire",
+   "folderId": "11996c2a-4a2d-4116-a50d-5ab5b17c8064",
+   "workspaceId": "main"
+  },
+  {
+   "id": "88e49fd5-5368-4a3a-8ace-dc76dad7dae9",
+   "url": "https://pages.example/p/front",
+   "title": "Page /p/front",
+   "workspaceId": "main"
+  },
+  {
+   "id": "920853dc-cd82-4bd6-b2bd-30ccf4cfbd29",
+   "url": "https://pages.example/p/y",
+   "title": "Page /p/y",
+   "split": {
+    "partnerId": "bba4a4ef-e3cc-4211-a35b-bc64cbbc68fe",
+    "side": "left",
+    "ratio": 0.4
+   },
+   "workspaceId": "main"
+  },
+  {
+   "id": "bba4a4ef-e3cc-4211-a35b-bc64cbbc68fe",
+   "url": "https://pages.example/p/x",
+   "title": "Page /p/x",
+   "split": {
+    "partnerId": "920853dc-cd82-4bd6-b2bd-30ccf4cfbd29",
+    "side": "right",
+    "ratio": 0.4
+   },
+   "workspaceId": "main"
+  },
+  {
+   "id": "cee53982-7283-4c8d-ba9e-3ebfb5eae3fb",
+   "url": "https://pages.example/p/rtl?t=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%20%D8%A8%D8%A7%D9%84%D8%B9%D8%A7%D9%84%D9%85%20%E2%80%94%20%C3%9Cn%C3%AFc%C3%B6d%C3%A9%20%F0%9F%8C%8D%20%D7%A9%D7%9C%D7%95%D7%9D",
+   "title": "مرحبا بالعالم — Ünïcödé 🌍 שלום",
+   "workspaceId": "main"
+  },
+  {
+   "id": "203dfcfd-dba3-45a1-be37-dee1657997d3",
+   "url": "https://accounts.example/home?who=ada",
+   "title": "Home ada",
+   "workspaceId": "main"
+  },
+  {
+   "id": "0aa58322-2121-490a-b858-5bca231e9b55",
+   "url": "https://pages.example/article",
+   "title": "Harbour lights of Charlottetown return after a decade | Island Fixture News",
+   "workspaceId": "main"
+  },
+  {
+   "id": "c026b21e-ba80-42c9-8bf1-55ab2a548060",
+   "url": "https://pages.example/p/wpin",
+   "title": "Page /p/wpin",
+   "pinned": true,
+   "home": "https://pages.example/p/wpin",
+   "workspaceId": "68fd42e6-5a53-4f8b-8070-826090ebc499"
+  },
+  {
+   "id": "c570a36b-b26a-4310-adf2-44618e6da341",
+   "url": "https://pages.example/p/w1",
+   "title": "Page /p/w1",
+   "folderId": "7c02b3ac-b4e2-4cd4-a5d1-ffb1039145c2",
+   "workspaceId": "68fd42e6-5a53-4f8b-8070-826090ebc499"
+  },
+  {
+   "id": "36e0a918-41f6-4a0b-b893-6c7e7f00aa51",
+   "url": "https://pages.example/p/w2",
+   "title": "Page /p/w2",
+   "folderId": "7c02b3ac-b4e2-4cd4-a5d1-ffb1039145c2",
+   "workspaceId": "68fd42e6-5a53-4f8b-8070-826090ebc499"
+  },
+  {
+   "id": "c483cd88-2706-42f5-aae2-4a255cf0ca95",
+   "url": "https://accounts.example/home?who=wstart",
+   "title": "Home wstart",
+   "workspaceId": "68fd42e6-5a53-4f8b-8070-826090ebc499"
+  },
+  {
+   "id": "11fd4b6b-9283-46cd-9924-0fe318294d75",
+   "url": "https://accounts.example/home?who=bob",
+   "title": "Home bob",
+   "workspaceId": "68fd42e6-5a53-4f8b-8070-826090ebc499"
+  },
+  {
+   "id": "41abf1bb-4bd1-4723-ac37-179937047d49",
+   "url": "https://pages.example/p/l2",
+   "title": "Page /p/l2",
+   "folderId": "39b22afe-1c30-433e-b51c-f1b904acb3ee",
+   "workspaceId": "a22e17c6-a0fe-480e-9ab8-ad5996d7147b"
+  },
+  {
+   "id": "717ac148-0568-4a9e-b570-4439cf4843a8",
+   "url": "https://pages.example/p/l1",
+   "title": "Page /p/l1",
+   "workspaceId": "a22e17c6-a0fe-480e-9ab8-ad5996d7147b"
+  }
+ ],
+ "sidebar": {
+  "mode": "open",
+  "width": 300
+ },
+ "folders": [
+  {
+   "id": "f378fe30-9672-4e94-8cd4-eacff0b91d2f",
+   "name": "Old",
+   "parentId": null,
+   "workspaceId": "main"
+  },
+  {
+   "id": "e51388ad-2eae-4ebf-ba18-3d5b74177fc2",
+   "name": "Research",
+   "parentId": null,
+   "workspaceId": "main"
+  },
+  {
+   "id": "3a038577-2930-4a38-8b28-3ef7b6460c82",
+   "name": "Deep",
+   "parentId": "e51388ad-2eae-4ebf-ba18-3d5b74177fc2",
+   "collapsed": true,
+   "workspaceId": "main"
+  },
+  {
+   "id": "11996c2a-4a2d-4116-a50d-5ab5b17c8064",
+   "name": "Harbour lights",
+   "parentId": null,
+   "storyId": "e2e-story-1",
+   "workspaceId": "main"
+  },
+  {
+   "id": "7c02b3ac-b4e2-4cd4-a5d1-ffb1039145c2",
+   "name": "Clients",
+   "parentId": null,
+   "workspaceId": "68fd42e6-5a53-4f8b-8070-826090ebc499"
+  },
+  {
+   "id": "39b22afe-1c30-433e-b51c-f1b904acb3ee",
+   "name": "Trips",
+   "parentId": null,
+   "workspaceId": "a22e17c6-a0fe-480e-9ab8-ad5996d7147b"
+  }
+ ],
+ "workspaces": [
+  {
+   "id": "main",
+   "name": "Main",
+   "icon": "globe",
+   "accent": "teal",
+   "activeTabId": "88e49fd5-5368-4a3a-8ace-dc76dad7dae9"
+  },
+  {
+   "id": "68fd42e6-5a53-4f8b-8070-826090ebc499",
+   "name": "Work",
+   "icon": "briefcase",
+   "accent": "violet",
+   "separateSignIns": true,
+   "activeTabId": "11fd4b6b-9283-46cd-9924-0fe318294d75"
+  },
+  {
+   "id": "a22e17c6-a0fe-480e-9ab8-ad5996d7147b",
+   "name": "Lisbon",
+   "icon": "plane",
+   "accent": "peach",
+   "anchor": {
+    "lat": 38.72,
+    "lon": -9.14,
+    "label": "Lisbon"
+   },
+   "activeTabId": "717ac148-0568-4a9e-b570-4439cf4843a8"
+  }
+ ],
+ "activeWorkspaceId": "main",
+ "favourites": [
+  {
+   "id": "fd428a7a-89d1-42ad-bce4-80098d8afba6",
+   "url": "https://pages.example/p/rtl?t=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%20%D8%A8%D8%A7%D9%84%D8%B9%D8%A7%D9%84%D9%85%20%E2%80%94%20%C3%9Cn%C3%AFc%C3%B6d%C3%A9%20%F0%9F%8C%8D%20%D7%A9%D7%9C%D7%95%D7%9D",
+   "title": "مرحبا بالعالم — Ünïcödé 🌍 שלום",
+   "workspaceId": null
+  },
+  {
+   "id": "4b35d668-6982-4830-8831-796f6b968b0a",
+   "url": "https://pages.example/article",
+   "title": "Harbour lights of Charlottetown return after a decade | Island Fixture News",
+   "workspaceId": "main"
+  }
+ ]
+}

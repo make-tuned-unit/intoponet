@@ -1,4 +1,4 @@
-import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readdirSync, readFileSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
@@ -16,7 +16,7 @@ vi.mock('node:fs/promises', async (importOriginal) => {
   }
 })
 
-const { atomicWritesInFlight, removeSetAside, removeUnfinishedTemporaries, setAsideUnreadable, writeFileAtomic, writeFileAtomicSync } = await import('./atomicFile')
+const { atomicWritesInFlight, removeLeftoverTemporaries, removeSetAside, removeUnfinishedTemporaries, setAsideUnreadable, writeFileAtomic, writeFileAtomicSync } = await import('./atomicFile')
 
 describe('unreadable files', () => {
   it('moves a damaged file aside so a later save cannot replace it', () => {
@@ -65,6 +65,36 @@ describe('atomic file writes', () => {
     await writeFileAtomic(path, 'old')
     await expect(writeFileAtomic(join(dir, 'missing', 'x.json'), 'new')).rejects.toThrow()
     expect(readFileSync(path, 'utf8')).toBe('old')
+  })
+  it('deletes at startup the temporary files a run that is over left, never this run\'s', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'atomic-'))
+    const started = Date.now()
+    const old = (started - 60_000) / 1000
+    // What a 0.1.22 quit (or a crash) leaves: unfinished temporaries next to the files they were replacing.
+    writeFileSync(join(dir, 'history.v1.seal'), 'kept')
+    const left = ['history.v1.seal.0b3c1a2e-5f6d-4e7a-8b9c-0d1e2f3a4b5c.tmp', 'news-feed-cache.json.A634B4CF-62AE-4EFA-8275-9601955945C7.tmp', 'public-field-snapshot.json.4211.1f2e3d4c-5b6a-4978-8a9b-0c1d2e3f4a5b.tmp']
+    for (const name of left) {
+      writeFileSync(join(dir, name), 'an old copy')
+      utimesSync(join(dir, name), old, old)
+    }
+    // Not temporaries of an atomic write, or written since this run began: left alone.
+    const others = ['feedback.json.tmp', 'notes.tmp', 'state.json.unreadable-42', 'browser-state.v1.json.9236b8f9-c679-456c-b86c-48d41b5584d9.tmp']
+    for (const name of others) writeFileSync(join(dir, name), 'other')
+    for (const name of others.slice(0, 3)) utimesSync(join(dir, name), old, old)
+    // A write of this run, caught with its temporary file written but not yet in place.
+    let release = (): void => undefined
+    renames.hold = new Promise<void>((resolve) => { release = resolve })
+    const writing = writeFileAtomic(join(dir, 'state.json'), 'new')
+    for (let i = 0; i < 200 && !readdirSync(dir).some((name) => name.startsWith('state.json.') && name.endsWith('.tmp')); i += 1) await new Promise((resolve) => setTimeout(resolve, 5))
+    const ours = readdirSync(dir).find((name) => name.startsWith('state.json.') && name.endsWith('.tmp'))!
+    utimesSync(join(dir, ours), old, old)
+    expect(removeLeftoverTemporaries(dir, started)).toBe(3)
+    expect(readdirSync(dir).sort()).toEqual(['history.v1.seal', ours, ...others].sort())
+    renames.hold = null
+    release()
+    await writing
+    expect(readFileSync(join(dir, 'state.json'), 'utf8')).toBe('new')
+    expect(removeLeftoverTemporaries(join(dir, 'missing'), started)).toBe(0)
   })
   // Last in this file: it ends async writes for the module, as the end of a quit does.
   it('lists writes on their way, and the end of a quit deletes the temporary file of one still unfinished', async () => {
