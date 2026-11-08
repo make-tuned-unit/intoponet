@@ -3774,14 +3774,23 @@ export const checks = {
         pageFocused: page ? page.webContents.isFocused() : false,
         frameFocused: frame ? frame.webContents.isFocused() : false,
         shellFocused: win.webContents.isFocused(),
+        windowFocused: win.isFocused(),
         under: kids.filter((v) => v !== frame && v !== page).map((v) => ({ url: v.webContents.getURL(), bounds: v.getBounds(), focused: v.webContents.isFocused() })),
       })
     })()`).then(JSON.parse)
-    /** Focus is only reported for the key window: bring the app forward first (other apps may be in front during checks). */
+    /**
+     * Focus is only reported for the key window: bring the app forward first (other apps may be in front during checks),
+     * and read it once the window is the key one (another check's window can take that back in between).
+     */
     const focusState = async () => {
-      await ctx.main(`(() => { electron.app.focus({ steal: true }); electron.BrowserWindow.getAllWindows()[0].focus(); return true })()`)
-      await ctx.delay(400)
-      return card()
+      let state
+      for (let attempt = 0; attempt < 10; attempt += 1) {
+        await ctx.main(`(() => { electron.app.focus({ steal: true }); electron.BrowserWindow.getAllWindows()[0].focus(); return true })()`)
+        await ctx.delay(400)
+        state = await card()
+        if (state.windowFocused) break
+      }
+      return state
     }
     const waitOpen = async (part, label) => {
       for (let i = 0; i < 40; i += 1) {
