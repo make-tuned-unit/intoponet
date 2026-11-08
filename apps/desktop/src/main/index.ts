@@ -60,6 +60,7 @@ import { addLinkRoute, moveLinkRoute, parseLinkRoutes, removeLinkRoute, routeFor
 import { answerWithin, DEFAULT_TAB_SLEEP, parseBrowsingSettingsFile, parseLinksFromOtherApps, sleepAfterMs, tabsDueForSleep, TYPED_CHECK_MS, TYPED_FORM_SCRIPT } from './tabSleep'
 import { QuickWindows, type QuickProtection } from './quickWindow'
 import { AUTO_PIP_WORLD_ID, ENTER_PIP_SCRIPT, EXIT_PIP_SCRIPT, NowPlaying, PIP_LEFT_SCRIPT, TOGGLE_PLAYBACK_SCRIPT, type PipEnterResult } from './autoPip'
+import { UnseenTabs } from './backgroundLoad'
 import type { NowPlayingSnapshot } from '@intoponet/browser-api'
 import { browserContextExtras, searchSelectionLabel } from './browserContextMenu'
 
@@ -258,6 +259,21 @@ let companionView: WebContentsView | null = null
 let splitPreviewSide: SplitSide | null = null
 /** Page views whose main frame is starting a new document (until it is ready, fails or stops loading). */
 const loadingDocument = new WeakSet<WebContentsView>()
+/** Media a tab opened out of sight started by itself: paused (remembered on the element) until the tab is shown. */
+const UNSEEN_MEDIA = "Symbol.for('intoponet.unseen-media')"
+const PAUSE_UNSEEN_MEDIA = `(() => { for (const media of document.querySelectorAll('video, audio')) if (!media.paused) { media[${UNSEEN_MEDIA}] = true; media.pause() } })()`
+const RESUME_UNSEEN_MEDIA = `(() => { for (const media of document.querySelectorAll('video, audio')) if (media[${UNSEEN_MEDIA}]) { delete media[${UNSEEN_MEDIA}]; media.play().catch(() => {}) } })()`
+function runInEveryFrame(contents: Electron.WebContents, code: string): void {
+  if (contents.isDestroyed()) return
+  for (const frame of contents.mainFrame?.framesInSubtree ?? []) {
+    if (!frame.detached) void frame.executeJavaScript(code).catch(() => undefined)
+  }
+}
+/** Tabs opened out of sight: they load as fast as a shown tab, and silently until shown (backgroundLoad.ts). */
+const unseenTabs = new UnseenTabs<Electron.WebContents>({
+  pause: (contents) => runInEveryFrame(contents, PAUSE_UNSEEN_MEDIA),
+  resume: (contents) => runInEveryFrame(contents, RESUME_UNSEEN_MEDIA),
+})
 let translateService: TranslateService | null = null
 /** Saved passwords (sealed on this Mac); null until the app is ready. */
 let passwords: PasswordService | null = null
@@ -1183,6 +1199,7 @@ function syncCompanion(): void {
   if (companionView && companionView !== want && companionView !== pageView) removeFromWindow(companionView)
   companionView = want
   if (want && host) {
+    unseenTabs.shown(want.webContents)
     if (!host.contentView.children.includes(want)) host.contentView.addChildView(want)
     // Asleep, or blank since its page crashed off screen: it loads again as the shown tab would.
     if (partner && (partner.asleep || !partner.view.webContents.isLoading())) wakeTab(partner)
@@ -1717,12 +1734,7 @@ function wireDownloadSession(partition = DEFAULT_PARTITION): void {
     const topOrigin = contents ? originOf(contents.getURL()) : originOf((details as { embeddingOrigin?: string }).embeddingOrigin ?? '')
     return sitePermissions?.check(originOf(requestingOrigin), kinds, isPrivate, topOrigin, scope) === true
   })
-  app.on('certificate-error', (event, webContents, url, error, certificate, callback, isMainFrame) => {
-    // Refused, as before; the error page shows what was wrong with the certificate.
-    if (rejectCertificateErrorForSession(event, webContents, browsing, callback) && isMainFrame !== false) {
-      certificateErrors.remember(webContents.id, url, summarizeCertificate(certificate, error))
-    }
-  })
+  refuseCertificateErrors(browsing)
   servePageFiles(browsing)
   browsing.setSpellCheckerEnabled(true)
   if (process.platform !== 'darwin') {
@@ -1766,6 +1778,24 @@ function wireDownloadSession(partition = DEFAULT_PARTITION): void {
       })
     })
   })
+}
+
+/**
+ * Page sessions whose certificate errors are refused, with one app listener for all of them (one per
+ * session stayed on the app after its workspace was deleted).
+ */
+const certificateRefusingSessions = new Set<Electron.Session>()
+function refuseCertificateErrors(browsing: Electron.Session): void {
+  if (certificateRefusingSessions.size === 0) {
+    app.on('certificate-error', (event, webContents, url, error, certificate, callback, isMainFrame) => {
+      if (!certificateRefusingSessions.has(webContents.session)) return
+      // Refused, as before; the error page shows what was wrong with the certificate.
+      if (rejectCertificateErrorForSession(event, webContents, webContents.session, callback) && isMainFrame !== false) {
+        certificateErrors.remember(webContents.id, url, summarizeCertificate(certificate, error))
+      }
+    })
+  }
+  certificateRefusingSessions.add(browsing)
 }
 
 /** Links saved with "Save Link As", waiting for their download to start. */
@@ -1869,7 +1899,7 @@ function tabSnapshots(): PageTabSnapshot[] {
       active: tab.id === activeTabId,
       isPrivate: privateViews.has(tab.view),
       ...(tab.start ? { isStartPage: true } : {}),
-      ...liveTabFlags(live ? tab.view.webContents : null, tab),
+      ...liveTabFlags(live ? tab.view.webContents : null, tab, live && unseenTabs.mutedUntilShown(tab.view.webContents)),
       ...(tab.pinned && tab.home ? { home: capUrl(tab.home), ...(awayFromHome(safeHttpUrl(currentUrl) ? currentUrl : tab.url, tab.home) ? { awayFromHome: true } : {}) } : {}),
       ...(tab.asleep ? { asleep: true } : {}),
       ...(tab.lastShownAt ? { lastShownAt: tab.lastShownAt } : {}),
@@ -2046,6 +2076,7 @@ function showTab(id: string): WebContentsView | null {
   if (partner) partner.lastShownAt = now
   activeTabId = tab.id
   pageView = tab.view
+  unseenTabs.shown(tab.view.webContents)
   const selectedUrl = tab.view.webContents.getURL()
   lastKnownUrl = safeHttpUrl(selectedUrl) ? selectedUrl : tab.url
   attachPageView()
@@ -3320,6 +3351,7 @@ function createBrowserTab(urlValue: string, activate = true, isPrivate = private
   const view = buildView(isPrivate && !untracked, home, untracked)
   const tab: OpenTab = { id: randomUUID(), url: url.toString(), title: '', favicon: '', view }
   tab.lastShownAt = Date.now()
+  if (!activate || home !== workspaces.activeId) unseenTabs.opened(view.webContents)
   if (home !== workspaces.activeId) {
     // Its page is in another workspace: the tab waits there (loaded, as a parked tab is) until that workspace is shown.
     workspaces.addToParked(home, tab)
@@ -3598,6 +3630,8 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
   view.webContents.on('did-start-navigation', (_event, startedUrl, inPlace, mainFrame) => {
     if (!mainFrame || inPlace) return
     loadingDocument.add(view)
+    // A tab opened out of sight (behind, in a workspace not shown) loads as fast as a shown one.
+    unseenTabs.loadStarted(view.webContents)
     // The page is about to be replaced: its inserted style and any previewed element go with it.
     previewSelectors.delete(view.webContents.id)
     blockedAdAddresses.delete(view.webContents.id)
@@ -3617,7 +3651,10 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
     if (failed) compareLanding.delete(failed)
   })
   view.webContents.on('dom-ready', () => loadingDocument.delete(view))
-  view.webContents.on('did-stop-loading', () => loadingDocument.delete(view))
+  view.webContents.on('did-stop-loading', () => {
+    loadingDocument.delete(view)
+    unseenTabs.loadStopped(view.webContents)
+  })
   view.webContents.on('did-finish-load', () => {
     if (pageView !== view || !frequencyLoadSucceeded) return
     const url = view.webContents.getURL()
@@ -3679,8 +3716,18 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
   view.webContents.on('did-create-window', (child) => wirePopupWindow(child, view))
   // Capture the id now: by the time 'destroyed' fires, view.webContents is gone.
   const contentsId = view.webContents.id
+  const pageContents = view.webContents
   viewContentsIds.set(view, contentsId)
   view.webContents.once('destroyed', () => {
+    unseenTabs.forget(pageContents)
+    // What was kept for the page goes with it, whichever way it closed (every page that loaded had an
+    // ad-slot entry, kept after its tab closed; a quick window's page kept its protection counts too).
+    const adSlots = blockedAdAddresses.get(contentsId)
+    if (adSlots?.timer) clearTimeout(adSlots.timer)
+    blockedAdAddresses.delete(contentsId)
+    previewSelectors.delete(contentsId)
+    protectionPages.remove(contentsId)
+    translateService?.forgetPage(contentsId)
     popupLimiter.forget(contentsId)
     externalOpener?.dropOwner(contentsId)
     passwords?.forget(contentsId)
@@ -3706,7 +3753,11 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
     emitTabs()
     emitNowPlaying()
   })
-  view.webContents.on('media-started-playing', () => setTabPlaying(view, true))
+  view.webContents.on('media-started-playing', () => {
+    // Media in a tab not yet seen waits for the tab to be shown (backgroundLoad.ts).
+    if (unseenTabs.mediaStarted(view.webContents)) return
+    setTabPlaying(view, true)
+  })
   view.webContents.on('media-paused', () => setTabPlaying(view, false))
   view.webContents.on('did-navigate', () => {
     const tab = tabOfView(view)
@@ -4523,6 +4574,7 @@ async function handleBrowserCommand(
     case 'set-tab-muted': {
       const tab = allTabs().find((item) => item.id === command.id)
       if (tab && !viewGone(tab.view)) {
+        unseenTabs.mutedByPerson(tab.view.webContents)
         tab.view.webContents.setAudioMuted(command.muted)
         emitTabs()
         emitNowPlaying()
@@ -4757,6 +4809,8 @@ async function handleBrowserCommand(
         const tab = view && tabOfView(view)
         if (!tab) continue
         tab.asleep = {}
+        // It loads when shown, as a shown tab.
+        unseenTabs.forget(tab.view.webContents)
         ids.push(tab.id)
       }
       const folder = createTabFolder(command.name, null, ids)

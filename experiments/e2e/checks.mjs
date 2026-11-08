@@ -77,6 +77,18 @@ const signIn = async (ctx, page, username, password) => {
 }
 const pageFields = (page) => page.evaluate(`JSON.stringify([document.querySelector('#username')?.value ?? null, document.querySelector('#password')?.value ?? null])`).then(JSON.parse)
 
+/** `seconds` of a quiet 440 Hz tone as a WAV file (a page with sound). */
+const toneWav = (seconds) => {
+  const rate = 22050
+  const samples = Buffer.alloc(rate * seconds * 2)
+  for (let i = 0; i < rate * seconds; i += 1) samples.writeInt16LE(Math.round(Math.sin(2 * Math.PI * 440 * i / rate) * 4000), i * 2)
+  const header = Buffer.alloc(44)
+  header.write('RIFF', 0); header.writeUInt32LE(36 + samples.length, 4); header.write('WAVEfmt ', 8)
+  header.writeUInt32LE(16, 16); header.writeUInt16LE(1, 20); header.writeUInt16LE(1, 22); header.writeUInt32LE(rate, 24); header.writeUInt32LE(rate * 2, 28); header.writeUInt16LE(2, 32); header.writeUInt16LE(16, 34)
+  header.write('data', 36); header.writeUInt32LE(samples.length, 40)
+  return Buffer.concat([header, samples])
+}
+
 /** A plain PNG of one colour (fixture images for the PDF check). */
 const solidPng = (width, height, [r, g, b]) => {
   const crcTable = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k += 1) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0 })
@@ -1418,6 +1430,58 @@ export const checks = {
     } finally {
       closer.close()
     }
+    // A tab opened in the background loads as fast as a shown one (a load that waits on a chain of short timers,
+    // as script loaders do, took about 30 s while Chromium throttled the unseen page), then is throttled again.
+    // Its sound still waits until it is shown, as before.
+    let held = null
+    const tone = toneWav(2)
+    const behind = await new Promise((resolve) => {
+      const server = createServer((request, response) => {
+        if (request.url === '/tone.wav') { response.setHeader('content-type', 'audio/wav'); response.end(tone); return }
+        response.setHeader('content-type', 'text/html; charset=utf-8')
+        if (request.url === '/hold') { held = response; return }
+        if (request.url === '/release') { held?.end('<p>done'); held = null; response.end('ok'); return }
+        if (request.url === '/sound') { response.end('<!doctype html><title>Sound</title><audio id="tone" autoplay loop src="/tone.wav"></audio>'); return }
+        response.end(`<!doctype html><title>Behind</title><script>let n = 0; (function step() { if (++n < 30) setTimeout(step, 10); else fetch('/release') })()</script><iframe src="/hold"></iframe>`)
+      })
+      server.listen(0, '127.0.0.1', () => resolve(server))
+    })
+    let behindMs = 0
+    try {
+      const behindUrl = `http://127.0.0.1:${behind.address().port}/behind`
+      const started = Date.now()
+      const loaded = await Promise.race([ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: ${JSON.stringify(behindUrl)} }, 'background-tab').then(() => true)`), ctx.delay(40_000).then(() => false)])
+      behindMs = Date.now() - started
+      expect(loaded && behindMs < 20_000, `A page opened in the background took ${loaded ? `${Math.round(behindMs / 1000)} s` : 'over 40 s'} to load (shown, it takes about a second; throttled, over 30 s).`)
+      const behindPage = await ctx.page('/behind')
+      let visibility = ''
+      for (let i = 0; i < 20 && visibility !== 'hidden'; i += 1) {
+        visibility = await behindPage.evaluate('document.visibilityState')
+        if (visibility !== 'hidden') await ctx.delay(250)
+      }
+      expect(visibility === 'hidden', `A background tab that finished loading is still "${visibility}", not hidden and throttled like other background tabs.`)
+      await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => Promise.all(t.map((x) => window.intoponet.browserHost.closeTab(x.id)))).then(() => true)`)
+      // A page that starts its sound by itself, opened in the background: silent until shown, then it plays.
+      const soundUrl = `http://127.0.0.1:${behind.address().port}/sound`
+      await ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: ${JSON.stringify(soundUrl)} }, 'background-tab').then(() => true)`)
+      const sound = () => ctx.main(`(async () => {
+        const page = electron.webContents.getAllWebContents().find((c) => c.getURL() === ${JSON.stringify(soundUrl)})
+        if (!page) return null
+        return JSON.stringify({ audible: page.isCurrentlyAudible(), played: await page.executeJavaScript('document.getElementById("tone").currentTime') })
+      })()`).then((value) => (value ? JSON.parse(value) : null))
+      await ctx.delay(2500)
+      const unseen = await sound()
+      expect(unseen && !unseen.audible && unseen.played < 0.5, `A page opened in the background played its sound before it was shown (${JSON.stringify(unseen)}).`)
+      const [soundTab] = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => JSON.stringify(t))`))
+      await ctx.evaluate(`window.intoponet.browserHost.activateTab(${JSON.stringify(soundTab.id)}).then(() => true)`)
+      let heard = null
+      for (let i = 0; i < 20 && !(heard?.audible && heard.played > 0.2); i += 1) { await ctx.delay(250); heard = await sound() }
+      expect(heard?.audible && heard.played > 0.2, `The background page's sound did not play once the tab was shown (${JSON.stringify(heard)}).`)
+      await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => Promise.all(t.map((x) => window.intoponet.browserHost.closeTab(x.id)))).then(() => true)`)
+    } finally {
+      held?.end()
+      behind.close()
+    }
     const keys = await browserKeys(ctx)
     // The app window never leaves the app: a page loaded in its place would get the app's whole API.
     const appUrl = await ctx.evaluate('location.href')
@@ -1425,7 +1489,7 @@ export const checks = {
     await ctx.delay(2500)
     const stayed = await ctx.evaluate(`location.href === ${JSON.stringify(appUrl)} && !!document.querySelector('.topbar')`).catch(() => false)
     expect(stayed, 'The app window navigated away from the app.')
-    return `Toolbar: ${labels.join(', ')}; pages see ${ua.match(/Chrome\/\S+/)?.[0]}; tab closed cleanly; a self-closing page took its tab; ${keys}; the app window stayed on the app.`
+    return `Toolbar: ${labels.join(', ')}; pages see ${ua.match(/Chrome\/\S+/)?.[0]}; tab closed cleanly; a self-closing page took its tab; a background tab loaded in ${(behindMs / 1000).toFixed(1)} s, was throttled again and stayed silent until shown; ${keys}; the app window stayed on the app.`
   },
 
   async PROTECTION(ctx) {
@@ -5561,6 +5625,8 @@ export const checks = {
       await signIn(ctx, await ctx.page('who=main'), 'ada', 'Main-Pa55!')
       await waitPage('who=ada', 'Signed in as ada')
       mainId = (await stateOf()).activeId
+      const certificateListeners = () => ctx.main(`electron.app.listenerCount('certificate-error')`)
+      const listenersBefore = await certificateListeners()
 
       // A workspace of its own with separate sign-ins: it starts signed out, while Main stays signed in.
       const created = JSON.parse(await ctx.evaluate(`${ws}.create({ name: 'Work' }).then((s) => JSON.stringify(s))`))
@@ -5569,6 +5635,8 @@ export const checks = {
       expect(workspaceEntry(await stateOf(), workId)?.separateSignIns === true, 'Separate sign-ins did not turn on for Work.')
       await openPage(ctx, `${base}/?who=wstart`, 2500)
       await waitPage('who=wstart', 'Signed out')
+      // Its session gets the same handlers, without one more listener on the app for each workspace.
+      expect(await certificateListeners() === listenersBefore, `A workspace's own session added a certificate-error listener to the app (${listenersBefore} → ${await certificateListeners()}).`)
 
       // Work signs in as bob, and the sign-in is saved in Work.
       await openPage(ctx, `${base}/login?who=wlogin`, 2500)
