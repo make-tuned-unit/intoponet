@@ -62,17 +62,71 @@ function balanced(text: string): boolean {
   return square === 0 && round === 0 && quote === null
 }
 
+const CSS_ESCAPE = /\\(?:([0-9a-fA-F]{1,6})[ \t\n\r\f]?|([\s\S]))/g
+/** The same, only where it is asked to start. */
+const CSS_ESCAPE_HERE = new RegExp(CSS_ESCAPE.source, 'y')
+const escapedChar = (hex: string | undefined, char: string | undefined): string =>
+  hex ? String.fromCodePoint(Math.min(parseInt(hex, 16) || 0xfffd, 0x10ffff)) : char ?? ''
+
+/**
+ * The CSS without its comments, removed only where the engine sees a comment: never inside a string,
+ * after a backslash, or in an unquoted url(…), where "/*" is text. (Removing those too would let
+ * `content: "/*"` hide a live `url(https://…)` up to a later `"*\/"` from the checks below.)
+ */
+function withoutComments(css: string): string {
+  let out = ''
+  // The identifier just read, escapes decoded: "(" after `url` (or `u\72l`) opens an address.
+  let ident = ''
+  let i = 0
+  while (i < css.length) {
+    const char = css[i]!
+    CSS_ESCAPE_HERE.lastIndex = i
+    const escape = char === '\\' ? CSS_ESCAPE_HERE.exec(css) : null
+    if (escape) {
+      out += escape[0]
+      ident += escapedChar(escape[1], escape[2])
+      i += escape[0].length
+      continue
+    }
+    if (char === '/' && css[i + 1] === '*') {
+      const end = css.indexOf('*/', i + 2)
+      i = end === -1 ? css.length : end + 2
+      ident = ''
+      continue
+    }
+    let end = -1
+    if (char === '"' || char === "'") {
+      // A string runs to its closing quote, or (left open) to the end of the line.
+      end = i + 1
+      while (end < css.length && css[end] !== char && css[end] !== '\n') end += css[end] === '\\' ? 2 : 1
+    } else if (char === '(' && ident.toLowerCase() === 'url') {
+      // url( with an unquoted address: all of it up to ")" is the address.
+      let start = i + 1
+      while (/[ \t\n\r\f]/.test(css[start] ?? '')) start += 1
+      if (css[start] !== '"' && css[start] !== "'") {
+        end = start
+        while (end < css.length && css[end] !== ')') end += css[end] === '\\' ? 2 : 1
+      }
+    }
+    if (end >= 0) {
+      out += css.slice(i, end + 1)
+      i = end + 1
+      ident = ''
+      continue
+    }
+    out += char
+    ident = /[A-Za-z0-9_-]/.test(char) || char.charCodeAt(0) > 0x7f ? ident + char : ''
+    i += 1
+  }
+  return out
+}
+
 /**
  * The CSS as the engine reads it: comments removed and escapes decoded, so `@\69mport` or `u\72l(`
  * cannot slip past the checks below.
  */
 export function decodeCss(css: string): string {
-  return css
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/\\(?:([0-9a-fA-F]{1,6})[ \t\n\r\f]?|([\s\S]))/g, (_match, hex: string | undefined, char: string | undefined) => {
-      if (hex) return String.fromCodePoint(Math.min(parseInt(hex, 16) || 0xfffd, 0x10ffff))
-      return char ?? ''
-    })
+  return withoutComments(css).replace(CSS_ESCAPE, (_match, hex: string | undefined, char: string | undefined) => escapedChar(hex, char))
 }
 
 /** Why the person's own CSS is refused, or null when it may be kept. */

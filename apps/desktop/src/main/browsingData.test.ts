@@ -5,13 +5,13 @@ import type { IpcMainInvokeEvent } from 'electron'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 /** A profile folder and the app's listeners, for an Electron stand-in. */
-const electronStub = vi.hoisted(() => ({ userData: '', listeners: new Map<string, Array<() => void>>() }))
+const electronStub = vi.hoisted(() => ({ userData: '', listeners: new Map<string, Array<() => void>>(), authCleared: [] as string[] }))
 vi.mock('electron', () => ({
   app: {
     getPath: () => electronStub.userData,
     on: (event: string, listener: () => void) => { electronStub.listeners.set(event, [...(electronStub.listeners.get(event) ?? []), listener]) },
   },
-  session: { fromPartition: () => ({ on: () => undefined, clearData: async () => undefined, clearStorageData: async () => undefined, clearCache: async () => undefined, downloadURL: () => undefined }) },
+  session: { fromPartition: (partition: string) => ({ on: () => undefined, clearData: async () => undefined, clearStorageData: async () => undefined, clearCache: async () => undefined, clearAuthCache: async () => { electronStub.authCleared.push(partition) }, downloadURL: () => undefined }) },
   shell: { openPath: async () => '', showItemInFolder: () => undefined },
 }))
 
@@ -128,5 +128,14 @@ describe('history saved while the Keychain was unavailable at startup', () => {
     quit('quit')
     await written()
     expect(onDisk()).toEqual(['https://old.example/one', 'https://old.example/two'])
+  })
+})
+
+describe('clearing cookies and site data', () => {
+  it('also forgets what was typed into sites’ own HTTP sign-in boxes, in the shared session', async () => {
+    const { command } = setUp([])
+    electronStub.authCleared = []
+    await command({ type: 'clear-browsing-data', request: { range: 'all', history: false, siteData: true, cache: false, downloads: false } })
+    expect(electronStub.authCleared).toEqual(['persist:test'])
   })
 })

@@ -50,7 +50,7 @@ import { fetchTabIcon, TabIconMemory } from './tabFavicon'
 import { browsingChannels, parseBrowsingCommand, type LinkRoutesState, type BrowsingEvent, type ArchivedTabSnapshot, type TabFolderSnapshot, type TabGroupRequest, type TabGroupResult, type TidySuggestion, type BrowsingSettings, type LinksFromOtherApps, type PageLoadError, type TabArchiveAfter, type TabSidebarState, type TabSleepAfter, type TabSwitchOrder } from '@intoponet/browser-api'
 import { ExternalOpenBroker, classifyExternalUrl } from './externalOpen'
 import { CertificateErrorMemo, classifyLoadError, isCertificateError, showsErrorPage, summarizeCertificate } from './errorPage'
-import { IncomingOpenQueue, LocalFileGrants, incomingFileTarget, incomingTargetsFromArgs, incomingWebUrl, type IncomingTarget } from './incomingOpen'
+import { IncomingOpenQueue, LocalFileGrants, incomingFileTarget, incomingTargetsFromArgs, incomingWebUrl, readSavedLinkFile, type IncomingTarget } from './incomingOpen'
 import { PageAppearanceController } from './pageAppearance'
 import { SWITCHER_KEYS_SCRIPT, switcherHtml, SWITCHER_ROW_HEIGHT, SWITCHER_ROWS, TabSwitcher, type SwitcherTab } from './tabSwitcher'
 import { focusLinkScript, isLinkPreviewRequest, parsePreviewMessage, PREVIEW_FOCUS_LOOP_SCRIPT, PREVIEW_WORLD_ID, previewFrameHtml, previewHeading, previewLayout, previewSite, type PreviewRect } from './linkPreview'
@@ -71,6 +71,10 @@ app.enableSandbox()
 
 // Sites see plain Chrome (some refuse "Electron" as an outdated browser).
 app.userAgentFallback = browserUserAgent(app.userAgentFallback)
+
+// WebRTC keeps to the default network route in every web contents as it is made (a sign-in popup
+// a page opens included), so no kind of window can leave it out (networkPrivacy.ts).
+app.on('web-contents-created', (_event, contents) => applyNetworkPrivacy(contents))
 
 if (!app.isReady()) {
   app.commandLine.appendSwitch(
@@ -100,10 +104,8 @@ const quickWindows: QuickWindows = new QuickWindows({
 })
 /** Local files opened from Finder: the only files a tab may read (see servePageFiles). */
 const localFileGrants = new LocalFileGrants()
-const readSmallFile = (path: string): Buffer => {
-  if (statSync(path).size > 64_000) throw new Error('Too large for a saved link.')
-  return readFileSync(path)
-}
+// A saved link's file: never a pipe or device that would keep the app reading (incomingOpen.ts).
+const readSmallFile = readSavedLinkFile
 if (!app.requestSingleInstanceLock()) {
   // Intoponet is already open (with this profile): it opens what this launch was given.
   app.quit()
@@ -180,7 +182,7 @@ import { CrashRecoveryPolicy, ShellReloadPolicy } from './crashRecovery'
 import { restoreHistoryOrLoad } from './historyRestore'
 import { BeaconPublisher } from './beacons/publisher'
 import { DEFAULT_BEACON_REGISTRY } from './beacons/defaults'
-import { ENCRYPTED_DNS, networkPrivacySnapshot, WEBRTC_POLICY } from './networkPrivacy'
+import { applyNetworkPrivacy, ENCRYPTED_DNS, networkPrivacySnapshot, WEBRTC_POLICY } from './networkPrivacy'
 let newsService: ReturnType<typeof startNewsService> | null = null
 let encryptedDnsActive = false
 import { CaptureLibrary, migrateEncryptedCaptures } from './captureStore'
@@ -2415,11 +2417,16 @@ async function rebuildWorkspaceTabs(workspaceId: string, beforeWake?: () => Prom
   schedulePersistentStateSave()
 }
 
-/** Deletes a partition's cookies, site storage and cache (its pages are never live while this runs). */
+/** Deletes a partition's cookies, site storage, cache and HTTP sign-ins (its pages are never live while this runs). */
 async function clearPartitionData(partition: string): Promise<void> {
   const target = session.fromPartition(partition)
   await target.clearStorageData().catch(() => undefined)
   await target.clearCache().catch(() => undefined)
+  // A site's own sign-in box (HTTP authentication) is remembered apart from its cookies.
+  await target.clearAuthCache().catch(() => undefined)
+  // Open connections too: a site would otherwise see the signed-out pages arrive on the signed-in ones' connection.
+  // (Not while a download through it is still coming in: closing would cut it off.)
+  if (!browsingData?.downloads.receiving(partition)) await target.closeAllConnections().catch(() => undefined)
 }
 
 /** A workspace's own site permissions: prompts still waiting end, and its answers are deleted from disk. */
@@ -3265,6 +3272,18 @@ function wirePopupWindow(child: BrowserWindow, opener: WebContentsView): void {
   })
   bindLeavePrompt(child.webContents, () => child, dialog.showMessageBoxSync)
   guardPopupWindow(child)
+  // The same protection as a tab: blocked ads hidden, and quiet stand-ins for blocked trackers
+  // (a sign-in button that calls gtag() would otherwise throw and do nothing).
+  const popup = child.webContents
+  popup.on('dom-ready', () => { void applyCosmeticFilters(popup, { only: popup.mainFrame, url: popup.getURL() }) })
+  popup.on('did-frame-navigate', (_event, _url, _code, _status, isMainFrame, frameProcessId, frameRoutingId) => {
+    forgetCosmeticFrame(popup, isMainFrame, frameProcessId, frameRoutingId)
+  })
+  popup.on('did-frame-finish-load', (_event, _isMainFrame, frameProcessId, frameRoutingId) => {
+    const frame = webFrameMain.fromId(frameProcessId, frameRoutingId)
+    if (frame) void applyCosmeticFilters(popup, { only: frame, url: popup.getURL() })
+  })
+  popup.on('did-stop-loading', () => { void applyCosmeticFilters(popup, { onlyNew: true, url: popup.getURL() }) })
   const childContentsId = child.webContents.id
   trackUserActivation(child.webContents, userActivation)
   child.webContents.setWindowOpenHandler(({ url, disposition, features }) => {
@@ -5623,6 +5642,11 @@ app.whenReady().then(async () => {
           const privateSession = session.fromPartition(PRIVATE_PARTITION)
           await privateSession.clearStorageData().catch(() => undefined)
           await privateSession.clearCache().catch(() => undefined)
+          // HTTP sign-ins typed in a private tab too: the next private tab must not be signed in with them.
+          await privateSession.clearAuthCache().catch(() => undefined)
+          // And its open connections: the next private session's pages would arrive on them, linking the two.
+          // A private download still coming in keeps going, as before (closing would cut it off).
+          if (!browsingData?.downloads.receiving(PRIVATE_PARTITION)) await privateSession.closeAllConnections().catch(() => undefined)
           browsingData?.privateBrowsingEnded()
           emitPanelState()
         }

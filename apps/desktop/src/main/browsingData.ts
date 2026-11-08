@@ -232,6 +232,8 @@ export function installBrowsingData(options: BrowsingDataOptions): BrowsingData 
         for (const browsing of browsers) {
           await browsing.clearData({ dataTypes: [...dataTypes] })
           await browsing.clearStorageData()
+          // Sign-ins given to a site's own HTTP sign-in box are kept apart from cookies.
+          await browsing.clearAuthCache()
         }
         cleared.push('cookies and site data')
       } else if (origins.length) {

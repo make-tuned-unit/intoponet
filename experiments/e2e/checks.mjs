@@ -589,10 +589,21 @@ const IDENTITY_LOGIN = `<!doctype html><title>Identity sign in</title><body styl
 const startIdentitySite = () => new Promise((resolve) => {
   const server = createServer((request, response) => {
     const url = new URL(request.url ?? '/', 'http://localhost')
+    // Each connection a request came on (its port on this Mac): a session that was cleared must not reuse one.
+    server.connections.add(request.socket.remotePort)
     const cookies = Object.fromEntries((request.headers.cookie ?? '').split('; ').filter(Boolean).map((pair) => pair.split('=')))
     if (url.pathname === '/file.bin') {
       response.writeHead(200, { 'content-type': 'application/octet-stream', 'content-length': '65536', 'content-disposition': 'attachment; filename="intoponet-e2e-identity.bin"' })
       response.end(Buffer.alloc(65536, 3))
+      return
+    }
+    // A site's own sign-in box (HTTP authentication): what each request sent is kept for the check to read.
+    if (url.pathname === '/auth') {
+      const sent = request.headers.authorization ?? ''
+      server.httpSignIns.push({ who: url.searchParams.get('who'), sent, connection: request.socket.remotePort })
+      const ok = sent === `Basic ${Buffer.from('bob:Box-Pa55').toString('base64')}`
+      response.writeHead(ok ? 200 : 401, { 'content-type': 'text/html', ...(ok ? {} : { 'www-authenticate': 'Basic realm="e2e"' }) })
+      response.end(ok ? '<title>Box</title>Signed in to the box' : '<title>Box</title>Signed out of the box')
       return
     }
     if (url.pathname === '/login' && request.method === 'POST') {
@@ -610,6 +621,10 @@ const startIdentitySite = () => new Promise((resolve) => {
     const signedIn = cookies.sid ? `Signed in as ${decodeURIComponent(cookies.sid)}` : 'Signed out'
     response.end(`<!doctype html><title>Identity test</title><body style="font:16px system-ui;margin:40px"><h1>${signedIn}</h1><a id="get" href="/file.bin">Download the file</a><img src="https://securepubads.g.doubleclick.net/ad.png" width="300" height="250" alt="ad"></body>`)
   })
+  server.httpSignIns = []
+  server.connections = new Set()
+  // Connections kept open as long as real servers keep them (Node closes idle ones after 5 s).
+  server.keepAliveTimeout = 120_000
   server.listen(0, 'localhost', () => resolve(server))
 })
 /** Helpers for the sign-in check, bound to one app run (the check runs twice: before and after a relaunch). */
@@ -644,6 +659,52 @@ const identityHelpers = (ctx) => {
   }
   return { stateOf, tabsOf, pageText, waitPage, showIn }
 }
+/**
+ * Session parity: every web page open right now (tabs, popups, quick windows, link previews, the
+ * tour's page; private, shared or a workspace's own sign-ins) has the protections the shared session
+ * has. It walks the live pages and their sessions, so a session or a kind of window added later is
+ * covered without being named here. Returns what is missing, one sentence each (`problems`, none: []),
+ * and how many pages and sessions it looked at.
+ * `stubbed`: address parts of pages on screen, which must also have the tracker stand-ins.
+ * Call it while no site's protection is paused (its ad request would then load).
+ */
+const pageSessionProblems = async (ctx, { stubbed = [] } = {}) => JSON.parse(await ctx.main(`(async () => {
+  const problems = []
+  const shared = electron.session.fromPartition('persist:intoponet-default')
+  const within = (promise, ms = 2000) => Promise.race([promise.catch((error) => '(failed: ' + error + ')'), new Promise((resolve) => setTimeout(() => resolve('(no answer)'), ms))])
+  // Web pages and local files in tabs; not the app's own page, its data: toolbars and cards, or DevTools.
+  const pages = electron.webContents.getAllWebContents().filter((c) => !c.isDestroyed() && /^(https?|file):/.test(c.getURL()) && !/\\/renderer\\/index\\.html$/.test(new URL(c.getURL()).pathname))
+  const firstOf = new Map()
+  for (const c of pages) {
+    const where = c.getURL().slice(0, 80)
+    if (c.session === electron.session.defaultSession) { problems.push(where + " runs in the app's own session."); continue }
+    if (c.getWebRTCIPHandlingPolicy() !== 'default_public_interface_only') problems.push(where + ': WebRTC may use any network route (' + c.getWebRTCIPHandlingPolicy() + ').')
+    // A session without the permission handlers grants everything without asking.
+    if (await within(c.executeJavaScript('Notification.permission')) === 'granted') problems.push(where + ': its session grants permissions without asking.')
+    if (${JSON.stringify(stubbed)}.some((part) => c.getURL().includes(part))) {
+      // Put in once the page's document is ready: a moment after it loads.
+      let stub = ''
+      for (let i = 0; i < 12 && stub !== 'function'; i += 1) {
+        stub = await within(c.executeJavaScript('typeof window.gtag'))
+        if (stub !== 'function') await new Promise((resolve) => setTimeout(resolve, 250))
+      }
+      if (stub !== 'function') problems.push(where + ': no stand-ins for blocked trackers (gtag is ' + stub + ').')
+    }
+    if (!firstOf.has(c.session)) firstOf.set(c.session, c)
+  }
+  for (const [s, c] of firstOf) {
+    const where = 'The session of ' + c.getURL().slice(0, 80)
+    if (!s.protocol.isProtocolHandled('file')) problems.push(where + ' lets file:// pages read any file.')
+    if (s.listenerCount('will-download') === 0) problems.push(where + ' has no download handling (guards, quarantine, the list).')
+    if (!s.isSpellCheckerEnabled()) problems.push(where + ' has no spell checking.')
+    if (s.getUserAgent() !== shared.getUserAgent()) problems.push(where + ' sends another user agent: ' + s.getUserAgent())
+    // Content blocking: a request to an ad server through this session is stopped before it leaves the Mac
+    // (asked from here, not from the page, whose own Content-Security-Policy could refuse it first).
+    const ad = await within(s.fetch('https://pagead2.googlesyndication.com/pagead/parity.gif', { cache: 'no-store' }).then(() => 'loaded'), 8000)
+    if (!String(ad).includes('ERR_BLOCKED_BY_CLIENT')) problems.push(where + ' does not block ads (' + ad + ').')
+  }
+  return JSON.stringify({ problems, pages: pages.length, sessions: firstOf.size })
+})()`))
 /** Waits until no app process still holds this profile (after a quit). */
 const waitForQuit = async (profile) => {
   for (let i = 0; i < 120; i += 1) {
@@ -1415,6 +1476,11 @@ export const checks = {
     // Read when it opened: the site may cut the opener later (Cross-Origin-Opener-Policy).
     const opened = await page.evaluate(`window.__ok === true`)
     expect(opened, 'A sign-in style popup opened from a click was blocked or lost its opener.')
+    // Session parity: the sign-in window gets what a tab gets (WebRTC kept to the default route, stand-ins for blocked trackers).
+    const popupLoaded = `electron.webContents.getAllWebContents().some((c) => !c.isDestroyed() && c.getURL().includes('wikipedia.org') && !c.isLoading())`
+    for (let i = 0; i < 40 && !(await ctx.main(popupLoaded)); i += 1) await ctx.delay(250)
+    const parity = await pageSessionProblems(ctx, { stubbed: ['wikipedia.org'] })
+    expect(parity.problems.length === 0, `Session parity with a sign-in window: ${parity.problems.join(' ')}`)
     await page.evaluate(`(() => { const a = document.createElement('a'); a.href = 'https://www.iana.org/'; a.target = '_blank'; document.body.append(a); addEventListener('click', () => a.click(), { once: true }); return true })()`)
     await clickPage(page)
     await ctx.delay(2500)
@@ -1630,7 +1696,10 @@ export const checks = {
     await openAnyPage(ctx)
     const tab = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => JSON.stringify(t[0] ?? null))`))
     expect(tab?.isPrivate === true, 'A tab opened in private mode is not private.')
-    const recents = await ctx.evaluate(`window.intoponet.browserHost.readPrivateLibrary().then((r) => r.status === 'ok' && r.payload ? JSON.parse(r.payload).recents.length : 0)`)
+    // Session parity: the private session has the protections the shared one has.
+    const parity = await pageSessionProblems(ctx, { stubbed: [new URL(tab.url).hostname] })
+    expect(parity.problems.length === 0 && parity.sessions >= 1, `Session parity in private browsing: ${parity.problems.join(' ') || 'no page was open'}`)
+    const recents =await ctx.evaluate(`window.intoponet.browserHost.readPrivateLibrary().then((r) => r.status === 'ok' && r.payload ? JSON.parse(r.payload).recents.length : 0)`)
     expect(recents === 0, 'A private visit was kept in recent pages.')
     // Nothing about the private page reaches the profile's files (open tabs, site icons).
     await ctx.delay(3500)
@@ -1643,7 +1712,50 @@ export const checks = {
     await ctx.delay(1000)
     const left = await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => t.length)`)
     expect(!off.privateMode && left === 0, 'Turning private browsing off left private tabs open.')
-    return 'Private tab marked, no footprints, closed when private mode ended.'
+    // A private session leaves nothing for the next one: not a password typed into a site's own sign-in box
+    // (HTTP authentication), nor an open connection a site could tie the two sessions together by.
+    const requests = []
+    let session = 1
+    const authSite = createServer((request, response) => {
+      const sent = request.headers.authorization ?? ''
+      requests.push({ session, path: new URL(request.url, 'http://localhost').pathname, sent, connection: request.socket.remotePort })
+      const ok = !request.url.startsWith('/box') || sent === `Basic ${Buffer.from('ada:Pa55').toString('base64')}`
+      response.writeHead(ok ? 200 : 401, { 'content-type': 'text/html', ...(ok ? {} : { 'www-authenticate': 'Basic realm="e2e"' }) })
+      response.end(ok ? '<title>In</title>Signed in' : '<title>Out</title>Signed out')
+    })
+    // Connections kept open as long as real servers keep them (Node closes idle ones after 5 s).
+    authSite.keepAliveTimeout = 120_000
+    await new Promise((resolve) => authSite.listen(0, '127.0.0.1', resolve))
+    try {
+      const port = authSite.address().port
+      const openPrivate = async (url) => {
+        await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(true).then(() => true)`)
+        await ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: ${JSON.stringify(url)} }).then(() => true, () => false)`)
+        await ctx.delay(1500)
+      }
+      const nextPrivateSession = async () => {
+        await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
+        await ctx.delay(800)
+        session += 1
+      }
+      const of = (n) => requests.filter((entry) => entry.session === n)
+      // A plain page: the next private session's page does not come on its connection.
+      await openPrivate(`http://127.0.0.1:${port}/page`)
+      await nextPrivateSession()
+      await openPrivate(`http://127.0.0.1:${port}/page`)
+      const earlier = new Set(of(1).map((entry) => entry.connection))
+      expect(of(2).length > 0 && !of(2).some((entry) => earlier.has(entry.connection)), 'A private tab opened after private browsing ended came on a connection of the earlier private session.')
+      // A sign-in box answered: the next private session is not signed in.
+      await openPrivate(`http://ada:Pa55@127.0.0.1:${port}/box`)
+      expect(of(2).some((entry) => entry.path === '/box' && entry.sent), 'The private tab did not sign in to the test site (no credentials were sent).')
+      await nextPrivateSession()
+      await openPrivate(`http://127.0.0.1:${port}/box`)
+      expect(of(3).length > 0 && !of(3).some((entry) => entry.sent), 'A private tab opened after private browsing ended was still signed in with a password typed in the earlier private session.')
+      await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
+    } finally {
+      authSite.close()
+    }
+    return 'Private tab marked, no footprints, closed when private mode ended; its HTTP sign-in did not outlive it.'
   },
 
   async TABS(ctx) {
@@ -4081,6 +4193,10 @@ export const checks = {
       await until(async () => (await quickCount()) === 1, 'the private quick window to open')
       expect(await mainCall("pageOf(quick()[0]).session === electron.session.fromPartition('intoponet-private')"), 'A quick window opened in private browsing did not use the private partition.')
       expect(await mainCall("toolbarOf(quick()[0]).executeJavaScript(\"document.getElementById('private').hidden\")") === false, 'The private quick window does not say it is private.')
+      // Session parity: the private quick window's page, and every other page open, get the same protections as a tab.
+      await until(() => mainCall("!pageOf(quick()[0]).isLoading() && pageOf(quick()[0]).getURL().endsWith('/quick-private')"), 'the private quick window to load', 20_000)
+      const parity = await pageSessionProblems(ctx, { stubbed: ['/quick-private'] })
+      expect(parity.problems.length === 0, `Session parity with a quick window: ${parity.problems.join(' ')}`)
       await ctx.keyInPage('/quick-private', 'W', ['meta'])
       await until(async () => (await quickCount()) === 0, 'the private quick window to close with ⌘W')
       await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
@@ -5510,9 +5626,29 @@ export const checks = {
 
       // Clearing Work's data signs Work out and leaves Main signed in.
       await showIn(workId, 'who=bob')
+      const connectionsBefore = new Set(server.connections)
       await ctx.evaluate(`${ws}.clearSignIns(${JSON.stringify(workId)}).then(() => true)`)
       await waitPage('who=bob', 'Signed out')
       await waitPage('who=mhome', 'Signed in as ada')
+      // Work's next page comes on a new connection: the site cannot tie the signed-out pages to the signed-in ones.
+      await openPage(ctx, `${base}/auth?who=wfresh`, 1500)
+      const fresh = server.httpSignIns.find((entry) => entry.who === 'wfresh')
+      expect(fresh && !connectionsBefore.has(fresh.connection), "After clearing Work's sign-ins, its next page came on a connection opened while it was signed in.")
+
+      // A site's own sign-in box answered in Work is cleared too (its tab is closed first, so nothing reloads it with the password).
+      await openPage(ctx, `${base.replace('http://', 'http://bob:Box-Pa55@')}/auth?who=wbox`, 1500)
+      expect(server.httpSignIns.some((entry) => entry.who === 'wbox' && entry.sent), "Work's tab did not sign in to the site's own sign-in box.")
+      for (const marker of ['who=wfresh', 'who=wbox']) {
+        const tab = (await tabsOf()).find((item) => item.url.includes(marker))
+        if (tab) await ctx.evaluate(`${host}.closeTab(${JSON.stringify(tab.id)}).then(() => true)`)
+      }
+      await showIn(workId, 'who=bob')
+      await ctx.evaluate(`${ws}.clearSignIns(${JSON.stringify(workId)}).then(() => true)`)
+      await waitPage('who=bob', 'Signed out')
+      await openPage(ctx, `${base}/auth?who=wbox2`, 1500)
+      expect(!server.httpSignIns.some((entry) => entry.who === 'wbox2' && entry.sent), "Clearing Work's sign-ins kept the password typed into a site's own sign-in box.")
+      const boxAgain = (await tabsOf()).find((item) => item.url.includes('who=wbox2'))
+      if (boxAgain) await ctx.evaluate(`${host}.closeTab(${JSON.stringify(boxAgain.id)}).then(() => true)`)
 
       // A tab moved from Main to Work warns first, and arrives signed out with its history.
       await showIn(mainId, 'who=ada')
@@ -5555,6 +5691,9 @@ export const checks = {
       await ctx.evaluate(`${host}.close().then(() => true)`)
       await ctx.evaluate(`${host}.previewLink(${JSON.stringify(`${base}/?who=preview`)}).then(() => true)`)
       await waitPage('who=preview', 'Signed in as dan')
+      // Session parity: Main's pages, Work's own (its tabs and the preview) and every other page open get the same protections.
+      const parity = await pageSessionProblems(ctx, { stubbed: ['who=preview'] })
+      expect(parity.problems.length === 0 && parity.sessions >= 2, `Session parity with Work's own sign-ins: ${parity.problems.join(' ') || `only ${parity.sessions} session(s) were open`}`)
       await ctx.evaluate(`${ws}.switchTo({ id: ${JSON.stringify(mainId)} }).then(() => true)`)
       let previewLeft = true
       for (let i = 0; i < 12 && previewLeft; i += 1) {

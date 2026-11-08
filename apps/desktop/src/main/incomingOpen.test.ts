@@ -1,5 +1,9 @@
+import { execFileSync } from 'node:child_process'
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { IncomingOpenQueue, LocalFileGrants, incomingFileTarget, incomingTargetsFromArgs, incomingWebUrl, parseWebloc, type IncomingTarget } from './incomingOpen'
+import { IncomingOpenQueue, LocalFileGrants, MAX_SAVED_LINK_BYTES, incomingFileTarget, incomingTargetsFromArgs, incomingWebUrl, parseWebloc, readSavedLinkFile, type IncomingTarget } from './incomingOpen'
 
 const XML_WEBLOC = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -19,6 +23,24 @@ describe('links from other apps', () => {
     const binary = Buffer.concat([Buffer.from('bplist00\xd1\x01\x02SURL_\x10', 'latin1'), Buffer.from('https://example.org/page'), Buffer.from([0x08, 0x0b])])
     expect(parseWebloc(binary)).toBe('https://example.org/page')
     expect(parseWebloc('<plist><dict><key>URL</key><string>file:///etc/passwd</string></dict></plist>')).toBeNull()
+  })
+
+  it('reads a saved link only from an ordinary small file, never a pipe or a device', () => {
+    const root = mkdtempSync(join(tmpdir(), 'intoponet-webloc-'))
+    try {
+      writeFileSync(join(root, 'Link.webloc'), XML_WEBLOC)
+      expect(incomingFileTarget(join(root, 'Link.webloc'), readSavedLinkFile)).toEqual({ kind: 'web', url: 'https://example.com/a?b=1&c=2' })
+      // A named pipe would block the read until something wrote to it; a link to /dev/zero would never end.
+      execFileSync('mkfifo', [join(root, 'Pipe.webloc')])
+      symlinkSync('/dev/zero', join(root, 'Zero.webloc'))
+      writeFileSync(join(root, 'Big.webloc'), Buffer.alloc(MAX_SAVED_LINK_BYTES + 1, 32))
+      expect(incomingFileTarget(join(root, 'Pipe.webloc'), readSavedLinkFile)).toBeNull()
+      expect(incomingFileTarget(join(root, 'Zero.webloc'), readSavedLinkFile)).toBeNull()
+      expect(incomingFileTarget(join(root, 'Big.webloc'), readSavedLinkFile)).toBeNull()
+      expect(incomingTargetsFromArgs(['Intoponet', join(root, 'Pipe.webloc'), 'https://example.org/'], root, readSavedLinkFile)).toEqual([{ kind: 'web', url: 'https://example.org/' }])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
   })
 
   it('opens pages, PDFs and saved links from Finder; nothing else', () => {
@@ -68,7 +90,8 @@ describe('the queue of things to open', () => {
 
 describe('local files a tab may read', () => {
   it('serves opened files and a saved page’s own assets only', () => {
-    const grants = new LocalFileGrants()
+    // These paths are not on disk: links are taken as already resolved.
+    const grants = new LocalFileGrants((path) => path)
     grants.grant('/Users/me/Downloads/Article.html')
     grants.grant('/Users/me/Documents/Paper.pdf')
     expect(grants.allows('/Users/me/Downloads/Article.html')).toBe(true)
@@ -79,5 +102,35 @@ describe('local files a tab may read', () => {
     expect(grants.allows('/Users/me/Downloads/other.html')).toBe(false)
     expect(grants.allows('/Users/me/Documents/Other.pdf')).toBe(false)
     expect(grants.allows('/etc/passwd')).toBe(false)
+  })
+
+  it('never follows a link in a saved page’s folder out of it', () => {
+    const root = mkdtempSync(join(tmpdir(), 'intoponet-grants-'))
+    try {
+      writeFileSync(join(root, 'secret.txt'), 'secret')
+      mkdirSync(join(root, 'elsewhere'))
+      writeFileSync(join(root, 'elsewhere', 'inside.css'), 'elsewhere')
+      mkdirSync(join(root, 'saved', 'Page_files', 'images'), { recursive: true })
+      writeFileSync(join(root, 'saved', 'Page.html'), '<title>Saved</title>')
+      writeFileSync(join(root, 'saved', 'Page_files', 'style.css'), 'h1{}')
+      writeFileSync(join(root, 'saved', 'Page_files', 'images', 'a.png'), 'png')
+      // As an archive unpacked by Finder can leave them: a file and a whole folder that point elsewhere.
+      symlinkSync('../../secret.txt', join(root, 'saved', 'Page_files', 'leak.css'))
+      symlinkSync('images/a.png', join(root, 'saved', 'Page_files', 'same.png'))
+      writeFileSync(join(root, 'saved', 'Other.html'), '<title>Other</title>')
+      symlinkSync('../elsewhere', join(root, 'saved', 'Other_files'))
+      const grants = new LocalFileGrants()
+      grants.grant(join(root, 'saved', 'Page.html'))
+      grants.grant(join(root, 'saved', 'Other.html'))
+      expect(grants.allows(join(root, 'saved', 'Page_files', 'style.css'))).toBe(true)
+      expect(grants.allows(join(root, 'saved', 'Page_files', 'images', 'a.png'))).toBe(true)
+      // A link that stays inside the folder is still the page's own.
+      expect(grants.allows(join(root, 'saved', 'Page_files', 'same.png'))).toBe(true)
+      expect(grants.allows(join(root, 'saved', 'Page_files', 'leak.css'))).toBe(false)
+      expect(grants.allows(join(root, 'saved', 'Other_files', 'inside.css'))).toBe(false)
+      expect(grants.allows(join(root, 'saved', 'Page_files', 'missing.css'))).toBe(false)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
   })
 })

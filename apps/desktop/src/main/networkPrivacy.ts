@@ -1,4 +1,5 @@
 import type { NetworkPrivacySnapshot } from '@intoponet/browser-api'
+import type { WebContents } from 'electron'
 
 /**
  * Network privacy defaults (no VPN tunnel yet):
@@ -17,6 +18,19 @@ export const ENCRYPTED_DNS = {
 }
 
 export const WEBRTC_POLICY = 'default_public_interface_only' as const
+
+/**
+ * The per-page part of the above, for every web contents as it is made (app 'web-contents-created'):
+ * tabs, popups a page opens, quick windows, link previews. A popup otherwise ran with Chromium's
+ * default and could list every network route while the Privacy panel said local addresses were hidden.
+ */
+export function applyNetworkPrivacy(contents: Pick<WebContents, 'setWebRTCIPHandlingPolicy'>): void {
+  try {
+    contents.setWebRTCIPHandlingPolicy(WEBRTC_POLICY)
+  } catch {
+    // Already gone.
+  }
+}
 
 export function networkPrivacySnapshot(encryptedDnsActive: boolean): NetworkPrivacySnapshot {
   return {
