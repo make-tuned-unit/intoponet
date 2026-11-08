@@ -1694,6 +1694,17 @@ export const checks = {
       expect((await panelState(ctx)).url === front, 'Reload from the menu of a background tab changed the page in front.')
       await ctx.evaluate(`window.intoponet.browserHost.closeActiveTab().then(() => true)`)
       await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.url === ${JSON.stringify(url)} && !s.isLoading)`, 15_000, 'the reloaded tab to be shown again')
+      // Closed while still blank after crashing behind another tab, it keeps its back/forward list for ⇧⌘T.
+      await ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: ${JSON.stringify(front)} }).then(() => true, () => true)`)
+      await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.url === ${JSON.stringify(front)} && !s.isLoading)`, 15_000, 'a page in front of the one to crash and close')
+      expect(await crashPage(), 'The background page to crash and close is not open.')
+      await ctx.delay(1500)
+      expect(!(await historyOf()), 'The crashed background page loaded again by itself before it was closed.')
+      await ctx.evaluate(`window.intoponet.browserHost.closeTab(${JSON.stringify(crashedTab.id)}).then(() => true)`)
+      await ctx.delay(500)
+      await ctx.evaluate(`window.intoponet.browserHost.reopenClosedTab().then(() => true)`)
+      for (let i = 0; i < 50 && JSON.stringify(await historyOf()) !== JSON.stringify(beforeCrash); i += 1) await ctx.delay(200)
+      expect(JSON.stringify(await historyOf()) === JSON.stringify(beforeCrash), `A crashed background tab closed while blank came back from Recently closed without its back/forward list: ${JSON.stringify(await historyOf())}, before ${JSON.stringify(beforeCrash)}.`)
     } finally {
       site.close()
     }

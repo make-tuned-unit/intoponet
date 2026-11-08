@@ -29,6 +29,11 @@ export class CrashRecoveryPolicy<History = unknown> {
     else this.histories.set(tabId, history)
   }
 
+  /** The kept list, left in place: a tab closed or archived while still blank takes it with it. */
+  keptHistory(tabId: string): History | undefined {
+    return this.histories.get(tabId)
+  }
+
   /** The kept list, handed out once: when the page loads again, automatically or on Reload. */
   takeHistory(tabId: string): History | undefined {
     const history = this.histories.get(tabId)

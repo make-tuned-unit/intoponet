@@ -2740,16 +2740,8 @@ const TAB_ARCHIVE_HOUR_MS = Math.max(50, Number(process.env['INTOPONET_TAB_ARCHI
 
 /** Closes a tab into Archived tabs with its back/forward list (it does not go to Recently closed). */
 function archiveTab(tab: OpenTab): ArchivedTab | null {
-  let history: TabHistory | undefined = tab.asleep?.history
-  const live = !viewGone(tab.view)
-  const liveUrl = live ? tab.view.webContents.getURL() : ''
-  if (live && !tab.asleep) {
-    try {
-      history = { entries: tab.view.webContents.navigationHistory.getAllEntries(), index: tab.view.webContents.navigationHistory.getActiveIndex() }
-    } catch {
-      history = undefined
-    }
-  }
+  const history = closingHistory(tab)
+  const liveUrl = !viewGone(tab.view) ? tab.view.webContents.getURL() : ''
   const entry = tabArchive.add({
     url: safeHttpUrl(liveUrl) ? liveUrl : tab.url,
     title: liveTitle(tab) || tab.title,
@@ -4090,20 +4082,29 @@ function inspectPage(view: WebContentsView, at?: { x: number; y: number }): void
   if (at) contents.inspectElement(Math.round(at.x), Math.round(at.y))
 }
 
+/**
+ * The back/forward list a tab takes with it when it closes or is archived. Asleep, its view is blank:
+ * the list it slept with is where it was. Its page crashed and it is still blank (in the background,
+ * or waiting for Reload): the list its crashed page had. Otherwise its page's own.
+ */
+function closingHistory(tab: OpenTab): TabHistory | undefined {
+  if (tab.asleep) return tab.asleep.history
+  if (viewGone(tab.view)) return undefined
+  const current = tab.view.webContents.getURL()
+  const crashed = !current || current === 'about:blank' ? crashRecovery.keptHistory(tab.id) : undefined
+  if (crashed) return crashed
+  try {
+    return { entries: tab.view.webContents.navigationHistory.getAllEntries(), index: tab.view.webContents.navigationHistory.getActiveIndex() }
+  } catch {
+    return undefined
+  }
+}
+
 /** A closing tab joins Recently Closed (with its back/forward list, workspace and folder), unless it is private, untracked or a start page. */
 function rememberClosedTab(tab: OpenTab, workspaceId: string | null): void {
   if (tab.start || privateViews.has(tab.view) || untrackedViews.has(tab.view)) return
-  const live = !viewGone(tab.view)
-  const liveUrl = live ? tab.view.webContents.getURL() : ''
-  // Asleep, its view is blank: the list it slept with is where it was.
-  let history: { entries: Electron.NavigationEntry[]; index: number } | undefined = tab.asleep?.history
-  if (live && !tab.asleep) {
-    try {
-      history = { entries: tab.view.webContents.navigationHistory.getAllEntries(), index: tab.view.webContents.navigationHistory.getActiveIndex() }
-    } catch {
-      history = undefined
-    }
-  }
+  const liveUrl = !viewGone(tab.view) ? tab.view.webContents.getURL() : ''
+  const history = closingHistory(tab)
   closedTabs.remember({
     url: safeHttpUrl(liveUrl) ? liveUrl : tab.url,
     title: liveTitle(tab) || tab.title,
