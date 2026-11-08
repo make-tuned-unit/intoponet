@@ -3245,6 +3245,8 @@ function discardTab(id: string, remember = true): void {
     translateService?.forgetPage(contentsId)
   }
   if (!viewGone(tab.view)) tab.view.webContents.close()
+  // The last tab waiting for the network to come back is gone: stop checking for it.
+  if (tab.loadError?.autoRetry) watchForNetwork()
   emitTabs()
   emitPanelState()
   emitPasswordState()
