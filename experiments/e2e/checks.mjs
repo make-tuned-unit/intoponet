@@ -4328,6 +4328,7 @@ export const checks = {
       await ctx.press('Escape')
       await ctx.delay(400)
 
+      await ctx.main(`(() => { globalThis.__quickKeyboard = null; const watch = (c) => c.on('focus', () => { globalThis.__quickKeyboard = c.id }); for (const c of electron.webContents.getAllWebContents()) watch(c); electron.app.on('web-contents-created', (_event, c) => watch(c)); return true })()`)
       // Setting on: a small, always-on-top window; no new tab in the main window; the ad picture is blocked.
       await openFromOtherApp(`${origin}/quick-1`)
       await until(async () => (await quickCount()) === 1, 'the quick window to open')
@@ -4335,13 +4336,9 @@ export const checks = {
       expect(shape.width <= 900 && shape.height <= 640 && shape.top, `The quick window is ${shape.width}×${shape.height}${shape.top ? '' : ' and not always on top'}.`)
       expect((await tabUrls()).length === 1 && !(await tabUrls()).some((url) => url.includes('/quick-1')), 'The quick link also opened a tab in the main window.')
       await until(async () => (await pageUrl()).endsWith('/quick-1'), 'the quick page to load')
-      // The keyboard is on its page (to read and scroll it). Focus is only reported for the key window: the app and the
-      // window are brought forward each time (other apps may be in front during checks), and read once they are.
-      const keyboardOn = async () => {
-        await mainCall(`(() => { electron.app.focus({ steal: true }); quick()[0].focus(); return true })()`)
-        await ctx.delay(400)
-        return mainCall(`pageOf(quick()[0]).isFocused() ? 'page' : toolbarOf(quick()[0]).isFocused() ? 'toolbar' : 'nothing'`)
-      }
+      // The keyboard is on its page (to read and scroll it). Which web contents took it last is told by focus events,
+      // which arrive whether or not the window is in front (isFocused() reads false for a window in the back).
+      const keyboardOn = () => mainCall(`(() => { const c = globalThis.__quickKeyboard == null ? null : electron.webContents.fromId(globalThis.__quickKeyboard); return !c ? 'nothing' : c === pageOf(quick()[0]) ? 'page' : c === toolbarOf(quick()[0]) ? 'toolbar' : 'elsewhere' })()`)
       await until(async () => (await keyboardOn()) === 'page', 'the page of a quick window opened from another app to have the keyboard', 8000)
       await until(async () => /[1-9]\d* blocked/.test(await mainCall("toolbarOf(quick()[0]).executeJavaScript(\"document.getElementById('protection').textContent\")")), 'the toolbar to count a blocked ad')
       expect(await mainCall("pageOf(quick()[0]).executeJavaScript(\"document.getElementById('ad').naturalWidth\")") === 0, 'The ad picture loaded in the quick window.')
@@ -4427,6 +4424,7 @@ export const checks = {
       expect(await mainCall("toolbarOf(quick()[0]).executeJavaScript(\"document.getElementById('address').value\")") === `${origin}/typed`, 'Escape did not revert the edited address field.')
       // Tab past the toolbar's last control (Close) goes into the page.
       await mainCall("toolbarOf(quick()[0]).focus()")
+      await until(async () => (await keyboardOn()) === 'toolbar', 'the toolbar to take the keyboard', 8000)
       await mainCall("toolbarOf(quick()[0]).executeJavaScript(\"document.getElementById('close').focus(); true\")")
       await mainCall("(() => { for (const type of ['keyDown', 'keyUp']) toolbarOf(quick()[0]).sendInputEvent({ type, keyCode: 'Tab' }); return true })()")
       await until(async () => (await keyboardOn()) === 'page', 'Tab past the toolbar\'s Close button to put the keyboard in the page', 8000)
