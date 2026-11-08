@@ -140,6 +140,41 @@ describe('the toolbar page', () => {
     expect(address.value).toBe('https://example.org/next')
   })
 
+  it('sends the keyboard into the page from the toolbar ends (Tab past Close, ⇧Tab before the address), only with a page', () => {
+    type Fake = { value: string; readOnly: boolean; hidden: boolean; textContent: string; listeners: Record<string, Array<(event: unknown) => void>>; addEventListener: (type: string, listener: (event: unknown) => void) => void; focus: () => void; blur: () => void; select: () => void }
+    const run = (hasPage: boolean) => {
+      const document = { activeElement: {} as unknown, getElementById: (id: string) => elements[id] }
+      const fake = (): Fake => {
+        const element: Fake = {
+          value: '', readOnly: false, hidden: false, textContent: '', listeners: {},
+          addEventListener: (type, listener) => { (element.listeners[type] ??= []).push(listener) },
+          focus: () => { document.activeElement = element },
+          blur: () => { document.activeElement = {} },
+          select: () => undefined,
+        }
+        return element
+      }
+      const elements: Record<string, Fake> = Object.fromEntries(['address', 'secure', 'private', 'protection', 'error', 'always', 'open', 'close'].map((id) => [id, fake()]))
+      const sent: unknown[] = []
+      new Function('document', 'window', 'console', scriptOf(quickToolbarHtml(state(hasPage ? {} : { address: '', hasPage: false }))))(document, {}, { log: (line: string) => sent.push(parseQuickToolbarMessage(line)) })
+      const key = (id: string, key: string, shiftKey: boolean) => {
+        let prevented = false
+        for (const listener of elements[id]!.listeners['keydown'] ?? []) listener({ key, shiftKey, preventDefault: () => { prevented = true } })
+        return prevented
+      }
+      return { sent, key }
+    }
+    const withPage = run(true)
+    expect(withPage.key('close', 'Tab', false)).toBe(true)
+    expect(withPage.key('address', 'Tab', true)).toBe(true)
+    expect(withPage.sent.filter((message) => (message as { type: string } | null)?.type === 'focus-page')).toHaveLength(2)
+    // Tab the other way stays in the toolbar.
+    expect(withPage.key('close', 'Tab', true)).toBe(false)
+    const empty = run(false)
+    expect(empty.key('close', 'Tab', false)).toBe(false)
+    expect(empty.sent.some((message) => (message as { type: string } | null)?.type === 'focus-page')).toBe(false)
+  })
+
   it('keeps what is typed in an empty window when its blank page is clicked', () => {
     type Fake = { value: string; readOnly: boolean; hidden: boolean; textContent: string; listeners: Record<string, Array<(event: unknown) => void>>; addEventListener: (type: string, listener: (event: unknown) => void) => void; focus: () => void; blur: () => void; select: () => void }
     const body = {}
@@ -179,6 +214,7 @@ describe('messages from the toolbar', () => {
     expect(parseQuickToolbarMessage('intoponet-quick:{"type":"open-in-main"}')).toEqual({ type: 'open-in-main' })
     expect(parseQuickToolbarMessage('intoponet-quick:{"type":"close"}')).toEqual({ type: 'close' })
     expect(parseQuickToolbarMessage('intoponet-quick:{"type":"always-here"}')).toEqual({ type: 'always-here' })
+    expect(parseQuickToolbarMessage('intoponet-quick:{"type":"focus-page"}')).toEqual({ type: 'focus-page' })
     expect(quickToolbarHtml({ address: '', hasPage: false, secure: false, isPrivate: false, blocked: 0, protectionOn: true, error: '' })).toContain('id="always"')
     expect(parseQuickToolbarMessage('intoponet-quick:{"type":"go","value":"lisbon"}')).toEqual({ type: 'go', value: 'lisbon' })
     expect(parseQuickToolbarMessage('intoponet-quick:{"type":"editing","on":true}')).toEqual({ type: 'editing', on: true })

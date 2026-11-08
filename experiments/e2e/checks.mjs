@@ -4325,6 +4325,14 @@ export const checks = {
       expect(shape.width <= 900 && shape.height <= 640 && shape.top, `The quick window is ${shape.width}×${shape.height}${shape.top ? '' : ' and not always on top'}.`)
       expect((await tabUrls()).length === 1 && !(await tabUrls()).some((url) => url.includes('/quick-1')), 'The quick link also opened a tab in the main window.')
       await until(async () => (await pageUrl()).endsWith('/quick-1'), 'the quick page to load')
+      // The keyboard is on its page (to read and scroll it). Focus is only reported for the key window: the app and the
+      // window are brought forward each time (other apps may be in front during checks), and read once they are.
+      const keyboardOn = async () => {
+        await mainCall(`(() => { electron.app.focus({ steal: true }); quick()[0].focus(); return true })()`)
+        await ctx.delay(400)
+        return mainCall(`pageOf(quick()[0]).isFocused() ? 'page' : toolbarOf(quick()[0]).isFocused() ? 'toolbar' : 'nothing'`)
+      }
+      await until(async () => (await keyboardOn()) === 'page', 'the page of a quick window opened from another app to have the keyboard', 8000)
       await until(async () => /[1-9]\d* blocked/.test(await mainCall("toolbarOf(quick()[0]).executeJavaScript(\"document.getElementById('protection').textContent\")")), 'the toolbar to count a blocked ad')
       expect(await mainCall("pageOf(quick()[0]).executeJavaScript(\"document.getElementById('ad').naturalWidth\")") === 0, 'The ad picture loaded in the quick window.')
 
@@ -4386,10 +4394,13 @@ export const checks = {
       await ctx.keyInPage('/quick-2', 'N', ['meta', 'alt'])
       await until(async () => (await quickCount()) === 1, 'the empty quick window to open with ⌥⌘N')
       expect(await mainCall("toolbarOf(quick()[0]).executeJavaScript(\"document.getElementById('address').readOnly\")") === false, 'The empty quick window has no editable address field.')
+      await until(async () => (await keyboardOn()) === 'toolbar' && await mainCall("toolbarOf(quick()[0]).executeJavaScript('document.activeElement?.id')") === 'address', 'the empty quick window\'s address field to have the keyboard', 8000)
       await mainCall("toolbarOf(quick()[0]).focus()")
       await mainCall(`toolbarOf(quick()[0]).insertText(${JSON.stringify(`${origin}/typed`)})`)
       await mainCall("toolbarOf(quick()[0]).sendInputEvent({ type: 'keyDown', keyCode: 'Enter' })")
       await until(async () => (await pageUrl()).endsWith('/typed'), 'the typed address to load in the quick window')
+      // As in the main window: the page that loads has the keyboard (Tab in the toolbar never reached it).
+      await until(async () => (await keyboardOn()) === 'page', 'the typed page to have the keyboard', 8000)
 
       // The toolbar page passes axe.
       const violations = await mainCall(`toolbarOf(quick()[0]).executeJavaScript(process.mainModule.require('fs').readFileSync(${JSON.stringify(join(repo, 'node_modules/axe-core/axe.min.js'))}, 'utf8') + ';axe.run(document, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"] }, resultTypes: ["violations"] }).then((r) => r.violations.map((v) => v.id + " ×" + v.nodes.length))')`)
@@ -4404,6 +4415,11 @@ export const checks = {
       await ctx.delay(600)
       expect(await quickCount() === 1, 'Escape in an edited address field closed the quick window.')
       expect(await mainCall("toolbarOf(quick()[0]).executeJavaScript(\"document.getElementById('address').value\")") === `${origin}/typed`, 'Escape did not revert the edited address field.')
+      // Tab past the toolbar's last control (Close) goes into the page.
+      await mainCall("toolbarOf(quick()[0]).focus()")
+      await mainCall("toolbarOf(quick()[0]).executeJavaScript(\"document.getElementById('close').focus(); true\")")
+      await mainCall("(() => { for (const type of ['keyDown', 'keyUp']) toolbarOf(quick()[0]).sendInputEvent({ type, keyCode: 'Tab' }); return true })()")
+      await until(async () => (await keyboardOn()) === 'page', 'Tab past the toolbar\'s Close button to put the keyboard in the page', 8000)
       // ⌘L and some typing, then a click into the page and a link followed there: no stale typed text stays in the field.
       await mainCall("toolbarOf(quick()[0]).focus()")
       await mainCall("toolbarOf(quick()[0]).executeJavaScript('window.quickFocusAddress()')")

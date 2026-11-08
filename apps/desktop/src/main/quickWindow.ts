@@ -101,6 +101,12 @@ const toolbarScript = `(() => {
     return true
   }
   address.addEventListener('keydown', (event) => {
+    // ⇧Tab before the toolbar's first control goes into the page (the keyboard can reach it without a click).
+    if (event.key === 'Tab' && event.shiftKey && hasPage) {
+      event.preventDefault()
+      send({ type: 'focus-page' })
+      return
+    }
     // Escape in the field reverts it and leaves the field; the window stays open (main ignores this Escape).
     if (event.key === 'Escape') {
       event.preventDefault()
@@ -124,6 +130,12 @@ const toolbarScript = `(() => {
   document.getElementById('always').addEventListener('click', () => send({ type: 'always-here' }))
   document.getElementById('open').addEventListener('click', () => send({ type: 'open-in-main' }))
   document.getElementById('close').addEventListener('click', () => send({ type: 'close' }))
+  // Tab past the toolbar's last control goes into the page.
+  document.getElementById('close').addEventListener('keydown', (event) => {
+    if (event.key !== 'Tab' || event.shiftKey || !hasPage) return
+    event.preventDefault()
+    send({ type: 'focus-page' })
+  })
   window.quickFocusAddress = () => { address.readOnly = false; address.focus(); address.select(); return true }
   // The page was clicked: the edit ends, and the field shows the page's address again and follows it as it navigates.
   // (The field would otherwise keep the toolbar's focus, and with it the typed text, as when the window goes to the back.)
@@ -166,7 +178,7 @@ export function quickToolbarHtml(state: QuickToolbarState): string {
 <script>${script}</script></body></html>`
 }
 
-export type QuickToolbarMessage = { type: 'open-in-main' } | { type: 'always-here' } | { type: 'close' } | { type: 'go'; value: string } | { type: 'editing'; on: boolean }
+export type QuickToolbarMessage = { type: 'open-in-main' } | { type: 'always-here' } | { type: 'close' } | { type: 'focus-page' } | { type: 'go'; value: string } | { type: 'editing'; on: boolean }
 
 /** A line the toolbar page logged: its own commands only; anything else is ignored. */
 export function parseQuickToolbarMessage(message: unknown): QuickToolbarMessage | null {
@@ -182,6 +194,7 @@ export function parseQuickToolbarMessage(message: unknown): QuickToolbarMessage 
   if (v['type'] === 'open-in-main') return { type: 'open-in-main' }
   if (v['type'] === 'always-here') return { type: 'always-here' }
   if (v['type'] === 'close') return { type: 'close' }
+  if (v['type'] === 'focus-page') return { type: 'focus-page' }
   if (v['type'] === 'editing' && typeof v['on'] === 'boolean') return { type: 'editing', on: v['on'] }
   if (v['type'] === 'go' && typeof v['value'] === 'string' && v['value'].length <= MAX_ADDRESS) return { type: 'go', value: v['value'] }
   return null
@@ -284,6 +297,9 @@ export class QuickWindows {
     if (address) void entry.page.webContents.loadURL(address).catch(() => undefined)
     entry.win.show()
     entry.win.focus()
+    // The keyboard goes to the page (to read and scroll it), or to the address field of an empty window.
+    if (address) entry.page.webContents.focus()
+    else entry.toolbar.webContents.focus()
     this.host.changed()
   }
 
@@ -408,6 +424,7 @@ export class QuickWindows {
     else if (message.type === 'open-in-main') this.adopt(entry)
     else if (message.type === 'always-here') this.alwaysHere(entry)
     else if (message.type === 'editing') entry.editing = message.on
+    else if (message.type === 'focus-page') { if (!entry.closed && !entry.page.webContents.isDestroyed()) entry.page.webContents.focus() }
     else this.navigate(entry, message.value)
   }
 
@@ -432,6 +449,8 @@ export class QuickWindows {
     entry.error = ''
     entry.url = url
     void entry.page.webContents.loadURL(url).catch(() => undefined)
+    // As in the main window's address bar: the page that loads has the keyboard.
+    entry.page.webContents.focus()
     this.refresh(entry)
   }
 
