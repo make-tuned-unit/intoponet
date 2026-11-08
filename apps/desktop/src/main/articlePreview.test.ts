@@ -61,7 +61,18 @@ describe('bylines and images', () => {
     expect(parseArticlePreview('<p class="c-byline">Par Luc Martin et Ana Roy</p>', 'https://x.test/a').authors).toEqual(['Luc Martin', 'Ana Roy'])
   })
   it('keeps only the first section name', () => {
-    expect(parseArticlePreview('<meta property="article:section" content="noticias,sonora">', 'https://x.test/a').section).toBe('noticias')
+    expect(parseArticlePreview('<meta property="article:section" content="noticias,sonora">', 'https://x.test/a').section).toBe('Noticias')
+  })
+  it('shows a feed slug as a readable section, and no section for ids or placeholders', () => {
+    const section = (content: string): string | null => parseArticlePreview(`<meta property="article:section" content="${content}">`, 'https://x.test/a').section
+    expect(section('america-latina')).toBe('America latina')
+    expect(section('world_news')).toBe('World news')
+    expect(section('/mundo/america-latina/')).toBe('Mundo')
+    expect(section('América Latina')).toBe('América Latina')
+    expect(section('Asia-Pacific')).toBe('Asia-Pacific')
+    expect(section('Covid-19')).toBe('Covid-19')
+    for (const junk of ['12345', 'sec-48213', 'c1', 'uncategorized', 'Uncategorized', '-', ' ']) expect(section(junk)).toBeNull()
+    expect(parseArticlePreview('<script type="application/ld+json">{"@type":"NewsArticle","articleSection":["internacional-america-latina","Mundo"]}</script>', 'https://x.test/a').section).toBe('Internacional america latina')
   })
   it('drops logos and placeholders as the story image', () => {
     expect(parseArticlePreview('<meta property="og:image" content="https://x.test/static/logo-tva-1200.png">', 'https://x.test/a').image).toBeNull()
