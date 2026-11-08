@@ -29,7 +29,7 @@ import {
   screen,
 } from 'electron'
 import type { IpcMainInvokeEvent, MenuItemConstructorOptions } from 'electron'
-import { atomicWritesInFlight, pendingWrite, removeSetAside, removeUnfinishedTemporaries, setAsideUnreadable, writeFileAtomic, writeFileAtomicSync } from './atomicFile'
+import { atomicWritesInFlight, pendingWrite, removeLeftoverTemporaries, removeSetAside, removeUnfinishedTemporaries, setAsideUnreadable, writeFileAtomic, writeFileAtomicSync } from './atomicFile'
 import { isAppShellUrl, SHELL_PERMISSIONS } from './shellGuard'
 import { LatestWriter, latestWritesInFlight } from './latestWriter'
 import { waitForSaves } from './quitSaves'
@@ -5227,6 +5227,10 @@ app.whenReady().then(async () => {
   } catch {
     encryptedDnsActive = false
   }
+  // Temporary files of writes an earlier run never finished (a crash, a force-quit, an older version's quit), before anything is read or saved.
+  startup('leftover temporary files', () => {
+    for (const folder of [app.getPath('userData'), join(app.getPath('userData'), 'personal')]) removeLeftoverTemporaries(folder)
+  })
   await loadExceptions()
   startup('downloads and history', installDownloadsAndHistory)
   const restoredState = await loadPersistentState()

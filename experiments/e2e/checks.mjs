@@ -704,6 +704,9 @@ export const checks = {
     }
     mkdirSync(join(damagedProfile, 'personal'))
     for (const [file, text] of Object.entries(damaged)) writeFileSync(join(damagedProfile, file), text)
+    // Temporary files of saves an earlier run never finished (a crash, or a 0.1.22 quit) are deleted at startup.
+    const leftovers = ['personal/history.v1.seal.0b3c1a2e-5f6d-4e7a-8b9c-0d1e2f3a4b5c.tmp', 'private-library.v1.seal.1f2e3d4c-5b6a-4978-8a9b-0c1d2e3f4a5b.tmp']
+    for (const file of leftovers) writeFileSync(join(damagedProfile, file), 'an old sealed copy')
     const keptProfile = process.env.E2E_PROFILE
     process.env.E2E_PROFILE = damagedProfile
     try {
@@ -711,6 +714,8 @@ export const checks = {
       const [kept, afterClear] = JSON.parse(await runAppCheck(async (next) => {
         await next.evaluate(`window.intoponet.browserHost.newTab().then(() => true)`)
         await next.delay(1500)
+        const left = leftovers.filter((file) => existsSync(join(damagedProfile, file)))
+        expect(!left.length, `Temporary files an earlier run left are still in the profile after startup: ${left.join(', ')}.`)
         const before = await keptFiles(next)
         // Clear browsing data also clears the history it kept aside.
         await next.evaluate(`window.intoponet.history.clearBrowsingData({ range: 'hour', history: true, siteData: false, cache: false, downloads: false }).then(() => true)`)
@@ -723,7 +728,7 @@ export const checks = {
       else process.env.E2E_PROFILE = keptProfile
       rmSync(damagedProfile, { recursive: true, force: true })
     }
-    return `Header: ${buttons.join(' · ')}. A damaged profile opened, its unreadable files kept aside.`
+    return `Header: ${buttons.join(' · ')}. A damaged profile opened, its unreadable files kept aside and an earlier run's unfinished temporary files deleted.`
   },
 
   async GLOBE_LIVE(ctx) {
