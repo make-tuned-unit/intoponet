@@ -3614,6 +3614,14 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
   viewContentsIds.set(view, contentsId)
   view.webContents.once('destroyed', () => {
     unseenTabs.forget(pageContents)
+    // What was kept for the page goes with it, whichever way it closed (every page that loaded had an
+    // ad-slot entry, kept after its tab closed; a quick window's page kept its protection counts too).
+    const adSlots = blockedAdAddresses.get(contentsId)
+    if (adSlots?.timer) clearTimeout(adSlots.timer)
+    blockedAdAddresses.delete(contentsId)
+    previewSelectors.delete(contentsId)
+    protectionPages.remove(contentsId)
+    translateService?.forgetPage(contentsId)
     popupLimiter.forget(contentsId)
     externalOpener?.dropOwner(contentsId)
     passwords?.forget(contentsId)
