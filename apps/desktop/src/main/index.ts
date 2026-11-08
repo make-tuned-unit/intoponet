@@ -176,6 +176,7 @@ import { PDF_WORLD_ID } from './pdfExport/pageScripts'
 import { SavedPdfList } from './pdfExport/savedPdfs'
 import { DEFAULT_PDF_SETTINGS, parsePdfSettings, type PdfExportSettings } from './pdfExport/settings'
 import { CrashRecoveryPolicy } from './crashRecovery'
+import { restoreHistoryOrLoad } from './historyRestore'
 import { BeaconPublisher } from './beacons/publisher'
 import { DEFAULT_BEACON_REGISTRY } from './beacons/defaults'
 import { ENCRYPTED_DNS, networkPrivacySnapshot, WEBRTC_POLICY } from './networkPrivacy'
@@ -348,6 +349,11 @@ type OpenTab = {
   home?: string
   /** Unloaded (pinned tab closed, or asleep): the view is blank until shown; `history` is where it was. */
   asleep?: { history?: TabHistory }
+  /**
+   * Woken, restored or reopened, its page is loading and has no title of its own yet: `title` (the one
+   * it was saved with) is shown meanwhile, not the address Chromium reports (liveTitle).
+   */
+  keepTitle?: true
   /** When the tab was last shown or left (for sleeping background tabs and recent-order switching). */
   lastShownAt?: number
   /** The sidebar folder it is in (unpinned tabs only). */
@@ -420,6 +426,16 @@ function viewGone(view: WebContentsView): boolean {
   return !contents || contents.isDestroyed()
 }
 
+/**
+ * A tab's page title, or '' when there is none to show yet: no page, or a woken, restored or reopened
+ * page still without a title of its own (keepTitle), whose saved `title` stands in rather than the
+ * address Chromium reports meanwhile. Callers fall back to `tab.title`.
+ */
+function liveTitle(tab: OpenTab): string {
+  if (viewGone(tab.view) || (tab.keepTitle && tab.title)) return ''
+  return tab.view.webContents.getTitle()
+}
+
 function safeHttpUrl(value: string): URL | null {
   try {
     const url = new URL(value)
@@ -462,7 +478,7 @@ function persistentState(): PersistentBrowserState {
       parked.push({
         id: tab.id,
         url,
-        title: capTitle((live ? tab.view.webContents.getTitle() : '') || tab.title),
+        title: capTitle(liveTitle(tab) || tab.title),
         ...(tab.pinned ? { pinned: true } : {}),
         ...(tab.pinned && tab.home ? { home: capUrl(tab.home) } : {}),
         ...(tab.folderId && !tab.pinned ? { folderId: tab.folderId } : {}),
@@ -680,7 +696,7 @@ function pagePanelState(): BrowserPanelSnapshot {
   const crashed = pending && !crashRecovery.canAutoRecover(pending.id) ? pending : undefined
   return {
     url: capUrl(crashed ? crashed.url : contents.getURL()),
-    title: capTitle(pending ? pending.title || contents.getTitle() : contents.getTitle()),
+    title: capTitle(pending ? pending.title || contents.getTitle() : (tab && liveTitle(tab)) || tab?.title || contents.getTitle()),
     canGoBack: contents.navigationHistory.canGoBack(),
     canGoForward: contents.navigationHistory.canGoForward(),
     isLoading: contents.isLoading(),
@@ -711,7 +727,7 @@ function nowPlayingSnapshot(): NowPlayingSnapshot | null {
     const tab = allTabs().find((item) => item.id === tabId)
     if (!tab || viewGone(tab.view)) return null
     const contents = tab.view.webContents
-    return { title: capTitle(contents.getTitle() || tab.title || capUrl(tab.url)), muted: contents.isAudioMuted() }
+    return { title: capTitle(liveTitle(tab) || tab.title || capUrl(tab.url)), muted: contents.isAudioMuted() }
   })
 }
 const emitNowPlaying = coalesce(() => emit({ type: 'now-playing', nowPlaying: nowPlayingSnapshot() }))
@@ -1829,7 +1845,7 @@ function tabSnapshots(): PageTabSnapshot[] {
       id: tab.id,
       // Bounded: a page's address and title can be made enormous.
       url: tab.start ? '' : capUrl(safeHttpUrl(currentUrl) ? currentUrl : tab.url),
-      title: tab.start ? 'New tab' : capTitle((live ? tab.view.webContents.getTitle() : '') || tab.title || capUrl(tab.url)),
+      title: tab.start ? 'New tab' : capTitle(liveTitle(tab) || tab.title || capUrl(tab.url)),
       favicon: tab.favicon,
       active: tab.id === activeTabId,
       isPrivate: privateViews.has(tab.view),
@@ -1909,10 +1925,22 @@ function rememberTab(view: WebContentsView): void {
   const tab = tabOfView(view)
   if (!tab) return
   const url = view.webContents.getURL()
-  const title = view.webContents.getTitle()
+  // Not the address standing in for a woken page's title that has not arrived (liveTitle).
+  const title = liveTitle(tab)
   if (safeHttpUrl(url)) tab.url = url
   if (title) tab.title = title
   emitTabs()
+}
+
+/** A tab's view is about to load its saved page (woken, restored, reopened, back after a crash): its saved title stands in until the page has its own. */
+function keepSavedTitle(tab: OpenTab): void {
+  if (tab.title) tab.keepTitle = true
+}
+
+/** The page has a title of its own, or has finished loading without one (its address is its title then, as Chromium has it). */
+function pageTitleSettled(view: WebContentsView): void {
+  const tab = tabOfView(view)
+  if (tab) delete tab.keepTitle
 }
 
 function detachActive(): void {
@@ -2026,12 +2054,7 @@ function wakeTab(tab: OpenTab): void {
   }
   if (sleep?.history && (!current || current === 'about:blank')) {
     // Woken where it was: back/forward list and scroll position (page state) restored.
-    const view = tab.view
-    restoringViews.add(view)
-    void view.webContents.navigationHistory.restore(sleep.history)
-      .catch(() => view.webContents.loadURL(tab.url))
-      .catch(() => undefined)
-      .finally(() => restoringViews.delete(view))
+    restoreTabHistory(tab, sleep.history)
   } else if ((!current || current === 'about:blank') && safeHttpUrl(tab.url) && !restoringViews.has(tab.view) && crashRecovery.canAutoRecover(tab.id)) {
     loadBlankTab(tab)
   }
@@ -2042,19 +2065,33 @@ function wakeTab(tab: OpenTab): void {
  * list and scroll restored, as a sleeping tab wakes), else at its address.
  */
 function loadBlankTab(tab: OpenTab): void {
-  const view = tab.view
   const history = crashRecovery.takeHistory(tab.id)
-  if (!history) {
-    void view.webContents.loadURL(tab.url).catch(() => undefined)
-    return
-  }
+  if (history) return restoreTabHistory(tab, history)
+  keepSavedTitle(tab)
+  void tab.view.webContents.loadURL(tab.url).catch(() => undefined)
+}
+
+/**
+ * A tab's blank view gets its back/forward list back (historyRestore.ts). Its address loads instead
+ * only when the list could not be restored at all and nothing has navigated since: a page that failed
+ * shows its error page, and a newer navigation (a click, an address typed meanwhile) is never undone.
+ */
+function restoreTabHistory(tab: OpenTab, history: TabHistory): void {
+  const view = tab.view
   restoringViews.add(view)
-  void view.webContents.navigationHistory.restore(history)
-    // Only when the list could not be restored at all: a page that failed shows its error page, and a
-    // load stopped by a newer navigation (a click, an address typed meanwhile) must not be undone.
-    .catch(() => (viewGone(view) || view.webContents.getURL() ? undefined : view.webContents.loadURL(tab.url)))
-    .catch(() => undefined)
-    .finally(() => restoringViews.delete(view))
+  keepSavedTitle(tab)
+  void restoreHistoryOrLoad({
+    restore: () => view.webContents.navigationHistory.restore(history),
+    navigatedSince: () => {
+      if (viewGone(view)) return true
+      const now = view.webContents.getURL()
+      return now !== '' && now !== 'about:blank'
+    },
+    load: () => {
+      keepSavedTitle(tab)
+      return view.webContents.loadURL(tab.url)
+    },
+  }).finally(() => restoringViews.delete(view))
 }
 
 /** A pinned tab is away from home once it is on another site (moving around the same site is not leaving). */
@@ -2553,7 +2590,7 @@ async function handleWorkspaceCommand(command: WorkspaceCommand): Promise<Worksp
       const live = !viewGone(tab.view)
       const url = live && safeHttpUrl(tab.view.webContents.getURL()) ? tab.view.webContents.getURL() : tab.url
       if (!safeHttpUrl(url)) throw new Error('Only web pages can be favourites.')
-      if (!workspaces.addFavourite(capUrl(url), capTitle((live ? tab.view.webContents.getTitle() : '') || tab.title), command.shared)) throw new Error(`At most ${MAX_FAVOURITES} favourites.`)
+      if (!workspaces.addFavourite(capUrl(url), capTitle(liveTitle(tab) || tab.title), command.shared)) throw new Error(`At most ${MAX_FAVOURITES} favourites.`)
       emitWorkspaces()
       schedulePersistentStateSave()
       break
@@ -2646,7 +2683,7 @@ function archiveTab(tab: OpenTab): ArchivedTab | null {
   }
   const entry = tabArchive.add({
     url: safeHttpUrl(liveUrl) ? liveUrl : tab.url,
-    title: (live ? tab.view.webContents.getTitle() : '') || tab.title,
+    title: liveTitle(tab) || tab.title,
     favicon: tab.favicon,
     // Only the shown workspace's tabs are archived.
     workspaceId: workspaces.activeId,
@@ -2689,7 +2726,7 @@ function switcherTabs(): SwitcherTab[] {
     const live = !viewGone(tab.view)
     return {
       id: tab.id,
-      title: tab.start ? 'New tab' : (live ? tab.view.webContents.getTitle() : '') || tab.title,
+      title: tab.start ? 'New tab' : liveTitle(tab) || tab.title,
       url: tab.start ? '' : (live && safeHttpUrl(tab.view.webContents.getURL()) ? tab.view.webContents.getURL() : tab.url),
       favicon: tab.favicon,
       lastShownAt: tab.lastShownAt ?? 0,
@@ -3064,8 +3101,10 @@ function unloadTab(tab: OpenTab, options: { keepHistory: boolean; url?: string }
       history = undefined
     }
   }
-  tab.url = options.url ?? (safeHttpUrl(liveUrl) ? liveUrl : tab.url)
-  tab.title = old.webContents.getTitle() || tab.title
+  const nextUrl = options.url ?? (safeHttpUrl(liveUrl) ? liveUrl : tab.url)
+  // Sent home from another page (a pinned tab closed while away): that page's title is not its home's.
+  tab.title = samePage(nextUrl, safeHttpUrl(liveUrl) ? liveUrl : tab.url) ? liveTitle(tab) || tab.title : ''
+  tab.url = nextUrl
   delete tab.loadError
   // The tab holds the replacement first, so closing the old page does not close the tab.
   tab.view = buildView(privateViews.has(old), workspaceOfView(old))
@@ -3637,6 +3676,7 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
     emitNowPlaying()
   })
   view.webContents.on('did-stop-loading', () => {
+    pageTitleSettled(view)
     rememberTab(view)
     if (pageView !== view) return
     emitPanelState()
@@ -3728,7 +3768,8 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
     schedulePersistentStateSave()
     emitPanelState()
   })
-  view.webContents.on('page-title-updated', () => {
+  view.webContents.on('page-title-updated', (_event, title) => {
+    if (title) pageTitleSettled(view)
     rememberTab(view)
     if (pageView === view || companionView === view) emitPanelState()
   })
@@ -3827,10 +3868,23 @@ async function runTabMenuAction(action: TabMenuAction, id: string): Promise<void
   const live = !viewGone(tab.view)
   const url = live && safeHttpUrl(tab.view.webContents.getURL()) ? tab.view.webContents.getURL() : tab.url
   switch (action) {
-    case 'reload':
-      if (activeTabId === id) await handleBrowserCommand({ type: 'reload' })
-      else if (live) tab.view.webContents.reload()
+    case 'reload': {
+      if (activeTabId === id) {
+        await handleBrowserCommand({ type: 'reload' })
+        break
+      }
+      if (!live) break
+      const current = tab.view.webContents.getURL()
+      if (current && current !== 'about:blank') tab.view.webContents.reload()
+      // Asleep: it wakes where it was, in the background.
+      else if (tab.asleep) wakeTab(tab)
+      // Its renderer crashed (beside the page or behind it): asked for, it loads again even after repeated crashes.
+      else if (!tab.start && safeHttpUrl(tab.url)) {
+        crashRecovery.manualRetry(tab.id)
+        loadBlankTab(tab)
+      }
       break
+    }
     case 'duplicate': {
       if (!safeHttpUrl(url)) break
       const at = duplicateIndex(openTabs, id)
@@ -3924,8 +3978,9 @@ function rememberClosedTab(tab: OpenTab, workspaceId: string | null): void {
   if (tab.start || privateViews.has(tab.view) || untrackedViews.has(tab.view)) return
   const live = !viewGone(tab.view)
   const liveUrl = live ? tab.view.webContents.getURL() : ''
-  let history: { entries: Electron.NavigationEntry[]; index: number } | undefined
-  if (live) {
+  // Asleep, its view is blank: the list it slept with is where it was.
+  let history: { entries: Electron.NavigationEntry[]; index: number } | undefined = tab.asleep?.history
+  if (live && !tab.asleep) {
     try {
       history = { entries: tab.view.webContents.navigationHistory.getAllEntries(), index: tab.view.webContents.navigationHistory.getActiveIndex() }
     } catch {
@@ -3934,7 +3989,7 @@ function rememberClosedTab(tab: OpenTab, workspaceId: string | null): void {
   }
   closedTabs.remember({
     url: safeHttpUrl(liveUrl) ? liveUrl : tab.url,
-    title: (live ? tab.view.webContents.getTitle() : '') || tab.title,
+    title: liveTitle(tab) || tab.title,
     favicon: tab.favicon,
     isPrivate: false,
     workspaceId,
@@ -3967,6 +4022,8 @@ function reopenTab(entry: { url: string; title: string; favicon: string; history
   } else {
     openTabs.splice(0, openTabs.length, ...folderedOrder([...openTabs, tab], tabFolders))
   }
+  // Back in a folded folder, the folder opens so the tab is in sight (as moving it in with ⌥⇧↑/↓ does).
+  if (place.folderId && revealFolder(parked ? parked.folders : tabFolders, place.folderId) && !parked) emitTabFolders()
   if (show) {
     if (parked) switchWorkspace({ id: place.workspaceId })
     if (activeTabId !== tab.id || !pageAttached) showTab(tab.id)
@@ -4338,6 +4395,8 @@ async function handleBrowserCommand(
       if (!tab?.home) break
       if (tab.asleep) {
         delete tab.asleep
+        // Asleep on another page: its title is not its home's (the home page brings its own).
+        if (!samePage(tab.url, tab.home)) tab.title = ''
         tab.url = tab.home
         showTab(tab.id)
       } else {

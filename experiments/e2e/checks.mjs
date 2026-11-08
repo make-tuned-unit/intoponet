@@ -1384,6 +1384,28 @@ export const checks = {
       await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.canGoBack && !s.isLoading)`, 15_000, 'Back to be offered once Reload has brought the crashed page back')
       const afterReload = await historyOf()
       expect(JSON.stringify(afterReload) === JSON.stringify(beforeCrash), `Reload after repeated crashes brought the page back without its back/forward list: ${JSON.stringify(afterReload)}.`)
+      // A tab behind another whose renderer crashed waits blank; Reload from its tab menu brings it back there, with its back/forward list.
+      const crashedTab = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => JSON.stringify(t.find((x) => x.active)))`))
+      const front = `${url}?front`
+      await ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: ${JSON.stringify(front)} }).then(() => true, () => true)`)
+      await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.url === ${JSON.stringify(front)} && !s.isLoading)`, 15_000, 'a page in front of the one to crash')
+      expect(await crashPage(), 'The background page to crash is not open.')
+      await ctx.delay(1500)
+      expect(!(await historyOf()), 'The crashed background page loaded again by itself.')
+      await ctx.main(`(() => { globalThis.__tabMenu = null; globalThis.__popup = electron.Menu.prototype.popup; electron.Menu.prototype.popup = function () { globalThis.__tabMenu = this }; return true })()`)
+      try {
+        await ctx.evaluate(`window.intoponet.browserHost.showTabMenu(${JSON.stringify(crashedTab.id)}).then(() => true)`)
+        for (let i = 0; i < 20 && !(await ctx.main('globalThis.__tabMenu !== null')); i += 1) await ctx.delay(100)
+        expect(await ctx.main(`globalThis.__tabMenu?.items.some((i) => i.label === 'Reload' && i.enabled) ?? false`), 'The crashed tab\'s menu offers no Reload.')
+        await ctx.main(`(() => { globalThis.__tabMenu.items.find((i) => i.label === 'Reload').click(); return true })()`)
+      } finally {
+        await ctx.main(`(() => { electron.Menu.prototype.popup = globalThis.__popup; return true })()`)
+      }
+      for (let i = 0; i < 50 && JSON.stringify(await historyOf()) !== JSON.stringify(beforeCrash); i += 1) await ctx.delay(200)
+      expect(JSON.stringify(await historyOf()) === JSON.stringify(beforeCrash), `Reload from the tab menu did not bring the crashed background tab back with its back/forward list: ${JSON.stringify(await historyOf())}.`)
+      expect((await panelState(ctx)).url === front, 'Reload from the menu of a background tab changed the page in front.')
+      await ctx.evaluate(`window.intoponet.browserHost.closeActiveTab().then(() => true)`)
+      await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.url === ${JSON.stringify(url)} && !s.isLoading)`, 15_000, 'the reloaded tab to be shown again')
     } finally {
       site.close()
     }
@@ -1564,8 +1586,11 @@ export const checks = {
       const pinned = await tabs()
       expect(pinned[0]?.id === two && pinned[0]?.pinned === true, 'A pinned tab did not move to the front.')
       expect(await ctx.evaluate(`!!document.querySelector('.tab-rail-pinned [data-tab-id=${JSON.stringify(two)}]')`), 'The rail does not show the pinned tab among the pinned icons.')
-      const saved = JSON.parse(readFileSync(join(ctx.profile, 'browser-state.v1.json'), 'utf8'))
-      expect(saved.tabs?.[0]?.pinned === true && saved.tabs[0].url.includes('/two'), 'The pinned tab is not saved as pinned for the next launch.')
+      // Saved soon after, but a busy disk can take a while: wait for the file to show it.
+      const savedState = () => { try { return JSON.parse(readFileSync(join(ctx.profile, 'browser-state.v1.json'), 'utf8')) } catch { return null } }
+      const pinnedSaved = (saved) => saved?.tabs?.[0]?.pinned === true && saved.tabs[0].url.includes('/two')
+      for (let i = 0; i < 50 && !pinnedSaved(savedState()); i += 1) await ctx.delay(200)
+      expect(pinnedSaved(savedState()), `The pinned tab is not saved as pinned for the next launch (saved: ${JSON.stringify(savedState()?.tabs ?? null)}).`)
       await axeAudit(ctx, 'the tab rail with a pinned tab', '.tab-rail')
 
       // The strip under the launcher (page closed): pinned tab first, icon only, no close button.
@@ -2155,18 +2180,20 @@ export const checks = {
       pinned = after.find((tab) => tab.id === mail.id)
       expect(after.length === before, `⌘W on a pinned tab closed it (${before} → ${after.length} tabs).`)
       expect(pinned.asleep && !pinned.active && pinned.url === `${origin}/mail`, `After ⌘W the pinned tab is ${JSON.stringify(pinned)}.`)
+      // Back at home, it no longer carries the title of the page it was on (nor shows it while home loads).
+      expect(pinned.title !== 'Page /elsewhere', 'After ⌘W the pinned tab, back at home, is still titled after the page it left.')
       expect(!(await ctx.main(`electron.webContents.getAllWebContents().some((c) => c.getURL().includes('/elsewhere'))`)), 'The pinned tab\'s page is still loaded after ⌘W.')
       await ctx.wait(`!!document.querySelector('.tab-rail-item.is-asleep')`, 3000, 'the unloaded tab to look asleep')
       // Its next click opens it at home.
       await ctx.evaluate(`${host}.activateTab(${JSON.stringify(mail.id)}).then(() => true)`)
       await ctx.wait(`${host}.getTabs().then((t) => { const x = t.find((y) => y.id === ${JSON.stringify(mail.id)}); return x.active && !x.asleep })`, 5000, 'the pinned tab to wake')
-      await ctx.wait(`true`, 100, '')
-      await ctx.delay(1200)
-      expect(await ctx.main(`electron.webContents.getAllWebContents().some((c) => c.getURL() === ${JSON.stringify(`${origin}/mail`)})`), 'The pinned tab did not load its home when clicked.')
-      // Saved for the next launch with its home.
-      await ctx.delay(500)
-      const saved = JSON.parse(readFileSync(join(ctx.profile, 'browser-state.v1.json'), 'utf8'))
-      expect(saved.tabs.some((tab) => tab.pinned && tab.home === `${origin}/mail`), 'The pinned tab\'s home was not saved.')
+      const homeLoaded = () => ctx.main(`electron.webContents.getAllWebContents().some((c) => c.getURL() === ${JSON.stringify(`${origin}/mail`)})`)
+      for (let i = 0; i < 40 && !(await homeLoaded()); i += 1) await ctx.delay(200)
+      expect(await homeLoaded(), 'The pinned tab did not load its home when clicked.')
+      // Saved for the next launch with its home (wait for the file rather than a fixed time).
+      const homeSaved = () => { try { return JSON.parse(readFileSync(join(ctx.profile, 'browser-state.v1.json'), 'utf8')).tabs.some((tab) => tab.pinned && tab.home === `${origin}/mail`) } catch { return false } }
+      for (let i = 0; i < 50 && !homeSaved(); i += 1) await ctx.delay(200)
+      expect(homeSaved(), 'The pinned tab\'s home was not saved.')
       await axeAudit(ctx, 'the tab rail with a pinned tab', '.tab-rail')
       // Unpinning forgets the home.
       await ctx.evaluate(`${host}.setTabPinned(${JSON.stringify(mail.id)}, false).then(() => true)`)
@@ -2215,10 +2242,15 @@ export const checks = {
       // Shown again, it wakes where it was: same page, back list and scroll position.
       await ctx.evaluate(`${host}.activateTab(${JSON.stringify(deep.id)}).then(() => true)`)
       await ctx.wait(`${host}.getTabs().then((t) => { const x = t.find((y) => y.id === ${JSON.stringify(deep.id)}); return x.active && !x.asleep && x.url.endsWith('/second') })`, 8000, 'the tab to wake on its page')
-      await ctx.delay(1500)
       const page = await ctx.page('/second')
-      const scroll = await page.evaluate('window.scrollY')
+      // Scroll comes back once the page has loaded: wait for it (a busy Mac takes longer) rather than a fixed time.
+      let scroll = await page.evaluate('window.scrollY')
+      for (let i = 0; i < 40 && Math.abs(scroll - 1400) >= 60; i += 1) {
+        await ctx.delay(200)
+        scroll = await page.evaluate('window.scrollY')
+      }
       expect(Math.abs(scroll - 1400) < 60, `The woken tab is scrolled to ${scroll}, not where it was (1400).`)
+      await ctx.wait(`${host}.getState().then((s) => s.canGoBack)`, 5000, 'the woken tab to offer Back').catch(() => undefined)
       const panel = JSON.parse(await ctx.evaluate(`${host}.getState().then((s) => JSON.stringify(s))`))
       expect(panel.canGoBack, 'The woken tab lost its back history.')
       await ctx.evaluate(`window.intoponet.browsing.setTabSleep('never').then(() => true)`)
@@ -2232,7 +2264,51 @@ export const checks = {
       await ctx.evaluate(`window.intoponet.browsing.setTabSleep('15m').then(() => true)`)
       await ctx.wait(`${host}.getTabs().then((t) => t.some((x) => x.url.endsWith('/later') && x.asleep))`, 10_000, 'a background tab to sleep while another background page was busy')
       await ctx.evaluate(`window.intoponet.browsing.setTabSleep('never').then(() => true)`)
-      return `9 background tabs slept (typed text and the front tab stayed awake); their pages' memory ${Math.round(awake / 1024)} MB → ${Math.round(asleep / 1024)} MB; woke on the same page, scroll and back list; a busy background page did not hold up the others.`
+      // Woken while its page is slow to come back, then sent to an address that fails before it has: that
+      // address's error stays, and the old page never loads over it.
+      let slowNow = false
+      const slowSite = createServer((request, response) => {
+        if (request.url.startsWith('/broken')) return request.socket.destroy()
+        setTimeout(() => {
+          response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' })
+          response.end(`<!doctype html><title>Slow ${request.url}</title><p>${request.url}`)
+        }, slowNow ? 3000 : 0)
+      })
+      await new Promise((resolve) => slowSite.listen(0, '127.0.0.1', resolve))
+      const slowOrigin = `http://127.0.0.1:${slowSite.address().port}`
+      try {
+        await openPage(ctx, `${slowOrigin}/earlier`, 1000)
+        await (await ctx.page('/earlier')).evaluate(`location.href = '${slowOrigin}/woken'`)
+        await ctx.wait(`${host}.getTabs().then((t) => t.some((x) => x.url.endsWith('/woken') && !x.loading))`, 8000, 'the second page to load')
+        await openPage(ctx, `${origin}/in-front`, 800)
+        await ctx.evaluate(`window.intoponet.browsing.setTabSleep('15m').then(() => true)`)
+        await ctx.wait(`${host}.getTabs().then((t) => t.some((x) => x.url.endsWith('/woken') && x.asleep))`, 15_000, 'the slow page\'s tab to sleep')
+        await ctx.evaluate(`window.intoponet.browsing.setTabSleep('never').then(() => true)`)
+        // Closed while asleep, ⇧⌘T brings it back with its back list.
+        await ctx.evaluate(`${host}.closeTab(${JSON.stringify((await tabs()).find((tab) => tab.url.endsWith('/woken')).id)}).then(() => true)`)
+        await ctx.delay(300)
+        await ctx.evaluate(`${host}.reopenClosedTab().then(() => true)`)
+        await ctx.wait(`${host}.getState().then((s) => s.url.endsWith('/woken') && !s.isLoading)`, 8000, 'the tab closed while asleep to reopen')
+        expect((await panelState(ctx)).canGoBack, 'A tab closed while asleep came back without its back list.')
+        await ctx.evaluate(`${host}.activateTab(${JSON.stringify((await tabs()).find((tab) => tab.url.endsWith('/in-front')).id)}).then(() => true)`)
+        await ctx.evaluate(`window.intoponet.browsing.setTabSleep('15m').then(() => true)`)
+        await ctx.wait(`${host}.getTabs().then((t) => t.some((x) => x.url.endsWith('/woken') && x.asleep))`, 15_000, 'the reopened tab to sleep again')
+        await ctx.evaluate(`window.intoponet.browsing.setTabSleep('never').then(() => true)`)
+        slowNow = true
+        const woken = (await tabs()).find((tab) => tab.url.endsWith('/woken'))
+        await ctx.evaluate(`${host}.activateTab(${JSON.stringify(woken.id)}).then(() => true)`)
+        await ctx.delay(400)
+        await ctx.evaluate(`${host}.navigate(${JSON.stringify(`${slowOrigin}/broken`)}).then(() => true, () => true)`)
+        await ctx.wait(`${host}.getTabs().then((t) => t.some((x) => x.id === ${JSON.stringify(woken.id)} && x.url.endsWith('/broken')))`, 8000, 'the address typed while the tab woke to fail in it (not be replaced by its old page)')
+        // The old page would have come back 3 s after the failure.
+        await ctx.delay(4500)
+        const after = (await tabs()).find((tab) => tab.id === woken.id)
+        expect(after?.url.endsWith('/broken'), `An address typed while the tab was waking was replaced by its old page (${after?.url}).`)
+        expect(!(await ctx.main(`electron.webContents.getAllWebContents().some((c) => c.getURL().endsWith('/woken'))`)), 'The old page loaded again over the address typed while the tab was waking.')
+      } finally {
+        slowSite.close()
+      }
+      return `9 background tabs slept (typed text and the front tab stayed awake); their pages' memory ${Math.round(awake / 1024)} MB → ${Math.round(asleep / 1024)} MB; woke on the same page, scroll and back list; a busy background page did not hold up the others; a tab closed asleep reopened with its back list; an address typed while a tab woke was not replaced by its old page.`
     } finally {
       server.close()
     }
@@ -2668,7 +2744,8 @@ export const checks = {
       await ctx.evaluate(`[...document.querySelectorAll('[role="option"]')].find((e) => e.textContent.includes('Reopen archived tab')).dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); [...document.querySelectorAll('[role="option"]')].find((e) => e.textContent.includes('Reopen archived tab'))?.click(); true`)
       await ctx.wait(`${host}.getTabs().then((t) => t.some((x) => x.active && x.title === 'Page /old-b'))`, 6000, 'the archived tab to reopen in front')
       expect(JSON.parse(await ctx.evaluate(`window.intoponet.workspaces.get().then((s) => JSON.stringify(s.activeId))`)) === homeId, 'The archived tab reopened in the workspace shown, not the one it was archived from.')
-      await ctx.delay(1500)
+      // Its back list is there once it has been restored (wait for it rather than a fixed time).
+      await ctx.wait(`${host}.getState().then((s) => s.canGoBack && !s.isLoading)`, 8000, 'the reopened tab to offer Back').catch(() => undefined)
       const panel = JSON.parse(await ctx.evaluate(`${host}.getState().then((s) => JSON.stringify(s))`))
       expect(panel.canGoBack, 'The reopened tab lost its back list.')
       // Clearing history clears the archive too.
@@ -3058,8 +3135,11 @@ export const checks = {
       await ctx.evaluate(`${ws}.switchTo({ id: ${JSON.stringify(mainId)} }).then(() => true)`)
       await ctx.delay(600)
       expect((await tabs()).some((tab) => tab.id === privateTab.id && tab.isPrivate), 'The private tab went away with the workspace.')
-      await ctx.delay(500)
-      expect(!JSON.stringify(savedState()).includes('private-page'), 'A private page was saved with the workspaces.')
+      // Once the switch is saved (waited for, not a fixed time), the private page is not in the file.
+      const savedNow = () => { try { return savedState() } catch { return null } }
+      for (let i = 0; i < 50 && savedNow()?.activeWorkspaceId !== mainId; i += 1) await ctx.delay(200)
+      expect(savedNow()?.activeWorkspaceId === mainId, 'Switching to Main with a private tab open was not saved.')
+      expect(!JSON.stringify(savedNow()).includes('private-page'), 'A private page was saved with the workspaces.')
       await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
       await ctx.delay(600)
       expect(!(await tabs()).some((tab) => tab.isPrivate), 'Leaving private browsing left a private tab.')
@@ -3068,31 +3148,53 @@ export const checks = {
       await axeAudit(ctx, 'the tab sidebar with workspaces and favourites', '.tab-rail')
       await ctx.shot('workspaces')
 
-      // Saved for the next launch (version 3); kept during the session too, so a crash loses nothing.
-      await ctx.delay(500)
+      // Saved for the next launch (version 3); kept during the session too, so a crash loses nothing. Waited for, not a fixed time.
+      for (let i = 0; i < 50 && savedNow()?.activeWorkspaceId !== researchId; i += 1) await ctx.delay(200)
       const saved = savedState()
       expect(saved.version === 3 && saved.workspaces.map((w) => w.name).join() === 'Reading,Main' && saved.activeWorkspaceId === researchId, `Saved workspaces: ${JSON.stringify({ version: saved.version, workspaces: saved.workspaces, active: saved.activeWorkspaceId })}.`)
       expect(saved.tabs.filter((tab) => tab.workspaceId === mainId).length === 3 && saved.tabs.filter((tab) => tab.workspaceId === researchId).length === 3, `Saved tabs by workspace: ${JSON.stringify(saved.tabs.map((tab) => [tab.title, tab.workspaceId]))}.`)
       expect(saved.folders.some((folder) => folder.name === 'Papers' && folder.workspaceId === researchId) && saved.folders.some((folder) => folder.name === 'Main folder' && folder.workspaceId === mainId), `Saved folders: ${JSON.stringify(saved.folders)}.`)
 
       // Opened again with that state: every workspace comes back with its own tabs, folders and favourites.
-      const restored = await relaunch(saved, async (next) => {
+      // The tab Main shows is on a site whose page title arrives late: until it does, the tab keeps its saved title, never its address.
+      const lateSite = createServer((request, response) => {
+        response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' })
+        // Enough of the page for it to arrive (and its address to show as its title) well before its title does.
+        response.write(`<!doctype html><body><h1>${request.url}</h1>${' '.repeat(16_384)}`)
+        setTimeout(() => response.end(`<title>Page ${request.url}</title></body>`), 2500)
+      })
+      await new Promise((resolve) => lateSite.listen(0, '127.0.0.1', resolve))
+      const lateA = `http://127.0.0.1:${lateSite.address().port}/main-a`
+      const restored = await relaunch({ ...saved, tabs: saved.tabs.map((tab) => (tab.title === 'Page /main-a' ? { ...tab, url: lateA } : tab)) }, async (next) => {
         const nextState = JSON.parse(await next.evaluate(`${ws}.get().then((s) => JSON.stringify(s))`))
         expect(nextState.workspaces.map((w) => `${w.name}:${w.icon}:${w.accent}`).join() === 'Reading:flask:violet,Main:globe:teal' && nextState.activeId === researchId, `After a restart: ${JSON.stringify(nextState.workspaces)}.`)
         expect(nextState.favourites.length === 2 && nextState.favourites.filter((f) => f.workspaceId === null).length === 1, `Favourites after a restart: ${JSON.stringify(nextState.favourites)}.`)
         const shown = JSON.parse(await next.evaluate(`${host}.getTabs().then((t) => JSON.stringify(t))`))
         expect(shown.map((tab) => tab.title).join() === 'Page /research-a,Page /research-b,Page /research-c' && shown[0].pinned, `Reading after a restart: ${shown.map((tab) => tab.title).join()}.`)
         await next.evaluate(`${ws}.switchTo({ index: 1 }).then(() => true)`)
-        await next.delay(600)
-        // The tab Main shows wakes and loads; until its page's title arrives it is listed by its address (slow under heavy load).
-        await next.wait(`${host}.getTabs().then((t) => t.some((x) => x.active && x.title === 'Page /main-a'))`, 5000, 'the page Main shows to load its title').catch(() => undefined)
+        // The tab Main shows wakes and loads; the sidebar and the window keep its saved title all along.
+        const titlesSeen = new Set()
+        let settled = false
+        for (let i = 0; i < 100 && !settled; i += 1) {
+          const [active, panel] = JSON.parse(await next.evaluate(`Promise.all([${host}.getTabs().then((t) => t.find((x) => x.active) ?? null), ${host}.getState()]).then((r) => JSON.stringify(r))`))
+          if (active) titlesSeen.add(`sidebar: ${active.title}`)
+          if (panel.url || panel.isPending) titlesSeen.add(`window: ${panel.title}`)
+          settled = !!active && panel.url === lateA && !panel.isLoading
+          if (!settled) await next.delay(100)
+        }
+        expect(settled, 'The page Main shows did not finish loading.')
+        expect([...titlesSeen].every((seen) => seen.endsWith(': Page /main-a')), `While its page loaded, the tab Main shows was titled: ${[...titlesSeen].join(' · ')}.`)
+        // Saved with that title too, not the address it had while loading.
+        const savedTitle = () => { try { return JSON.parse(readFileSync(join(next.profile, 'browser-state.v1.json'), 'utf8')).tabs.find((tab) => tab.url === lateA)?.title } catch { return undefined } }
+        for (let i = 0; i < 25 && savedTitle() !== 'Page /main-a'; i += 1) await next.delay(200)
+        expect(savedTitle() === 'Page /main-a', `The tab Main shows was saved titled "${savedTitle()}".`)
         const other = JSON.parse(await next.evaluate(`${host}.getTabs().then((t) => JSON.stringify(t))`))
         const folders = JSON.parse(await next.evaluate(`${host}.getTabFolders().then((f) => JSON.stringify(f))`))
         // Only the tab Main shows may load; the others stay unloaded until clicked.
         expect(other.map((tab) => tab.title).join() === 'Page /main-pin,Page /main-b,Page /main-a' && other[0].pinned && other.filter((tab) => !tab.active).every((tab) => tab.asleep) && other[0].asleep, `Main after a restart: ${JSON.stringify(other.map((tab) => [tab.title, tab.active, tab.asleep]))}.`)
         expect(folders.length === 1 && other.find((tab) => tab.title === 'Page /main-b').folderId === folders[0].id, `Main's folder after a restart: ${JSON.stringify(folders)}.`)
         return 'restored'
-      })
+      }).finally(() => lateSite.close())
       expect(restored === 'restored', 'The relaunched app did not check its workspaces.')
 
       // A browser state from before workspaces (version 2) opens with all its tabs and folders in Main.
@@ -3140,6 +3242,8 @@ export const checks = {
       expect(papers && closing?.folderId === papers.id, `research-b is not in Papers before closing: ${JSON.stringify(closing)}.`)
       await ctx.evaluate(`${host}.closeTab(${JSON.stringify(closing.id)}).then(() => true)`)
       await ctx.delay(400)
+      // Papers is folded meanwhile: reopening opens it, so the tab is in sight.
+      await ctx.evaluate(`${host}.updateTabFolder(${JSON.stringify(papers.id)}, { collapsed: true }).then(() => true)`)
       await ctx.evaluate(`${ws}.switchTo({ id: ${JSON.stringify(mainId)} }).then(() => true)`)
       await ctx.delay(600)
       await ctx.evaluate(`${host}.reopenClosedTab().then(() => true)`)
@@ -3147,6 +3251,9 @@ export const checks = {
       await ctx.wait(`${host}.getTabs().then((t) => t.some((x) => x.active && x.url.endsWith('/research-b')))`, 6000, 'the reopened tab to be shown in Reading')
       const reopened = (await tabs()).find((tab) => tab.url.endsWith('/research-b'))
       expect(reopened.folderId === papers.id, `The reopened tab came back outside its folder (folder ${reopened.folderId ?? 'none'}).`)
+      const papersNow = JSON.parse(await ctx.evaluate(`${host}.getTabFolders().then((f) => JSON.stringify(f))`)).find((folder) => folder.id === papers.id)
+      expect(papersNow && !papersNow.collapsed, 'The reopened tab came back in its folder, but the folder stayed folded.')
+      await ctx.wait(`!!document.querySelector('.tab-rail-list [data-tab-id=${JSON.stringify(reopened.id)}]')`, 3000, 'the reopened tab to be in sight in its folder')
       expect((await tabs()).map((tab) => tab.url.split('/').pop()).join(' ') === 'research-a research-b research-c', `After reopening, Reading holds: ${(await tabs()).map((tab) => tab.url).join(', ')}.`)
       return `Created, named (icon and colour), renamed, reordered, deleted with confirmation and Undo; each workspace kept its own pinned tab, folder and open tabs; ⌃1/⌃2 switched in ${Math.round(times[0])}–${Math.round(slowest)} ms with the other workspace's sleeping tab left asleep; command menu, swipe and keyboard switched; shared and own favourites; private tabs in no workspace and never saved; restored after a restart and migrated a version 2 state into Main; a tab closed in a folder reopened from another workspace came back in its workspace and folder; axe clean.`
     } finally {
