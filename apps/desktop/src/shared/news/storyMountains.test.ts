@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildStoryMountains, storyHeight } from './storyMountains'
 import type { NewsItemInput, NewsSourceMeta } from './newsDigest'
+import { matchTabsToStories, mountainHeadlines } from './storyTabs'
 import { buildStoryTerrain, storyAt } from '../../renderer/src/globe/storyTerrain'
 
 const now = Date.parse('2026-11-06T12:00:00Z')
@@ -87,6 +88,64 @@ describe('story mountains', () => {
     const story = stories.find((entry) => entry.terms.includes('vance'))!
     expect(story.countryCode).toBe('US')
     expect(story.label).toBe('US midterm elections')
+  })
+
+  // 7 November 2026: Pope Leo XIV's vigils in Montevideo and, next, Lima; Peru's north under a rain alert.
+  // Two live pages from Peruvian outlets share "Perú" and "en vivo" with the Pope's: a weak pair that once
+  // pulled the rain alert into the Pope's mountain (its earliest Peruvian headline, so Peru's line, so a
+  // tab on the rain alert was labelled with the Pope's story).
+  const vigil = (): { sources: NewsSourceMeta[]; items: NewsItemInput[] } => {
+    const sources = [
+      ...['uy1', 'uy2', 'uy3'].map((id) => source(id, 'UY')),
+      ...['ar1', 'ar2', 'ar3'].map((id) => source(id, 'AR')),
+      ...['pe1', 'pe2', 'pe3', 'pe4'].map((id) => source(id, 'PE')),
+      ...['cl1', 'mx1'].map((id) => source(id, id === 'cl1' ? 'CL' : 'MX')),
+    ].map((meta) => ({ ...meta, language: 'es' }))
+    const items = [
+      ...background(sources),
+      item('uy1', 'Más de 60.000 personas se reúnen en la vigilia del papa León XIV en el estadio Centenario', 3),
+      item('uy2', 'El papa León XIV encabezó la vigilia con jóvenes en el Centenario de Montevideo', 4),
+      item('uy3', 'Vigilia del papa León XIV en Montevideo: el pontífice pidió a los jóvenes transmitir la fe', 5),
+      item('ar1', 'Durante la vigilia en el estadio Centenario, el papa León XIV animó a los fieles uruguayos', 4),
+      item('ar2', 'El papa León XIV llega a Argentina tras la vigilia en Uruguay: a qué hora abren los accesos', 2),
+      item('ar3', 'Uruguay despide al papa León XIV después de la vigilia multitudinaria', 2),
+      item('cl1', 'El papa León XIV reunió a miles de jóvenes en una vigilia en Uruguay', 6),
+      item('mx1', 'Vigilia del papa León XIV en Uruguay reúne a más de 60 mil fieles', 6),
+      item('pe1', 'Papa León XIV en Lima: la vigilia con 51.000 jóvenes en el Estadio Nacional tendrá 16 ambulancias', 8),
+      item('pe2', 'Vigilia del papa León XIV en el Estadio Nacional: mapa, accesos y transporte para los jóvenes', 7),
+      item('pe3', '¿Dónde está el papa León XIV EN VIVO? Sigue su recorrido y su llegada al Perú para la vigilia', 1),
+      item('pe4', 'Papa León XIV en Perú, en vivo: jóvenes se preparan para la vigilia en el Estadio Nacional', 1),
+      // The rain alert: its own story, and the earliest Peruvian headlines here.
+      item('pe1', 'Lluvias en Perú HOY EN VIVO: Piura y Tumbes bajo alerta roja y pronóstico del Senamhi', 20),
+      item('pe2', 'Lluvias en Perú en vivo: el Senamhi mantiene la alerta roja en Piura y Tumbes', 19),
+      item('pe3', 'Piura y Tumbes bajo alerta roja por lluvias intensas, advierte el Senamhi', 18),
+    ]
+    return { sources, items }
+  }
+
+  it('keeps a rain alert out of the Pope’s vigil story, so a tab on it is not labelled with the Pope', () => {
+    const { sources, items } = vigil()
+    const { stories } = buildStoryMountains({ sources, items, now })
+    const pope = stories.find((story) => story.terms.includes('vigilia') || story.terms.includes('leon'))!
+    expect(pope).toBeTruthy()
+    const shown = [pope.title, ...pope.countries.map((country) => country.headline.title)]
+    expect(shown.some((title) => /alerta roja|Senamhi/.test(title))).toBe(false)
+    const rainUrl = items.find((entry) => entry.title.startsWith('Lluvias en Perú HOY'))!.url
+    const evidence = stories.map((story) => mountainHeadlines(story, story.label ?? story.title))
+    const labels = matchTabsToStories([{ id: 'rain', url: rainUrl, title: 'Piura y Tumbes bajo alerta roja' }], evidence)
+    expect(labels.get('rain')?.storyId).not.toBe(pope.id)
+  })
+
+  it('still counts Peru’s own coverage of the vigil in the Pope’s story', () => {
+    const { sources, items } = vigil()
+    const { stories } = buildStoryMountains({ sources, items, now })
+    const pope = stories.find((story) => story.terms.includes('vigilia') || story.terms.includes('leon'))!
+    const peru = pope.countries.find((country) => country.countryCode === 'PE') ?? (pope.countryCode === 'PE' ? { headline: { title: pope.title } } : null)
+    expect(peru?.headline.title).toMatch(/León XIV/)
+    const vigilUrl = items.find((entry) => entry.title.startsWith('Papa León XIV en Lima'))!.url
+    const evidence = stories.map((story) => mountainHeadlines(story, story.label ?? story.title))
+    const labels = matchTabsToStories([{ id: 'lima', url: vigilUrl, title: 'Papa León XIV en Lima: la vigilia con 51.000 jóvenes en el Estadio Nacional tendrá 16 ambulancias' }], evidence)
+    expect(labels.get('lima')?.storyId).toBe(pope.id)
   })
 
   it('keeps a story’s id and summit across rebuilds', () => {

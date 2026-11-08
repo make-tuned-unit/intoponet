@@ -427,12 +427,16 @@ export function buildNewsDigest(input: {
   }
 }
 
-/** Common headline words across major feed languages; never reported as rising. */
-export const STOPWORDS = new Set(`
+/**
+ * Common headline words across major feed languages; never reported as rising. Story tokens are
+ * accent-folded, so each word is also listed folded ("país" as "pais", "após" as "apos"), except
+ * where folding makes a name ("março" is Marco, "über" is Uber).
+ */
+const STOPWORD_LIST = `
 about after again against also amid among another around back been before being best between both could during each first from have here into just last like more most much must news next only other over says said still such than that their them then there these they this those three through today under until very want week were what when where which while will with without would year years your
 government president minister police people world city state country national public million billion percent report reports update live video photos watch latest breaking official officials says
 wins plan plans food health ministry service services court case deal talks meeting visit calls urges warns held holds second third record high game match team season league home life help support death dead killed amid early late part make takes take gets well need needs show shows open opens plus free full
-contre face lors chez vers ainsi contra ante tras sino cada otro otra sobre
+contre face lors chez vers ainsi contra ante tras sino cada otro otra sobre durante
 cómo como qué local locales january february march april june july august september october november december enero febrero marzo abril mayo junio julio agosto septiembre octubre noviembre diciembre janvier février mars avril juin juillet août septembre octobre novembre décembre janeiro fevereiro março maio junho julho setembro outubro novembro dezembro
 para como pero sobre entre desde hasta tras donde cuando porque este esta estos estas todos todo años año gobierno presidente ministro policía país nacional según hace sido será puede nuevo nueva hoy
 pour avec dans sont plus mais leur tout tous après avant entre sans sous être fait faire gouvernement président ministre police pays selon depuis cette alors aussi encore nouveau nouvelle
@@ -442,7 +446,12 @@ della delle degli anche dopo prima sono stato stata tutti tutto governo presiden
 этот этого после перед также более года году лет может будет были было который которые правительство президент министр полиция страны россии сегодня новости
 bersama untuk dengan dari yang akan sudah dalam pada oleh kepada tahun pemerintah presiden menteri polisi negara baru hari
 için olan olarak sonra önce daha kadar gibi ancak yeni hükümet bakan polis ülke bugün
-`.split(/\s+/).filter(Boolean))
+`.split(/\s+/).filter(Boolean)
+const FOLDED_NAMES = new Set(['marco', 'uber'])
+export const STOPWORDS = new Set([
+  ...STOPWORD_LIST,
+  ...STOPWORD_LIST.map((word) => word.normalize('NFD').replace(/\p{M}+/gu, '')).filter((word) => !FOLDED_NAMES.has(word)),
+])
 
 const NO_SPACE_SCRIPTS = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}\p{Script=Lao}\p{Script=Khmer}\p{Script=Myanmar}]/u
 let countryWords: Set<string> | null = null

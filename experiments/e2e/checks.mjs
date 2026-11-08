@@ -5386,10 +5386,13 @@ export const checks = {
 
   async STORY_TABS(ctx) {
     await ctx.waitForNews()
-    await ctx.wait(`window.intoponet.browserHost.getNewsDigest().then((raw) => (JSON.parse(raw).mountains ?? []).some((m) => (m.countries ?? []).some((c) => c.headline && c.headline.title !== m.title)))`, 120_000, 'a story with two headlines in the news digest')
+    // A country's headline labels tabs only when it names the story: two of its terms (storyTabs.ts namesStory).
+    const namesStory = (m, title) => { const words = new Set(title.normalize('NFKC').split(/[^\p{L}\p{M}\d]+/u).map((w) => w.normalize('NFD').replace(/\p{M}+/gu, '').toLowerCase().replace(/['’]s$/, ''))); return (m.terms ?? []).filter((t) => words.has(t)).length >= 2 }
+    const secondOf = (m) => (m.countries ?? []).find((c) => c.headline && c.headline.title !== m.title && namesStory(m, c.headline.title))
+    await ctx.wait(`window.intoponet.browserHost.getNewsDigest().then((raw) => { const namesStory = ${namesStory}; const secondOf = ${secondOf}; return (JSON.parse(raw).mountains ?? []).some((m) => !!secondOf(m)) })`, 120_000, 'a story with two headlines in the news digest')
     const digest = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getNewsDigest()`))
-    const story = digest.mountains.find((m) => (m.countries ?? []).some((c) => c.headline && c.headline.title !== m.title))
-    const second = story.countries.find((c) => c.headline && c.headline.title !== story.title).headline
+    const story = digest.mountains.find((m) => !!secondOf(m))
+    const second = secondOf(story).headline
     const label = story.label ?? story.title
     const storyName = label.length > 40 ? `${label.slice(0, 38)}…` : label
     const escape = (text) => text.replace(/[&<>"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[char])

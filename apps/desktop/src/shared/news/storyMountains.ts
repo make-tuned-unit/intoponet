@@ -355,7 +355,12 @@ export function buildStoryMountains(input: {
     usedIds.add(id)
     urlsById.set(id, urls)
 
-    // Other countries' own outlets, earliest first.
+    const terms = [...cluster.terms.entries()].sort((a, b) => b[1] - a[1]).map(([term]) => term).slice(0, 4)
+    const covers = (member: Entry): number => terms.filter((term) => member.tokens.includes(term)).length
+
+    // Other countries' own outlets, earliest first. Each country is shown by its first headline that names
+    // the story (two of its words) when it has one: an older headline that only shares a word or two with
+    // it (León the city in a story about Pope Leo) is not how that country covered it.
     const byCountry = new Map<string, Entry[]>()
     for (const member of members) {
       if (member.international || member.countryCode === countryCode) continue
@@ -364,7 +369,7 @@ export function buildStoryMountains(input: {
       byCountry.set(member.countryCode, list)
     }
     const countries: StoryCountryCoverage[] = [...byCountry.entries()].map(([code, list]) => {
-      const first = list[0]!
+      const first = list.find((member) => covers(member) >= 2) ?? list[0]!
       return {
         countryCode: code,
         outlets: new Set(list.map((member) => member.group)).size,
@@ -382,8 +387,6 @@ export function buildStoryMountains(input: {
       else if (member.at >= input.now - 12 * HOUR) earlier.add(member.group)
     }
     const compared = recent.size + earlier.size
-    const terms = [...cluster.terms.entries()].sort((a, b) => b[1] - a[1]).map(([term]) => term).slice(0, 4)
-    const covers = (member: Entry): number => terms.filter((term) => member.tokens.includes(term)).length
     const english = (member: Entry): boolean => (member.lang ?? 'en').startsWith('en')
     const representative = [...members].sort((a, b) =>
       Math.min(2, covers(b)) - Math.min(2, covers(a)) || Number(english(b)) - Number(english(a)) ||

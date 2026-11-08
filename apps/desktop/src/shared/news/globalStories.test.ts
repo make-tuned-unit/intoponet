@@ -161,6 +161,11 @@ describe('global stories', () => {
   it('tokenises without stop words or accents', () => {
     expect(storyTokens('El papa León pide un alto el fuego en Sudán')).toEqual(expect.arrayContaining(['papa', 'leon', 'sudan']))
     expect(storyTokens('The president says he will resign')).toEqual(['resign'])
+    // Accented stop words are stop words once folded too ("após Paraguai" once made a pair).
+    expect(storyTokens('Ex-presidente do Paraguai é transferido após confrontos')).not.toContain('apos')
+    expect(storyTokens('León XIV llegará al país según el Gobierno y será recibido')).toEqual(['leon', 'llegara', 'recibido'])
+    // Folding never turns a name into a stop word.
+    expect(storyTokens('Marco Rubio meets Uber drivers')).toEqual(expect.arrayContaining(['marco', 'rubio', 'uber']))
   })
 
   it('parses Wikipedia In the news entries', () => {

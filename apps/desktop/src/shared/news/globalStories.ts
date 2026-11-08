@@ -157,10 +157,12 @@ export function buildGlobalStories(input: { sources: NewsSourceMeta[]; items: Ne
     for (const member of members) if (!member.international) countryCounts.set(member.countryCode, (countryCounts.get(member.countryCode) ?? 0) + 1)
     const desks = deskSet.size
     const representative = representatives[clusterIndex]!
-    // One headline per outlet, spread across countries, newest first. The story's own headline is
-    // always one of them (its outlet's), so the title has a language and a card to translate it with.
+    // One headline per outlet, spread across countries, newest first, and one that names the story (two of its
+    // words) when the outlet has one. The story's own headline is always one of them (its outlet's), so the
+    // title has a language and a card to translate it with.
+    const covers = (member: Entry): number => terms.filter((term) => member.tokens.includes(term)).length
     const byGroup = new Map<string, Entry>([[representative.group, representative]])
-    for (const member of [...members].sort((a, b) => b.at - a.at)) if (!byGroup.has(member.group)) byGroup.set(member.group, member)
+    for (const member of [...members].sort((a, b) => Number(covers(b) >= 2) - Number(covers(a) >= 2) || b.at - a.at)) if (!byGroup.has(member.group)) byGroup.set(member.group, member)
     const spread: Entry[] = []
     const usedCountries = new Set<string>()
     for (const member of byGroup.values()) if (!usedCountries.has(member.countryCode)) { spread.push(member); usedCountries.add(member.countryCode) }
@@ -217,6 +219,8 @@ export function clusterHeadlines(entries: Array<{ title: string; tokens: string[
     const tally = caps.get(token)
     return !!tally && tally.cap >= 2 && tally.cap / (tally.cap + tally.lower) >= 0.7
   }
+  /** Seen in lower case mid-sentence and not a name (a word that only ever opens headlines is neither). */
+  const isOrdinary = (token: string): boolean => (caps.get(token)?.lower ?? 0) > 0 && !isName(token)
 
   // Very common words define nothing; keep each headline's distinctive tokens.
   const df = new Map<string, number>()
@@ -257,6 +261,12 @@ export function clusterHeadlines(entries: Array<{ title: string; tokens: string[
 
   // Merge pairs that describe the same story (they share most of their headlines).
   const clusters: HeadlineCluster[] = []
+  // How many of each cluster's headlines carry each word (for weak pairs, below).
+  const wordCounts = new Map<HeadlineCluster, Map<string, number>>()
+  const count = (cluster: HeadlineCluster, index: number): void => {
+    const counts = wordCounts.get(cluster)!
+    for (const token of entries[index]!.tokens) counts.set(token, (counts.get(token) ?? 0) + 1)
+  }
   for (const pair of candidates) {
     const set = new Set(pair.indices)
     const home = clusters.find((cluster) => {
@@ -266,11 +276,35 @@ export function clusterHeadlines(entries: Array<{ title: string; tokens: string[
     })
     const [a, b] = pair.key.split(' ') as [string, string]
     if (home) {
-      for (const index of set) home.indices.add(index)
-      home.terms.set(a, (home.terms.get(a) ?? 0) + set.size)
-      home.terms.set(b, (home.terms.get(b) ?? 0) + set.size)
+      // A name with an ordinary word ("León" and "transporte", "Perú" and "vivo") is weak evidence. A headline it
+      // would bring in that shares none of its other words with the pair's headlines already in the story, or
+      // with the story's common words, is another story using both words (León the city, a rain alert's live
+      // page), not this one.
+      let belongs: ((token: string) => boolean) | null = null
+      if (isOrdinary(a) || isOrdinary(b)) {
+        const side = new Set<string>()
+        for (const index of set) if (home.indices.has(index)) for (const token of entries[index]!.tokens) side.add(token)
+        const counts = wordCounts.get(home)!
+        const common = Math.max(2, Math.ceil(home.indices.size * 0.02))
+        belongs = (token) => side.has(token) || (counts.get(token) ?? 0) >= common
+      }
+      let joined = 0
+      for (const index of set) {
+        if (belongs && !home.indices.has(index)) {
+          const others = entries[index]!.tokens.filter((token) => token !== a && token !== b)
+          if (others.length && !others.some(belongs)) continue
+        }
+        if (!home.indices.has(index)) count(home, index)
+        home.indices.add(index)
+        joined += 1
+      }
+      home.terms.set(a, (home.terms.get(a) ?? 0) + joined)
+      home.terms.set(b, (home.terms.get(b) ?? 0) + joined)
     } else {
-      clusters.push({ terms: new Map([[a, set.size], [b, set.size]]), indices: set })
+      const cluster: HeadlineCluster = { terms: new Map([[a, set.size], [b, set.size]]), indices: set }
+      clusters.push(cluster)
+      wordCounts.set(cluster, new Map())
+      for (const index of set) count(cluster, index)
     }
     if (clusters.length >= maxClusters) break
   }
