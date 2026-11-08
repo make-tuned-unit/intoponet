@@ -1391,11 +1391,18 @@ function unsplitTabCommand(id?: string): void {
   if (tab) endSplit(tab)
 }
 
+/**
+ * Whether the app window's own page (not a web page in it) took the keyboard last: told by focus events, so it
+ * holds whether or not the window is in front.
+ */
+let shellHasKeyboard = false
+
 /** Makes the side (left or right) of the shown pair the focused one, as its header or a click does. */
 function focusSplitSide(side: SplitSide): void {
   const target = openTabs.find((tab) => tab.split?.side === side && (tab.view === pageView || tab.view === companionView))
-  if (!target || target.view === pageView) return
-  showTab(target.id)
+  if (!target) return
+  // The side already focused: its header still gives that page the keyboard (from the app window's controls).
+  if (target.view !== pageView) showTab(target.id)
   // A start or error page is the shell's, drawn over a hidden view: the keyboard stays with the shell.
   if (!viewGone(target.view) && !target.start && !target.loadError) target.view.webContents.focus()
 }
@@ -3812,6 +3819,7 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
   })
   // A side of a split that takes the keyboard becomes the focused side (the toolbar and find follow it).
   view.webContents.on('focus', () => {
+    shellHasKeyboard = false
     if (companionView !== view) return
     // Chromium hands the keyboard to a page starting a new document (a redirect, a page that reloads
     // itself) even beside the focused side. That is not the person choosing this side: the keyboard
@@ -4507,9 +4515,15 @@ async function handleBrowserCommand(
     case 'split-tab':
       splitTabs(command)
       break
-    case 'unsplit-tab':
+    case 'unsplit-tab': {
+      // From the app window (a side's Unsplit button, the command menu): the page left on screen takes the keyboard,
+      // which was on a control that goes away with the split. ⌃⇧- in a page leaves it there; a tab's menu names its tab.
+      const fromShell = !command.id && shellHasKeyboard
       unsplitTabCommand(command.id)
+      const shown = openTabs.find((tab) => tab.id === activeTabId)
+      if (fromShell && shown && pageView === shown.view && !viewGone(shown.view) && !shown.start && !shown.loadError && pageViewShown(shown.view)) shown.view.webContents.focus()
       break
+    }
     case 'open-compare':
       openCompare(command)
       break
@@ -5025,6 +5039,8 @@ function createWindow(): void {
       sandbox: true,
     },
   })
+
+  window.webContents.on('focus', () => { shellHasKeyboard = true })
 
   // A reloaded shell cannot release a page it held or covered before (its panels start closed), nor see a
   // screen recording it started. It starts out of full width (toolbar tucked away, no tab dock, sidebar at

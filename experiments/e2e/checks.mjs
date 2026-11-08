@@ -4731,6 +4731,10 @@ export const checks = {
       await ctx.evaluate(`${host}.open({ kind: 'url', value: ${JSON.stringify(rightUrl)} }, 'background-tab').then(() => true)`)
       await ctx.delay(1200)
       expect(!(await stateOf()).split, 'Nothing is side by side before the shortcut.')
+      // Which web contents took the keyboard last (the app window's page, or a web page): told by focus events, which
+      // arrive whether or not the window is in front (isFocused() reads false for a window in the back).
+      await ctx.main(`(() => { globalThis.__splitKeyboard = null; const watch = (c) => c.on('focus', () => { globalThis.__splitKeyboard = c.id }); for (const c of electron.webContents.getAllWebContents()) watch(c); electron.app.on('web-contents-created', (_event, c) => watch(c)); return true })()`)
+      const keyboardIn = () => ctx.main(`(() => { const c = globalThis.__splitKeyboard == null ? null : electron.webContents.fromId(globalThis.__splitKeyboard); return !c ? 'nothing' : c === electron.BrowserWindow.getAllWindows()[0].webContents ? 'shell' : c.getURL() })()`)
 
       // ⌃⇧= splits the shown tab with the next one.
       await ctx.keyInPage('/split-left', '=', ['control', 'shift'])
@@ -4760,6 +4764,13 @@ export const checks = {
       expect((await stateOf()).url.startsWith(rightUrl), 'The address bar does not show the focused right page.')
       await expectLayout('after clicking into the right page')
       await snap('02-right-focused')
+      // From the app window's controls: Enter on the focused side's header gives that page the keyboard too.
+      await ctx.main(`(() => { electron.BrowserWindow.getAllWindows()[0].webContents.focus(); return true })()`)
+      await waitFor('the app window to take the keyboard', async () => (await keyboardIn()) === 'shell')
+      await shellEval(`document.querySelector('.split-header[data-split-side="right"] .split-header-focus').focus(); true`)
+      await ctx.press('Enter')
+      await waitFor('Enter on the focused right side\'s header to give the right page the keyboard', async () => (await keyboardIn()).includes('/split-right'))
+      expect((await stateOf()).split?.focused === 'right', 'Enter on the focused side\'s header moved the focus to the other side.')
 
       // Find and zoom act on the focused side only.
       await ctx.evaluate(`(() => { globalThis.__splitFind = []; window.intoponet.browserHost.subscribe((e) => { if (e.type === 'find-result') globalThis.__splitFind.push(e) }); return true })()`)
@@ -5000,6 +5011,15 @@ export const checks = {
       await ctx.delay(700)
       const unsplit = await viewsNow()
       expect(unsplit.pages.length === 1 && unsplit.pages[0].bounds.width > 400, 'After ⌃⇧- the shown page is not back to full size.')
+      // A side's Unsplit button from the keyboard: the button goes with the split, and the page left on screen takes the keyboard.
+      await ctx.evaluate(`${host}.splitTab().then(() => true)`)
+      await waitFor('the pair once more', async () => (await stateOf()).split && (await viewsNow()).pages.length === 2)
+      await ctx.main(`(() => { electron.BrowserWindow.getAllWindows()[0].webContents.focus(); return true })()`)
+      await waitFor('the app window to take the keyboard', async () => (await keyboardIn()) === 'shell')
+      await shellEval(`document.querySelector('.split-header[data-split-side="left"] .split-header-unsplit').focus(); true`)
+      await ctx.press('Enter')
+      await waitFor('the header\'s Unsplit to end the pair', async () => !(await stateOf()).split && (await viewsNow()).pages.length === 1)
+      await waitFor('the page left on screen to take the keyboard after Unsplit', async () => (await keyboardIn()).includes('/split-left'))
 
       // A tab dragged onto the page's edge: the page gives up that half for the drop zone.
       await ctx.evaluate(`${host}.splitPreview('left').then(() => true)`)

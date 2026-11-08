@@ -141,7 +141,7 @@ function SideHeader({ side, tab, focused, rect, actions }: SideHeaderProps) {
         className="split-header-focus"
         aria-pressed={focused}
         aria-label={`${focused ? 'Focused' : 'Focus'} ${name.toLowerCase()}, ${origin}`}
-        onClick={() => { if (!focused) void window.intoponet.browserHost.focusSplitSide(side) }}
+        onClick={() => void window.intoponet.browserHost.focusSplitSide(side)}
       >
         {security === 'secure' && <LockKeyhole size={12} aria-hidden="true" />}
         {security === 'not-secure' && <ShieldAlert size={12} aria-hidden="true" />}
