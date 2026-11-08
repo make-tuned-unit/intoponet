@@ -4242,6 +4242,8 @@ export const checks = {
       await navigate(urlA)
       await openCustomize()
       await axeAudit(ctx, 'the Customize site panel', '#site-tweaks-panel')
+      // The page's toolbar with it (the PDF options chevron was 22 px wide, under the 24 px target minimum).
+      await axeAudit(ctx, 'the page toolbar', '.browser-actions')
 
       // A private tab on A sees the tweaks; its own change is in memory only and is never written.
       const writtenBefore = await storedLater()
