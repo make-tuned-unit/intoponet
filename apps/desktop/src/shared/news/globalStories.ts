@@ -132,8 +132,9 @@ export function buildGlobalStories(input: { sources: NewsSourceMeta[]; items: Ne
     const best = Math.min(2, Math.max(...members.map(covers)))
     const representative = [...members].sort((a, b) =>
       Number(covers(b) >= best) - Number(covers(a) >= best) || Number(b.english) - Number(a.english) || Number(b.international) - Number(a.international) || covers(b) - covers(a) || b.at - a.at)[0]!
-    // One headline per outlet, spread across countries, newest first.
-    const byGroup = new Map<string, Entry>()
+    // One headline per outlet, spread across countries, newest first. The story's own headline is
+    // always one of them (its outlet's), so the title has a language and a card to translate it with.
+    const byGroup = new Map<string, Entry>([[representative.group, representative]])
     for (const member of [...members].sort((a, b) => b.at - a.at)) if (!byGroup.has(member.group)) byGroup.set(member.group, member)
     const spread: Entry[] = []
     const usedCountries = new Set<string>()

@@ -52,6 +52,32 @@ describe('global stories', () => {
     expect(stories.some((story) => story.title.includes('Mars'))).toBe(false)
   })
 
+  it('keeps the story’s own headline among its sources, even when its outlet has a newer one', () => {
+    // France 24 has an English and a Spanish desk (one outlet): the English headline is the title, the Spanish one is newer.
+    const desk = (id: string, language: string): NewsSourceMeta => ({ sourceId: id, countryCode: 'FR', publisherName: id === 'f24-en' ? 'France 24' : 'France 24 (ES)', publisherGroupId: 'france24', scope: 'international', language })
+    const paraguay = [
+      source('py-abc', 'PY', 'es'), source('ar-clarin', 'AR', 'es'), source('br-folha', 'BR', 'pt'), source('uy-pais', 'UY', 'es'), source('cl-tercera', 'CL', 'es'),
+      desk('f24-en', 'en'), desk('f24-es', 'es'),
+    ]
+    const news = [
+      item('py-abc', 'La fiscalía imputa a Santiago Peña por el colapso de Ueno Bank y pide su prisión preventiva', 3),
+      item('ar-clarin', 'El expresidente paraguayo Santiago Peña fue imputado por la caída del banco Ueno Bank', 3),
+      item('br-folha', 'Ex-presidente Santiago Peña é acusado pelo colapso do Ueno Bank e pode ser preso', 3),
+      item('uy-pais', 'Imputaron al expresidente Santiago Peña por el escándalo del banco Ueno Bank', 3),
+      item('cl-tercera', 'La justicia paraguaya imputa a Santiago Peña por la quiebra de Ueno Bank', 3),
+      item('f24-en', 'Paraguay’s prosecutors charge Santiago Peña and seek his detention over the Ueno Bank collapse', 4),
+      item('f24-es', 'El expresidente Santiago Peña queda en prisión preventiva por el caso Ueno Bank', 1),
+      ...['Lluvias en Lima', 'Inflación en Chile', 'Elecciones en Bolivia', 'Fútbol: Peñarol campeón', 'Sequía en Uruguay', 'Precio del dólar hoy'].map((title, i) => item(['py-abc', 'ar-clarin', 'cl-tercera', 'uy-pais', 'br-folha', 'f24-es'][i]!, title)),
+    ]
+    const story = buildGlobalStories({ sources: paraguay, items: news, now }).find((entry) => entry.terms.includes('ueno'))!
+    expect(story.title).toMatch(/^Paraguay’s prosecutors charge/)
+    // The sources carousel translates its title as one of its cards (and The history behind it reads its language).
+    const own = story.headlines.find((headline) => headline.url === story.url)
+    expect(own?.title).toBe(story.title)
+    expect(own?.lang).toBe('en')
+    expect(new Set(story.headlines.map((headline) => headline.publisher)).size).toBe(story.headlines.length)
+  })
+
   it('tokenises without stop words or accents', () => {
     expect(storyTokens('El papa León pide un alto el fuego en Sudán')).toEqual(expect.arrayContaining(['papa', 'leon', 'sudan']))
     expect(storyTokens('The president says he will resign')).toEqual(['resign'])
