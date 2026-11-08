@@ -356,9 +356,15 @@ async function browserKeys(ctx) {
     panel = await state()
     expect(Math.abs((panel.zoomFactor ?? 1) - 1.1) < 0.01, `⌘= in a page did not zoom it (zoom ${panel.zoomFactor}).`)
     await ctx.wait(`(document.querySelector('.zoom-indicator')?.innerText ?? '').includes('110%')`, 5000, 'the 110% zoom indicator in the toolbar')
-    await ctx.delay(800)
-    const saved = JSON.parse(readFileSync(join(ctx.profile, 'site-zoom.json'), 'utf8'))
-    expect(saved.sites?.['127.0.0.1'] === 1.1, `The site zoom was not saved: ${JSON.stringify(saved)}`)
+    // Saved a moment after the change (and later under load): read once it is there, within a time limit.
+    const zoomFile = join(ctx.profile, 'site-zoom.json')
+    const readZoom = () => { try { return JSON.parse(readFileSync(zoomFile, 'utf8')) } catch { return null } }
+    let saved = readZoom()
+    for (let i = 0; i < 40 && saved?.sites?.['127.0.0.1'] !== 1.1; i += 1) {
+      await ctx.delay(250)
+      saved = readZoom()
+    }
+    expect(saved?.sites?.['127.0.0.1'] === 1.1, `The site zoom was not saved: ${JSON.stringify(saved)}`)
 
     // Closed and opened again: the site comes back at its zoom.
     await chord('/second', 'W')
@@ -849,15 +855,28 @@ async function appWindowRecovers(ctx) {
     expect(await tabsOf(ctx) === tabsBefore, `After the app window hung, its tabs are ${await tabsOf(ctx)}, not ${tabsBefore}.`)
     kept('After the app window hung and reloaded', await shellNow())
 
+    // Videos playing in the pair (one in the left page, one in a frame of the right page): closing the window pauses them.
+    const playVideo = `(() => { const c = document.createElement('canvas'); c.width = 160; c.height = 90; const g = c.getContext('2d'); let f = 0; setInterval(() => { g.fillStyle = 'hsl(' + (f++ % 360) + ' 80% 50%)'; g.fillRect(0, 0, 160, 90) }, 33); const v = document.createElement('video'); v.id = 'boot-video'; v.srcObject = c.captureStream(30); v.muted = true; document.body.append(v); return v.play().then(() => true) })()`
+    const leftPage = await ctx.page('/left')
+    const rightPage = await ctx.page('/right')
+    await leftPage.evaluate(playVideo)
+    await rightPage.evaluate(`new Promise((resolve) => { const frame = document.createElement('iframe'); frame.srcdoc = '<!doctype html><body></body>'; frame.onload = () => resolve(true); document.body.append(frame) })`)
+    await rightPage.evaluate(`Promise.resolve(document.querySelector('iframe').contentWindow.eval(${JSON.stringify(playVideo)}))`)
+    const videos = async () => [await leftPage.evaluate(`document.getElementById('boot-video').paused`), await rightPage.evaluate(`document.querySelector('iframe').contentDocument.getElementById('boot-video').paused`)]
+    expect(same(await videos(), [false, false]), `The test videos are not playing before the window closes: ${JSON.stringify(await videos())}.`)
+
     // Closed with the red button while a quick window is open: the Dock icon brings it back, the pair in front.
     await ctx.main(`(() => { electron.Menu.getApplicationMenu().getMenuItemById('new-quick-window').click(); return true })()`)
     await until('a quick window', async () => (await ctx.main('electron.BrowserWindow.getAllWindows().length')) === 2)
     await ctx.main(`(() => { ${appWindow}.close(); return true })()`)
     await until('the app window to close', async () => (await shellNow()) === null)
+    await until('every video to pause once the app window closed', async () => same(await videos(), [true, true]), 5000)
     await ctx.main(`(() => { electron.app.emit('activate', {}, true); return true })()`)
     await until('the app window back from the Dock', async () => { const now = await shellNow(); return now?.pages.filter((page) => page.visible).length === 2 })
     let shell = await ctx.page('index.html')
     await ready(shell, 'the app window back from the Dock')
+    await ctx.delay(1500)
+    expect(same(await videos(), [true, true]), `A video started playing again by itself when the app window came back: ${JSON.stringify(await videos())}.`)
     expect(await tabsOf(shell) === tabsBefore, `Back from the Dock, the app window's tabs are ${await tabsOf(shell)}, not ${tabsBefore}.`)
     const reopened = await shellNow()
     expect(same(reopened.pages.map((page) => page.url), before.pages.map((page) => page.url)), `Back from the Dock, the pages in front are ${JSON.stringify(reopened.pages.map((page) => page.url))}.`)
@@ -869,9 +888,15 @@ async function appWindowRecovers(ctx) {
     await until('the app window back from File › New Tab', async () => (await shellNow()) !== null)
     shell = await ctx.page('index.html')
     await ready(shell, 'the app window back from File › New Tab')
-    const tabsAfter = JSON.parse(await tabsOf(shell))
-    expect(tabsAfter.length === JSON.parse(tabsBefore).length + 1 && tabsAfter.at(-1)[1] === true, `File › New Tab with the window closed left the tabs as ${JSON.stringify(tabsAfter)}.`)
-    return `The app window reloaded after its page crashed and after it hung, with its tabs, pair and page area, no view or listener added and a running tour's page closed; closed, it came back with its tabs from the Dock (a quick window open) and from File › New Tab.`
+    // The command waits for the reopened window to listen, and its tab follows a moment after the window is ready.
+    const newTabShown = (tabs) => tabs.length === JSON.parse(tabsBefore).length + 1 && tabs.at(-1)[1] === true
+    let tabsAfter = JSON.parse(await tabsOf(shell))
+    for (let i = 0; i < 40 && !newTabShown(tabsAfter); i += 1) {
+      await ctx.delay(250)
+      tabsAfter = JSON.parse(await tabsOf(shell))
+    }
+    expect(newTabShown(tabsAfter), `File › New Tab with the window closed left the tabs as ${JSON.stringify(tabsAfter)}.`)
+    return `The app window reloaded after its page crashed and after it hung, with its tabs, pair and page area, no view or listener added and a running tour's page closed; closed, it paused the pair's videos (a frame's too) and came back with its tabs from the Dock (a quick window open, nothing playing again by itself) and from File › New Tab.`
   } finally {
     server.close()
   }
@@ -1208,6 +1233,15 @@ export const checks = {
 
   async OLDS_UI(ctx) {
     await keepDrawing(ctx)
+    // A tab open in the background: its strip shows at the foot of the globe, but never below The Olds sheet.
+    const tabServer = createServer((request, response) => {
+      response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
+      response.end('<!doctype html><title>A tab behind The Olds</title><h1>A tab behind The Olds</h1>')
+    })
+    await new Promise((resolve) => tabServer.listen(0, '127.0.0.1', resolve))
+    await ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: 'http://127.0.0.1:${tabServer.address().port}/behind' }, 'background-tab').then(() => true)`)
+    tabServer.close()
+    await ctx.wait(`!!document.querySelector('.page-tab-row')`, 10_000, 'the tab strip with a tab open in the background')
     await ctx.waitForNews()
     await ctx.flyTo('Canada')
     await ctx.delay(2500)
@@ -1216,6 +1250,7 @@ export const checks = {
     await ctx.evaluate(`document.querySelector('.globe-headlines .headline-history').click(); true`)
     await ctx.wait(`!!document.querySelector('.olds-sheet h2') && !document.querySelector('.olds-status .olds-spin')`, 150_000, 'The Olds to open for the headline')
     await ctx.delay(1500)
+    expect(!(await ctx.evaluate(`!!document.querySelector('.page-tab-row')`)), 'The tab strip shows below The Olds sheet.')
     const views = await ctx.evaluate(`[...document.querySelectorAll('.olds-views button')].map((b) => b.innerText.trim())`)
     expect(views.includes('Story') && views.includes('Timeline'), `The Olds is missing views: ${views.join(', ')}`)
     const sections = await ctx.evaluate(`[...document.querySelectorAll('.olds-chronicle h3, .olds-related h3')].map((h) => h.innerText)`)
@@ -1226,7 +1261,8 @@ export const checks = {
     await ctx.press('Escape')
     const closed = await ctx.wait(`!document.querySelector('.olds-sheet')`, 5000).then(() => true, () => false)
     expect(closed, 'Escape does not close The Olds.')
-    return `Views ${views.join('/')}; sections: ${sections.join(', ') || 'path only'}.`
+    await ctx.wait(`!!document.querySelector('.page-tab-row')`, 5000, 'the tab strip to come back once The Olds closed')
+    return `Views ${views.join('/')}; sections: ${sections.join(', ') || 'path only'}; the tab strip hidden while The Olds was open.`
   },
 
   // An outlet's earlier coverage of a story (its topic pages, then Wayback Machine snapshots), newest first.
@@ -1423,6 +1459,38 @@ export const checks = {
     expect(tabs.length === 1 && tabs[0].url.includes(host), 'Opening a page did not create its tab.')
     const labels = await ctx.evaluate(`[...document.querySelectorAll('.browser-actions .chrome-label')].map((l) => l.textContent)`)
     for (const name of ['Translate', 'Capture', 'Pin', 'Absorb', 'Bookmarks']) expect(labels.some((l) => l.includes(name)), `Toolbar is missing "${name}".`)
+    // The toolbar keeps its spacing at every sidebar width: its labels give way to icons before any two tools touch.
+    const toolbar = () => ctx.evaluate(`JSON.stringify((() => {
+      const actions = document.querySelector('.browser-actions')
+      const items = [...actions.children].filter((el) => el.getClientRects().length > 0)
+      const boxes = items.map((el) => el.getBoundingClientRect())
+      const name = (el) => el.getAttribute('aria-label') || el.querySelector('button')?.getAttribute('aria-label') || el.className
+      return {
+        touching: boxes.slice(1).flatMap((box, i) => (box.left < boxes[i].right + 1 ? [name(items[i]) + ' / ' + name(items[i + 1])] : [])),
+        clipped: [...actions.querySelectorAll('button')].filter((b) => b.getClientRects().length > 0 && b.scrollWidth > b.clientWidth + 1).map(name),
+        outside: boxes.length > 0 && boxes[0].left < actions.getBoundingClientRect().left - 1,
+        labels: [...actions.querySelectorAll('.chrome-label')].some((label) => label.getClientRects().length > 0),
+      }
+    })())`).then(JSON.parse)
+    const widthKey = (key, shiftKey = false) => ctx.evaluate(`(() => { const handle = document.querySelector('.tab-rail-resize'); handle.focus(); handle.dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(key)}, shiftKey: ${shiftKey}, bubbles: true })); return true })()`)
+    expect(await ctx.click('button[aria-label="Pin tabs open"]'), 'The sidebar has no "Pin tabs open" button.')
+    await ctx.wait(`!!document.querySelector('.tab-rail-resize')`, 5000, 'the sidebar kept open, with its width handle')
+    for (let i = 0; i < 6; i += 1) await widthKey('ArrowLeft', true)
+    const cramped = []
+    const labelledAt = []
+    for (let step = 0; step <= 15; step += 1) {
+      await ctx.delay(450)
+      const width = await ctx.evaluate(`Number(document.querySelector('.tab-rail-resize').getAttribute('aria-valuenow'))`)
+      const now = await toolbar()
+      if (now.touching.length || now.clipped.length || now.outside) cramped.push(`${width} px (${JSON.stringify(now)})`)
+      if (now.labels) labelledAt.push(width)
+      await widthKey('ArrowRight')
+    }
+    expect(cramped.length === 0, `The toolbar is cramped with the sidebar at ${cramped.join('; ')}.`)
+    await ctx.click('button[aria-label="Unpin tabs: collapse to icons"]')
+    await ctx.delay(600)
+    const roomy = await toolbar()
+    expect(!roomy.touching.length && !roomy.clipped.length && !roomy.outside, `The toolbar is cramped with the sidebar as icons: ${JSON.stringify(roomy)}.`)
     // Pages see plain Chrome: some sites call "Electron" an outdated browser.
     const ua = await (await ctx.page(host)).evaluate(`navigator.userAgent`)
     expect(/Chrome\//.test(ua) && !/Electron|Intoponet/i.test(ua), `Pages see the user agent "${ua}".`)
@@ -1505,7 +1573,7 @@ export const checks = {
     await ctx.delay(2500)
     const stayed = await ctx.evaluate(`location.href === ${JSON.stringify(appUrl)} && !!document.querySelector('.topbar')`).catch(() => false)
     expect(stayed, 'The app window navigated away from the app.')
-    return `Toolbar: ${labels.join(', ')}; pages see ${ua.match(/Chrome\/\S+/)?.[0]}; tab closed cleanly; a self-closing page took its tab; a background tab loaded in ${(behindMs / 1000).toFixed(1)} s, was throttled again and stayed silent until shown; ${keys}; the app window stayed on the app.`
+    return `Toolbar: ${labels.join(', ')}, never cramped with the sidebar kept open from 180 to 420 px (labelled at ${labelledAt.length ? labelledAt.join(', ') : 'no'} px, icons otherwise) or as icons (${roomy.labels ? 'labelled' : 'icons'}); pages see ${ua.match(/Chrome\/\S+/)?.[0]}; tab closed cleanly; a self-closing page took its tab; a background tab loaded in ${(behindMs / 1000).toFixed(1)} s, was throttled again and stayed silent until shown; ${keys}; the app window stayed on the app.`
   },
 
   async PROTECTION(ctx) {
@@ -3035,6 +3103,7 @@ export const checks = {
       return JSON.stringify({ own: !others.includes(page.session), temporary: !page.session.isPersistent() && !page.session.storagePath, spellcheck: page.session.isSpellCheckerEnabled(), cookie: (await page.session.cookies.get({ name: 'intoponet_tour' })).length })
     })()`).then(JSON.parse)
     let tourSession = null
+    let tourRefuses = null
     let tourAfterCrash = null
     for (let step = 1; step <= total; step += 1) {
       const state = shown[step] = await settle(step)
@@ -3051,6 +3120,21 @@ export const checks = {
           geolocation: await page.evaluate(`navigator.permissions.query({ name: 'geolocation' }).then((s) => s.state)`),
           isPrivate: await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => t.find((x) => x.url.includes(${JSON.stringify(tourPage)}))?.isPrivate ?? null)`),
         }
+        // It needs no permission and no download: a request is refused at once (no bar asks), and a download never starts.
+        // (Seen after the app's own handler: whether it refused the download, and what became of it.)
+        await ctx.main(`(() => { globalThis.__tourDownloads = []; globalThis.__tourDownloadSeen = (event, item) => { const seen = { refused: event.defaultPrevented === true, state: 'progressing' }; globalThis.__tourDownloads.push(seen); setTimeout(() => { try { seen.state = item.getState() } catch { seen.state = 'gone' } }, 500) }; electron.session.fromPartition('intoponet-tour').on('will-download', globalThis.__tourDownloadSeen); return true })()`)
+        // (Asked, not awaited: the page is out of sight behind the tour, so its own answers and timers come late.)
+        await page.evaluate(`(() => { navigator.geolocation.getCurrentPosition(() => undefined, () => undefined); void Notification.requestPermission(); return true })()`, { userGesture: true })
+        await ctx.delay(1200)
+        const asked = await ctx.evaluate(`!!document.querySelector('.permission-bar')`)
+        await page.evaluate(`(() => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['tour'], { type: 'text/plain' })); a.download = 'intoponet-tour-e2e.txt'; document.body.append(a); a.click(); a.remove(); return true })()`, { userGesture: true })
+        await ctx.delay(1000)
+        tourRefuses = {
+          asked,
+          downloads: JSON.parse(await ctx.main(`JSON.stringify(globalThis.__tourDownloads)`)),
+          listed: await ctx.evaluate(`window.intoponet.downloads.list().then((l) => l.some((d) => d.filename.includes('intoponet-tour-e2e')))`),
+        }
+        await ctx.main(`(() => { electron.session.fromPartition('intoponet-tour').off('will-download', globalThis.__tourDownloadSeen); return true })()`).catch(() => undefined)
         // Its renderer crashing: the page comes back in the same temporary session, still leaving no trace.
         await ctx.main(`(() => { electron.webContents.getAllWebContents().find((c) => !c.isDestroyed() && c.getURL().includes(${JSON.stringify(tourPage)})).forcefullyCrashRenderer(); return true })()`)
         await ctx.delay(1000)
@@ -3131,6 +3215,7 @@ export const checks = {
     expect(left.length === 0, `The tour's page left a trace in: ${left.join(', ')}.`)
     expect(tourSession?.own && tourSession.temporary && tourSession.spellcheck && tourSession.cookie === 1, `The tour's page did not run in a temporary session of its own: ${JSON.stringify(tourSession)}.`)
     expect(tourSession.geolocation !== 'granted' && tourSession.isPrivate === false, `The tour's page is not an ordinary tab with the app's permission handling: ${JSON.stringify(tourSession)}.`)
+    expect(tourRefuses && !tourRefuses.asked && tourRefuses.downloads.length === 1 && tourRefuses.downloads[0].refused && tourRefuses.downloads[0].state !== 'completed' && !tourRefuses.listed, `The tour's page could ask for a permission or download a file: ${JSON.stringify(tourRefuses)}.`)
     expect(tourAfterCrash?.own && tourAfterCrash.temporary, `After its renderer crashed, the tour's page came back in another session: ${JSON.stringify(tourAfterCrash)}.`)
     // Its session is emptied once the tour ends: the cookie it set is gone, and never reached the shared session.
     const cookiesLeft = `Promise.all([electron.session.fromPartition('intoponet-tour').cookies.get({}), electron.session.fromPartition('persist:intoponet-default').cookies.get({ name: 'intoponet_tour' })]).then(([tour, shared]) => tour.length + shared.length)`
@@ -4077,6 +4162,14 @@ export const checks = {
       await waitClosed('⌘W')
       expect((await tabs()).length === before.length, '⌘W closed the tab under the card as well.')
 
+      // Putting the page away (back to the globe) closes the card opened from it.
+      await shiftClick(home, '#lnk')
+      await waitOpen('/target', '⇧-click before putting the page away')
+      await ctx.evaluate(`${host}.close().then(() => true)`)
+      await waitClosed('the page was put away')
+      await ctx.evaluate(`${host}.restore().then(() => true)`)
+      await ctx.wait(`${host}.getState().then((s) => s.isVisible)`, 10_000, 'the page to come back after it was put away')
+
       // Open as Tab: the same page, with the back list from inside the card.
       await shiftClick(home, '#lnk')
       const fourth = await waitOpen('/target', '⇧-click for Open as Tab')
@@ -4126,7 +4219,11 @@ export const checks = {
       expect(/^https?:/.test(headline.url) && !headline.url.startsWith(origin), `The World list preview shows ${headline.url}.`)
       const globe = await panelState(ctx)
       expect(!globe.isVisible && await ctx.evaluate(`!!document.querySelector('canvas') && !!document.querySelector('.world-list')`), 'Previewing a headline left the globe.')
-      await ctx.delay(1500)
+      // Putting away a page that isn't there leaves a preview opened from the globe alone.
+      await ctx.evaluate(`${host}.close().then(() => true)`)
+      await ctx.delay(500)
+      expect((await card()).open, 'Putting the page away closed a preview opened from the World list.')
+      await ctx.delay(1000)
       await ctx.shot('world-preview')
       await keyTo(headline.id, 'Escape')
       await waitClosed('Escape over the globe')
@@ -5514,7 +5611,15 @@ export const checks = {
     const paywalls = await ctx.evaluate(`document.querySelectorAll('.split-compare-paywall').length`)
 
     // An article whose link redirects to another host as it first loads keeps its outlet label there.
+    let goneHits = 0
     const redirects = createServer((request, response) => {
+      // An article that is gone: 404 and a blank page (as brujuladigital.net/404 answered).
+      if (request.url.startsWith('/gone')) {
+        goneHits += 1
+        response.writeHead(404, { 'content-type': 'text/html; charset=utf-8' })
+        response.end('')
+        return
+      }
       if (request.url.startsWith('/moved')) {
         response.writeHead(302, { location: `http://127.0.0.1:${redirects.address().port}/article` })
         response.end()
@@ -5553,10 +5658,44 @@ export const checks = {
       await ctx.wait(`!document.querySelector('.free-coverage')`, 5_000, 'the free-coverage bar to close')
       await ctx.evaluate(`(() => { ${freeButton}.click(); return true })()`)
       await ctx.wait(`!!document.querySelector('.free-coverage')`, 5_000, 'Free coverage on the focused side to open its choices again after the bar was closed')
+
+      // A side whose article is gone (404, a blank page) shows that side's error card, not a blank half: Retry asks
+      // again, and the story's other outlets offer to read it there instead, in that side.
+      const story = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getNewsDigest()`)).global.find((item) => item.headlines.some((h) => /^https?:/.test(h.url)))
+      await ctx.evaluate(`window.intoponet.browserHost.openCompare({ id: ${JSON.stringify(story.id)}, title: 'A story' }, { url: 'http://127.0.0.1:${port}/article', outlet: 'Live Outlet', countryCode: 'GB' }, { url: 'http://localhost:${port}/gone', outlet: 'Gone Outlet', countryCode: 'BO' }).then(() => true)`)
+      let gone = null
+      for (let i = 0; i < 40 && !gone; i += 1) {
+        const now = await stateOf()
+        if (now.split?.right?.compare?.outlet === 'Gone Outlet' && now.split.right.loadError) gone = now
+        else await ctx.delay(250)
+      }
+      expect(gone?.split.right.loadError.kind === 'http' && gone.split.right.loadError.codeName === 'HTTP 404', `A side whose article answered 404 shows no error card: ${JSON.stringify((gone ?? await stateOf()).split?.right)}.`)
+      const goneCard = `document.querySelector('.load-error-compact')`
+      await ctx.wait(`!!${goneCard}?.querySelector('.load-error-card-retry') && ${goneCard}.querySelectorAll('.load-error-outlets button').length > 0`, 5_000, "the gone side's error card with Retry and other outlets")
+      const goneViews = await pagesNow()
+      const [liveSide, goneSide] = goneViews.pages.slice().sort((p, q) => p.bounds.x - q.bounds.x)
+      expect(goneSide?.url.includes('/gone') && !goneSide.visible && liveSide?.visible, `The gone article's blank page is on screen instead of its error card: ${JSON.stringify(goneViews.pages)}.`)
+      expect(liveSide.bounds.x + liveSide.bounds.width <= goneSide.bounds.x && liveSide.bounds.y === goneSide.bounds.y && liveSide.bounds.height === goneSide.bounds.height, `The pair with a gone article is not two columns at full height: ${JSON.stringify(goneViews.pages.map((page) => page.bounds))}.`)
+      await axeAudit(ctx, "the gone side's error card", '.load-error-compact')
+      await ctx.shot('compare-gone-side')
+      const hitsBefore = goneHits
+      await ctx.evaluate(`(() => { ${goneCard}.querySelector('.load-error-card-retry').click(); return true })()`)
+      for (let i = 0; i < 40 && goneHits === hitsBefore; i += 1) await ctx.delay(250)
+      expect(goneHits > hitsBefore, 'Retry on the gone side did not ask the outlet again.')
+      await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.split?.focused === 'right' && s.split.right.loadError?.kind === 'http' && !s.isLoading)`, 8_000, 'the gone side, focused by Retry, to show its error again')
+      await ctx.wait(`document.querySelectorAll('.load-error-page:not(.load-error-compact) .load-error-outlets button').length > 0`, 5_000, 'the focused gone side to offer the other outlets too')
+      const chosen = await ctx.evaluate(`(() => { const b = document.querySelector('.load-error-page:not(.load-error-compact) .load-error-outlets button'); const outlet = b.querySelector('span').textContent; b.click(); return outlet })()`)
+      await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.split?.right?.compare?.outlet === ${JSON.stringify(chosen)} && !s.split.right.url.includes('/gone'))`, 30_000, `the gone side to read the story from ${chosen}`)
+      const reread = await stateOf()
+      expect(reread.split.left.compare?.outlet === 'Live Outlet', `Choosing another outlet for the right side changed the left side: ${JSON.stringify(reread.split.left)}.`)
+      // An ordinary tab shows the site's own error page for the same answer.
+      await openPage(ctx, `http://localhost:${port}/gone?tab`, 1500)
+      const plain = await stateOf()
+      expect(plain.url.includes('/gone?tab') && !plain.loadError && !plain.split, `An ordinary tab answered 404 shows ${JSON.stringify(plain.loadError ?? plain.split)} instead of the site's own page.`)
     } finally {
       redirects.close()
     }
-    return `Compared "${front}" with ${split.right.compare.outlet} (${split.right.compare.country}): two pages ${a.width}×${a.height} and ${b.width}×${b.height}, side by side at y ${a.y}; headers read "${headers.map((h) => h.origin).join('" and "')}"; ${translateNote}; The Olds opened for the story; ${paywalls} paywall badge(s) on the pair.`
+    return `Compared "${front}" with ${split.right.compare.outlet} (${split.right.compare.country}): two pages ${a.width}×${a.height} and ${b.width}×${b.height}, side by side at y ${a.y}; headers read "${headers.map((h) => h.origin).join('" and "')}"; ${translateNote}; The Olds opened for the story; ${paywalls} paywall badge(s) on the pair; a side whose article answered 404 showed its error card (Retry asked again, another outlet read the story in that side) while an ordinary tab showed the site's own page.`
   },
 
   async PLACE_WORKSPACES(ctx) {
@@ -5771,7 +5910,16 @@ export const checks = {
       await ctx.evaluate(`${host}.deleteTabFolder(${JSON.stringify(hovered.id)}).then(() => true)`)
       await ctx.wait(`document.documentElement.dataset.storyHighlight === ''`, 5000, 'the highlight to clear when the hovered story folder was deleted')
       await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
-      return `Two articles of "${storyName}" badged; the control and a private tab with a matching title not; Group by story made one folder for it holding only the two articles; Undo restored the order and removed the folder; hovering the folder highlighted the story (${hovered.storyId}) and leaving cleared it; no page was requested during matching; axe clean.`
+      // The grouping notice is about this workspace's tabs: showing another workspace takes it away, and it does not come back.
+      const groupNotice = `[...document.querySelectorAll('.tab-rail-archived')].some((e) => e.textContent.includes('by story'))`
+      expect(await ctx.evaluate(groupNotice), 'The grouping notice was gone before the workspace switch, so the switch proves nothing.')
+      await ctx.evaluate(`window.intoponet.workspaces.create().then(() => true)`)
+      await ctx.wait(`!(${groupNotice})`, 4000, 'the grouping notice to go when another workspace was shown')
+      await ctx.evaluate(`window.intoponet.workspaces.switchTo({ index: 0 }).then(() => ${host}.restore()).then(() => true)`)
+      await ctx.wait(`!!document.querySelector('.tab-rail [data-tab-id]')`, 5000, 'the first workspace\'s tabs back in the sidebar')
+      await ctx.delay(600)
+      expect(!(await ctx.evaluate(groupNotice)), 'The grouping notice came back with its workspace after another workspace was shown.')
+      return `Two articles of "${storyName}" badged; the control and a private tab with a matching title not; Group by story made one folder for it holding only the two articles; Undo restored the order and removed the folder; hovering the folder highlighted the story (${hovered.storyId}) and leaving cleared it; the grouping notice went when another workspace was shown; no page was requested during matching; axe clean.`
     } finally {
       server.close()
     }

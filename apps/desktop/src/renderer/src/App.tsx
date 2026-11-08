@@ -211,7 +211,9 @@ import { mergeImportedLibrary } from './browserImport/mergeImport'
 import { backgroundTabLabel, PermissionBar, SitePermissionChips } from './permissions/PermissionBar'
 import { ExternalOpenBar, useExternalOpenRequests } from './browsing/ExternalOpenBar'
 import { IncomingLinksNotice, useHeldIncomingLinks } from './browsing/IncomingLinksNotice'
-import { ErrorCard, ErrorPage, navigationErrorMessage } from './browsing/ErrorPage'
+import { ErrorCard, ErrorPage, navigationErrorMessage, type OutletChoices } from './browsing/ErrorPage'
+import { countryNameOf, otherOutlets } from './browsing/compareOutlets'
+import { fitToolbarLabels } from './toolbarFit'
 import { SiteTweaksPanel } from './siteTweaks/SiteTweaksPanel'
 import { PasswordBar } from './passwords/PasswordBar'
 import { BookmarkSiteBar, type BookmarkSiteOffer } from './passwords/BookmarkSiteBar'
@@ -614,6 +616,8 @@ export function App() {
     })
     return () => { mounted = false; unsubscribe() }
   }, [])
+  // "Archived … · Undo" is about the shown workspace's tabs: it goes when another workspace is shown.
+  useEffect(() => { setJustArchived(null) }, [workspaces?.activeId])
   /** The shown workspace's anchor place, and the latest headlines for it (from the public news digest only). */
   const shownWorkspace = workspaces?.workspaces.find((workspace) => workspace.id === workspaces.activeId) ?? null
   const shownAnchor = shownWorkspace?.anchor ?? null
@@ -817,6 +821,17 @@ export function App() {
   const onStartPage = panel.isVisible && panel.isStartPage === true
   // Pages side by side: the side not in focus whose error or start page the shell draws in its half.
   const otherSide = shellDrawnSide(panel.split)
+  /** A Compare side that could not show its article: the story's other outlets (from the news) to read it from there. */
+  const outletsFor = (side: 'left' | 'right'): OutletChoices | undefined => {
+    const split = panel.split
+    const compare = split?.[side].compare
+    if (!split || !compare || split[side].loadError?.kind === 'offline') return undefined
+    const story = newsDigest?.global?.find((item) => item.id === compare.storyId)
+    return {
+      choices: otherOutlets(story?.headlines, [split.left.compare?.outlet, split.right.compare?.outlet], countryNameOf),
+      onChoose: (choice) => void window.intoponet.browserHost.compareOtherOutlet(side, choice.side).catch(() => setError('That article could not be opened.')),
+    }
+  }
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)')
     const onChange = (): void => setReduceMotion(media.matches)
@@ -1214,7 +1229,8 @@ export function App() {
       el.removeEventListener('scroll', measure)
       window.removeEventListener('resize', measure)
     }
-  }, [panel.isVisible, tabs])
+    // The strip is drawn again once The Olds closes.
+  }, [panel.isVisible, tabs, !!olds]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!panel.isVisible) setShieldOpen(false)
@@ -4144,7 +4160,7 @@ export function App() {
             <span className="sr-only" role="status">{addressCopied}</span>
             <span className="sr-only" aria-live="assertive">{tabSwitcherAnnouncement}</span>
             {onStartPage && <span className="origin-badge start-origin" aria-label="New tab"><Globe2 size={13} /><span>New tab</span></span>}
-            <div className="browser-actions">
+            <div className="browser-actions" ref={fitToolbarLabels}>
               {!onStartPage && panel.zoomFactor !== undefined && Math.abs(panel.zoomFactor - 1) > 0.005 && (
                 <button
                   type="button"
@@ -4532,6 +4548,7 @@ export function App() {
                   onRetry={() => void window.intoponet.browserHost.reload()}
                   onBack={() => void window.intoponet.browserHost.back()}
                   onTurnOffTweaks={failedSiteHasTweaks ? () => void window.intoponet.browserHost.siteTweaks.setEnabled(false).then(() => window.intoponet.browserHost.reload()) : undefined}
+                  outlets={panel.split ? outletsFor(panel.split.focused) : undefined}
                 />
               </SplitStartFrame>
             )}
@@ -4557,6 +4574,7 @@ export function App() {
                     error={otherSide.tab.loadError}
                     label={otherSide.side === 'left' ? 'Left page' : 'Right page'}
                     onRetry={() => void window.intoponet.browserHost.focusSplitSide(otherSide.side).then(() => window.intoponet.browserHost.reload(), () => undefined)}
+                    outlets={outletsFor(otherSide.side)}
                   />
                 ) : (
                   <div className="split-other-start" inert>
@@ -4606,7 +4624,8 @@ export function App() {
       )}
 
       <div className="command-dock">
-        {tabs.length > 0 && !railVisible && (
+        {/* Not under The Olds sheet (it would show below its edge). */}
+        {tabs.length > 0 && !railVisible && !(olds && !fieldLabOpen && !panel.isVisible) && (
           <div className="page-tab-row">
             {tabEdges.overflow && (
               <button

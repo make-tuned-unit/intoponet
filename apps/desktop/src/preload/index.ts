@@ -210,6 +210,9 @@ const browserHost: BrowserHostApi = {
   openCompare: async (story, left, right) => {
     await invoke({ type: 'open-compare', story, left, right })
   },
+  compareOtherOutlet: async (side, other) => {
+    await invoke({ type: 'compare-other-outlet', side, other })
+  },
   unsplitTab: async (id) => {
     await invoke({ type: 'unsplit-tab', ...(id ? { id } : {}) })
   },

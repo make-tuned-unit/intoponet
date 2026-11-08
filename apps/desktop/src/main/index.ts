@@ -49,7 +49,7 @@ import { bindLeavePrompt, SAFE_DIALOG_PREFERENCES } from './leavePrompt'
 import { fetchTabIcon, TabIconMemory } from './tabFavicon'
 import { browsingChannels, parseBrowsingCommand, type LinkRoutesState, type BrowsingEvent, type ArchivedTabSnapshot, type TabFolderSnapshot, type TabGroupRequest, type TabGroupResult, type TidySuggestion, type BrowsingSettings, type LinksFromOtherApps, type PageLoadError, type TabArchiveAfter, type TabSidebarState, type TabSleepAfter, type TabSwitchOrder } from '@intoponet/browser-api'
 import { ExternalOpenBroker, classifyExternalUrl } from './externalOpen'
-import { CertificateErrorMemo, classifyLoadError, isCertificateError, showsErrorPage, summarizeCertificate } from './errorPage'
+import { CertificateErrorMemo, classifyLoadError, httpLoadError, isCertificateError, showsErrorPage, summarizeCertificate } from './errorPage'
 import { IncomingBurst, IncomingOpenQueue, LocalFileGrants, incomingFileTarget, incomingTargetsFromArgs, incomingWebUrl, readSavedLinkFile, type IncomingTarget } from './incomingOpen'
 import { PageAppearanceController } from './pageAppearance'
 import { SWITCHER_KEYS_SCRIPT, switcherHtml, SWITCHER_ROW_HEIGHT, SWITCHER_ROWS, TabSwitcher, type SwitcherTab } from './tabSwitcher'
@@ -59,7 +59,7 @@ import { archiveAfterMs, DEFAULT_TAB_ARCHIVE, TabArchive, type ArchivedTab } fro
 import { addLinkRoute, moveLinkRoute, parseLinkRoutes, removeLinkRoute, routeFor, serializeLinkRoutes, siteOfWebUrl, updateLinkRoute, type LinkRoute } from './linkRoutes'
 import { answerWithin, DEFAULT_TAB_SLEEP, parseBrowsingSettingsFile, parseLinksFromOtherApps, sleepAfterMs, tabsDueForSleep, TYPED_CHECK_MS, TYPED_FORM_SCRIPT } from './tabSleep'
 import { QuickWindows, type QuickProtection } from './quickWindow'
-import { AUTO_PIP_WORLD_ID, ENTER_PIP_SCRIPT, EXIT_PIP_SCRIPT, NowPlaying, PIP_LEFT_SCRIPT, TOGGLE_PLAYBACK_SCRIPT, type PipEnterResult } from './autoPip'
+import { AUTO_PIP_WORLD_ID, ENTER_PIP_SCRIPT, EXIT_PIP_SCRIPT, NowPlaying, PAUSE_ALL_MEDIA_SCRIPT, PIP_LEFT_SCRIPT, TOGGLE_PLAYBACK_SCRIPT, type PipEnterResult } from './autoPip'
 import { UnseenTabs } from './backgroundLoad'
 import type { NowPlayingSnapshot } from '@intoponet/browser-api'
 import { browserContextExtras, searchSelectionLabel } from './browserContextMenu'
@@ -781,6 +781,29 @@ function nowPlayingSnapshot(): NowPlayingSnapshot | null {
 }
 const emitNowPlaying = coalesce(() => emit({ type: 'now-playing', nowPlaying: nowPlayingSnapshot() }))
 
+/**
+ * Pauses every video and audio playing in the app window's pages (every workspace's tabs, a link
+ * preview), in all their frames. Nothing plays again by itself: the person starts it.
+ */
+function pauseAllMedia(): void {
+  const views = [...allTabs().map((tab) => tab.view), ...(linkPreview ? [linkPreview.view] : [])]
+  for (const view of views) {
+    if (viewGone(view)) continue
+    // The page's own frame in an isolated world (the page cannot override pause there); its frames as they are.
+    void view.webContents.executeJavaScriptInIsolatedWorld(AUTO_PIP_WORLD_ID, [{ code: PAUSE_ALL_MEDIA_SCRIPT }]).catch(() => undefined)
+    let frames: Electron.WebFrameMain[] = []
+    try {
+      frames = view.webContents.mainFrame.framesInSubtree
+    } catch {
+      frames = []
+    }
+    for (const frame of frames) {
+      if (frame === view.webContents.mainFrame || frame.isDestroyed()) continue
+      void frame.executeJavaScript(PAUSE_ALL_MEDIA_SCRIPT).catch(() => undefined)
+    }
+  }
+}
+
 /** A tab's media started or stopped (the control lists it while it plays). */
 function setTabPlaying(view: WebContentsView, playing: boolean): void {
   const tab = tabOfView(view)
@@ -1385,6 +1408,24 @@ function openCompare(command: { story: { id: string; title: string }; left: Comp
   schedulePersistentStateSave()
 }
 
+/**
+ * One side of the Compare pair on screen shows another outlet's article for its story (its own was gone):
+ * the side keeps its place and its tab, and takes the other outlet's label.
+ */
+function compareOtherOutlet(command: { side: SplitSide; other: CompareSideInput }): void {
+  const pair = shownSplit(pageAreaBounds())
+  const tab = !pair ? undefined : pair.focused === command.side ? pair.focusedTab : pair.otherTab
+  if (!tab?.compare || viewGone(tab.view)) throw new Error('That side is not comparing an article.')
+  const target = safeHttpUrl(command.other.url)
+  const compare = target ? tabCompareFor(command.other, { id: tab.compare.storyId, title: tab.compare.storyTitle }, compareCountryName(command.other, countryNameFor)) : null
+  if (!target || !compare) throw new Error('That article cannot be opened.')
+  tab.compare = compare
+  compareLanding.add(tab)
+  void tab.view.webContents.loadURL(target.toString()).catch(() => undefined)
+  emitPanelState()
+  schedulePersistentStateSave()
+}
+
 /** The tab menu's split items for a tab: its partner, or the tabs it could pair with now. */
 function tabSplitChoices(target: OpenTab | undefined, id: string): TabMenuSplit | undefined {
   if (!target) return undefined
@@ -1757,6 +1798,13 @@ function wireDownloadSession(partition = DEFAULT_PARTITION): void {
     const topOrigin = contents ? originOf(contents.getURL()) : originOf((details as { embeddingOrigin?: string }).embeddingOrigin ?? '')
     return sitePermissions?.check(originOf(requestingOrigin), kinds, isPrivate, topOrigin, scope) === true
   })
+  // The guided tour's page needs no permission: its session refuses every request without asking
+  // (it would otherwise ask, and answer, in the shared identity's name).
+  const tour = partition === TOUR_PARTITION
+  if (tour) {
+    browsing.setPermissionRequestHandler((_contents, _permission, callback) => callback(false))
+    browsing.setPermissionCheckHandler(() => false)
+  }
   refuseCertificateErrors(browsing)
   servePageFiles(browsing)
   browsing.setSpellCheckerEnabled(true)
@@ -1765,6 +1813,11 @@ function wireDownloadSession(partition = DEFAULT_PARTITION): void {
     const available = new Set(browsing.availableSpellCheckerLanguages)
     const preferred = app.getPreferredSystemLanguages().flatMap((code) => [code, code.split('-')[0] ?? code]).filter((code) => available.has(code))
     if (preferred.length) browsing.setSpellCheckerLanguages([...new Set(preferred)].slice(0, 3))
+  }
+  // Nor any download: refused before it starts, so nothing reaches the disk or the downloads list.
+  if (tour) {
+    browsing.on('will-download', (event) => event.preventDefault())
+    return
   }
   // Downloads manager (progress, pause/resume, list); the plain handler below only if it failed to start.
   if (browsingData) return browsingData.wireSession(partition)
@@ -2023,6 +2076,12 @@ function pageTitleSettled(view: WebContentsView): void {
 
 function detachActive(): void {
   captures?.pageChanged('tab-changed', pageView)
+  // A link preview opened from the page going away goes with it (one opened from the globe stays).
+  // Deferred, as showTab does: this can run inside one of the preview's own events.
+  const preview = linkPreview
+  if (preview?.opener && (preview.opener === pageView || preview.opener === companionView)) {
+    setImmediate(() => { if (linkPreview === preview) closeLinkPreview(false) })
+  }
   if (window && pageView && pageAttached) {
     if (!viewGone(pageView)) pageView.webContents.stopFindInPage('clearSelection')
     window.contentView.removeChildView(pageView)
@@ -3857,7 +3916,7 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
     }
     if (tab) showTab(tab.id)
   })
-  view.webContents.on('did-navigate', (_event, url) => {
+  view.webContents.on('did-navigate', (_event, url, responseCode) => {
     // A Compare article that redirected to another host as it first loaded is still that outlet's article.
     const landing = tabOfView(view)
     if (landing?.compare && compareLanding.delete(landing)) {
@@ -3865,7 +3924,9 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
       schedulePersistentStateSave()
     }
     applySiteZoom(view, url)
-    setLoadError(view, null)
+    // A Compare side whose article is gone (the outlet answered 4xx or 5xx) shows that side's error card
+    // (Retry, other outlets) instead of the site's blank or bare error page; other tabs show the site's own.
+    setLoadError(view, landing?.compare && compareLabelFor(landing.compare, url) ? httpLoadError(responseCode, url) : null)
     rememberTab(view)
     protectionPages.commitNavigation(view.webContents.id, url)
     passwords?.navigated(view.webContents.id)
@@ -4556,6 +4617,9 @@ async function handleBrowserCommand(
     case 'open-compare':
       openCompare(command)
       break
+    case 'compare-other-outlet':
+      compareOtherOutlet(command)
+      break
     case 'set-split-ratio':
       setShownSplitRatio(command.ratio)
       break
@@ -5164,6 +5228,8 @@ function createWindow(): void {
     else if (direction === 'right') void handleBrowserCommand({ type: 'forward' })
   })
   window.on('closed', () => {
+    // Its tabs stay alive for the Dock to bring back, but nothing goes on playing unseen.
+    pauseAllMedia()
     if (persistenceTimer) clearTimeout(persistenceTimer)
     persistenceTimer = null
     // On quit, before-quit already wrote the final state; otherwise (macOS keeps running) save now,

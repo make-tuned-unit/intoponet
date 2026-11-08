@@ -1622,6 +1622,9 @@ button.zoom-indicator:hover {
 .browser-chrome .browser-actions > button:has(> svg:only-child) { padding: 0; justify-content: center; }
 /* Narrow windows: icons only (names stay in tooltips and labels). */
 @container chrome (max-width: 1040px) { .chrome-label { display: none; } }
+/* Tools keep their size; every label goes at once before two tools would touch (toolbarFit.ts measures). */
+.browser-chrome .browser-actions > :not(.chrome-more) { flex-shrink: 0; }
+.browser-actions.is-icons .chrome-label { display: none; }
 .browser-chrome { container: chrome / inline-size; }
 .shield-control > button em { position: static; margin-left: 1px; }
 

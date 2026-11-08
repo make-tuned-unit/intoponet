@@ -214,6 +214,8 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
     const timer = window.setTimeout(() => setNotice(null), NOTICE_MS)
     return () => window.clearTimeout(timer)
   }, [notice])
+  // The notice is about the shown workspace's tabs: it goes when another workspace is shown.
+  useEffect(() => { setNotice(null) }, [workspaces?.activeId])
 
   /** Group the loose matched tabs by their story (folders for stories that have one, or two or more tabs). */
   const groupByStory = (): void => {

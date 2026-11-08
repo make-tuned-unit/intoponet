@@ -408,6 +408,8 @@ export interface BrowserHostApi {
   splitTab(id?: string, partnerId?: string, side?: SplitSide): Promise<void>
   /** Compare two outlets' articles for a story: two tabs side by side, labelled with outlet and country. */
   openCompare(story: { id: string; title: string }, left: CompareSide, right: CompareSide): Promise<void>
+  /** A Compare side (of the pair on screen) shows another outlet's article for its story instead. */
+  compareOtherOutlet(side: SplitSide, other: CompareSide): Promise<void>
   unsplitTab(id?: string): Promise<void>
   setSplitRatio(ratio: number): Promise<void>
   focusSplitSide(side: SplitSide): Promise<void>
@@ -542,6 +544,8 @@ export type BrowserHostCommand =
   | { type: 'unsplit-tab'; id?: string }
   /** Compare two outlets' articles for a story: two new tabs, side by side (left and right), each labelled. */
   | { type: 'open-compare'; story: { id: string; title: string }; left: CompareSide; right: CompareSide }
+  /** One side of the Compare pair on screen loads another outlet's article for the same story (its own was gone). */
+  | { type: 'compare-other-outlet'; side: SplitSide; other: CompareSide }
   /** The divider's place: the left side's share of the two sides' width. */
   | { type: 'set-split-ratio'; ratio: number }
   /** Make the left or right side the one that has focus (its header was chosen). */
@@ -650,6 +654,7 @@ const commandTypes = new Set<BrowserHostCommand['type']>([
   'split-tab',
   'unsplit-tab',
   'open-compare',
+  'compare-other-outlet',
   'set-split-ratio',
   'focus-split-side',
   'split-preview',
@@ -963,6 +968,9 @@ export function parseBrowserHostCommand(value: unknown): BrowserHostCommand {
       if (typeof story['title'] !== 'string' || story['title'].length > 300) throw new Error('Invalid story.')
       return { type, story: { id: story['id'], title: story['title'].slice(0, 300) }, left: parseCompareSide(value['left']), right: parseCompareSide(value['right']) }
     }
+    case 'compare-other-outlet':
+      if (value['side'] !== 'left' && value['side'] !== 'right') throw new Error('Invalid split side.')
+      return { type, side: value['side'], other: parseCompareSide(value['other']) }
     case 'set-split-ratio':
       if (typeof value['ratio'] !== 'number' || !Number.isFinite(value['ratio']) || value['ratio'] < 0 || value['ratio'] > 1) throw new Error('Invalid split ratio.')
       return { type, ratio: value['ratio'] }

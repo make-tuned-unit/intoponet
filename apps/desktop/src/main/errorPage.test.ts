@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CertificateErrorMemo, classifyLoadError, netErrorName, showsErrorPage, summarizeCertificate } from './errorPage'
+import { CertificateErrorMemo, classifyLoadError, httpLoadError, netErrorName, showsErrorPage, summarizeCertificate } from './errorPage'
 
 const url = 'https://news.example/story'
 const classify = (code: number, online = true, description = '') => classifyLoadError({ code, url, online, description })
@@ -65,5 +65,23 @@ describe('certificate details for the failed load', () => {
     memo.remember(1, url, summary)
     now = 5_000
     expect(memo.take(1, url)).toBeUndefined()
+  })
+})
+
+describe('an article the site answered with an HTTP error', () => {
+  it('says the article is gone for 404 and 410, with the status and the host', () => {
+    const gone = httpLoadError(404, 'https://www.brujuladigital.net/404')
+    expect(gone).toMatchObject({ kind: 'http', code: 404, codeName: 'HTTP 404', host: 'www.brujuladigital.net', url: 'https://www.brujuladigital.net/404', autoRetry: false })
+    expect(gone?.title).toBe('This article is not there')
+    expect(httpLoadError(410, 'https://example.org/a')?.title).toBe('This article is not there')
+  })
+
+  it('tells a refusal from a server problem', () => {
+    expect(httpLoadError(403, 'https://example.org/a')?.title).toBe('example.org would not show this article')
+    expect(httpLoadError(503, 'https://example.org/a')?.title).toBe('example.org could not send this article')
+  })
+
+  it('is nothing for answers that are not errors, or are not HTTP statuses', () => {
+    for (const status of [0, 200, 204, 301, 304, 399, 600, -105, Number.NaN, 404.5]) expect(httpLoadError(status, 'https://example.org/')).toBeNull()
   })
 })
