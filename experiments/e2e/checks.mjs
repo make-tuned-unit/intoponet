@@ -736,7 +736,7 @@ const identityRelaunch = async (ctx, { workId, mainId, gone }) => {
   const { stateOf, showIn, waitPage } = identityHelpers(ctx)
   const ws = 'window.intoponet.workspaces'
   // Leftovers of workspaces that are gone are removed at startup (before anything opens Gone's partition again below); Work's stay.
-  const leftovers = [join(ctx.profile, 'Partitions', `intoponet-ws-${gone}`), join(ctx.profile, 'Partitions', 'intoponet-ws-crashed-e2e'), join(ctx.profile, 'site-permissions.ws-crashed-e2e.json')]
+  const leftovers = [join(ctx.profile, 'Partitions', `intoponet-ws-${gone}`), join(ctx.profile, 'Partitions', 'intoponet-ws-crashed-e2e'), join(ctx.profile, 'site-permissions.ws-crashed-e2e.json'), join(ctx.profile, 'external-apps.ws-crashed-e2e.json')]
   for (let i = 0; i < 40 && leftovers.some((path) => existsSync(path)); i += 1) await ctx.delay(250)
   expect(!leftovers.some((path) => existsSync(path)), `Sign-in data of deleted workspaces is still on disk after a relaunch: ${leftovers.filter((path) => existsSync(path)).map((path) => path.slice(ctx.profile.length + 1)).join(', ')}.`)
   expect(existsSync(join(ctx.profile, 'Partitions', `intoponet-ws-${workId}`)), "Work's own partition folder was removed at startup.")
@@ -1577,7 +1577,46 @@ export const checks = {
       await page.evaluate(`(() => { location.href = 'file:///etc/hosts'; return true })()`).catch(() => undefined)
       await ctx.delay(1000)
       expect(!(await ctx.evaluate(`!!document.querySelector('.external-open-bar')`)) && (await panelState(ctx)).url === `${origin}/`, 'A page could navigate to or offer to open a local file.')
-      return `"${prompt.split('\n')[0]}" asked for a mailto: link; the tab stayed on ${origin}/; Cancel closed it and no prompt storm followed.`
+      // "Always allow" is kept per sign-in scope: Main's answer is not used by a workspace with its own sign-ins,
+      // which keeps its own (beside its permission file) until its own sign-ins go. Mail never really opens here.
+      await ctx.main(`(() => { globalThis.__appOpens = []; globalThis.__openExternal = electron.shell.openExternal; electron.shell.openExternal = async (url) => { globalThis.__appOpens.push(url) }; return true })()`)
+      const ws = 'window.intoponet.workspaces'
+      const answers = (name) => { try { return JSON.parse(readFileSync(join(ctx.profile, name), 'utf8')) } catch { return null } }
+      const clickMail = async (marker) => (await ctx.page(marker)).evaluate(`(() => { document.getElementById('mail').click(); return true })()`, { userGesture: true })
+      const allowAlways = async (where) => {
+        await ctx.wait(`!!document.querySelector('.external-open-bar')`, 10_000, `the "Open …?" prompt in ${where}`)
+        await ctx.evaluate(`window.intoponet.browsing.pendingExternal().then((list) => window.intoponet.browsing.decideExternal(list[0].id, 'open', true)).then(() => true)`)
+        await ctx.wait(`!document.querySelector('.external-open-bar')`, 5_000, `the prompt in ${where} to go after Open`)
+      }
+      const until = async (test, label) => {
+        for (let i = 0; i < 40; i += 1) { if (test()) return; await ctx.delay(250) }
+        throw new CheckFailure(`Timed out waiting for ${label}.`)
+      }
+      let appsId = ''
+      try {
+        await openPage(ctx, `${origin}/?scope=main`, 2000)
+        await clickMail('scope=main')
+        await allowAlways('Main')
+        await until(() => answers('external-apps.json')?.[origin]?.includes('mailto'), "Main's \"Always allow\" to be saved")
+        await clickMail('scope=main')
+        await ctx.delay(1000)
+        expect(!(await ctx.evaluate(`!!document.querySelector('.external-open-bar')`)) && (await ctx.main('globalThis.__appOpens.length')) === 2, `Main asked again after "Always allow" (opened ${await ctx.main('JSON.stringify(globalThis.__appOpens)')}).`)
+        appsId = JSON.parse(await ctx.evaluate(`${ws}.create({ name: 'Apps' }).then((s) => JSON.stringify(s))`)).activeId
+        await ctx.evaluate(`${ws}.update(${JSON.stringify(appsId)}, { separateSignIns: true }).then(() => true)`)
+        await openPage(ctx, `${origin}/?scope=apps`, 2000)
+        await clickMail('scope=apps')
+        await allowAlways('a workspace with its own sign-ins, where Main\'s answer must not count')
+        const own = `external-apps.ws-${appsId}.json`
+        await until(() => answers(own)?.[origin]?.includes('mailto'), "the workspace's own \"Always allow\" to be saved in its own file")
+        expect(JSON.stringify(answers('external-apps.json')) === JSON.stringify({ [origin]: ['mailto'] }), `Main's answers changed: ${JSON.stringify(answers('external-apps.json'))}.`)
+        // Its own sign-ins turned off: its answers are deleted with its permissions; Main keeps its own.
+        await ctx.evaluate(`${ws}.update(${JSON.stringify(appsId)}, { separateSignIns: false }).then(() => true)`)
+        await until(() => !existsSync(join(ctx.profile, own)), `${own} to be deleted when its own sign-ins were turned off`)
+        expect(answers('external-apps.json')?.[origin]?.includes('mailto'), "Main's \"Always allow\" went with the workspace's own.")
+      } finally {
+        await ctx.main(`(() => { electron.shell.openExternal = globalThis.__openExternal; return true })()`)
+      }
+      return `"${prompt.split('\n')[0]}" asked for a mailto: link; the tab stayed on ${origin}/; Cancel closed it and no prompt storm followed. "Always allow" in Main was not used by a workspace with its own sign-ins, which kept its own answer in its own file until its sign-ins were turned off.`
     } finally {
       site.close()
     }
@@ -5811,6 +5850,7 @@ export const checks = {
       mkdirSync(join(ctx.profile, 'Partitions', 'intoponet-ws-crashed-e2e'), { recursive: true })
       writeFileSync(join(ctx.profile, 'Partitions', 'intoponet-ws-crashed-e2e', 'Cookies'), 'left behind')
       writeFileSync(join(ctx.profile, 'site-permissions.ws-crashed-e2e.json'), '{}')
+      writeFileSync(join(ctx.profile, 'external-apps.ws-crashed-e2e.json'), '{"http://localhost":["mailto"]}')
       expect(existsSync(join(ctx.profile, 'Partitions', `intoponet-ws-${gone}`)) && existsSync(join(ctx.profile, 'Partitions', `intoponet-ws-${workId}`)), 'The Gone and Work partition folders are not where the relaunch check looks for them.')
       const before = process.env.E2E_PROFILE
       process.env.E2E_PROFILE = ctx.profile

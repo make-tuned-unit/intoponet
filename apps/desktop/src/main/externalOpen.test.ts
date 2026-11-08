@@ -57,20 +57,30 @@ describe('which links may open another app', () => {
   })
 })
 
-function broker(options: { remembered?: unknown; appName?: string; now?: () => number } = {}) {
+function broker(options: { remembered?: unknown; files?: Record<string, unknown>; appName?: string; now?: () => number } = {}) {
   const events: BrowsingEvent[] = []
   const opened: string[] = []
+  /** What the shared scope saved, in order. */
   const saved: string[] = []
+  /** Every save, with its scope. */
+  const savedIn: [string, string][] = []
+  const loads: string[] = []
   const b = new ExternalOpenBroker({
     emit: (event) => events.push(event),
     openExternal: async (href) => { opened.push(href) },
     appName: () => options.appName ?? 'Mail',
-    remembered: options.remembered,
-    save: (data) => saved.push(data),
+    load: (scope) => {
+      loads.push(scope)
+      return scope === 'default' && options.remembered !== undefined ? options.remembered : options.files?.[scope] ?? null
+    },
+    save: (scope, data) => {
+      savedIn.push([scope, data])
+      if (scope === 'default') saved.push(data)
+    },
     ...(options.now ? { now: options.now } : {}),
   })
   const requests = () => events.flatMap((event) => (event.type === 'external-request' ? [event.request] : []))
-  return { b, events, opened, saved, requests }
+  return { b, events, opened, saved, savedIn, loads, requests }
 }
 
 const page = 'https://shop.example/contact'
@@ -158,6 +168,59 @@ describe('asking before opening another app', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it('keeps "Always allow" per sign-in scope: a workspace with its own sign-ins has its own list', () => {
+    const { b, opened, requests, savedIn } = broker({ now: () => 0 })
+    // Allowed in the shared scope…
+    b.request({ href: 'mailto:a@b.c', pageUrl: page, isPrivate: false, owner: 1 })
+    b.decide(requests().at(-1)!.id, 'open', true)
+    expect(savedIn).toEqual([['default', JSON.stringify({ 'https://shop.example': ['mailto'] })]])
+    // …is asked again in a workspace with its own sign-ins, and its answer is kept there only.
+    expect(b.request({ href: 'mailto:a@b.c', pageUrl: page, isPrivate: false, owner: 2, scope: 'ws:work' })).toBe('prompted')
+    b.decide(requests().at(-1)!.id, 'open', true)
+    expect(savedIn.at(-1)).toEqual(['ws:work', JSON.stringify({ 'https://shop.example': ['mailto'] })])
+    expect(b.request({ href: 'mailto:x@y.z', pageUrl: page, isPrivate: false, owner: 3, scope: 'ws:work' })).toBe('opened')
+    // Allowed in Work: still asked in another workspace with its own sign-ins.
+    b.request({ href: 'tel:1', pageUrl: page, isPrivate: false, owner: 4, scope: 'ws:work' })
+    b.decide(requests().at(-1)!.id, 'open', true)
+    expect(b.request({ href: 'tel:2', pageUrl: page, isPrivate: false, owner: 5, scope: 'ws:home' })).toBe('prompted')
+    expect(b.request({ href: 'tel:3', pageUrl: page, isPrivate: false, owner: 6 })).toBe('prompted')
+    expect(b.isRemembered('https://shop.example', 'tel', 'ws:work')).toBe(true)
+    expect(b.isRemembered('https://shop.example', 'tel')).toBe(false)
+    expect(opened).toEqual(['mailto:a@b.c', 'mailto:a@b.c', 'mailto:x@y.z', 'tel:1'])
+  })
+
+  it("reads a workspace's saved answers when they are first needed, apart from the shared ones", () => {
+    const { b, loads } = broker({ remembered: { 'https://shop.example': ['tel'] }, files: { 'ws:work': { 'https://shop.example': ['mailto'] } }, now: () => 0 })
+    expect(loads).toEqual([])
+    expect(b.request({ href: 'mailto:a@b.c', pageUrl: page, isPrivate: false, owner: 1, scope: 'ws:work' })).toBe('opened')
+    expect(b.request({ href: 'tel:1', pageUrl: page, isPrivate: false, owner: 2, scope: 'ws:work' })).toBe('prompted')
+    expect(b.request({ href: 'tel:1', pageUrl: page, isPrivate: false, owner: 3 })).toBe('opened')
+    expect(b.request({ href: 'mailto:a@b.c', pageUrl: page, isPrivate: false, owner: 4 })).toBe('prompted')
+    expect(loads).toEqual(['ws:work', 'default'])
+  })
+
+  it("forgets a workspace's answers and withdraws its prompts when its own sign-ins go, saving nothing", () => {
+    const { b, requests, savedIn, events } = broker({ files: { 'ws:work': { 'https://shop.example': ['mailto'] } }, now: () => 0 })
+    expect(b.request({ href: 'mailto:a@b.c', pageUrl: page, isPrivate: false, owner: 1, scope: 'ws:work' })).toBe('opened')
+    b.request({ href: 'tel:1', pageUrl: page, isPrivate: false, owner: 2, scope: 'ws:work' })
+    b.request({ href: 'tel:1', pageUrl: page, isPrivate: false, owner: 3 })
+    const [workAsk, sharedAsk] = requests()
+    b.forgetScope('ws:work')
+    expect(b.list().map((item) => item.id)).toEqual([sharedAsk!.id])
+    expect(events.some((event) => event.type === 'external-resolved' && event.id === workAsk!.id)).toBe(true)
+    expect(savedIn).toEqual([])
+    // Used again (separate sign-ins turned back on), it starts from what is on disk: nothing, once its file is deleted.
+    expect(b.request({ href: 'mailto:a@b.c', pageUrl: page, isPrivate: false, owner: 4, scope: 'ws:work' })).toBe('opened')
+  })
+
+  it('keeps an answer in the scope of the page that asked', () => {
+    const { b, requests, savedIn } = broker({ now: () => 0 })
+    b.request({ href: 'mailto:a@b.c', pageUrl: page, isPrivate: false, owner: 1, scope: 'ws:work' })
+    b.decide(requests()[0]!.id, 'open', true)
+    expect(savedIn.map(([scope]) => scope)).toEqual(['ws:work'])
+    expect(b.isRemembered('https://shop.example', 'mailto')).toBe(false)
   })
 
   it('drops damaged remembered entries', () => {

@@ -158,6 +158,7 @@ import {
   MAIN_WORKSPACE_ID,
   PRIVATE_PARTITION,
   TOUR_PARTITION,
+  externalAppsFile,
   hasSeparateSignIns,
   identityScope,
   isWorkspaceIdentityId,
@@ -168,6 +169,7 @@ import {
   sweepLeftoverIdentities,
   workspacePartition,
   workspacePartitionFolder,
+  workspaceExternalAppsFile,
   workspacePermissionsFile,
   type IdentityScope,
 } from './workspaceIdentity'
@@ -1814,11 +1816,17 @@ function servePageFiles(browsing: Electron.Session): void {
   })
 }
 
-/** A page (or its popup) wants to open another app: ask first (externalOpen.ts). */
+/** The sign-in scope of a page's session (a workspace's own, or the shared one): whose answers it uses. */
+function identityScopeOfSession(target: Electron.Session): IdentityScope {
+  for (const partition of wiredPartitions) if (session.fromPartition(partition) === target) return identityScope(partition)
+  return identityScope(DEFAULT_PARTITION)
+}
+
+/** A page (or its popup) wants to open another app: ask first (externalOpen.ts), with its workspace's own "Always allow" answers. */
 function routeExternal(contents: Electron.WebContents, href: string): void {
   if (!externalOpener || contents.isDestroyed()) return
   const isPrivate = contents.session === session.fromPartition(PRIVATE_PARTITION)
-  const result = externalOpener.request({ href, pageUrl: contents.getURL(), isPrivate, owner: contents.id })
+  const result = externalOpener.request({ href, pageUrl: contents.getURL(), isPrivate, owner: contents.id, scope: identityScopeOfSession(contents.session) })
   if (result === 'no-app' && pageView && !viewGone(pageView) && pageView.webContents === contents) {
     const target = classifyExternalUrl(href)
     if (target.kind === 'external') emit({ type: 'navigation-failed', url: `${target.scheme}:`, reason: `No app on this Mac opens ${target.scheme}: links.` })
@@ -2460,14 +2468,20 @@ async function clearPartitionData(partition: string): Promise<void> {
   if (!browsingData?.downloads.receiving(partition)) await target.closeAllConnections().catch(() => undefined)
 }
 
-/** A workspace's own site permissions: prompts still waiting end, and its answers are deleted from disk. */
+/**
+ * A workspace's own site permissions and "Always allow" answers for other apps: prompts still waiting
+ * end, and its answers are deleted from disk.
+ */
 function forgetWorkspacePermissions(workspaceId: string): void {
   sitePermissions?.clear(false, `ws:${workspaceId}`)
   workspacePermissionStores.delete(workspaceId)
-  try {
-    rmSync(join(app.getPath('userData'), workspacePermissionsFile(workspaceId)), { force: true })
-  } catch {
-    // Nothing to remove.
+  externalOpener?.forgetScope(`ws:${workspaceId}`)
+  for (const file of [workspacePermissionsFile, workspaceExternalAppsFile]) {
+    try {
+      rmSync(join(app.getPath('userData'), file(workspaceId)), { force: true })
+    } catch {
+      // Nothing to remove.
+    }
   }
 }
 
@@ -5220,7 +5234,11 @@ function offerAlwaysOpenHere(url: string, win: BrowserWindow, moveHere: () => bo
 
 function wireBrowsing(): void {
   const settingsFile = join(app.getPath('userData'), 'browsing-settings.json')
-  const rememberedFile = join(app.getPath('userData'), 'external-apps.json')
+  // "Always allow" for other apps: the shared answers, and each workspace with its own sign-ins has its own file.
+  const rememberedFile = (scope: string): string | null => {
+    const name = externalAppsFile(scope)
+    return name ? join(app.getPath('userData'), name) : null
+  }
   const readJson = (path: string): unknown => {
     // A settings file that cannot be read is kept aside, not saved over.
     try { return JSON.parse(readFileSync(path, 'utf8')) as unknown } catch { setAsideUnreadable(path); return null }
@@ -5239,8 +5257,14 @@ function wireBrowsing(): void {
     appName: (href) => {
       try { return app.getApplicationNameForProtocol(href).replace(/\.app$/i, '') } catch { return '' }
     },
-    remembered: readJson(rememberedFile),
-    save: (data) => { trackedWrite(rememberedFile, data).catch((error: unknown) => console.error('Could not save app links:', error)) },
+    load: (scope) => {
+      const file = rememberedFile(scope)
+      return file ? readJson(file) : null
+    },
+    save: (scope, data) => {
+      const file = rememberedFile(scope)
+      if (file) trackedWrite(file, data).catch((error: unknown) => console.error('Could not save app links:', error))
+    },
   })
   handleFromShell(browsingChannels.command, async (_event, value: unknown) => {
     const command = parseBrowsingCommand(value)
