@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canonicalAddress, matchTabsToStories, sameHeadline, titleKeys, withWorldStories, type StoryHeadlines } from './storyTabs'
+import { canonicalAddress, matchTabsToStories, mountainHeadlines, namesStory, sameHeadline, titleKeys, withWorldStories, type StoryHeadlines } from './storyTabs'
 
 const HEADLINE = 'Flood waters rise across the northern river delta as rescue teams reach villages'
 const STORIES: StoryHeadlines[] = [
@@ -138,5 +138,50 @@ describe('withWorldStories', () => {
     const other: StoryHeadlines = { id: 'm2', label: 'Vote', headlines: [{ title: 'x', url: 'https://harbour-times.net/vote' }] }
     const stories = withWorldStories([mountain, other], [{ id: 'gs-both', title: HEADLINE, url: 'https://harbour-times.net/vote', headlines: [] }])
     expect(stories.map((story) => story.id)).toEqual(['m1', 'm2'])
+  })
+})
+
+describe('story evidence', () => {
+  // The Pope's vigil in Montevideo; a Mexican outlet's headline about León (the city) was clustered with it.
+  const pope = {
+    id: 'sm-pope',
+    title: 'El papa León XIV encabezó la vigilia con jóvenes en el Centenario de Montevideo',
+    url: 'https://uy-paper.example/vigilia-papa',
+    terms: ['leon', 'papa', 'vigilia', 'uruguay'],
+    countries: [
+      { headline: { title: 'Teatros de León reciben música y obras escénicas locales durante noviembre', url: 'https://mx-paper.example/teatros-leon' } },
+      { headline: { title: 'Vigilia del papa León XIV en Uruguay reúne a más de 60 mil fieles', url: 'https://cl-paper.example/vigilia' } },
+    ],
+  }
+
+  it('names a story with two of its words', () => {
+    expect(namesStory('Vigilia del papa León XIV en Uruguay reúne a más de 60 mil fieles', pope.terms)).toBe(true)
+    expect(namesStory('Teatros de León reciben música y obras escénicas locales durante noviembre', pope.terms)).toBe(false)
+    expect(namesStory('Anything at all', ['solo'])).toBe(true)
+  })
+
+  it('labels a tab only from a headline that names the story', () => {
+    const evidence = [mountainHeadlines(pope, 'Pope Leo’s vigil')]
+    const labels = matchTabsToStories([
+      tab('theatre', 'https://mx-paper.example/teatros-leon', 'Teatros de León reciben música y obras escénicas locales durante noviembre'),
+      tab('vigil', 'https://cl-paper.example/vigilia', 'Vigilia del papa León XIV en Uruguay reúne a más de 60 mil fieles | CL Paper'),
+      tab('lead', 'https://uy-paper.example/vigilia-papa', 'Vigilia en el Centenario'),
+    ], evidence)
+    expect(labels.has('theatre')).toBe(false)
+    expect(labels.get('vigil')?.storyId).toBe('sm-pope')
+    expect(labels.get('lead')?.storyId).toBe('sm-pope')
+  })
+
+  it('takes only the world story’s headlines that name it', () => {
+    const merged = withWorldStories([], [{
+      id: 'gs-leon-papa', title: pope.title, url: pope.url, terms: pope.terms,
+      headlines: pope.countries.map((country) => country.headline),
+    }])
+    const labels = matchTabsToStories([
+      tab('theatre', 'https://mx-paper.example/teatros-leon', 'Teatros de León'),
+      tab('vigil', 'https://cl-paper.example/vigilia', 'Vigilia'),
+    ], merged)
+    expect(labels.has('theatre')).toBe(false)
+    expect(labels.get('vigil')?.storyId).toBe('world:gs-leon-papa')
   })
 })

@@ -123,6 +123,26 @@ function personName(value: string): string | null {
   return text.replace(/^(by|por|par|von|di|door|af|av)\s+/i, '').slice(0, 60)
 }
 
+/** Section values that name no section. */
+const NO_SECTION = /^(uncategori[sz]ed|sin categor[ií]a|sem categoria|non class[ée]e?|default|none|null|undefined|article|articles|post|posts|home|index|page)$/i
+
+/**
+ * A section name a reader can read on a card chip ("Monde", "America latina"): the first of several,
+ * a feed's slug as words ("america-latina", "world_news"), a lowercase name capitalised. Ids,
+ * numbers and placeholders ("uncategorized") are no section.
+ */
+export function sectionLabel(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  let text = clean(value.split(/\s*[,|;/]\s*/).find((part) => part.trim()), 80)
+  if (!text) return null
+  // One word with no spaces and a run of digits is an id ("sec-48213", "a1029"), not a name.
+  if (/^\S+$/.test(text) && /\d{3}/.test(text)) return null
+  if (text === text.toLowerCase() && !/\s/.test(text)) text = text.replace(/[-_.+]+/g, ' ').trim()
+  if (!/\p{L}{2}/u.test(text) || NO_SECTION.test(text)) return null
+  if (text === text.toLowerCase()) text = text.charAt(0).toLocaleUpperCase() + text.slice(1)
+  return text.slice(0, 40)
+}
+
 /** Outlets often fall back to their logo or a stock placeholder: those say nothing about the story. */
 export function storyImage(url: string | null): string | null {
   if (!url) return null
@@ -203,7 +223,7 @@ export function parseArticlePreview(html: string, pageUrl: string): ArticlePrevi
     authors,
     publishedAt: isoDate(first('article:published_time', 'datepublished', 'pubdate', 'publish-date', 'date') ?? ld('datePublished')),
     modifiedAt: isoDate(first('article:modified_time', 'og:updated_time', 'datemodified') ?? ld('dateModified')),
-    section: clean((first('article:section') ?? (asArray(ld('articleSection'))[0] as string | undefined))?.split(/\s*[,|;/]\s*/)[0], 40),
+    section: sectionLabel(first('article:section') ?? asArray(ld('articleSection'))[0]),
     keywords,
     readingMinutes: Number.isFinite(wordCount) && wordCount > 50 ? Math.max(1, Math.round(wordCount / 230)) : null,
     lang: clean(head.match(/<html[^>]*\blang\s*=\s*["']?([a-zA-Z-]{2,12})/i)?.[1], 12),

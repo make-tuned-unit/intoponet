@@ -970,6 +970,9 @@ export const checks = {
     // Each headline is laid out in its own direction (Arabic, Persian and Hebrew ones right to left, punctuation in place).
     const misdirected = JSON.parse(await ctx.evaluate(`JSON.stringify([...document.querySelectorAll('.sc-card .sc-headline, .sc-card .sc-original, .sc-card .sc-summary')].filter((el) => el.dir !== 'auto' || (/^[\\u0590-\\u08FF]/.test(el.textContent.trim()) && getComputedStyle(el).direction !== 'rtl')).map((el) => el.textContent.slice(0, 40)))`))
     expect(!misdirected.length, `These card texts are not laid out in their own direction: ${misdirected.join(' | ')}`)
+    // The story's own headline is its front card, so the title is translated with the cards (globalStories.ts).
+    const titleCard = JSON.parse(await ctx.evaluate(`JSON.stringify({ title: document.querySelector('.sc-header h2')?.innerText ?? '', front: document.querySelector('.sc-card.is-front .sc-headline')?.innerText ?? '' })`))
+    expect(titleCard.title === titleCard.front, `The carousel's title "${titleCard.title}" is not its front card's headline "${titleCard.front}".`)
     const state0 = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getState().then((s) => JSON.stringify(s))`))
     const first = await ctx.evaluate(`document.querySelector('.sc-card.is-front .sc-outlet strong').innerText`)
     await ctx.evaluate(`(() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })); return true })()`)
@@ -1137,6 +1140,9 @@ export const checks = {
     const panel = await ctx.evaluate(`document.querySelector('.story-panel h2').innerText`)
     const top = digest.mountains[0]
     expect(panel === (top.label ?? top.title), `The highest-peak control pinned "${panel}", not the tallest story "${top.label ?? top.title}".`)
+    // The headline is shown once: as the title, or under a short label (never both).
+    const lead = await ctx.evaluate(`document.querySelector('.story-panel-lead')?.innerText ?? ''`)
+    expect(top.label ? lead.includes(top.title) : !lead.includes(top.title), `The story panel's lead line reads "${lead}" under the title "${panel}".`)
     await ctx.delay(2500)
     await ctx.shot('story-mountains')
     await ctx.press('Escape')
@@ -5386,10 +5392,13 @@ export const checks = {
 
   async STORY_TABS(ctx) {
     await ctx.waitForNews()
-    await ctx.wait(`window.intoponet.browserHost.getNewsDigest().then((raw) => (JSON.parse(raw).mountains ?? []).some((m) => (m.countries ?? []).some((c) => c.headline && c.headline.title !== m.title)))`, 120_000, 'a story with two headlines in the news digest')
+    // A country's headline labels tabs only when it names the story: two of its terms (storyTabs.ts namesStory).
+    const namesStory = (m, title) => { const words = new Set(title.normalize('NFKC').split(/[^\p{L}\p{M}\d]+/u).map((w) => w.normalize('NFD').replace(/\p{M}+/gu, '').toLowerCase().replace(/['’]s$/, ''))); return (m.terms ?? []).filter((t) => words.has(t)).length >= 2 }
+    const secondOf = (m) => (m.countries ?? []).find((c) => c.headline && c.headline.title !== m.title && namesStory(m, c.headline.title))
+    await ctx.wait(`window.intoponet.browserHost.getNewsDigest().then((raw) => { const namesStory = ${namesStory}; const secondOf = ${secondOf}; return (JSON.parse(raw).mountains ?? []).some((m) => !!secondOf(m)) })`, 120_000, 'a story with two headlines in the news digest')
     const digest = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getNewsDigest()`))
-    const story = digest.mountains.find((m) => (m.countries ?? []).some((c) => c.headline && c.headline.title !== m.title))
-    const second = story.countries.find((c) => c.headline && c.headline.title !== story.title).headline
+    const story = digest.mountains.find((m) => !!secondOf(m))
+    const second = secondOf(story).headline
     const label = story.label ?? story.title
     const storyName = label.length > 40 ? `${label.slice(0, 38)}…` : label
     const escape = (text) => text.replace(/[&<>"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[char])
