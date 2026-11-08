@@ -1023,6 +1023,8 @@ export const checks = {
       } finally {
         await ctx.send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 })
       }
+      // Back online, it no longer says so (whether or not the stories have come yet).
+      await ctx.wait(`!(document.querySelector('.world-stories .globe-empty')?.textContent ?? '').startsWith('Waiting for a connection')`, 5000, 'the World list to stop waiting for a connection once back online')
     }
     await ctx.waitForNews()
     await ctx.click('.globe-tabs button', 'World')

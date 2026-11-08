@@ -326,7 +326,7 @@ async function attempt(group: SourceGroup, run: () => Promise<SourceRecord[]>): 
  * Refresh each source independently. A failed source keeps its cached
  * records; the old four-anchor geosearch records are no longer carried.
  */
-export async function refreshPublicField(now = Date.now()): Promise<FieldSnapshot | null> {
+export async function refreshPublicField(now = Date.now(), retryFailed = false): Promise<FieldSnapshot | null> {
   const shared = sharedClient()
   if (shared) {
     const prior = shared.cached(now)
@@ -351,7 +351,8 @@ export async function refreshPublicField(now = Date.now()): Promise<FieldSnapsho
     latestStatus.sourceHealth ?? (previous ? sourceHealthFromSnapshot(previous) : undefined),
   ))
   const expectedDay = utcMidnight(now - DAY_MS).toISOString().slice(0, 10).replace(/-/g, '')
-  const readingDue = readingDayOf(previous) !== expectedDay && now - readingCheckedAt >= READING_CHECK_MS
+  // Checked every few hours; after waking or coming back online (retryFailed), again at once if the last check failed.
+  const readingDue = readingDayOf(previous) !== expectedDay && (now - readingCheckedAt >= READING_CHECK_MS || (retryFailed && failing.has('reading')))
   const [reading, usgs, eonet] = await Promise.all([
     readingDue ? attempt('reading', () => fetchReadingNow(now)) : Promise.resolve(null),
     attempt('usgs', () => fetchQuakes(now)),
@@ -425,19 +426,40 @@ export function startPublicFieldRefresh(
   emitStatus?.(publicFieldStatus())
   if (cached && current) emit(current)
   let running = false
-  const tick = (): void => {
+  const tick = (retryFailed = false): void => {
     if (running) return
     running = true
-    void refreshPublicField()
+    lastRefreshAt = Date.now()
+    void refreshPublicField(Date.now(), retryFailed)
       .then((snapshot) => { if (snapshot) emit(snapshot) })
       .catch((error: unknown) => console.error('Public field refresh failed.', error instanceof Error ? error.message : error))
       .finally(() => { running = false })
   }
+  const retry = (): void => tick(true)
+  retryRefresh = retry
   tick()
-  const timer = setInterval(tick, PUBLIC_FIELD_REFRESH_MS)
+  const timer = setInterval(() => tick(), PUBLIC_FIELD_REFRESH_MS)
   timer.unref()
   return () => {
     clearInterval(timer)
+    if (retryRefresh === retry) retryRefresh = null
     if (statusListener === emitStatus) statusListener = null
   }
+}
+
+/** The running refresh (startPublicFieldRefresh), and when it last started (wall clock). */
+let retryRefresh: (() => void) | null = null
+let lastRefreshAt = 0
+
+/**
+ * The Mac woke or came back online: the field is refreshed now, instead of at the next 20-minute tick, when a
+ * source failed (no network, say) or the last refresh is older than that (timers stand still while the Mac
+ * sleeps, so the tick would come that much later). True when it refreshes.
+ */
+export function retryPublicField(now = Date.now()): boolean {
+  if (!retryRefresh) return false
+  const due = failing.size > 0 || latestStatus.state === 'error' || latestStatus.state === 'stale' || now - lastRefreshAt >= PUBLIC_FIELD_REFRESH_MS
+  if (!due) return false
+  retryRefresh()
+  return true
 }

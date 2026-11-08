@@ -125,7 +125,7 @@ app.on('open-file', (event, path) => {
   event.preventDefault()
   incomingOpens.push(incomingFileTarget(path, readSmallFile))
 })
-import { cachedPublicField, publicFieldStatus, startPublicFieldRefresh } from './public-field'
+import { cachedPublicField, publicFieldStatus, retryPublicField, startPublicFieldRefresh } from './public-field'
 import { startNewsService } from './news/newsService'
 import { openDigestBuilder } from './news/openDigestBuilder'
 import { readSealedPrivateLibrary } from './privateLibraryStorage'
@@ -5721,16 +5721,34 @@ app.whenReady().then(async () => {
       digestBuilder: openDigestBuilder(),
     })
     app.once('will-quit', () => { void newsService?.stop() })
-    // After a night offline every feed has backed off for hours: waking, or the network coming back, fetches them now.
-    powerMonitor.on('resume', () => newsService?.retryOffline())
+  })
+
+  startup('waking and reconnecting', () => {
+    // After a night offline every feed has backed off for hours: waking, or the network coming back, fetches them now,
+    // and the globe's live signals when a source failed or they are a refresh old (timers stand still while the Mac
+    // sleeps). The network is often not back the moment the Mac wakes: once more half a minute later.
+    const networkBack = (): void => {
+      newsService?.retryOffline()
+      retryPublicField()
+    }
+    let wakeRetry: ReturnType<typeof setTimeout> | null = null
+    powerMonitor.on('resume', () => {
+      networkBack()
+      if (wakeRetry) clearTimeout(wakeRetry)
+      wakeRetry = setTimeout(() => { wakeRetry = null; networkBack() }, 30_000)
+      wakeRetry.unref?.()
+    })
     let wasOnline = net.isOnline()
     const onlineTimer = setInterval(() => {
       const online = net.isOnline()
-      if (online && !wasOnline) newsService?.retryOffline()
+      if (online && !wasOnline) networkBack()
       wasOnline = online
     }, 30_000)
     onlineTimer.unref?.()
-    app.once('will-quit', () => clearInterval(onlineTimer))
+    app.once('will-quit', () => {
+      clearInterval(onlineTimer)
+      if (wakeRetry) clearTimeout(wakeRetry)
+    })
   })
 
   // The Dock icon brings the app window back, also while a quick window is open.
