@@ -4890,6 +4890,8 @@ export const checks = {
       await ctx.evaluate(`${host}.setTabSidebar({ mode: 'open', width: 240 }).then(() => true)`)
       await ctx.delay(600)
       await axeAudit(ctx, 'the split divider', '.split-divider')
+      // The sidebar with the pair as one row: its tab list holds only tabs (the row's Unsplit shortcut is out of it).
+      await axeAudit(ctx, 'the tab sidebar with a pair side by side', '.tab-rail')
       await axeAudit(ctx, 'the split headers', '.split-header')
 
       // Full-width view and a narrow window: still two columns, half and half when narrow.

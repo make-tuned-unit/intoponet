@@ -446,12 +446,14 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
             )
           })}
         </div>
+        {/* A pointer shortcut, out of the tab list for assistive technology (a tab list holds only tabs): ⌃⇧- or the tab menu unsplit. */}
         <button
           type="button"
           className="tab-rail-close tab-rail-unsplit"
           aria-label="Unsplit these two pages"
           title="Unsplit (⌃⇧-)"
           tabIndex={-1}
+          aria-hidden="true"
           onClick={() => void window.intoponet.browserHost.unsplitTab(left.id)}
         >
           <Columns2 size={12} />
