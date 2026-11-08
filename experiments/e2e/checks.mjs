@@ -3268,6 +3268,18 @@ export const checks = {
       for (const name of ['mail', 'docs', 'notes', 'map', 'news']) await openPage(ctx, `${origin}/${name}`, 800)
       await ctx.click('button[aria-label="Pin tabs open"]')
       await ctx.delay(500)
+      // Reduce motion (the system setting, emulated): a tab added to the sidebar is in place at once, not growing in.
+      await ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] })
+      // The media query's change event (which the animations listen to) comes with the next frames.
+      await ctx.wait(`matchMedia('(prefers-reduced-motion: reduce)').matches`, 3000, 'Reduce motion to be emulated')
+      await ctx.evaluate(`new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(() => resolve(true), 50))))`)
+      await ctx.evaluate(`(() => { window.__rowTransforms = []; window.__rowWatch = new MutationObserver((records) => { for (const record of records) for (const node of record.addedNodes) if (node.nodeType === 1 && node.matches('.tab-rail-item[data-tab-id]')) requestAnimationFrame(() => requestAnimationFrame(() => window.__rowTransforms.push(getComputedStyle(node).transform))) }); window.__rowWatch.observe(document.querySelector('.tab-rail-list'), { subtree: true, childList: true }); return true })()`)
+      await openPage(ctx, `${origin}/still`, 800)
+      const rowTransforms = JSON.parse(await ctx.evaluate(`(() => { window.__rowWatch.disconnect(); return JSON.stringify(window.__rowTransforms) })()`))
+      await ctx.send('Emulation.setEmulatedMedia', { features: [] })
+      expect(rowTransforms.length > 0 && rowTransforms.every((transform) => transform === 'none' || transform === 'matrix(1, 0, 0, 1, 0, 0)'), `With Reduce motion on, a new tab grew into the sidebar (${rowTransforms.join(', ') || 'no row seen'}).`)
+      await ctx.evaluate(`${host}.closeTab(${JSON.stringify((await byTitle('Page /still')).id)}).then(() => true)`)
+      await ctx.delay(400)
       // New folder from the sidebar: named at once.
       await ctx.click('button[aria-label="New folder"]')
       await ctx.wait(`document.activeElement?.classList.contains('tab-rail-folder-name')`, 3000, 'the new folder to ask for a name')

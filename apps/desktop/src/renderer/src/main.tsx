@@ -16,6 +16,7 @@ document.addEventListener('drop', (event) => {
 })
 
 const root = createRoot(document.getElementById('root')!)
-void import('./App').then(({ App }) => {
-  root.render(<StrictMode><App /></StrictMode>)
+// Reduce motion (System Settings › Accessibility): every motion animation leaves out movement and scaling.
+void Promise.all([import('./App'), import('motion/react')]).then(([{ App }, { MotionConfig }]) => {
+  root.render(<StrictMode><MotionConfig reducedMotion="user"><App /></MotionConfig></StrictMode>)
 })
