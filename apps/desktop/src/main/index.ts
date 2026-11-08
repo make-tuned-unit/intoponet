@@ -2346,11 +2346,13 @@ async function rebuildWorkspaceTabs(workspaceId: string, beforeWake?: () => Prom
   schedulePersistentStateSave()
 }
 
-/** Deletes a partition's cookies, site storage and cache (its pages are never live while this runs). */
+/** Deletes a partition's cookies, site storage, cache and HTTP sign-ins (its pages are never live while this runs). */
 async function clearPartitionData(partition: string): Promise<void> {
   const target = session.fromPartition(partition)
   await target.clearStorageData().catch(() => undefined)
   await target.clearCache().catch(() => undefined)
+  // A site's own sign-in box (HTTP authentication) is remembered apart from its cookies.
+  await target.clearAuthCache().catch(() => undefined)
 }
 
 /** A workspace's own site permissions: prompts still waiting end, and its answers are deleted from disk. */
@@ -5444,6 +5446,8 @@ app.whenReady().then(async () => {
           const privateSession = session.fromPartition(PRIVATE_PARTITION)
           await privateSession.clearStorageData().catch(() => undefined)
           await privateSession.clearCache().catch(() => undefined)
+          // HTTP sign-ins typed in a private tab too: the next private tab must not be signed in with them.
+          await privateSession.clearAuthCache().catch(() => undefined)
           browsingData?.privateBrowsingEnded()
           emitPanelState()
         }

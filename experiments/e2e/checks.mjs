@@ -595,6 +595,15 @@ const startIdentitySite = () => new Promise((resolve) => {
       response.end(Buffer.alloc(65536, 3))
       return
     }
+    // A site's own sign-in box (HTTP authentication): what each request sent is kept for the check to read.
+    if (url.pathname === '/auth') {
+      const sent = request.headers.authorization ?? ''
+      server.httpSignIns.push({ who: url.searchParams.get('who'), sent })
+      const ok = sent === `Basic ${Buffer.from('bob:Box-Pa55').toString('base64')}`
+      response.writeHead(ok ? 200 : 401, { 'content-type': 'text/html', ...(ok ? {} : { 'www-authenticate': 'Basic realm="e2e"' }) })
+      response.end(ok ? '<title>Box</title>Signed in to the box' : '<title>Box</title>Signed out of the box')
+      return
+    }
     if (url.pathname === '/login' && request.method === 'POST') {
       let body = ''
       request.on('data', (chunk) => { body += chunk })
@@ -610,6 +619,7 @@ const startIdentitySite = () => new Promise((resolve) => {
     const signedIn = cookies.sid ? `Signed in as ${decodeURIComponent(cookies.sid)}` : 'Signed out'
     response.end(`<!doctype html><title>Identity test</title><body style="font:16px system-ui;margin:40px"><h1>${signedIn}</h1><a id="get" href="/file.bin">Download the file</a><img src="https://securepubads.g.doubleclick.net/ad.png" width="300" height="250" alt="ad"></body>`)
   })
+  server.httpSignIns = []
   server.listen(0, 'localhost', () => resolve(server))
 })
 /** Helpers for the sign-in check, bound to one app run (the check runs twice: before and after a relaunch). */
@@ -1484,7 +1494,7 @@ export const checks = {
     await openAnyPage(ctx)
     const tab = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => JSON.stringify(t[0] ?? null))`))
     expect(tab?.isPrivate === true, 'A tab opened in private mode is not private.')
-    const recents = await ctx.evaluate(`window.intoponet.browserHost.readPrivateLibrary().then((r) => r.status === 'ok' && r.payload ? JSON.parse(r.payload).recents.length : 0)`)
+    const recents =await ctx.evaluate(`window.intoponet.browserHost.readPrivateLibrary().then((r) => r.status === 'ok' && r.payload ? JSON.parse(r.payload).recents.length : 0)`)
     expect(recents === 0, 'A private visit was kept in recent pages.')
     // Nothing about the private page reaches the profile's files (open tabs, site icons).
     await ctx.delay(3500)
@@ -1497,7 +1507,36 @@ export const checks = {
     await ctx.delay(1000)
     const left = await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => t.length)`)
     expect(!off.privateMode && left === 0, 'Turning private browsing off left private tabs open.')
-    return 'Private tab marked, no footprints, closed when private mode ended.'
+    // A site's own sign-in box (HTTP authentication) answered in a private tab is forgotten with the private session.
+    const signIns = []
+    const authSite = createServer((request, response) => {
+      const step = new URL(request.url, 'http://localhost').searchParams.get('step')
+      const sent = request.headers.authorization ?? ''
+      signIns.push({ step, sent })
+      const ok = sent === `Basic ${Buffer.from('ada:Pa55').toString('base64')}`
+      response.writeHead(ok ? 200 : 401, { 'content-type': 'text/html', ...(ok ? {} : { 'www-authenticate': 'Basic realm="e2e"' }) })
+      response.end(ok ? '<title>In</title>Signed in' : '<title>Out</title>Signed out')
+    })
+    await new Promise((resolve) => authSite.listen(0, '127.0.0.1', resolve))
+    try {
+      const port = authSite.address().port
+      const openPrivate = async (url) => {
+        await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(true).then(() => true)`)
+        await ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: ${JSON.stringify(url)} }).then(() => true, () => false)`)
+        await ctx.delay(1500)
+      }
+      await openPrivate(`http://ada:Pa55@127.0.0.1:${port}/?step=1`)
+      expect(signIns.some((entry) => entry.step === '1' && entry.sent), 'The private tab did not sign in to the test site (no credentials were sent).')
+      await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
+      await ctx.delay(800)
+      await openPrivate(`http://127.0.0.1:${port}/?step=2`)
+      const reused = signIns.filter((entry) => entry.step === '2' && entry.sent)
+      expect(reused.length === 0, 'A private tab opened after private browsing ended was still signed in with a password typed in the earlier private session.')
+      await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
+    } finally {
+      authSite.close()
+    }
+    return 'Private tab marked, no footprints, closed when private mode ended; its HTTP sign-in did not outlive it.'
   },
 
   async TABS(ctx) {
@@ -5211,11 +5250,22 @@ export const checks = {
       const [workUser] = JSON.parse(await (await ctx.page('who=wcheck')).evaluate(`JSON.stringify([document.querySelector('#username')?.value ?? null])`))
       expect(workUser === 'bob', `Work's sign-in page did not offer its saved account (it filled "${workUser}").`)
 
+      // Work answers a site's own sign-in box too (the tab is closed again, so nothing reloads it with the password).
+      await openPage(ctx, `${base.replace('http://', 'http://bob:Box-Pa55@')}/auth?who=wbox`, 1500)
+      expect(server.httpSignIns.some((entry) => entry.who === 'wbox' && entry.sent), "Work's tab did not sign in to the site's own sign-in box.")
+      const boxTab = (await tabsOf()).find((item) => item.url.includes('who=wbox'))
+      if (boxTab) await ctx.evaluate(`${host}.closeTab(${JSON.stringify(boxTab.id)}).then(() => true)`)
+
       // Clearing Work's data signs Work out and leaves Main signed in.
       await showIn(workId, 'who=bob')
       await ctx.evaluate(`${ws}.clearSignIns(${JSON.stringify(workId)}).then(() => true)`)
       await waitPage('who=bob', 'Signed out')
       await waitPage('who=mhome', 'Signed in as ada')
+      // ...signed out of the site's own sign-in box as well.
+      await openPage(ctx, `${base}/auth?who=wbox2`, 1500)
+      expect(!server.httpSignIns.some((entry) => entry.who === 'wbox2' && entry.sent), "Clearing Work's sign-ins kept the password typed into a site's own sign-in box.")
+      const boxAgain = (await tabsOf()).find((item) => item.url.includes('who=wbox2'))
+      if (boxAgain) await ctx.evaluate(`${host}.closeTab(${JSON.stringify(boxAgain.id)}).then(() => true)`)
 
       // A tab moved from Main to Work warns first, and arrives signed out with its history.
       await showIn(mainId, 'who=ada')
