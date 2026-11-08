@@ -5523,7 +5523,16 @@ export const checks = {
       await ctx.evaluate(`${host}.deleteTabFolder(${JSON.stringify(hovered.id)}).then(() => true)`)
       await ctx.wait(`document.documentElement.dataset.storyHighlight === ''`, 5000, 'the highlight to clear when the hovered story folder was deleted')
       await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
-      return `Two articles of "${storyName}" badged; the control and a private tab with a matching title not; Group by story made one folder for it holding only the two articles; Undo restored the order and removed the folder; hovering the folder highlighted the story (${hovered.storyId}) and leaving cleared it; no page was requested during matching; axe clean.`
+      // The grouping notice is about this workspace's tabs: showing another workspace takes it away, and it does not come back.
+      const groupNotice = `[...document.querySelectorAll('.tab-rail-archived')].some((e) => e.textContent.includes('by story'))`
+      expect(await ctx.evaluate(groupNotice), 'The grouping notice was gone before the workspace switch, so the switch proves nothing.')
+      await ctx.evaluate(`window.intoponet.workspaces.create().then(() => true)`)
+      await ctx.wait(`!(${groupNotice})`, 4000, 'the grouping notice to go when another workspace was shown')
+      await ctx.evaluate(`window.intoponet.workspaces.switchTo({ index: 0 }).then(() => ${host}.restore()).then(() => true)`)
+      await ctx.wait(`!!document.querySelector('.tab-rail [data-tab-id]')`, 5000, 'the first workspace\'s tabs back in the sidebar')
+      await ctx.delay(600)
+      expect(!(await ctx.evaluate(groupNotice)), 'The grouping notice came back with its workspace after another workspace was shown.')
+      return `Two articles of "${storyName}" badged; the control and a private tab with a matching title not; Group by story made one folder for it holding only the two articles; Undo restored the order and removed the folder; hovering the folder highlighted the story (${hovered.storyId}) and leaving cleared it; the grouping notice went when another workspace was shown; no page was requested during matching; axe clean.`
     } finally {
       server.close()
     }

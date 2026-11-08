@@ -611,6 +611,8 @@ export function App() {
     })
     return () => { mounted = false; unsubscribe() }
   }, [])
+  // "Archived … · Undo" is about the shown workspace's tabs: it goes when another workspace is shown.
+  useEffect(() => { setJustArchived(null) }, [workspaces?.activeId])
   /** The shown workspace's anchor place, and the latest headlines for it (from the public news digest only). */
   const shownWorkspace = workspaces?.workspaces.find((workspace) => workspace.id === workspaces.activeId) ?? null
   const shownAnchor = shownWorkspace?.anchor ?? null
