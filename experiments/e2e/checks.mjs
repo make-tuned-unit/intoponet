@@ -4522,10 +4522,18 @@ export const checks = {
       const path = new URL(request.url, 'http://localhost').pathname
       if (path === '/split-flaky' && flakyFails) {
         flakyHits += 1
-        request.socket.destroy()
+        // ?late: the connection drops only after a while.
+        if (request.url.includes('late')) setTimeout(() => request.socket.destroy(), 2500)
+        else request.socket.destroy()
         return
       }
       response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
+      // A page that arrives in two parts: it is there at once, ready (dom-ready) only a moment later.
+      if (path === '/split-slow-ready') {
+        response.write(`<!doctype html><html lang="en"><title>Slow story</title><body><p>first part${' '.repeat(4096)}`)
+        setTimeout(() => response.end('</p></body></html>'), 1200)
+        return
+      }
       response.end(pages[path] ?? `<!doctype html><title>Page ${path}</title><h1>${path}</h1>`)
     })
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
@@ -4776,6 +4784,16 @@ export const checks = {
       }).catch(() => null)
       expect(leftHistory, 'The crashed side came back without its back/forward list.')
       expect((await stateOf()).split.focused === 'right', 'A crash on the left side moved the focus.')
+      // A page becoming ready on the other side while a newer one is still on its way does not end that newer load:
+      // when it then fails, the failing side still does not take the focus (Chromium hands its error document the keyboard).
+      const leftContents = `electron.webContents.fromId(${sideOf(await viewsNow(), '/split-left').id})`
+      await ctx.main(`(() => { void ${leftContents}.loadURL('http://127.0.0.1:${port}/split-slow-ready').catch(() => undefined); return true })()`)
+      await waitFor('the slow page there (not yet ready)', () => ctx.main(`${leftContents}.getURL().includes('/split-slow-ready')`))
+      await ctx.main(`(() => { void ${leftContents}.loadURL('http://127.0.0.1:${port}/split-flaky?late').catch(() => undefined); return true })()`)
+      await waitFor('the late failure on the left side', async () => (await stateOf()).split?.left.loadError)
+      expect((await stateOf()).split.focused === 'right', 'The left page failing after an earlier page became ready took the focus.')
+      await ctx.main(`(() => { void ${leftContents}.loadURL(${JSON.stringify(leftUrl)}).catch(() => undefined); return true })()`)
+      await waitFor('the left page back after the late failure', async () => { const split = (await stateOf()).split; return split?.left.url === leftUrl && !split.left.loadError && sideOf(await viewsNow(), '/split-left')?.visible })
       // The other side fails to load: hidden while it fails, shown again once its page loads.
       await ctx.main(`(() => { void ${pageOf('/split-left')}.loadURL('http://127.0.0.1:${port}/split-flaky?left').catch(() => undefined); return true })()`)
       const flakySide = async () => (await viewsNow()).pages.find((p) => p.url.includes('/split-flaky'))
