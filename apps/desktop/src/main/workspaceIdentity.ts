@@ -1,7 +1,8 @@
 /**
  * Separate sign-ins per workspace, as pure rules: which Electron session ("partition") a page
  * uses, and the names of the files and scopes that go with it. A workspace that opts in keeps its
- * own cookies, site storage, saved passwords and permissions; the others share the default one.
+ * own cookies, site storage, saved passwords, permissions and "Always allow" answers for opening other
+ * apps; the others share the default one.
  * Private tabs always use their own partition, whichever workspace is shown.
  */
 
@@ -78,6 +79,22 @@ export function workspacePermissionsFile(id: string): string {
   return `site-permissions.ws-${id}.json`
 }
 
+/** Where the shared identity's "Always allow" answers for opening other apps are kept (inside userData). */
+export const DEFAULT_EXTERNAL_APPS_FILE = 'external-apps.json'
+
+/** Where a workspace's own "Always allow" answers for opening other apps are kept (inside userData). */
+export function workspaceExternalAppsFile(id: string): string {
+  if (!isWorkspaceIdentityId(id)) throw new Error('Invalid workspace identity.')
+  return `external-apps.ws-${id}.json`
+}
+
+/** The file a scope's "Always allow" answers for other apps are kept in; null for private tabs (never remembered). */
+export function externalAppsFile(scope: string): string | null {
+  if (scope === 'default') return DEFAULT_EXTERNAL_APPS_FILE
+  const id = scopeWorkspaceId(scope)
+  return id !== null && isWorkspaceIdentityId(id) ? workspaceExternalAppsFile(id) : null
+}
+
 /** Whether moving a tab between two workspaces changes the sign-ins it runs with. */
 export function signInsChange(from: IdentityWorkspace | null | undefined, to: IdentityWorkspace | null | undefined): boolean {
   return pagePartition(from, false) !== pagePartition(to, false)
@@ -94,8 +111,12 @@ export function workspacePartitionFolder(id: string): string {
 
 const PARTITION_FOLDER = /^intoponet-ws-([A-Za-z0-9-]{1,80})$/
 const PERMISSIONS_FILE = /^site-permissions\.ws-([A-Za-z0-9-]{1,80})\.json$/
+const EXTERNAL_APPS_FILE = /^external-apps\.ws-([A-Za-z0-9-]{1,80})\.json$/
 
-/** The workspaces named by partition folders (in userData/Partitions) and permission files (in userData). */
+/**
+ * The workspaces named by partition folders (in userData/Partitions), and by permission files and
+ * "Always allow" files for other apps (in userData).
+ */
 export function identitiesOnDisk(partitionFolders: readonly string[], profileFiles: readonly string[]): string[] {
   const ids: string[] = []
   for (const name of partitionFolders) {
@@ -103,7 +124,7 @@ export function identitiesOnDisk(partitionFolders: readonly string[], profileFil
     if (id) ids.push(id.toLowerCase())
   }
   for (const name of profileFiles) {
-    const id = PERMISSIONS_FILE.exec(name)?.[1]
+    const id = PERMISSIONS_FILE.exec(name)?.[1] ?? EXTERNAL_APPS_FILE.exec(name)?.[1]
     if (id) ids.push(id)
   }
   return ids
@@ -131,7 +152,7 @@ export type LeftoverIdentitySweep = {
   profileFiles: () => readonly string[]
   /** The workspace ids saved logins carry ([] when the saved passwords cannot be opened). */
   loginWorkspaceIds: () => Promise<readonly string[]>
-  /** Removes one workspace's own sign-ins and site data, its permission answers and its saved logins. */
+  /** Removes one workspace's own sign-ins and site data, its permission and other-app answers, and its saved logins. */
   forget: (id: string) => Promise<void>
 }
 

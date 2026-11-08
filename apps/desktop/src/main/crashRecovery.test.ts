@@ -61,6 +61,18 @@ describe('CrashRecoveryPolicy', () => {
     policy.forget('tab-b')
     expect(policy.takeHistory('tab-b')).toBeUndefined()
   })
+
+  it('lets a tab closed while still blank read the kept list without using it up', () => {
+    const policy = new CrashRecoveryPolicy<{ entries: string[]; index: number }>()
+    const history = { entries: ['https://a.example/', 'https://a.example/2'], index: 1 }
+    expect(policy.keptHistory('tab-a')).toBeUndefined()
+    policy.recordCrash('tab-a', 1_000)
+    policy.keepHistory('tab-a', history)
+    expect(policy.keptHistory('tab-a')).toEqual(history)
+    // Still there for the page loading again (an archive that failed leaves the tab as it was).
+    expect(policy.takeHistory('tab-a')).toEqual(history)
+    expect(policy.keptHistory('tab-a')).toBeUndefined()
+  })
 })
 
 describe('ShellReloadPolicy', () => {

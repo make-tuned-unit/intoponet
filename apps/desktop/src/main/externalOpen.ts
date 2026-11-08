@@ -87,7 +87,14 @@ export function parseRemembered(raw: unknown): Remembered {
   return result
 }
 
-type Pending = { request: ExternalOpenRequest; href: string; owner: number; timer: ReturnType<typeof setTimeout> }
+/**
+ * Whose "Always allow" answers a page uses: 'default' for the shared sign-ins, `ws:<id>` for a workspace
+ * with its own (workspaceIdentity.ts identityScope). Private tabs remember nothing, whatever their scope.
+ */
+export type ExternalOpenScope = string
+export const DEFAULT_EXTERNAL_SCOPE: ExternalOpenScope = 'default'
+
+type Pending = { request: ExternalOpenRequest; href: string; owner: number; scope: ExternalOpenScope; timer: ReturnType<typeof setTimeout> }
 
 export type ExternalOpenResult = 'opened' | 'prompted' | 'web' | 'blocked' | 'no-app' | 'dropped'
 
@@ -96,9 +103,9 @@ export type ExternalOpenOptions = {
   openExternal: (href: string) => Promise<void>
   /** The app that opens this link ("Mail"), or '' when none does. */
   appName: (href: string) => string
-  /** Remembered "Always allow" answers, as saved; null when nothing is saved. */
-  remembered?: unknown
-  save?: (data: string) => void
+  /** A scope's remembered "Always allow" answers, as saved; null when nothing is saved. Read when the scope is first needed. */
+  load?: (scope: ExternalOpenScope) => unknown
+  save?: (scope: ExternalOpenScope, data: string) => void
   now?: () => number
   /** Unanswered prompts are cancelled after this long. */
   timeoutMs?: number
@@ -111,16 +118,29 @@ const AFTER_CANCEL_MS = 5_000
 const OPENS_PER_PAGE_PER_10S = 3
 const MAX_WAITING = 4
 
-/** Asks before a page opens another app; remembers "Always allow" per (site, scheme) outside private tabs. */
+/**
+ * Asks before a page opens another app; remembers "Always allow" per (site, scheme) outside private
+ * tabs, in the sign-in scope of the page that asked: a workspace with its own sign-ins keeps its own list.
+ */
 export class ExternalOpenBroker {
   private readonly pending = new Map<string, Pending>()
   private readonly asked = new Map<number, number[]>()
   private readonly opened = new Map<number, number[]>()
   private readonly quietUntil = new Map<number, number>()
-  private remembered: Remembered
+  private readonly remembered = new Map<ExternalOpenScope, Remembered>()
 
-  constructor(private readonly options: ExternalOpenOptions) {
-    this.remembered = parseRemembered(options.remembered ?? null)
+  constructor(private readonly options: ExternalOpenOptions) {}
+
+  /** A scope's answers, read from what was saved the first time they are needed. */
+  private rememberedIn(scope: ExternalOpenScope): Remembered {
+    let list = this.remembered.get(scope)
+    if (!list) {
+      let saved: unknown = null
+      try { saved = this.options.load?.(scope) ?? null } catch { /* nothing remembered */ }
+      list = parseRemembered(saved)
+      this.remembered.set(scope, list)
+    }
+    return list
   }
 
   private now(): number {
@@ -135,19 +155,20 @@ export class ExternalOpenBroker {
     return times
   }
 
-  isRemembered(site: string, scheme: string): boolean {
-    return !!site && (this.remembered[site]?.includes(scheme) ?? false)
+  isRemembered(site: string, scheme: string, scope: ExternalOpenScope = DEFAULT_EXTERNAL_SCOPE): boolean {
+    return !!site && (this.rememberedIn(scope)[site]?.includes(scheme) ?? false)
   }
 
-  /** A page (`owner`, showing `pageUrl`) wants to open `href`. */
-  request(input: { href: string; pageUrl: string; isPrivate: boolean; owner: number }): ExternalOpenResult {
+  /** A page (`owner`, showing `pageUrl`, in sign-in `scope`) wants to open `href`. */
+  request(input: { href: string; pageUrl: string; isPrivate: boolean; owner: number; scope?: ExternalOpenScope }): ExternalOpenResult {
+    const scope = input.scope ?? DEFAULT_EXTERNAL_SCOPE
     const target = classifyExternalUrl(input.href)
     if (target.kind === 'web') return 'web'
     if (target.kind === 'blocked') return 'blocked'
     const site = siteOf(input.pageUrl)
     const appName = this.options.appName(target.href)
     if (!appName) return 'no-app'
-    if (!input.isPrivate && this.isRemembered(site, target.scheme)) {
+    if (!input.isPrivate && this.isRemembered(site, target.scheme, scope)) {
       const opens = this.recent(this.opened, input.owner, 10_000)
       if (opens.length >= OPENS_PER_PAGE_PER_10S) return 'dropped'
       opens.push(this.now())
@@ -171,7 +192,7 @@ export class ExternalOpenBroker {
     }
     const timer = setTimeout(() => this.resolve(request.id, 'cancel', false, false), this.options.timeoutMs ?? 60_000)
     ;(timer as { unref?: () => void }).unref?.()
-    this.pending.set(request.id, { request, href: target.href, owner: input.owner, timer })
+    this.pending.set(request.id, { request, href: target.href, owner: input.owner, scope, timer })
     this.options.emit({ type: 'external-request', request })
     return 'prompted'
   }
@@ -191,26 +212,38 @@ export class ExternalOpenBroker {
       if (byPerson) this.quietUntil.set(item.owner, this.now() + AFTER_CANCEL_MS)
       return
     }
-    if (always && !item.request.isPrivate && item.request.site) this.remember(item.request.site, item.request.scheme)
+    if (always && !item.request.isPrivate && item.request.site) this.remember(item.scope, item.request.site, item.request.scheme)
     void this.options.openExternal(item.href).catch(() => undefined)
   }
 
-  private remember(site: string, scheme: string): void {
-    const schemes = this.remembered[site] ?? []
+  private remember(scope: ExternalOpenScope, site: string, scheme: string): void {
+    const current = this.rememberedIn(scope)
+    const schemes = current[site] ?? []
     if (schemes.includes(scheme)) return
-    this.remembered = { ...this.remembered, [site]: [...schemes, scheme] }
-    try { this.options.save?.(JSON.stringify(this.remembered)) } catch { /* applies this session */ }
+    const next = { ...current, [site]: [...schemes, scheme] }
+    this.remembered.set(scope, next)
+    try { this.options.save?.(scope, JSON.stringify(next)) } catch { /* applies this session */ }
   }
 
-  /** Forget "Always allow" for a site (or every site). */
-  forget(site?: string): void {
+  /** Forget "Always allow" for a site (or every site) in a scope. */
+  forget(site?: string, scope: ExternalOpenScope = DEFAULT_EXTERNAL_SCOPE): void {
+    let next: Remembered = {}
     if (site) {
-      const { [site]: _removed, ...rest } = this.remembered
-      this.remembered = rest
-    } else {
-      this.remembered = {}
+      const { [site]: _removed, ...rest } = this.rememberedIn(scope)
+      next = rest
     }
-    try { this.options.save?.(JSON.stringify(this.remembered)) } catch { /* applies this session */ }
+    this.remembered.set(scope, next)
+    try { this.options.save?.(scope, JSON.stringify(next)) } catch { /* applies this session */ }
+  }
+
+  /**
+   * A workspace's own sign-ins are gone (deleted, or turned off): its answers are dropped and its prompts
+   * withdrawn. Nothing is saved: its file is deleted with the rest of its sign-ins, and is read afresh if
+   * the scope is used again.
+   */
+  forgetScope(scope: ExternalOpenScope): void {
+    for (const [id, item] of this.pending) if (item.scope === scope) this.resolve(id, 'cancel', false, false)
+    this.remembered.delete(scope)
   }
 
   /** The page went away (closed, or navigated): its prompt is withdrawn. */

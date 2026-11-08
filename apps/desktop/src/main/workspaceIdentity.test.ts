@@ -3,6 +3,7 @@ import {
   DEFAULT_PARTITION,
   PRIVATE_PARTITION,
   TOUR_PARTITION,
+  externalAppsFile,
   identitiesOnDisk,
   identityScope,
   leftoverIdentities,
@@ -13,6 +14,7 @@ import {
   sweepLeftoverIdentities,
   workspacePartition,
   workspacePartitionFolder,
+  workspaceExternalAppsFile,
   workspacePermissionsFile,
   type LeftoverIdentitySweep,
 } from './workspaceIdentity'
@@ -68,6 +70,18 @@ describe('scopes and names', () => {
     expect(() => workspacePermissionsFile('../etc')).toThrow()
   })
 
+  it('keeps "Always allow" for other apps beside the permissions: shared, or per workspace with its own sign-ins', () => {
+    expect(workspaceExternalAppsFile('work')).toBe('external-apps.ws-work.json')
+    expect(() => workspaceExternalAppsFile('../etc')).toThrow()
+    expect(externalAppsFile(identityScope(DEFAULT_PARTITION))).toBe('external-apps.json')
+    expect(externalAppsFile(identityScope(TOUR_PARTITION))).toBe('external-apps.json')
+    expect(externalAppsFile(identityScope(workspacePartition('work')))).toBe('external-apps.ws-work.json')
+    // Private tabs remember nothing; a scope that names no valid workspace has no file.
+    expect(externalAppsFile(identityScope(PRIVATE_PARTITION))).toBeNull()
+    expect(externalAppsFile('ws:../x')).toBeNull()
+    expect(externalAppsFile('ws:')).toBeNull()
+  })
+
   it('says when a move changes the sign-ins', () => {
     expect(signInsChange({ id: 'main' }, { id: 'work', separateSignIns: true })).toBe(true)
     expect(signInsChange({ id: 'work', separateSignIns: true }, { id: 'home' })).toBe(true)
@@ -82,11 +96,26 @@ describe('leftover sign-ins', () => {
     expect(() => workspacePartitionFolder('../x')).toThrow()
   })
 
-  it('finds workspaces in partition folders and permission files, and nothing else', () => {
+  it('finds workspaces in partition folders, permission files and other-app answers, and nothing else', () => {
     expect(identitiesOnDisk(
       ['intoponet-ws-gone', 'intoponet-ws-Mixed', 'intoponet-default', 'intoponet-ws-', 'intoponet-ws-bad id', 'other'],
-      ['site-permissions.ws-off.json', 'site-permissions.json', 'site-permissions.ws-off.json.tmp', 'site-permissions.ws-../x.json', 'browser-state.v1.json'],
-    )).toEqual(['gone', 'mixed', 'off'])
+      ['site-permissions.ws-off.json', 'site-permissions.json', 'site-permissions.ws-off.json.tmp', 'site-permissions.ws-../x.json', 'browser-state.v1.json',
+        'external-apps.ws-apps.json', 'external-apps.json', 'external-apps.ws-apps.json.tmp', 'external-apps.ws-.json'],
+    )).toEqual(['gone', 'mixed', 'off', 'apps'])
+  })
+
+  it("removes a workspace's leftover other-app answers like its permission answers", async () => {
+    const forgotten: string[] = []
+    const result = await sweepLeftoverIdentities(true, {
+      workspaces: () => [{ id: 'main' }, { id: 'work', separateSignIns: true }],
+      partitionInUse: () => false,
+      partitionFolders: () => [],
+      profileFiles: () => ['external-apps.json', 'external-apps.ws-work.json', 'external-apps.ws-gone.json'],
+      loginWorkspaceIds: async () => [],
+      forget: async (id) => { forgotten.push(id) },
+    })
+    expect(result).toEqual(['gone'])
+    expect(forgotten).toEqual(['gone'])
   })
 
   it('keeps every workspace that has separate sign-ins, in any case, and names the rest once', () => {

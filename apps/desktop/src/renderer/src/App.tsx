@@ -210,6 +210,7 @@ import { SettingsPanel } from './settings/SettingsPanel'
 import { mergeImportedLibrary } from './browserImport/mergeImport'
 import { backgroundTabLabel, PermissionBar, SitePermissionChips } from './permissions/PermissionBar'
 import { ExternalOpenBar, useExternalOpenRequests } from './browsing/ExternalOpenBar'
+import { IncomingLinksNotice, useHeldIncomingLinks } from './browsing/IncomingLinksNotice'
 import { ErrorCard, ErrorPage, navigationErrorMessage } from './browsing/ErrorPage'
 import { SiteTweaksPanel } from './siteTweaks/SiteTweaksPanel'
 import { PasswordBar } from './passwords/PasswordBar'
@@ -541,6 +542,8 @@ export function App() {
   const [permissionRequests, setPermissionRequests] = useState<SitePermissionRequest[]>([])
   /** Pages asking to open another app (mailto:, zoommtg:…). */
   const externalRequests = useExternalOpenRequests()
+  /** Links from another app held back after a burst ("Open the rest"). */
+  const heldIncoming = useHeldIncomingLinks()
   // Saved passwords for the page in front: a save offer, or accounts to pick from.
   const [passwordState, setPasswordState] = useState<PasswordPageState | null>(null)
   const [bookmarkSiteOffer, setBookmarkSiteOffer] = useState<BookmarkSiteOffer | null>(null)
@@ -4454,6 +4457,7 @@ export function App() {
             />
           )}
           {externalRequests[0] && <ExternalOpenBar request={externalRequests[0]} more={externalRequests.length - 1} />}
+          {heldIncoming && <IncomingLinksNotice held={heldIncoming} asBar />}
           {shieldOpen && (
             <div className={`shield-bar${protection.enabled ? '' : ' is-paused'}`} id="protection-panel" role="region" aria-label="Site protection">
               <span className="shield-bar-status">
@@ -4663,6 +4667,8 @@ export function App() {
           </button>
         </div>
       )}
+      {/* With no page shown (the bar is drawn under the toolbar otherwise). */}
+      {heldIncoming && !(panel.isVisible && !pinEditor) && <IncomingLinksNotice held={heldIncoming} asBar={false} />}
 
       {error && (
         <div className="error-message" role="alert">

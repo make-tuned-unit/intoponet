@@ -736,7 +736,7 @@ const identityRelaunch = async (ctx, { workId, mainId, gone }) => {
   const { stateOf, showIn, waitPage } = identityHelpers(ctx)
   const ws = 'window.intoponet.workspaces'
   // Leftovers of workspaces that are gone are removed at startup (before anything opens Gone's partition again below); Work's stay.
-  const leftovers = [join(ctx.profile, 'Partitions', `intoponet-ws-${gone}`), join(ctx.profile, 'Partitions', 'intoponet-ws-crashed-e2e'), join(ctx.profile, 'site-permissions.ws-crashed-e2e.json')]
+  const leftovers = [join(ctx.profile, 'Partitions', `intoponet-ws-${gone}`), join(ctx.profile, 'Partitions', 'intoponet-ws-crashed-e2e'), join(ctx.profile, 'site-permissions.ws-crashed-e2e.json'), join(ctx.profile, 'external-apps.ws-crashed-e2e.json')]
   for (let i = 0; i < 40 && leftovers.some((path) => existsSync(path)); i += 1) await ctx.delay(250)
   expect(!leftovers.some((path) => existsSync(path)), `Sign-in data of deleted workspaces is still on disk after a relaunch: ${leftovers.filter((path) => existsSync(path)).map((path) => path.slice(ctx.profile.length + 1)).join(', ')}.`)
   expect(existsSync(join(ctx.profile, 'Partitions', `intoponet-ws-${workId}`)), "Work's own partition folder was removed at startup.")
@@ -883,6 +883,14 @@ export const checks = {
     await ctx.wait(`!!document.querySelector('.topbar') && !!document.querySelector('canvas')`, 30_000, 'the header and globe to render')
     const buttons = await ctx.evaluate(`[...document.querySelectorAll('.bookmark-library-button')].map((b) => (b.innerText || b.getAttribute('aria-label')).trim())`)
     for (const label of ['Private', 'Bookmarks', 'The Olds', 'Knowledge', 'My map', 'Settings']) expect(buttons.some((b) => b.includes(label)), `Header is missing "${label}". Found: ${buttons.join(', ')}`)
+    // The app's own page runs under its Content-Security-Policy: an inline script, or an image from a host it does not use,
+    // is refused there. Main hears each refusal the page reports; none may come from what the app loads itself (it reloads twice below).
+    await ctx.main(`(() => { const wc = electron.BrowserWindow.getAllWindows().find((w) => w.webContents.getURL().includes('index.html')).webContents; globalThis.__cspRefusals = []; wc.on('console-message', (details) => { if (/Content Security Policy/.test(String(details.message))) globalThis.__cspRefusals.push(String(details.message).slice(0, 240)) }); return true })()`)
+    const refused = JSON.parse(await ctx.evaluate(`new Promise((resolve) => { const seen = []; const listen = (e) => seen.push(e.effectiveDirective); document.addEventListener('securitypolicyviolation', listen); const s = document.createElement('script'); s.textContent = 'window.__inlineRan = true'; document.head.append(s); const i = new Image(); i.src = 'https://example.com/intoponet-e2e.png'; setTimeout(() => { document.removeEventListener('securitypolicyviolation', listen); s.remove(); resolve(JSON.stringify({ seen, ran: !!window.__inlineRan })) }, 1500) })`))
+    expect(!refused.ran && refused.seen.includes('script-src-elem') && refused.seen.includes('img-src'), `The app's own page ran an inline script or loaded an image from elsewhere: ${JSON.stringify(refused)}.`)
+    for (let i = 0; i < 20 && (await ctx.main('globalThis.__cspRefusals.length')) < 2; i += 1) await ctx.delay(100)
+    expect((await ctx.main('globalThis.__cspRefusals.length')) === 2, `Main did not hear the app page's refusals: ${JSON.stringify(await ctx.main('globalThis.__cspRefusals'))}.`)
+    await ctx.main('(() => { globalThis.__cspRefusals = []; return true })()')
     // A profile with damaged files still opens, and what it could not read is kept aside, never saved over.
     const damagedProfile = mkdtempSync(join(tmpdir(), 'intoponet-e2e-damaged-'))
     const damaged = {
@@ -918,7 +926,9 @@ export const checks = {
       rmSync(damagedProfile, { recursive: true, force: true })
     }
     const recovered = await appWindowRecovers(ctx)
-    return `Header: ${buttons.join(' · ')}. A damaged profile opened, its unreadable files kept aside and an earlier run's unfinished temporary files deleted. ${recovered}`
+    const refusals = await ctx.main('globalThis.__cspRefusals')
+    expect(refusals.length === 0, `The app's own page refused something it loads itself: ${refusals.join(' | ')}`)
+    return `Header: ${buttons.join(' · ')}. Its page refused an inline script and a stranger's image, and nothing of its own across two reloads. A damaged profile opened, its unreadable files kept aside and an earlier run's unfinished temporary files deleted. ${recovered}`
   },
 
   async GLOBE_LIVE(ctx) {
@@ -1583,7 +1593,46 @@ export const checks = {
       await page.evaluate(`(() => { location.href = 'file:///etc/hosts'; return true })()`).catch(() => undefined)
       await ctx.delay(1000)
       expect(!(await ctx.evaluate(`!!document.querySelector('.external-open-bar')`)) && (await panelState(ctx)).url === `${origin}/`, 'A page could navigate to or offer to open a local file.')
-      return `"${prompt.split('\n')[0]}" asked for a mailto: link; the tab stayed on ${origin}/; Cancel closed it and no prompt storm followed.`
+      // "Always allow" is kept per sign-in scope: Main's answer is not used by a workspace with its own sign-ins,
+      // which keeps its own (beside its permission file) until its own sign-ins go. Mail never really opens here.
+      await ctx.main(`(() => { globalThis.__appOpens = []; globalThis.__openExternal = electron.shell.openExternal; electron.shell.openExternal = async (url) => { globalThis.__appOpens.push(url) }; return true })()`)
+      const ws = 'window.intoponet.workspaces'
+      const answers = (name) => { try { return JSON.parse(readFileSync(join(ctx.profile, name), 'utf8')) } catch { return null } }
+      const clickMail = async (marker) => (await ctx.page(marker)).evaluate(`(() => { document.getElementById('mail').click(); return true })()`, { userGesture: true })
+      const allowAlways = async (where) => {
+        await ctx.wait(`!!document.querySelector('.external-open-bar')`, 10_000, `the "Open …?" prompt in ${where}`)
+        await ctx.evaluate(`window.intoponet.browsing.pendingExternal().then((list) => window.intoponet.browsing.decideExternal(list[0].id, 'open', true)).then(() => true)`)
+        await ctx.wait(`!document.querySelector('.external-open-bar')`, 5_000, `the prompt in ${where} to go after Open`)
+      }
+      const until = async (test, label) => {
+        for (let i = 0; i < 40; i += 1) { if (test()) return; await ctx.delay(250) }
+        throw new CheckFailure(`Timed out waiting for ${label}.`)
+      }
+      let appsId = ''
+      try {
+        await openPage(ctx, `${origin}/?scope=main`, 2000)
+        await clickMail('scope=main')
+        await allowAlways('Main')
+        await until(() => answers('external-apps.json')?.[origin]?.includes('mailto'), "Main's \"Always allow\" to be saved")
+        await clickMail('scope=main')
+        await ctx.delay(1000)
+        expect(!(await ctx.evaluate(`!!document.querySelector('.external-open-bar')`)) && (await ctx.main('globalThis.__appOpens.length')) === 2, `Main asked again after "Always allow" (opened ${await ctx.main('JSON.stringify(globalThis.__appOpens)')}).`)
+        appsId = JSON.parse(await ctx.evaluate(`${ws}.create({ name: 'Apps' }).then((s) => JSON.stringify(s))`)).activeId
+        await ctx.evaluate(`${ws}.update(${JSON.stringify(appsId)}, { separateSignIns: true }).then(() => true)`)
+        await openPage(ctx, `${origin}/?scope=apps`, 2000)
+        await clickMail('scope=apps')
+        await allowAlways('a workspace with its own sign-ins, where Main\'s answer must not count')
+        const own = `external-apps.ws-${appsId}.json`
+        await until(() => answers(own)?.[origin]?.includes('mailto'), "the workspace's own \"Always allow\" to be saved in its own file")
+        expect(JSON.stringify(answers('external-apps.json')) === JSON.stringify({ [origin]: ['mailto'] }), `Main's answers changed: ${JSON.stringify(answers('external-apps.json'))}.`)
+        // Its own sign-ins turned off: its answers are deleted with its permissions; Main keeps its own.
+        await ctx.evaluate(`${ws}.update(${JSON.stringify(appsId)}, { separateSignIns: false }).then(() => true)`)
+        await until(() => !existsSync(join(ctx.profile, own)), `${own} to be deleted when its own sign-ins were turned off`)
+        expect(answers('external-apps.json')?.[origin]?.includes('mailto'), "Main's \"Always allow\" went with the workspace's own.")
+      } finally {
+        await ctx.main(`(() => { electron.shell.openExternal = globalThis.__openExternal; return true })()`)
+      }
+      return `"${prompt.split('\n')[0]}" asked for a mailto: link; the tab stayed on ${origin}/; Cancel closed it and no prompt storm followed. "Always allow" in Main was not used by a workspace with its own sign-ins, which kept its own answer in its own file until its sign-ins were turned off.`
     } finally {
       site.close()
     }
@@ -1661,6 +1710,17 @@ export const checks = {
       expect((await panelState(ctx)).url === front, 'Reload from the menu of a background tab changed the page in front.')
       await ctx.evaluate(`window.intoponet.browserHost.closeActiveTab().then(() => true)`)
       await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.url === ${JSON.stringify(url)} && !s.isLoading)`, 15_000, 'the reloaded tab to be shown again')
+      // Closed while still blank after crashing behind another tab, it keeps its back/forward list for ⇧⌘T.
+      await ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: ${JSON.stringify(front)} }).then(() => true, () => true)`)
+      await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.url === ${JSON.stringify(front)} && !s.isLoading)`, 15_000, 'a page in front of the one to crash and close')
+      expect(await crashPage(), 'The background page to crash and close is not open.')
+      await ctx.delay(1500)
+      expect(!(await historyOf()), 'The crashed background page loaded again by itself before it was closed.')
+      await ctx.evaluate(`window.intoponet.browserHost.closeTab(${JSON.stringify(crashedTab.id)}).then(() => true)`)
+      await ctx.delay(500)
+      await ctx.evaluate(`window.intoponet.browserHost.reopenClosedTab().then(() => true)`)
+      for (let i = 0; i < 50 && JSON.stringify(await historyOf()) !== JSON.stringify(beforeCrash); i += 1) await ctx.delay(200)
+      expect(JSON.stringify(await historyOf()) === JSON.stringify(beforeCrash), `A crashed background tab closed while blank came back from Recently closed without its back/forward list: ${JSON.stringify(await historyOf())}, before ${JSON.stringify(beforeCrash)}.`)
     } finally {
       site.close()
     }
@@ -5113,6 +5173,33 @@ export const checks = {
       await setOtherApps('tab')
       await ctx.delay(500)
 
+      // A burst (more than 6 links within 3 seconds) opens the first 6; the rest wait for "Open the rest", and no tab closes
+      // to make room meanwhile. The notice is a bar under the toolbar over a page, and a notice on the globe.
+      await switchTo('main')
+      await ctx.delay(3200)
+      const burstTabs = async () => (await tabUrls()).filter((url) => url.includes('/burst-'))
+      const before = await tabUrls()
+      const closedCount = () => ctx.evaluate(`window.intoponet.browserHost.getClosedTabs().then((l) => l.length)`)
+      const closedBefore = await closedCount()
+      for (let i = 1; i <= 9; i += 1) await openFromOtherApp(`${plain}/burst-${i}`)
+      await until(async () => (await burstTabs()).length >= 6, 'the first 6 links of the burst to open')
+      await ctx.wait(`(document.querySelector('.incoming-links-bar')?.innerText ?? '').includes('Opened 6 of 9 links from another app')`, 5_000, 'the "Opened 6 of 9 links from another app" bar')
+      await ctx.delay(800)
+      const firstSix = await burstTabs()
+      expect(firstSix.length === 6 && [1, 2, 3, 4, 5, 6].every((n) => firstSix.some((url) => url.endsWith(`/burst-${n}`))), `A burst of 9 links opened ${JSON.stringify(firstSix)} instead of the first 6.`)
+      const now = await tabUrls()
+      expect(before.every((url) => now.includes(url)) && (await closedCount()) === closedBefore, `The burst closed tabs that were open: before ${JSON.stringify(before)}, now ${JSON.stringify(now)}.`)
+      await axeAudit(ctx, 'the held links bar', '.incoming-links-bar')
+      await ctx.shot('held-links')
+      await ctx.evaluate(`window.intoponet.browserHost.close().then(() => true)`)
+      await ctx.wait(`(document.querySelector('.incoming-links-notice')?.innerText ?? '').includes('Opened 6 of 9 links from another app')`, 5_000, 'the held links notice with no page shown')
+      expect(await ctx.click('.incoming-links-notice button', 'Open the rest'), 'The held links notice has no "Open the rest".')
+      await until(async () => (await burstTabs()).length === 9, 'the rest of the burst to open')
+      await ctx.wait(`!document.querySelector('.incoming-links-notice') && !document.querySelector('.incoming-links-bar')`, 5_000, 'the notice to go after Open the rest')
+      for (const tab of JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => JSON.stringify(t))`)).filter((item) => item.url.includes('/burst-'))) {
+        await ctx.evaluate(`window.intoponet.browserHost.closeTab(${JSON.stringify(tab.id)}).then(() => true)`)
+      }
+
       // Settings › Browsing lists the rules, and the list passes axe.
       await openPanel(ctx, 'Settings')
       const settingsText = await ctx.evaluate(`document.querySelector('.settings-pane')?.innerText ?? ''`)
@@ -5124,7 +5211,7 @@ export const checks = {
 
       // Clear the rules this check made, so the next run starts clean.
       for (const rule of savedRules()) await routes('removeLinkRoute', rule.id)
-      return 'Rule localhost → Work: a matching link (and a subdomain) opens in Work as a tab and shows it, and the rule is saved to link-routes.json; 127.0.0.1 follows the default. With the quick-window setting, the match still goes to Work and the unmatched link opens a quick window. Private browsing is not routed. The first matching rule wins (moving a rule changes that); a rule for a deleted workspace is skipped. Always open here… offers the workspaces, saves the rule, and moves the same page (history kept) into Work; a private quick window has none. Settings lists the rules; axe clean.'
+      return 'Rule localhost → Work: a matching link (and a subdomain) opens in Work as a tab and shows it, and the rule is saved to link-routes.json; 127.0.0.1 follows the default. With the quick-window setting, the match still goes to Work and the unmatched link opens a quick window. Private browsing is not routed. The first matching rule wins (moving a rule changes that); a rule for a deleted workspace is skipped. Always open here… offers the workspaces, saves the rule, and moves the same page (history kept) into Work; a private quick window has none. A burst of 9 links opened 6 and held 3 until "Open the rest", closing nothing. Settings lists the rules; axe clean.'
     } finally {
       server.close()
     }
@@ -5820,6 +5907,7 @@ export const checks = {
       mkdirSync(join(ctx.profile, 'Partitions', 'intoponet-ws-crashed-e2e'), { recursive: true })
       writeFileSync(join(ctx.profile, 'Partitions', 'intoponet-ws-crashed-e2e', 'Cookies'), 'left behind')
       writeFileSync(join(ctx.profile, 'site-permissions.ws-crashed-e2e.json'), '{}')
+      writeFileSync(join(ctx.profile, 'external-apps.ws-crashed-e2e.json'), '{"http://localhost":["mailto"]}')
       expect(existsSync(join(ctx.profile, 'Partitions', `intoponet-ws-${gone}`)) && existsSync(join(ctx.profile, 'Partitions', `intoponet-ws-${workId}`)), 'The Gone and Work partition folders are not where the relaunch check looks for them.')
       const before = process.env.E2E_PROFILE
       process.env.E2E_PROFILE = ctx.profile

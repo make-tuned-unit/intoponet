@@ -50,7 +50,7 @@ import { fetchTabIcon, TabIconMemory } from './tabFavicon'
 import { browsingChannels, parseBrowsingCommand, type LinkRoutesState, type BrowsingEvent, type ArchivedTabSnapshot, type TabFolderSnapshot, type TabGroupRequest, type TabGroupResult, type TidySuggestion, type BrowsingSettings, type LinksFromOtherApps, type PageLoadError, type TabArchiveAfter, type TabSidebarState, type TabSleepAfter, type TabSwitchOrder } from '@intoponet/browser-api'
 import { ExternalOpenBroker, classifyExternalUrl } from './externalOpen'
 import { CertificateErrorMemo, classifyLoadError, isCertificateError, showsErrorPage, summarizeCertificate } from './errorPage'
-import { IncomingOpenQueue, LocalFileGrants, incomingFileTarget, incomingTargetsFromArgs, incomingWebUrl, readSavedLinkFile, type IncomingTarget } from './incomingOpen'
+import { IncomingBurst, IncomingOpenQueue, LocalFileGrants, incomingFileTarget, incomingTargetsFromArgs, incomingWebUrl, readSavedLinkFile, type IncomingTarget } from './incomingOpen'
 import { PageAppearanceController } from './pageAppearance'
 import { SWITCHER_KEYS_SCRIPT, switcherHtml, SWITCHER_ROW_HEIGHT, SWITCHER_ROWS, TabSwitcher, type SwitcherTab } from './tabSwitcher'
 import { focusLinkScript, isLinkPreviewRequest, parsePreviewMessage, PREVIEW_FOCUS_LOOP_SCRIPT, PREVIEW_WORLD_ID, previewFrameHtml, previewHeading, previewLayout, previewSite, type PreviewRect } from './linkPreview'
@@ -87,6 +87,18 @@ if (!app.isReady()) {
 // ---- Links and files from other apps (default browser, Open With, a second launch) ----
 /** What arrived before the window was ready opens once it is (see whenReady). */
 const incomingOpens = new IncomingOpenQueue()
+/**
+ * More than 6 links within 3 seconds: the first 6 open and the rest wait for "Open the rest" in the app
+ * window (incomingOpen.ts), so a flood never closes the shown workspace's tabs to make room.
+ */
+const incomingBurst = new IncomingBurst({
+  open: (target) => openIncoming(target),
+  changed: (held) => {
+    // The notice is in the app window: it comes back if it was closed (links can go to quick windows).
+    if (held) reopenWindow()
+    emitBrowsing({ type: 'incoming-held', held })
+  },
+})
 const quickWindows: QuickWindows = new QuickWindows({
   // A quick window is not part of a workspace: its page uses the shared sign-ins (or private).
   buildView: (isPrivate) => buildView(isPrivate, null),
@@ -158,6 +170,7 @@ import {
   MAIN_WORKSPACE_ID,
   PRIVATE_PARTITION,
   TOUR_PARTITION,
+  externalAppsFile,
   hasSeparateSignIns,
   identityScope,
   isWorkspaceIdentityId,
@@ -168,6 +181,7 @@ import {
   sweepLeftoverIdentities,
   workspacePartition,
   workspacePartitionFolder,
+  workspaceExternalAppsFile,
   workspacePermissionsFile,
   type IdentityScope,
 } from './workspaceIdentity'
@@ -1814,11 +1828,17 @@ function servePageFiles(browsing: Electron.Session): void {
   })
 }
 
-/** A page (or its popup) wants to open another app: ask first (externalOpen.ts). */
+/** The sign-in scope of a page's session (a workspace's own, or the shared one): whose answers it uses. */
+function identityScopeOfSession(target: Electron.Session): IdentityScope {
+  for (const partition of wiredPartitions) if (session.fromPartition(partition) === target) return identityScope(partition)
+  return identityScope(DEFAULT_PARTITION)
+}
+
+/** A page (or its popup) wants to open another app: ask first (externalOpen.ts), with its workspace's own "Always allow" answers. */
 function routeExternal(contents: Electron.WebContents, href: string): void {
   if (!externalOpener || contents.isDestroyed()) return
   const isPrivate = contents.session === session.fromPartition(PRIVATE_PARTITION)
-  const result = externalOpener.request({ href, pageUrl: contents.getURL(), isPrivate, owner: contents.id })
+  const result = externalOpener.request({ href, pageUrl: contents.getURL(), isPrivate, owner: contents.id, scope: identityScopeOfSession(contents.session) })
   if (result === 'no-app' && pageView && !viewGone(pageView) && pageView.webContents === contents) {
     const target = classifyExternalUrl(href)
     if (target.kind === 'external') emit({ type: 'navigation-failed', url: `${target.scheme}:`, reason: `No app on this Mac opens ${target.scheme}: links.` })
@@ -2460,14 +2480,20 @@ async function clearPartitionData(partition: string): Promise<void> {
   if (!browsingData?.downloads.receiving(partition)) await target.closeAllConnections().catch(() => undefined)
 }
 
-/** A workspace's own site permissions: prompts still waiting end, and its answers are deleted from disk. */
+/**
+ * A workspace's own site permissions and "Always allow" answers for other apps: prompts still waiting
+ * end, and its answers are deleted from disk.
+ */
 function forgetWorkspacePermissions(workspaceId: string): void {
   sitePermissions?.clear(false, `ws:${workspaceId}`)
   workspacePermissionStores.delete(workspaceId)
-  try {
-    rmSync(join(app.getPath('userData'), workspacePermissionsFile(workspaceId)), { force: true })
-  } catch {
-    // Nothing to remove.
+  externalOpener?.forgetScope(`ws:${workspaceId}`)
+  for (const file of [workspacePermissionsFile, workspaceExternalAppsFile]) {
+    try {
+      rmSync(join(app.getPath('userData'), file(workspaceId)), { force: true })
+    } catch {
+      // Nothing to remove.
+    }
   }
 }
 
@@ -2726,16 +2752,8 @@ const TAB_ARCHIVE_HOUR_MS = Math.max(50, Number(process.env['INTOPONET_TAB_ARCHI
 
 /** Closes a tab into Archived tabs with its back/forward list (it does not go to Recently closed). */
 function archiveTab(tab: OpenTab): ArchivedTab | null {
-  let history: TabHistory | undefined = tab.asleep?.history
-  const live = !viewGone(tab.view)
-  const liveUrl = live ? tab.view.webContents.getURL() : ''
-  if (live && !tab.asleep) {
-    try {
-      history = { entries: tab.view.webContents.navigationHistory.getAllEntries(), index: tab.view.webContents.navigationHistory.getActiveIndex() }
-    } catch {
-      history = undefined
-    }
-  }
+  const history = closingHistory(tab)
+  const liveUrl = !viewGone(tab.view) ? tab.view.webContents.getURL() : ''
   const entry = tabArchive.add({
     url: safeHttpUrl(liveUrl) ? liveUrl : tab.url,
     title: liveTitle(tab) || tab.title,
@@ -4076,20 +4094,29 @@ function inspectPage(view: WebContentsView, at?: { x: number; y: number }): void
   if (at) contents.inspectElement(Math.round(at.x), Math.round(at.y))
 }
 
+/**
+ * The back/forward list a tab takes with it when it closes or is archived. Asleep, its view is blank:
+ * the list it slept with is where it was. Its page crashed and it is still blank (in the background,
+ * or waiting for Reload): the list its crashed page had. Otherwise its page's own.
+ */
+function closingHistory(tab: OpenTab): TabHistory | undefined {
+  if (tab.asleep) return tab.asleep.history
+  if (viewGone(tab.view)) return undefined
+  const current = tab.view.webContents.getURL()
+  const crashed = !current || current === 'about:blank' ? crashRecovery.keptHistory(tab.id) : undefined
+  if (crashed) return crashed
+  try {
+    return { entries: tab.view.webContents.navigationHistory.getAllEntries(), index: tab.view.webContents.navigationHistory.getActiveIndex() }
+  } catch {
+    return undefined
+  }
+}
+
 /** A closing tab joins Recently Closed (with its back/forward list, workspace and folder), unless it is private, untracked or a start page. */
 function rememberClosedTab(tab: OpenTab, workspaceId: string | null): void {
   if (tab.start || privateViews.has(tab.view) || untrackedViews.has(tab.view)) return
-  const live = !viewGone(tab.view)
-  const liveUrl = live ? tab.view.webContents.getURL() : ''
-  // Asleep, its view is blank: the list it slept with is where it was.
-  let history: { entries: Electron.NavigationEntry[]; index: number } | undefined = tab.asleep?.history
-  if (live && !tab.asleep) {
-    try {
-      history = { entries: tab.view.webContents.navigationHistory.getAllEntries(), index: tab.view.webContents.navigationHistory.getActiveIndex() }
-    } catch {
-      history = undefined
-    }
-  }
+  const liveUrl = !viewGone(tab.view) ? tab.view.webContents.getURL() : ''
+  const history = closingHistory(tab)
   closedTabs.remember({
     url: safeHttpUrl(liveUrl) ? liveUrl : tab.url,
     title: liveTitle(tab) || tab.title,
@@ -5220,7 +5247,11 @@ function offerAlwaysOpenHere(url: string, win: BrowserWindow, moveHere: () => bo
 
 function wireBrowsing(): void {
   const settingsFile = join(app.getPath('userData'), 'browsing-settings.json')
-  const rememberedFile = join(app.getPath('userData'), 'external-apps.json')
+  // "Always allow" for other apps: the shared answers, and each workspace with its own sign-ins has its own file.
+  const rememberedFile = (scope: string): string | null => {
+    const name = externalAppsFile(scope)
+    return name ? join(app.getPath('userData'), name) : null
+  }
   const readJson = (path: string): unknown => {
     // A settings file that cannot be read is kept aside, not saved over.
     try { return JSON.parse(readFileSync(path, 'utf8')) as unknown } catch { setAsideUnreadable(path); return null }
@@ -5239,8 +5270,14 @@ function wireBrowsing(): void {
     appName: (href) => {
       try { return app.getApplicationNameForProtocol(href).replace(/\.app$/i, '') } catch { return '' }
     },
-    remembered: readJson(rememberedFile),
-    save: (data) => { trackedWrite(rememberedFile, data).catch((error: unknown) => console.error('Could not save app links:', error)) },
+    load: (scope) => {
+      const file = rememberedFile(scope)
+      return file ? readJson(file) : null
+    },
+    save: (scope, data) => {
+      const file = rememberedFile(scope)
+      if (file) trackedWrite(file, data).catch((error: unknown) => console.error('Could not save app links:', error))
+    },
   })
   handleFromShell(browsingChannels.command, async (_event, value: unknown) => {
     const command = parseBrowsingCommand(value)
@@ -5250,6 +5287,14 @@ function wireBrowsing(): void {
         return null
       case 'external-pending':
         return externalOpener?.list() ?? []
+      case 'get-held-incoming':
+        return incomingBurst.state()
+      case 'open-held-incoming':
+        incomingBurst.openRest()
+        return null
+      case 'dismiss-held-incoming':
+        incomingBurst.dismiss()
+        return null
       case 'settings':
         return browsingSettings()
       case 'set-page-appearance':
@@ -5853,7 +5898,7 @@ app.whenReady().then(async () => {
   // Links and files handed over by other apps (and this launch's own arguments) open as tabs now.
   startup('opening links from other apps', () => {
     for (const target of incomingTargetsFromArgs(process.argv, process.cwd(), readSmallFile)) incomingOpens.push(target)
-    incomingOpens.ready(openIncoming)
+    incomingOpens.ready((target) => incomingBurst.push(target))
   })
 
   startup('public field', () => {

@@ -90,8 +90,15 @@ export type LinkRoutesState = {
 
 export const LINK_ROUTE_SITE_MAX = 253
 
+/**
+ * Links from other apps held back after a burst (more than 6 within 3 seconds): "Opened `opened` of
+ * `total` links from another app", with "Open the rest".
+ */
+export type HeldIncomingLinks = { opened: number; total: number }
+
 export type BrowsingEvent =
   | { type: 'external-request'; request: ExternalOpenRequest }
+  | { type: 'incoming-held'; held: HeldIncomingLinks | null }
   | { type: 'external-resolved'; id: string }
   | { type: 'settings'; settings: BrowsingSettings }
   | { type: 'link-routes'; state: LinkRoutesState }
@@ -99,6 +106,9 @@ export type BrowsingEvent =
 export type BrowsingCommand =
   | { type: 'external-decide'; id: string; decision: 'open' | 'cancel'; always: boolean }
   | { type: 'external-pending' }
+  | { type: 'get-held-incoming' }
+  | { type: 'open-held-incoming' }
+  | { type: 'dismiss-held-incoming' }
   | { type: 'settings' }
   | { type: 'set-page-appearance'; appearance: PageAppearance }
   | { type: 'make-default-browser' }
@@ -116,6 +126,12 @@ export type BrowsingCommand =
 export interface BrowsingApi {
   decideExternal(id: string, decision: 'open' | 'cancel', always?: boolean): Promise<void>
   pendingExternal(): Promise<ExternalOpenRequest[]>
+  /** Links from other apps held back after a burst (null: none). */
+  heldIncoming(): Promise<HeldIncomingLinks | null>
+  /** "Open the rest": the held links open. */
+  openHeldIncoming(): Promise<void>
+  /** The held links are dropped. */
+  dismissHeldIncoming(): Promise<void>
   settings(): Promise<BrowsingSettings>
   setPageAppearance(appearance: PageAppearance): Promise<BrowsingSettings>
   /** Asks macOS to make Intoponet the default browser (macOS shows its own confirmation). */
@@ -187,6 +203,9 @@ export function parseBrowsingCommand(value: unknown): BrowsingCommand {
       if (!linkRouteText(v['id'], 80)) break
       return { type: 'remove-link-route', id: v['id'] as string }
     case 'external-pending':
+    case 'get-held-incoming':
+    case 'open-held-incoming':
+    case 'dismiss-held-incoming':
     case 'settings':
     case 'make-default-browser':
     case 'get-link-routes':
