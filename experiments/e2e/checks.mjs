@@ -1333,7 +1333,10 @@ export const checks = {
       expect(seen.rows.some((r) => r.kind === 'search'), 'No "Search for" row.')
       await ctx.shot('completion')
       await axeAudit(ctx, 'the address bar suggestions')
-      // ⌘↵: a background tab; the globe stays in front.
+      // ⌘↵: a background tab; the globe stays in front. Typed again just before: another check's window can take the
+      // keyboard during the audit, and the blur drops the completion (as it should), so ⌘↵ would search "localh".
+      seen = await typeHost('localh')
+      expect(seen.value === host && seen.selected === host.slice('localh'.length), `Typing "localh" again showed "${seen.value}" (selected "${seen.selected}"), not the inline completion "${host}".`)
       await enter(4)
       let after = await state()
       let open = await tabs()
