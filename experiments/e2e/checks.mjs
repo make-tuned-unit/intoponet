@@ -1620,7 +1620,13 @@ export const checks = {
       expect(beforeCrash && beforeCrash.urls.length >= 2 && beforeCrash.urls.includes(`${url}?earlier`), `The page has no back/forward list to keep: ${JSON.stringify(beforeCrash)}.`)
       expect(await crashPage(), 'The page to crash is not open.')
       await ctx.delay(1500)
-      await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.title === 'Browsing test' && !s.isLoading)`, 15_000, 'the page to load again after a crash')
+      await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.title === 'Browsing test' && !s.isLoading)`, 15_000, 'the page to load again after a crash').catch(async (error) => {
+        // Timed out once under load with nothing to go on: say what the tab and its page were doing then.
+        const settle = (promise) => Promise.race([promise.catch((e) => `failed: ${e.message}`), ctx.delay(5000).then(() => 'no answer in 5 s')])
+        const tab = await settle(panelState(ctx).then((s) => ({ url: s.url, title: s.title, isLoading: s.isLoading, loadError: s.loadError?.title ?? null })))
+        const pages = await settle(ctx.main(`JSON.stringify(electron.webContents.getAllWebContents().filter((c) => c.getURL().startsWith(${JSON.stringify(url)})).map((c) => ({ id: c.id, url: c.getURL(), crashed: c.isCrashed(), loading: c.isLoading(), title: c.getTitle() })))`).then(JSON.parse))
+        throw new CheckFailure(`${error.message} (the tab: ${JSON.stringify(tab)}; its pages: ${JSON.stringify(pages)})`)
+      })
       const afterCrash = await historyOf()
       expect(JSON.stringify(afterCrash) === JSON.stringify(beforeCrash), `After a crash the page came back without its back/forward list: ${JSON.stringify(afterCrash)}, before ${JSON.stringify(beforeCrash)}.`)
       expect((await panelState(ctx)).canGoBack, 'After a crash Back is not offered.')
