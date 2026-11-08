@@ -2940,9 +2940,10 @@ export function App() {
           tourOpenedPage.current = tab ?? true
         }
         if (!current()) return
-        // Shown and hidden in one go (main handles the two in this order), so it never shows over the tour.
-        if (tab) void window.intoponet.browserHost.activateTab(tab).catch(() => undefined)
+        // Covered first, then brought to the front (main handles the two in this order): it never shows over the tour,
+        // and stays covered through the re-layouts that follow (the sidebar opening, the page loading).
         void window.intoponet.captures.setPageHidden(true)
+        if (tab) void window.intoponet.browserHost.activateTab(tab).catch(() => undefined)
         for (let i = 0; i < 40 && current() && !document.querySelector('.browser-actions'); i += 1) await new Promise((resolve) => setTimeout(resolve, 100))
       })
       tourPageQueue.current = shown.catch(() => undefined)

@@ -53,6 +53,7 @@ function setup(options: { privateView?: 'left' | 'right' } = {}) {
     window: () => window as never,
     pageView: () => shown as never,
     pageAttached: () => true,
+    setPageCovered: vi.fn(),
     isPrivate: (view) => !!options.privateView && view === (views[options.privateView] as never),
   })
   return { service, left, right, views, events, saved, show: (view: ReturnType<typeof fakeView>) => { shown = view } }

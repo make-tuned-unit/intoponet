@@ -66,6 +66,8 @@ export class CaptureService {
       window: () => BrowserWindow | null
       pageView: () => WebContentsView | null
       pageAttached: () => boolean
+      /** Hides the shown page (both sides of a pair) until shown again, through any re-layout meanwhile. */
+      setPageCovered: (covered: boolean) => void
       /** A private tab's page (its captures keep nothing about the page). */
       isPrivate?: (view: WebContentsView) => boolean
     },
@@ -81,8 +83,7 @@ export class CaptureService {
   }
 
   private setPageHidden(hidden: boolean): void {
-    const view = this.host.pageView()
-    if (view && this.host.pageAttached()) view.setVisible(!hidden)
+    this.host.setPageCovered(hidden)
   }
 
   private takePending(pendingId: string, keep = false): Pending {

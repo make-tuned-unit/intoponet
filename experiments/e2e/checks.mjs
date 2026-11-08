@@ -1964,6 +1964,28 @@ export const checks = {
 
   // ---- Settings, translation, Laya -----------------------------------------
   async SETTINGS(ctx) {
+    // Settings floats over a page. The page is a native view drawn above the interface: it stays hidden while Settings
+    // is open, through a re-layout (the sidebar hidden and shown again), and comes back when Settings closes.
+    const server = createServer((_req, res) => { res.writeHead(200, { 'content-type': 'text/html' }); res.end('<!doctype html><title>Under settings</title><p>A page under Settings.</p>') })
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+    const pageShown = `electron.BrowserWindow.getAllWindows()[0].contentView.children.some((view) => view.getVisible() && view.webContents.getURL().includes('/under-settings'))`
+    const toggleSidebar = `(() => { electron.BrowserWindow.getAllWindows()[0].webContents.send('browser-host:event', { type: 'shortcut', action: 'toggle-tab-sidebar' }); return true })()`
+    try {
+      await openPage(ctx, `http://127.0.0.1:${server.address().port}/under-settings`, 1500)
+      expect(await ctx.main(pageShown), 'The page is not on screen before Settings opens.')
+      await openPanel(ctx, 'Settings')
+      expect(!(await ctx.main(pageShown)), 'The page is drawn over Settings.')
+      await ctx.main(toggleSidebar)
+      await ctx.delay(700)
+      await ctx.main(toggleSidebar)
+      await ctx.delay(900)
+      expect(!(await ctx.main(pageShown)), 'With Settings open, the page came back over it when the sidebar was hidden and shown again.')
+      await ctx.click('[aria-label="Close settings"]')
+      const back = await (async () => { for (let i = 0; i < 20; i += 1) { if (await ctx.main(pageShown)) return true; await ctx.delay(150) } return false })()
+      expect(back, 'The page did not come back when Settings closed.')
+    } finally {
+      server.close()
+    }
     await openPanel(ctx, 'Settings')
     const text = await ctx.evaluate(`document.querySelector('.settings-pane')?.innerText ?? ''`)
     for (const piece of ['Read the web in', 'Translate pages', 'Downloaded languages', 'Beacons', 'Credits and licences', 'Privacy']) expect(text.includes(piece), `Settings is missing "${piece}".`)
@@ -1973,7 +1995,7 @@ export const checks = {
     await ctx.delay(500)
     const privacy = await ctx.evaluate(`document.querySelector('.privacy-pane')?.innerText ?? ''`)
     for (const piece of ['Private browsing', 'Footprints', 'Sites to leave out', 'Your pins on the globe', 'Backups']) expect(privacy.includes(piece), `Privacy is missing "${piece}".`)
-    return 'Settings and Privacy sections present.'
+    return 'Settings and Privacy sections present; a page under Settings stays hidden through a re-layout and comes back when it closes.'
   },
 
   async AUTO_TRANSLATE(ctx) {
@@ -2509,12 +2531,15 @@ export const checks = {
     // The step's own name (its progress dot); the card's heading animates from one step to the next.
     const stepTitle = `(document.querySelector('.tour-progress [aria-current="step"]')?.getAttribute('aria-label') ?? '').replace(/^Step \\d+: /, '')`
     // What a step shows: the selector its spotlight found, whether its card is on top, and what is open behind it.
-    const scene = `JSON.stringify({ title: ${stepTitle}, onTop: (() => { const r = document.querySelector('.tour-card').getBoundingClientRect(); return !!document.elementFromPoint(r.left + r.width / 2, r.top + 30)?.closest('.tour') })(), lit: document.querySelector('.tour-spotlight')?.dataset.target ?? null, page: !!document.querySelector('.browser-actions'), olds: !!document.querySelector('.olds-sheet'), bookmarks: !!document.querySelector('.bookmark-pane'), library: !!document.querySelector('.bookmark-drawer'), knowledge: !!document.querySelector('.knowledge-sheet'), rail: document.querySelector('.tab-rail')?.classList.contains('is-open') ?? null, typed: document.querySelector('.command-input input')?.value ?? '' })`
+    const scene = `JSON.stringify({ title: ${stepTitle}, onTop: (() => { const r = document.querySelector('.tour-card').getBoundingClientRect(); return !!document.elementFromPoint(r.left + r.width / 2, r.top + 30)?.closest('.tour') })(), lit: document.querySelector('.tour-spotlight')?.dataset.target ?? null, page: !!document.querySelector('.browser-actions'), olds: !!document.querySelector('.olds-sheet'), bookmarks: !!document.querySelector('.bookmark-pane'), paneCovered: (() => { const pane = document.querySelector('.bookmark-pane')?.getBoundingClientRect(); return !!pane && [...document.querySelectorAll('.story-highest, .globe-panel-pill')].some((el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.right > pane.left && r.left < pane.right && r.bottom > pane.top && r.top < pane.bottom }) })(), library: !!document.querySelector('.bookmark-drawer'), knowledge: !!document.querySelector('.knowledge-sheet'), rail: document.querySelector('.tab-rail')?.classList.contains('is-open') ?? null, typed: document.querySelector('.command-input input')?.value ?? '' })`
     const settle = async (step) => {
       await ctx.wait(`document.querySelector('.tour-count')?.textContent.startsWith('${step} of') && !document.querySelector('.tour-next')?.textContent.includes('Showing')`, 45_000, `tour step ${step} to finish showing`)
       await ctx.wait(`document.getElementById('tour-title')?.textContent === ${stepTitle}`, 5000, `tour step ${step}'s card`)
       await ctx.delay(700)
-      return JSON.parse(await ctx.evaluate(scene))
+      const state = JSON.parse(await ctx.evaluate(scene))
+      // A web page is a native view drawn above the whole interface: shown during the tour, it covers the card and the spotlight.
+      state.pageOnScreen = await ctx.main(`electron.BrowserWindow.getAllWindows()[0].contentView.children.some((view) => view.getVisible() && /^https?:/.test(view.webContents?.getURL?.() ?? ''))`)
+      return state
     }
     const shown = []
     // The tour's page is never saved with the open tabs (a crash or quit mid-tour would bring it back).
@@ -2530,10 +2555,12 @@ export const checks = {
       const centred = ['A browser with the whole world in view', 'The everyday things, done carefully'].includes(state.title)
       if (!centred && !state.lit) missed.push(`${step}. ${state.title}`)
       if (!state.onTop) missed.push(`${step}. ${state.title} (its card is covered)`)
+      if (state.pageOnScreen) missed.push(`${step}. ${state.title} (the web page is drawn over the tour)`)
+      if (state.paneCovered) missed.push(`${step}. ${state.title} (a globe control sits on the bookmarks pane)`)
       if (['The news rises as mountains', 'Follow a story around the world', 'Two outlets, side by side', 'Tabs down the side, in every view', 'Save any page as a clean PDF', 'Tabs that know their story', 'Tidy suggests the folders', 'Anchor a workspace to a place', 'Links from other apps go where they belong'].includes(state.title)) await ctx.shot(`step-${step}`)
       if (step < total) await ctx.click('.tour-next')
     }
-    expect(missed.length === 0, `These tour steps point at nothing: ${missed.join('; ')}.`)
+    expect(missed.length === 0, `These tour steps do not show what they describe: ${missed.join("; ")}.`)
     // Exact spotlights: Compare under the world story's sources; the tab and workspace steps with the (hidden) sidebar open.
     const compareStep = shown.find((state) => state?.title === 'Two outlets, side by side')
     expect(compareStep?.lit === '.sc-compare', `The Compare step lit ${compareStep?.lit}, not the Compare button under the story's sources.`)

@@ -1051,9 +1051,22 @@ function setPageHeld(held: boolean): void {
   if (companionView) companionView.setVisible(pageViewShown(companionView))
 }
 
-/** The page view is drawn unless the shell draws over it (start page, error page, held). */
+/**
+ * A panel the shell draws over the page (Settings, Knowledge, Absorb, a capture's crop, the tour): the page
+ * stays hidden until the shell shows it again, through any re-layout meanwhile (the sidebar opening, a
+ * resize, the page finishing loading), and whichever tab comes to the front.
+ */
+let pageCovered = false
+
+function setPageCovered(covered: boolean): void {
+  pageCovered = covered
+  if (pageView && pageAttached) pageView.setVisible(pageViewShown(pageView))
+  if (companionView) companionView.setVisible(pageViewShown(companionView))
+}
+
+/** The page view is drawn unless the shell draws over it (start page, error page, held, covered by a panel). */
 function pageViewShown(view: WebContentsView): boolean {
-  return !pageHeld && !isStartView(view) && !openTabs.some((tab) => tab.view === view && tab.loadError)
+  return !pageHeld && !pageCovered && !isStartView(view) && !openTabs.some((tab) => tab.view === view && tab.loadError)
 }
 
 function attachPageView(): void {
@@ -4301,6 +4314,8 @@ async function handleBrowserCommand(
       break
     case 'close':
       detachActive()
+      // Back to the globe: a panel that covered the page has nothing to cover now (a page shown later is drawn).
+      pageCovered = false
       schedulePersistentStateSave()
       emitTabs()
       break
@@ -5341,7 +5356,7 @@ app.whenReady().then(async () => {
       process.env['INTOPONET_CAPTURE_ROOT'] || join(app.getPath('pictures'), 'Intoponet'),
       { trash: (path) => shell.trashItem(path) },
     )
-    captures = new CaptureService(captureLibrary, { window: () => window, pageView: () => pageView, pageAttached: () => pageAttached, isPrivate: (view) => privateViews.has(view) })
+    captures = new CaptureService(captureLibrary, { window: () => window, pageView: () => pageView, pageAttached: () => pageAttached, setPageCovered, isPrivate: (view) => privateViews.has(view) })
     // Import anything saved by the earlier encrypted store, once.
     void migrateEncryptedCaptures(join(app.getPath('userData'), 'captures'), captureLibrary, async (sealed) => (await safeStorage.decryptStringAsync(sealed)).result)
       .catch(() => 0)

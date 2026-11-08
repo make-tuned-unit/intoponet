@@ -2057,6 +2057,8 @@ li.is-open .place-trend-chevron { transform: rotate(180deg); }
 .story-highest:hover { border-color: rgba(255, 209, 102, 0.7); background: var(--lg-hover); }
 .story-highest:focus-visible { outline: 2px solid #ffd166; outline-offset: 2px; }
 .story-highest kbd { padding: 1px 5px; border-radius: 4px; background: rgba(255, 255, 255, 0.08); color: var(--muted); font: 10.5px/1.4 ui-monospace, monospace; }
+/* Beside the bookmarks pane (28px from the edge, 328px wide), not under its footer. */
+.app-shell.bookmarks-open .story-highest { right: 372px; }
 
 .story-panel {
   position: fixed;
