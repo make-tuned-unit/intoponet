@@ -3181,6 +3181,8 @@ export const checks = {
       expect(papers && closing?.folderId === papers.id, `research-b is not in Papers before closing: ${JSON.stringify(closing)}.`)
       await ctx.evaluate(`${host}.closeTab(${JSON.stringify(closing.id)}).then(() => true)`)
       await ctx.delay(400)
+      // Papers is folded meanwhile: reopening opens it, so the tab is in sight.
+      await ctx.evaluate(`${host}.updateTabFolder(${JSON.stringify(papers.id)}, { collapsed: true }).then(() => true)`)
       await ctx.evaluate(`${ws}.switchTo({ id: ${JSON.stringify(mainId)} }).then(() => true)`)
       await ctx.delay(600)
       await ctx.evaluate(`${host}.reopenClosedTab().then(() => true)`)
@@ -3188,6 +3190,9 @@ export const checks = {
       await ctx.wait(`${host}.getTabs().then((t) => t.some((x) => x.active && x.url.endsWith('/research-b')))`, 6000, 'the reopened tab to be shown in Reading')
       const reopened = (await tabs()).find((tab) => tab.url.endsWith('/research-b'))
       expect(reopened.folderId === papers.id, `The reopened tab came back outside its folder (folder ${reopened.folderId ?? 'none'}).`)
+      const papersNow = JSON.parse(await ctx.evaluate(`${host}.getTabFolders().then((f) => JSON.stringify(f))`)).find((folder) => folder.id === papers.id)
+      expect(papersNow && !papersNow.collapsed, 'The reopened tab came back in its folder, but the folder stayed folded.')
+      await ctx.wait(`!!document.querySelector('.tab-rail-list [data-tab-id=${JSON.stringify(reopened.id)}]')`, 3000, 'the reopened tab to be in sight in its folder')
       expect((await tabs()).map((tab) => tab.url.split('/').pop()).join(' ') === 'research-a research-b research-c', `After reopening, Reading holds: ${(await tabs()).map((tab) => tab.url).join(', ')}.`)
       return `Created, named (icon and colour), renamed, reordered, deleted with confirmation and Undo; each workspace kept its own pinned tab, folder and open tabs; ⌃1/⌃2 switched in ${Math.round(times[0])}–${Math.round(slowest)} ms with the other workspace's sleeping tab left asleep; command menu, swipe and keyboard switched; shared and own favourites; private tabs in no workspace and never saved; restored after a restart and migrated a version 2 state into Main; a tab closed in a folder reopened from another workspace came back in its workspace and folder; axe clean.`
     } finally {

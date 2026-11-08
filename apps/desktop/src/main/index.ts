@@ -4006,6 +4006,8 @@ function reopenTab(entry: { url: string; title: string; favicon: string; history
   } else {
     openTabs.splice(0, openTabs.length, ...folderedOrder([...openTabs, tab], tabFolders))
   }
+  // Back in a folded folder, the folder opens so the tab is in sight (as moving it in with ⌥⇧↑/↓ does).
+  if (place.folderId && revealFolder(parked ? parked.folders : tabFolders, place.folderId) && !parked) emitTabFolders()
   if (show) {
     if (parked) switchWorkspace({ id: place.workspaceId })
     if (activeTabId !== tab.id || !pageAttached) showTab(tab.id)
