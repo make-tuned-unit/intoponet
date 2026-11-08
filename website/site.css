@@ -109,11 +109,11 @@ header nav a[aria-current="true"]{color:var(--into-teal)}
 @media(max-width:760px){:root{--header-h:64px}}
 @media(prefers-reduced-motion:reduce){header{transition:none}}
 
-/* Hero: a plain headline in two lines, facts beside the button, and the way in for people leaving Arc. */
+/* Hero: the brand line, a plain statement of what intoponet is beneath it, facts beside the button, and the way in
+   for people leaving Arc. */
 .hero-copy{width:66%}
-.hero h1{font-size:clamp(50px,5.5vw,86px);max-width:none}
-@media(max-width:1050px){.hero-copy{width:76%}.hero h1{font-size:clamp(46px,6.4vw,66px)}}
-@media(max-width:760px){.hero-copy{width:100%}.hero h1{font-size:clamp(28px,8.3vw,60px)}}
+@media(max-width:1050px){.hero-copy{width:76%}}
+@media(max-width:760px){.hero-copy{width:100%}}
 /* The release facts are read before downloading: legible, not fine print. */
 .hero-availability{font-size:12.5px;line-height:1.5;color:#9eb8c0}
 @media(max-width:760px){.hero-availability{font-size:12px}}
