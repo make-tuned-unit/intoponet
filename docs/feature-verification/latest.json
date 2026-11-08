@@ -1,24 +1,24 @@
 {
-  "started": "2026-11-07T19:50:59.329Z",
-  "finished": "2026-11-07T20:20:05.325Z",
+  "started": "2026-11-08T01:35:26.135Z",
+  "finished": "2026-11-08T02:02:41.831Z",
   "tier": "full",
   "only": null,
   "summary": "63 passed, 0 failed, 0 blocked, 0 skipped",
   "results": {
     "BUILD": {
       "status": "pass",
-      "notes": "npm run typecheck · npm test · npm run build",
-      "seconds": 35
+      "notes": "Skipped with --skip-build (current build reused).",
+      "seconds": 0
     },
     "APP_BOOT": {
       "status": "pass",
-      "notes": "Header: Private · Bookmarks · The Olds · Knowledge · My map · Settings. A damaged profile opened, its unreadable files kept aside.",
-      "seconds": 5
+      "notes": "Header: Private · Bookmarks · The Olds · Knowledge · My map · Settings. A damaged profile opened, its unreadable files kept aside and an earlier run's unfinished temporary files deleted. The app window reloaded after its page crashed and after it hung, with its tabs, pair and page area, no view or listener added and a running tour's page closed; closed, it came back with its tabs from the Dock (a quick window open) and from File › New Tab.",
+      "seconds": 17
     },
     "SETTINGS": {
       "status": "pass",
-      "notes": "Settings and Privacy sections present.",
-      "seconds": 5
+      "notes": "Settings and Privacy sections present; a page under Settings stays hidden through a re-layout and comes back when it closes.",
+      "seconds": 9
     },
     "ACCESSIBILITY": {
       "status": "pass",
@@ -57,13 +57,13 @@
     },
     "GLOBE_LIVE": {
       "status": "pass",
-      "notes": "313 public signals across 4 active layers. Hover to preview, click to explore, or search a place below.",
+      "notes": "352 public signals across 4 active layers. Hover to preview, click to explore, or search a place below.",
       "seconds": 10
     },
     "SOURCE_CAROUSEL": {
       "status": "pass",
-      "notes": "Cards with 10 images, 4 bylines, 4 summaries. Carousel flipped from dw.com to The Times of India; chose \"Deutsche Welle: Trump offers White House press secretary role to Dana White. Pre\" and the browser opened https://www.dw.com/en/trump-offers-white-house-press-secretary-role-to-dana-white/a-79888119?maca=en-rss-en-all-1573-xml-mrss (page was closed before).",
-      "seconds": 23
+      "notes": "Cards with 10 images, 2 bylines, 4 summaries. Carousel flipped from SBS News to Público; chose \"SBS News World: Donald Trump offers UFC chief Dana White job as White House pres\" and the browser opened https://www.sbs.com.au/news/article/dana-white-donald-trump-press-secretary/12d59nzjm (page was closed before).",
+      "seconds": 24
     },
     "WORLD_STORIES": {
       "status": "pass",
@@ -73,47 +73,47 @@
     "COUNTRY_PANEL": {
       "status": "pass",
       "notes": "Facts ok, recent history 2025, 2024, 2022, 2020, 12 headlines.",
-      "seconds": 40
+      "seconds": 41
     },
     "OLDS_HEADLINE": {
       "status": "pass",
       "notes": "Israel → 2026 Israeli legislative election: 19 dated events from 10 Apr 1973; Ebola, South Africa and Guernsey guards ok; related Judiciary of Israel, Israeli law, Politics of Israel, Elections in Israel. Brazil → 2026 Brazilian general election. Honduras → Honduras.",
-      "seconds": 92
+      "seconds": 99
     },
     "OLDS_COUNTRY": {
       "status": "pass",
       "notes": "Capital Tórshavn; 7 chapters; latest event 2025.",
-      "seconds": 7
+      "seconds": 11
     },
     "OLDS_DEBATE": {
       "status": "pass",
       "notes": "Anthropologist Joseph Henrich, Rodney Stark, Historian Joel Mokyr, Williams, Voltaire, Bob Allen",
-      "seconds": 3
+      "seconds": 4
     },
     "OLDS_UI": {
       "status": "pass",
       "notes": "Views Story/Timeline/List; sections: HOW WE GOT HERE, TOPICS BEHIND THIS STORY.",
-      "seconds": 28
+      "seconds": 31
     },
     "OLDS_COVERAGE": {
       "status": "pass",
-      "notes": "“Trump offers White House press secretary role to Dana White”: 1 headlines (NOVEMBER 2026 – NOVEMBER 2026), then 1 reaching NOVEMBER 2026; Go further back",
-      "seconds": 37
+      "notes": "“Trump offers press secretary role to UFC chief Dana White”: 4 headlines (NOVEMBER 2026 – NOVEMBER 2026), then 5 reaching OCTOBER 2026; Go further back",
+      "seconds": 31
     },
     "BROWSE": {
       "status": "pass",
-      "notes": "Toolbar: Protected, Translate, Capture, PDF, Pin, Absorb, Bookmarks; pages see Chrome/156.0.8078.48; tab closed cleanly; a self-closing page took its tab; ⌘W closed tabs from inside the page, ⌘⇧T reopened one, ⌘= zoom shown and kept for the site, ⌘1/⌘9 picked tabs; the app window stayed on the app.",
-      "seconds": 31
+      "notes": "Toolbar: Protected, Translate, Capture, PDF, Pin, Absorb, Bookmarks; pages see Chrome/156.0.8078.48; tab closed cleanly; a self-closing page took its tab; a background tab loaded in 0.4 s, was throttled again and stayed silent until shown; ⌘W closed tabs from inside the page, ⌘⇧T reopened one, ⌘= zoom shown and kept for the site, ⌘1/⌘9 picked tabs; the app window stayed on the app.",
+      "seconds": 35
     },
     "OMNIBOX": {
       "status": "pass",
-      "notes": "\"localh\" completed to localhost:56138; history row opened in a background tab with ⌘↵; then \"Switch to tab\" landed on it (1 tab); Backspace removed the completion; \"Fredericton\" flew the globe.",
+      "notes": "\"localh\" completed to localhost:61814; history row opened in a background tab with ⌘↵; then \"Switch to tab\" landed on it (1 tab); Backspace removed the completion; \"Fredericton\" flew the globe.",
       "seconds": 22
     },
     "PROTECTION": {
       "status": "pass",
       "notes": "Protected · 3 ads · 0 trackers blocked · Block ads · Block trackers · Encrypted DNS · Local IP hidden · No VPN · Customize site · Pause on this site",
-      "seconds": 13
+      "seconds": 14
     },
     "PERMISSIONS": {
       "status": "pass",
@@ -122,13 +122,13 @@
     },
     "EXTERNAL_APPS": {
       "status": "pass",
-      "notes": "\"Open Mail? 127.0.0.1:57242 wants to open mailto:someone@example.com?subject=Hello\" asked for a mailto: link; the tab stayed on http://127.0.0.1:57242/; Cancel closed it and no prompt storm followed.",
+      "notes": "\"Open Mail? 127.0.0.1:63022 wants to open mailto:someone@example.com?subject=Hello\" asked for a mailto: link; the tab stayed on http://127.0.0.1:63022/; Cancel closed it and no prompt storm followed.",
       "seconds": 7
     },
     "ERROR_PAGE": {
       "status": "pass",
-      "notes": "\"127.0.0.1:57448 refused to connect\" with Retry; toolbar kept http://127.0.0.1:57448/; Retry loaded the page once a server listened; a self-signed site showed \"Connection not secure\" with its certificate and Back returned.",
-      "seconds": 7
+      "notes": "\"127.0.0.1:63249 refused to connect\" with Retry; toolbar kept http://127.0.0.1:63249/; Retry loaded the page once a server listened; a self-signed site showed \"Connection not secure\" with its certificate and Back returned.",
+      "seconds": 9
     },
     "PDF_VIEWER": {
       "status": "pass",
@@ -137,18 +137,18 @@
     },
     "PAGE_APPEARANCE": {
       "status": "pass",
-      "notes": "Pages: dark→dark, light→light, system→light, dark mode canvas: plain 255,255,255, dark 18,18,18 (system is light); Settings shows the choice and default-browser status.",
+      "notes": "Pages: dark→dark, light→light, system→dark, dark mode canvas: plain 255,255,255, dark 18,18,18 (system is dark); Settings shows the choice and default-browser status.",
       "seconds": 18
     },
     "PRIVATE_BROWSING": {
       "status": "pass",
-      "notes": "Private tab marked, no footprints, closed when private mode ended.",
-      "seconds": 11
+      "notes": "Private tab marked, no footprints, closed when private mode ended; its HTTP sign-in did not outlive it.",
+      "seconds": 20
     },
     "SAVED_PASSWORDS": {
       "status": "pass",
-      "notes": "Failed sign-in not offered; offered, saved, bookmarked in Accounts (sealed file, no plaintext), filled one account (password only after a real click; a script click did not release it), asked between two, listed in Settings; private tab untouched (localhost:58938).",
-      "seconds": 25
+      "notes": "Failed sign-in not offered; offered, saved, bookmarked in Accounts (sealed file, no plaintext), filled one account (password only after a real click; a script click did not release it), asked between two, listed in Settings; private tab untouched (localhost:64621).",
+      "seconds": 24
     },
     "EXCLUDED_SITES": {
       "status": "pass",
@@ -157,23 +157,23 @@
     },
     "DOWNLOADS_HISTORY": {
       "status": "pass",
-      "notes": "Downloaded 640 KB with progress → done; on disk with quarantine \"0083;6aef837d;Intoponet;03E4B065-8AE5-480D-9312-A0E7279AC6A9\"; History found and deleted a visit; private visit not kept; a quit waited for the late history and library saves and left no temporary files.",
-      "seconds": 21
+      "notes": "Downloaded 640 KB with progress → done; on disk with quarantine \"0083;6aefd43f;Intoponet;AA85F0A0-3F18-43AF-BAFB-0B4B0BB452D5\"; History found and deleted a visit; private visit not kept; a quit waited for the late history and library saves and left no temporary files.",
+      "seconds": 22
     },
     "CAPTURE": {
       "status": "pass",
       "notes": "Screenshot saved; \"New folder…\" offered; a private tab's capture is named neutrally with no address.",
-      "seconds": 16
+      "seconds": 15
     },
     "PDF_EXPORT": {
       "status": "pass",
       "notes": "Article: 5 pages, 2 images, tagged with outline, ads/hidden/overlay text left out, bookmarked in \"Reading\" with the PDF linked; shop page saved as seen without ads; private tab asked where, neutral name, no Where-from or bookmark; 2 PDFs in Bookmarks › PDFs (private one not listed), removing one keeps the file.",
-      "seconds": 45
+      "seconds": 44
     },
     "PAYWALL_ALTERNATIVES": {
       "status": "pass",
       "notes": "nytimes.com section page: paywalled=false (no signals).",
-      "seconds": 23
+      "seconds": 24
     },
     "ABSORB": {
       "status": "pass",
@@ -187,17 +187,17 @@
     },
     "AUTO_TRANSLATE": {
       "status": "pass",
-      "notes": "fontanka.ru translated from Russian with no clicks (Russian downloaded by itself; 2990 Latin vs 0 Cyrillic letters); \"Never translate this site\" sticks.",
-      "seconds": 284
+      "notes": "fontanka.ru translated from Russian with no clicks (Russian downloaded by itself; 2980 Latin vs 0 Cyrillic letters); \"Never translate this site\" sticks.",
+      "seconds": 187
     },
     "ROUGH_TRANSLATE": {
       "status": "pass",
       "notes": "Faroese headlines translated roughly via Icelandic, labelled as such.",
-      "seconds": 37
+      "seconds": 25
     },
     "STORY_MOUNTAINS": {
       "status": "pass",
-      "notes": "60 story mountains; highest \"Paraguay President Santiago Peña Impeached and Arrested Amid Massive Banking Scandal\" (28 outlets, 11 other countries); a pinned story that wore away stayed unpinned.",
+      "notes": "60 story mountains; highest \"Israel president taps Eisenkot to form new government\" (27 outlets, 8 other countries); a pinned story that wore away stayed unpinned.",
       "seconds": 15
     },
     "COPY_ADDRESS": {
@@ -208,12 +208,12 @@
     "PINNED_HOME": {
       "status": "pass",
       "notes": "Pinned at home; same-site moves stay home, another site offers the way back; ⌘W unloads it in place and it reopens at home; saved with its home.",
-      "seconds": 13
+      "seconds": 12
     },
     "TAB_SLEEP": {
       "status": "pass",
-      "notes": "9 background tabs slept (typed text and the front tab stayed awake); their pages' memory 944 MB → 178 MB; woke on the same page, scroll and back list; a busy background page did not hold up the others.",
-      "seconds": 27
+      "notes": "9 background tabs slept (typed text and the front tab stayed awake); their pages' memory 1016 MB → 186 MB; woke on the same page, scroll and back list; a busy background page did not hold up the others; a tab closed asleep reopened with its back list; an address typed while a tab woke was not replaced by its old page.",
+      "seconds": 44
     },
     "RECENT_TABS": {
       "status": "pass",
@@ -228,22 +228,22 @@
     "BROWSER_IMPORT": {
       "status": "pass",
       "notes": "Found Chrome (Person 1) and Arc; previewed counts with history and passwords off; imported 4 bookmarks as 4 collections, 2 history pages and 1 sealed password from Chrome, and 2 pinned tabs (with homes), 1 open tab and the Work, Home and Work › Reading collections from Arc; a second run added nothing; keyboard and axe clean.",
-      "seconds": 14
+      "seconds": 13
     },
     "TOUR": {
       "status": "pass",
-      "notes": "All 35 steps shown, each spotlight on what it describes, the same played forward, gone back to and jumped to; the tour put everything back at the end, its own tab closed. With Wikipedia unreachable The Olds step moved on 0.1 s after The Olds had looked (4.9 s in all: \"Could not reach Wikidata. Check your connection and try again.\").",
-      "seconds": 173
+      "notes": "All 35 steps shown, each spotlight on what it describes, the same played forward, gone back to and jumped to; the tour put everything back at the end, its own tab closed. With Wikipedia unreachable The Olds step moved on 0.1 s after The Olds had looked (4.4 s in all: \"Could not reach Wikidata. Check your connection and try again.\").",
+      "seconds": 175
     },
     "TAB_ARCHIVE": {
       "status": "pass",
       "notes": "Unseen unpinned tabs archived (pinned, typed and private ones stayed); \"2 tabs archived\" with Undo, back in their folder; found from the address bar in another workspace and reopened in its own, with its back list; cleared with history.",
-      "seconds": 16
+      "seconds": 15
     },
     "COMMAND_MENU": {
       "status": "pass",
-      "notes": "⌘K from a page shows command mode in 29 ms (p95); \">\" too; no requests while typing; actions, tabs and places ranked; keyboard and Enter run them (copy, zoom, sidebar, protection, Knowledge); axe clean.",
-      "seconds": 19
+      "notes": "⌘K from a page shows command mode in 26 ms (p95); \">\" too; no requests while typing; actions, tabs and places ranked; keyboard and Enter run them (copy, zoom, sidebar, protection, Knowledge); axe clean.",
+      "seconds": 21
     },
     "TAB_FOLDERS": {
       "status": "pass",
@@ -253,22 +253,22 @@
     "AD_SLOTS": {
       "status": "pass",
       "notes": "Blocked ad frame, ad picture and empty slot collapsed (0 px); story text kept (19 px box with text stays); left alone with protection paused.",
-      "seconds": 12
+      "seconds": 13
     },
     "LINK_PREVIEW": {
       "status": "pass",
       "notes": "⇧-click and Preview Link opened a 80% × 80% card with no new window or tab and the page under it unchanged; ads blocked (pagead2.googlesyndication.com, securepubads.g.doubleclick.net) and their space hidden in the card; Escape, a click outside and ⌘W closed it with focus back on the link; Tab stayed in the card; Open as Tab kept the page and its back list; a private tab's preview was private; a World list headline was previewed over the globe; axe clean.",
-      "seconds": 27
+      "seconds": 26
     },
     "WORKSPACES": {
       "status": "pass",
-      "notes": "Created, named (icon and colour), renamed, reordered, deleted with confirmation and Undo; each workspace kept its own pinned tab, folder and open tabs; ⌃1/⌃2 switched in 8–16 ms with the other workspace's sleeping tab left asleep; command menu, swipe and keyboard switched; shared and own favourites; private tabs in no workspace and never saved; restored after a restart and migrated a version 2 state into Main; a tab closed in a folder reopened from another workspace came back in its workspace and folder; axe clean.",
+      "notes": "Created, named (icon and colour), renamed, reordered, deleted with confirmation and Undo; each workspace kept its own pinned tab, folder and open tabs; ⌃1/⌃2 switched in 8–13 ms with the other workspace's sleeping tab left asleep; command menu, swipe and keyboard switched; shared and own favourites; private tabs in no workspace and never saved; restored after a restart and migrated a version 2 state into Main; a tab closed in a folder reopened from another workspace came back in its workspace and folder; axe clean.",
       "seconds": 33
     },
     "IMPORT_WORKSPACES": {
       "status": "pass",
       "notes": "Previewed 2 spaces and 2 favourites with each space's pinned tabs, folders and open tabs; recreated Work and Home as workspaces (pinned tabs with homes, Reading › Later nesting kept, open tabs unloaded) and the favourites row; a second run added nothing; the older file layout added Travel (split view opened up); an unsupported and a damaged file were reported and changed nothing; keyboard and axe clean. Fixtures are hand-built, not real files.",
-      "seconds": 11
+      "seconds": 9
     },
     "SITE_TWEAKS": {
       "status": "pass",
@@ -283,12 +283,12 @@
     "AUTO_PIP": {
       "status": "pass",
       "notes": "Off by default; with it on, leaving a playing tab floated its canvas video (playback went on), returning docked it; the now-playing control listed it (labelled, axe clean) and pause, play, mute, unmute and go-to worked from the keyboard; a page with disablePictureInPicture kept playing in place; a floating tab was not put to sleep or archived while other tabs were; once the person closed the small window, the control stopped saying it floats and the tab slept; a playing background tab, closed, left the control.",
-      "seconds": 38
+      "seconds": 37
     },
     "SPLIT_PAGES": {
       "status": "pass",
-      "notes": "Shortcut split two pages side by side with the divider and headers (origins 127.0.0.1:61559 · localhost:61559); each side keeps its own address, find and zoom; arrow keys and dragging keep the minimum width; the pair is one row, half and half when narrow or full width; it survives a workspace switch; closing a side returns the other to full size; ⌃⇧- unsplits; an edge drop previews and splits; the relaunch restores the pair. Screenshots and bounds in /var/folders/hq/nx9hk1515831m37ff_h7zhc40000gn/T/intoponet-split-pages-shots.",
-      "seconds": 39
+      "notes": "Shortcut split two pages side by side with the divider and headers (origins 127.0.0.1:49639 · localhost:49639); each side keeps its own address, find and zoom; arrow keys and dragging keep the minimum width; the pair is one row, half and half when narrow or full width; it survives a workspace switch; closing a side returns the other to full size; ⌃⇧- unsplits; an edge drop previews and splits; the relaunch restores the pair. Screenshots and bounds in /var/folders/hq/nx9hk1515831m37ff_h7zhc40000gn/T/intoponet-split-pages-shots.",
+      "seconds": 38
     },
     "LINK_ROUTES": {
       "status": "pass",
@@ -297,28 +297,28 @@
     },
     "COMPARE_COVERAGE": {
       "status": "pass",
-      "notes": "Compared \"La Nación\" with BalkanWeb (Albania): two pages 642×652 and 641×652, side by side at y 161; headers read \"La Nación · Costa Rica\" and \"BalkanWeb · Albania\"; Translate on the right side focused that side's page (https://www.balkanweb.com/trump-nis-spastrim-ne-shtepine-e-bardhe-pas-humbjes-ne-zgjedhje-emeron-stephen-miller-ne-krye-te-stafit-dhe-urdheron-hetimin-e-demokrateve/) and opened the translate bar; The Olds opened for the story; 0 paywall badge(s) on the pair.",
-      "seconds": 14
+      "notes": "Compared \"SBS News World\" with Público (Portugal): two pages 642×652 and 641×652, side by side at y 161; headers read \"SBS News World · International desk\" and \"Público · Portugal\"; Translate on the right side focused that side's page (https://www.publico.pt/2026/11/08/mundo/noticia/apos-promover-stephen-miller-trump-artes-marciais-procurar-portavoz-casa-branca-2194182) and opened the translate bar; The Olds opened for the story; 0 paywall badge(s) on the pair.",
+      "seconds": 13
     },
     "PLACE_WORKSPACES": {
       "status": "pass",
       "notes": "Anchored \"Lisbon desk\" to Lisbon, Portugal from the place search (no device location asked); switching away and back flew the globe there with the panel open; Headlines here listed 5 headlines and one opened as a tab in that workspace; its marker showed on My map only; the anchor survived a relaunch; axe clean on the picker and the section.",
-      "seconds": 36
+      "seconds": 20
     },
     "STORY_TABS": {
       "status": "pass",
-      "notes": "Two articles of \"Trump offers White House press secreta…\" badged; the control and a private tab with a matching title not; Group by story made one folder for it holding only the two articles; Undo restored the order and removed the folder; hovering the folder highlighted the story (sm-5gnyuo) and leaving cleared it; no page was requested during matching; axe clean.",
-      "seconds": 21
+      "notes": "Two articles of \"Israel president taps Eisenkot to form…\" badged; the control and a private tab with a matching title not; Group by story made one folder for it holding only the two articles; Undo restored the order and removed the folder; hovering the folder highlighted the story (sm-4zv1xm) and leaving cleared it; no page was requested during matching; axe clean.",
+      "seconds": 20
     },
     "TAB_TIDY_LOCAL": {
       "status": "pass",
       "notes": "Laya off: Tidy explained it and offered Group by story. Laya on: 2 groups (Cooking; Astronomy) separated cooking from astronomy and left a pair side by side alone; nothing moved before Accept; with a suggested tab closed meanwhile, Accept moved the rest and its notice counted 3; Undo restored the order.",
-      "seconds": 39
+      "seconds": 31
     },
     "WORKSPACE_IDENTITIES": {
       "status": "pass",
       "notes": "Kept across a relaunch: the option, Work's sign-in and permissions, Main's sign-in. Turning the option off deleted Work's cookies, permissions and saved passwords, and Main stayed signed in.",
-      "seconds": 53
+      "seconds": 59
     }
   }
 }
