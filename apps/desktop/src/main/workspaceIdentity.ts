@@ -9,6 +9,11 @@
 export const DEFAULT_PARTITION = 'persist:intoponet-default'
 /** Private tabs: memory only, never a workspace. */
 export const PRIVATE_PARTITION = 'intoponet-private'
+/**
+ * The guided tour's page (a tab that leaves no trace): memory only, emptied when its last page closes.
+ * It is an ordinary tab otherwise, with the shared identity's permissions and saved logins.
+ */
+export const TOUR_PARTITION = 'intoponet-tour'
 /** The first workspace, which never has separate sign-ins (it is the shared identity). */
 export const MAIN_WORKSPACE_ID = 'main'
 

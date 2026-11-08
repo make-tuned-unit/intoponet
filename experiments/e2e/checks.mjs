@@ -2628,11 +2628,37 @@ export const checks = {
     const tourPage = 'en.wikipedia.org/wiki/Earth'
     const stateFile = join(ctx.profile, 'browser-state.v1.json')
     let savedWithTabs = null
+    // Its page runs in a temporary session of its own (not the shared one, not private), set up as every page session is.
+    const tourSessionNow = () => ctx.main(`(async () => {
+      const page = electron.webContents.getAllWebContents().find((c) => !c.isDestroyed() && c.getURL().includes(${JSON.stringify(tourPage)}))
+      if (!page) return 'null'
+      const others = [electron.session.defaultSession, electron.session.fromPartition('persist:intoponet-default'), electron.session.fromPartition('intoponet-private')]
+      return JSON.stringify({ own: !others.includes(page.session), temporary: !page.session.isPersistent() && !page.session.storagePath, spellcheck: page.session.isSpellCheckerEnabled(), cookie: (await page.session.cookies.get({ name: 'intoponet_tour' })).length })
+    })()`).then(JSON.parse)
+    let tourSession = null
+    let tourAfterCrash = null
     for (let step = 1; step <= total; step += 1) {
       const state = shown[step] = await settle(step)
       if (state.title === 'Every page, with tools built in') {
         await ctx.delay(600)
         savedWithTabs = existsSync(stateFile) && readFileSync(stateFile, 'utf8').includes(tourPage)
+        const page = await ctx.page(tourPage)
+        await page.evaluate(`document.cookie = 'intoponet_tour=1; max-age=3600; path=/'; true`)
+        tourSession = {
+          ...(await tourSessionNow()),
+          // The app's permission handlers, not Electron's default (which grants everything).
+          geolocation: await page.evaluate(`navigator.permissions.query({ name: 'geolocation' }).then((s) => s.state)`),
+          isPrivate: await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => t.find((x) => x.url.includes(${JSON.stringify(tourPage)}))?.isPrivate ?? null)`),
+        }
+        // Its renderer crashing: the page comes back in the same temporary session, still leaving no trace.
+        await ctx.main(`(() => { electron.webContents.getAllWebContents().find((c) => !c.isDestroyed() && c.getURL().includes(${JSON.stringify(tourPage)})).forcefullyCrashRenderer(); return true })()`)
+        await ctx.delay(1000)
+        for (let i = 0; i < 60 && !tourAfterCrash; i += 1) {
+          tourAfterCrash = await tourSessionNow()
+          if (!tourAfterCrash) await ctx.delay(500)
+        }
+        await ctx.delay(1500)
+        await ctx.click('.error-message button[aria-label="Dismiss error"]')
       }
       const centred = ['A browser with the whole world in view', 'The everyday things, done carefully'].includes(state.title)
       if (!centred && !state.lit) missed.push(`${step}. ${state.title}`)
@@ -2689,6 +2715,14 @@ export const checks = {
     const left = Object.entries(traces).filter(([, urls]) => urls.some((url) => url.includes(tourPage))).map(([where]) => where)
     if (savedWithTabs !== false) left.push('saved open tabs')
     expect(left.length === 0, `The tour's page left a trace in: ${left.join(', ')}.`)
+    expect(tourSession?.own && tourSession.temporary && tourSession.spellcheck && tourSession.cookie === 1, `The tour's page did not run in a temporary session of its own: ${JSON.stringify(tourSession)}.`)
+    expect(tourSession.geolocation !== 'granted' && tourSession.isPrivate === false, `The tour's page is not an ordinary tab with the app's permission handling: ${JSON.stringify(tourSession)}.`)
+    expect(tourAfterCrash?.own && tourAfterCrash.temporary, `After its renderer crashed, the tour's page came back in another session: ${JSON.stringify(tourAfterCrash)}.`)
+    // Its session is emptied once the tour ends: the cookie it set is gone, and never reached the shared session.
+    const cookiesLeft = `Promise.all([electron.session.fromPartition('intoponet-tour').cookies.get({}), electron.session.fromPartition('persist:intoponet-default').cookies.get({ name: 'intoponet_tour' })]).then(([tour, shared]) => tour.length + shared.length)`
+    let cookiesKept = await ctx.main(cookiesLeft)
+    for (let i = 0; i < 20 && cookiesKept > 0; i += 1) { await ctx.delay(250); cookiesKept = await ctx.main(cookiesLeft) }
+    expect(cookiesKept === 0, `The tour ended but ${cookiesKept} of its cookies are still kept.`)
     return `All ${total} steps shown, each spotlight on what it describes, the same played forward, gone back to and jumped to; the tour put everything back at the end, its own tab closed. With Wikipedia unreachable The Olds step moved on ${((offline.ms - offline.looked) / 1000).toFixed(1)} s after The Olds had looked (${(offline.ms / 1000).toFixed(1)} s in all: "${offline.olds}").`
   },
   async TAB_ARCHIVE(ctx) {

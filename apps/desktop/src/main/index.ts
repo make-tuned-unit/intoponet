@@ -154,6 +154,7 @@ import {
   DEFAULT_PARTITION,
   MAIN_WORKSPACE_ID,
   PRIVATE_PARTITION,
+  TOUR_PARTITION,
   hasSeparateSignIns,
   identityScope,
   isWorkspaceIdentityId,
@@ -269,9 +270,25 @@ let privateMode = false
 const privateViews = new WeakSet<WebContentsView>()
 /**
  * Tabs that leave no trace (the guided tour's page): no history visit or recent page, never in Recently
- * closed or Archived tabs, never saved with the open tabs, no remembered icon.
+ * closed or Archived tabs, never saved with the open tabs, no remembered icon. Their pages run in a temporary
+ * session of their own (TOUR_PARTITION), emptied when the last of them closes.
  */
 const untrackedViews = new WeakSet<WebContentsView>()
+const tourPages = new Set<number>()
+function tourPageOpened(view: WebContentsView): void {
+  untrackedViews.add(view)
+  const id = view.webContents.id
+  tourPages.add(id)
+  view.webContents.once('destroyed', () => {
+    tourPages.delete(id)
+    if (tourPages.size > 0) return
+    // Its cookies, site storage and cache go with it (the session itself lasts until the app quits, in memory only).
+    const tour = session.fromPartition(TOUR_PARTITION)
+    void tour.clearStorageData().catch(() => undefined)
+    void tour.clearCache().catch(() => undefined)
+    void tour.clearAuthCache().catch(() => undefined)
+  })
+}
 /** The workspace a page view belongs to (null: none, as in a quick window), and the partition it was built with. */
 const viewWorkspaces = new WeakMap<WebContentsView, string | null>()
 const viewPartitions = new WeakMap<WebContentsView, string>()
@@ -2303,7 +2320,7 @@ function repartitionTab(tab: OpenTab): void {
     return
   }
   const old = tab.view
-  tab.view = buildView(privateViews.has(old), workspaceOfView(old))
+  tab.view = buildView(privateViews.has(old), workspaceOfView(old), untrackedViews.has(old))
   const contentsId = viewContentsIds.get(old)
   if (contentsId !== undefined) {
     protectionPages.remove(contentsId)
@@ -3055,7 +3072,7 @@ function unloadTab(tab: OpenTab, options: { keepHistory: boolean; url?: string }
   tab.title = old.webContents.getTitle() || tab.title
   delete tab.loadError
   // The tab holds the replacement first, so closing the old page does not close the tab.
-  tab.view = buildView(privateViews.has(old), workspaceOfView(old))
+  tab.view = buildView(privateViews.has(old), workspaceOfView(old), untrackedViews.has(old))
   tab.asleep = history ? { history } : {}
   const contentsId = viewContentsIds.get(old)
   if (contentsId !== undefined) {
@@ -3217,7 +3234,7 @@ function wirePopupWindow(child: BrowserWindow, opener: WebContentsView): void {
  * A new tab in the shown workspace, or, when `opener` is a page of another workspace, in that one
  * (parked, unseen): a popup's tab is in its opener's workspace, with that workspace's sign-ins.
  */
-function createBrowserTab(urlValue: string, activate = true, isPrivate = privateMode, openedByPage = false, localFile = false, opener: WebContentsView | null = null): WebContentsView | null {
+function createBrowserTab(urlValue: string, activate = true, isPrivate = privateMode, openedByPage = false, localFile = false, opener: WebContentsView | null = null, untracked = false): WebContentsView | null {
   // A local file only when it was opened from Finder or another app (see openIncoming).
   const url = safeHttpUrl(urlValue) ?? (localFile && urlValue.startsWith('file:') ? new URL(urlValue) : null)
   if (!url) return null
@@ -3229,7 +3246,7 @@ function createBrowserTab(urlValue: string, activate = true, isPrivate = private
   const home = !isPrivate && opener && !viewGone(opener) ? workspaceOfView(opener) ?? workspaces.activeId : workspaces.activeId
   if (!workspaces.get(home)) return null
   makeRoomForTab()
-  const view = buildView(isPrivate, home)
+  const view = buildView(isPrivate && !untracked, home, untracked)
   const tab: OpenTab = { id: randomUUID(), url: url.toString(), title: '', favicon: '', view }
   tab.lastShownAt = Date.now()
   if (home !== workspaces.activeId) {
@@ -3376,10 +3393,12 @@ function spellingContextItems(view: WebContentsView, params: Electron.ContextMen
  * workspace's partition: its own sign-ins when it has separate ones, the shared ones otherwise,
  * and the private one for a private tab (workspaceIdentity.ts).
  */
-function buildView(isPrivate = privateMode, workspaceId: string | null = workspaces.activeId): WebContentsView {
+function buildView(isPrivate = privateMode, workspaceId: string | null = workspaces.activeId, untracked = false): WebContentsView {
   let frequencyNavigation = 0
   let frequencyLoadSucceeded = false
-  const partition = pagePartition(workspaceId === null ? null : workspaces.get(workspaceId), isPrivate)
+  // A tab that leaves no trace (the tour's page) has a temporary session of its own (never private, never a
+  // workspace's), set up as every page session is: what it loads goes when its last page closes (tourPageOpened).
+  const partition = untracked ? TOUR_PARTITION : pagePartition(workspaceId === null ? null : workspaces.get(workspaceId), isPrivate)
   ensurePageSession(partition)
   const view = new WebContentsView({
     webPreferences: {
@@ -3399,6 +3418,9 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
   viewWorkspaces.set(view, isPrivate ? null : workspaceId)
   if (isPrivate) privateViews.add(view)
   if (isPrivate) privateWebContents.add(view.webContents)
+  // Marked before it loads (its first visit is not recorded either), and again on every view the tab is
+  // rebuilt with (sleeping, a crash, a move): the tab never starts leaving traces.
+  if (untracked) tourPageOpened(view)
   browsingData?.attachPage(view.webContents, () => privateViews.has(view) || untrackedViews.has(view), () => workspaceOfView(view) ?? undefined)
 
   // Behind a page before it paints: light, or dark when pages are dark (no white flash at night).
@@ -3783,7 +3805,7 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
         : `The page renderer stopped (${details.reason}). Automatic reload is paused after repeated crashes. Use Reload to try again.`,
     })
     if (!tab || !safeHttpUrl(crashedUrl)) return
-    const replacement = buildView(privateViews.has(view), workspaceOfView(view))
+    const replacement = buildView(privateViews.has(view), workspaceOfView(view), untrackedViews.has(view))
     tab.view = replacement
     tab.url = crashedUrl
     delete tab.loadError
@@ -4278,12 +4300,8 @@ async function handleBrowserCommand(
       const url = resolveNavigationIntent(command.intent)
       // ⌘↵ / ⌥↵ from the address bar: always a fresh tab, behind or in front.
       if (command.disposition) {
-        const view = createBrowserTab(url, command.disposition === 'foreground-tab')
-        // Marked before it loads: its first visit is not recorded either.
-        if (view && command.untracked) {
-          untrackedViews.add(view)
-          schedulePersistentStateSave()
-        }
+        // An untracked tab (the tour's page) is an ordinary tab, never private, in a session of its own (buildView).
+        const view = createBrowserTab(url, command.disposition === 'foreground-tab', privateMode, false, false, null, command.untracked === true)
         if (view) await loadOpened(view, url)
         break
       }
