@@ -59,7 +59,7 @@ import { archiveAfterMs, DEFAULT_TAB_ARCHIVE, TabArchive, type ArchivedTab } fro
 import { addLinkRoute, moveLinkRoute, parseLinkRoutes, removeLinkRoute, routeFor, serializeLinkRoutes, siteOfWebUrl, updateLinkRoute, type LinkRoute } from './linkRoutes'
 import { answerWithin, DEFAULT_TAB_SLEEP, parseBrowsingSettingsFile, parseLinksFromOtherApps, sleepAfterMs, tabsDueForSleep, TYPED_CHECK_MS, TYPED_FORM_SCRIPT } from './tabSleep'
 import { QuickWindows, type QuickProtection } from './quickWindow'
-import { AUTO_PIP_WORLD_ID, ENTER_PIP_SCRIPT, EXIT_PIP_SCRIPT, NowPlaying, PIP_LEFT_SCRIPT, TOGGLE_PLAYBACK_SCRIPT, type PipEnterResult } from './autoPip'
+import { AUTO_PIP_WORLD_ID, ENTER_PIP_SCRIPT, EXIT_PIP_SCRIPT, NowPlaying, PAUSE_ALL_MEDIA_SCRIPT, PIP_LEFT_SCRIPT, TOGGLE_PLAYBACK_SCRIPT, type PipEnterResult } from './autoPip'
 import { UnseenTabs } from './backgroundLoad'
 import type { NowPlayingSnapshot } from '@intoponet/browser-api'
 import { browserContextExtras, searchSelectionLabel } from './browserContextMenu'
@@ -766,6 +766,29 @@ function nowPlayingSnapshot(): NowPlayingSnapshot | null {
   })
 }
 const emitNowPlaying = coalesce(() => emit({ type: 'now-playing', nowPlaying: nowPlayingSnapshot() }))
+
+/**
+ * Pauses every video and audio playing in the app window's pages (every workspace's tabs, a link
+ * preview), in all their frames. Nothing plays again by itself: the person starts it.
+ */
+function pauseAllMedia(): void {
+  const views = [...allTabs().map((tab) => tab.view), ...(linkPreview ? [linkPreview.view] : [])]
+  for (const view of views) {
+    if (viewGone(view)) continue
+    // The page's own frame in an isolated world (the page cannot override pause there); its frames as they are.
+    void view.webContents.executeJavaScriptInIsolatedWorld(AUTO_PIP_WORLD_ID, [{ code: PAUSE_ALL_MEDIA_SCRIPT }]).catch(() => undefined)
+    let frames: Electron.WebFrameMain[] = []
+    try {
+      frames = view.webContents.mainFrame.framesInSubtree
+    } catch {
+      frames = []
+    }
+    for (const frame of frames) {
+      if (frame === view.webContents.mainFrame || frame.isDestroyed()) continue
+      void frame.executeJavaScript(PAUSE_ALL_MEDIA_SCRIPT).catch(() => undefined)
+    }
+  }
+}
 
 /** A tab's media started or stopped (the control lists it while it plays). */
 function setTabPlaying(view: WebContentsView, playing: boolean): void {
@@ -5137,6 +5160,8 @@ function createWindow(): void {
     else if (direction === 'right') void handleBrowserCommand({ type: 'forward' })
   })
   window.on('closed', () => {
+    // Its tabs stay alive for the Dock to bring back, but nothing goes on playing unseen.
+    pauseAllMedia()
     if (persistenceTimer) clearTimeout(persistenceTimer)
     persistenceTimer = null
     // On quit, before-quit already wrote the final state; otherwise (macOS keeps running) save now,

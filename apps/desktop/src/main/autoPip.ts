@@ -67,6 +67,22 @@ export const TOGGLE_PLAYBACK_SCRIPT = `(() => {
   return 'playing'
 })()`
 
+/**
+ * Pauses every video and audio playing in a document (open shadow roots too), for one frame. Nothing
+ * is played again later: the person starts it. Resolves how many it paused.
+ */
+export const PAUSE_ALL_MEDIA_SCRIPT = `(() => {
+  let paused = 0
+  const visit = (root) => {
+    for (const media of root.querySelectorAll('video, audio')) {
+      if (!media.paused) { media.pause(); paused += 1 }
+    }
+    for (const element of root.querySelectorAll('*')) if (element.shadowRoot) visit(element.shadowRoot)
+  }
+  visit(document)
+  return paused
+})()`
+
 /** What the now-playing control shows about one tab (read from the tab, not stored). */
 export type NowPlayingInfo = { title: string; muted: boolean }
 

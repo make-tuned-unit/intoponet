@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ENTER_PIP_SCRIPT, EXIT_PIP_SCRIPT, NowPlaying, TOGGLE_PLAYBACK_SCRIPT } from './autoPip'
+import { ENTER_PIP_SCRIPT, EXIT_PIP_SCRIPT, NowPlaying, PAUSE_ALL_MEDIA_SCRIPT, TOGGLE_PLAYBACK_SCRIPT } from './autoPip'
 
 const info = (titles: Record<string, { title: string; muted?: boolean }>) => (id: string) => (titles[id] ? { title: titles[id].title, muted: titles[id].muted ?? false } : null)
 const titles = { a: { title: 'Film' }, b: { title: 'Talk' }, shown: { title: 'Here' } }
@@ -77,5 +77,34 @@ describe('picture-in-picture scripts', () => {
     expect(ENTER_PIP_SCRIPT).toContain("return 'refused'")
     expect(EXIT_PIP_SCRIPT).toContain('exitPictureInPicture')
     expect(TOGGLE_PLAYBACK_SCRIPT).toContain("'paused'")
+  })
+})
+
+describe('pausing all media (the app window closed)', () => {
+  type FakeMedia = { paused: boolean; pause: () => void }
+  const media = (playing: boolean): FakeMedia => {
+    const item: FakeMedia = { paused: !playing, pause: () => { item.paused = true } }
+    return item
+  }
+  const root = (items: FakeMedia[], hosts: Array<{ shadowRoot: unknown }> = []) => ({
+    querySelectorAll: (selector: string) => (selector === 'video, audio' ? items : hosts),
+  })
+  const run = (document: unknown): number => new Function('document', `return ${PAUSE_ALL_MEDIA_SCRIPT}`)(document) as number
+
+  it('pauses what plays, in the page and in open shadow roots, and plays nothing', () => {
+    const video = media(true)
+    const audio = media(false)
+    const shadowed = media(true)
+    const played: string[] = []
+    const untouched = { ...media(false), play: () => { played.push('play') } }
+    const document = root([video, audio, untouched], [{ shadowRoot: root([shadowed]) }, { shadowRoot: null }])
+    expect(run(document)).toBe(2)
+    expect([video.paused, audio.paused, shadowed.paused]).toEqual([true, true, true])
+    expect(played).toEqual([])
+    expect(PAUSE_ALL_MEDIA_SCRIPT).not.toContain('.play(')
+  })
+
+  it('does nothing on a page with no media', () => {
+    expect(run(root([]))).toBe(0)
   })
 })

@@ -849,15 +849,28 @@ async function appWindowRecovers(ctx) {
     expect(await tabsOf(ctx) === tabsBefore, `After the app window hung, its tabs are ${await tabsOf(ctx)}, not ${tabsBefore}.`)
     kept('After the app window hung and reloaded', await shellNow())
 
+    // Videos playing in the pair (one in the left page, one in a frame of the right page): closing the window pauses them.
+    const playVideo = `(() => { const c = document.createElement('canvas'); c.width = 160; c.height = 90; const g = c.getContext('2d'); let f = 0; setInterval(() => { g.fillStyle = 'hsl(' + (f++ % 360) + ' 80% 50%)'; g.fillRect(0, 0, 160, 90) }, 33); const v = document.createElement('video'); v.id = 'boot-video'; v.srcObject = c.captureStream(30); v.muted = true; document.body.append(v); return v.play().then(() => true) })()`
+    const leftPage = await ctx.page('/left')
+    const rightPage = await ctx.page('/right')
+    await leftPage.evaluate(playVideo)
+    await rightPage.evaluate(`new Promise((resolve) => { const frame = document.createElement('iframe'); frame.srcdoc = '<!doctype html><body></body>'; frame.onload = () => resolve(true); document.body.append(frame) })`)
+    await rightPage.evaluate(`Promise.resolve(document.querySelector('iframe').contentWindow.eval(${JSON.stringify(playVideo)}))`)
+    const videos = async () => [await leftPage.evaluate(`document.getElementById('boot-video').paused`), await rightPage.evaluate(`document.querySelector('iframe').contentDocument.getElementById('boot-video').paused`)]
+    expect(same(await videos(), [false, false]), `The test videos are not playing before the window closes: ${JSON.stringify(await videos())}.`)
+
     // Closed with the red button while a quick window is open: the Dock icon brings it back, the pair in front.
     await ctx.main(`(() => { electron.Menu.getApplicationMenu().getMenuItemById('new-quick-window').click(); return true })()`)
     await until('a quick window', async () => (await ctx.main('electron.BrowserWindow.getAllWindows().length')) === 2)
     await ctx.main(`(() => { ${appWindow}.close(); return true })()`)
     await until('the app window to close', async () => (await shellNow()) === null)
+    await until('every video to pause once the app window closed', async () => same(await videos(), [true, true]), 5000)
     await ctx.main(`(() => { electron.app.emit('activate', {}, true); return true })()`)
     await until('the app window back from the Dock', async () => { const now = await shellNow(); return now?.pages.filter((page) => page.visible).length === 2 })
     let shell = await ctx.page('index.html')
     await ready(shell, 'the app window back from the Dock')
+    await ctx.delay(1500)
+    expect(same(await videos(), [true, true]), `A video started playing again by itself when the app window came back: ${JSON.stringify(await videos())}.`)
     expect(await tabsOf(shell) === tabsBefore, `Back from the Dock, the app window's tabs are ${await tabsOf(shell)}, not ${tabsBefore}.`)
     const reopened = await shellNow()
     expect(same(reopened.pages.map((page) => page.url), before.pages.map((page) => page.url)), `Back from the Dock, the pages in front are ${JSON.stringify(reopened.pages.map((page) => page.url))}.`)
@@ -871,7 +884,7 @@ async function appWindowRecovers(ctx) {
     await ready(shell, 'the app window back from File › New Tab')
     const tabsAfter = JSON.parse(await tabsOf(shell))
     expect(tabsAfter.length === JSON.parse(tabsBefore).length + 1 && tabsAfter.at(-1)[1] === true, `File › New Tab with the window closed left the tabs as ${JSON.stringify(tabsAfter)}.`)
-    return `The app window reloaded after its page crashed and after it hung, with its tabs, pair and page area, no view or listener added and a running tour's page closed; closed, it came back with its tabs from the Dock (a quick window open) and from File › New Tab.`
+    return `The app window reloaded after its page crashed and after it hung, with its tabs, pair and page area, no view or listener added and a running tour's page closed; closed, it paused the pair's videos (a frame's too) and came back with its tabs from the Dock (a quick window open, nothing playing again by itself) and from File › New Tab.`
   } finally {
     server.close()
   }
