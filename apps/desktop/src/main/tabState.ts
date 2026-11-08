@@ -8,12 +8,15 @@ export type TabContentsLike = {
   isAudioMuted(): boolean
 }
 
-/** Only the flags that are on, so snapshots of quiet tabs stay as small as before. */
-export function liveTabFlags(contents: TabContentsLike | null, tab: { start?: boolean; pinned?: boolean }): LiveTabFlags {
+/**
+ * Only the flags that are on, so snapshots of quiet tabs stay as small as before. `mutedUntilShown`: the
+ * page is muted only while it loads out of sight (backgroundLoad.ts), not by the person: not shown as muted.
+ */
+export function liveTabFlags(contents: TabContentsLike | null, tab: { start?: boolean; pinned?: boolean }, mutedUntilShown = false): LiveTabFlags {
   return {
     ...(contents && !tab.start && contents.isLoading() ? { loading: true as const } : {}),
     ...(contents?.isCurrentlyAudible() ? { audible: true as const } : {}),
-    ...(contents?.isAudioMuted() ? { muted: true as const } : {}),
+    ...(contents?.isAudioMuted() && !mutedUntilShown ? { muted: true as const } : {}),
     ...(tab.pinned ? { pinned: true as const } : {}),
   }
 }

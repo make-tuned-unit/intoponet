@@ -118,6 +118,11 @@ describe('tab snapshot state', () => {
     expect(liveTabFlags(contents(true, false, false), { start: true })).toEqual({})
     expect(liveTabFlags(null, { pinned: true })).toEqual({ pinned: true })
   })
+
+  it('does not show a tab as muted while it is muted only until first shown', () => {
+    expect(liveTabFlags(contents(true, false, true), {}, true)).toEqual({ loading: true })
+    expect(liveTabFlags(contents(false, false, true), {}, false)).toEqual({ muted: true })
+  })
 })
 
 describe('tab commands', () => {
