@@ -2150,6 +2150,8 @@ export const checks = {
       pinned = after.find((tab) => tab.id === mail.id)
       expect(after.length === before, `⌘W on a pinned tab closed it (${before} → ${after.length} tabs).`)
       expect(pinned.asleep && !pinned.active && pinned.url === `${origin}/mail`, `After ⌘W the pinned tab is ${JSON.stringify(pinned)}.`)
+      // Back at home, it no longer carries the title of the page it was on (nor shows it while home loads).
+      expect(pinned.title !== 'Page /elsewhere', 'After ⌘W the pinned tab, back at home, is still titled after the page it left.')
       expect(!(await ctx.main(`electron.webContents.getAllWebContents().some((c) => c.getURL().includes('/elsewhere'))`)), 'The pinned tab\'s page is still loaded after ⌘W.')
       await ctx.wait(`!!document.querySelector('.tab-rail-item.is-asleep')`, 3000, 'the unloaded tab to look asleep')
       // Its next click opens it at home.

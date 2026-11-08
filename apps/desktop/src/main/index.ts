@@ -3088,8 +3088,10 @@ function unloadTab(tab: OpenTab, options: { keepHistory: boolean; url?: string }
       history = undefined
     }
   }
-  tab.url = options.url ?? (safeHttpUrl(liveUrl) ? liveUrl : tab.url)
-  tab.title = liveTitle(tab) || tab.title
+  const nextUrl = options.url ?? (safeHttpUrl(liveUrl) ? liveUrl : tab.url)
+  // Sent home from another page (a pinned tab closed while away): that page's title is not its home's.
+  tab.title = samePage(nextUrl, safeHttpUrl(liveUrl) ? liveUrl : tab.url) ? liveTitle(tab) || tab.title : ''
+  tab.url = nextUrl
   delete tab.loadError
   // The tab holds the replacement first, so closing the old page does not close the tab.
   tab.view = buildView(privateViews.has(old), workspaceOfView(old))
@@ -4378,6 +4380,8 @@ async function handleBrowserCommand(
       if (!tab?.home) break
       if (tab.asleep) {
         delete tab.asleep
+        // Asleep on another page: its title is not its home's (the home page brings its own).
+        if (!samePage(tab.url, tab.home)) tab.title = ''
         tab.url = tab.home
         showTab(tab.id)
       } else {
