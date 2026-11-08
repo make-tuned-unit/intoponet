@@ -1038,6 +1038,8 @@ async function pickSiteElement(): Promise<SiteTweakPick> {
   if (!siteOf(contents.getURL())) return { selector: null, error: 'Site tweaks work on web pages.' }
   contents.focus()
   const picked: unknown = await contents.executeJavaScriptInIsolatedWorld(SITE_TWEAK_WORLD_ID, [{ code: PICK_ELEMENT_SCRIPT }]).catch(() => null)
+  // Chosen, stopped or cancelled: the keyboard goes back to the panel (its Save, or Hide an element…), not left in the page.
+  if (window && !window.isDestroyed()) window.webContents.focus()
   if (typeof picked !== 'string' || contents.isDestroyed()) return { selector: null }
   if (selectorProblem(picked)) return { selector: null, error: 'That element cannot be hidden.' }
   previewSelectors.set(contents.id, picked)

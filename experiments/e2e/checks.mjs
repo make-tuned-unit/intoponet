@@ -4062,7 +4062,7 @@ export const checks = {
     const storedSites = () => (existsSync(tweaksFile) ? JSON.parse(readFileSync(tweaksFile, 'utf8')).sites ?? {} : {})
     const storedLater = async () => { await ctx.delay(1200); return storedSites() }
     const markup = (name) => `<!doctype html><html><head><meta charset="utf-8"><title>${name}</title></head><body style="font:16px system-ui;margin:0">
-      <header>${name} header</header><div id="wrap"><div id="promo" class="banner">PROMO-SENTINEL buy now</div>
+      <header>${name} header</header><div id="wrap"><div id="promo" class="banner">PROMO-SENTINEL <a id="buy" href="#buy">buy now</a></div>
       <main><article><h1>${name} story</h1><p id="para">The story text on ${name}.</p></article></main></div></body></html>`
     // /strict-csp forbids inline styles, as some sites do: the tweaks must still apply there.
     const siteA = createServer((request, response) => { response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', ...(request.url.startsWith('/strict-csp') ? { 'content-security-policy': "style-src 'self'" } : {}) }); response.end(markup('Site A')) })
@@ -4125,6 +4125,35 @@ export const checks = {
       await pressInPage(pageA, 'Escape', 'Escape')
       await ctx.wait(statusIs('No element was picked'), 8000, 'Escape to stop picking')
       expect((await pageStyles(pageA)).promo === 'block', 'Stopping the picker still hid the element.')
+      // Focus goes back to Hide an element… (it was left in the page), and the app window takes the keyboard back.
+      await ctx.wait(`document.activeElement?.closest('#site-tweaks-panel') && document.activeElement.textContent.includes('Hide an element')`, 3000, 'focus to go back to Hide an element… once picking stops')
+
+      // Without a mouse: Tab to the link in the promo, ↑ for the promo around it, Enter chooses it. Focus is then on
+      // Save; Cancel lets it go and focus goes back to Hide an element…
+      const keyTo = async (page, key, keyCode, text) => {
+        await page.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', key, code: key, windowsVirtualKeyCode: keyCode })
+        if (text) await page.send('Input.dispatchKeyEvent', { type: 'char', key, code: key, windowsVirtualKeyCode: keyCode, text })
+        await page.send('Input.dispatchKeyEvent', { type: 'keyUp', key, code: key, windowsVirtualKeyCode: keyCode })
+      }
+      await ctx.main(`(() => { globalThis.__tweakKeyboard = null; for (const c of electron.webContents.getAllWebContents()) c.on('focus', () => { globalThis.__tweakKeyboard = c.id }); return true })()`)
+      await ctx.click('#site-tweaks-panel button', 'Hide an element')
+      await ctx.wait(statusIs('press Tab'), 4000, 'the picker to say how to pick without a mouse')
+      await ctx.delay(600)
+      await pageA.evaluate(`document.activeElement?.blur(); true`)
+      await keyTo(pageA, 'Tab', 9)
+      await ctx.delay(200)
+      expect(await pageA.evaluate(`document.activeElement?.id`) === 'buy', `Tab in the page did not reach the promo's link (it is on "${await pageA.evaluate(`document.activeElement?.id || document.activeElement?.tagName`)}").`)
+      await keyTo(pageA, 'ArrowUp', 38)
+      await keyTo(pageA, 'Enter', 13, '\r')
+      await ctx.wait(`(document.querySelector('.site-tweaks-picked')?.innerText ?? '').includes('#promo')`, 8000, 'Tab, ↑ and Enter to pick the promo')
+      expect(await pageA.evaluate('location.hash') === '', 'Enter while picking also followed the link.')
+      await ctx.wait(`document.activeElement?.matches('.site-tweaks-picked button.is-primary')`, 3000, 'focus to move to Save once an element is picked')
+      expect(await ctx.main(`globalThis.__tweakKeyboard === electron.BrowserWindow.getAllWindows()[0].webContents.id`), 'Once an element was picked the keyboard stayed in the page, away from Save.')
+      expect(await ctx.click('.site-tweaks-picked button', 'Cancel'), 'The Cancel button for the picked element is missing.')
+      await ctx.wait(`!document.querySelector('.site-tweaks-picked') && document.activeElement?.textContent.includes('Hide an element')`, 3000, 'Cancel to let the picked element go and return focus to Hide an element…')
+      await ctx.wait(`window.intoponet.browserHost.siteTweaks.state().then((s) => !(s.tweak?.hidden ?? []).includes('#promo'))`, 3000, 'nothing to be saved for the cancelled pick')
+      await ctx.delay(400)
+      expect((await pageStyles(pageA)).promo === 'block', 'Cancelling the picked element left it hidden.')
 
       await ctx.click('#site-tweaks-panel button', 'Hide an element')
       await ctx.delay(800)
