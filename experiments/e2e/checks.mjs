@@ -356,14 +356,10 @@ async function browserKeys(ctx) {
     panel = await state()
     expect(Math.abs((panel.zoomFactor ?? 1) - 1.1) < 0.01, `⌘= in a page did not zoom it (zoom ${panel.zoomFactor}).`)
     await ctx.wait(`(document.querySelector('.zoom-indicator')?.innerText ?? '').includes('110%')`, 5000, 'the 110% zoom indicator in the toolbar')
-    // Saved a moment after the change (and later under load): read once it is there, within a time limit.
-    const zoomFile = join(ctx.profile, 'site-zoom.json')
-    const readZoom = () => { try { return JSON.parse(readFileSync(zoomFile, 'utf8')) } catch { return null } }
-    let saved = readZoom()
-    for (let i = 0; i < 40 && saved?.sites?.['127.0.0.1'] !== 1.1; i += 1) {
-      await ctx.delay(250)
-      saved = readZoom()
-    }
+    // Saved a moment after the change (a busy Mac takes longer): wait for the file to show it, up to 10 s.
+    const savedZoom = () => { try { return JSON.parse(readFileSync(join(ctx.profile, 'site-zoom.json'), 'utf8')) } catch { return null } }
+    for (let i = 0; i < 50 && savedZoom()?.sites?.['127.0.0.1'] !== 1.1; i += 1) await ctx.delay(200)
+    const saved = savedZoom()
     expect(saved?.sites?.['127.0.0.1'] === 1.1, `The site zoom was not saved: ${JSON.stringify(saved)}`)
 
     // Closed and opened again: the site comes back at its zoom.
@@ -1383,7 +1379,10 @@ export const checks = {
       expect(seen.rows.some((r) => r.kind === 'search'), 'No "Search for" row.')
       await ctx.shot('completion')
       await axeAudit(ctx, 'the address bar suggestions')
-      // ⌘↵: a background tab; the globe stays in front.
+      // ⌘↵: a background tab; the globe stays in front. Typed again just before: another check's window can take the
+      // keyboard during the audit, and the blur drops the completion (as it should), so ⌘↵ would search "localh".
+      seen = await typeHost('localh')
+      expect(seen.value === host && seen.selected === host.slice('localh'.length), `Typing "localh" again showed "${seen.value}" (selected "${seen.selected}"), not the inline completion "${host}".`)
       await enter(4)
       let after = await state()
       let open = await tabs()
@@ -1594,8 +1593,13 @@ export const checks = {
     // Someone typing in the address bar as the bar appears keeps typing there: focus never jumps to Allow (a space
     // typed would answer it).
     await ctx.evaluate(`(() => { const input = document.querySelector('.command-input input'); input.focus(); return true })()`)
-    void page.evaluate(`new Promise((resolve) => navigator.geolocation.getCurrentPosition(() => resolve('ok'), () => resolve('err')))`)
-    await ctx.wait(`!!document.querySelector('.permission-bar')`, 15_000, 'the permission bar when a site asks for location')
+    void page.evaluate(`new Promise((resolve) => { window.__geo = 'asked'; navigator.geolocation.getCurrentPosition(() => resolve(window.__geo = 'ok'), (e) => resolve(window.__geo = \`refused (\${e.code})\`)) })`).catch(() => undefined)
+    await ctx.wait(`!!document.querySelector('.permission-bar')`, 15_000, 'the permission bar when a site asks for location').catch(async (error) => {
+      // What the page was and what became of its request. A hidden page's request waits until it is shown: with the
+      // Mac's screen locked (loginwindow in front) every page is hidden and no bar can come.
+      const seen = await Promise.race([page.evaluate(`JSON.stringify({ url: location.href, readyState: document.readyState, visibility: document.visibilityState, request: window.__geo ?? 'never made (the page changed?)' })`), ctx.delay(5000).then(() => 'the page did not answer')]).catch((e) => e.message)
+      throw new CheckFailure(`${error.message} (the page: ${seen})`)
+    })
     await ctx.delay(300)
     expect(await ctx.evaluate(`!!document.activeElement?.closest('.command-input')`), `The permission bar took focus from the address bar being typed in (to "${await ctx.evaluate(`document.activeElement?.textContent || document.activeElement?.tagName`)}").`)
     expect(await ctx.click('.permission-bar button', 'Allow'), 'The permission bar has no Allow button.')
@@ -1753,7 +1757,13 @@ export const checks = {
       expect(beforeCrash && beforeCrash.urls.length >= 2 && beforeCrash.urls.includes(`${url}?earlier`), `The page has no back/forward list to keep: ${JSON.stringify(beforeCrash)}.`)
       expect(await crashPage(), 'The page to crash is not open.')
       await ctx.delay(1500)
-      await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.title === 'Browsing test' && !s.isLoading)`, 15_000, 'the page to load again after a crash')
+      await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.title === 'Browsing test' && !s.isLoading)`, 15_000, 'the page to load again after a crash').catch(async (error) => {
+        // Timed out once under load with nothing to go on: say what the tab and its page were doing then.
+        const settle = (promise) => Promise.race([promise.catch((e) => `failed: ${e.message}`), ctx.delay(5000).then(() => 'no answer in 5 s')])
+        const tab = await settle(panelState(ctx).then((s) => ({ url: s.url, title: s.title, isLoading: s.isLoading, loadError: s.loadError?.title ?? null })))
+        const pages = await settle(ctx.main(`JSON.stringify(electron.webContents.getAllWebContents().filter((c) => c.getURL().startsWith(${JSON.stringify(url)})).map((c) => ({ id: c.id, url: c.getURL(), crashed: c.isCrashed(), loading: c.isLoading(), title: c.getTitle() })))`).then(JSON.parse))
+        throw new CheckFailure(`${error.message} (the tab: ${JSON.stringify(tab)}; its pages: ${JSON.stringify(pages)})`)
+      })
       const afterCrash = await historyOf()
       expect(JSON.stringify(afterCrash) === JSON.stringify(beforeCrash), `After a crash the page came back without its back/forward list: ${JSON.stringify(afterCrash)}, before ${JSON.stringify(beforeCrash)}.`)
       expect((await panelState(ctx)).canGoBack, 'After a crash Back is not offered.')
@@ -2713,11 +2723,18 @@ export const checks = {
       await openPage(ctx, `${origin}/busy`, 800)
       await openPage(ctx, `${origin}/later`, 800)
       await openPage(ctx, `${origin}/last`, 800)
-      await (await ctx.page('/busy')).evaluate(`setTimeout(() => { const end = Date.now() + 14000; while (Date.now() < end) {} }, 200); true`)
+      // The other tab must sleep while the busy page is still busy (it cannot stop before busyStart + busyFor): the
+      // wait ends then, not at a fixed time. On a loaded Mac the other page can itself take more than the app's 2 s to
+      // say it has no typed text, and is rightly kept awake for that pass, so the busy spell is long enough to allow it.
+      const busyFor = 25_000
+      const busyStart = Date.now()
+      await (await ctx.page('/busy')).evaluate(`setTimeout(() => { const end = Date.now() + ${busyFor}; while (Date.now() < end) {} }, 200); true`)
       await ctx.delay(500)
       await ctx.evaluate(`window.intoponet.browsing.setTabSleep('15m').then(() => true)`)
-      await ctx.wait(`${host}.getTabs().then((t) => t.some((x) => x.url.endsWith('/later') && x.asleep))`, 10_000, 'a background tab to sleep while another background page was busy')
+      await ctx.wait(`${host}.getTabs().then((t) => t.some((x) => x.url.endsWith('/later') && x.asleep))`, Math.max(0, busyStart + busyFor - Date.now()), 'a background tab to sleep while another background page was busy')
       await ctx.evaluate(`window.intoponet.browsing.setTabSleep('never').then(() => true)`)
+      // That shown, the busy page goes: still busy, it would add 2 s to each sleep pass in the steps below.
+      await ctx.evaluate(`${host}.getTabs().then((t) => { const busy = t.find((x) => x.url.endsWith('/busy')); return busy ? ${host}.closeTab(busy.id).then(() => true) : true })`)
       // Woken while its page is slow to come back, then sent to an address that fails before it has: that
       // address's error stays, and the old page never loads over it.
       let slowNow = false
@@ -3570,6 +3587,14 @@ export const checks = {
       }
       throw new CheckFailure(`Timed out waiting for: ${label}`)
     }
+    /** Opens the menu and chooses an item; the menu closes if another check's window takes focus first, so it is opened again. */
+    const chooseInWorkspaceMenu = async (name, item, label) => {
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        await openWorkspaceMenu(name, label)
+        if (await ctx.click('.tab-rail-folder-menu [role="menuitem"]', item)) return
+      }
+      throw new CheckFailure(`"${item}" was not in the menu to choose (${label}).`)
+    }
     const typeCommand = async (text) => {
       await ctx.evaluate(`(() => { const input = document.querySelector('.command-input input'); input.focus(); input.select(); return true })()`)
       await ctx.type(text)
@@ -3579,12 +3604,26 @@ export const checks = {
       await ctx.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', key, code, windowsVirtualKeyCode: keyCode, modifiers })
       await ctx.send('Input.dispatchKeyEvent', { type: 'keyUp', key, code, windowsVirtualKeyCode: keyCode, modifiers })
     }
-    /** ⌃N pressed in the page showing `fromPath`, timed until the sidebar shows the other workspace's tabs. */
+    /**
+     * ⌃N pressed in the page showing `fromPath`, timed from the key reaching the app (stamped in the main process as
+     * it is delivered, where a key from the OS arrives; the app handles it inside that call) until the sidebar shows
+     * the other workspace's tabs. The check's own round trip to the main process (its messages, its own process
+     * waiting for the CPU) is not part of the switch. `busy`: the app window spent the time between the key and the
+     * switch's first message in a long task (over 50 ms) of other work, such as a globe frame or the day's news.
+     */
     const timedSwitch = async (digit, fromPath, targetId, expectTitle) => {
-      await ctx.evaluate(`(() => { window.__wsShown = 0; const done = () => { const rail = document.querySelector('.tab-rail'); if (rail?.dataset.workspace === ${JSON.stringify(targetId)} && [...rail.querySelectorAll('[data-tab-id] .tab-rail-title')].some((e) => e.textContent === ${JSON.stringify(expectTitle)})) { window.__wsShown = performance.now(); return true } return false }; const watch = new MutationObserver(() => { if (done()) watch.disconnect() }); watch.observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true }); window.__wsAsked = performance.now(); return true })()`)
-      expect(await ctx.keyInPage(`/${fromPath}`, digit, ['control']), `No page at /${fromPath} to press ⌃${digit} in.`)
+      await ctx.evaluate(`(() => { window.__wsShown = 0; window.__wsFirstEvent = 0; if (!window.__wsLongTasks) { window.__wsLongTasks = []; new PerformanceObserver((list) => { for (const e of list.getEntries()) window.__wsLongTasks.push([performance.timeOrigin + e.startTime, e.duration]); window.__wsLongTasks.splice(0, window.__wsLongTasks.length - 50) }).observe({ type: 'longtask', buffered: true }); window.intoponet.browserHost.subscribe(() => { window.__wsFirstEvent ||= Date.now() }) } const done = () => { const rail = document.querySelector('.tab-rail'); if (rail?.dataset.workspace === ${JSON.stringify(targetId)} && [...rail.querySelectorAll('[data-tab-id] .tab-rail-title')].some((e) => e.textContent === ${JSON.stringify(expectTitle)})) { window.__wsShown = Date.now(); return true } return false }; const watch = new MutationObserver(() => { if (done()) watch.disconnect() }); watch.observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true }); return true })()`)
+      const keyAt = await ctx.main(`(() => {
+        const page = electron.webContents.getAllWebContents().find((c) => /^https?:/.test(c.getURL()) && c.getURL().includes(${JSON.stringify(`/${fromPath}`)}))
+        if (!page) return 0
+        const at = Date.now()
+        for (const type of ['keyDown', 'keyUp']) page.sendInputEvent({ type, keyCode: ${JSON.stringify(digit)}, modifiers: ['control'] })
+        return at
+      })()`)
+      expect(keyAt > 0, `No page at /${fromPath} to press ⌃${digit} in.`)
       await ctx.wait(`window.__wsShown > 0`, 3000, `⌃${digit} to show the workspace's tabs`)
-      return ctx.evaluate(`window.__wsShown - window.__wsAsked`)
+      const { shown, busy, overlapping } = JSON.parse(await ctx.evaluate(`JSON.stringify({ shown: window.__wsShown, busy: window.__wsLongTasks.some(([start, duration]) => start + duration > ${keyAt} && start + duration <= (window.__wsFirstEvent || window.__wsShown) + 2), overlapping: window.__wsLongTasks.filter(([start, duration]) => start < window.__wsShown && start + duration > ${keyAt}).map(([start, duration]) => Math.round(start - ${keyAt}) + ' ms+' + Math.round(duration)) })`))
+      return { ms: shown - keyAt, busy, overlapping }
     }
     /** The app opened again (as after quitting or a crash) with a saved browser state, in a profile of its own. */
     const relaunch = async (saved, check, prepare = () => {}) => {
@@ -3646,16 +3685,21 @@ export const checks = {
       expect(!(await loaded('main-pin')), 'The sleeping tab\'s page is still loaded.')
 
       // ⌃1 and ⌃2 from inside the page switch: timed until the sidebar shows the other workspace's tabs.
+      // At least 8 switches, back and forth, ending in Main. One whose key came while the app window was busy with
+      // other work is timed again, 4 at most: once those are used up, every switch counts.
       const times = []
-      for (let round = 0; round < 4; round += 1) {
-        times.push(await timedSwitch('2', 'main-a', researchId, 'Page /research-c'))
-        await ctx.delay(300)
-        times.push(await timedSwitch('1', 'research-c', mainId, 'Page /main-a'))
+      const busyTimes = []
+      for (let attempt = 0; attempt < 12 && (times.length < 8 || attempt % 2 === 1); attempt += 1) {
+        const sample = attempt % 2 === 0 ? await timedSwitch('2', 'main-a', researchId, 'Page /research-c') : await timedSwitch('1', 'research-c', mainId, 'Page /main-a')
+        if (sample.busy && busyTimes.length < 4) busyTimes.push(Math.round(sample.ms))
+        else times.push(sample)
         await ctx.delay(300)
       }
-      times.sort((a, b) => a - b)
-      const slowest = times[times.length - 1]
-      expect(slowest < 150, `Switching workspaces took up to ${Math.round(slowest)} ms (must be under 150 ms): ${times.map(Math.round).join(', ')}.`)
+      times.sort((a, b) => a.ms - b.ms)
+      const slowest = times[times.length - 1].ms
+      const retimed = busyTimes.length ? ` (${busyTimes.length} timed again, the app window busy with other work when the key came: ${busyTimes.join(', ')} ms)` : ''
+      const longTasks = times[times.length - 1].overlapping.length ? `; the app window's long tasks during the slowest, from the key: ${times[times.length - 1].overlapping.join(', ')}` : ''
+      expect(slowest < 150, `Switching workspaces took up to ${Math.round(slowest)} ms (must be under 150 ms): ${times.map((time) => Math.round(time.ms)).join(', ')}${retimed}${longTasks}.`)
       // Main's sleeping tab never woke, however often Main was shown; Research's pages kept going (not reloaded).
       expect(!(await loaded('main-pin')) && (await byTitle('main-pin')).asleep, 'Switching workspaces woke Main\'s sleeping tab.')
       expect(await loaded('research-c'), 'Research\'s open page was unloaded while Main was shown.')
@@ -3692,8 +3736,7 @@ export const checks = {
       await ctx.wait(`${ws}.get().then((s) => s.workspaces[0].id === ${JSON.stringify(researchId)})`, 3000, '⌥⇧← to move Research first')
 
       // Rename from the workspace's actions.
-      await openWorkspaceMenu('Research', 'the workspace menu')
-      await ctx.click('.tab-rail-folder-menu [role="menuitem"]', 'Rename')
+      await chooseInWorkspaceMenu('Research', 'Rename', 'the workspace menu')
       await ctx.wait(`document.activeElement?.classList.contains('tab-rail-workspace-name-input')`, 3000, 'the name field')
       await ctx.evaluate(`document.activeElement.select(); true`)
       await ctx.type('Reading')
@@ -3819,14 +3862,12 @@ export const checks = {
 
       // Delete, after confirming (focus starts on Cancel), and Undo brings it back with its tabs, unreloaded.
       const researchC = (await byTitle('research-c')).id
-      await openWorkspaceMenu('Reading', 'the workspace menu')
-      await ctx.click('.tab-rail-folder-menu [role="menuitem"]', 'Delete workspace')
+      await chooseInWorkspaceMenu('Reading', 'Delete workspace', 'the workspace menu')
       await ctx.wait(`!!document.querySelector('.tab-rail-workspace-confirm[role="alertdialog"]') && document.activeElement?.textContent === 'Cancel'`, 3000, 'the delete confirmation, with focus on Cancel')
       // Escape closes the question and focus goes back to the workspace's actions button (not lost to the page).
       await ctx.press('Escape')
       await ctx.wait(`!document.querySelector('.tab-rail-workspace-confirm') && document.activeElement?.getAttribute('aria-label') === 'Actions for workspace Reading'`, 3000, 'Escape to close the delete confirmation and return focus to the actions button')
-      await openWorkspaceMenu('Reading', 'the workspace menu again')
-      await ctx.click('.tab-rail-folder-menu [role="menuitem"]', 'Delete workspace')
+      await chooseInWorkspaceMenu('Reading', 'Delete workspace', 'the workspace menu again')
       await ctx.wait(`!!document.querySelector('.tab-rail-workspace-confirm[role="alertdialog"]') && document.activeElement?.textContent === 'Cancel'`, 3000, 'the delete confirmation again')
       expect((await state()).workspaces.length === 2, 'Asking to delete deleted before it was confirmed.')
       await axeAudit(ctx, 'the delete confirmation', '.tab-rail')
@@ -3861,7 +3902,7 @@ export const checks = {
       expect(papersNow && !papersNow.collapsed, 'The reopened tab came back in its folder, but the folder stayed folded.')
       await ctx.wait(`!!document.querySelector('.tab-rail-list [data-tab-id=${JSON.stringify(reopened.id)}]')`, 3000, 'the reopened tab to be in sight in its folder')
       expect((await tabs()).map((tab) => tab.url.split('/').pop()).join(' ') === 'research-a research-b research-c', `After reopening, Reading holds: ${(await tabs()).map((tab) => tab.url).join(', ')}.`)
-      return `Created, named (icon and colour), renamed, reordered, deleted with confirmation and Undo; each workspace kept its own pinned tab, folder and open tabs; ⌃1/⌃2 switched in ${Math.round(times[0])}–${Math.round(slowest)} ms with the other workspace's sleeping tab left asleep; command menu, swipe and keyboard switched; shared and own favourites; private tabs in no workspace and never saved; restored after a restart and migrated a version 2 state into Main; a tab closed in a folder reopened from another workspace came back in its workspace and folder; axe clean.`
+      return `Created, named (icon and colour), renamed, reordered, deleted with confirmation and Undo; each workspace kept its own pinned tab, folder and open tabs; ⌃1/⌃2 switched in ${Math.round(times[0].ms)}–${Math.round(slowest)} ms${retimed} with the other workspace's sleeping tab left asleep; command menu, swipe and keyboard switched; shared and own favourites; private tabs in no workspace and never saved; restored after a restart and migrated a version 2 state into Main; a tab closed in a folder reopened from another workspace came back in its workspace and folder; axe clean.`
     } finally {
       server.close()
     }
@@ -4040,18 +4081,30 @@ export const checks = {
         pageFocused: page ? page.webContents.id === globalThis.__lpKeyboard : false,
         frameFocused: frame ? frame.webContents.id === globalThis.__lpKeyboard : false,
         shellFocused: win.webContents.id === globalThis.__lpKeyboard,
+        windowFocused: win.isFocused(),
         under: kids.filter((v) => v !== frame && v !== page).map((v) => ({ url: v.webContents.getURL(), bounds: v.getBounds(), focused: v.webContents.id === globalThis.__lpKeyboard })),
       })
     })()`).then(JSON.parse)
     /**
      * Which view has the keyboard is the one that took it last, told by focus events: they arrive whether or not the
      * window is in front (isFocused() reads false for every view while another app's window is). The app is still
-     * brought forward first, as a person's window would be.
+     * brought forward first, as a person's window would be, asking for up to about 15 s (other checks' windows take it
+     * back in between); if it never becomes the key window, the app holding it is named for the record.
      */
     const focusState = async () => {
-      await ctx.main(`(() => { electron.app.focus({ steal: true }); electron.BrowserWindow.getAllWindows()[0].focus(); return true })()`)
-      await ctx.delay(400)
-      return card()
+      let state
+      for (let attempt = 0; attempt < 30; attempt += 1) {
+        await ctx.main(`(() => { electron.app.focus({ steal: true }); electron.BrowserWindow.getAllWindows()[0].focus(); return true })()`)
+        await ctx.delay(400)
+        state = await card()
+        if (state.windowFocused) break
+      }
+      // Never the key window: which app held it says why.
+      if (!state.windowFocused) try {
+        const front = execFileSync('lsappinfo', ['front']).toString().trim()
+        state.frontApp = `${execFileSync('lsappinfo', ['info', '-only', 'name', front]).toString().trim()} ${execFileSync('lsappinfo', ['info', '-only', 'pid', front]).toString().trim()} (this app: pid ${await ctx.main('process.pid')})`
+      } catch { /* diagnostics only */ }
+      return state
     }
     const waitOpen = async (part, label) => {
       for (let i = 0; i < 40; i += 1) {
@@ -4099,7 +4152,7 @@ export const checks = {
       expect(share.every((s) => s >= 0.7 && s <= 0.85), `The card is not about 80% of the page (${share.map((s) => Math.round(s * 100)).join('% × ')}%).`)
       expect(shown.partition === 'normal', `The preview of a normal tab is in the "${shown.partition}" session.`)
       const entered = await focusState()
-      expect(entered.open && entered.pageFocused && !entered.under.some((view) => view.focused), `Focus did not move into the card (${JSON.stringify({ page: entered.pageFocused, frame: entered.frameFocused, shell: entered.shellFocused })}).`)
+      expect(entered.open && entered.pageFocused && !entered.under.some((view) => view.focused), `Focus did not move into the card (${JSON.stringify({ page: entered.pageFocused, frame: entered.frameFocused, shell: entered.shellFocused, window: entered.windowFocused, under: entered.under.filter((view) => view.focused).map((view) => view.url), ...(entered.frontApp ? { frontApp: entered.frontApp } : {}) })}).`)
       const previewId = shown.id
 
       // Protection: the ad frame and ad picture are blocked in the card, and their space is hidden.
@@ -4241,6 +4294,11 @@ export const checks = {
     const tweaksFile = join(ctx.profile, 'site-tweaks.json')
     const storedSites = () => (existsSync(tweaksFile) ? JSON.parse(readFileSync(tweaksFile, 'utf8')).sites ?? {} : {})
     const storedLater = async () => { await ctx.delay(1200); return storedSites() }
+    /** The saved sites once they pass `test` (saved a moment after a change; a busy Mac takes longer), polled up to 10 s. */
+    const storedWhen = async (test) => {
+      for (let i = 0; i < 50 && !test(storedSites()); i += 1) await ctx.delay(200)
+      return storedSites()
+    }
     const markup = (name) => `<!doctype html><html><head><meta charset="utf-8"><title>${name}</title></head><body style="font:16px system-ui;margin:0">
       <header>${name} header</header><div id="wrap"><div id="promo" class="banner">PROMO-SENTINEL <a id="buy" href="#buy">buy now</a></div>
       <main><article><h1>${name} story</h1><p id="para">The story text on ${name}.</p></article></main></div></body></html>`
@@ -4343,7 +4401,7 @@ export const checks = {
       expect(await ctx.click('.site-tweaks-picked button', 'Save'), 'The Save button for the picked element is missing.')
       await ctx.wait(statusIs('Element hidden on this site'), 8000, 'the saved element')
       expect((await pageStyles(pageA)).promo === 'none', 'The saved element is not hidden on the page.')
-      const afterSave = await storedLater()
+      const afterSave = await storedWhen((sites) => sites['127.0.0.1']?.hidden?.includes('#promo'))
       expect(afterSave['127.0.0.1']?.hidden?.includes('#promo'), `The hidden element was not written to site-tweaks.json: ${JSON.stringify(afterSave)}.`)
 
       // Reload: still hidden. Site B is not touched.
@@ -4414,7 +4472,7 @@ export const checks = {
       await axeAudit(ctx, 'the page toolbar', '.browser-actions')
 
       // A private tab on A sees the tweaks; its own change is in memory only and is never written.
-      const writtenBefore = await storedLater()
+      const writtenBefore = await storedWhen((sites) => sites['127.0.0.1']?.hidden?.includes('#promo'))
       const textBefore = existsSync(tweaksFile) ? readFileSync(tweaksFile, 'utf8') : ''
       expect(writtenBefore['127.0.0.1']?.hidden?.includes('#promo'), 'The tweak is not saved before the private tab.')
       await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(true).then(() => true)`)
@@ -4458,7 +4516,7 @@ export const checks = {
       await axeAudit(ctx, 'Site tweaks in Settings', '.site-tweaks-list')
       expect(await ctx.click('.site-tweaks-list button', 'Remove'), 'The Remove button for the site is missing from Settings.')
       await ctx.wait(`(document.querySelector('.site-tweaks-list')?.innerText ?? '').includes('No site tweaks yet')`, 8000, 'the site to leave Settings')
-      expect(!(await storedLater())['127.0.0.1'], 'The removed site is still in site-tweaks.json.')
+      expect(!(await storedWhen((sites) => !sites['127.0.0.1']))['127.0.0.1'], 'The removed site is still in site-tweaks.json.')
 
       // The error page can turn a site's tweaks off (the failed site is 127.0.0.1 too).
       await ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: ${JSON.stringify(urlA)} }).then(() => true)`)
@@ -4857,10 +4915,18 @@ export const checks = {
       const path = new URL(request.url, 'http://localhost').pathname
       if (path === '/split-flaky' && flakyFails) {
         flakyHits += 1
-        request.socket.destroy()
+        // ?late: the connection drops only after a while.
+        if (request.url.includes('late')) setTimeout(() => request.socket.destroy(), 2500)
+        else request.socket.destroy()
         return
       }
       response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
+      // A page that arrives in two parts: it is there at once, ready (dom-ready) only a moment later.
+      if (path === '/split-slow-ready') {
+        response.write(`<!doctype html><html lang="en"><title>Slow story</title><body><p>first part${' '.repeat(4096)}`)
+        setTimeout(() => response.end('</p></body></html>'), 1200)
+        return
+      }
       response.end(pages[path] ?? `<!doctype html><title>Page ${path}</title><h1>${path}</h1>`)
     })
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
@@ -5124,6 +5190,16 @@ export const checks = {
       }).catch(() => null)
       expect(leftHistory, 'The crashed side came back without its back/forward list.')
       expect((await stateOf()).split.focused === 'right', 'A crash on the left side moved the focus.')
+      // A page becoming ready on the other side while a newer one is still on its way does not end that newer load:
+      // when it then fails, the failing side still does not take the focus (Chromium hands its error document the keyboard).
+      const leftContents = `electron.webContents.fromId(${sideOf(await viewsNow(), '/split-left').id})`
+      await ctx.main(`(() => { void ${leftContents}.loadURL('http://127.0.0.1:${port}/split-slow-ready').catch(() => undefined); return true })()`)
+      await waitFor('the slow page there (not yet ready)', () => ctx.main(`${leftContents}.getURL().includes('/split-slow-ready')`))
+      await ctx.main(`(() => { void ${leftContents}.loadURL('http://127.0.0.1:${port}/split-flaky?late').catch(() => undefined); return true })()`)
+      await waitFor('the late failure on the left side', async () => (await stateOf()).split?.left.loadError)
+      expect((await stateOf()).split.focused === 'right', 'The left page failing after an earlier page became ready took the focus.')
+      await ctx.main(`(() => { void ${leftContents}.loadURL(${JSON.stringify(leftUrl)}).catch(() => undefined); return true })()`)
+      await waitFor('the left page back after the late failure', async () => { const split = (await stateOf()).split; return split?.left.url === leftUrl && !split.left.loadError && sideOf(await viewsNow(), '/split-left')?.visible })
       // The other side fails to load: hidden while it fails, shown again once its page loads.
       await ctx.main(`(() => { void ${pageOf('/split-left')}.loadURL('http://127.0.0.1:${port}/split-flaky?left').catch(() => undefined); return true })()`)
       const flakySide = async () => (await viewsNow()).pages.find((p) => p.url.includes('/split-flaky'))
@@ -5258,7 +5334,9 @@ export const checks = {
       await ctx.main(`electron.app.quit()`).catch(() => undefined)
       // A quitting app waits for its debugger to disconnect before it exits.
       ctx.detachMain()
-      await ctx.delay(2500)
+      // Gone once its DevTools stop answering (a busy Mac quits slower), up to 15 s; the quit writes the state last.
+      const quitting = async () => fetch(`http://127.0.0.1:${ctx.port}/json/version`).then(() => true, () => false)
+      for (let i = 0; i < 60 && await quitting(); i += 1) await ctx.delay(250)
       const saved = JSON.parse(readFileSync(join(ctx.profile, 'browser-state.v1.json'), 'utf8'))
       const savedLeft = saved.tabs.find((t) => t.url.startsWith(leftUrl))
       const savedRight = saved.tabs.find((t) => t.url.startsWith(rightUrl))

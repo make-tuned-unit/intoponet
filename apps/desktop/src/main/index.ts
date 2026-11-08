@@ -271,7 +271,10 @@ let pageView: WebContentsView | null = null
 let companionView: WebContentsView | null = null
 /** A tab dragged over a page edge: the side it would take (splitPages.ts). */
 let splitPreviewSide: SplitSide | null = null
-/** Page views whose main frame is starting a new document (until it is ready, fails or stops loading). */
+/**
+ * Page views whose main frame is starting a new document, until the view stops loading. Not until a document is
+ * ready: an earlier document can finish (its dom-ready, its load) while a newer navigation is still on its way.
+ */
 const loadingDocument = new WeakSet<WebContentsView>()
 /** Media a tab opened out of sight started by itself: paused (remembered on the element) until the tab is shown. */
 const UNSEEN_MEDIA = "Symbol.for('intoponet.unseen-media')"
@@ -3733,12 +3736,10 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
   })
   view.webContents.on('did-fail-load', (_event, _code, _description, _url, mainFrame) => {
     if (mainFrame) frequencyLoadSucceeded = false
-    if (mainFrame) loadingDocument.delete(view)
     // Only a Compare article's first load can move its label (what loads after a failure is not that).
     const failed = mainFrame ? tabOfView(view) : undefined
     if (failed) compareLanding.delete(failed)
   })
-  view.webContents.on('dom-ready', () => loadingDocument.delete(view))
   view.webContents.on('did-stop-loading', () => {
     loadingDocument.delete(view)
     unseenTabs.loadStopped(view.webContents)

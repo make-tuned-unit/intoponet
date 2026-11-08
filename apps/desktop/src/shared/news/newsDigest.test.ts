@@ -190,14 +190,32 @@ describe('rising terms', () => {
   it('stays fast on a large digest', () => {
     const many: NewsItemInput[] = []
     for (let i = 0; i < 15_000; i += 1) many.push(item(`${countries[i % 5]}-x`, `Headline ${i} mentions harbour cranes and storm number ${i % 97}`, (i % 47) + 0.5))
-    // CPU time, not wall-clock: a busy machine (parallel builds, e2e runs) made this flaky.
-    const before = process.cpuUsage()
-    buildNewsDigest({ sources, items: many, health: {}, now, coverage })
-    const used = process.cpuUsage(before)
-    const elapsed = (used.user + used.system) / 1000
-    expect(elapsed).toBeLessThan(1500)
+    // CPU time, not wall-clock: a busy machine (parallel builds, e2e runs) made this flaky. CPU time still depends
+    // on the core that ran it and how contended it was (0.4–0.45 s on a free performance core, 0.6–0.8 s on an
+    // efficiency core, 2.3 s once at a load average near 200), so the digest is held to a fixed piece of similar work
+    // (splitting, counting and sorting as many headlines) timed just before and after it on the same core: ~0.12 s
+    // on a free performance core, where the budget of 12 times it is the old 1.5 s. Their ratio held at 3.4–4.1 on
+    // both kinds of core.
+    const cpu = (work: () => unknown): number => { const before = process.cpuUsage(); work(); const used = process.cpuUsage(before); return (used.user + used.system) / 1000 }
+    const reference = (): number => {
+      const counts = new Map<string, number>()
+      for (let i = 0; i < 15_000; i += 1) {
+        const words = `Headline ${i} mentions harbour cranes and storm number ${i % 97} near the port of ${countries[i % 5]}`.toLowerCase().normalize('NFKD').split(/[^a-z0-9]+/)
+        for (let w = 0; w < words.length; w += 1) {
+          counts.set(words[w]!, (counts.get(words[w]!) ?? 0) + 1)
+          if (w > 0) counts.set(`${words[w - 1]} ${words[w]}`, (counts.get(`${words[w - 1]} ${words[w]}`) ?? 0) + 1)
+        }
+      }
+      return [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).length
+    }
+    const referenceBefore = cpu(reference)
+    const elapsed = cpu(() => buildNewsDigest({ sources, items: many, health: {}, now, coverage }))
+    const referenceAfter = cpu(reference)
+    expect(elapsed).toBeLessThan(12 * (referenceBefore + referenceAfter) / 2)
     ;(globalThis as { __digestMs?: number }).__digestMs = elapsed
-  })
+    // About 1 s of CPU in all; a starved process (background priority, or a load average far above the core count)
+    // took over 10 s of wall time for it. Vitest's 5 s is a hang guard here, not the speed being tested.
+  }, 30_000)
 })
 
 describe('headline terms', () => {
