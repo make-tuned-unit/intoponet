@@ -113,7 +113,8 @@ export function StoryPanel({ story, rank, onClose, onOpen }: { story: StoryMount
         <button ref={closeRef} type="button" className="lg-icon-button" aria-label="Close" onClick={onClose}><X size={14} /></button>
       </header>
       <h2>{story.label ?? story.title}</h2>
-      <button type="button" className="story-panel-lead" onClick={(event) => openOrPreview(event, story.url, onOpen)} title="Open the article (⇧-click to preview it over the globe)"><bdi>{story.title}</bdi> <span>{story.publisher}</span></button>
+      {/* The headline once: under a label it is the lead; when it is the title, the lead is its outlet. */}
+      <button type="button" className="story-panel-lead" onClick={(event) => openOrPreview(event, story.url, onOpen)} title="Open the article (⇧-click to preview it over the globe)" aria-label={story.label ? undefined : `Open the article from ${story.publisher}`}>{story.label && <><bdi>{story.title}</bdi> </>}<span>{story.publisher}</span></button>
       <p className="story-panel-detail">{coverageLine(story)}</p>
       {story.countries.length > 0 && (
         <>
