@@ -955,7 +955,7 @@ export const checks = {
   async GLOBE_LIVE(ctx) {
     await keepDrawing(ctx)
     await ctx.waitForNews()
-    // Highlights open on World (story cards); signal rows are under Peaks.
+    // Highlights open on World (story cards); under Peaks, the story mountains (news on) and the other signals.
     expect(await ctx.click('.globe-tabs button', 'Peaks'), 'Highlights tab "Peaks" is missing.')
     await ctx.wait(`document.querySelectorAll('.globe-list .globe-row').length >= 5`, 60_000, 'highlight rows on the globe panel')
     const summary = await ctx.evaluate(`[...document.querySelectorAll('p')].find((p) => /public signals/.test(p.innerText))?.innerText ?? ''`)
@@ -1165,6 +1165,20 @@ export const checks = {
     const heights = digest.mountains.map((m) => m.height)
     expect(heights.every((h, i) => i === 0 || heights[i - 1] >= h), `Story mountains are not ordered tallest first: ${JSON.stringify(digest.mountains.map((m, i) => [i, m.coverage, m.height]).filter(([i], _, all) => i > 0 && all[i - 1][2] < all[i][2]))}`)
     expect(digest.mountains.every((m) => m.height > 0 && m.height < 1 && m.outlets >= 2), 'A story mountain has an out-of-range height or fewer than two outlets.')
+    // Highlights › Peaks ranks the same way as the summits: the story mountains, tallest first. Choosing one pins it.
+    expect(await ctx.click('.globe-tabs button', 'Peaks'), 'Highlights tab "Peaks" is missing.')
+    await ctx.wait(`document.querySelectorAll('.story-peak-list .story-peak-row').length >= 5`, 15_000, 'the story peaks under Peaks')
+    const listed = JSON.parse(await ctx.evaluate(`JSON.stringify([...document.querySelectorAll('.story-peak-list .story-peak-row strong')].map((el) => el.textContent))`))
+    const ranked = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getNewsDigest().then((raw) => JSON.stringify(JSON.parse(raw).mountains.map((m) => m.label ?? m.title)))`))
+    expect(listed.every((label, i) => label === ranked[i]), `Peaks lists ${JSON.stringify(listed.slice(0, 5))}, not the story mountains in order ${JSON.stringify(ranked.slice(0, 5))}.`)
+    await axeAudit(ctx, 'the Peaks list')
+    await ctx.evaluate(`(() => { document.querySelectorAll('.story-peak-list .story-peak-row')[1].click(); return true })()`)
+    await ctx.wait(`!!document.querySelector('.story-panel h2')`, 10_000, 'the story panel for the second peak')
+    const second = await ctx.evaluate(`document.querySelector('.story-panel h2').innerText`)
+    expect(second === ranked[1], `Choosing the second peak pinned "${second}", not "${ranked[1]}".`)
+    expect(await ctx.evaluate(`document.querySelectorAll('.story-peak-row')[1].getAttribute('aria-current') === 'true'`), 'The pinned peak is not marked in the Peaks list.')
+    await ctx.press('Escape')
+    await ctx.wait(`!document.querySelector('.story-panel')`, 5_000, 'the second peak\'s panel to close')
     await ctx.wait(`!!document.querySelector('.story-highest')`, 30_000, 'the highest-peak control')
     await ctx.click('.story-highest')
     await ctx.wait(`!!document.querySelector('.story-panel h2')`, 10_000, 'the pinned story panel')
@@ -1194,7 +1208,7 @@ export const checks = {
     expect(!(await ctx.evaluate(`!!document.querySelector('.story-panel')`)), `"${pinnedLabel}" wore away, then came back pinned by itself when it rose again.`)
     const button = await ctx.evaluate(`document.querySelector('.story-highest')?.innerText ?? ''`)
     expect(button.includes('Highest peak'), `After the pinned story wore away, the peak button reads "${button.replace(/\s+/g, ' ')}".`)
-    return `${digest.mountains.length} story mountains; highest "${panel}" (${top.outlets} outlets, ${top.countries.length} other countries); a pinned story that wore away stayed unpinned.`
+    return `${digest.mountains.length} story mountains, listed in the same order under Peaks; highest "${panel}" (${top.outlets} outlets, ${top.countries.length} other countries); a pinned story that wore away stayed unpinned.`
   },
 
   async OLDS_HEADLINE(ctx) {
@@ -1347,7 +1361,9 @@ export const checks = {
       const state = () => ctx.evaluate(`window.intoponet.browserHost.getState().then((s) => JSON.stringify(s))`).then(JSON.parse)
       const tabs = () => ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => JSON.stringify(t.map((x) => x.url)))`).then(JSON.parse)
       const read = () => ctx.evaluate(`JSON.stringify((() => { const i = document.querySelector('.command-input input'); return { value: i.value, selected: i.value.slice(i.selectionStart, i.selectionEnd), expanded: i.getAttribute('aria-expanded'), active: i.getAttribute('aria-activedescendant'), rows: [...document.querySelectorAll('#omnibox-suggestions [role=option]')].map((r) => ({ id: r.id, kind: r.dataset.kind, text: r.innerText.replace(/\\s+/g, ' '), selected: r.getAttribute('aria-selected') })) } })())`).then(JSON.parse)
-      const typeHost = async (text) => {
+      /** Types into the bar. `completes`: wait (within a time limit) for the inline completion, which arrives after a
+       * history lookup and can take longer than a moment on a busy Mac; otherwise read after a short pause. */
+      const typeHost = async (text, completes = true) => {
         // The window in front: losing focus blurs the bar, which drops an inline completion (as it should).
         await ctx.main(`(() => { electron.app.focus({ steal: true }); electron.BrowserWindow.getAllWindows()[0].focus(); return true })()`)
         await ctx.evaluate(`(() => { const i = document.querySelector('.command-input input'); i.focus(); i.select(); return true })()`)
@@ -1357,6 +1373,11 @@ export const checks = {
         }
         await ctx.type(text)
         await ctx.delay(600)
+        if (completes) for (let i = 0; i < 40; i += 1) {
+          const now = await read()
+          if (now.value !== text && now.rows.length > 0) return now
+          await ctx.delay(150)
+        }
         return read()
       }
       const enter = async (modifiers = 0) => {
@@ -1434,7 +1455,7 @@ export const checks = {
       // After Enter (⌘↵ here: the shown tab stays in front) the bar clears once the navigation starts, not when the
       // page has loaded; and what is typed meanwhile is never wiped when it does load.
       const behindUrl = `http://${host}/slow-behind`
-      const typedBehind = await typeHost(behindUrl)
+      const typedBehind = await typeHost(behindUrl, false)
       expect(typedBehind.value === behindUrl, `The bar reads "${typedBehind.value}" instead of the typed address.`)
       await ctx.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, modifiers: 4, text: '\r' })
       await ctx.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, modifiers: 4 })

@@ -121,6 +121,7 @@ import {
   pruneRecents,
   hasLegacyLibraryStorage,
   clearLegacyLibraryStorage,
+  legacyLibrarySnapshot,
   mergeCollections,
   splitCollectionBySite,
   explainCollection,
@@ -232,7 +233,7 @@ import { forgetRecentPages } from './browsingData/browsingDataModel'
 import { FeedbackPrompt } from './FeedbackPrompt'
 import { startBookmarks, startNews, startRecents } from './startPageModel'
 import { buildStoryTerrain, storyAt, storyTerrainKey } from './globe/storyTerrain'
-import { HighestPeakButton, STORY_MARKER_PREFIX, StoryCardContent, StoryPanel, SUMMIT_COLOR, storyLabel, storyMarkerId, storyMarkers, strandEnds } from './globe/StoryPeaks'
+import { countryName, HighestPeakButton, rankedPeaks, STORY_MARKER_PREFIX, StoryCardContent, StoryPanel, SUMMIT_COLOR, storyLabel, storyMarkerId, storyMarkers, strandEnds } from './globe/StoryPeaks'
 import { inferLauncherIntent, resolveNavigationIntent } from '@intoponet/browser-api'
 import { LauncherClear } from './launcherClear'
 
@@ -1170,9 +1171,12 @@ export function App() {
       recents,
       absorbed,
     })
+    // The old plain-text copy as this write begins: the state being written has it merged in (it was read at start-up).
+    const legacy = legacyLibrarySnapshot()
     void window.intoponet.browserHost.writePrivateLibrary(payload).then(() => {
-      // The encrypted library now holds everything: drop the old plain-text copy (one-time migration).
-      if (hasLegacyLibraryStorage()) clearLegacyLibraryStorage()
+      // The encrypted library now holds it: drop the old plain-text copy (one-time migration), but only as it was when
+      // this write began. A copy that appeared or changed since was not in this write, so it is kept.
+      if (legacy) clearLegacyLibraryStorage(legacy)
     }, (error: unknown) => {
       if (sealWarned.current) return
       sealWarned.current = true
@@ -2330,12 +2334,23 @@ export function App() {
       : visibleGlobeSignals
     if (listView === 'rising') return risingSignals(base).slice(0, 40)
     if (listView === 'fading') return fadingSignals(base).slice(0, 40)
+    // With news on, Peaks is the story mountains (panelPeaks); below them, the other kinds of signal on the globe.
+    if (!focusedPlace && storyMode) return interleaveLayers(base.filter((signal) => signal.layer !== 'news')).slice(0, 12)
     if (!focusedPlace) return interleaveLayers(base).slice(0, 40)
     // The place's own peaks first (what is in it, highest first), then what is around it, nearest first.
     const own = nearbySignals(base, focusedPlace, Math.max(focusedPlace.kind === 'country' ? focusedPlace.radiusKm : 40, focusedPlace.radiusKm * 1.2), 400)
     const ownIds = new Set(own.map((signal) => signal.id))
     return [...own.sort((a, b) => b.intensity - a.intensity), ...base.filter((signal) => !ownIds.has(signal.id))].slice(0, 40)
-  }, [focusedPlace, visibleGlobeSignals, listView])
+  }, [focusedPlace, visibleGlobeSignals, listView, storyMode])
+  // Highlights › Peaks with news on: the story mountains in the order the globe raises them (the same ranking as the
+  // summits, the highest-peak control and H); at a place, the peaks about its country.
+  const allPeaks = useMemo(() => rankedPeaks(storyStories), [storyStories])
+  const panelPeaks = useMemo(() => {
+    if (!storyMode) return undefined
+    if (!focusedPlace) return { items: allPeaks.slice(0, 30), heading: '', signalsHeading: 'Also on the globe' }
+    const here = allPeaks.filter((peak) => peak.story.countryCode === focusedPlace.countryCode).slice(0, 10)
+    return { items: here, heading: here.length ? `Peaks in ${countryName(focusedPlace.countryCode)}` : '', signalsHeading: 'Signals nearby' }
+  }, [storyMode, focusedPlace, allPeaks])
   // At a place: what is rising and fading in its own news (computed from the feeds, for any city or country).
   const [placeTrends, setPlaceTrends] = useState<PlaceTrendState | null>(null)
   const placesAliasesOf = (name: string): string[] => cityAliases(name)
@@ -3428,6 +3443,7 @@ export function App() {
           onHistory={selectedSignal && oldsQueryFor(selectedSignal) ? openOldsFor : null}
           // Near a focused place, World stories are not about that place: show its peaks instead.
           listView={focusedPlace && listView === 'world' ? 'top' : listView}
+          storyPeaks={panelPeaks && { ...panelPeaks, pinnedId: pinnedStoryId, onFind: (rank: number) => findPeak(rank - 1) }}
           onListViewChange={setListView}
           risingTerms={risingTerms}
           activeTerm={activeTerm}

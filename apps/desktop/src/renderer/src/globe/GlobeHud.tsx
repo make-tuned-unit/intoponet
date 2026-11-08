@@ -7,6 +7,7 @@ import { EventView } from './EventView'
 import { PlaceTrendList, type PlaceTrendState } from './PlaceTrendList'
 import { CommunityBeacons } from '../beacons/CommunityBeacons'
 import { WorldStories } from './WorldStories'
+import { StoryPeakList, type RankedPeak } from './StoryPeaks'
 import type { GlobalStory } from '../../../shared/news/globalStories'
 import type { OldsNode } from '@intoponet/browser-api'
 import { HeadlineList } from '../translate/HeadlineList'
@@ -398,6 +399,9 @@ export const LIST_VIEW_TOOLTIPS: Record<ListView, string> = {
   fading: 'Places whose coverage shrank: fewer stories in the last 24 hours than the day before, from feeds observed on both days. A gap in coverage never counts as fading.',
 }
 
+/** Peaks with news on: the same ranking as the story mountains on the globe. */
+export const STORY_PEAKS_TOOLTIP = 'Peaks: the story mountains on the globe, highest first. A story\'s height is how many independent outlets carry it (each outlet once, international desks included), recent coverage counting most: an outlet\'s weight halves every 12 hours. Choose one to fly to it and see every country that covered it. Below: natural events and the most-read Wikipedia places, each ranked within its own kind. Breadth of coverage, not importance.'
+
 function SignalRow({ signal, now, onSelect }: { signal: GlobeSignal; now: number; onSelect: (signal: GlobeSignal) => void }) {
   return (
     <li>
@@ -448,6 +452,7 @@ export function SignalPanel({
   world,
   peers,
   onContextName,
+  storyPeaks,
 }: {
   heading: string
   signals: GlobeSignal[]
@@ -480,6 +485,11 @@ export function SignalPanel({
   onContextName?: ((name: string, countryCode: string, countryName: string) => void) | undefined
   /** All signals, for an item's place in its layer. */
   peers?: GlobeSignal[] | undefined
+  /**
+   * Peaks with news on: the story mountains as the globe ranks them, then `signals` (natural events and reading)
+   * under `signalsHeading`. Absent, Peaks lists the signals by layer.
+   */
+  storyPeaks?: { items: RankedPeak[]; heading: string; signalsHeading: string; pinnedId: string | null; onFind: (rank: number) => void } | undefined
   world?: {
     stories: GlobalStory[]
     inTheNews: WikiNewsItem[]
@@ -491,6 +501,8 @@ export function SignalPanel({
   } | undefined
 }) {
   const context = selected && contextFor ? contextFor(selected) : null
+  const peaksShown = listView === 'top' && storyPeaks && storyPeaks.items.length > 0 ? storyPeaks : null
+  const listCount = signals.length + (peaksShown ? peaksShown.items.length : 0)
   const sheen = useGlassSheen<HTMLDivElement>()
   const reduceMotion = useReducedMotion()
   const enter = reduceMotion ? { opacity: 0 } : { opacity: 0, x: 14, filter: 'blur(6px)' }
@@ -504,8 +516,8 @@ export function SignalPanel({
   }
   if (collapsed && !selected) {
     return (
-      <button type="button" className="globe-panel-pill lg-surface" onClick={() => setCollapsed(false)} aria-expanded="false" aria-label={`Show ${heading} (${signals.length})`}>
-        <span>{heading}</span><span className="globe-panel-pill-count">{signals.length}</span><ChevronDown size={14} aria-hidden="true" />
+      <button type="button" className="globe-panel-pill lg-surface" onClick={() => setCollapsed(false)} aria-expanded="false" aria-label={`Show ${heading} (${listCount})`}>
+        <span>{heading}</span><span className="globe-panel-pill-count">{listCount}</span><ChevronDown size={14} aria-hidden="true" />
       </button>
     )
   }
@@ -638,7 +650,7 @@ export function SignalPanel({
               <h2 className="globe-list-heading">
                 {heading}
                 <span className="globe-list-heading-end">
-                  <span>{signals.length}</span>
+                  <span>{listCount}</span>
                   <button type="button" className="globe-panel-collapse" onClick={() => setCollapsed(true)} aria-expanded="true" aria-label={`Hide ${heading}`} title="Hide the list and explore the globe">
                     <ChevronUp size={14} aria-hidden="true" />
                   </button>
@@ -652,7 +664,7 @@ export function SignalPanel({
                     role="tab"
                     aria-selected={listView === option}
                     className={listView === option ? 'is-active' : ''}
-                    title={LIST_VIEW_TOOLTIPS[option]}
+                    title={option === 'top' && storyPeaks ? STORY_PEAKS_TOOLTIP : LIST_VIEW_TOOLTIPS[option]}
                     onClick={() => { onTerm(null); onListViewChange(option) }}
                   >
                     {listView === option && <motion.span layoutId="globe-tab-thumb" className="globe-tab-thumb" transition={spring} aria-hidden="true" />}
@@ -703,11 +715,18 @@ export function SignalPanel({
                     </div>
                   </section>
                 )}
+                {peaksShown && (
+                  <>
+                    {peaksShown.heading && <h3 className="globe-nearby-heading">{peaksShown.heading}</h3>}
+                    <StoryPeakList peaks={peaksShown.items} pinnedId={peaksShown.pinnedId} onFind={peaksShown.onFind} label={peaksShown.heading || 'Story peaks'} />
+                    {signals.length > 0 && <h3 className="globe-nearby-heading">{peaksShown.signalsHeading}</h3>}
+                  </>
+                )}
                 {listView === 'world' ? null : signals.length ? (
                   <ul className="globe-list">
                     {signals.map((signal) => <SignalRow key={signal.id} signal={signal} now={now} onSelect={onSelect} />)}
                   </ul>
-                ) : (
+                ) : peaksShown ? null : (
                   <p className="globe-empty">{listView === 'top'
                     ? emptyText
                     : listView === 'rising'
