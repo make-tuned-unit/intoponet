@@ -15,6 +15,15 @@ export function expect(condition, message) {
   if (!condition) throw new CheckFailure(message)
 }
 
+/**
+ * A command nobody waits for (`void page.evaluate(…)`) must not end the whole run when it fails, as it now can
+ * when its connection closes; whoever awaits it still gets the error.
+ */
+const quiet = (promise) => {
+  promise.catch(() => undefined)
+  return promise
+}
+
 /** A CDP session. `inFlight` (optional) holds what each unanswered command is, so a check that hangs can say on what. */
 async function connect(url, { inFlight, name = 'session' } = {}) {
   const socket = new WebSocket(url)
@@ -46,15 +55,13 @@ async function connect(url, { inFlight, name = 'session' } = {}) {
       pending.set(n, { resolve, reject, call })
       socket.send(JSON.stringify({ id: n, method, params }))
     })
-    // A command nobody waits for must not fail the whole run when it fails; whoever awaits it still gets the error.
-    answer.catch(() => undefined)
-    return answer
+    return quiet(answer)
   }
-  const evaluate = async (expression, { userGesture = false } = {}) => {
+  const evaluate = (expression, { userGesture = false } = {}) => quiet((async () => {
     const result = await send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true, userGesture })
     if (result.exceptionDetails) throw new Error(result.exceptionDetails.exception?.description ?? 'evaluate failed')
     return result.result.value
-  }
+  })())
   return { socket, send, evaluate }
 }
 
@@ -185,7 +192,7 @@ export async function runAppCheck(check, { env: extraEnv = {}, evidenceDir, name
     }
     /** Evaluates an expression in the app's main process (Node inspector); `electron` is in scope. */
     let mainSession = null
-    const main = async (expression) => {
+    const main = (expression) => quiet((async () => {
       if (!mainSession) {
         for (let i = 0; i < 100 && !inspectPort; i += 1) await delay(100)
         if (!inspectPort) throw new CheckFailure('The main process inspector never said its address.')
@@ -195,7 +202,7 @@ export async function runAppCheck(check, { env: extraEnv = {}, evidenceDir, name
         sockets.push(mainSession.socket)
       }
       return mainSession.evaluate(`((electron) => (${expression}))(process.mainModule.require('electron'))`)
-    }
+    })())
     /** Ends the main-process inspector session: an app that quits waits for its debugger to disconnect first. */
     const detachMain = () => {
       try { mainSession?.socket.close() } catch { /* closed */ }
