@@ -589,6 +589,8 @@ const IDENTITY_LOGIN = `<!doctype html><title>Identity sign in</title><body styl
 const startIdentitySite = () => new Promise((resolve) => {
   const server = createServer((request, response) => {
     const url = new URL(request.url ?? '/', 'http://localhost')
+    // Each connection a request came on (its port on this Mac): a session that was cleared must not reuse one.
+    server.connections.add(request.socket.remotePort)
     const cookies = Object.fromEntries((request.headers.cookie ?? '').split('; ').filter(Boolean).map((pair) => pair.split('=')))
     if (url.pathname === '/file.bin') {
       response.writeHead(200, { 'content-type': 'application/octet-stream', 'content-length': '65536', 'content-disposition': 'attachment; filename="intoponet-e2e-identity.bin"' })
@@ -598,7 +600,7 @@ const startIdentitySite = () => new Promise((resolve) => {
     // A site's own sign-in box (HTTP authentication): what each request sent is kept for the check to read.
     if (url.pathname === '/auth') {
       const sent = request.headers.authorization ?? ''
-      server.httpSignIns.push({ who: url.searchParams.get('who'), sent })
+      server.httpSignIns.push({ who: url.searchParams.get('who'), sent, connection: request.socket.remotePort })
       const ok = sent === `Basic ${Buffer.from('bob:Box-Pa55').toString('base64')}`
       response.writeHead(ok ? 200 : 401, { 'content-type': 'text/html', ...(ok ? {} : { 'www-authenticate': 'Basic realm="e2e"' }) })
       response.end(ok ? '<title>Box</title>Signed in to the box' : '<title>Box</title>Signed out of the box')
@@ -620,6 +622,9 @@ const startIdentitySite = () => new Promise((resolve) => {
     response.end(`<!doctype html><title>Identity test</title><body style="font:16px system-ui;margin:40px"><h1>${signedIn}</h1><a id="get" href="/file.bin">Download the file</a><img src="https://securepubads.g.doubleclick.net/ad.png" width="300" height="250" alt="ad"></body>`)
   })
   server.httpSignIns = []
+  server.connections = new Set()
+  // Connections kept open as long as real servers keep them (Node closes idle ones after 5 s).
+  server.keepAliveTimeout = 120_000
   server.listen(0, 'localhost', () => resolve(server))
 })
 /** Helpers for the sign-in check, bound to one app run (the check runs twice: before and after a relaunch). */
@@ -1561,16 +1566,19 @@ export const checks = {
     await ctx.delay(1000)
     const left = await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => t.length)`)
     expect(!off.privateMode && left === 0, 'Turning private browsing off left private tabs open.')
-    // A site's own sign-in box (HTTP authentication) answered in a private tab is forgotten with the private session.
-    const signIns = []
+    // A private session leaves nothing for the next one: not a password typed into a site's own sign-in box
+    // (HTTP authentication), nor an open connection a site could tie the two sessions together by.
+    const requests = []
+    let session = 1
     const authSite = createServer((request, response) => {
-      const step = new URL(request.url, 'http://localhost').searchParams.get('step')
       const sent = request.headers.authorization ?? ''
-      signIns.push({ step, sent })
-      const ok = sent === `Basic ${Buffer.from('ada:Pa55').toString('base64')}`
+      requests.push({ session, path: new URL(request.url, 'http://localhost').pathname, sent, connection: request.socket.remotePort })
+      const ok = !request.url.startsWith('/box') || sent === `Basic ${Buffer.from('ada:Pa55').toString('base64')}`
       response.writeHead(ok ? 200 : 401, { 'content-type': 'text/html', ...(ok ? {} : { 'www-authenticate': 'Basic realm="e2e"' }) })
       response.end(ok ? '<title>In</title>Signed in' : '<title>Out</title>Signed out')
     })
+    // Connections kept open as long as real servers keep them (Node closes idle ones after 5 s).
+    authSite.keepAliveTimeout = 120_000
     await new Promise((resolve) => authSite.listen(0, '127.0.0.1', resolve))
     try {
       const port = authSite.address().port
@@ -1579,13 +1587,24 @@ export const checks = {
         await ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: ${JSON.stringify(url)} }).then(() => true, () => false)`)
         await ctx.delay(1500)
       }
-      await openPrivate(`http://ada:Pa55@127.0.0.1:${port}/?step=1`)
-      expect(signIns.some((entry) => entry.step === '1' && entry.sent), 'The private tab did not sign in to the test site (no credentials were sent).')
-      await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
-      await ctx.delay(800)
-      await openPrivate(`http://127.0.0.1:${port}/?step=2`)
-      const reused = signIns.filter((entry) => entry.step === '2' && entry.sent)
-      expect(reused.length === 0, 'A private tab opened after private browsing ended was still signed in with a password typed in the earlier private session.')
+      const nextPrivateSession = async () => {
+        await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
+        await ctx.delay(800)
+        session += 1
+      }
+      const of = (n) => requests.filter((entry) => entry.session === n)
+      // A plain page: the next private session's page does not come on its connection.
+      await openPrivate(`http://127.0.0.1:${port}/page`)
+      await nextPrivateSession()
+      await openPrivate(`http://127.0.0.1:${port}/page`)
+      const earlier = new Set(of(1).map((entry) => entry.connection))
+      expect(of(2).length > 0 && !of(2).some((entry) => earlier.has(entry.connection)), 'A private tab opened after private browsing ended came on a connection of the earlier private session.')
+      // A sign-in box answered: the next private session is not signed in.
+      await openPrivate(`http://ada:Pa55@127.0.0.1:${port}/box`)
+      expect(of(2).some((entry) => entry.path === '/box' && entry.sent), 'The private tab did not sign in to the test site (no credentials were sent).')
+      await nextPrivateSession()
+      await openPrivate(`http://127.0.0.1:${port}/box`)
+      expect(of(3).length > 0 && !of(3).some((entry) => entry.sent), 'A private tab opened after private browsing ended was still signed in with a password typed in the earlier private session.')
       await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
     } finally {
       authSite.close()
@@ -5308,18 +5327,27 @@ export const checks = {
       const [workUser] = JSON.parse(await (await ctx.page('who=wcheck')).evaluate(`JSON.stringify([document.querySelector('#username')?.value ?? null])`))
       expect(workUser === 'bob', `Work's sign-in page did not offer its saved account (it filled "${workUser}").`)
 
-      // Work answers a site's own sign-in box too (the tab is closed again, so nothing reloads it with the password).
-      await openPage(ctx, `${base.replace('http://', 'http://bob:Box-Pa55@')}/auth?who=wbox`, 1500)
-      expect(server.httpSignIns.some((entry) => entry.who === 'wbox' && entry.sent), "Work's tab did not sign in to the site's own sign-in box.")
-      const boxTab = (await tabsOf()).find((item) => item.url.includes('who=wbox'))
-      if (boxTab) await ctx.evaluate(`${host}.closeTab(${JSON.stringify(boxTab.id)}).then(() => true)`)
-
       // Clearing Work's data signs Work out and leaves Main signed in.
       await showIn(workId, 'who=bob')
+      const connectionsBefore = new Set(server.connections)
       await ctx.evaluate(`${ws}.clearSignIns(${JSON.stringify(workId)}).then(() => true)`)
       await waitPage('who=bob', 'Signed out')
       await waitPage('who=mhome', 'Signed in as ada')
-      // ...signed out of the site's own sign-in box as well.
+      // Work's next page comes on a new connection: the site cannot tie the signed-out pages to the signed-in ones.
+      await openPage(ctx, `${base}/auth?who=wfresh`, 1500)
+      const fresh = server.httpSignIns.find((entry) => entry.who === 'wfresh')
+      expect(fresh && !connectionsBefore.has(fresh.connection), "After clearing Work's sign-ins, its next page came on a connection opened while it was signed in.")
+
+      // A site's own sign-in box answered in Work is cleared too (its tab is closed first, so nothing reloads it with the password).
+      await openPage(ctx, `${base.replace('http://', 'http://bob:Box-Pa55@')}/auth?who=wbox`, 1500)
+      expect(server.httpSignIns.some((entry) => entry.who === 'wbox' && entry.sent), "Work's tab did not sign in to the site's own sign-in box.")
+      for (const marker of ['who=wfresh', 'who=wbox']) {
+        const tab = (await tabsOf()).find((item) => item.url.includes(marker))
+        if (tab) await ctx.evaluate(`${host}.closeTab(${JSON.stringify(tab.id)}).then(() => true)`)
+      }
+      await showIn(workId, 'who=bob')
+      await ctx.evaluate(`${ws}.clearSignIns(${JSON.stringify(workId)}).then(() => true)`)
+      await waitPage('who=bob', 'Signed out')
       await openPage(ctx, `${base}/auth?who=wbox2`, 1500)
       expect(!server.httpSignIns.some((entry) => entry.who === 'wbox2' && entry.sent), "Clearing Work's sign-ins kept the password typed into a site's own sign-in box.")
       const boxAgain = (await tabsOf()).find((item) => item.url.includes('who=wbox2'))

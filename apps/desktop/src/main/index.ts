@@ -2357,6 +2357,8 @@ async function clearPartitionData(partition: string): Promise<void> {
   await target.clearCache().catch(() => undefined)
   // A site's own sign-in box (HTTP authentication) is remembered apart from its cookies.
   await target.clearAuthCache().catch(() => undefined)
+  // Open connections too: a site would otherwise see the signed-out pages arrive on the signed-in ones' connection.
+  await target.closeAllConnections().catch(() => undefined)
 }
 
 /** A workspace's own site permissions: prompts still waiting end, and its answers are deleted from disk. */
@@ -5464,6 +5466,8 @@ app.whenReady().then(async () => {
           await privateSession.clearCache().catch(() => undefined)
           // HTTP sign-ins typed in a private tab too: the next private tab must not be signed in with them.
           await privateSession.clearAuthCache().catch(() => undefined)
+          // And its open connections: the next private session's pages would arrive on them, linking the two.
+          await privateSession.closeAllConnections().catch(() => undefined)
           browsingData?.privateBrowsingEnded()
           emitPanelState()
         }
