@@ -3963,8 +3963,9 @@ function rememberClosedTab(tab: OpenTab, workspaceId: string | null): void {
   if (tab.start || privateViews.has(tab.view) || untrackedViews.has(tab.view)) return
   const live = !viewGone(tab.view)
   const liveUrl = live ? tab.view.webContents.getURL() : ''
-  let history: { entries: Electron.NavigationEntry[]; index: number } | undefined
-  if (live) {
+  // Asleep, its view is blank: the list it slept with is where it was.
+  let history: { entries: Electron.NavigationEntry[]; index: number } | undefined = tab.asleep?.history
+  if (live && !tab.asleep) {
     try {
       history = { entries: tab.view.webContents.navigationHistory.getAllEntries(), index: tab.view.webContents.navigationHistory.getActiveIndex() }
     } catch {

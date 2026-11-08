@@ -2247,6 +2247,16 @@ export const checks = {
         await ctx.evaluate(`window.intoponet.browsing.setTabSleep('15m').then(() => true)`)
         await ctx.wait(`${host}.getTabs().then((t) => t.some((x) => x.url.endsWith('/woken') && x.asleep))`, 15_000, 'the slow page\'s tab to sleep')
         await ctx.evaluate(`window.intoponet.browsing.setTabSleep('never').then(() => true)`)
+        // Closed while asleep, ⇧⌘T brings it back with its back list.
+        await ctx.evaluate(`${host}.closeTab(${JSON.stringify((await tabs()).find((tab) => tab.url.endsWith('/woken')).id)}).then(() => true)`)
+        await ctx.delay(300)
+        await ctx.evaluate(`${host}.reopenClosedTab().then(() => true)`)
+        await ctx.wait(`${host}.getState().then((s) => s.url.endsWith('/woken') && !s.isLoading)`, 8000, 'the tab closed while asleep to reopen')
+        expect((await panelState(ctx)).canGoBack, 'A tab closed while asleep came back without its back list.')
+        await ctx.evaluate(`${host}.activateTab(${JSON.stringify((await tabs()).find((tab) => tab.url.endsWith('/in-front')).id)}).then(() => true)`)
+        await ctx.evaluate(`window.intoponet.browsing.setTabSleep('15m').then(() => true)`)
+        await ctx.wait(`${host}.getTabs().then((t) => t.some((x) => x.url.endsWith('/woken') && x.asleep))`, 15_000, 'the reopened tab to sleep again')
+        await ctx.evaluate(`window.intoponet.browsing.setTabSleep('never').then(() => true)`)
         slowNow = true
         const woken = (await tabs()).find((tab) => tab.url.endsWith('/woken'))
         await ctx.evaluate(`${host}.activateTab(${JSON.stringify(woken.id)}).then(() => true)`)
@@ -2261,7 +2271,7 @@ export const checks = {
       } finally {
         slowSite.close()
       }
-      return `9 background tabs slept (typed text and the front tab stayed awake); their pages' memory ${Math.round(awake / 1024)} MB → ${Math.round(asleep / 1024)} MB; woke on the same page, scroll and back list; a busy background page did not hold up the others; an address typed while a tab woke was not replaced by its old page.`
+      return `9 background tabs slept (typed text and the front tab stayed awake); their pages' memory ${Math.round(awake / 1024)} MB → ${Math.round(asleep / 1024)} MB; woke on the same page, scroll and back list; a busy background page did not hold up the others; a tab closed asleep reopened with its back list; an address typed while a tab woke was not replaced by its old page.`
     } finally {
       server.close()
     }
