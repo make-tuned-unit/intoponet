@@ -2877,6 +2877,9 @@ export const checks = {
       await ctx.click('.settings-button')
       await ctx.click('button', 'Take the tour')
       await ctx.wait(`!!document.querySelector('.tour-card')`, 5000, 'the tour to start')
+      // It is modal: focus moves into its card, and stays there once Settings (which it closed) has gone.
+      await ctx.delay(600)
+      expect(await ctx.evaluate(`!!document.activeElement?.closest('.tour-card')`), `Focus did not move into the tour as it opened (it is on "${await ctx.evaluate(`document.activeElement?.getAttribute('aria-label') || document.activeElement?.textContent || document.activeElement?.tagName`)}").`)
       await ctx.evaluate(`(() => {
         const step = window.__oldsStep = { start: performance.now() }
         const timer = setInterval(() => {
@@ -2888,7 +2891,7 @@ export const checks = {
             clearInterval(timer)
           }
         }, 50)
-        ;[...document.querySelectorAll('.tour-progress button')].find((b) => b.getAttribute('aria-label').endsWith(': The history behind the news')).click()
+        ;[...document.querySelectorAll('.tour-progress [data-step]')].find((b) => b.dataset.title === 'The history behind the news').click()
         return true
       })()`)
       await ctx.wait(`!!window.__oldsStep.ms`, 45_000, 'The Olds step to finish with Wikipedia unreachable')
@@ -2903,9 +2906,19 @@ export const checks = {
     await ctx.click('button', 'Take the tour')
     await ctx.wait(`!!document.querySelector('.tour-card')`, 5000, 'the tour to start again')
     const total = Number((await ctx.evaluate(`document.querySelector('.tour-count').textContent`)).split(' of ')[1])
+    // Keyboard and screen reader: no WCAG violations (the steps are one slider, not dots too small to hit),
+    // Tab and ⇧Tab stay in the card, and each step's words are in a live region.
+    await axeAudit(ctx, 'the tour', '.tour')
+    for (const shift of [false, false, false, false, false, true, true, true, true, true]) {
+      await ctx.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9, modifiers: shift ? 8 : 0 })
+      await ctx.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9, modifiers: shift ? 8 : 0 })
+      await ctx.delay(80)
+      expect(await ctx.evaluate(`!!document.activeElement?.closest('.tour-card')`), `${shift ? '⇧Tab' : 'Tab'} took focus out of the tour (to "${await ctx.evaluate(`document.activeElement?.getAttribute('aria-label') || document.activeElement?.textContent || document.activeElement?.tagName`)}").`)
+    }
+    expect(await ctx.evaluate(`!!document.querySelector('.tour-card [aria-live="polite"] #tour-title') && document.querySelector('.tour-progress[role="slider"]')?.getAttribute('aria-valuenow') === '1'`), 'The tour\'s steps are not announced (no live region for its words, or no step slider).')
     const missed = []
-    // The step's own name (its progress dot); the card's heading animates from one step to the next.
-    const stepTitle = `(document.querySelector('.tour-progress [aria-current="step"]')?.getAttribute('aria-label') ?? '').replace(/^Step \\d+: /, '')`
+    // The step's own name (its bar on the step slider); the card's heading animates from one step to the next.
+    const stepTitle = `(document.querySelector('.tour-progress .is-current')?.dataset.title ?? '')`
     // What a step shows: the selector its spotlight found, whether its card is on top, and what is open behind it.
     const scene = `JSON.stringify({ title: ${stepTitle}, onTop: (() => { const r = document.querySelector('.tour-card').getBoundingClientRect(); return !!document.elementFromPoint(r.left + r.width / 2, r.top + 30)?.closest('.tour') })(), lit: document.querySelector('.tour-spotlight')?.dataset.target ?? null, page: !!document.querySelector('.browser-actions'), olds: !!document.querySelector('.olds-sheet'), bookmarks: !!document.querySelector('.bookmark-pane'), paneCovered: (() => { const pane = document.querySelector('.bookmark-pane')?.getBoundingClientRect(); return !!pane && [...document.querySelectorAll('.story-highest, .globe-panel-pill')].some((el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.right > pane.left && r.left < pane.right && r.bottom > pane.top && r.top < pane.bottom }) })(), library: !!document.querySelector('.bookmark-drawer'), knowledge: !!document.querySelector('.knowledge-sheet'), rail: document.querySelector('.tab-rail')?.classList.contains('is-open') ?? null, typed: document.querySelector('.command-input input')?.value ?? '' })`
     const settle = async (step) => {
@@ -2990,12 +3003,22 @@ export const checks = {
       await ctx.click('.tour-back')
       await compare(step, 'back to')
     }
-    const jump = (step) => ctx.evaluate(`document.querySelectorAll('.tour-progress button')[${step - 1}].click(); true`)
+    const jump = (step) => ctx.evaluate(`document.querySelectorAll('.tour-progress [data-step]')[${step - 1}].click(); true`)
     for (const step of [33, 10, 20, 9, 31, 12, 3, 8]) {
       await jump(step)
       await compare(step, 'jump to')
     }
     expect(elsewhere.length === 0, `Reached another way, these tour steps showed something else: ${elsewhere.join('; ')}.`)
+    // Enter and Space on a focused button are that button's: Back goes back (not on), and Space does not play.
+    await jump(3)
+    await settle(3)
+    await ctx.evaluate(`document.querySelector('.tour-back').focus(); true`)
+    await ctx.press('Enter')
+    await settle(2)
+    await ctx.send('Input.dispatchKeyEvent', { type: 'keyDown', key: ' ', code: 'Space', windowsVirtualKeyCode: 32, text: ' ' })
+    await ctx.send('Input.dispatchKeyEvent', { type: 'keyUp', key: ' ', code: 'Space', windowsVirtualKeyCode: 32 })
+    await settle(1)
+    expect(await ctx.evaluate(`document.querySelector('.tour-play').getAttribute('aria-pressed') === 'false'`), 'Space on the focused Back button played the tour.')
     await jump(total)
     await settle(total)
     await ctx.click('.tour-next')
@@ -3023,6 +3046,23 @@ export const checks = {
     let cookiesKept = await ctx.main(cookiesLeft)
     for (let i = 0; i < 20 && cookiesKept > 0; i += 1) { await ctx.delay(250); cookiesKept = await ctx.main(cookiesLeft) }
     expect(cookiesKept === 0, `The tour ended but ${cookiesKept} of its cookies are still kept.`)
+    // From the keyboard: Settings › Take the tour puts focus in the tour; Enter on Leave the tour leaves it, and focus goes
+    // back to the Settings button (Settings closed as the tour opened).
+    const focusName = () => ctx.evaluate(`document.activeElement?.getAttribute('aria-label') || document.activeElement?.textContent || document.activeElement?.tagName`)
+    await ctx.main(`(() => { electron.app.focus({ steal: true }); electron.BrowserWindow.getAllWindows()[0].focus(); return true })()`)
+    await ctx.evaluate(`document.querySelector('.settings-button').focus(); true`)
+    await ctx.press('Enter')
+    await ctx.wait(`[...document.querySelectorAll('button')].some((b) => b.innerText.includes('Take the tour'))`, 5000, 'Settings to open from the keyboard')
+    await ctx.evaluate(`[...document.querySelectorAll('button')].find((b) => b.innerText.includes('Take the tour')).focus(); true`)
+    await ctx.press('Enter')
+    await ctx.wait(`!!document.querySelector('.tour-card')`, 5000, 'the tour to start from the keyboard')
+    await ctx.delay(700)
+    expect(await ctx.evaluate(`document.activeElement?.classList.contains('tour-next')`), `Opened from the keyboard, the tour left focus on "${await focusName()}".`)
+    await ctx.evaluate(`document.querySelector('.tour-close').focus(); true`)
+    await ctx.press('Enter')
+    await ctx.wait(`!document.querySelector('.tour-card')`, 5000, 'Enter on Leave the tour to leave it')
+    await ctx.delay(500)
+    expect(await ctx.evaluate(`document.activeElement?.dataset.panel === 'settings'`), `After leaving the tour, focus went to "${await focusName()}", not the Settings button.`)
     return `All ${total} steps shown, each spotlight on what it describes, the same played forward, gone back to and jumped to; the tour put everything back at the end, its own tab closed. With Wikipedia unreachable The Olds step moved on ${((offline.ms - offline.looked) / 1000).toFixed(1)} s after The Olds had looked (${(offline.ms / 1000).toFixed(1)} s in all: "${offline.olds}").`
   },
   async TAB_ARCHIVE(ctx) {

@@ -50,8 +50,22 @@ export function Tour({ controls, onClose }: { controls: TourControls; onClose: (
   const [busy, setBusy] = useState(false)
   const [elapsed, setElapsed] = useState(0)
   const context = useRef<TourContext>({ headline: null })
+  const card = useRef<HTMLElement>(null)
+  const nextButton = useRef<HTMLButtonElement>(null)
   const step = TOUR_STEPS[index]!
   const last = index === TOUR_STEPS.length - 1
+
+  // The tour is modal: focus moves into it as it opens, and back to where it was once it closes (to the
+  // Settings button when that was Settings' Take the tour, closed as the tour opened).
+  useEffect(() => {
+    const opener = document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null
+    const frame = requestAnimationFrame(() => nextButton.current?.focus())
+    return () => {
+      cancelAnimationFrame(frame)
+      const back = opener?.isConnected ? opener : document.querySelector<HTMLElement>('[data-panel="settings"]')
+      back?.focus()
+    }
+  }, [])
 
   // Run the step's action, then keep the spotlight on its target as panels open and move.
   useEffect(() => {
@@ -65,6 +79,11 @@ export function Tour({ controls, onClose }: { controls: TourControls; onClose: (
       window.clearInterval(follow)
     }
   }, [index]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Back to the first step from the Back button, which is then disabled: focus goes on to Next, not nowhere.
+  useEffect(() => {
+    if (index === 0 && (document.activeElement?.classList.contains('tour-back') || document.activeElement === document.body)) nextButton.current?.focus()
+  }, [index])
 
   const close = useCallback((): void => {
     controls.finish()
@@ -102,7 +121,20 @@ export function Tour({ controls, onClose }: { controls: TourControls; onClose: (
   keys.current = { close, next, back }
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
+      const inCard = event.target instanceof Element && !!card.current?.contains(event.target)
       if (event.key === 'Escape') { event.preventDefault(); event.stopImmediatePropagation(); keys.current.close() }
+      else if (event.key === 'Tab') {
+        // Tab stays in the card (a step may have put focus in the address bar to type there).
+        const stops = [...(card.current?.querySelectorAll<HTMLElement>('button:not([disabled]), [tabindex="0"]') ?? [])]
+        const first = stops[0]
+        const end = stops.at(-1)
+        if (!first || !end) return
+        if (!inCard) { event.preventDefault(); (event.shiftKey ? end : first).focus() }
+        else if (event.shiftKey && event.target === first) { event.preventDefault(); end.focus() }
+        else if (!event.shiftKey && event.target === end) { event.preventDefault(); first.focus() }
+      }
+      // Enter or Space on one of the card's buttons is that button's (Leave, Back, Play…): nothing else hears it.
+      else if ((event.key === 'Enter' || event.key === ' ') && inCard && event.target instanceof HTMLButtonElement) event.stopImmediatePropagation()
       else if (event.key === 'ArrowRight' || event.key === 'Enter') { event.preventDefault(); event.stopImmediatePropagation(); keys.current.next() }
       else if (event.key === 'ArrowLeft') { event.preventDefault(); event.stopImmediatePropagation(); keys.current.back() }
       else if (event.key === ' ') { event.preventDefault(); event.stopImmediatePropagation(); setPlaying((value) => !value) }
@@ -121,12 +153,14 @@ export function Tour({ controls, onClose }: { controls: TourControls; onClose: (
       ) : (
         <motion.div className="tour-dim" aria-hidden="true" initial={{ opacity: 0 }} animate={{ opacity: 1 }} />
       )}
-      <motion.section className="tour-card lg-surface" initial={false} animate={place} transition={spring} style={{ width: CARD_WIDTH }}>
+      <motion.section ref={card} className="tour-card lg-surface" initial={false} animate={place} transition={spring} style={{ width: CARD_WIDTH }}>
         <header className="tour-head">
           <span className="tour-chapter">{step.chapter}</span>
           <span className="tour-count">{index + 1} of {TOUR_STEPS.length}</span>
           <button type="button" className="tour-close" aria-label="Leave the tour" onClick={close}><X size={15} /></button>
         </header>
+        {/* Each step's words are read out as they change (Next, Back, or playing). */}
+        <div aria-live="polite">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={step.id}
@@ -139,15 +173,37 @@ export function Tour({ controls, onClose }: { controls: TourControls; onClose: (
             <p id="tour-body">{step.body}</p>
           </motion.div>
         </AnimatePresence>
-        <ol className="tour-progress" aria-label="Steps">
+        </div>
+        {/*
+          One control for the steps (a click on a step's bar goes to it; ← → and Home End from the keyboard):
+          35 dots are too small to be targets of their own.
+        */}
+        <div
+          className="tour-progress"
+          role="slider"
+          tabIndex={0}
+          aria-label="Tour step"
+          aria-valuemin={1}
+          aria-valuemax={TOUR_STEPS.length}
+          aria-valuenow={index + 1}
+          aria-valuetext={`${index + 1} of ${TOUR_STEPS.length}: ${step.title}`}
+          onClick={(event) => {
+            const at = Number((event.target as HTMLElement).closest<HTMLElement>('[data-step]')?.dataset['step'])
+            if (at >= 1 && at <= TOUR_STEPS.length) setIndex(at - 1)
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Home') setIndex(0)
+            else if (event.key === 'End') setIndex(TOUR_STEPS.length - 1)
+            else return
+            event.preventDefault()
+          }}
+        >
           {TOUR_STEPS.map((item, at) => (
-            <li key={item.id} className={at < index ? 'is-done' : at === index ? 'is-current' : ''}>
-              <button type="button" aria-label={`Step ${at + 1}: ${item.title}`} aria-current={at === index ? 'step' : undefined} onClick={() => setIndex(at)}>
-                {at === index && <i style={{ width: `${(playing ? elapsed : 0) * 100}%` }} />}
-              </button>
-            </li>
+            <span key={item.id} className={`tour-progress-step${at < index ? ' is-done' : at === index ? ' is-current' : ''}`} data-step={at + 1} data-title={item.title} title={`Step ${at + 1}: ${item.title}`}>
+              <span className="tour-progress-bar">{at === index && <i style={{ width: `${(playing ? elapsed : 0) * 100}%` }} />}</span>
+            </span>
           ))}
-        </ol>
+        </div>
         <footer className="tour-actions">
           <button type="button" className="tour-play" aria-pressed={playing} onClick={() => setPlaying((value) => !value)} title={playing ? 'Pause (Space)' : 'Play the tour (Space)'}>
             {playing ? <Pause size={14} aria-hidden="true" /> : <Play size={14} aria-hidden="true" />}
@@ -155,7 +211,7 @@ export function Tour({ controls, onClose }: { controls: TourControls; onClose: (
           </button>
           <span className="tour-spacer" />
           <button type="button" className="tour-back" onClick={back} disabled={index === 0}><ArrowLeft size={14} aria-hidden="true" /> Back</button>
-          <button type="button" className="tour-next" onClick={next}>
+          <button ref={nextButton} type="button" className="tour-next" onClick={next}>
             {last ? 'Finish' : busy ? 'Showing…' : 'Next'} {!last && <ArrowRight size={14} aria-hidden="true" />}
           </button>
         </footer>
