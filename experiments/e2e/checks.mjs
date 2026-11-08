@@ -2205,7 +2205,41 @@ export const checks = {
       await ctx.evaluate(`window.intoponet.browsing.setTabSleep('15m').then(() => true)`)
       await ctx.wait(`${host}.getTabs().then((t) => t.some((x) => x.url.endsWith('/later') && x.asleep))`, 10_000, 'a background tab to sleep while another background page was busy')
       await ctx.evaluate(`window.intoponet.browsing.setTabSleep('never').then(() => true)`)
-      return `9 background tabs slept (typed text and the front tab stayed awake); their pages' memory ${Math.round(awake / 1024)} MB → ${Math.round(asleep / 1024)} MB; woke on the same page, scroll and back list; a busy background page did not hold up the others.`
+      // Woken while its page is slow to come back, then sent to an address that fails before it has: that
+      // address's error stays, and the old page never loads over it.
+      let slowNow = false
+      const slowSite = createServer((request, response) => {
+        if (request.url.startsWith('/broken')) return request.socket.destroy()
+        setTimeout(() => {
+          response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' })
+          response.end(`<!doctype html><title>Slow ${request.url}</title><p>${request.url}`)
+        }, slowNow ? 3000 : 0)
+      })
+      await new Promise((resolve) => slowSite.listen(0, '127.0.0.1', resolve))
+      const slowOrigin = `http://127.0.0.1:${slowSite.address().port}`
+      try {
+        await openPage(ctx, `${slowOrigin}/earlier`, 1000)
+        await (await ctx.page('/earlier')).evaluate(`location.href = '${slowOrigin}/woken'`)
+        await ctx.wait(`${host}.getTabs().then((t) => t.some((x) => x.url.endsWith('/woken') && !x.loading))`, 8000, 'the second page to load')
+        await openPage(ctx, `${origin}/in-front`, 800)
+        await ctx.evaluate(`window.intoponet.browsing.setTabSleep('15m').then(() => true)`)
+        await ctx.wait(`${host}.getTabs().then((t) => t.some((x) => x.url.endsWith('/woken') && x.asleep))`, 15_000, 'the slow page\'s tab to sleep')
+        await ctx.evaluate(`window.intoponet.browsing.setTabSleep('never').then(() => true)`)
+        slowNow = true
+        const woken = (await tabs()).find((tab) => tab.url.endsWith('/woken'))
+        await ctx.evaluate(`${host}.activateTab(${JSON.stringify(woken.id)}).then(() => true)`)
+        await ctx.delay(400)
+        await ctx.evaluate(`${host}.navigate(${JSON.stringify(`${slowOrigin}/broken`)}).then(() => true, () => true)`)
+        await ctx.wait(`${host}.getTabs().then((t) => t.some((x) => x.id === ${JSON.stringify(woken.id)} && x.url.endsWith('/broken')))`, 8000, 'the address typed while the tab woke to fail in it (not be replaced by its old page)')
+        // The old page would have come back 3 s after the failure.
+        await ctx.delay(4500)
+        const after = (await tabs()).find((tab) => tab.id === woken.id)
+        expect(after?.url.endsWith('/broken'), `An address typed while the tab was waking was replaced by its old page (${after?.url}).`)
+        expect(!(await ctx.main(`electron.webContents.getAllWebContents().some((c) => c.getURL().endsWith('/woken'))`)), 'The old page loaded again over the address typed while the tab was waking.')
+      } finally {
+        slowSite.close()
+      }
+      return `9 background tabs slept (typed text and the front tab stayed awake); their pages' memory ${Math.round(awake / 1024)} MB → ${Math.round(asleep / 1024)} MB; woke on the same page, scroll and back list; a busy background page did not hold up the others; an address typed while a tab woke was not replaced by its old page.`
     } finally {
       server.close()
     }

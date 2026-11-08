@@ -176,6 +176,7 @@ import { PDF_WORLD_ID } from './pdfExport/pageScripts'
 import { SavedPdfList } from './pdfExport/savedPdfs'
 import { DEFAULT_PDF_SETTINGS, parsePdfSettings, type PdfExportSettings } from './pdfExport/settings'
 import { CrashRecoveryPolicy } from './crashRecovery'
+import { restoreHistoryOrLoad } from './historyRestore'
 import { BeaconPublisher } from './beacons/publisher'
 import { DEFAULT_BEACON_REGISTRY } from './beacons/defaults'
 import { ENCRYPTED_DNS, networkPrivacySnapshot, WEBRTC_POLICY } from './networkPrivacy'
@@ -2013,12 +2014,7 @@ function wakeTab(tab: OpenTab): void {
   }
   if (sleep?.history && (!current || current === 'about:blank')) {
     // Woken where it was: back/forward list and scroll position (page state) restored.
-    const view = tab.view
-    restoringViews.add(view)
-    void view.webContents.navigationHistory.restore(sleep.history)
-      .catch(() => view.webContents.loadURL(tab.url))
-      .catch(() => undefined)
-      .finally(() => restoringViews.delete(view))
+    restoreTabHistory(tab, sleep.history)
   } else if ((!current || current === 'about:blank') && safeHttpUrl(tab.url) && !restoringViews.has(tab.view) && crashRecovery.canAutoRecover(tab.id)) {
     loadBlankTab(tab)
   }
@@ -2029,19 +2025,28 @@ function wakeTab(tab: OpenTab): void {
  * list and scroll restored, as a sleeping tab wakes), else at its address.
  */
 function loadBlankTab(tab: OpenTab): void {
-  const view = tab.view
   const history = crashRecovery.takeHistory(tab.id)
-  if (!history) {
-    void view.webContents.loadURL(tab.url).catch(() => undefined)
-    return
-  }
+  if (history) return restoreTabHistory(tab, history)
+  void tab.view.webContents.loadURL(tab.url).catch(() => undefined)
+}
+
+/**
+ * A tab's blank view gets its back/forward list back (historyRestore.ts). Its address loads instead
+ * only when the list could not be restored at all and nothing has navigated since: a page that failed
+ * shows its error page, and a newer navigation (a click, an address typed meanwhile) is never undone.
+ */
+function restoreTabHistory(tab: OpenTab, history: TabHistory): void {
+  const view = tab.view
   restoringViews.add(view)
-  void view.webContents.navigationHistory.restore(history)
-    // Only when the list could not be restored at all: a page that failed shows its error page, and a
-    // load stopped by a newer navigation (a click, an address typed meanwhile) must not be undone.
-    .catch(() => (viewGone(view) || view.webContents.getURL() ? undefined : view.webContents.loadURL(tab.url)))
-    .catch(() => undefined)
-    .finally(() => restoringViews.delete(view))
+  void restoreHistoryOrLoad({
+    restore: () => view.webContents.navigationHistory.restore(history),
+    navigatedSince: () => {
+      if (viewGone(view)) return true
+      const now = view.webContents.getURL()
+      return now !== '' && now !== 'about:blank'
+    },
+    load: () => view.webContents.loadURL(tab.url),
+  }).finally(() => restoringViews.delete(view))
 }
 
 /** A pinned tab is away from home once it is on another site (moving around the same site is not leaving). */
