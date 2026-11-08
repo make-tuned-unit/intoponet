@@ -50,7 +50,7 @@ import { fetchTabIcon, TabIconMemory } from './tabFavicon'
 import { browsingChannels, parseBrowsingCommand, type LinkRoutesState, type BrowsingEvent, type ArchivedTabSnapshot, type TabFolderSnapshot, type TabGroupRequest, type TabGroupResult, type TidySuggestion, type BrowsingSettings, type LinksFromOtherApps, type PageLoadError, type TabArchiveAfter, type TabSidebarState, type TabSleepAfter, type TabSwitchOrder } from '@intoponet/browser-api'
 import { ExternalOpenBroker, classifyExternalUrl } from './externalOpen'
 import { CertificateErrorMemo, classifyLoadError, isCertificateError, showsErrorPage, summarizeCertificate } from './errorPage'
-import { IncomingOpenQueue, LocalFileGrants, incomingFileTarget, incomingTargetsFromArgs, incomingWebUrl, type IncomingTarget } from './incomingOpen'
+import { IncomingOpenQueue, LocalFileGrants, incomingFileTarget, incomingTargetsFromArgs, incomingWebUrl, readSavedLinkFile, type IncomingTarget } from './incomingOpen'
 import { PageAppearanceController } from './pageAppearance'
 import { SWITCHER_KEYS_SCRIPT, switcherHtml, SWITCHER_ROW_HEIGHT, SWITCHER_ROWS, TabSwitcher, type SwitcherTab } from './tabSwitcher'
 import { focusLinkScript, isLinkPreviewRequest, parsePreviewMessage, PREVIEW_FOCUS_LOOP_SCRIPT, PREVIEW_WORLD_ID, previewFrameHtml, previewHeading, previewLayout, previewSite, type PreviewRect } from './linkPreview'
@@ -100,10 +100,8 @@ const quickWindows: QuickWindows = new QuickWindows({
 })
 /** Local files opened from Finder: the only files a tab may read (see servePageFiles). */
 const localFileGrants = new LocalFileGrants()
-const readSmallFile = (path: string): Buffer => {
-  if (statSync(path).size > 64_000) throw new Error('Too large for a saved link.')
-  return readFileSync(path)
-}
+// A saved link's file: never a pipe or device that would keep the app reading (incomingOpen.ts).
+const readSmallFile = readSavedLinkFile
 if (!app.requestSingleInstanceLock()) {
   // Intoponet is already open (with this profile): it opens what this launch was given.
   app.quit()

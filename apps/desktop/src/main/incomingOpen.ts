@@ -1,4 +1,4 @@
-import { realpathSync } from 'node:fs'
+import { closeSync, constants, fstatSync, openSync, readFileSync, realpathSync } from 'node:fs'
 import { basename, extname, isAbsolute, join, resolve as resolvePath, dirname, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
@@ -28,6 +28,25 @@ export function incomingWebUrl(value: string): string | null {
     return url.toString()
   } catch {
     return null
+  }
+}
+
+/** Largest saved link (`.webloc`) read; real ones are a few hundred bytes. */
+export const MAX_SAVED_LINK_BYTES = 64_000
+
+/**
+ * Reads a saved link's file: an ordinary file of at most 64 KB, or it throws. A "file" that is a
+ * named pipe or a link to /dev/zero (an archive can hold either) would otherwise keep the app
+ * reading forever; it is opened without waiting and checked before anything is read.
+ */
+export function readSavedLinkFile(path: string): Buffer {
+  const fd = openSync(path, constants.O_RDONLY | constants.O_NONBLOCK)
+  try {
+    const info = fstatSync(fd)
+    if (!info.isFile() || info.size > MAX_SAVED_LINK_BYTES) throw new Error('Not a saved link.')
+    return readFileSync(fd)
+  } finally {
+    closeSync(fd)
   }
 }
 

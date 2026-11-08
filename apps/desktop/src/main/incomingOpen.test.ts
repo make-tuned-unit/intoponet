@@ -1,8 +1,9 @@
+import { execFileSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { IncomingOpenQueue, LocalFileGrants, incomingFileTarget, incomingTargetsFromArgs, incomingWebUrl, parseWebloc, type IncomingTarget } from './incomingOpen'
+import { IncomingOpenQueue, LocalFileGrants, MAX_SAVED_LINK_BYTES, incomingFileTarget, incomingTargetsFromArgs, incomingWebUrl, parseWebloc, readSavedLinkFile, type IncomingTarget } from './incomingOpen'
 
 const XML_WEBLOC = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -22,6 +23,24 @@ describe('links from other apps', () => {
     const binary = Buffer.concat([Buffer.from('bplist00\xd1\x01\x02SURL_\x10', 'latin1'), Buffer.from('https://example.org/page'), Buffer.from([0x08, 0x0b])])
     expect(parseWebloc(binary)).toBe('https://example.org/page')
     expect(parseWebloc('<plist><dict><key>URL</key><string>file:///etc/passwd</string></dict></plist>')).toBeNull()
+  })
+
+  it('reads a saved link only from an ordinary small file, never a pipe or a device', () => {
+    const root = mkdtempSync(join(tmpdir(), 'intoponet-webloc-'))
+    try {
+      writeFileSync(join(root, 'Link.webloc'), XML_WEBLOC)
+      expect(incomingFileTarget(join(root, 'Link.webloc'), readSavedLinkFile)).toEqual({ kind: 'web', url: 'https://example.com/a?b=1&c=2' })
+      // A named pipe would block the read until something wrote to it; a link to /dev/zero would never end.
+      execFileSync('mkfifo', [join(root, 'Pipe.webloc')])
+      symlinkSync('/dev/zero', join(root, 'Zero.webloc'))
+      writeFileSync(join(root, 'Big.webloc'), Buffer.alloc(MAX_SAVED_LINK_BYTES + 1, 32))
+      expect(incomingFileTarget(join(root, 'Pipe.webloc'), readSavedLinkFile)).toBeNull()
+      expect(incomingFileTarget(join(root, 'Zero.webloc'), readSavedLinkFile)).toBeNull()
+      expect(incomingFileTarget(join(root, 'Big.webloc'), readSavedLinkFile)).toBeNull()
+      expect(incomingTargetsFromArgs(['Intoponet', join(root, 'Pipe.webloc'), 'https://example.org/'], root, readSavedLinkFile)).toEqual([{ kind: 'web', url: 'https://example.org/' }])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
   })
 
   it('opens pages, PDFs and saved links from Finder; nothing else', () => {
