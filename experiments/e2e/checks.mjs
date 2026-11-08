@@ -1512,8 +1512,13 @@ export const checks = {
   async PERMISSIONS(ctx) {
     const host = await openAnyPage(ctx)
     const page = await ctx.page(host)
-    void page.evaluate(`new Promise((resolve) => navigator.geolocation.getCurrentPosition(() => resolve('ok'), () => resolve('err')))`)
-    await ctx.wait(`!!document.querySelector('.permission-bar')`, 15_000, 'the permission bar when a site asks for location')
+    void page.evaluate(`new Promise((resolve) => { window.__geo = 'asked'; navigator.geolocation.getCurrentPosition(() => resolve(window.__geo = 'ok'), (e) => resolve(window.__geo = \`refused (\${e.code})\`)) })`)
+    await ctx.wait(`!!document.querySelector('.permission-bar')`, 15_000, 'the permission bar when a site asks for location').catch(async (error) => {
+      // What the page was and what became of its request. A hidden page's request waits until it is shown: with the
+      // Mac's screen locked (loginwindow in front) every page is hidden and no bar can come.
+      const seen = await Promise.race([page.evaluate(`JSON.stringify({ url: location.href, readyState: document.readyState, visibility: document.visibilityState, request: window.__geo ?? 'never made (the page changed?)' })`), ctx.delay(5000).then(() => 'the page did not answer')]).catch((e) => e.message)
+      throw new CheckFailure(`${error.message} (the page: ${seen})`)
+    })
     expect(await ctx.click('.permission-bar button', 'Allow'), 'The permission bar has no Allow button.')
     await ctx.delay(1500)
     const state = await page.evaluate(`navigator.permissions.query({ name: 'geolocation' }).then((p) => p.state)`)
