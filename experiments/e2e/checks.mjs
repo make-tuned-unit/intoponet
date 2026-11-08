@@ -2554,11 +2554,18 @@ export const checks = {
       await openPage(ctx, `${origin}/busy`, 800)
       await openPage(ctx, `${origin}/later`, 800)
       await openPage(ctx, `${origin}/last`, 800)
-      await (await ctx.page('/busy')).evaluate(`setTimeout(() => { const end = Date.now() + 14000; while (Date.now() < end) {} }, 200); true`)
+      // The other tab must sleep while the busy page is still busy (it cannot stop before busyStart + busyFor): the
+      // wait ends then, not at a fixed time. On a loaded Mac the other page can itself take more than the app's 2 s to
+      // say it has no typed text, and is rightly kept awake for that pass, so the busy spell is long enough to allow it.
+      const busyFor = 25_000
+      const busyStart = Date.now()
+      await (await ctx.page('/busy')).evaluate(`setTimeout(() => { const end = Date.now() + ${busyFor}; while (Date.now() < end) {} }, 200); true`)
       await ctx.delay(500)
       await ctx.evaluate(`window.intoponet.browsing.setTabSleep('15m').then(() => true)`)
-      await ctx.wait(`${host}.getTabs().then((t) => t.some((x) => x.url.endsWith('/later') && x.asleep))`, 10_000, 'a background tab to sleep while another background page was busy')
+      await ctx.wait(`${host}.getTabs().then((t) => t.some((x) => x.url.endsWith('/later') && x.asleep))`, Math.max(0, busyStart + busyFor - Date.now()), 'a background tab to sleep while another background page was busy')
       await ctx.evaluate(`window.intoponet.browsing.setTabSleep('never').then(() => true)`)
+      // That shown, the busy page goes: still busy, it would add 2 s to each sleep pass in the steps below.
+      await ctx.evaluate(`${host}.getTabs().then((t) => { const busy = t.find((x) => x.url.endsWith('/busy')); return busy ? ${host}.closeTab(busy.id).then(() => true) : true })`)
       // Woken while its page is slow to come back, then sent to an address that fails before it has: that
       // address's error stays, and the old page never loads over it.
       let slowNow = false
