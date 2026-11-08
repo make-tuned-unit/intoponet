@@ -1994,6 +1994,12 @@ function pageTitleSettled(view: WebContentsView): void {
 
 function detachActive(): void {
   captures?.pageChanged('tab-changed', pageView)
+  // A link preview opened from the page going away goes with it (one opened from the globe stays).
+  // Deferred, as showTab does: this can run inside one of the preview's own events.
+  const preview = linkPreview
+  if (preview?.opener && (preview.opener === pageView || preview.opener === companionView)) {
+    setImmediate(() => { if (linkPreview === preview) closeLinkPreview(false) })
+  }
   if (window && pageView && pageAttached) {
     if (!viewGone(pageView)) pageView.webContents.stopFindInPage('clearSelection')
     window.contentView.removeChildView(pageView)

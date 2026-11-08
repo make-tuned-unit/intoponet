@@ -3884,6 +3884,14 @@ export const checks = {
       await waitClosed('⌘W')
       expect((await tabs()).length === before.length, '⌘W closed the tab under the card as well.')
 
+      // Putting the page away (back to the globe) closes the card opened from it.
+      await shiftClick(home, '#lnk')
+      await waitOpen('/target', '⇧-click before putting the page away')
+      await ctx.evaluate(`${host}.close().then(() => true)`)
+      await waitClosed('the page was put away')
+      await ctx.evaluate(`${host}.restore().then(() => true)`)
+      await ctx.wait(`${host}.getState().then((s) => s.isVisible)`, 10_000, 'the page to come back after it was put away')
+
       // Open as Tab: the same page, with the back list from inside the card.
       await shiftClick(home, '#lnk')
       const fourth = await waitOpen('/target', '⇧-click for Open as Tab')
@@ -3933,7 +3941,11 @@ export const checks = {
       expect(/^https?:/.test(headline.url) && !headline.url.startsWith(origin), `The World list preview shows ${headline.url}.`)
       const globe = await panelState(ctx)
       expect(!globe.isVisible && await ctx.evaluate(`!!document.querySelector('canvas') && !!document.querySelector('.world-list')`), 'Previewing a headline left the globe.')
-      await ctx.delay(1500)
+      // Putting away a page that isn't there leaves a preview opened from the globe alone.
+      await ctx.evaluate(`${host}.close().then(() => true)`)
+      await ctx.delay(500)
+      expect((await card()).open, 'Putting the page away closed a preview opened from the World list.')
+      await ctx.delay(1000)
       await ctx.shot('world-preview')
       await keyTo(headline.id, 'Escape')
       await waitClosed('Escape over the globe')
