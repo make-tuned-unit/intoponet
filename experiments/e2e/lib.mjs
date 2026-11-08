@@ -1,7 +1,7 @@
 // Shared harness for feature checks: launches the built app with a fresh profile,
 // drives the renderer over CDP, and always shuts the app down.
 import { spawn, spawnSync } from 'node:child_process'
-import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, rmSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
@@ -41,7 +41,7 @@ async function connect(url) {
  * ctx: evaluate, send, delay, wait, click, type, press, shot, pageShot(session, label), page(urlPart),
  * main(expression), keyInPage(urlPart, keyCode, modifiers), profile, env.
  */
-export async function runAppCheck(check, { port = 9400 + Math.floor(Math.random() * 400), env: extraEnv = {}, evidenceDir, name, timeoutMs = 180_000 } = {}) {
+export async function runAppCheck(check, { env: extraEnv = {}, evidenceDir, name, timeoutMs = 180_000 } = {}) {
   // E2E_PROFILE: a profile kept between runs (e.g. with translation models installed); otherwise a fresh one.
   const keep = process.env.E2E_PROFILE
   if (keep) mkdirSync(keep, { recursive: true })
@@ -54,8 +54,20 @@ export async function runAppCheck(check, { port = 9400 + Math.floor(Math.random(
   // stop the whole group, or Electron outlives the check (and a few runs can exhaust the Mac's memory).
   // The main process also listens for Node's inspector (localhost only), so a check can send keys the way
   // the OS does: keys sent over CDP reach the page but skip the browser's own key handling.
-  const inspectPort = port + 1000
-  const app = spawn(join(repo, 'node_modules/.bin/electron'), [`--remote-debugging-port=${port}`, `--inspect=127.0.0.1:${inspectPort}`, `--user-data-dir=${profile}`, (process.env.E2E_APP_MAIN ?? join(repo, 'apps/desktop/out/main/index.js'))], { env, stdio: 'ignore', detached: true })
+  // Both ports are chosen by the app as it starts (port 0) and read back from it: a port picked here could
+  // be taken by another check's app running at the same time, and this check would then drive that app.
+  // DevTools writes its port into the profile; the inspector says its address on stderr.
+  rmSync(join(profile, 'DevToolsActivePort'), { force: true })
+  const app = spawn(join(repo, 'node_modules/.bin/electron'), ['--remote-debugging-port=0', '--inspect=127.0.0.1:0', `--user-data-dir=${profile}`, (process.env.E2E_APP_MAIN ?? join(repo, 'apps/desktop/out/main/index.js'))], { env, stdio: ['ignore', 'ignore', 'pipe'], detached: true })
+  let inspectPort = null
+  let head = ''
+  // Always drained: a full pipe would stall the app.
+  app.stderr.on('data', (chunk) => {
+    if (inspectPort) return
+    head = (head + chunk).slice(-8192)
+    inspectPort = Number(/Debugger listening on ws:\/\/127\.0\.0\.1:(\d+)\//.exec(head)?.[1]) || null
+  })
+  let port = null
   const stopApp = (signal) => {
     try { process.kill(-app.pid, signal) } catch { /* gone */ }
     // Anything still holding this profile (Electron's helpers re-parent sometimes).
@@ -73,6 +85,10 @@ export async function runAppCheck(check, { port = 9400 + Math.floor(Math.random(
     let target
     for (let i = 0; i < 200 && !target; i += 1) {
       try {
+        // Its first line is the port, once the whole file is written.
+        const active = readFileSync(join(profile, 'DevToolsActivePort'), 'utf8')
+        if (!port && active.includes('\n')) port = Number(active.split('\n')[0]) || null
+        if (!port) throw new Error('DevTools is not listening yet.')
         const list = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json()
         target = list.find((t) => t.type === 'page' && t.url.includes('index.html'))
       } catch { /* not up yet */ }
@@ -134,6 +150,8 @@ export async function runAppCheck(check, { port = 9400 + Math.floor(Math.random(
     let mainSession = null
     const main = async (expression) => {
       if (!mainSession) {
+        for (let i = 0; i < 100 && !inspectPort; i += 1) await delay(100)
+        if (!inspectPort) throw new CheckFailure('The main process inspector never said its address.')
         const [target] = await (await fetch(`http://127.0.0.1:${inspectPort}/json/list`)).json()
         if (!target) throw new CheckFailure('The main process inspector is not available.')
         mainSession = await connect(target.webSocketDebuggerUrl)
@@ -175,6 +193,8 @@ export async function runAppCheck(check, { port = 9400 + Math.floor(Math.random(
     stopApp('SIGTERM')
     await delay(800)
     stopApp('SIGKILL')
+    // A helper that outlived the app must not keep this process alive through the pipe.
+    app.stderr.destroy()
     process.removeListener('exit', onExit)
     process.removeListener('SIGINT', onSignal)
     process.removeListener('SIGTERM', onSignal)
