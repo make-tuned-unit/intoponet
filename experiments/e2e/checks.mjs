@@ -1507,15 +1507,25 @@ export const checks = {
   async PERMISSIONS(ctx) {
     const host = await openAnyPage(ctx)
     const page = await ctx.page(host)
+    // Someone typing in the address bar as the bar appears keeps typing there: focus never jumps to Allow (a space
+    // typed would answer it).
+    await ctx.evaluate(`(() => { const input = document.querySelector('.command-input input'); input.focus(); return true })()`)
     void page.evaluate(`new Promise((resolve) => navigator.geolocation.getCurrentPosition(() => resolve('ok'), () => resolve('err')))`)
     await ctx.wait(`!!document.querySelector('.permission-bar')`, 15_000, 'the permission bar when a site asks for location')
+    await ctx.delay(300)
+    expect(await ctx.evaluate(`!!document.activeElement?.closest('.command-input')`), `The permission bar took focus from the address bar being typed in (to "${await ctx.evaluate(`document.activeElement?.textContent || document.activeElement?.tagName`)}").`)
     expect(await ctx.click('.permission-bar button', 'Allow'), 'The permission bar has no Allow button.')
     await ctx.delay(1500)
     const state = await page.evaluate(`navigator.permissions.query({ name: 'geolocation' }).then((p) => p.state)`)
     expect(state === 'granted', `After Allow, the site still sees location as "${state}".`)
     // A page opening a tab on its own (no click) is blocked, and the bar offers to open it.
+    await ctx.evaluate(`document.activeElement?.blur(); true`)
     await page.evaluate(`(() => { window.open('https://example.org/', '_blank'); return true })()`)
     await ctx.wait(`(document.querySelector('.permission-bar')?.innerText ?? '').includes('Pop-up blocked')`, 10_000, 'the "Pop-up blocked" bar after a window.open without a click')
+    // With nothing being typed, focus moves to the bar itself (read out; Tab reaches its buttons), never to an answer.
+    await ctx.delay(300)
+    expect(await ctx.evaluate(`document.activeElement?.classList.contains('permission-bar') && document.activeElement.getAttribute('role') === 'alertdialog'`), `The permission bar did not take focus itself (focus is on "${await ctx.evaluate(`document.activeElement?.textContent || document.activeElement?.tagName`)}").`)
+    await axeAudit(ctx, 'the permission bar', '.permission-bar')
     let tabs = await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => t.map((x) => x.url).join(' '))`)
     expect(!/example\.org/.test(tabs), 'A window.open without a click opened a tab.')
     expect(await ctx.click('.permission-bar button', 'Allow once'), 'The pop-up bar has no "Allow once" button.')

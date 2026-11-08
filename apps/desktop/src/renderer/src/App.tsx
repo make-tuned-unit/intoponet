@@ -4453,7 +4453,9 @@ export function App() {
             />
           )}
           {permissionRequests[0] && (
+            // One bar per request (key): a button focused for one answer never answers the next request too.
             <PermissionBar
+              key={permissionRequests[0].id}
               request={permissionRequests[0]}
               more={permissionRequests.length - 1}
               background={backgroundTabLabel(permissionRequests[0], tabs)}
