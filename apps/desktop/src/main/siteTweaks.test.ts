@@ -93,6 +93,24 @@ describe('CSS checks', () => {
     expect(decodeCss('@\\69 mport x')).toBe('@import x')
     expect(decodeCss('a/* @import */b')).toBe('ab')
     expect(decodeCss('\\\\')).toBe('\\')
+    expect(decodeCss('a\\')).toBe('a\\')
+  })
+
+  it('removes only what the engine reads as a comment, so "/*" in text cannot hide a live url()', () => {
+    const remote = 'b { background: url(https://evil.example/x.png) }'
+    // "/*" inside a string, an escaped "/", an unquoted url(…) address (also spelt u\72l) or a string left open is text, not a comment.
+    expect(cssProblem(`a { content: "/*" } ${remote} c { content: "*/" }`)).toMatch(/embedded with data/)
+    expect(cssProblem(`a { content: '/*' } ${remote} c { content: '*/' }`)).toMatch(/embedded with data/)
+    expect(cssProblem(`a { content: "\\"/*" } ${remote} c { content: "*/" }`)).toMatch(/embedded with data/)
+    expect(cssProblem(`\\/* ${remote} */`)).toMatch(/embedded with data/)
+    expect(cssProblem(`a { background: url(data:,/*) } ${remote} c { content: "*/" }`)).toMatch(/embedded with data/)
+    expect(cssProblem(`a { background: u\\72l(data:,/*) } ${remote} c { content: "*/" }`)).toMatch(/embedded with data/)
+    expect(cssProblem(`a { content: "open /*\n${remote} */`)).toMatch(/embedded with data/)
+    expect(cssProblem(`a { content: "/*" } @import "https://evil.example/a.css"; c { content: "*/" }`)).toMatch(/@import/)
+    // Real comments still go: a commented-out address or @import is not refused.
+    expect(cssProblem('p { color: red } /* was: url(https://example.com/bg.png) and @import "x.css" */')).toBeNull()
+    expect(cssProblem('p::before { content: "/* not a comment */" }')).toBeNull()
+    expect(cssProblem('.hero { background: url( data:image/png;base64,iVBORw0KGgo= ) }')).toBeNull()
   })
 })
 
