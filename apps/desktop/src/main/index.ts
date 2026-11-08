@@ -4886,6 +4886,8 @@ function createWindow(): void {
     setBrowserFullWidth(false)
     tabRailExpanded = false
     captures?.shellReloaded()
+    // A tour still running ends with the page it ran in: its own page closes, as the tour would have closed it.
+    for (const tab of allTabs().filter((item) => untrackedViews.has(item.view))) discardTab(tab.id, false)
   })
 
   // The app's own page went away (its renderer crashed or was stopped) or hangs: it loads again. Tabs,

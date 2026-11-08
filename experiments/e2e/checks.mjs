@@ -736,6 +736,11 @@ async function appWindowRecovers(ctx) {
     await ctx.delay(800)
     await ctx.evaluate(`window.intoponet.browserHost.splitTab().then(() => true)`)
     await until('the pair on screen', async () => (await shellNow()).pages.filter((page) => page.visible).length === 2)
+    // A tour's page (untracked): opened once first, so its session is set up before counting listeners.
+    const openTourPage = () => ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: 'http://127.0.0.1:${port}/tour' }, 'background-tab', { untracked: true }).then(() => true)`)
+    const tourTab = `window.intoponet.browserHost.getTabs().then((t) => t.find((x) => x.url.endsWith('/tour'))?.id ?? null)`
+    await openTourPage()
+    await ctx.evaluate(`${tourTab}.then((id) => id && window.intoponet.browserHost.closeTab(id)).then(() => true)`)
     await ctx.delay(800)
     const before = await shellNow()
     const tabsBefore = await tabsOf(ctx)
@@ -747,7 +752,10 @@ async function appWindowRecovers(ctx) {
       expect(same(after.listeners, before.listeners), `${label}, listeners were added or lost: ${JSON.stringify(before.listeners)} → ${JSON.stringify(after.listeners)}.`)
     }
 
-    // Its page crashes while in full width: it reloads at once, not in full width, with everything where it was.
+    // Its page crashes while in full width and touring: it reloads at once, not in full width, with everything where
+    // it was, and the tour's page closed with the tour.
+    await openTourPage()
+    expect(await ctx.evaluate(tourTab), 'The tour\'s page did not open.')
     await ctx.evaluate(`window.intoponet.browserHost.setFullWidth(true).then(() => true)`)
     await watchLoad()
     await ctx.main(`(() => { ${appWindow}.webContents.forcefullyCrashRenderer(); return true })()`)
@@ -788,7 +796,7 @@ async function appWindowRecovers(ctx) {
     await ready(shell, 'the app window back from File › New Tab')
     const tabsAfter = JSON.parse(await tabsOf(shell))
     expect(tabsAfter.length === JSON.parse(tabsBefore).length + 1 && tabsAfter.at(-1)[1] === true, `File › New Tab with the window closed left the tabs as ${JSON.stringify(tabsAfter)}.`)
-    return 'The app window reloaded after its page crashed and after it hung, with its tabs, pair and page area, and no view or listener added; closed, it came back with its tabs from the Dock (a quick window open) and from File › New Tab.'
+    return `The app window reloaded after its page crashed and after it hung, with its tabs, pair and page area, no view or listener added and a running tour's page closed; closed, it came back with its tabs from the Dock (a quick window open) and from File › New Tab.`
   } finally {
     server.close()
   }
