@@ -68,6 +68,12 @@ export function TidySheet({ tabs, onAccept, onGroupByStory, onClose }: {
   }
 
   const groups = state.status === 'ready' ? state.groups : []
+  /** What the sheet has found, read out as it changes: from one live region that is there from the start. */
+  const announcement = state.status === 'loading' ? 'Looking at your loose tabs on this Mac…'
+    : state.status === 'error' ? 'Tidy could not look at your tabs. Nothing was moved.'
+      : state.status === 'unavailable' ? state.reason
+        : state.groups.length === 0 ? 'Nothing to tidy: no loose tabs look alike enough.'
+          : `${state.groups.length} ${state.groups.length === 1 ? 'folder' : 'folders'} suggested. Nothing moves until you accept.`
   const chosen = groups.filter((group) => group.include && group.name.trim() && group.tabIds.length)
   const moving = chosen.reduce((count, group) => count + group.tabIds.length, 0)
   const update = (index: number, change: Partial<Proposal>): void => {
@@ -82,15 +88,16 @@ export function TidySheet({ tabs, onAccept, onGroupByStory, onClose }: {
           <h2 id="tidy-title"><Sparkles size={15} aria-hidden="true" /> Tidy tabs</h2>
           <button type="button" className="tidy-close" aria-label="Close" onClick={onClose}><X size={15} aria-hidden="true" /></button>
         </header>
-        {state.status === 'loading' && <p className="tidy-status" role="status">Looking at your loose tabs on this Mac…</p>}
-        {state.status === 'error' && <p className="tidy-status" role="alert">Tidy could not look at your tabs. Nothing was moved.</p>}
+        <p className="sr-only" role="status">{announcement}</p>
+        {state.status === 'loading' && <p className="tidy-status" aria-hidden="true">Looking at your loose tabs on this Mac…</p>}
+        {state.status === 'error' && <p className="tidy-status" aria-hidden="true">Tidy could not look at your tabs. Nothing was moved.</p>}
         {state.status === 'unavailable' && (
           <div className="tidy-explain">
-            <p role="status">{state.reason}</p>
+            <p aria-hidden="true">{state.reason}</p>
             <button type="button" className="tidy-accept" onClick={onGroupByStory}><Layers size={14} aria-hidden="true" /> Group by story</button>
           </div>
         )}
-        {state.status === 'ready' && groups.length === 0 && <p className="tidy-status" role="status">Nothing to tidy: no loose tabs look alike enough.</p>}
+        {state.status === 'ready' && groups.length === 0 && <p className="tidy-status" aria-hidden="true">Nothing to tidy: no loose tabs look alike enough.</p>}
         {state.status === 'ready' && groups.length > 0 && (
           <>
             <p className="tidy-note">Suggested from titles and addresses, computed on this Mac. Nothing moves until you accept.</p>

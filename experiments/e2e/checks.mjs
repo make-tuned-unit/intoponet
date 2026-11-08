@@ -5711,6 +5711,8 @@ export const checks = {
       await ctx.click('button[aria-label="Tidy tabs"]')
       await ctx.wait(`!!document.querySelector('.tidy-explain') && document.querySelector('.tidy-explain').innerText.includes('Turn it on in Settings › Laya')`, 20_000, 'Tidy to explain that Laya is off')
       expect(await ctx.evaluate(`[...document.querySelectorAll('.tidy-explain button')].some((b) => b.innerText.includes('Group by story'))`), 'Tidy with Laya off does not offer Group by story.')
+      // Read out from the sheet's live region (there from the start, so the change is heard).
+      expect(await ctx.evaluate(`(document.querySelector('.tidy-sheet [role="status"]')?.textContent ?? '').includes('Turn it on in Settings › Laya')`), 'Tidy\'s reason for not suggesting is not in its live region.')
       // The sheet is drawn by the shell, under the native page view: the page must be hidden while it is open.
       const pageShown = () => ctx.main(`electron.BrowserWindow.getAllWindows()[0].contentView.children.some((view) => view.getVisible() && /^https?:/.test(view.webContents?.getURL?.() ?? ''))`)
       expect(!(await pageShown()), 'The page view is drawn over the Tidy preview, hiding it.')
@@ -5772,6 +5774,7 @@ export const checks = {
       })
       await ctx.shot('tidy-preview')
       await axeAudit(ctx, 'the Tidy preview', '.tidy-sheet')
+      expect(await ctx.evaluate(`/\\d+ folders? suggested/.test(document.querySelector('.tidy-sheet [role="status"]')?.textContent ?? '')`), `Tidy's suggestions are not read out (its live region says "${await ctx.evaluate(`document.querySelector('.tidy-sheet [role="status"]')?.textContent ?? 'nothing'`)}").`)
       // A suggested tab (not the one shown) closes while the preview is open: Accept moves the others, and says how many it moved.
       const shownId = (await tabs()).find((tab) => tab.active)?.id
       const closedMeanwhile = suggestion.groups.flatMap((group) => group.tabIds).find((id) => id !== shownId)
