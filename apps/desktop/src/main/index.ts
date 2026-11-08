@@ -49,7 +49,7 @@ import { bindLeavePrompt, SAFE_DIALOG_PREFERENCES } from './leavePrompt'
 import { fetchTabIcon, TabIconMemory } from './tabFavicon'
 import { browsingChannels, parseBrowsingCommand, type LinkRoutesState, type BrowsingEvent, type ArchivedTabSnapshot, type TabFolderSnapshot, type TabGroupRequest, type TabGroupResult, type TidySuggestion, type BrowsingSettings, type LinksFromOtherApps, type PageLoadError, type TabArchiveAfter, type TabSidebarState, type TabSleepAfter, type TabSwitchOrder } from '@intoponet/browser-api'
 import { ExternalOpenBroker, classifyExternalUrl } from './externalOpen'
-import { CertificateErrorMemo, classifyLoadError, isCertificateError, showsErrorPage, summarizeCertificate } from './errorPage'
+import { CertificateErrorMemo, classifyLoadError, httpLoadError, isCertificateError, showsErrorPage, summarizeCertificate } from './errorPage'
 import { IncomingOpenQueue, LocalFileGrants, incomingFileTarget, incomingTargetsFromArgs, incomingWebUrl, readSavedLinkFile, type IncomingTarget } from './incomingOpen'
 import { PageAppearanceController } from './pageAppearance'
 import { SWITCHER_KEYS_SCRIPT, switcherHtml, SWITCHER_ROW_HEIGHT, SWITCHER_ROWS, TabSwitcher, type SwitcherTab } from './tabSwitcher'
@@ -1388,6 +1388,24 @@ function openCompare(command: { story: { id: string; title: string }; left: Comp
   void right.view.webContents.loadURL(command.right.url).catch(() => undefined)
   showTab(left.id)
   emitTabs()
+  emitPanelState()
+  schedulePersistentStateSave()
+}
+
+/**
+ * One side of the Compare pair on screen shows another outlet's article for its story (its own was gone):
+ * the side keeps its place and its tab, and takes the other outlet's label.
+ */
+function compareOtherOutlet(command: { side: SplitSide; other: CompareSideInput }): void {
+  const pair = shownSplit(pageAreaBounds())
+  const tab = !pair ? undefined : pair.focused === command.side ? pair.focusedTab : pair.otherTab
+  if (!tab?.compare || viewGone(tab.view)) throw new Error('That side is not comparing an article.')
+  const target = safeHttpUrl(command.other.url)
+  const compare = target ? tabCompareFor(command.other, { id: tab.compare.storyId, title: tab.compare.storyTitle }, compareCountryName(command.other, countryNameFor)) : null
+  if (!target || !compare) throw new Error('That article cannot be opened.')
+  tab.compare = compare
+  compareLanding.add(tab)
+  void tab.view.webContents.loadURL(target.toString()).catch(() => undefined)
   emitPanelState()
   schedulePersistentStateSave()
 }
@@ -3870,7 +3888,7 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
     }
     if (tab) showTab(tab.id)
   })
-  view.webContents.on('did-navigate', (_event, url) => {
+  view.webContents.on('did-navigate', (_event, url, responseCode) => {
     // A Compare article that redirected to another host as it first loaded is still that outlet's article.
     const landing = tabOfView(view)
     if (landing?.compare && compareLanding.delete(landing)) {
@@ -3878,7 +3896,9 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
       schedulePersistentStateSave()
     }
     applySiteZoom(view, url)
-    setLoadError(view, null)
+    // A Compare side whose article is gone (the outlet answered 4xx or 5xx) shows that side's error card
+    // (Retry, other outlets) instead of the site's blank or bare error page; other tabs show the site's own.
+    setLoadError(view, landing?.compare && compareLabelFor(landing.compare, url) ? httpLoadError(responseCode, url) : null)
     rememberTab(view)
     protectionPages.commitNavigation(view.webContents.id, url)
     passwords?.navigated(view.webContents.id)
@@ -4553,6 +4573,9 @@ async function handleBrowserCommand(
       break
     case 'open-compare':
       openCompare(command)
+      break
+    case 'compare-other-outlet':
+      compareOtherOutlet(command)
       break
     case 'set-split-ratio':
       setShownSplitRatio(command.ratio)

@@ -5280,7 +5280,15 @@ export const checks = {
     const paywalls = await ctx.evaluate(`document.querySelectorAll('.split-compare-paywall').length`)
 
     // An article whose link redirects to another host as it first loads keeps its outlet label there.
+    let goneHits = 0
     const redirects = createServer((request, response) => {
+      // An article that is gone: 404 and a blank page (as brujuladigital.net/404 answered).
+      if (request.url.startsWith('/gone')) {
+        goneHits += 1
+        response.writeHead(404, { 'content-type': 'text/html; charset=utf-8' })
+        response.end('')
+        return
+      }
       if (request.url.startsWith('/moved')) {
         response.writeHead(302, { location: `http://127.0.0.1:${redirects.address().port}/article` })
         response.end()
@@ -5319,10 +5327,44 @@ export const checks = {
       await ctx.wait(`!document.querySelector('.free-coverage')`, 5_000, 'the free-coverage bar to close')
       await ctx.evaluate(`(() => { ${freeButton}.click(); return true })()`)
       await ctx.wait(`!!document.querySelector('.free-coverage')`, 5_000, 'Free coverage on the focused side to open its choices again after the bar was closed')
+
+      // A side whose article is gone (404, a blank page) shows that side's error card, not a blank half: Retry asks
+      // again, and the story's other outlets offer to read it there instead, in that side.
+      const story = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getNewsDigest()`)).global.find((item) => item.headlines.some((h) => /^https?:/.test(h.url)))
+      await ctx.evaluate(`window.intoponet.browserHost.openCompare({ id: ${JSON.stringify(story.id)}, title: 'A story' }, { url: 'http://127.0.0.1:${port}/article', outlet: 'Live Outlet', countryCode: 'GB' }, { url: 'http://localhost:${port}/gone', outlet: 'Gone Outlet', countryCode: 'BO' }).then(() => true)`)
+      let gone = null
+      for (let i = 0; i < 40 && !gone; i += 1) {
+        const now = await stateOf()
+        if (now.split?.right?.compare?.outlet === 'Gone Outlet' && now.split.right.loadError) gone = now
+        else await ctx.delay(250)
+      }
+      expect(gone?.split.right.loadError.kind === 'http' && gone.split.right.loadError.codeName === 'HTTP 404', `A side whose article answered 404 shows no error card: ${JSON.stringify((gone ?? await stateOf()).split?.right)}.`)
+      const goneCard = `document.querySelector('.load-error-compact')`
+      await ctx.wait(`!!${goneCard}?.querySelector('.load-error-card-retry') && ${goneCard}.querySelectorAll('.load-error-outlets button').length > 0`, 5_000, "the gone side's error card with Retry and other outlets")
+      const goneViews = await pagesNow()
+      const [liveSide, goneSide] = goneViews.pages.slice().sort((p, q) => p.bounds.x - q.bounds.x)
+      expect(goneSide?.url.includes('/gone') && !goneSide.visible && liveSide?.visible, `The gone article's blank page is on screen instead of its error card: ${JSON.stringify(goneViews.pages)}.`)
+      expect(liveSide.bounds.x + liveSide.bounds.width <= goneSide.bounds.x && liveSide.bounds.y === goneSide.bounds.y && liveSide.bounds.height === goneSide.bounds.height, `The pair with a gone article is not two columns at full height: ${JSON.stringify(goneViews.pages.map((page) => page.bounds))}.`)
+      await axeAudit(ctx, "the gone side's error card", '.load-error-compact')
+      await ctx.shot('compare-gone-side')
+      const hitsBefore = goneHits
+      await ctx.evaluate(`(() => { ${goneCard}.querySelector('.load-error-card-retry').click(); return true })()`)
+      for (let i = 0; i < 40 && goneHits === hitsBefore; i += 1) await ctx.delay(250)
+      expect(goneHits > hitsBefore, 'Retry on the gone side did not ask the outlet again.')
+      await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.split?.focused === 'right' && s.split.right.loadError?.kind === 'http' && !s.isLoading)`, 8_000, 'the gone side, focused by Retry, to show its error again')
+      await ctx.wait(`document.querySelectorAll('.load-error-page:not(.load-error-compact) .load-error-outlets button').length > 0`, 5_000, 'the focused gone side to offer the other outlets too')
+      const chosen = await ctx.evaluate(`(() => { const b = document.querySelector('.load-error-page:not(.load-error-compact) .load-error-outlets button'); const outlet = b.querySelector('span').textContent; b.click(); return outlet })()`)
+      await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.split?.right?.compare?.outlet === ${JSON.stringify(chosen)} && !s.split.right.url.includes('/gone'))`, 30_000, `the gone side to read the story from ${chosen}`)
+      const reread = await stateOf()
+      expect(reread.split.left.compare?.outlet === 'Live Outlet', `Choosing another outlet for the right side changed the left side: ${JSON.stringify(reread.split.left)}.`)
+      // An ordinary tab shows the site's own error page for the same answer.
+      await openPage(ctx, `http://localhost:${port}/gone?tab`, 1500)
+      const plain = await stateOf()
+      expect(plain.url.includes('/gone?tab') && !plain.loadError && !plain.split, `An ordinary tab answered 404 shows ${JSON.stringify(plain.loadError ?? plain.split)} instead of the site's own page.`)
     } finally {
       redirects.close()
     }
-    return `Compared "${front}" with ${split.right.compare.outlet} (${split.right.compare.country}): two pages ${a.width}×${a.height} and ${b.width}×${b.height}, side by side at y ${a.y}; headers read "${headers.map((h) => h.origin).join('" and "')}"; ${translateNote}; The Olds opened for the story; ${paywalls} paywall badge(s) on the pair.`
+    return `Compared "${front}" with ${split.right.compare.outlet} (${split.right.compare.country}): two pages ${a.width}×${a.height} and ${b.width}×${b.height}, side by side at y ${a.y}; headers read "${headers.map((h) => h.origin).join('" and "')}"; ${translateNote}; The Olds opened for the story; ${paywalls} paywall badge(s) on the pair; a side whose article answered 404 showed its error card (Retry asked again, another outlet read the story in that side) while an ordinary tab showed the site's own page.`
   },
 
   async PLACE_WORKSPACES(ctx) {

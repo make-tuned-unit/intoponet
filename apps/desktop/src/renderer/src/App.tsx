@@ -210,7 +210,8 @@ import { SettingsPanel } from './settings/SettingsPanel'
 import { mergeImportedLibrary } from './browserImport/mergeImport'
 import { backgroundTabLabel, PermissionBar, SitePermissionChips } from './permissions/PermissionBar'
 import { ExternalOpenBar, useExternalOpenRequests } from './browsing/ExternalOpenBar'
-import { ErrorCard, ErrorPage, navigationErrorMessage } from './browsing/ErrorPage'
+import { ErrorCard, ErrorPage, navigationErrorMessage, type OutletChoices } from './browsing/ErrorPage'
+import { countryNameOf, otherOutlets } from './browsing/compareOutlets'
 import { SiteTweaksPanel } from './siteTweaks/SiteTweaksPanel'
 import { PasswordBar } from './passwords/PasswordBar'
 import { BookmarkSiteBar, type BookmarkSiteOffer } from './passwords/BookmarkSiteBar'
@@ -820,6 +821,17 @@ export function App() {
   const onStartPage = panel.isVisible && panel.isStartPage === true
   // Pages side by side: the side not in focus whose error or start page the shell draws in its half.
   const otherSide = shellDrawnSide(panel.split)
+  /** A Compare side that could not show its article: the story's other outlets (from the news) to read it from there. */
+  const outletsFor = (side: 'left' | 'right'): OutletChoices | undefined => {
+    const split = panel.split
+    const compare = split?.[side].compare
+    if (!split || !compare || split[side].loadError?.kind === 'offline') return undefined
+    const story = newsDigest?.global?.find((item) => item.id === compare.storyId)
+    return {
+      choices: otherOutlets(story?.headlines, [split.left.compare?.outlet, split.right.compare?.outlet], countryNameOf),
+      onChoose: (choice) => void window.intoponet.browserHost.compareOtherOutlet(side, choice.side).catch(() => setError('That article could not be opened.')),
+    }
+  }
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)')
     const onChange = (): void => setReduceMotion(media.matches)
@@ -4530,6 +4542,7 @@ export function App() {
                   onRetry={() => void window.intoponet.browserHost.reload()}
                   onBack={() => void window.intoponet.browserHost.back()}
                   onTurnOffTweaks={failedSiteHasTweaks ? () => void window.intoponet.browserHost.siteTweaks.setEnabled(false).then(() => window.intoponet.browserHost.reload()) : undefined}
+                  outlets={panel.split ? outletsFor(panel.split.focused) : undefined}
                 />
               </SplitStartFrame>
             )}
@@ -4555,6 +4568,7 @@ export function App() {
                     error={otherSide.tab.loadError}
                     label={otherSide.side === 'left' ? 'Left page' : 'Right page'}
                     onRetry={() => void window.intoponet.browserHost.focusSplitSide(otherSide.side).then(() => window.intoponet.browserHost.reload(), () => undefined)}
+                    outlets={outletsFor(otherSide.side)}
                   />
                 ) : (
                   <div className="split-other-start" inert>

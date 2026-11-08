@@ -166,6 +166,24 @@ export function classifyLoadError(input: {
 }
 
 /**
+ * A page the site answered with an HTTP error (4xx or 5xx), in plain words; null for any other answer.
+ * Ordinary tabs show the site's own error page: only a Compare side's article is shown this way (a dead
+ * link there would otherwise be a blank half with nothing to do). `code` holds the HTTP status.
+ */
+export function httpLoadError(status: number, url: string): PageLoadError | null {
+  if (!Number.isInteger(status) || status < 400 || status > 599) return null
+  const host = hostOf(url)
+  const base = { url, host, code: status, codeName: `HTTP ${status}`, autoRetry: false, kind: 'http' as const }
+  if (status === 404 || status === 410) {
+    return { ...base, title: 'This article is not there', detail: `${host} says the page does not exist. The link may have changed, or the article was taken down.` }
+  }
+  if (status >= 500) {
+    return { ...base, title: `${host} could not send this article`, detail: 'The site had a problem. Try again in a moment.' }
+  }
+  return { ...base, title: `${host} would not show this article`, detail: 'The site refused the request.' }
+}
+
+/**
  * Certificate problems seen for a page, kept briefly so the failed load that follows can show
  * them. Keyed by the page (webContents id) and the address.
  */

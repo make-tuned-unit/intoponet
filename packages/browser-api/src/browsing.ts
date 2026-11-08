@@ -206,6 +206,8 @@ export type PageLoadErrorKind =
   | 'insecure'
   | 'blocked'
   | 'redirects'
+  /** The site answered with an HTTP error (4xx or 5xx); shown only for a Compare side's article. */
+  | 'http'
   | 'other'
 
 export type CertificateSummary = {
