@@ -6,6 +6,7 @@ import { MAX_WORKSPACES, WORKSPACE_ACCENTS, WORKSPACE_ICONS, type FavouriteSnaps
 import { useFavicon } from './favicons'
 import { RailMenu } from './RailMenu'
 import { AnchorPicker } from './WorkspaceAnchor'
+import { useFocusRescue } from './focusRescue'
 import './workspaces.css'
 const MAIN_WORKSPACE_ID = 'main'
 
@@ -73,6 +74,14 @@ export function WorkspaceBar({ state, open, onExpand, request }: {
   const [identity, setIdentity] = useState<IdentityChange | null>(null)
   const [message, setMessage] = useState('')
   const switcher = useRef<HTMLDivElement>(null)
+  const root = useRef<HTMLDivElement>(null)
+  // Focus on a control that goes away (the actions of a workspace just deleted, an Undo used or expired, a
+  // favourite removed): its Undo, else the shown workspace, else a favourite. Otherwise the tab list takes it.
+  useFocusRescue(root, () => [
+    root.current?.querySelector<HTMLElement>('.tab-rail-workspace-undo button'),
+    switcher.current?.querySelector<HTMLElement>('[aria-current="true"]'),
+    root.current?.querySelector<HTMLElement>('.tab-rail-favourite'),
+  ])
   const active = state.workspaces.find((workspace) => workspace.id === state.activeId) ?? state.workspaces[0]
   const several = state.workspaces.length > 1
   const favourites = state.favourites.filter((favourite) => favourite.workspaceId === null || favourite.workspaceId === state.activeId)
@@ -105,6 +114,8 @@ export function WorkspaceBar({ state, open, onExpand, request }: {
 
   if (!active) return null
   const index = state.workspaces.indexOf(active)
+  /** Read out once, from a live region that is always there (one added with its words may be missed). */
+  const announcement = message || (state.recentlyDeleted ? `Deleted workspace ${state.recentlyDeleted.name}. Undo is next to it.` : '')
 
   /** ←/→ move between workspaces; ⌥⇧←/→ move the focused one. */
   const onSwitcherKey = (event: KeyboardEvent<HTMLButtonElement>, workspace: WorkspaceSnapshot, at: number): void => {
@@ -140,8 +151,9 @@ export function WorkspaceBar({ state, open, onExpand, request }: {
   const anchoringWorkspace = state.workspaces.find((workspace) => workspace.id === anchoring)
 
   return (
-    <div className="tab-rail-workspace-bar">
+    <div ref={root} className="tab-rail-workspace-bar">
       <p className="sr-only" aria-live="polite">{several ? `${active.name} workspace` : ''}</p>
+      <p className="sr-only" role="status">{announcement}</p>
       {favourites.length > 0 && (
         <div className="tab-rail-favourites" role="group" aria-label="Favourites">
           {favourites.map((favourite) => {
@@ -153,10 +165,16 @@ export function WorkspaceBar({ state, open, onExpand, request }: {
                 className={`tab-rail-favourite${favourite.workspaceId ? ' is-own' : ''}`}
                 data-favourite-id={favourite.id}
                 aria-label={`${name}${favourite.workspaceId ? `, ${active.name} only` : ''}`}
-                aria-haspopup="menu"
                 title={`${name}${favourite.workspaceId ? ` (${active.name} only)` : ' (every workspace)'}`}
                 onClick={() => void api.openFavourite(favourite.id).catch(fail)}
                 onContextMenu={(event) => {
+                  event.preventDefault()
+                  onExpand()
+                  setMenu(favourite.id)
+                }}
+                onKeyDown={(event) => {
+                  // ⇧F10 (the Mac sends no context-menu event for it): the favourite's actions.
+                  if (event.key !== 'F10' || !event.shiftKey) return
                   event.preventDefault()
                   onExpand()
                   setMenu(favourite.id)
@@ -252,7 +270,7 @@ export function WorkspaceBar({ state, open, onExpand, request }: {
         />
       )}
       {state.recentlyDeleted && (
-        <div className="tab-rail-archived tab-rail-workspace-undo" role="status">
+        <div className="tab-rail-archived tab-rail-workspace-undo">
           <span className="tab-rail-title" aria-hidden={!open}>Deleted “{state.recentlyDeleted.name}”</span>
           <button type="button" className="tab-rail-undo" onClick={() => void api.undoDelete().catch(fail)} aria-label={`Undo: bring back workspace ${state.recentlyDeleted.name} and its ${plural(state.recentlyDeleted.tabCount, 'tab')}`}>
             <Undo2 size={14} aria-hidden="true" />
@@ -260,7 +278,7 @@ export function WorkspaceBar({ state, open, onExpand, request }: {
           </button>
         </div>
       )}
-      {message && <p className="tab-rail-workspace-message" role="status">{message}</p>}
+      {message && <p className="tab-rail-workspace-message" aria-hidden="true">{message}</p>}
     </div>
   )
 }
@@ -355,7 +373,9 @@ function WorkspaceEditor({ workspace, onDone, onError }: { workspace: WorkspaceS
   const nameField = useRef<HTMLInputElement>(null)
   // After a frame: a menu that opened this gives focus back to its button as it closes. A new
   // workspace's new tab then puts focus in the address bar: the name is asked for first, once more.
+  // Done or Cancel (or Escape): focus goes back to what opened it (the actions button, New workspace…).
   useEffect(() => {
+    const opener = document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null
     const frame = requestAnimationFrame(() => nameField.current?.focus())
     const again = window.setTimeout(() => {
       const field = nameField.current
@@ -364,6 +384,7 @@ function WorkspaceEditor({ workspace, onDone, onError }: { workspace: WorkspaceS
     return () => {
       cancelAnimationFrame(frame)
       window.clearTimeout(again)
+      if (opener?.isConnected && (!document.activeElement || document.activeElement === document.body)) opener.focus()
     }
   }, [])
   const save = (event: FormEvent): void => {

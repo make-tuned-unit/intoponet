@@ -12,7 +12,8 @@ import { RailMenu } from './RailMenu'
 import { ACCENT_COLOURS, WorkspaceBar, type WorkspaceRequest } from './WorkspaceBar'
 import { HeadlinesHere } from './HeadlinesHere'
 import type { AnchorHeadlines } from '../../shared/news/anchorHeadlines'
-import { moveTabByKey, openTabMenu, TabAudioButton, TabHomeButton, TabIcon, tabSoundLabel, tabStateLabel, useTabDrag } from './tabControls'
+import { moveTabByKey, openTabMenu, tabMenuKey, TabAudioButton, TabHomeButton, TabIcon, tabSoundLabel, tabStateLabel, useTabDrag } from './tabControls'
+import { useFocusRescue } from './focusRescue'
 import './glass/glass.css'
 import './tabRail.css'
 
@@ -129,6 +130,14 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
   const shownTabId = tabs.find((tab) => tab.active && !tab.isStartPage)?.id
   const dragHandlers = useTabDrag('y', { indexOf: (id) => tabs.findIndex((tab) => tab.id === id), shownId: shownTabId })
   const [renaming, setRenaming] = useState<string | null>(null)
+  /** A folder named from the keyboard (Enter or Escape in its name field): focus goes back to its button. */
+  const refocusFolder = useRef<string | null>(null)
+  useEffect(() => {
+    const id = refocusFolder.current
+    if (renaming || !id) return
+    refocusFolder.current = null
+    list.current?.querySelector<HTMLButtonElement>(`[data-folder-drop="${CSS.escape(id)}"] .tab-rail-folder-toggle`)?.focus()
+  }, [renaming])
   const [folderMenu, setFolderMenu] = useState<string | null>(null)
   /** The last grouping (Group by story, or accepted Tidy folders), with Undo while main still keeps it. */
   const [notice, setNotice] = useState<{ text: string; undoId?: string } | null>(null)
@@ -185,6 +194,8 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
   }, [tabs, folders])
 
   useEffect(() => () => { if (intent.current) window.clearTimeout(intent.current) }, [])
+  // Focus on a control that goes away (a folder deleted from its menu, an Undo used): the tab list's current tab.
+  useFocusRescue(surface, () => [list.current?.querySelector<HTMLElement>('[role="tab"][tabindex="0"]'), list.current?.querySelector<HTMLElement>('[role="tab"]'), surface.current?.querySelector<HTMLElement>('.tab-rail-footer .tab-rail-action')])
 
   /** The story a story folder's hover or focus highlights on the globe. */
   const highlighted = useRef<string | null>(null)
@@ -247,6 +258,8 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
     const tab = visibleTabs[focusIndex]
     // The tab that has focus (after a drag it can differ from the remembered one).
     const focusedId = (event.target as HTMLElement).closest<HTMLElement>('[data-tab-id]')?.dataset['tabId']
+    // ⇧F10: the focused tab's menu (either side of a pair: each half is a tab of its own).
+    if (tabMenuKey(event, (event.target as HTMLElement).dataset['halfId'] ?? focusedId)) return
     const focusedIndex = tabs.findIndex((item) => item.id === focusedId)
     const to = focusedIndex >= 0 ? moveTabByKey(event, tabs, focusedIndex, 'y') : null
     if (to !== null) {
@@ -312,8 +325,12 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
               maxLength={80}
               onFocus={(event) => event.currentTarget.select()}
               onKeyDown={(event) => {
-                if (event.key === 'Enter') event.currentTarget.blur()
-                else if (event.key === 'Escape') {
+                if (event.key === 'Enter' || event.key === 'Escape') refocusFolder.current = folder.id
+                if (event.key === 'Enter') {
+                  // Its keypress would otherwise reach the folder's button, focused next, and fold the folder.
+                  event.preventDefault()
+                  event.currentTarget.blur()
+                } else if (event.key === 'Escape') {
                   event.preventDefault()
                   event.currentTarget.value = folder.name
                   event.currentTarget.blur()
@@ -409,6 +426,7 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
                 type="button"
                 role="tab"
                 className={`tab-rail-tab tab-rail-half${half.active ? ' is-focused' : ''}`}
+                data-half-id={half.id}
                 aria-selected={half.active}
                 aria-setsize={setSize}
                 aria-posinset={index + 1}
@@ -428,12 +446,14 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
             )
           })}
         </div>
+        {/* A pointer shortcut, out of the tab list for assistive technology (a tab list holds only tabs): ⌃⇧- or the tab menu unsplit. */}
         <button
           type="button"
           className="tab-rail-close tab-rail-unsplit"
           aria-label="Unsplit these two pages"
           title="Unsplit (⌃⇧-)"
           tabIndex={-1}
+          aria-hidden="true"
           onClick={() => void window.intoponet.browserHost.unsplitTab(left.id)}
         >
           <Columns2 size={12} />

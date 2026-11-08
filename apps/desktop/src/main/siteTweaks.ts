@@ -404,6 +404,8 @@ export class SiteTweaks {
  * highlights the element under the pointer, and resolves with a selector (#id, a short class chain,
  * or a tag path of at most five levels), or null on Escape or a cancel. Clicks are swallowed so
  * the page does not act on them. Only selectors the page's own DOM answers to are returned.
+ * Without a mouse: the element with focus is highlighted (Tab moves through the page as usual), ↑
+ * widens to the element around it and ↓ goes back, and Enter chooses it.
  */
 export const PICK_ELEMENT_SCRIPT = `new Promise((resolve) => {
   const SAFE = /^[A-Za-z][A-Za-z0-9_-]{0,40}$/;
@@ -436,18 +438,9 @@ export const PICK_ELEMENT_SCRIPT = `new Promise((resolve) => {
     return selector && selector.length <= 200 && element.matches(selector) ? selector : null;
   };
   let current = null;
-  const finish = (value) => {
-    window.removeEventListener('pointermove', onMove, true);
-    window.removeEventListener('mousemove', onMove, true);
-    for (const name of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click', 'auxclick', 'dblclick', 'contextmenu']) window.removeEventListener(name, swallow, true);
-    window.removeEventListener('keydown', onKey, true);
-    box.remove();
-    if (window.__intoponetPicker && window.__intoponetPicker.cancel === cancel) delete window.__intoponetPicker;
-    resolve(value);
-  };
-  const cancel = () => finish(null);
-  const onMove = (event) => {
-    const element = document.elementFromPoint(event.clientX, event.clientY);
+  /** Elements ↑ widened from, to go back to with ↓. */
+  let narrower = [];
+  const show = (element) => {
     if (!element || element === document.documentElement || element === document.body || element.hasAttribute('data-intoponet-pick')) {
       current = null;
       box.style.width = '0px';
@@ -461,6 +454,25 @@ export const PICK_ELEMENT_SCRIPT = `new Promise((resolve) => {
     box.style.width = rect.width + 'px';
     box.style.height = rect.height + 'px';
   };
+  const finish = (value) => {
+    window.removeEventListener('focusin', onFocus, true);
+    window.removeEventListener('pointermove', onMove, true);
+    window.removeEventListener('mousemove', onMove, true);
+    for (const name of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click', 'auxclick', 'dblclick', 'contextmenu']) window.removeEventListener(name, swallow, true);
+    window.removeEventListener('keydown', onKey, true);
+    box.remove();
+    if (window.__intoponetPicker && window.__intoponetPicker.cancel === cancel) delete window.__intoponetPicker;
+    resolve(value);
+  };
+  const cancel = () => finish(null);
+  const onMove = (event) => {
+    narrower = [];
+    show(document.elementFromPoint(event.clientX, event.clientY));
+  };
+  const onFocus = (event) => {
+    narrower = [];
+    show(event.target instanceof Element ? event.target : null);
+  };
   const swallow = (event) => {
     event.preventDefault();
     event.stopImmediatePropagation();
@@ -469,12 +481,35 @@ export const PICK_ELEMENT_SCRIPT = `new Promise((resolve) => {
     else if (event.type === 'click') finish(null);
   };
   const onKey = (event) => {
-    if (event.key !== 'Escape') return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    finish(null);
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      finish(null);
+      return;
+    }
+    if (event.key === 'Enter' && current) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      finish(selectorFor(current));
+      return;
+    }
+    if (event.key === 'ArrowUp' && current && current.parentElement && current.parentElement !== document.body && current.parentElement !== document.documentElement) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      narrower.push(current);
+      show(current.parentElement);
+      return;
+    }
+    if (event.key === 'ArrowDown' && narrower.length) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      show(narrower.pop());
+    }
   };
   window.__intoponetPicker = { cancel };
+  // Started from the keyboard with an element already focused in the page: that one is highlighted.
+  if (document.activeElement && document.activeElement !== document.body) show(document.activeElement);
+  window.addEventListener('focusin', onFocus, true);
   window.addEventListener('pointermove', onMove, true);
   window.addEventListener('mousemove', onMove, true);
   for (const name of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click', 'auxclick', 'dblclick', 'contextmenu']) window.addEventListener(name, swallow, true);

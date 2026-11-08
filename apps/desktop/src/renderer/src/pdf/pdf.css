@@ -176,9 +176,10 @@
   border-bottom-right-radius: 0;
 }
 
+/* 24 px wide at least: a pointer target's minimum (WCAG 2.5.8). */
 .pdf-tool > .pdf-more {
-  width: 22px;
-  min-width: 22px;
+  width: 24px;
+  min-width: 24px;
   padding: 0;
   justify-content: center;
   border-top-left-radius: 0;

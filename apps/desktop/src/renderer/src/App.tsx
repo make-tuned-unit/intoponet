@@ -2038,9 +2038,12 @@ export function App() {
       // own focus target must win over this stale return target.
       if (Object.values(panelFocus.current).some(Boolean)) return
       const now = document.activeElement
-      // Leave focus alone only when it is in a field outside the panel that is closing.
+      // Leave focus alone when it is somewhere outside the panel that is closing (a field, the tour that
+      // closed the panel, the control that opened something else): only focus left nowhere comes back.
       const leaving = now?.closest('.olds-sheet, .knowledge-sheet, .knowledge-backdrop, .bookmark-drawer, .settings-drawer, .bm-surface')
-      if (now && now !== document.body && !leaving && now.closest('input, textarea, select, [contenteditable]')) return
+      if (now && now !== document.body && !leaving) return
+      // The tour opens and closes panels as it goes: while it is open, focus is its own.
+      if (document.querySelector('.tour')) return
       document.querySelector<HTMLElement>(`[data-panel="${closed}"]`)?.focus()
     }, 350)
   }, [bookmarksOpen, olds, knowledgeView, libraryOpen, settingsOpen])
@@ -4449,7 +4452,9 @@ export function App() {
             />
           )}
           {permissionRequests[0] && (
+            // One bar per request (key): a button focused for one answer never answers the next request too.
             <PermissionBar
+              key={permissionRequests[0].id}
               request={permissionRequests[0]}
               more={permissionRequests.length - 1}
               background={backgroundTabLabel(permissionRequests[0], tabs)}

@@ -1523,15 +1523,25 @@ export const checks = {
   async PERMISSIONS(ctx) {
     const host = await openAnyPage(ctx)
     const page = await ctx.page(host)
+    // Someone typing in the address bar as the bar appears keeps typing there: focus never jumps to Allow (a space
+    // typed would answer it).
+    await ctx.evaluate(`(() => { const input = document.querySelector('.command-input input'); input.focus(); return true })()`)
     void page.evaluate(`new Promise((resolve) => navigator.geolocation.getCurrentPosition(() => resolve('ok'), () => resolve('err')))`)
     await ctx.wait(`!!document.querySelector('.permission-bar')`, 15_000, 'the permission bar when a site asks for location')
+    await ctx.delay(300)
+    expect(await ctx.evaluate(`!!document.activeElement?.closest('.command-input')`), `The permission bar took focus from the address bar being typed in (to "${await ctx.evaluate(`document.activeElement?.textContent || document.activeElement?.tagName`)}").`)
     expect(await ctx.click('.permission-bar button', 'Allow'), 'The permission bar has no Allow button.')
     await ctx.delay(1500)
     const state = await page.evaluate(`navigator.permissions.query({ name: 'geolocation' }).then((p) => p.state)`)
     expect(state === 'granted', `After Allow, the site still sees location as "${state}".`)
     // A page opening a tab on its own (no click) is blocked, and the bar offers to open it.
+    await ctx.evaluate(`document.activeElement?.blur(); true`)
     await page.evaluate(`(() => { window.open('https://example.org/', '_blank'); return true })()`)
     await ctx.wait(`(document.querySelector('.permission-bar')?.innerText ?? '').includes('Pop-up blocked')`, 10_000, 'the "Pop-up blocked" bar after a window.open without a click')
+    // With nothing being typed, focus moves to the bar itself (read out; Tab reaches its buttons), never to an answer.
+    await ctx.delay(300)
+    expect(await ctx.evaluate(`document.activeElement?.classList.contains('permission-bar') && document.activeElement.getAttribute('role') === 'alertdialog'`), `The permission bar did not take focus itself (focus is on "${await ctx.evaluate(`document.activeElement?.textContent || document.activeElement?.tagName`)}").`)
+    await axeAudit(ctx, 'the permission bar', '.permission-bar')
     let tabs = await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => t.map((x) => x.url).join(' '))`)
     expect(!/example\.org/.test(tabs), 'A window.open without a click opened a tab.')
     expect(await ctx.click('.permission-bar button', 'Allow once'), 'The pop-up bar has no "Allow once" button.')
@@ -2467,7 +2477,22 @@ export const checks = {
       const focus = await ctx.evaluate(`(document.activeElement?.innerText || document.activeElement?.getAttribute('aria-label') || '').trim()`)
       expect(focus.includes(label), `After closing ${label} with Escape, focus went to "${focus || 'nothing'}" instead of its button.`)
     }
-    return 'No WCAG 2.2 AA violations (axe); panels open with Enter, close with Escape, focus returns.'
+    // Link rules in Settings › Browsing, from the keyboard: a rule moved with Up keeps focus (on its Down button once it
+    // is first), and Remove passes focus to the rule now in its place. Focus is never dropped.
+    for (const site of ['a.example', 'b.example', 'c.example']) await ctx.evaluate(`window.intoponet.browsing.addLinkRoute(${JSON.stringify(site)}, 'main').then(() => true)`)
+    await ctx.evaluate(`document.querySelector('[data-panel="settings"]').focus(); true`)
+    await ctx.press('Enter')
+    await ctx.wait(`!!document.querySelector('button[aria-label="Move rule 2 up"]')`, 5000, 'the link rules in Settings')
+    await ctx.evaluate(`document.querySelector('button[aria-label="Move rule 2 up"]').focus(); true`)
+    await ctx.press('Enter')
+    await ctx.wait(`window.intoponet.browsing.linkRoutes().then((s) => s.rules.map((r) => r.site).join() === 'b.example,a.example,c.example')`, 3000, 'Up to move the second rule first')
+    await ctx.wait(`document.activeElement?.getAttribute('aria-label') === 'Move rule 1 down'`, 3000, 'focus to stay on the moved rule')
+    await ctx.evaluate(`document.querySelector('button[aria-label="Remove rule 2"]').focus(); true`)
+    await ctx.press('Enter')
+    await ctx.wait(`window.intoponet.browsing.linkRoutes().then((s) => s.rules.map((r) => r.site).join() === 'b.example,c.example')`, 3000, 'Remove to remove the second rule')
+    await ctx.wait(`document.activeElement?.getAttribute('aria-label') === 'Remove rule 2'`, 3000, 'focus to go to the rule in the removed one\'s place')
+    await ctx.press('Escape')
+    return 'No WCAG 2.2 AA violations (axe); panels open with Enter, close with Escape, focus returns; link rules keep focus as they move and go.'
   },
   async COPY_ADDRESS(ctx) {
     const { server, origin } = await tabSite()
@@ -2943,6 +2968,9 @@ export const checks = {
       await ctx.click('.settings-button')
       await ctx.click('button', 'Take the tour')
       await ctx.wait(`!!document.querySelector('.tour-card')`, 5000, 'the tour to start')
+      // It is modal: focus moves into its card, and stays there once Settings (which it closed) has gone.
+      await ctx.delay(600)
+      expect(await ctx.evaluate(`!!document.activeElement?.closest('.tour-card')`), `Focus did not move into the tour as it opened (it is on "${await ctx.evaluate(`document.activeElement?.getAttribute('aria-label') || document.activeElement?.textContent || document.activeElement?.tagName`)}").`)
       await ctx.evaluate(`(() => {
         const step = window.__oldsStep = { start: performance.now() }
         const timer = setInterval(() => {
@@ -2954,7 +2982,7 @@ export const checks = {
             clearInterval(timer)
           }
         }, 50)
-        ;[...document.querySelectorAll('.tour-progress button')].find((b) => b.getAttribute('aria-label').endsWith(': The history behind the news')).click()
+        ;[...document.querySelectorAll('.tour-progress [data-step]')].find((b) => b.dataset.title === 'The history behind the news').click()
         return true
       })()`)
       await ctx.wait(`!!window.__oldsStep.ms`, 45_000, 'The Olds step to finish with Wikipedia unreachable')
@@ -2969,9 +2997,19 @@ export const checks = {
     await ctx.click('button', 'Take the tour')
     await ctx.wait(`!!document.querySelector('.tour-card')`, 5000, 'the tour to start again')
     const total = Number((await ctx.evaluate(`document.querySelector('.tour-count').textContent`)).split(' of ')[1])
+    // Keyboard and screen reader: no WCAG violations (the steps are one slider, not dots too small to hit),
+    // Tab and ⇧Tab stay in the card, and each step's words are in a live region.
+    await axeAudit(ctx, 'the tour', '.tour')
+    for (const shift of [false, false, false, false, false, true, true, true, true, true]) {
+      await ctx.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9, modifiers: shift ? 8 : 0 })
+      await ctx.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9, modifiers: shift ? 8 : 0 })
+      await ctx.delay(80)
+      expect(await ctx.evaluate(`!!document.activeElement?.closest('.tour-card')`), `${shift ? '⇧Tab' : 'Tab'} took focus out of the tour (to "${await ctx.evaluate(`document.activeElement?.getAttribute('aria-label') || document.activeElement?.textContent || document.activeElement?.tagName`)}").`)
+    }
+    expect(await ctx.evaluate(`!!document.querySelector('.tour-card [aria-live="polite"] #tour-title') && document.querySelector('.tour-progress[role="slider"]')?.getAttribute('aria-valuenow') === '1'`), 'The tour\'s steps are not announced (no live region for its words, or no step slider).')
     const missed = []
-    // The step's own name (its progress dot); the card's heading animates from one step to the next.
-    const stepTitle = `(document.querySelector('.tour-progress [aria-current="step"]')?.getAttribute('aria-label') ?? '').replace(/^Step \\d+: /, '')`
+    // The step's own name (its bar on the step slider); the card's heading animates from one step to the next.
+    const stepTitle = `(document.querySelector('.tour-progress .is-current')?.dataset.title ?? '')`
     // What a step shows: the selector its spotlight found, whether its card is on top, and what is open behind it.
     const scene = `JSON.stringify({ title: ${stepTitle}, onTop: (() => { const r = document.querySelector('.tour-card').getBoundingClientRect(); return !!document.elementFromPoint(r.left + r.width / 2, r.top + 30)?.closest('.tour') })(), lit: document.querySelector('.tour-spotlight')?.dataset.target ?? null, page: !!document.querySelector('.browser-actions'), olds: !!document.querySelector('.olds-sheet'), bookmarks: !!document.querySelector('.bookmark-pane'), paneCovered: (() => { const pane = document.querySelector('.bookmark-pane')?.getBoundingClientRect(); return !!pane && [...document.querySelectorAll('.story-highest, .globe-panel-pill')].some((el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.right > pane.left && r.left < pane.right && r.bottom > pane.top && r.top < pane.bottom }) })(), library: !!document.querySelector('.bookmark-drawer'), knowledge: !!document.querySelector('.knowledge-sheet'), rail: document.querySelector('.tab-rail')?.classList.contains('is-open') ?? null, typed: document.querySelector('.command-input input')?.value ?? '' })`
     const settle = async (step) => {
@@ -3056,12 +3094,22 @@ export const checks = {
       await ctx.click('.tour-back')
       await compare(step, 'back to')
     }
-    const jump = (step) => ctx.evaluate(`document.querySelectorAll('.tour-progress button')[${step - 1}].click(); true`)
+    const jump = (step) => ctx.evaluate(`document.querySelectorAll('.tour-progress [data-step]')[${step - 1}].click(); true`)
     for (const step of [33, 10, 20, 9, 31, 12, 3, 8]) {
       await jump(step)
       await compare(step, 'jump to')
     }
     expect(elsewhere.length === 0, `Reached another way, these tour steps showed something else: ${elsewhere.join('; ')}.`)
+    // Enter and Space on a focused button are that button's: Back goes back (not on), and Space does not play.
+    await jump(3)
+    await settle(3)
+    await ctx.evaluate(`document.querySelector('.tour-back').focus(); true`)
+    await ctx.press('Enter')
+    await settle(2)
+    await ctx.send('Input.dispatchKeyEvent', { type: 'keyDown', key: ' ', code: 'Space', windowsVirtualKeyCode: 32, text: ' ' })
+    await ctx.send('Input.dispatchKeyEvent', { type: 'keyUp', key: ' ', code: 'Space', windowsVirtualKeyCode: 32 })
+    await settle(1)
+    expect(await ctx.evaluate(`document.querySelector('.tour-play').getAttribute('aria-pressed') === 'false'`), 'Space on the focused Back button played the tour.')
     await jump(total)
     await settle(total)
     await ctx.click('.tour-next')
@@ -3089,6 +3137,23 @@ export const checks = {
     let cookiesKept = await ctx.main(cookiesLeft)
     for (let i = 0; i < 20 && cookiesKept > 0; i += 1) { await ctx.delay(250); cookiesKept = await ctx.main(cookiesLeft) }
     expect(cookiesKept === 0, `The tour ended but ${cookiesKept} of its cookies are still kept.`)
+    // From the keyboard: Settings › Take the tour puts focus in the tour; Enter on Leave the tour leaves it, and focus goes
+    // back to the Settings button (Settings closed as the tour opened).
+    const focusName = () => ctx.evaluate(`document.activeElement?.getAttribute('aria-label') || document.activeElement?.textContent || document.activeElement?.tagName`)
+    await ctx.main(`(() => { electron.app.focus({ steal: true }); electron.BrowserWindow.getAllWindows()[0].focus(); return true })()`)
+    await ctx.evaluate(`document.querySelector('.settings-button').focus(); true`)
+    await ctx.press('Enter')
+    await ctx.wait(`[...document.querySelectorAll('button')].some((b) => b.innerText.includes('Take the tour'))`, 5000, 'Settings to open from the keyboard')
+    await ctx.evaluate(`[...document.querySelectorAll('button')].find((b) => b.innerText.includes('Take the tour')).focus(); true`)
+    await ctx.press('Enter')
+    await ctx.wait(`!!document.querySelector('.tour-card')`, 5000, 'the tour to start from the keyboard')
+    await ctx.delay(700)
+    expect(await ctx.evaluate(`document.activeElement?.classList.contains('tour-next')`), `Opened from the keyboard, the tour left focus on "${await focusName()}".`)
+    await ctx.evaluate(`document.querySelector('.tour-close').focus(); true`)
+    await ctx.press('Enter')
+    await ctx.wait(`!document.querySelector('.tour-card')`, 5000, 'Enter on Leave the tour to leave it')
+    await ctx.delay(500)
+    expect(await ctx.evaluate(`document.activeElement?.dataset.panel === 'settings'`), `After leaving the tour, focus went to "${await focusName()}", not the Settings button.`)
     return `All ${total} steps shown, each spotlight on what it describes, the same played forward, gone back to and jumped to; the tour put everything back at the end, its own tab closed. With Wikipedia unreachable The Olds step moved on ${((offline.ms - offline.looked) / 1000).toFixed(1)} s after The Olds had looked (${(offline.ms / 1000).toFixed(1)} s in all: "${offline.olds}").`
   },
   async TAB_ARCHIVE(ctx) {
@@ -3269,6 +3334,18 @@ export const checks = {
       for (const name of ['mail', 'docs', 'notes', 'map', 'news']) await openPage(ctx, `${origin}/${name}`, 800)
       await ctx.click('button[aria-label="Pin tabs open"]')
       await ctx.delay(500)
+      // Reduce motion (the system setting, emulated): a tab added to the sidebar is in place at once, not growing in.
+      await ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] })
+      // The media query's change event (which the animations listen to) comes with the next frames.
+      await ctx.wait(`matchMedia('(prefers-reduced-motion: reduce)').matches`, 3000, 'Reduce motion to be emulated')
+      await ctx.evaluate(`new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(() => resolve(true), 50))))`)
+      await ctx.evaluate(`(() => { window.__rowTransforms = []; window.__rowWatch = new MutationObserver((records) => { for (const record of records) for (const node of record.addedNodes) if (node.nodeType === 1 && node.matches('.tab-rail-item[data-tab-id]')) requestAnimationFrame(() => requestAnimationFrame(() => window.__rowTransforms.push(getComputedStyle(node).transform))) }); window.__rowWatch.observe(document.querySelector('.tab-rail-list'), { subtree: true, childList: true }); return true })()`)
+      await openPage(ctx, `${origin}/still`, 800)
+      const rowTransforms = JSON.parse(await ctx.evaluate(`(() => { window.__rowWatch.disconnect(); return JSON.stringify(window.__rowTransforms) })()`))
+      await ctx.send('Emulation.setEmulatedMedia', { features: [] })
+      expect(rowTransforms.length > 0 && rowTransforms.every((transform) => transform === 'none' || transform === 'matrix(1, 0, 0, 1, 0, 0)'), `With Reduce motion on, a new tab grew into the sidebar (${rowTransforms.join(', ') || 'no row seen'}).`)
+      await ctx.evaluate(`${host}.closeTab(${JSON.stringify((await byTitle('Page /still')).id)}).then(() => true)`)
+      await ctx.delay(400)
       // New folder from the sidebar: named at once.
       await ctx.click('button[aria-label="New folder"]')
       await ctx.wait(`document.activeElement?.classList.contains('tab-rail-folder-name')`, 3000, 'the new folder to ask for a name')
@@ -3277,14 +3354,39 @@ export const checks = {
       await ctx.press('Enter')
       await ctx.wait(`${host}.getTabFolders().then((f) => f.some((x) => x.name === 'Work'))`, 3000, 'the folder to be named Work')
       const work = (await folders()).find((folder) => folder.name === 'Work')
+      // Named with Enter, focus is on the folder's button (not nowhere); a folder deleted from its own menu passes focus to the tabs.
+      await ctx.wait(`document.activeElement?.classList.contains('tab-rail-folder-toggle') && document.activeElement.closest('[data-folder-drop]')?.dataset.folderDrop === ${JSON.stringify(work.id)}`, 3000, 'focus to go to the folder\'s button once it is named')
+      await ctx.click('button[aria-label="New folder"]')
+      await ctx.wait(`document.activeElement?.classList.contains('tab-rail-folder-name')`, 3000, 'a second folder to ask for a name')
+      await ctx.press('Escape')
+      await ctx.wait(`document.activeElement?.classList.contains('tab-rail-folder-toggle') && document.activeElement.textContent.includes('New folder')`, 3000, 'Escape in the name field to return focus to the folder\'s button')
+      await ctx.main(`(() => { electron.app.focus({ steal: true }); electron.BrowserWindow.getAllWindows()[0].focus(); return true })()`)
+      await ctx.evaluate(`document.querySelector('button[aria-label="Actions for folder New folder"]').focus(); true`)
+      await ctx.click('button[aria-label="Actions for folder New folder"]')
+      await ctx.wait(`!!document.querySelector('.tab-rail-folder-menu [role="menuitem"]')`, 2000, 'the second folder\'s menu')
+      await ctx.click('.tab-rail-folder-menu [role="menuitem"]', 'Delete folder')
+      await ctx.wait(`${host}.getTabFolders().then((f) => f.length === 1)`, 3000, 'the second folder to be deleted')
+      await ctx.wait(`document.activeElement?.getAttribute('role') === 'tab' && !!document.activeElement.closest('.tab-rail')`, 3000, 'focus to go to the tab list once the folder it was on is deleted')
       // Drag a tab onto the folder.
       const docs = await byTitle('Page /docs')
       await drag(`[data-tab-id="${docs.id}"] [role="tab"]`, `[data-folder-drop="${work.id}"]`)
       expect((await byTitle('Page /docs')).folderId === work.id, 'Dragging a tab onto the folder did not put it there.')
-      // The same from the keyboard path (the tab menu's Move to Folder runs this).
+      // The same from the keyboard: ⇧F10 on a tab opens its menu (the native menu is read, not shown), and Move to Folder › Work moves it.
       const notes = await byTitle('Page /notes')
-      await ctx.evaluate(`${host}.moveTabToFolder(${JSON.stringify(notes.id)}, ${JSON.stringify(work.id)}).then(() => true)`)
-      await ctx.delay(400)
+      await ctx.main(`(() => { const M = electron.Menu; globalThis.__tfBuild = M.buildFromTemplate; M.buildFromTemplate = (template) => { globalThis.__tfMenu = template; return { popup() {}, closePopup() {} } }; return true })()`)
+      try {
+        await ctx.evaluate(`document.querySelector('[data-tab-id="${notes.id}"] [role="tab"]').focus(); true`)
+        for (const type of ['rawKeyDown', 'keyUp']) await ctx.send('Input.dispatchKeyEvent', { type, key: 'F10', code: 'F10', windowsVirtualKeyCode: 121, modifiers: 8 })
+        let moved = false
+        for (let i = 0; i < 20 && !moved; i += 1) {
+          await ctx.delay(150)
+          moved = await ctx.main(`(() => { const item = (globalThis.__tfMenu ?? []).find((i) => i.label === 'Move to Folder')?.submenu?.find((i) => i.label === 'Work'); if (!item) return false; item.click(); return true })()`)
+        }
+        expect(moved, `⇧F10 on a tab did not open its menu with Move to Folder › Work (${await ctx.main(`JSON.stringify((globalThis.__tfMenu ?? []).map((i) => i.label).filter(Boolean))`)}).`)
+      } finally {
+        await ctx.main(`(() => { if (globalThis.__tfBuild) electron.Menu.buildFromTemplate = globalThis.__tfBuild; return true })()`)
+      }
+      await ctx.wait(`${host}.getTabs().then((t) => t.find((x) => x.id === ${JSON.stringify(notes.id)})?.folderId === ${JSON.stringify(work.id)})`, 3000, 'Move to Folder › Work from the keyboard menu to move the tab')
       // Folders nest four levels deep.
       let parent = work.id
       for (const name of ['Reports', 'Q3', 'Drafts']) parent = JSON.parse(await ctx.evaluate(`${host}.createTabFolder(${JSON.stringify(name)}, ${JSON.stringify(parent)}).then((f) => JSON.stringify(f))`)).id
@@ -3512,6 +3614,13 @@ export const checks = {
       await ctx.type('Reading')
       await ctx.press('Enter')
       await ctx.wait(`${ws}.get().then((s) => s.workspaces[0].name === 'Reading')`, 3000, 'the workspace to be renamed Reading')
+      // Focus goes back to the actions button (not to nowhere); so it does when the place picker is left with Escape.
+      await ctx.wait(`document.activeElement?.getAttribute('aria-label') === 'Actions for workspace Reading'`, 3000, 'focus to go back to the actions button once the workspace is renamed')
+      await openWorkspaceMenu('Reading', 'the workspace menu for an anchor')
+      await ctx.click('.tab-rail-folder-menu [role="menuitem"]', 'Anchor to a place')
+      await ctx.wait(`document.activeElement?.getAttribute('role') === 'combobox' && !!document.activeElement.closest('.tab-rail-anchor')`, 3000, 'the place picker to take focus')
+      await ctx.press('Escape')
+      await ctx.wait(`!document.querySelector('.tab-rail-anchor') && document.activeElement?.getAttribute('aria-label') === 'Actions for workspace Reading'`, 3000, 'Escape to close the place picker and return focus to the actions button')
 
       // Favourites: one shared by every workspace, one owned by Main.
       await ctx.evaluate(`${ws}.addFavourite(${JSON.stringify((await byTitle('research-c')).id)}, true).then(() => true)`)
@@ -3521,6 +3630,15 @@ export const checks = {
       await ctx.wait(`document.querySelectorAll('.tab-rail-favourite').length === 2`, 3000, 'Main to show both favourites')
       await ctx.evaluate(`${ws}.switchTo({ id: ${JSON.stringify(researchId)} }).then(() => true)`)
       await ctx.wait(`document.querySelectorAll('.tab-rail-favourite').length === 1`, 3000, 'Reading to show only the shared favourite')
+      // A favourite's actions from the keyboard: ⇧F10 (no context-menu event on the Mac), Escape returns to it.
+      // Its button opens the favourite, so it does not claim to open a menu.
+      expect(await ctx.evaluate(`!document.querySelector('.tab-rail-favourite').hasAttribute('aria-haspopup')`), 'A favourite\'s button says it opens a menu, but Enter opens the favourite.')
+      await ctx.main(`(() => { electron.app.focus({ steal: true }); electron.BrowserWindow.getAllWindows()[0].focus(); return true })()`)
+      await ctx.evaluate(`document.querySelector('.tab-rail-favourite').focus(); true`)
+      await key('F10', 'F10', 121, 8)
+      await ctx.wait(`document.activeElement?.getAttribute('role') === 'menuitem' && !!document.activeElement.closest('[aria-label^="Actions for favourite"]')`, 3000, '⇧F10 on a favourite to open its actions')
+      await ctx.press('Escape')
+      await ctx.wait(`!document.querySelector('.tab-rail-folder-menu') && document.activeElement?.classList.contains('tab-rail-favourite')`, 3000, 'Escape to close the favourite\'s actions and return focus to it')
 
       // Private tabs belong to no workspace: never counted, never moved into one, never saved.
       await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(true).then(() => true)`)
@@ -3631,8 +3749,12 @@ export const checks = {
       await ctx.wait(`${ws}.get().then((s) => s.workspaces.length === 1 && s.recentlyDeleted?.name === 'Reading')`, 3000, 'Reading to be deleted, with Undo offered')
       expect(await titles() === 'main-pin main-b main-a', `After deleting Reading the sidebar shows: ${await titles()}.`)
       await ctx.wait(`[...document.querySelectorAll('.tab-rail-workspace-undo')].some((e) => e.textContent.includes('Deleted “Reading”'))`, 3000, 'the sidebar to offer Undo')
+      // The deleted workspace's actions button went with it: focus is on Undo, and the deletion is read out.
+      await ctx.wait(`!!document.activeElement?.closest('.tab-rail-workspace-undo')`, 3000, 'focus to move to Undo once the workspace is deleted')
+      expect(await ctx.evaluate(`[...document.querySelectorAll('.tab-rail-workspace-bar [role="status"]')].some((e) => e.textContent.includes('Deleted workspace Reading'))`), 'Deleting a workspace is not read out (no live region says so).')
       await ctx.click('.tab-rail-workspace-undo button')
       await ctx.wait(`${ws}.get().then((s) => s.workspaces.length === 2 && s.activeId === ${JSON.stringify(researchId)} && !s.recentlyDeleted)`, 3000, 'Undo to bring Reading back')
+      await ctx.wait(`document.activeElement?.matches('.tab-rail-workspace[aria-current="true"]') && document.activeElement.dataset.workspaceId === ${JSON.stringify(researchId)}`, 3000, 'focus to go to the workspace Undo brought back')
       expect(await titles() === 'research-a research-b research-c' && (await tabs()).some((tab) => tab.id === researchC), `After Undo Reading holds: ${await titles()}.`)
 
       // A tab closed in Reading's folder, reopened while Main is shown, comes back in Reading and in that folder.
@@ -3830,13 +3952,17 @@ export const checks = {
         id: page ? page.webContents.id : null,
         bounds: page ? page.getBounds() : null,
         partition: page ? partition(page.webContents) : null,
-        pageFocused: page ? page.webContents.isFocused() : false,
-        frameFocused: frame ? frame.webContents.isFocused() : false,
-        shellFocused: win.webContents.isFocused(),
-        under: kids.filter((v) => v !== frame && v !== page).map((v) => ({ url: v.webContents.getURL(), bounds: v.getBounds(), focused: v.webContents.isFocused() })),
+        pageFocused: page ? page.webContents.id === globalThis.__lpKeyboard : false,
+        frameFocused: frame ? frame.webContents.id === globalThis.__lpKeyboard : false,
+        shellFocused: win.webContents.id === globalThis.__lpKeyboard,
+        under: kids.filter((v) => v !== frame && v !== page).map((v) => ({ url: v.webContents.getURL(), bounds: v.getBounds(), focused: v.webContents.id === globalThis.__lpKeyboard })),
       })
     })()`).then(JSON.parse)
-    /** Focus is only reported for the key window: bring the app forward first (other apps may be in front during checks). */
+    /**
+     * Which view has the keyboard is the one that took it last, told by focus events: they arrive whether or not the
+     * window is in front (isFocused() reads false for every view while another app's window is). The app is still
+     * brought forward first, as a person's window would be.
+     */
     const focusState = async () => {
       await ctx.main(`(() => { electron.app.focus({ steal: true }); electron.BrowserWindow.getAllWindows()[0].focus(); return true })()`)
       await ctx.delay(400)
@@ -3866,6 +3992,7 @@ export const checks = {
     }
     const focusedLink = (session) => session.evaluate(`document.activeElement?.id ?? ''`)
     try {
+      await ctx.main(`(() => { globalThis.__lpKeyboard = null; const watch = (c) => c.on('focus', () => { globalThis.__lpKeyboard = c.id }); for (const c of electron.webContents.getAllWebContents()) watch(c); electron.app.on('web-contents-created', (_event, c) => watch(c)); return true })()`)
       // Every request the protection blocks, in either session, with the page that asked for it.
       await ctx.main(`(() => { globalThis.__lpBlocked = []; for (const p of ['persist:intoponet-default', 'intoponet-private']) electron.session.fromPartition(p).webRequest.onErrorOccurred((d) => { if (d.error === 'net::ERR_BLOCKED_BY_CLIENT') globalThis.__lpBlocked.push({ id: d.webContentsId, url: d.url }) }); return true })()`)
       await openPage(ctx, `${origin}/home`, 2500)
@@ -4018,7 +4145,7 @@ export const checks = {
     const storedSites = () => (existsSync(tweaksFile) ? JSON.parse(readFileSync(tweaksFile, 'utf8')).sites ?? {} : {})
     const storedLater = async () => { await ctx.delay(1200); return storedSites() }
     const markup = (name) => `<!doctype html><html><head><meta charset="utf-8"><title>${name}</title></head><body style="font:16px system-ui;margin:0">
-      <header>${name} header</header><div id="wrap"><div id="promo" class="banner">PROMO-SENTINEL buy now</div>
+      <header>${name} header</header><div id="wrap"><div id="promo" class="banner">PROMO-SENTINEL <a id="buy" href="#buy">buy now</a></div>
       <main><article><h1>${name} story</h1><p id="para">The story text on ${name}.</p></article></main></div></body></html>`
     // /strict-csp forbids inline styles, as some sites do: the tweaks must still apply there.
     const siteA = createServer((request, response) => { response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', ...(request.url.startsWith('/strict-csp') ? { 'content-security-policy': "style-src 'self'" } : {}) }); response.end(markup('Site A')) })
@@ -4081,6 +4208,35 @@ export const checks = {
       await pressInPage(pageA, 'Escape', 'Escape')
       await ctx.wait(statusIs('No element was picked'), 8000, 'Escape to stop picking')
       expect((await pageStyles(pageA)).promo === 'block', 'Stopping the picker still hid the element.')
+      // Focus goes back to Hide an element… (it was left in the page), and the app window takes the keyboard back.
+      await ctx.wait(`document.activeElement?.closest('#site-tweaks-panel') && document.activeElement.textContent.includes('Hide an element')`, 3000, 'focus to go back to Hide an element… once picking stops')
+
+      // Without a mouse: Tab to the link in the promo, ↑ for the promo around it, Enter chooses it. Focus is then on
+      // Save; Cancel lets it go and focus goes back to Hide an element…
+      const keyTo = async (page, key, keyCode, text) => {
+        await page.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', key, code: key, windowsVirtualKeyCode: keyCode })
+        if (text) await page.send('Input.dispatchKeyEvent', { type: 'char', key, code: key, windowsVirtualKeyCode: keyCode, text })
+        await page.send('Input.dispatchKeyEvent', { type: 'keyUp', key, code: key, windowsVirtualKeyCode: keyCode })
+      }
+      await ctx.main(`(() => { globalThis.__tweakKeyboard = null; for (const c of electron.webContents.getAllWebContents()) c.on('focus', () => { globalThis.__tweakKeyboard = c.id }); return true })()`)
+      await ctx.click('#site-tweaks-panel button', 'Hide an element')
+      await ctx.wait(statusIs('press Tab'), 4000, 'the picker to say how to pick without a mouse')
+      await ctx.delay(600)
+      await pageA.evaluate(`document.activeElement?.blur(); true`)
+      await keyTo(pageA, 'Tab', 9)
+      await ctx.delay(200)
+      expect(await pageA.evaluate(`document.activeElement?.id`) === 'buy', `Tab in the page did not reach the promo's link (it is on "${await pageA.evaluate(`document.activeElement?.id || document.activeElement?.tagName`)}").`)
+      await keyTo(pageA, 'ArrowUp', 38)
+      await keyTo(pageA, 'Enter', 13, '\r')
+      await ctx.wait(`(document.querySelector('.site-tweaks-picked')?.innerText ?? '').includes('#promo')`, 8000, 'Tab, ↑ and Enter to pick the promo')
+      expect(await pageA.evaluate('location.hash') === '', 'Enter while picking also followed the link.')
+      await ctx.wait(`document.activeElement?.matches('.site-tweaks-picked button.is-primary')`, 3000, 'focus to move to Save once an element is picked')
+      expect(await ctx.main(`globalThis.__tweakKeyboard === electron.BrowserWindow.getAllWindows()[0].webContents.id`), 'Once an element was picked the keyboard stayed in the page, away from Save.')
+      expect(await ctx.click('.site-tweaks-picked button', 'Cancel'), 'The Cancel button for the picked element is missing.')
+      await ctx.wait(`!document.querySelector('.site-tweaks-picked') && document.activeElement?.textContent.includes('Hide an element')`, 3000, 'Cancel to let the picked element go and return focus to Hide an element…')
+      await ctx.wait(`window.intoponet.browserHost.siteTweaks.state().then((s) => !(s.tweak?.hidden ?? []).includes('#promo'))`, 3000, 'nothing to be saved for the cancelled pick')
+      await ctx.delay(400)
+      expect((await pageStyles(pageA)).promo === 'block', 'Cancelling the picked element left it hidden.')
 
       await ctx.click('#site-tweaks-panel button', 'Hide an element')
       await ctx.delay(800)
@@ -4157,6 +4313,8 @@ export const checks = {
       await navigate(urlA)
       await openCustomize()
       await axeAudit(ctx, 'the Customize site panel', '#site-tweaks-panel')
+      // The page's toolbar with it (the PDF options chevron was 22 px wide, under the 24 px target minimum).
+      await axeAudit(ctx, 'the page toolbar', '.browser-actions')
 
       // A private tab on A sees the tweaks; its own change is in memory only and is never written.
       const writtenBefore = await storedLater()
@@ -4284,6 +4442,7 @@ export const checks = {
       await ctx.press('Escape')
       await ctx.delay(400)
 
+      await ctx.main(`(() => { globalThis.__quickKeyboard = null; const watch = (c) => c.on('focus', () => { globalThis.__quickKeyboard = c.id }); for (const c of electron.webContents.getAllWebContents()) watch(c); electron.app.on('web-contents-created', (_event, c) => watch(c)); return true })()`)
       // Setting on: a small, always-on-top window; no new tab in the main window; the ad picture is blocked.
       await openFromOtherApp(`${origin}/quick-1`)
       await until(async () => (await quickCount()) === 1, 'the quick window to open')
@@ -4291,6 +4450,10 @@ export const checks = {
       expect(shape.width <= 900 && shape.height <= 640 && shape.top, `The quick window is ${shape.width}×${shape.height}${shape.top ? '' : ' and not always on top'}.`)
       expect((await tabUrls()).length === 1 && !(await tabUrls()).some((url) => url.includes('/quick-1')), 'The quick link also opened a tab in the main window.')
       await until(async () => (await pageUrl()).endsWith('/quick-1'), 'the quick page to load')
+      // The keyboard is on its page (to read and scroll it). Which web contents took it last is told by focus events,
+      // which arrive whether or not the window is in front (isFocused() reads false for a window in the back).
+      const keyboardOn = () => mainCall(`(() => { const c = globalThis.__quickKeyboard == null ? null : electron.webContents.fromId(globalThis.__quickKeyboard); return !c ? 'nothing' : c === pageOf(quick()[0]) ? 'page' : c === toolbarOf(quick()[0]) ? 'toolbar' : 'elsewhere' })()`)
+      await until(async () => (await keyboardOn()) === 'page', 'the page of a quick window opened from another app to have the keyboard', 8000)
       await until(async () => /[1-9]\d* blocked/.test(await mainCall("toolbarOf(quick()[0]).executeJavaScript(\"document.getElementById('protection').textContent\")")), 'the toolbar to count a blocked ad')
       expect(await mainCall("pageOf(quick()[0]).executeJavaScript(\"document.getElementById('ad').naturalWidth\")") === 0, 'The ad picture loaded in the quick window.')
 
@@ -4352,10 +4515,13 @@ export const checks = {
       await ctx.keyInPage('/quick-2', 'N', ['meta', 'alt'])
       await until(async () => (await quickCount()) === 1, 'the empty quick window to open with ⌥⌘N')
       expect(await mainCall("toolbarOf(quick()[0]).executeJavaScript(\"document.getElementById('address').readOnly\")") === false, 'The empty quick window has no editable address field.')
+      await until(async () => (await keyboardOn()) === 'toolbar' && await mainCall("toolbarOf(quick()[0]).executeJavaScript('document.activeElement?.id')") === 'address', 'the empty quick window\'s address field to have the keyboard', 8000)
       await mainCall("toolbarOf(quick()[0]).focus()")
       await mainCall(`toolbarOf(quick()[0]).insertText(${JSON.stringify(`${origin}/typed`)})`)
       await mainCall("toolbarOf(quick()[0]).sendInputEvent({ type: 'keyDown', keyCode: 'Enter' })")
       await until(async () => (await pageUrl()).endsWith('/typed'), 'the typed address to load in the quick window')
+      // As in the main window: the page that loads has the keyboard (Tab in the toolbar never reached it).
+      await until(async () => (await keyboardOn()) === 'page', 'the typed page to have the keyboard', 8000)
 
       // The toolbar page passes axe.
       const violations = await mainCall(`toolbarOf(quick()[0]).executeJavaScript(process.mainModule.require('fs').readFileSync(${JSON.stringify(join(repo, 'node_modules/axe-core/axe.min.js'))}, 'utf8') + ';axe.run(document, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"] }, resultTypes: ["violations"] }).then((r) => r.violations.map((v) => v.id + " ×" + v.nodes.length))')`)
@@ -4370,6 +4536,12 @@ export const checks = {
       await ctx.delay(600)
       expect(await quickCount() === 1, 'Escape in an edited address field closed the quick window.')
       expect(await mainCall("toolbarOf(quick()[0]).executeJavaScript(\"document.getElementById('address').value\")") === `${origin}/typed`, 'Escape did not revert the edited address field.')
+      // Tab past the toolbar's last control (Close) goes into the page.
+      await mainCall("toolbarOf(quick()[0]).focus()")
+      await until(async () => (await keyboardOn()) === 'toolbar', 'the toolbar to take the keyboard', 8000)
+      await mainCall("toolbarOf(quick()[0]).executeJavaScript(\"document.getElementById('close').focus(); true\")")
+      await mainCall("(() => { for (const type of ['keyDown', 'keyUp']) toolbarOf(quick()[0]).sendInputEvent({ type, keyCode: 'Tab' }); return true })()")
+      await until(async () => (await keyboardOn()) === 'page', 'Tab past the toolbar\'s Close button to put the keyboard in the page', 8000)
       // ⌘L and some typing, then a click into the page and a link followed there: no stale typed text stays in the field.
       await mainCall("toolbarOf(quick()[0]).focus()")
       await mainCall("toolbarOf(quick()[0]).executeJavaScript('window.quickFocusAddress()')")
@@ -4671,6 +4843,10 @@ export const checks = {
       await ctx.evaluate(`${host}.open({ kind: 'url', value: ${JSON.stringify(rightUrl)} }, 'background-tab').then(() => true)`)
       await ctx.delay(1200)
       expect(!(await stateOf()).split, 'Nothing is side by side before the shortcut.')
+      // Which web contents took the keyboard last (the app window's page, or a web page): told by focus events, which
+      // arrive whether or not the window is in front (isFocused() reads false for a window in the back).
+      await ctx.main(`(() => { globalThis.__splitKeyboard = null; const watch = (c) => c.on('focus', () => { globalThis.__splitKeyboard = c.id }); for (const c of electron.webContents.getAllWebContents()) watch(c); electron.app.on('web-contents-created', (_event, c) => watch(c)); return true })()`)
+      const keyboardIn = () => ctx.main(`(() => { const c = globalThis.__splitKeyboard == null ? null : electron.webContents.fromId(globalThis.__splitKeyboard); return !c ? 'nothing' : c === electron.BrowserWindow.getAllWindows()[0].webContents ? 'shell' : c.getURL() })()`)
 
       // ⌃⇧= splits the shown tab with the next one.
       await ctx.keyInPage('/split-left', '=', ['control', 'shift'])
@@ -4700,6 +4876,13 @@ export const checks = {
       expect((await stateOf()).url.startsWith(rightUrl), 'The address bar does not show the focused right page.')
       await expectLayout('after clicking into the right page')
       await snap('02-right-focused')
+      // From the app window's controls: Enter on the focused side's header gives that page the keyboard too.
+      await ctx.main(`(() => { electron.BrowserWindow.getAllWindows()[0].webContents.focus(); return true })()`)
+      await waitFor('the app window to take the keyboard', async () => (await keyboardIn()) === 'shell')
+      await shellEval(`document.querySelector('.split-header[data-split-side="right"] .split-header-focus').focus(); true`)
+      await ctx.press('Enter')
+      await waitFor('Enter on the focused right side\'s header to give the right page the keyboard', async () => (await keyboardIn()).includes('/split-right'))
+      expect((await stateOf()).split?.focused === 'right', 'Enter on the focused side\'s header moved the focus to the other side.')
 
       // Find and zoom act on the focused side only.
       await ctx.evaluate(`(() => { globalThis.__splitFind = []; window.intoponet.browserHost.subscribe((e) => { if (e.type === 'find-result') globalThis.__splitFind.push(e) }); return true })()`)
@@ -4778,6 +4961,8 @@ export const checks = {
       await ctx.evaluate(`${host}.setTabSidebar({ mode: 'open', width: 240 }).then(() => true)`)
       await ctx.delay(600)
       await axeAudit(ctx, 'the split divider', '.split-divider')
+      // The sidebar with the pair as one row: its tab list holds only tabs (the row's Unsplit shortcut is out of it).
+      await axeAudit(ctx, 'the tab sidebar with a pair side by side', '.tab-rail')
       await axeAudit(ctx, 'the split headers', '.split-header')
 
       // Full-width view and a narrow window: still two columns, half and half when narrow.
@@ -4940,6 +5125,15 @@ export const checks = {
       await ctx.delay(700)
       const unsplit = await viewsNow()
       expect(unsplit.pages.length === 1 && unsplit.pages[0].bounds.width > 400, 'After ⌃⇧- the shown page is not back to full size.')
+      // A side's Unsplit button from the keyboard: the button goes with the split, and the page left on screen takes the keyboard.
+      await ctx.evaluate(`${host}.splitTab().then(() => true)`)
+      await waitFor('the pair once more', async () => (await stateOf()).split && (await viewsNow()).pages.length === 2)
+      await ctx.main(`(() => { electron.BrowserWindow.getAllWindows()[0].webContents.focus(); return true })()`)
+      await waitFor('the app window to take the keyboard', async () => (await keyboardIn()) === 'shell')
+      await shellEval(`document.querySelector('.split-header[data-split-side="left"] .split-header-unsplit').focus(); true`)
+      await ctx.press('Enter')
+      await waitFor('the header\'s Unsplit to end the pair', async () => !(await stateOf()).split && (await viewsNow()).pages.length === 1)
+      await waitFor('the page left on screen to take the keyboard after Unsplit', async () => (await keyboardIn()).includes('/split-left'))
 
       // A tab dragged onto the page's edge: the page gives up that half for the drop zone.
       await ctx.evaluate(`${host}.splitPreview('left').then(() => true)`)
@@ -5620,6 +5814,8 @@ export const checks = {
       await ctx.click('button[aria-label="Tidy tabs"]')
       await ctx.wait(`!!document.querySelector('.tidy-explain') && document.querySelector('.tidy-explain').innerText.includes('Turn it on in Settings › Laya')`, 20_000, 'Tidy to explain that Laya is off')
       expect(await ctx.evaluate(`[...document.querySelectorAll('.tidy-explain button')].some((b) => b.innerText.includes('Group by story'))`), 'Tidy with Laya off does not offer Group by story.')
+      // Read out from the sheet's live region (there from the start, so the change is heard).
+      expect(await ctx.evaluate(`(document.querySelector('.tidy-sheet [role="status"]')?.textContent ?? '').includes('Turn it on in Settings › Laya')`), 'Tidy\'s reason for not suggesting is not in its live region.')
       // The sheet is drawn by the shell, under the native page view: the page must be hidden while it is open.
       const pageShown = () => ctx.main(`electron.BrowserWindow.getAllWindows()[0].contentView.children.some((view) => view.getVisible() && /^https?:/.test(view.webContents?.getURL?.() ?? ''))`)
       expect(!(await pageShown()), 'The page view is drawn over the Tidy preview, hiding it.')
@@ -5681,6 +5877,7 @@ export const checks = {
       })
       await ctx.shot('tidy-preview')
       await axeAudit(ctx, 'the Tidy preview', '.tidy-sheet')
+      expect(await ctx.evaluate(`/\\d+ folders? suggested/.test(document.querySelector('.tidy-sheet [role="status"]')?.textContent ?? '')`), `Tidy's suggestions are not read out (its live region says "${await ctx.evaluate(`document.querySelector('.tidy-sheet [role="status"]')?.textContent ?? 'nothing'`)}").`)
       // A suggested tab (not the one shown) closes while the preview is open: Accept moves the others, and says how many it moved.
       const shownId = (await tabs()).find((tab) => tab.active)?.id
       const closedMeanwhile = suggestion.groups.flatMap((group) => group.tabIds).find((id) => id !== shownId)

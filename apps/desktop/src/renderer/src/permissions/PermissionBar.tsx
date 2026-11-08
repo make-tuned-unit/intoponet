@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { Bell, Camera, ClipboardPaste, ExternalLink, MapPin, Mic, ShieldQuestion } from 'lucide-react'
 import { describePermissionKinds, type PageTabSnapshot, type SitePermissionAnswer, type SitePermissionKind, type SitePermissionMap, type SitePermissionRequest } from '@intoponet/browser-api'
 
@@ -25,8 +26,19 @@ export function PermissionBar({ request, more, background = null, onDecide }: { 
   // A pop-up the page opened without a click was blocked: open it this once, or always for the site.
   const popup = request.kinds.length === 1 && request.kinds[0] === 'popups'
   const Icon = request.kinds.length === 1 ? ICONS[request.kinds[0]!] : ShieldQuestion
+  const root = useRef<HTMLDivElement>(null)
+  // Focus never lands on Allow as the bar appears: a key pressed just then (a space typed in the address bar) would
+  // answer it. Someone typing in a field keeps typing there; otherwise focus moves to the bar itself (read out, and
+  // Tab reaches its buttons). Once answered, focus goes back to where it was.
+  useEffect(() => {
+    const before = document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null
+    if (!before?.closest('input, textarea, select, [contenteditable="true"]')) root.current?.focus()
+    return () => {
+      if (before?.isConnected && (!document.activeElement || document.activeElement === document.body)) before.focus()
+    }
+  }, [])
   return (
-    <div className="permission-bar" role="alertdialog" aria-label={`${background ? `${background}: ` : ''}${hostOf(request.origin)}${request.topOrigin ? ` on ${hostOf(request.topOrigin)}` : ''} asks for permission`}>
+    <div ref={root} tabIndex={-1} className="permission-bar" role="alertdialog" aria-label={`${background ? `${background}: ` : ''}${hostOf(request.origin)}${request.topOrigin ? ` on ${hostOf(request.topOrigin)}` : ''} asks for permission`}>
       <span className="permission-bar-ask">
         <Icon size={15} aria-hidden="true" />
         <span>
@@ -46,7 +58,7 @@ export function PermissionBar({ request, more, background = null, onDecide }: { 
           <>
             <button type="button" onClick={() => onDecide('dismiss')} title="Decline this time and ask again later">Not now</button>
             <button type="button" onClick={() => onDecide('block')}>Block</button>
-            <button type="button" className="is-primary" onClick={() => onDecide('allow')} autoFocus>Allow</button>
+            <button type="button" className="is-primary" onClick={() => onDecide('allow')}>Allow</button>
           </>
         )}
       </span>

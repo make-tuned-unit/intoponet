@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Crosshair } from 'lucide-react'
 import type { SiteTweak, SiteTweakDraft, SiteTweakListItem, SiteTweakState } from '@intoponet/browser-api'
 import './siteTweaks.css'
@@ -45,6 +45,19 @@ export function SiteTweaksPanel({ pageUrl }: { pageUrl: string }) {
   const [picked, setPicked] = useState<string | null>(null)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const hideButton = useRef<HTMLButtonElement>(null)
+  const saveButton = useRef<HTMLButtonElement>(null)
+  // Focus follows the picker: on Save once an element is picked, back on Hide an element… once the pick ends
+  // without one, or once the picked element is saved or let go (their buttons go away).
+  const wasPicked = useRef<string | null>(null)
+  const refocusHide = useRef(false)
+  useEffect(() => {
+    if (picked) saveButton.current?.focus()
+    else if (picking) return
+    else if (refocusHide.current || (wasPicked.current && (!document.activeElement || document.activeElement === document.body))) hideButton.current?.focus()
+    refocusHide.current = false
+    wasPicked.current = picked
+  }, [picked, picking])
 
   const load = (): Promise<void> => api().state().then(
     (next) => { setState(next); setCss(next.tweak?.css ?? '') },
@@ -74,15 +87,20 @@ export function SiteTweaksPanel({ pageUrl }: { pageUrl: string }) {
 
   const pick = async (): Promise<void> => {
     setError('')
-    setMessage('')
+    // Read out as the page takes the keyboard: how to pick without a mouse.
+    setMessage('Click an element on the page, or press Tab to move to one: ↑ takes the element around it, Enter chooses it, Escape stops.')
     setPicking(true)
     try {
       const result = await api().pick()
       if (result.error) setError(result.error)
-      else if (result.selector) setPicked(result.selector)
-      else setMessage('No element was picked.')
+      else if (result.selector) {
+        setPicked(result.selector)
+        setMessage('')
+      } else setMessage('No element was picked.')
+      if (!result.selector) refocusHide.current = true
     } catch {
       setError('The element could not be picked on this page.')
+      refocusHide.current = true
     } finally {
       setPicking(false)
     }
@@ -136,17 +154,16 @@ export function SiteTweaksPanel({ pageUrl }: { pageUrl: string }) {
       </p>
 
       <div className="site-tweaks-row">
-        <button type="button" onClick={() => void pick()} disabled={picking || picked !== null}>
+        <button ref={hideButton} type="button" onClick={() => void pick()} disabled={picking || picked !== null}>
           <Crosshair size={13} aria-hidden="true" /> {picking ? 'Click an element on the page…' : 'Hide an element…'}
         </button>
         {picking && <button type="button" onClick={() => void api().cancelPick()}>Cancel</button>}
-        {picking && <span className="site-tweaks-note">Press Escape to stop.</span>}
       </div>
 
       {picked && (
         <div className="site-tweaks-picked" role="group" aria-label="Element to hide">
           <span>Hide <code>{picked}</code> on {site}?</span>
-          <button type="button" className="is-primary" onClick={() => void keepPicked()}>Save</button>
+          <button ref={saveButton} type="button" className="is-primary" onClick={() => void keepPicked()}>Save</button>
           <button type="button" onClick={dropPicked}>Cancel</button>
         </div>
       )}
