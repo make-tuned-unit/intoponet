@@ -882,8 +882,14 @@ async function appWindowRecovers(ctx) {
     await until('the app window back from File › New Tab', async () => (await shellNow()) !== null)
     shell = await ctx.page('index.html')
     await ready(shell, 'the app window back from File › New Tab')
-    const tabsAfter = JSON.parse(await tabsOf(shell))
-    expect(tabsAfter.length === JSON.parse(tabsBefore).length + 1 && tabsAfter.at(-1)[1] === true, `File › New Tab with the window closed left the tabs as ${JSON.stringify(tabsAfter)}.`)
+    // The command waits for the reopened window to listen, and its tab follows a moment after the window is ready.
+    const newTabShown = (tabs) => tabs.length === JSON.parse(tabsBefore).length + 1 && tabs.at(-1)[1] === true
+    let tabsAfter = JSON.parse(await tabsOf(shell))
+    for (let i = 0; i < 40 && !newTabShown(tabsAfter); i += 1) {
+      await ctx.delay(250)
+      tabsAfter = JSON.parse(await tabsOf(shell))
+    }
+    expect(newTabShown(tabsAfter), `File › New Tab with the window closed left the tabs as ${JSON.stringify(tabsAfter)}.`)
     return `The app window reloaded after its page crashed and after it hung, with its tabs, pair and page area, no view or listener added and a running tour's page closed; closed, it paused the pair's videos (a frame's too) and came back with its tabs from the Dock (a quick window open, nothing playing again by itself) and from File › New Tab.`
   } finally {
     server.close()
