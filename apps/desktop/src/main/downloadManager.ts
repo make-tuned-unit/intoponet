@@ -485,6 +485,11 @@ export class DownloadManager {
     this.emitNow()
   }
 
+  /** Whether a download through this partition is still coming in (paused counts): its connection must stay open. */
+  receiving(partition: string): boolean {
+    return this.entries.some((entry) => entry.partition === partition && !FINISHED.has(entry.state))
+  }
+
   records(): DownloadRecord[] {
     return this.entries
       .filter((entry) => !entry.isPrivate && FINISHED.has(entry.state) && !entry.attention && entry.endedAt !== null)

@@ -168,6 +168,20 @@ describe('DownloadManager', () => {
     expect(downloads.list()).toHaveLength(0)
   })
 
+  it('says whether a download through a partition is still coming in, so its connections are not closed under it', () => {
+    const { manager: downloads } = manager()
+    const running = new FakeItem('private-running.zip')
+    downloads.track(running, { isPrivate: true, pageKey: '1', partition: 'intoponet-private' })
+    downloads.track(new FakeItem('work.zip'), { isPrivate: false, pageKey: '2', partition: 'persist:intoponet-ws-work' })
+    expect(downloads.receiving('intoponet-private')).toBe(true)
+    expect(downloads.receiving('persist:intoponet-default')).toBe(false)
+    running.pause()
+    expect(downloads.receiving('intoponet-private')).toBe(true)
+    running.finish('cancelled')
+    expect(downloads.receiving('intoponet-private')).toBe(false)
+    expect(downloads.receiving('persist:intoponet-ws-work')).toBe(true)
+  })
+
   it('a private download still running when private browsing ends leaves the list once it finishes', () => {
     const { manager: downloads } = manager()
     const running = new FakeItem('private-running.zip')

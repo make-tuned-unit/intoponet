@@ -2358,7 +2358,8 @@ async function clearPartitionData(partition: string): Promise<void> {
   // A site's own sign-in box (HTTP authentication) is remembered apart from its cookies.
   await target.clearAuthCache().catch(() => undefined)
   // Open connections too: a site would otherwise see the signed-out pages arrive on the signed-in ones' connection.
-  await target.closeAllConnections().catch(() => undefined)
+  // (Not while a download through it is still coming in: closing would cut it off.)
+  if (!browsingData?.downloads.receiving(partition)) await target.closeAllConnections().catch(() => undefined)
 }
 
 /** A workspace's own site permissions: prompts still waiting end, and its answers are deleted from disk. */
@@ -5467,7 +5468,8 @@ app.whenReady().then(async () => {
           // HTTP sign-ins typed in a private tab too: the next private tab must not be signed in with them.
           await privateSession.clearAuthCache().catch(() => undefined)
           // And its open connections: the next private session's pages would arrive on them, linking the two.
-          await privateSession.closeAllConnections().catch(() => undefined)
+          // A private download still coming in keeps going, as before (closing would cut it off).
+          if (!browsingData?.downloads.receiving(PRIVATE_PARTITION)) await privateSession.closeAllConnections().catch(() => undefined)
           browsingData?.privateBrowsingEnded()
           emitPanelState()
         }
