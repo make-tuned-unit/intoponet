@@ -3998,6 +3998,11 @@ export const checks = {
     const tweaksFile = join(ctx.profile, 'site-tweaks.json')
     const storedSites = () => (existsSync(tweaksFile) ? JSON.parse(readFileSync(tweaksFile, 'utf8')).sites ?? {} : {})
     const storedLater = async () => { await ctx.delay(1200); return storedSites() }
+    /** The saved sites once they pass `test` (saved a moment after a change; a busy Mac takes longer), polled up to 10 s. */
+    const storedWhen = async (test) => {
+      for (let i = 0; i < 50 && !test(storedSites()); i += 1) await ctx.delay(200)
+      return storedSites()
+    }
     const markup = (name) => `<!doctype html><html><head><meta charset="utf-8"><title>${name}</title></head><body style="font:16px system-ui;margin:0">
       <header>${name} header</header><div id="wrap"><div id="promo" class="banner">PROMO-SENTINEL buy now</div>
       <main><article><h1>${name} story</h1><p id="para">The story text on ${name}.</p></article></main></div></body></html>`
@@ -4071,7 +4076,7 @@ export const checks = {
       expect(await ctx.click('.site-tweaks-picked button', 'Save'), 'The Save button for the picked element is missing.')
       await ctx.wait(statusIs('Element hidden on this site'), 8000, 'the saved element')
       expect((await pageStyles(pageA)).promo === 'none', 'The saved element is not hidden on the page.')
-      const afterSave = await storedLater()
+      const afterSave = await storedWhen((sites) => sites['127.0.0.1']?.hidden?.includes('#promo'))
       expect(afterSave['127.0.0.1']?.hidden?.includes('#promo'), `The hidden element was not written to site-tweaks.json: ${JSON.stringify(afterSave)}.`)
 
       // Reload: still hidden. Site B is not touched.
@@ -4140,7 +4145,7 @@ export const checks = {
       await axeAudit(ctx, 'the Customize site panel', '#site-tweaks-panel')
 
       // A private tab on A sees the tweaks; its own change is in memory only and is never written.
-      const writtenBefore = await storedLater()
+      const writtenBefore = await storedWhen((sites) => sites['127.0.0.1']?.hidden?.includes('#promo'))
       const textBefore = existsSync(tweaksFile) ? readFileSync(tweaksFile, 'utf8') : ''
       expect(writtenBefore['127.0.0.1']?.hidden?.includes('#promo'), 'The tweak is not saved before the private tab.')
       await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(true).then(() => true)`)
@@ -4184,7 +4189,7 @@ export const checks = {
       await axeAudit(ctx, 'Site tweaks in Settings', '.site-tweaks-list')
       expect(await ctx.click('.site-tweaks-list button', 'Remove'), 'The Remove button for the site is missing from Settings.')
       await ctx.wait(`(document.querySelector('.site-tweaks-list')?.innerText ?? '').includes('No site tweaks yet')`, 8000, 'the site to leave Settings')
-      expect(!(await storedLater())['127.0.0.1'], 'The removed site is still in site-tweaks.json.')
+      expect(!(await storedWhen((sites) => !sites['127.0.0.1']))['127.0.0.1'], 'The removed site is still in site-tweaks.json.')
 
       // The error page can turn a site's tweaks off (the failed site is 127.0.0.1 too).
       await ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: ${JSON.stringify(urlA)} }).then(() => true)`)
