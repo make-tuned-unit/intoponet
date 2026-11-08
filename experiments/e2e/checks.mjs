@@ -3266,14 +3266,39 @@ export const checks = {
       await ctx.press('Enter')
       await ctx.wait(`${host}.getTabFolders().then((f) => f.some((x) => x.name === 'Work'))`, 3000, 'the folder to be named Work')
       const work = (await folders()).find((folder) => folder.name === 'Work')
+      // Named with Enter, focus is on the folder's button (not nowhere); a folder deleted from its own menu passes focus to the tabs.
+      await ctx.wait(`document.activeElement?.classList.contains('tab-rail-folder-toggle') && document.activeElement.closest('[data-folder-drop]')?.dataset.folderDrop === ${JSON.stringify(work.id)}`, 3000, 'focus to go to the folder\'s button once it is named')
+      await ctx.click('button[aria-label="New folder"]')
+      await ctx.wait(`document.activeElement?.classList.contains('tab-rail-folder-name')`, 3000, 'a second folder to ask for a name')
+      await ctx.press('Escape')
+      await ctx.wait(`document.activeElement?.classList.contains('tab-rail-folder-toggle') && document.activeElement.textContent.includes('New folder')`, 3000, 'Escape in the name field to return focus to the folder\'s button')
+      await ctx.main(`(() => { electron.app.focus({ steal: true }); electron.BrowserWindow.getAllWindows()[0].focus(); return true })()`)
+      await ctx.evaluate(`document.querySelector('button[aria-label="Actions for folder New folder"]').focus(); true`)
+      await ctx.click('button[aria-label="Actions for folder New folder"]')
+      await ctx.wait(`!!document.querySelector('.tab-rail-folder-menu [role="menuitem"]')`, 2000, 'the second folder\'s menu')
+      await ctx.click('.tab-rail-folder-menu [role="menuitem"]', 'Delete folder')
+      await ctx.wait(`${host}.getTabFolders().then((f) => f.length === 1)`, 3000, 'the second folder to be deleted')
+      await ctx.wait(`document.activeElement?.getAttribute('role') === 'tab' && !!document.activeElement.closest('.tab-rail')`, 3000, 'focus to go to the tab list once the folder it was on is deleted')
       // Drag a tab onto the folder.
       const docs = await byTitle('Page /docs')
       await drag(`[data-tab-id="${docs.id}"] [role="tab"]`, `[data-folder-drop="${work.id}"]`)
       expect((await byTitle('Page /docs')).folderId === work.id, 'Dragging a tab onto the folder did not put it there.')
-      // The same from the keyboard path (the tab menu's Move to Folder runs this).
+      // The same from the keyboard: ⇧F10 on a tab opens its menu (the native menu is read, not shown), and Move to Folder › Work moves it.
       const notes = await byTitle('Page /notes')
-      await ctx.evaluate(`${host}.moveTabToFolder(${JSON.stringify(notes.id)}, ${JSON.stringify(work.id)}).then(() => true)`)
-      await ctx.delay(400)
+      await ctx.main(`(() => { const M = electron.Menu; globalThis.__tfBuild = M.buildFromTemplate; M.buildFromTemplate = (template) => { globalThis.__tfMenu = template; return { popup() {}, closePopup() {} } }; return true })()`)
+      try {
+        await ctx.evaluate(`document.querySelector('[data-tab-id="${notes.id}"] [role="tab"]').focus(); true`)
+        for (const type of ['rawKeyDown', 'keyUp']) await ctx.send('Input.dispatchKeyEvent', { type, key: 'F10', code: 'F10', windowsVirtualKeyCode: 121, modifiers: 8 })
+        let moved = false
+        for (let i = 0; i < 20 && !moved; i += 1) {
+          await ctx.delay(150)
+          moved = await ctx.main(`(() => { const item = (globalThis.__tfMenu ?? []).find((i) => i.label === 'Move to Folder')?.submenu?.find((i) => i.label === 'Work'); if (!item) return false; item.click(); return true })()`)
+        }
+        expect(moved, `⇧F10 on a tab did not open its menu with Move to Folder › Work (${await ctx.main(`JSON.stringify((globalThis.__tfMenu ?? []).map((i) => i.label).filter(Boolean))`)}).`)
+      } finally {
+        await ctx.main(`(() => { if (globalThis.__tfBuild) electron.Menu.buildFromTemplate = globalThis.__tfBuild; return true })()`)
+      }
+      await ctx.wait(`${host}.getTabs().then((t) => t.find((x) => x.id === ${JSON.stringify(notes.id)})?.folderId === ${JSON.stringify(work.id)})`, 3000, 'Move to Folder › Work from the keyboard menu to move the tab')
       // Folders nest four levels deep.
       let parent = work.id
       for (const name of ['Reports', 'Q3', 'Drafts']) parent = JSON.parse(await ctx.evaluate(`${host}.createTabFolder(${JSON.stringify(name)}, ${JSON.stringify(parent)}).then((f) => JSON.stringify(f))`)).id
@@ -3501,6 +3526,13 @@ export const checks = {
       await ctx.type('Reading')
       await ctx.press('Enter')
       await ctx.wait(`${ws}.get().then((s) => s.workspaces[0].name === 'Reading')`, 3000, 'the workspace to be renamed Reading')
+      // Focus goes back to the actions button (not to nowhere); so it does when the place picker is left with Escape.
+      await ctx.wait(`document.activeElement?.getAttribute('aria-label') === 'Actions for workspace Reading'`, 3000, 'focus to go back to the actions button once the workspace is renamed')
+      await openWorkspaceMenu('Reading', 'the workspace menu for an anchor')
+      await ctx.click('.tab-rail-folder-menu [role="menuitem"]', 'Anchor to a place')
+      await ctx.wait(`document.activeElement?.getAttribute('role') === 'combobox' && !!document.activeElement.closest('.tab-rail-anchor')`, 3000, 'the place picker to take focus')
+      await ctx.press('Escape')
+      await ctx.wait(`!document.querySelector('.tab-rail-anchor') && document.activeElement?.getAttribute('aria-label') === 'Actions for workspace Reading'`, 3000, 'Escape to close the place picker and return focus to the actions button')
 
       // Favourites: one shared by every workspace, one owned by Main.
       await ctx.evaluate(`${ws}.addFavourite(${JSON.stringify((await byTitle('research-c')).id)}, true).then(() => true)`)
@@ -3510,6 +3542,15 @@ export const checks = {
       await ctx.wait(`document.querySelectorAll('.tab-rail-favourite').length === 2`, 3000, 'Main to show both favourites')
       await ctx.evaluate(`${ws}.switchTo({ id: ${JSON.stringify(researchId)} }).then(() => true)`)
       await ctx.wait(`document.querySelectorAll('.tab-rail-favourite').length === 1`, 3000, 'Reading to show only the shared favourite')
+      // A favourite's actions from the keyboard: ⇧F10 (no context-menu event on the Mac), Escape returns to it.
+      // Its button opens the favourite, so it does not claim to open a menu.
+      expect(await ctx.evaluate(`!document.querySelector('.tab-rail-favourite').hasAttribute('aria-haspopup')`), 'A favourite\'s button says it opens a menu, but Enter opens the favourite.')
+      await ctx.main(`(() => { electron.app.focus({ steal: true }); electron.BrowserWindow.getAllWindows()[0].focus(); return true })()`)
+      await ctx.evaluate(`document.querySelector('.tab-rail-favourite').focus(); true`)
+      await key('F10', 'F10', 121, 8)
+      await ctx.wait(`document.activeElement?.getAttribute('role') === 'menuitem' && !!document.activeElement.closest('[aria-label^="Actions for favourite"]')`, 3000, '⇧F10 on a favourite to open its actions')
+      await ctx.press('Escape')
+      await ctx.wait(`!document.querySelector('.tab-rail-folder-menu') && document.activeElement?.classList.contains('tab-rail-favourite')`, 3000, 'Escape to close the favourite\'s actions and return focus to it')
 
       // Private tabs belong to no workspace: never counted, never moved into one, never saved.
       await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(true).then(() => true)`)
@@ -3620,8 +3661,12 @@ export const checks = {
       await ctx.wait(`${ws}.get().then((s) => s.workspaces.length === 1 && s.recentlyDeleted?.name === 'Reading')`, 3000, 'Reading to be deleted, with Undo offered')
       expect(await titles() === 'main-pin main-b main-a', `After deleting Reading the sidebar shows: ${await titles()}.`)
       await ctx.wait(`[...document.querySelectorAll('.tab-rail-workspace-undo')].some((e) => e.textContent.includes('Deleted “Reading”'))`, 3000, 'the sidebar to offer Undo')
+      // The deleted workspace's actions button went with it: focus is on Undo, and the deletion is read out.
+      await ctx.wait(`!!document.activeElement?.closest('.tab-rail-workspace-undo')`, 3000, 'focus to move to Undo once the workspace is deleted')
+      expect(await ctx.evaluate(`[...document.querySelectorAll('.tab-rail-workspace-bar [role="status"]')].some((e) => e.textContent.includes('Deleted workspace Reading'))`), 'Deleting a workspace is not read out (no live region says so).')
       await ctx.click('.tab-rail-workspace-undo button')
       await ctx.wait(`${ws}.get().then((s) => s.workspaces.length === 2 && s.activeId === ${JSON.stringify(researchId)} && !s.recentlyDeleted)`, 3000, 'Undo to bring Reading back')
+      await ctx.wait(`document.activeElement?.matches('.tab-rail-workspace[aria-current="true"]') && document.activeElement.dataset.workspaceId === ${JSON.stringify(researchId)}`, 3000, 'focus to go to the workspace Undo brought back')
       expect(await titles() === 'research-a research-b research-c' && (await tabs()).some((tab) => tab.id === researchC), `After Undo Reading holds: ${await titles()}.`)
 
       // A tab closed in Reading's folder, reopened while Main is shown, comes back in Reading and in that folder.

@@ -1,7 +1,7 @@
 import { EyeOff, X } from 'lucide-react'
 import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react'
 import type { PageTabSnapshot } from '@intoponet/browser-api'
-import { moveTabByKey, openTabMenu, TabAudioButton, TabHomeButton, TabIcon, tabSoundLabel, tabStateLabel, useTabDrag } from './tabControls'
+import { moveTabByKey, openTabMenu, tabMenuKey, TabAudioButton, TabHomeButton, TabIcon, tabSoundLabel, tabStateLabel, useTabDrag } from './tabControls'
 
 export type PageTabStripProps = {
   tabs: PageTabSnapshot[]
@@ -33,8 +33,9 @@ export function PageTabStrip({ tabs, stripRef, caption, label }: PageTabStripPro
     buttons.current.get(id)?.focus()
   }, [tabs])
 
-  /** Keys on a focused tab (either side of a pair too): ⌥⇧←/→ move it, arrows move between tabs, Delete closes it. */
+  /** Keys on a focused tab (either side of a pair too): ⌥⇧←/→ move it, arrows move between tabs, Delete closes it, ⇧F10 opens its menu. */
   const onTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>, tab: PageTabSnapshot, index: number): void => {
+    if (tabMenuKey(event, tab.id)) return
     if (moveTabByKey(event, tabs, index, 'x') !== null) {
       refocus.current = tab.id
       return

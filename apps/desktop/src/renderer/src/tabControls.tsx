@@ -89,6 +89,19 @@ export function openTabMenu(event: MouseEvent<HTMLElement>, id: string): void {
   void window.intoponet.browserHost.showTabMenu(id, { x: Math.max(0, Math.round(x)), y: Math.max(0, Math.round(y)) })
 }
 
+/**
+ * ⇧F10 on a focused tab: the native tab menu, under the tab (Move to Folder, Move to Workspace, Split…). The
+ * Mac has no context-menu key and Chromium sends no context-menu event for ⇧F10 there. True when it was that key.
+ */
+export function tabMenuKey(event: KeyboardEvent<HTMLElement>, id: string | undefined): boolean {
+  if (!id || event.key !== 'F10' || !event.shiftKey || event.metaKey || event.ctrlKey || event.altKey) return false
+  event.preventDefault()
+  event.stopPropagation()
+  const box = (event.target as HTMLElement).getBoundingClientRect()
+  void window.intoponet.browserHost.showTabMenu(id, { x: Math.max(0, Math.round(box.left + 8)), y: Math.max(0, Math.round(box.bottom)) })
+  return true
+}
+
 /** Keyboard reorder for a focused tab; returns the tab's new index, or null when the key was not a move. */
 export function moveTabByKey(event: KeyboardEvent, tabs: PageTabSnapshot[], index: number, axis: TabAxis): number | null {
   const delta = reorderDelta(event, axis)

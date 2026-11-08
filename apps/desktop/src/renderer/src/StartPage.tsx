@@ -51,7 +51,8 @@ export function StartPage({ tabId, bookmarks, recents, news, newsLoaded, isPriva
 
   useEffect(() => {
     setDraft('')
-    const frame = requestAnimationFrame(() => search.current?.focus())
+    // Not from a new workspace's name field: its start page can arrive after the field has asked for the name.
+    const frame = requestAnimationFrame(() => { if (!document.activeElement?.closest('.tab-rail-workspace-editor')) search.current?.focus() })
     return () => cancelAnimationFrame(frame)
   }, [tabId])
 

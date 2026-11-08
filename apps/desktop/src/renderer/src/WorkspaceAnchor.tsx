@@ -18,9 +18,14 @@ export function AnchorPicker({ workspace, onDone, onError }: { workspace: Worksp
   const [active, setActive] = useState(0)
   const [busy, setBusy] = useState(false)
   const field = useRef<HTMLInputElement>(null)
+  // Anchored, cancelled or Escape: focus goes back to what opened it (the workspace's actions button).
   useEffect(() => {
+    const opener = document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null
     const frame = requestAnimationFrame(() => field.current?.focus())
-    return () => cancelAnimationFrame(frame)
+    return () => {
+      cancelAnimationFrame(frame)
+      if (opener?.isConnected && (!document.activeElement || document.activeElement === document.body)) opener.focus()
+    }
   }, [])
   const results = useMemo(() => (query.trim().length < 2 ? [] : searchPlaces(query.trim(), 7)), [query])
   const choose = (place: Place): void => {
