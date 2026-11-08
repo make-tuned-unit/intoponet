@@ -22,14 +22,28 @@ Cinematic Brand Kit v3 (30 October 2026). Logos, favicon and the spectrum mark a
 
 - Tokens: v3 values at the top of `style.css`. Older `--into-*` names map onto them; `--into-panel` (#0d2131) is a derived lifted Midnight for panels, and `--teal-on-light` (#17726e) is a darker teal for text on cream, where Spectral Teal fails WCAG contrast.
 - Header logo: the kit's outlined horizontal lockup (Inter Display wordmark), with the wordmark moved up so its lowercase letters centre on the mark (`translate(-20 -76)`) and the viewBox trimmed to the artwork (`35 11 680 132`). Mark and letterforms are unchanged. The same file is used in the desktop app. The kit's `*-on-light-outlined.svg` has a cream wordmark, so it is not used on light surfaces.
-- Hero: the kit's illustrated Earth (`desktop-hero-text-free`), a static image with a slow 90s CSS drift that pauses for reduced motion, hidden tabs and the pause control. Its peaks and lights are examples and are captioned as such. The previous WebGL globe (`globe.js`) was removed.
-- The download panel uses the `signal-horizon` spectral field. The "Explore" product image is a capture of the rebranded app.
+- Hero: the kit's illustrated Earth (`desktop-hero-text-free`), a static image with a slow 90s CSS drift that pauses for reduced motion and hidden tabs. Its peaks and lights are examples and are captioned as such. The previous WebGL globe (`globe.js`) was removed.
+- The download panel uses the `signal-horizon` spectral field.
 
-## Animated sections
+## Home page structure (November 2026)
 
-- "One world. Two perspectives." (`discovery.js`): a canvas contour field in the brand spectrum. Four peaks sit under the story cards, and a pulse travels the route between them. Switching to "The list" flattens the field and stacks the cards. Peaks and routes are derived from the cards' CSS positions, so it stays aligned at every breakpoint. It runs only while visible and the tab is shown, and draws a still frame with reduced motion. Concept illustration, not data.
-- "A real browser. Built with care." (`.everyday` in `cinematic.css`): CSS-only illustrations of bookmarks and collections, screenshots and recordings, privacy, on-device translation and the basics. Every feature shown exists in the app; the visuals are labelled as illustrations. Animations pause off-screen or in hidden tabs, and stop with reduced motion.
-- The hero drift and illustration loops follow the system reduced-motion setting; there is no on-page motion toggle.
+Built from a UX research brief (NN/g, Baymard and others: plain headline, grouped features with real screenshots, no carousels or tabbed content, concrete features before the vision, FAQ, phone fallback). In order:
+
+- **Hero:** a plain headline (what it is and how it differs), the download button with its facts beside it (version and date, size, macOS and Apple silicon, signed and notarized), and a "Coming from Arc?" link to Switching. Phones see "Send this page to your Mac" (Web Share, or copy the link) instead of the download button.
+- **What's inside** (`#features`, `.chapter-index`): the five feature chapters, named exactly as their headings.
+- **Five chapters** (`.chapter`): See the news, Understand the story, Organize your tabs, Browse faster, Keep what you find. Each has a heading and lede, real captures, and six features in a 3×2 list. Features from the last few releases carry a "New" mark; refresh those marks as releases age.
+- **Switching** (`#switch`): three numbered import steps, what comes over and what doesn't, and a download button.
+- **Everything you'd expect** (`#essentials`): the everyday tools in one list.
+- **Privacy** (`#privacy`, cream): the concrete promises and the Beacon flow.
+- **What's new** (`#new`): the latest releases, newest first. Update it with each release.
+- **Why a globe** (`#why`, cream): the "One world. Two perspectives." concept illustration (`discovery.js`).
+- **Where it's going** (`#vision`), **Questions** (`#faq`, native `<details>`), **Download**.
+
+Styles for these are in `site.css` (loaded after `style.css` and `cinematic.css`). `nav.js` runs the phone menu, the header that stays on screen (opaque once the page scrolls), the header link for the section in view, and the phone share button.
+
+Screenshots are real window captures of the app (`assets/app/0123/`, 2880×1880, WebP at 1200 and 2400 wide), taken from the 0.1.23 build on an isolated profile with the day's live news (7 November 2026). Every claim on the page must match the app; check `docs/FEATURE_DAG.json` and the app before changing copy.
+
+The hero drift and the concept illustration follow the system reduced-motion setting. Sections are never hidden waiting for a scroll.
 
 ## Download notifications
 

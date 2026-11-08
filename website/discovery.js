@@ -26,7 +26,8 @@
   // Peaks and routes follow the cards' landscape anchors (their CSS left/top), so the
   // illustration stays aligned at every breakpoint.
   function layout() {
-    if (stage.dataset.mode === 'linear') return;
+    // Not laid out yet (hidden, or before the first resize): there is nothing to align to.
+    if (stage.dataset.mode === 'linear' || !W || !H) return;
     nodes.forEach((node, k) => { peaks[k] = [node.offsetLeft / W, node.offsetTop / H]; });
     const bends = [[-0.6, -1], [0.35, 0.55], [0.6, 0.5], [-0.25, -1.2]];
     routes.forEach((route, k) => {

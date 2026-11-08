@@ -7,14 +7,11 @@ preference.addEventListener('change', event => { paused = event.matches; syncMot
 document.addEventListener('visibilitychange', () => {
   document.documentElement.classList.toggle('page-hidden', document.hidden);
 });
-const revealObserver = new IntersectionObserver(entries => {
-  for (const entry of entries) if (entry.isIntersecting) { entry.target.classList.add('revealed'); revealObserver.unobserve(entry.target); }
-}, { threshold: .08 });
-document.querySelectorAll('.section-intro,.privacy>div,.vision h2,.roadmap>div,.download,.perspective-heading,.perspective-bottom,.depth-heading,.detail-card').forEach(el => { el.classList.add('reveal'); revealObserver.observe(el); });
+// Content is never hidden waiting for a scroll: sections are visible as soon as they are reached.
 const sceneObserver = new IntersectionObserver(entries => {
   entries.forEach(entry => entry.target.classList.toggle('in-view', entry.isIntersecting));
 }, { threshold: .1 });
-document.querySelectorAll('.detail-card,.discovery-demo,.privacy,.hero,.ev-card').forEach(el => sceneObserver.observe(el));
+document.querySelectorAll('.discovery-demo,.privacy,.hero').forEach(el => sceneObserver.observe(el));
 document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => {
   const linear = button.dataset.view === 'linear';
   document.querySelector('.discovery-stage').dataset.mode = button.dataset.view;
@@ -23,5 +20,4 @@ document.querySelectorAll('[data-view]').forEach(button => button.addEventListen
     ? 'A list gives you a sequence. One item follows another, while the connections between them stay out of view.'
     : 'A landscape makes room for relationships. Choose a direction, explore the context, and discover what lies nearby.';
 }));
-// The feature tabs and the "See the browser" screens are tabbed scrollers (tabs.js).
 syncMotion();

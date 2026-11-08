@@ -1,0 +1,141 @@
+/* Home page structure (November 2026): what's inside, five feature chapters with real captures,
+   privacy, the everyday tools, what's new and questions. Brand v3 tokens from style.css. */
+
+/* What's inside: the five chapters, right under the hero, so the page's shape is clear at a glance. */
+/* It is a <nav>: the header's nav rules (flex, centred, links hidden on phones) must not apply. */
+.chapter-index{display:grid;grid-template-columns:repeat(5,1fr);gap:0 28px;align-items:stretch;padding:30px 7% 34px;font-size:inherit;background:#061320;border-bottom:1px solid #ffffff12}
+.chapter-index>a:not(.nav-cta){display:grid;align-content:start;gap:6px;padding-top:16px;border-top:1px solid #ffffff26;transition:border-color .2s}
+.chapter-index a:hover,.chapter-index a:focus-visible{border-top-color:var(--into-teal)}
+.chapter-index strong{font-size:15px;font-weight:550;color:var(--into-cream)}
+.chapter-index span{font-size:13px;line-height:1.45;color:#9eb8c0}
+
+/* Header download button: the "for Mac" part of the label follows "Download" without the icon's gap. */
+.nav-cta .nav-cta-long{padding-left:.28em}
+
+/* Feature chapters: heading and lede, the real thing, then every feature named in plain words. */
+.chapter,.essentials,.whats-new,.faq{padding:110px 7%;background:#061320;color:var(--into-cream)}
+.chapter-alt,.whats-new,.faq{background:#0b1d2b}
+.chapter-head{display:grid;grid-template-columns:1.1fr 1fr;gap:6%;align-items:end}
+.chapter-head h2{margin:0}
+.chapter-head>p{margin:0;max-width:520px;font-size:17px;line-height:1.6;color:#b9cdd0}
+.chapter-head a{color:var(--into-teal);text-decoration:underline;text-underline-offset:3px}
+
+.capture{margin:56px 0 0}
+.capture img{display:block;width:100%;height:auto;filter:drop-shadow(0 0 1px #88d0d570) drop-shadow(0 22px 26px #000000a6)}
+.capture figcaption{margin-top:18px;max-width:680px;font-size:14px;line-height:1.6;color:#9eb8c0}
+.capture figcaption strong{color:var(--into-cream);font-weight:500}
+.capture-pair{display:grid;grid-template-columns:1fr 1fr;gap:44px;margin-top:56px}
+.capture-pair .capture{margin:0}
+
+.feature-list{list-style:none;padding:0;margin:64px 0 0;display:grid;grid-template-columns:repeat(3,1fr);gap:40px 48px}
+.feature-list li{padding-top:20px;border-top:1px solid #ffffff1f}
+.feature-list h3{margin:0 0 8px;font-size:17px;line-height:1.35;font-weight:550;letter-spacing:-.01em}
+.feature-list p{margin:0;font-size:15px;line-height:1.6;color:#a9bfc3}
+.new,.beta{display:inline-block;margin-left:8px;padding:2px 8px 3px;border-radius:999px;font-size:11px;line-height:1.3;font-weight:600;letter-spacing:.01em;vertical-align:2px}
+.new{color:#061320;background:var(--into-teal)}
+.beta{color:#c9d8dc;border:1px solid #9eb8c066}
+
+/* Privacy (cream): the concrete promises, one per line. */
+.privacy-facts{list-style:none;padding:0;margin:26px 0 30px}
+.privacy-facts li{position:relative;padding:12px 0 12px 22px;border-top:1px solid #06132022;font-size:15px;line-height:1.55;color:#33464f}
+.privacy-facts li:before{content:'';position:absolute;left:2px;top:21px;width:7px;height:7px;border-radius:50%;background:var(--teal-on-light)}
+.privacy-copy{max-width:470px}
+
+/* Everything you'd expect: switching first, then the basics in one scannable list. */
+.switch-card{margin-top:56px;padding:34px 36px;border:1px solid #ffffff1f;border-radius:14px;background:linear-gradient(160deg,#0d2131,#0a1a26)}
+.switch-card h3{margin:0 0 10px;font-size:22px;font-weight:500}
+.switch-card p{margin:0;max-width:760px;font-size:16px;line-height:1.6;color:#b9cdd0}
+.switch-browsers{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px!important}
+.switch-browsers span{padding:7px 14px;border:1px solid #ffffff2e;border-radius:999px;font-size:14px;color:var(--into-cream)}
+.basics-list{list-style:none;padding:0;margin:48px 0 0;display:grid;grid-template-columns:repeat(3,1fr);gap:0 48px}
+.basics-list li{padding:16px 0;border-top:1px solid #ffffff1a;font-size:15px;line-height:1.5;color:#a9bfc3}
+.basics-list strong{color:var(--into-cream);font-weight:550}
+
+/* What's new: the latest releases, newest first. */
+.release-list{list-style:none;padding:0;margin:56px 0 0}
+.release-list li{display:grid;grid-template-columns:240px 1fr;gap:40px;padding:28px 0;border-top:1px solid #ffffff1f}
+.release-list h3{margin:0;font-size:22px;font-weight:500}
+.release-list time{display:block;margin-top:6px;font-size:13px;font-weight:400;letter-spacing:0;color:#9eb8c0}
+.release-list p{margin:0;max-width:780px;font-size:16px;line-height:1.65;color:#b9cdd0}
+
+/* Questions: native disclosure widgets, so they work without script and with the keyboard. */
+.faq-list{max-width:920px;margin-top:48px}
+.faq-list details{border-top:1px solid #ffffff1f}
+.faq-list details:last-child{border-bottom:1px solid #ffffff1f}
+.faq-list summary{position:relative;padding:22px 48px 22px 0;font-size:18px;line-height:1.4;cursor:pointer;list-style:none}
+.faq-list summary::-webkit-details-marker{display:none}
+.faq-list summary:after{content:'';position:absolute;right:6px;top:50%;width:12px;height:12px;margin-top:-8px;border-right:1.5px solid #9eb8c0;border-bottom:1.5px solid #9eb8c0;transform:rotate(45deg);transition:transform .2s}
+.faq-list details[open] summary:after{transform:rotate(-135deg);margin-top:-2px}
+.faq-list summary:hover{color:var(--into-teal)}
+.faq-list summary:focus-visible{outline:3px solid #a2ffe4;outline-offset:4px}
+.faq-list p{margin:0 0 24px;max-width:740px;font-size:16px;line-height:1.65;color:#b9cdd0}
+.faq-list a{color:var(--into-teal);text-decoration:underline;text-underline-offset:3px}
+
+.vision{padding-top:110px}
+.download{margin-top:0}
+
+@media(max-width:1100px){
+  .chapter-index{grid-template-columns:repeat(3,1fr);row-gap:22px}
+  .feature-list,.basics-list{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:900px){
+  .capture-pair{grid-template-columns:1fr;gap:40px}
+  .release-list li{grid-template-columns:1fr;gap:10px}
+}
+@media(max-width:760px){
+  .chapter-index{grid-template-columns:1fr 1fr;gap:18px 20px;padding:26px 6% 30px}
+  .chapter-index span{font-size:12px}
+  .chapter,.essentials,.whats-new,.faq{padding:64px 6%}
+  .vision{padding-top:64px}
+  .chapter-head{grid-template-columns:1fr;gap:16px}
+  .chapter-head>p{font-size:15px}
+  .capture,.capture-pair{margin-top:32px}
+  .capture figcaption{font-size:13px}
+  .feature-list,.basics-list{grid-template-columns:1fr;gap:26px}
+  .feature-list{margin-top:40px}
+  .basics-list{gap:0}
+  .switch-card{margin-top:36px;padding:24px 22px}
+  .faq-list summary{font-size:16px}
+}
+@media(max-width:420px){.chapter-index{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.chapter-index a,.faq-list summary:after{transition:none}}
+
+/* One slim header that stays: transparent over the hero, opaque once the page scrolls, so its
+   light text never sits over the cream sections. The link for the section in view is marked. */
+:root{--header-h:72px}
+header{position:sticky;top:0;height:var(--header-h);transition:background-color .2s,border-color .2s;border-bottom:1px solid transparent}
+header.is-scrolled{background:#061320f2;border-bottom-color:#ffffff14;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+header nav a[aria-current="true"]{color:var(--into-teal)}
+@media(max-width:760px){:root{--header-h:64px}}
+@media(prefers-reduced-motion:reduce){header{transition:none}}
+
+/* Hero: a plain headline in two lines, facts beside the button, and the way in for people leaving Arc. */
+.hero-copy{width:66%}
+.hero h1{font-size:clamp(50px,5.5vw,86px);max-width:none}
+@media(max-width:1050px){.hero-copy{width:76%}.hero h1{font-size:clamp(46px,6.4vw,66px)}}
+@media(max-width:760px){.hero-copy{width:100%}.hero h1{font-size:clamp(28px,8.3vw,60px)}}
+/* The release facts are read before downloading: legible, not fine print. */
+.hero-availability{font-size:12.5px;line-height:1.5;color:#9eb8c0}
+@media(max-width:760px){.hero-availability{font-size:12px}}
+.hero-switch{margin:10px 0 0;font-size:14px}
+.hero-switch a{color:#c9d8dc;text-decoration:underline;text-decoration-color:#20f4e466;text-underline-offset:4px}
+.hero-switch a:hover{color:var(--into-teal)}
+.phone-note p{margin:0}
+.share-link{margin-top:12px;padding:10px 14px;border:1px solid #20f4e480;border-radius:4px;background:transparent;color:var(--into-cream);font:inherit;font-size:14px;cursor:pointer}
+.share-link:hover{border-color:var(--into-teal);color:var(--into-teal)}
+
+/* Keys named in the copy. */
+.feature-list kbd,.switch kbd{display:inline-block;min-width:1.6em;padding:0 5px;border:1px solid #ffffff2e;border-bottom-width:2px;border-radius:4px;font:inherit;font-size:.9em;line-height:1.45;text-align:center;color:var(--into-cream)}
+.feature-list p{font-size:16px}
+
+/* Switching: a real sequence, so it is numbered. */
+.switch{padding:110px 7%;background:#0b1d2b;color:var(--into-cream)}
+.switch-steps{list-style:none;counter-reset:step;padding:0;margin:56px 0 0;display:grid;grid-template-columns:repeat(3,1fr);gap:40px 48px}
+.switch-steps li{counter-increment:step;padding-top:20px;border-top:1px solid #ffffff1f}
+.switch-steps li:before{content:counter(step);display:grid;place-items:center;width:30px;height:30px;margin-bottom:16px;border-radius:50%;background:var(--into-teal);color:#061320;font-size:14px;font-weight:650}
+.switch-steps h3{margin:0 0 8px;font-size:17px;font-weight:550}
+.switch-steps p{margin:0;font-size:16px;line-height:1.6;color:#a9bfc3}
+.switch-cta{margin:48px 0 0}
+.switch-cta .button{display:inline-flex}
+@media(max-width:900px){.switch-steps{grid-template-columns:1fr;gap:26px}}
+@media(max-width:760px){.switch{padding:64px 6%}.switch-steps{margin-top:36px}}
