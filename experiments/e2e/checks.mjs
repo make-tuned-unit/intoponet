@@ -883,6 +883,14 @@ export const checks = {
     await ctx.wait(`!!document.querySelector('.topbar') && !!document.querySelector('canvas')`, 30_000, 'the header and globe to render')
     const buttons = await ctx.evaluate(`[...document.querySelectorAll('.bookmark-library-button')].map((b) => (b.innerText || b.getAttribute('aria-label')).trim())`)
     for (const label of ['Private', 'Bookmarks', 'The Olds', 'Knowledge', 'My map', 'Settings']) expect(buttons.some((b) => b.includes(label)), `Header is missing "${label}". Found: ${buttons.join(', ')}`)
+    // The app's own page runs under its Content-Security-Policy: an inline script, or an image from a host it does not use,
+    // is refused there. Main hears each refusal the page reports; none may come from what the app loads itself (it reloads twice below).
+    await ctx.main(`(() => { const wc = electron.BrowserWindow.getAllWindows().find((w) => w.webContents.getURL().includes('index.html')).webContents; globalThis.__cspRefusals = []; wc.on('console-message', (details) => { if (/Content Security Policy/.test(String(details.message))) globalThis.__cspRefusals.push(String(details.message).slice(0, 240)) }); return true })()`)
+    const refused = JSON.parse(await ctx.evaluate(`new Promise((resolve) => { const seen = []; const listen = (e) => seen.push(e.effectiveDirective); document.addEventListener('securitypolicyviolation', listen); const s = document.createElement('script'); s.textContent = 'window.__inlineRan = true'; document.head.append(s); const i = new Image(); i.src = 'https://example.com/intoponet-e2e.png'; setTimeout(() => { document.removeEventListener('securitypolicyviolation', listen); s.remove(); resolve(JSON.stringify({ seen, ran: !!window.__inlineRan })) }, 1500) })`))
+    expect(!refused.ran && refused.seen.includes('script-src-elem') && refused.seen.includes('img-src'), `The app's own page ran an inline script or loaded an image from elsewhere: ${JSON.stringify(refused)}.`)
+    for (let i = 0; i < 20 && (await ctx.main('globalThis.__cspRefusals.length')) < 2; i += 1) await ctx.delay(100)
+    expect((await ctx.main('globalThis.__cspRefusals.length')) === 2, `Main did not hear the app page's refusals: ${JSON.stringify(await ctx.main('globalThis.__cspRefusals'))}.`)
+    await ctx.main('(() => { globalThis.__cspRefusals = []; return true })()')
     // A profile with damaged files still opens, and what it could not read is kept aside, never saved over.
     const damagedProfile = mkdtempSync(join(tmpdir(), 'intoponet-e2e-damaged-'))
     const damaged = {
@@ -918,7 +926,9 @@ export const checks = {
       rmSync(damagedProfile, { recursive: true, force: true })
     }
     const recovered = await appWindowRecovers(ctx)
-    return `Header: ${buttons.join(' · ')}. A damaged profile opened, its unreadable files kept aside and an earlier run's unfinished temporary files deleted. ${recovered}`
+    const refusals = await ctx.main('globalThis.__cspRefusals')
+    expect(refusals.length === 0, `The app's own page refused something it loads itself: ${refusals.join(' | ')}`)
+    return `Header: ${buttons.join(' · ')}. Its page refused an inline script and a stranger's image, and nothing of its own across two reloads. A damaged profile opened, its unreadable files kept aside and an earlier run's unfinished temporary files deleted. ${recovered}`
   },
 
   async GLOBE_LIVE(ctx) {

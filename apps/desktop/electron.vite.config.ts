@@ -1,6 +1,8 @@
 import { resolve } from 'node:path'
 import react from '@vitejs/plugin-react'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
+import type { Plugin } from 'vite'
+import { withDevShellPolicy } from './src/renderer/shellPolicy'
 
 const updateUrlInput = process.env.INTOPONET_MAC_UPDATE_URL ?? ''
 const updateUrl = updateUrlInput
@@ -12,6 +14,13 @@ const updateUrl = updateUrlInput
       return url.toString().replace(/\/$/, '')
     })()
   : ''
+
+/** The shell's Content-Security-Policy (src/renderer/index.html), with what the dev server needs added in development only. */
+const devShellPolicy: Plugin = {
+  name: 'intoponet-dev-shell-policy',
+  apply: 'serve',
+  transformIndexHtml: { order: 'pre', handler: (html) => withDevShellPolicy(html) },
+}
 
 const frequencyField = resolve(__dirname, '../../packages/frequency-field/src/index.ts')
 const fieldSnapshot = resolve(__dirname, '../../packages/field-snapshot/src/index.ts')
@@ -51,7 +60,7 @@ export default defineConfig({
         '@intoponet/local-knowledge': localKnowledge,
       },
     },
-    plugins: [react()],
+    plugins: [react(), devShellPolicy],
     // Minified: the app shell parses about half as much script at every launch.
     build: { minify: 'esbuild' },
   },
