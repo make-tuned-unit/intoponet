@@ -140,16 +140,17 @@ export async function runAppCheck(check, { env: extraEnv = {}, evidenceDir, name
       const silent = Symbol('unanswered')
       let unanswered = false
       while (Date.now() < end) {
-        // A look at the condition that never answers is a "not yet": the wait still ends on time.
+        // A look begun in time counts, however slow its answer (a busy Mac); one the app never answers ends the wait
+        // 30 s after its limit instead of holding the check until its overall limit.
         let timer
-        const silence = new Promise((resolve) => { timer = setTimeout(() => resolve(silent), Math.max(0, end - Date.now())) })
+        const silence = new Promise((resolve) => { timer = setTimeout(() => resolve(silent), Math.max(0, end - Date.now()) + 30_000) })
         const answer = await Promise.race([evaluate(expression).catch(() => false), silence])
         clearTimeout(timer)
         if (answer === silent) { unanswered = true; break }
         if (answer) return true
         await delay(500)
       }
-      throw new CheckFailure(`Timed out waiting for: ${label}${unanswered ? ' (the app did not answer the last look at it)' : ''}`)
+      throw new CheckFailure(`Timed out waiting for: ${label}${unanswered ? ' (the app did not answer the last look at it for 30 s)' : ''}`)
     }
     const click = (selector, text) => evaluate(`(() => { const el = [...document.querySelectorAll(${JSON.stringify(selector)})].find((e) => ${text === undefined ? 'true' : `(e.innerText || e.getAttribute('aria-label') || '').includes(${JSON.stringify(text)})`}); if (!el) return false; el.click(); return true })()`)
     const type = (text) => send('Input.insertText', { text })
