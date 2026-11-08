@@ -654,6 +654,52 @@ const identityHelpers = (ctx) => {
   }
   return { stateOf, tabsOf, pageText, waitPage, showIn }
 }
+/**
+ * Session parity: every web page open right now (tabs, popups, quick windows, link previews, the
+ * tour's page; private, shared or a workspace's own sign-ins) has the protections the shared session
+ * has. It walks the live pages and their sessions, so a session or a kind of window added later is
+ * covered without being named here. Returns what is missing, one sentence each (`problems`, none: []),
+ * and how many pages and sessions it looked at.
+ * `stubbed`: address parts of pages on screen, which must also have the tracker stand-ins.
+ * Call it while no site's protection is paused (its ad request would then load).
+ */
+const pageSessionProblems = async (ctx, { stubbed = [] } = {}) => JSON.parse(await ctx.main(`(async () => {
+  const problems = []
+  const shared = electron.session.fromPartition('persist:intoponet-default')
+  const within = (promise, ms = 2000) => Promise.race([promise.catch((error) => '(failed: ' + error + ')'), new Promise((resolve) => setTimeout(() => resolve('(no answer)'), ms))])
+  // Web pages and local files in tabs; not the app's own page, its data: toolbars and cards, or DevTools.
+  const pages = electron.webContents.getAllWebContents().filter((c) => !c.isDestroyed() && /^(https?|file):/.test(c.getURL()) && !/\\/renderer\\/index\\.html$/.test(new URL(c.getURL()).pathname))
+  const firstOf = new Map()
+  for (const c of pages) {
+    const where = c.getURL().slice(0, 80)
+    if (c.session === electron.session.defaultSession) { problems.push(where + " runs in the app's own session."); continue }
+    if (c.getWebRTCIPHandlingPolicy() !== 'default_public_interface_only') problems.push(where + ': WebRTC may use any network route (' + c.getWebRTCIPHandlingPolicy() + ').')
+    // A session without the permission handlers grants everything without asking.
+    if (await within(c.executeJavaScript('Notification.permission')) === 'granted') problems.push(where + ': its session grants permissions without asking.')
+    if (${JSON.stringify(stubbed)}.some((part) => c.getURL().includes(part))) {
+      // Put in once the page's document is ready: a moment after it loads.
+      let stub = ''
+      for (let i = 0; i < 12 && stub !== 'function'; i += 1) {
+        stub = await within(c.executeJavaScript('typeof window.gtag'))
+        if (stub !== 'function') await new Promise((resolve) => setTimeout(resolve, 250))
+      }
+      if (stub !== 'function') problems.push(where + ': no stand-ins for blocked trackers (gtag is ' + stub + ').')
+    }
+    if (!firstOf.has(c.session)) firstOf.set(c.session, c)
+  }
+  for (const [s, c] of firstOf) {
+    const where = 'The session of ' + c.getURL().slice(0, 80)
+    if (!s.protocol.isProtocolHandled('file')) problems.push(where + ' lets file:// pages read any file.')
+    if (s.listenerCount('will-download') === 0) problems.push(where + ' has no download handling (guards, quarantine, the list).')
+    if (!s.isSpellCheckerEnabled()) problems.push(where + ' has no spell checking.')
+    if (s.getUserAgent() !== shared.getUserAgent()) problems.push(where + ' sends another user agent: ' + s.getUserAgent())
+    // Content blocking: a request to an ad server through this session is stopped before it leaves the Mac
+    // (asked from here, not from the page, whose own Content-Security-Policy could refuse it first).
+    const ad = await within(s.fetch('https://pagead2.googlesyndication.com/pagead/parity.gif', { cache: 'no-store' }).then(() => 'loaded'), 8000)
+    if (!String(ad).includes('ERR_BLOCKED_BY_CLIENT')) problems.push(where + ' does not block ads (' + ad + ').')
+  }
+  return JSON.stringify({ problems, pages: pages.length, sessions: firstOf.size })
+})()`))
 /** Waits until no app process still holds this profile (after a quit). */
 const waitForQuit = async (profile) => {
   for (let i = 0; i < 120; i += 1) {
@@ -1301,6 +1347,11 @@ export const checks = {
     // Read when it opened: the site may cut the opener later (Cross-Origin-Opener-Policy).
     const opened = await page.evaluate(`window.__ok === true`)
     expect(opened, 'A sign-in style popup opened from a click was blocked or lost its opener.')
+    // Session parity: the sign-in window gets what a tab gets (WebRTC kept to the default route, stand-ins for blocked trackers).
+    const popupLoaded = `electron.webContents.getAllWebContents().some((c) => !c.isDestroyed() && c.getURL().includes('wikipedia.org') && !c.isLoading())`
+    for (let i = 0; i < 40 && !(await ctx.main(popupLoaded)); i += 1) await ctx.delay(250)
+    const parity = await pageSessionProblems(ctx, { stubbed: ['wikipedia.org'] })
+    expect(parity.problems.length === 0, `Session parity with a sign-in window: ${parity.problems.join(' ')}`)
     await page.evaluate(`(() => { const a = document.createElement('a'); a.href = 'https://www.iana.org/'; a.target = '_blank'; document.body.append(a); addEventListener('click', () => a.click(), { once: true }); return true })()`)
     await clickPage(page)
     await ctx.delay(2500)
@@ -1494,6 +1545,9 @@ export const checks = {
     await openAnyPage(ctx)
     const tab = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => JSON.stringify(t[0] ?? null))`))
     expect(tab?.isPrivate === true, 'A tab opened in private mode is not private.')
+    // Session parity: the private session has the protections the shared one has.
+    const parity = await pageSessionProblems(ctx, { stubbed: [new URL(tab.url).hostname] })
+    expect(parity.problems.length === 0 && parity.sessions >= 1, `Session parity in private browsing: ${parity.problems.join(' ') || 'no page was open'}`)
     const recents =await ctx.evaluate(`window.intoponet.browserHost.readPrivateLibrary().then((r) => r.status === 'ok' && r.payload ? JSON.parse(r.payload).recents.length : 0)`)
     expect(recents === 0, 'A private visit was kept in recent pages.')
     // Nothing about the private page reaches the profile's files (open tabs, site icons).
@@ -3823,6 +3877,10 @@ export const checks = {
       await until(async () => (await quickCount()) === 1, 'the private quick window to open')
       expect(await mainCall("pageOf(quick()[0]).session === electron.session.fromPartition('intoponet-private')"), 'A quick window opened in private browsing did not use the private partition.')
       expect(await mainCall("toolbarOf(quick()[0]).executeJavaScript(\"document.getElementById('private').hidden\")") === false, 'The private quick window does not say it is private.')
+      // Session parity: the private quick window's page, and every other page open, get the same protections as a tab.
+      await until(() => mainCall("!pageOf(quick()[0]).isLoading() && pageOf(quick()[0]).getURL().endsWith('/quick-private')"), 'the private quick window to load', 20_000)
+      const parity = await pageSessionProblems(ctx, { stubbed: ['/quick-private'] })
+      expect(parity.problems.length === 0, `Session parity with a quick window: ${parity.problems.join(' ')}`)
       await ctx.keyInPage('/quick-private', 'W', ['meta'])
       await until(async () => (await quickCount()) === 0, 'the private quick window to close with ⌘W')
       await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
@@ -5308,6 +5366,9 @@ export const checks = {
       await ctx.evaluate(`${host}.close().then(() => true)`)
       await ctx.evaluate(`${host}.previewLink(${JSON.stringify(`${base}/?who=preview`)}).then(() => true)`)
       await waitPage('who=preview', 'Signed in as dan')
+      // Session parity: Main's pages, Work's own (its tabs and the preview) and every other page open get the same protections.
+      const parity = await pageSessionProblems(ctx, { stubbed: ['who=preview'] })
+      expect(parity.problems.length === 0 && parity.sessions >= 2, `Session parity with Work's own sign-ins: ${parity.problems.join(' ') || `only ${parity.sessions} session(s) were open`}`)
       await ctx.evaluate(`${ws}.switchTo({ id: ${JSON.stringify(mainId)} }).then(() => true)`)
       let previewLeft = true
       for (let i = 0; i < 12 && previewLeft; i += 1) {

@@ -72,6 +72,10 @@ app.enableSandbox()
 // Sites see plain Chrome (some refuse "Electron" as an outdated browser).
 app.userAgentFallback = browserUserAgent(app.userAgentFallback)
 
+// WebRTC keeps to the default network route in every web contents as it is made (a sign-in popup
+// a page opens included), so no kind of window can leave it out (networkPrivacy.ts).
+app.on('web-contents-created', (_event, contents) => applyNetworkPrivacy(contents))
+
 if (!app.isReady()) {
   app.commandLine.appendSwitch(
     'disable-features',
@@ -176,7 +180,7 @@ import { DEFAULT_PDF_SETTINGS, parsePdfSettings, type PdfExportSettings } from '
 import { CrashRecoveryPolicy } from './crashRecovery'
 import { BeaconPublisher } from './beacons/publisher'
 import { DEFAULT_BEACON_REGISTRY } from './beacons/defaults'
-import { ENCRYPTED_DNS, networkPrivacySnapshot, WEBRTC_POLICY } from './networkPrivacy'
+import { applyNetworkPrivacy, ENCRYPTED_DNS, networkPrivacySnapshot, WEBRTC_POLICY } from './networkPrivacy'
 let newsService: ReturnType<typeof startNewsService> | null = null
 let encryptedDnsActive = false
 import { CaptureLibrary, migrateEncryptedCaptures } from './captureStore'
@@ -3196,6 +3200,18 @@ function wirePopupWindow(child: BrowserWindow, opener: WebContentsView): void {
   })
   bindLeavePrompt(child.webContents, () => child, dialog.showMessageBoxSync)
   guardPopupWindow(child)
+  // The same protection as a tab: blocked ads hidden, and quiet stand-ins for blocked trackers
+  // (a sign-in button that calls gtag() would otherwise throw and do nothing).
+  const popup = child.webContents
+  popup.on('dom-ready', () => { void applyCosmeticFilters(popup, { only: popup.mainFrame, url: popup.getURL() }) })
+  popup.on('did-frame-navigate', (_event, _url, _code, _status, isMainFrame, frameProcessId, frameRoutingId) => {
+    forgetCosmeticFrame(popup, isMainFrame, frameProcessId, frameRoutingId)
+  })
+  popup.on('did-frame-finish-load', (_event, _isMainFrame, frameProcessId, frameRoutingId) => {
+    const frame = webFrameMain.fromId(frameProcessId, frameRoutingId)
+    if (frame) void applyCosmeticFilters(popup, { only: frame, url: popup.getURL() })
+  })
+  popup.on('did-stop-loading', () => { void applyCosmeticFilters(popup, { onlyNew: true, url: popup.getURL() }) })
   const childContentsId = child.webContents.id
   trackUserActivation(child.webContents, userActivation)
   child.webContents.setWindowOpenHandler(({ url, disposition, features }) => {
