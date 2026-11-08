@@ -1734,6 +1734,13 @@ function wireDownloadSession(partition = DEFAULT_PARTITION): void {
     const topOrigin = contents ? originOf(contents.getURL()) : originOf((details as { embeddingOrigin?: string }).embeddingOrigin ?? '')
     return sitePermissions?.check(originOf(requestingOrigin), kinds, isPrivate, topOrigin, scope) === true
   })
+  // The guided tour's page needs no permission: its session refuses every request without asking
+  // (it would otherwise ask, and answer, in the shared identity's name).
+  const tour = partition === TOUR_PARTITION
+  if (tour) {
+    browsing.setPermissionRequestHandler((_contents, _permission, callback) => callback(false))
+    browsing.setPermissionCheckHandler(() => false)
+  }
   refuseCertificateErrors(browsing)
   servePageFiles(browsing)
   browsing.setSpellCheckerEnabled(true)
@@ -1742,6 +1749,11 @@ function wireDownloadSession(partition = DEFAULT_PARTITION): void {
     const available = new Set(browsing.availableSpellCheckerLanguages)
     const preferred = app.getPreferredSystemLanguages().flatMap((code) => [code, code.split('-')[0] ?? code]).filter((code) => available.has(code))
     if (preferred.length) browsing.setSpellCheckerLanguages([...new Set(preferred)].slice(0, 3))
+  }
+  // Nor any download: refused before it starts, so nothing reaches the disk or the downloads list.
+  if (tour) {
+    browsing.on('will-download', (event) => event.preventDefault())
+    return
   }
   // Downloads manager (progress, pause/resume, list); the plain handler below only if it failed to start.
   if (browsingData) return browsingData.wireSession(partition)

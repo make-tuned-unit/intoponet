@@ -2931,6 +2931,7 @@ export const checks = {
       return JSON.stringify({ own: !others.includes(page.session), temporary: !page.session.isPersistent() && !page.session.storagePath, spellcheck: page.session.isSpellCheckerEnabled(), cookie: (await page.session.cookies.get({ name: 'intoponet_tour' })).length })
     })()`).then(JSON.parse)
     let tourSession = null
+    let tourRefuses = null
     let tourAfterCrash = null
     for (let step = 1; step <= total; step += 1) {
       const state = shown[step] = await settle(step)
@@ -2947,6 +2948,21 @@ export const checks = {
           geolocation: await page.evaluate(`navigator.permissions.query({ name: 'geolocation' }).then((s) => s.state)`),
           isPrivate: await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => t.find((x) => x.url.includes(${JSON.stringify(tourPage)}))?.isPrivate ?? null)`),
         }
+        // It needs no permission and no download: a request is refused at once (no bar asks), and a download never starts.
+        // (Seen after the app's own handler: whether it refused the download, and what became of it.)
+        await ctx.main(`(() => { globalThis.__tourDownloads = []; globalThis.__tourDownloadSeen = (event, item) => { const seen = { refused: event.defaultPrevented === true, state: 'progressing' }; globalThis.__tourDownloads.push(seen); setTimeout(() => { try { seen.state = item.getState() } catch { seen.state = 'gone' } }, 500) }; electron.session.fromPartition('intoponet-tour').on('will-download', globalThis.__tourDownloadSeen); return true })()`)
+        // (Asked, not awaited: the page is out of sight behind the tour, so its own answers and timers come late.)
+        await page.evaluate(`(() => { navigator.geolocation.getCurrentPosition(() => undefined, () => undefined); void Notification.requestPermission(); return true })()`, { userGesture: true })
+        await ctx.delay(1200)
+        const asked = await ctx.evaluate(`!!document.querySelector('.permission-bar')`)
+        await page.evaluate(`(() => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['tour'], { type: 'text/plain' })); a.download = 'intoponet-tour-e2e.txt'; document.body.append(a); a.click(); a.remove(); return true })()`, { userGesture: true })
+        await ctx.delay(1000)
+        tourRefuses = {
+          asked,
+          downloads: JSON.parse(await ctx.main(`JSON.stringify(globalThis.__tourDownloads)`)),
+          listed: await ctx.evaluate(`window.intoponet.downloads.list().then((l) => l.some((d) => d.filename.includes('intoponet-tour-e2e')))`),
+        }
+        await ctx.main(`(() => { electron.session.fromPartition('intoponet-tour').off('will-download', globalThis.__tourDownloadSeen); return true })()`).catch(() => undefined)
         // Its renderer crashing: the page comes back in the same temporary session, still leaving no trace.
         await ctx.main(`(() => { electron.webContents.getAllWebContents().find((c) => !c.isDestroyed() && c.getURL().includes(${JSON.stringify(tourPage)})).forcefullyCrashRenderer(); return true })()`)
         await ctx.delay(1000)
@@ -3017,6 +3033,7 @@ export const checks = {
     expect(left.length === 0, `The tour's page left a trace in: ${left.join(', ')}.`)
     expect(tourSession?.own && tourSession.temporary && tourSession.spellcheck && tourSession.cookie === 1, `The tour's page did not run in a temporary session of its own: ${JSON.stringify(tourSession)}.`)
     expect(tourSession.geolocation !== 'granted' && tourSession.isPrivate === false, `The tour's page is not an ordinary tab with the app's permission handling: ${JSON.stringify(tourSession)}.`)
+    expect(tourRefuses && !tourRefuses.asked && tourRefuses.downloads.length === 1 && tourRefuses.downloads[0].refused && tourRefuses.downloads[0].state !== 'completed' && !tourRefuses.listed, `The tour's page could ask for a permission or download a file: ${JSON.stringify(tourRefuses)}.`)
     expect(tourAfterCrash?.own && tourAfterCrash.temporary, `After its renderer crashed, the tour's page came back in another session: ${JSON.stringify(tourAfterCrash)}.`)
     // Its session is emptied once the tour ends: the cookie it set is gone, and never reached the shared session.
     const cookiesLeft = `Promise.all([electron.session.fromPartition('intoponet-tour').cookies.get({}), electron.session.fromPartition('persist:intoponet-default').cookies.get({ name: 'intoponet_tour' })]).then(([tour, shared]) => tour.length + shared.length)`
