@@ -274,7 +274,8 @@ export function appMenuTemplate(state: AppMenuState, run: (command: AppCommand) 
         ...item('Open Location…', 'open-location'),
         ...item('Commands…', 'command-menu'),
         { type: 'separator' },
-        ...item('Close Tab', 'close-tab', state.tabShowing),
+        // ⌘W closes the tab in front; with none (the globe), the window, as in any Mac app.
+        ...(state.tabShowing ? item('Close Tab', 'close-tab') : [{ id: 'close-window', label: 'Close Window', accelerator: APP_SHORTCUTS['close-tab'][0], role: 'close' } satisfies MenuItemConstructorOptions]),
         ...item('Open in Intoponet', 'open-quick-in-main', state.quickWindowFocused),
         ...item('Reopen Closed Tab', 'reopen-closed-tab', state.recentlyClosed.length > 0),
         { type: 'separator' },

@@ -125,7 +125,7 @@ app.on('open-file', (event, path) => {
   event.preventDefault()
   incomingOpens.push(incomingFileTarget(path, readSmallFile))
 })
-import { cachedPublicField, publicFieldStatus, startPublicFieldRefresh } from './public-field'
+import { cachedPublicField, publicFieldStatus, retryPublicField, startPublicFieldRefresh } from './public-field'
 import { startNewsService } from './news/newsService'
 import { openDigestBuilder } from './news/openDigestBuilder'
 import { readSealedPrivateLibrary } from './privateLibraryStorage'
@@ -154,6 +154,7 @@ import {
   DEFAULT_PARTITION,
   MAIN_WORKSPACE_ID,
   PRIVATE_PARTITION,
+  TOUR_PARTITION,
   hasSeparateSignIns,
   identityScope,
   isWorkspaceIdentityId,
@@ -175,7 +176,7 @@ import { exportPagePdf } from './pdfExport/exportPdf'
 import { PDF_WORLD_ID } from './pdfExport/pageScripts'
 import { SavedPdfList } from './pdfExport/savedPdfs'
 import { DEFAULT_PDF_SETTINGS, parsePdfSettings, type PdfExportSettings } from './pdfExport/settings'
-import { CrashRecoveryPolicy } from './crashRecovery'
+import { CrashRecoveryPolicy, ShellReloadPolicy } from './crashRecovery'
 import { restoreHistoryOrLoad } from './historyRestore'
 import { BeaconPublisher } from './beacons/publisher'
 import { DEFAULT_BEACON_REGISTRY } from './beacons/defaults'
@@ -270,9 +271,25 @@ let privateMode = false
 const privateViews = new WeakSet<WebContentsView>()
 /**
  * Tabs that leave no trace (the guided tour's page): no history visit or recent page, never in Recently
- * closed or Archived tabs, never saved with the open tabs, no remembered icon.
+ * closed or Archived tabs, never saved with the open tabs, no remembered icon. Their pages run in a temporary
+ * session of their own (TOUR_PARTITION), emptied when the last of them closes.
  */
 const untrackedViews = new WeakSet<WebContentsView>()
+const tourPages = new Set<number>()
+function tourPageOpened(view: WebContentsView): void {
+  untrackedViews.add(view)
+  const id = view.webContents.id
+  tourPages.add(id)
+  view.webContents.once('destroyed', () => {
+    tourPages.delete(id)
+    if (tourPages.size > 0) return
+    // Its cookies, site storage and cache go with it (the session itself lasts until the app quits, in memory only).
+    const tour = session.fromPartition(TOUR_PARTITION)
+    void tour.clearStorageData().catch(() => undefined)
+    void tour.clearCache().catch(() => undefined)
+    void tour.clearAuthCache().catch(() => undefined)
+  })
+}
 /** The workspace a page view belongs to (null: none, as in a quick window), and the partition it was built with. */
 const viewWorkspaces = new WeakMap<WebContentsView, string | null>()
 const viewPartitions = new WeakMap<WebContentsView, string>()
@@ -2353,7 +2370,7 @@ function repartitionTab(tab: OpenTab): void {
     return
   }
   const old = tab.view
-  tab.view = buildView(privateViews.has(old), workspaceOfView(old))
+  tab.view = buildView(privateViews.has(old), workspaceOfView(old), untrackedViews.has(old))
   const contentsId = viewContentsIds.get(old)
   if (contentsId !== undefined) {
     protectionPages.remove(contentsId)
@@ -3107,7 +3124,7 @@ function unloadTab(tab: OpenTab, options: { keepHistory: boolean; url?: string }
   tab.url = nextUrl
   delete tab.loadError
   // The tab holds the replacement first, so closing the old page does not close the tab.
-  tab.view = buildView(privateViews.has(old), workspaceOfView(old))
+  tab.view = buildView(privateViews.has(old), workspaceOfView(old), untrackedViews.has(old))
   tab.asleep = history ? { history } : {}
   const contentsId = viewContentsIds.get(old)
   if (contentsId !== undefined) {
@@ -3269,7 +3286,7 @@ function wirePopupWindow(child: BrowserWindow, opener: WebContentsView): void {
  * A new tab in the shown workspace, or, when `opener` is a page of another workspace, in that one
  * (parked, unseen): a popup's tab is in its opener's workspace, with that workspace's sign-ins.
  */
-function createBrowserTab(urlValue: string, activate = true, isPrivate = privateMode, openedByPage = false, localFile = false, opener: WebContentsView | null = null): WebContentsView | null {
+function createBrowserTab(urlValue: string, activate = true, isPrivate = privateMode, openedByPage = false, localFile = false, opener: WebContentsView | null = null, untracked = false): WebContentsView | null {
   // A local file only when it was opened from Finder or another app (see openIncoming).
   const url = safeHttpUrl(urlValue) ?? (localFile && urlValue.startsWith('file:') ? new URL(urlValue) : null)
   if (!url) return null
@@ -3281,7 +3298,7 @@ function createBrowserTab(urlValue: string, activate = true, isPrivate = private
   const home = !isPrivate && opener && !viewGone(opener) ? workspaceOfView(opener) ?? workspaces.activeId : workspaces.activeId
   if (!workspaces.get(home)) return null
   makeRoomForTab()
-  const view = buildView(isPrivate, home)
+  const view = buildView(isPrivate && !untracked, home, untracked)
   const tab: OpenTab = { id: randomUUID(), url: url.toString(), title: '', favicon: '', view }
   tab.lastShownAt = Date.now()
   if (home !== workspaces.activeId) {
@@ -3428,10 +3445,12 @@ function spellingContextItems(view: WebContentsView, params: Electron.ContextMen
  * workspace's partition: its own sign-ins when it has separate ones, the shared ones otherwise,
  * and the private one for a private tab (workspaceIdentity.ts).
  */
-function buildView(isPrivate = privateMode, workspaceId: string | null = workspaces.activeId): WebContentsView {
+function buildView(isPrivate = privateMode, workspaceId: string | null = workspaces.activeId, untracked = false): WebContentsView {
   let frequencyNavigation = 0
   let frequencyLoadSucceeded = false
-  const partition = pagePartition(workspaceId === null ? null : workspaces.get(workspaceId), isPrivate)
+  // A tab that leaves no trace (the tour's page) has a temporary session of its own (never private, never a
+  // workspace's), set up as every page session is: what it loads goes when its last page closes (tourPageOpened).
+  const partition = untracked ? TOUR_PARTITION : pagePartition(workspaceId === null ? null : workspaces.get(workspaceId), isPrivate)
   ensurePageSession(partition)
   const view = new WebContentsView({
     webPreferences: {
@@ -3451,6 +3470,9 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
   viewWorkspaces.set(view, isPrivate ? null : workspaceId)
   if (isPrivate) privateViews.add(view)
   if (isPrivate) privateWebContents.add(view.webContents)
+  // Marked before it loads (its first visit is not recorded either), and again on every view the tab is
+  // rebuilt with (sleeping, a crash, a move): the tab never starts leaving traces.
+  if (untracked) tourPageOpened(view)
   browsingData?.attachPage(view.webContents, () => privateViews.has(view) || untrackedViews.has(view), () => workspaceOfView(view) ?? undefined)
 
   // Behind a page before it paints: light, or dark when pages are dark (no white flash at night).
@@ -3837,7 +3859,7 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
         : `The page renderer stopped (${details.reason}). Automatic reload is paused after repeated crashes. Use Reload to try again.`,
     })
     if (!tab || !safeHttpUrl(crashedUrl)) return
-    const replacement = buildView(privateViews.has(view), workspaceOfView(view))
+    const replacement = buildView(privateViews.has(view), workspaceOfView(view), untrackedViews.has(view))
     tab.view = replacement
     tab.url = crashedUrl
     delete tab.loadError
@@ -3933,11 +3955,20 @@ function showShellShortcut(action: ShellShortcut): void {
   // A shortcut for the app (address bar, new tab…) moves on from a link preview.
   closeLinkPreview(false)
   window.webContents.focus()
+  // The app window is still loading (just reopened by this command, or reloading): it gets it once it listens.
+  if (shellShortcutsWaiting) {
+    if (shellShortcutsWaiting.length < 8) shellShortcutsWaiting.push(action)
+    return
+  }
   emit({ type: 'shortcut', action })
 }
+/** Shortcuts for an app window that is not listening yet; null once it is (its first get-state, sent right after it subscribes). */
+let shellShortcutsWaiting: ShellShortcut[] | null = null
 
 /** A menu bar command, or the same key pressed inside a page. */
 function runAppCommand(command: AppCommand): void {
+  // With the app window closed, a menu command brings it back first (a quick window's own commands need none).
+  if ((!window || window.isDestroyed()) && !['new-quick-window', 'open-quick-in-main', 'close-tab'].includes(command.type)) reopenWindow()
   const route = routeAppCommand(command)
   if (route.kind === 'shell') return showShellShortcut(route.action)
   if (route.kind === 'host') {
@@ -4339,12 +4370,8 @@ async function handleBrowserCommand(
       const url = resolveNavigationIntent(command.intent)
       // ⌘↵ / ⌥↵ from the address bar: always a fresh tab, behind or in front.
       if (command.disposition) {
-        const view = createBrowserTab(url, command.disposition === 'foreground-tab')
-        // Marked before it loads: its first visit is not recorded either.
-        if (view && command.untracked) {
-          untrackedViews.add(view)
-          schedulePersistentStateSave()
-        }
+        // An untracked tab (the tour's page) is an ordinary tab, never private, in a session of its own (buildView).
+        const view = createBrowserTab(url, command.disposition === 'foreground-tab', privateMode, false, false, null, command.untracked === true)
         if (view) await loadOpened(view, url)
         break
       }
@@ -4744,6 +4771,12 @@ async function handleBrowserCommand(
       setBrowserTabDockOpen(command.open, command.hold === true)
       return null
     case 'get-state':
+      // The app window has just subscribed to its events: shortcuts chosen while it loaded are carried out now.
+      if (shellShortcutsWaiting) {
+        const waiting = shellShortcutsWaiting
+        shellShortcutsWaiting = null
+        setImmediate(() => { for (const action of waiting) showShellShortcut(action) })
+      }
       break
     case 'site-tweak-state':
       return siteTweakState()
@@ -4875,10 +4908,27 @@ function wireShellSession(): void {
 
 /** While the app window closes (or the app quits), its pages going away is not the user closing tabs. */
 let shellClosing = false
+/** A page was in front when the app window closed: it is shown again when the window comes back. */
+let reshowOnReopen = false
+/** The app window again after it was closed (the Dock icon, a menu command): its tabs, with the one that was in front shown. */
+function reopenWindow(): void {
+  if (window && !window.isDestroyed()) return
+  createWindow()
+  const shown = reshowOnReopen ? openTabs.find((tab) => tab.id === activeTabId) : undefined
+  reshowOnReopen = false
+  if (shown) showTab(shown.id)
+  emitTabs()
+}
+/** The app window's page reloads after a crash, waiting longer while it keeps crashing (crashRecovery.ts). */
+const shellReloads = new ShellReloadPolicy()
+/** How long a hung app window gets to answer again before it is reloaded (it has already not answered for a while). */
+const SHELL_HANG_GRACE_MS = 3_000
 
 function createWindow(): void {
   shellClosing = false
   stateWritesClosed = false
+  // Not listening until its page has loaded: shortcuts wait (showShellShortcut).
+  shellShortcutsWaiting = []
   // Pages whose contents went away while the last window was closed (macOS keeps the app running).
   for (const tab of openTabs.filter((item) => viewGone(item.view))) {
     openTabs.splice(openTabs.indexOf(tab), 1)
@@ -4901,11 +4951,55 @@ function createWindow(): void {
     },
   })
 
-  // A reloaded shell cannot release a page it held before, nor see a screen recording it started.
+  // A reloaded shell cannot release a page it held or covered before (its panels start closed), nor see a
+  // screen recording it started. It starts out of full width (toolbar tucked away, no tab dock, sidebar at
+  // rest): the page area follows it.
   window.webContents.on('did-start-navigation', (details) => {
     if (!details.isMainFrame || details.isSameDocument) return
+    shellShortcutsWaiting ??= []
     setPageHeld(false)
+    setPageCovered(false)
+    setBrowserFullWidth(false)
+    tabRailExpanded = false
     captures?.shellReloaded()
+    // A tour still running ends with the page it ran in: its own page closes, as the tour would have closed it.
+    for (const tab of allTabs().filter((item) => untrackedViews.has(item.view))) discardTab(tab.id, false)
+  })
+
+  // The app's own page went away (its renderer crashed or was stopped) or hangs: it loads again. Tabs,
+  // workspaces and pages live here in the main process, so the reloaded shell finds them where they were.
+  const shell = window
+  let shellReload: ReturnType<typeof setTimeout> | null = null
+  let shellHang: ReturnType<typeof setTimeout> | null = null
+  shell.webContents.on('render-process-gone', (_event, details) => {
+    if (shellClosing || shell.isDestroyed() || details.reason === 'clean-exit') return
+    if (shellHang) clearTimeout(shellHang)
+    shellHang = null
+    if (shellReload) return
+    const wait = shellReloads.crashed()
+    console.error(`The app window stopped (${details.reason}); it reloads${wait ? ` in ${wait / 1000} s` : ''}.`)
+    shellReload = setTimeout(() => {
+      shellReload = null
+      if (!shell.isDestroyed() && !shellClosing) shell.webContents.reload()
+    }, wait)
+  })
+  // Hung (it has not answered input for a while): after a short grace, its renderer is stopped and it reloads as above.
+  shell.on('unresponsive', () => {
+    if (shellHang || shellClosing) return
+    shellHang = setTimeout(() => {
+      shellHang = null
+      if (!shell.isDestroyed() && !shellClosing && !shell.webContents.isCrashed()) shell.webContents.forcefullyCrashRenderer()
+    }, SHELL_HANG_GRACE_MS)
+  })
+  shell.on('responsive', () => {
+    if (shellHang) clearTimeout(shellHang)
+    shellHang = null
+  })
+  shell.once('closed', () => {
+    if (shellReload) clearTimeout(shellReload)
+    if (shellHang) clearTimeout(shellHang)
+    shellReload = null
+    shellHang = null
   })
 
   // The window shows the app and nothing else: a dropped link or file, or a script changing
@@ -4956,9 +5050,14 @@ function createWindow(): void {
     // in order after any save already on its way.
     if (!stateWritesClosed) savePersistentState().catch((error: unknown) => console.error('Could not save open tabs:', error))
     stateWritesClosed = true
+    // The tab in front (and its pair) is shown again when the window comes back (reopenWindow).
+    reshowOnReopen = pageAttached && activeTabId !== null
     window = null
     pageView = null
+    companionView = null
     pageAttached = false
+    // No tab is in front now: ⌘W is Close Window again (it closes nothing), and page items are off.
+    appMenu.schedule()
   })
 
   if (process.env['ELECTRON_RENDERER_URL']) {
@@ -5704,20 +5803,39 @@ app.whenReady().then(async () => {
       digestBuilder: openDigestBuilder(),
     })
     app.once('will-quit', () => { void newsService?.stop() })
-    // After a night offline every feed has backed off for hours: waking, or the network coming back, fetches them now.
-    powerMonitor.on('resume', () => newsService?.retryOffline())
+  })
+
+  startup('waking and reconnecting', () => {
+    // After a night offline every feed has backed off for hours: waking, or the network coming back, fetches them now,
+    // and the globe's live signals when a source failed or they are a refresh old (timers stand still while the Mac
+    // sleeps). The network is often not back the moment the Mac wakes: once more half a minute later.
+    const networkBack = (): void => {
+      newsService?.retryOffline()
+      retryPublicField()
+    }
+    let wakeRetry: ReturnType<typeof setTimeout> | null = null
+    powerMonitor.on('resume', () => {
+      networkBack()
+      if (wakeRetry) clearTimeout(wakeRetry)
+      wakeRetry = setTimeout(() => { wakeRetry = null; networkBack() }, 30_000)
+      wakeRetry.unref?.()
+    })
     let wasOnline = net.isOnline()
     const onlineTimer = setInterval(() => {
       const online = net.isOnline()
-      if (online && !wasOnline) newsService?.retryOffline()
+      if (online && !wasOnline) networkBack()
       wasOnline = online
     }, 30_000)
     onlineTimer.unref?.()
-    app.once('will-quit', () => clearInterval(onlineTimer))
+    app.once('will-quit', () => {
+      clearInterval(onlineTimer)
+      if (wakeRetry) clearTimeout(wakeRetry)
+    })
   })
 
+  // The Dock icon brings the app window back, also while a quick window is open.
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    if (!window || window.isDestroyed()) reopenWindow()
   })
 }).catch((error: unknown) => {
   console.error('Intoponet did not finish starting:', error)

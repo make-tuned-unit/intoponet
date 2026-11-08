@@ -72,7 +72,11 @@ describe('the menu bar', () => {
 
   it('enables page items only when a page is showing', () => {
     const globe = appMenuTemplate(state({ tabShowing: false, hasPage: false, canGoBack: false }), () => undefined)
-    for (const id of ['close-tab', 'save-page', 'export-pdf', 'print', 'find', 'find-next', 'reload', 'force-reload', 'zoom-in', 'zoom-in-alt-1', 'inspect-page', 'back', 'bookmark', 'home']) {
+    // With no tab in front, ⌘W closes the window instead (it would otherwise do nothing).
+    expect(findItem(globe, 'close-tab')).toBeUndefined()
+    expect(findItem(globe, 'close-window')).toMatchObject({ role: 'close', accelerator: 'CmdOrCtrl+W', label: 'Close Window' })
+    expect(findItem(appMenuTemplate(state(), () => undefined), 'close-window')).toBeUndefined()
+    for (const id of ['save-page', 'export-pdf', 'print', 'find', 'find-next', 'reload', 'force-reload', 'zoom-in', 'zoom-in-alt-1', 'inspect-page', 'back', 'bookmark', 'home']) {
       expect(findItem(globe, id)?.enabled, id).toBe(false)
     }
     for (const id of ['new-tab', 'open-location', 'settings', 'show-bookmarks']) expect(findItem(globe, id)?.enabled, id).toBe(true)

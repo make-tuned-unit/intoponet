@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CrashRecoveryPolicy } from './crashRecovery'
+import { CrashRecoveryPolicy, ShellReloadPolicy } from './crashRecovery'
 
 describe('CrashRecoveryPolicy', () => {
   it('allows one automatic reload, then pauses until the user retries', () => {
@@ -60,5 +60,25 @@ describe('CrashRecoveryPolicy', () => {
     policy.keepHistory('tab-b', history)
     policy.forget('tab-b')
     expect(policy.takeHistory('tab-b')).toBeUndefined()
+  })
+})
+
+describe('ShellReloadPolicy', () => {
+  it('reloads the app window at once, then waits longer while it keeps crashing', () => {
+    const policy = new ShellReloadPolicy(60_000, 30_000)
+    expect(policy.crashed(1_000)).toBe(0)
+    expect(policy.crashed(2_000)).toBe(1_000)
+    expect(policy.crashed(3_000)).toBe(2_000)
+    expect(policy.crashed(4_000)).toBe(4_000)
+    for (let at = 5_000; at < 12_000; at += 1_000) policy.crashed(at)
+    expect(policy.crashed(13_000)).toBe(30_000)
+  })
+
+  it('never stops reloading, and starts over once a minute passes without a crash', () => {
+    const policy = new ShellReloadPolicy(60_000)
+    policy.crashed(0)
+    policy.crashed(1_000)
+    expect(policy.crashed(2_000)).toBeGreaterThan(0)
+    expect(policy.crashed(70_000)).toBe(0)
   })
 })

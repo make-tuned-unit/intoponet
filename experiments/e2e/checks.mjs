@@ -688,6 +688,122 @@ const identityRelaunch = async (ctx, { workId, mainId, gone }) => {
   return 'Kept across a relaunch: the option, Work\'s sign-in and permissions, Main\'s sign-in. Turning the option off deleted Work\'s cookies, permissions and saved passwords, and Main stayed signed in.'
 }
 
+/**
+ * APP_BOOT: the app's own window recovers. Its page crashing or hanging reloads it with the tabs, the pair and the
+ * page area as they were, and nothing added in the main process (no page view, web contents or listener). Closed
+ * with the red button, it comes back with its tabs from the Dock (also with a quick window open) and from a menu command.
+ */
+async function appWindowRecovers(ctx) {
+  const server = createServer((request, response) => {
+    response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
+    response.end(`<!doctype html><title>Boot ${request.url}</title><h1>${request.url}</h1>`)
+  })
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const port = server.address().port
+  const appWindow = `electron.BrowserWindow.getAllWindows().find((w) => w.webContents?.getURL().includes('index.html'))`
+  const shellNow = () => ctx.main(`(() => {
+    const win = ${appWindow}
+    if (!win) return 'null'
+    const wc = win.webContents
+    const counts = (emitter) => emitter.eventNames().map((name) => String(name) + ':' + emitter.listenerCount(name)).sort().join(' ')
+    return JSON.stringify({
+      crashed: wc.isCrashed(),
+      loaded: globalThis.__shellLoaded === true,
+      contents: electron.webContents.getAllWebContents().length,
+      pages: win.contentView.children.filter((v) => v.webContents && /^https?:/.test(v.webContents.getURL())).map((v) => ({ url: v.webContents.getURL(), bounds: v.getBounds(), visible: v.getVisible() })).sort((a, b) => a.bounds.x - b.bounds.x),
+      listeners: [wc, win, electron.app, electron.ipcMain].map(counts),
+    })
+  })()`).then(JSON.parse)
+  /** The next load of the app window's page, finished (set before what reloads it). */
+  const watchLoad = () => ctx.main(`(() => { globalThis.__shellLoaded = false; ${appWindow}.webContents.once('did-finish-load', () => { globalThis.__shellLoaded = true }); return true })()`)
+  const until = async (label, test, ms = 20_000) => {
+    const end = Date.now() + ms
+    while (Date.now() < end) {
+      const value = await test().catch(() => null)
+      if (value) return value
+      await ctx.delay(250)
+    }
+    throw new CheckFailure(`Timed out waiting for ${label}.`)
+  }
+  // A shell still loading (or hung) never answers: each question gets 3 s.
+  const ask = (shell, expression) => Promise.race([shell.evaluate(expression), new Promise((_, reject) => setTimeout(() => reject(new Error('no answer')), 3000))])
+  const ready = (shell, label) => until(label, () => ask(shell, `!!document.querySelector('.topbar') && !!document.querySelector('.command-input input')`))
+  const tabsOf = (shell) => ask(shell, `window.intoponet.browserHost.getTabs().then((t) => JSON.stringify(t.map((x) => [x.id, x.active, x.split?.side ?? null])))`)
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b)
+  try {
+    await openPage(ctx, `http://127.0.0.1:${port}/left`, 1500)
+    await ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: 'http://localhost:${port}/right' }, 'background-tab').then(() => true)`)
+    await ctx.delay(800)
+    await ctx.evaluate(`window.intoponet.browserHost.splitTab().then(() => true)`)
+    await until('the pair on screen', async () => (await shellNow()).pages.filter((page) => page.visible).length === 2)
+    // A tour's page (untracked): opened once first, so its session is set up before counting listeners.
+    const openTourPage = () => ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: 'http://127.0.0.1:${port}/tour' }, 'background-tab', { untracked: true }).then(() => true)`)
+    const tourTab = `window.intoponet.browserHost.getTabs().then((t) => t.find((x) => x.url.endsWith('/tour'))?.id ?? null)`
+    await openTourPage()
+    await ctx.evaluate(`${tourTab}.then((id) => id && window.intoponet.browserHost.closeTab(id)).then(() => true)`)
+    await ctx.delay(800)
+    const before = await shellNow()
+    const tabsBefore = await tabsOf(ctx)
+    // The split's rounding may move a side by a pixel; anything more is a page area out of step with the shell.
+    const near = (a, b) => a.length === b.length && a.every((page, i) => page.url === b[i].url && page.visible === b[i].visible && ['x', 'y', 'width', 'height'].every((key) => Math.abs(page.bounds[key] - b[i].bounds[key]) <= 1))
+    const kept = (label, after) => {
+      expect(near(after.pages, before.pages), `${label}, the pages on screen changed: ${JSON.stringify(before.pages)} → ${JSON.stringify(after.pages)}.`)
+      expect(after.contents === before.contents, `${label}, there are ${after.contents} web contents, not ${before.contents}.`)
+      expect(same(after.listeners, before.listeners), `${label}, listeners were added or lost: ${JSON.stringify(before.listeners)} → ${JSON.stringify(after.listeners)}.`)
+    }
+
+    // Its page crashes while in full width and touring: it reloads at once, not in full width, with everything where
+    // it was, and the tour's page closed with the tour.
+    await openTourPage()
+    expect(await ctx.evaluate(tourTab), 'The tour\'s page did not open.')
+    await ctx.evaluate(`window.intoponet.browserHost.setFullWidth(true).then(() => true)`)
+    // A panel covered the page when it crashed (Settings, say): the reloaded window has no panel open, so the pages show.
+    await ctx.evaluate(`window.intoponet.captures.setPageHidden(true).then(() => true)`)
+    await watchLoad()
+    await ctx.main(`(() => { ${appWindow}.webContents.forcefullyCrashRenderer(); return true })()`)
+    await until('the crashed app window to reload', async () => (await shellNow()).loaded, 15_000)
+    await ready(ctx, 'the reloaded app window')
+    await ctx.delay(1000)
+    expect(await tabsOf(ctx) === tabsBefore, `After the app window crashed, its tabs are ${await tabsOf(ctx)}, not ${tabsBefore}.`)
+    kept('After the app window crashed and reloaded', await shellNow())
+
+    // Its page hangs: once the window reports it unresponsive, it is stopped and reloads.
+    await watchLoad()
+    await ctx.main(`(() => { const win = ${appWindow}; void win.webContents.executeJavaScript('setTimeout(() => { const end = Date.now() + 120000; while (Date.now() < end) {} }, 50); true'); setTimeout(() => win.emit('unresponsive'), 600); return true })()`)
+    await until('the hung app window to reload', async () => (await shellNow()).loaded, 15_000)
+    await ready(ctx, 'the app window reloaded after hanging')
+    await ctx.delay(1000)
+    expect(await tabsOf(ctx) === tabsBefore, `After the app window hung, its tabs are ${await tabsOf(ctx)}, not ${tabsBefore}.`)
+    kept('After the app window hung and reloaded', await shellNow())
+
+    // Closed with the red button while a quick window is open: the Dock icon brings it back, the pair in front.
+    await ctx.main(`(() => { electron.Menu.getApplicationMenu().getMenuItemById('new-quick-window').click(); return true })()`)
+    await until('a quick window', async () => (await ctx.main('electron.BrowserWindow.getAllWindows().length')) === 2)
+    await ctx.main(`(() => { ${appWindow}.close(); return true })()`)
+    await until('the app window to close', async () => (await shellNow()) === null)
+    await ctx.main(`(() => { electron.app.emit('activate', {}, true); return true })()`)
+    await until('the app window back from the Dock', async () => { const now = await shellNow(); return now?.pages.filter((page) => page.visible).length === 2 })
+    let shell = await ctx.page('index.html')
+    await ready(shell, 'the app window back from the Dock')
+    expect(await tabsOf(shell) === tabsBefore, `Back from the Dock, the app window's tabs are ${await tabsOf(shell)}, not ${tabsBefore}.`)
+    const reopened = await shellNow()
+    expect(same(reopened.pages.map((page) => page.url), before.pages.map((page) => page.url)), `Back from the Dock, the pages in front are ${JSON.stringify(reopened.pages.map((page) => page.url))}.`)
+
+    // Closed again, File › New Tab brings it back with the new tab in front.
+    await ctx.main(`(() => { ${appWindow}.close(); return true })()`)
+    await until('the app window to close again', async () => (await shellNow()) === null)
+    await ctx.main(`(() => { electron.Menu.getApplicationMenu().getMenuItemById('new-tab').click(); return true })()`)
+    await until('the app window back from File › New Tab', async () => (await shellNow()) !== null)
+    shell = await ctx.page('index.html')
+    await ready(shell, 'the app window back from File › New Tab')
+    const tabsAfter = JSON.parse(await tabsOf(shell))
+    expect(tabsAfter.length === JSON.parse(tabsBefore).length + 1 && tabsAfter.at(-1)[1] === true, `File › New Tab with the window closed left the tabs as ${JSON.stringify(tabsAfter)}.`)
+    return `The app window reloaded after its page crashed and after it hung, with its tabs, pair and page area, no view or listener added and a running tour's page closed; closed, it came back with its tabs from the Dock (a quick window open) and from File › New Tab.`
+  } finally {
+    server.close()
+  }
+}
+
 export const checks = {
   // ---- Foundations ---------------------------------------------------------
   async APP_BOOT(ctx) {
@@ -728,7 +844,8 @@ export const checks = {
       else process.env.E2E_PROFILE = keptProfile
       rmSync(damagedProfile, { recursive: true, force: true })
     }
-    return `Header: ${buttons.join(' · ')}. A damaged profile opened, its unreadable files kept aside and an earlier run's unfinished temporary files deleted.`
+    const recovered = await appWindowRecovers(ctx)
+    return `Header: ${buttons.join(' · ')}. A damaged profile opened, its unreadable files kept aside and an earlier run's unfinished temporary files deleted. ${recovered}`
   },
 
   async GLOBE_LIVE(ctx) {
@@ -921,6 +1038,8 @@ export const checks = {
       } finally {
         await ctx.send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 })
       }
+      // Back online, it no longer says so (whether or not the stories have come yet).
+      await ctx.wait(`!(document.querySelector('.world-stories .globe-empty')?.textContent ?? '').startsWith('Waiting for a connection')`, 5000, 'the World list to stop waiting for a connection once back online')
     }
     await ctx.waitForNews()
     await ctx.click('.globe-tabs button', 'World')
@@ -2627,11 +2746,37 @@ export const checks = {
     const tourPage = 'en.wikipedia.org/wiki/Earth'
     const stateFile = join(ctx.profile, 'browser-state.v1.json')
     let savedWithTabs = null
+    // Its page runs in a temporary session of its own (not the shared one, not private), set up as every page session is.
+    const tourSessionNow = () => ctx.main(`(async () => {
+      const page = electron.webContents.getAllWebContents().find((c) => !c.isDestroyed() && c.getURL().includes(${JSON.stringify(tourPage)}))
+      if (!page) return 'null'
+      const others = [electron.session.defaultSession, electron.session.fromPartition('persist:intoponet-default'), electron.session.fromPartition('intoponet-private')]
+      return JSON.stringify({ own: !others.includes(page.session), temporary: !page.session.isPersistent() && !page.session.storagePath, spellcheck: page.session.isSpellCheckerEnabled(), cookie: (await page.session.cookies.get({ name: 'intoponet_tour' })).length })
+    })()`).then(JSON.parse)
+    let tourSession = null
+    let tourAfterCrash = null
     for (let step = 1; step <= total; step += 1) {
       const state = shown[step] = await settle(step)
       if (state.title === 'Every page, with tools built in') {
         await ctx.delay(600)
         savedWithTabs = existsSync(stateFile) && readFileSync(stateFile, 'utf8').includes(tourPage)
+        const page = await ctx.page(tourPage)
+        await page.evaluate(`document.cookie = 'intoponet_tour=1; max-age=3600; path=/'; true`)
+        tourSession = {
+          ...(await tourSessionNow()),
+          // The app's permission handlers, not Electron's default (which grants everything).
+          geolocation: await page.evaluate(`navigator.permissions.query({ name: 'geolocation' }).then((s) => s.state)`),
+          isPrivate: await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => t.find((x) => x.url.includes(${JSON.stringify(tourPage)}))?.isPrivate ?? null)`),
+        }
+        // Its renderer crashing: the page comes back in the same temporary session, still leaving no trace.
+        await ctx.main(`(() => { electron.webContents.getAllWebContents().find((c) => !c.isDestroyed() && c.getURL().includes(${JSON.stringify(tourPage)})).forcefullyCrashRenderer(); return true })()`)
+        await ctx.delay(1000)
+        for (let i = 0; i < 60 && !tourAfterCrash; i += 1) {
+          tourAfterCrash = await tourSessionNow()
+          if (!tourAfterCrash) await ctx.delay(500)
+        }
+        await ctx.delay(1500)
+        await ctx.click('.error-message button[aria-label="Dismiss error"]')
       }
       const centred = ['A browser with the whole world in view', 'The everyday things, done carefully'].includes(state.title)
       if (!centred && !state.lit) missed.push(`${step}. ${state.title}`)
@@ -2690,6 +2835,14 @@ export const checks = {
     const left = Object.entries(traces).filter(([, urls]) => urls.some((url) => url.includes(tourPage))).map(([where]) => where)
     if (savedWithTabs !== false) left.push('saved open tabs')
     expect(left.length === 0, `The tour's page left a trace in: ${left.join(', ')}.`)
+    expect(tourSession?.own && tourSession.temporary && tourSession.spellcheck && tourSession.cookie === 1, `The tour's page did not run in a temporary session of its own: ${JSON.stringify(tourSession)}.`)
+    expect(tourSession.geolocation !== 'granted' && tourSession.isPrivate === false, `The tour's page is not an ordinary tab with the app's permission handling: ${JSON.stringify(tourSession)}.`)
+    expect(tourAfterCrash?.own && tourAfterCrash.temporary, `After its renderer crashed, the tour's page came back in another session: ${JSON.stringify(tourAfterCrash)}.`)
+    // Its session is emptied once the tour ends: the cookie it set is gone, and never reached the shared session.
+    const cookiesLeft = `Promise.all([electron.session.fromPartition('intoponet-tour').cookies.get({}), electron.session.fromPartition('persist:intoponet-default').cookies.get({ name: 'intoponet_tour' })]).then(([tour, shared]) => tour.length + shared.length)`
+    let cookiesKept = await ctx.main(cookiesLeft)
+    for (let i = 0; i < 20 && cookiesKept > 0; i += 1) { await ctx.delay(250); cookiesKept = await ctx.main(cookiesLeft) }
+    expect(cookiesKept === 0, `The tour ended but ${cookiesKept} of its cookies are still kept.`)
     return `All ${total} steps shown, each spotlight on what it describes, the same played forward, gone back to and jumped to; the tour put everything back at the end, its own tab closed. With Wikipedia unreachable The Olds step moved on ${((offline.ms - offline.looked) / 1000).toFixed(1)} s after The Olds had looked (${(offline.ms / 1000).toFixed(1)} s in all: "${offline.olds}").`
   },
   async TAB_ARCHIVE(ctx) {

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_PARTITION,
   PRIVATE_PARTITION,
+  TOUR_PARTITION,
   identitiesOnDisk,
   identityScope,
   leftoverIdentities,
@@ -53,6 +54,13 @@ describe('scopes and names', () => {
     expect(partitionWorkspaceId(DEFAULT_PARTITION)).toBeNull()
     expect(scopeWorkspaceId('ws:work')).toBe('work')
     expect(scopeWorkspaceId('default')).toBeNull()
+  })
+
+  it('keeps the tour\'s page in memory, apart from every other partition, with the shared identity', () => {
+    expect(TOUR_PARTITION.startsWith('persist:')).toBe(false)
+    expect([DEFAULT_PARTITION, PRIVATE_PARTITION, workspacePartition('tour')]).not.toContain(TOUR_PARTITION)
+    expect(partitionWorkspaceId(TOUR_PARTITION)).toBeNull()
+    expect(identityScope(TOUR_PARTITION)).toBe('default')
   })
 
   it('names a workspace permissions file by its id', () => {

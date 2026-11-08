@@ -185,6 +185,54 @@ describe('local public-field cache status', () => {
     expect(field.publicFieldStatus()).toEqual(failure)
   })
 
+  it('refreshes again on waking or coming back online only when a source failed or the field is a refresh old', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'intoponet-public-field-local-'))
+    dirs.push(dir)
+    const field = await localModule(dir)
+    let online = false
+    const requested: string[] = []
+    globalThis.fetch = (async (input) => {
+      const url = String(input)
+      requested.push(url)
+      if (!online) throw new TypeError('fetch failed')
+      if (url.startsWith('https://wikimedia.org/api/rest_v1/metrics/pageviews/top/')) return new Response(JSON.stringify({ items: [{ articles: [{ article: 'Kehlsteinhaus', views: 120_000, rank: 1 }] }] }))
+      if (url.startsWith('https://en.wikipedia.org/w/api.php')) return new Response(JSON.stringify({ query: { pages: [{ title: 'Kehlsteinhaus', coordinates: [{ lat: 47.6115, lon: 13.0421, primary: true, globe: 'earth' }] }] } }))
+      if (url.includes('earthquake.usgs.gov')) return new Response(JSON.stringify({ features: [] }))
+      if (url.includes('eonet.gsfc.nasa.gov')) return new Response(JSON.stringify({ events: [] }))
+      return new Response('', { status: 404 })
+    }) as typeof fetch
+    const statuses: string[] = []
+    /** A refresh started after `from` (statuses seen) has finished. */
+    const settled = async (from: number): Promise<void> => {
+      await vi.waitFor(() => {
+        expect(statuses.slice(from)).toContain('fetching')
+        expect(statuses.at(-1)).not.toBe('fetching')
+      })
+    }
+    expect(field.retryPublicField()).toBe(false)
+    const stop = field.startPublicFieldRefresh(() => undefined, (status) => statuses.push(status.state))
+    try {
+      // Offline at the first refresh: nothing is fetched again for 20 minutes, unless the Mac wakes or comes back online.
+      await settled(0)
+      expect(field.publicFieldStatus().state).toBe('error')
+      online = true
+      requested.length = 0
+      const before = statuses.length
+      expect(field.retryPublicField()).toBe(true)
+      await settled(before)
+      expect(requested.some((url) => url.includes('earthquake.usgs.gov'))).toBe(true)
+      expect(field.publicFieldStatus().state).not.toBe('error')
+      // Everything fresh: waking again fetches nothing, until a refresh interval has gone by (asleep, the tick stood still).
+      requested.length = 0
+      expect(field.retryPublicField()).toBe(false)
+      expect(requested).toEqual([])
+      expect(field.retryPublicField(Date.now() + 20 * 60 * 1_000)).toBe(true)
+    } finally {
+      stop()
+    }
+    expect(field.retryPublicField(Date.now() + 60 * 60 * 1_000)).toBe(false)
+  })
+
   it('reports an atomic-write failure and removes its temp file', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'intoponet-public-field-local-'))
     dirs.push(dir)
