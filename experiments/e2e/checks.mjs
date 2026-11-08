@@ -5208,6 +5208,8 @@ export const checks = {
       await signIn(ctx, await ctx.page('who=main'), 'ada', 'Main-Pa55!')
       await waitPage('who=ada', 'Signed in as ada')
       mainId = (await stateOf()).activeId
+      const certificateListeners = () => ctx.main(`electron.app.listenerCount('certificate-error')`)
+      const listenersBefore = await certificateListeners()
 
       // A workspace of its own with separate sign-ins: it starts signed out, while Main stays signed in.
       const created = JSON.parse(await ctx.evaluate(`${ws}.create({ name: 'Work' }).then((s) => JSON.stringify(s))`))
@@ -5216,6 +5218,8 @@ export const checks = {
       expect(workspaceEntry(await stateOf(), workId)?.separateSignIns === true, 'Separate sign-ins did not turn on for Work.')
       await openPage(ctx, `${base}/?who=wstart`, 2500)
       await waitPage('who=wstart', 'Signed out')
+      // Its session gets the same handlers, without one more listener on the app for each workspace.
+      expect(await certificateListeners() === listenersBefore, `A workspace's own session added a certificate-error listener to the app (${listenersBefore} → ${await certificateListeners()}).`)
 
       // Work signs in as bob, and the sign-in is saved in Work.
       await openPage(ctx, `${base}/login?who=wlogin`, 2500)

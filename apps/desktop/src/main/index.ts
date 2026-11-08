@@ -1686,12 +1686,7 @@ function wireDownloadSession(partition = DEFAULT_PARTITION): void {
     const topOrigin = contents ? originOf(contents.getURL()) : originOf((details as { embeddingOrigin?: string }).embeddingOrigin ?? '')
     return sitePermissions?.check(originOf(requestingOrigin), kinds, isPrivate, topOrigin, scope) === true
   })
-  app.on('certificate-error', (event, webContents, url, error, certificate, callback, isMainFrame) => {
-    // Refused, as before; the error page shows what was wrong with the certificate.
-    if (rejectCertificateErrorForSession(event, webContents, browsing, callback) && isMainFrame !== false) {
-      certificateErrors.remember(webContents.id, url, summarizeCertificate(certificate, error))
-    }
-  })
+  refuseCertificateErrors(browsing)
   servePageFiles(browsing)
   browsing.setSpellCheckerEnabled(true)
   if (process.platform !== 'darwin') {
@@ -1735,6 +1730,24 @@ function wireDownloadSession(partition = DEFAULT_PARTITION): void {
       })
     })
   })
+}
+
+/**
+ * Page sessions whose certificate errors are refused, with one app listener for all of them (one per
+ * session stayed on the app after its workspace was deleted).
+ */
+const certificateRefusingSessions = new Set<Electron.Session>()
+function refuseCertificateErrors(browsing: Electron.Session): void {
+  if (certificateRefusingSessions.size === 0) {
+    app.on('certificate-error', (event, webContents, url, error, certificate, callback, isMainFrame) => {
+      if (!certificateRefusingSessions.has(webContents.session)) return
+      // Refused, as before; the error page shows what was wrong with the certificate.
+      if (rejectCertificateErrorForSession(event, webContents, webContents.session, callback) && isMainFrame !== false) {
+        certificateErrors.remember(webContents.id, url, summarizeCertificate(certificate, error))
+      }
+    })
+  }
+  certificateRefusingSessions.add(browsing)
 }
 
 /** Links saved with "Save Link As", waiting for their download to start. */
