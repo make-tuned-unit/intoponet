@@ -3089,23 +3089,45 @@ export const checks = {
       expect(saved.folders.some((folder) => folder.name === 'Papers' && folder.workspaceId === researchId) && saved.folders.some((folder) => folder.name === 'Main folder' && folder.workspaceId === mainId), `Saved folders: ${JSON.stringify(saved.folders)}.`)
 
       // Opened again with that state: every workspace comes back with its own tabs, folders and favourites.
-      const restored = await relaunch(saved, async (next) => {
+      // The tab Main shows is on a site whose page title arrives late: until it does, the tab keeps its saved title, never its address.
+      const lateSite = createServer((request, response) => {
+        response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' })
+        // Enough of the page for it to arrive (and its address to show as its title) well before its title does.
+        response.write(`<!doctype html><body><h1>${request.url}</h1>${' '.repeat(16_384)}`)
+        setTimeout(() => response.end(`<title>Page ${request.url}</title></body>`), 2500)
+      })
+      await new Promise((resolve) => lateSite.listen(0, '127.0.0.1', resolve))
+      const lateA = `http://127.0.0.1:${lateSite.address().port}/main-a`
+      const restored = await relaunch({ ...saved, tabs: saved.tabs.map((tab) => (tab.title === 'Page /main-a' ? { ...tab, url: lateA } : tab)) }, async (next) => {
         const nextState = JSON.parse(await next.evaluate(`${ws}.get().then((s) => JSON.stringify(s))`))
         expect(nextState.workspaces.map((w) => `${w.name}:${w.icon}:${w.accent}`).join() === 'Reading:flask:violet,Main:globe:teal' && nextState.activeId === researchId, `After a restart: ${JSON.stringify(nextState.workspaces)}.`)
         expect(nextState.favourites.length === 2 && nextState.favourites.filter((f) => f.workspaceId === null).length === 1, `Favourites after a restart: ${JSON.stringify(nextState.favourites)}.`)
         const shown = JSON.parse(await next.evaluate(`${host}.getTabs().then((t) => JSON.stringify(t))`))
         expect(shown.map((tab) => tab.title).join() === 'Page /research-a,Page /research-b,Page /research-c' && shown[0].pinned, `Reading after a restart: ${shown.map((tab) => tab.title).join()}.`)
         await next.evaluate(`${ws}.switchTo({ index: 1 }).then(() => true)`)
-        await next.delay(600)
-        // The tab Main shows wakes and loads; until its page's title arrives it is listed by its address (slow under heavy load).
-        await next.wait(`${host}.getTabs().then((t) => t.some((x) => x.active && x.title === 'Page /main-a'))`, 5000, 'the page Main shows to load its title').catch(() => undefined)
+        // The tab Main shows wakes and loads; the sidebar and the window keep its saved title all along.
+        const titlesSeen = new Set()
+        let settled = false
+        for (let i = 0; i < 100 && !settled; i += 1) {
+          const [active, panel] = JSON.parse(await next.evaluate(`Promise.all([${host}.getTabs().then((t) => t.find((x) => x.active) ?? null), ${host}.getState()]).then((r) => JSON.stringify(r))`))
+          if (active) titlesSeen.add(`sidebar: ${active.title}`)
+          if (panel.url || panel.isPending) titlesSeen.add(`window: ${panel.title}`)
+          settled = !!active && panel.url === lateA && !panel.isLoading
+          if (!settled) await next.delay(100)
+        }
+        expect(settled, 'The page Main shows did not finish loading.')
+        expect([...titlesSeen].every((seen) => seen.endsWith(': Page /main-a')), `While its page loaded, the tab Main shows was titled: ${[...titlesSeen].join(' · ')}.`)
+        // Saved with that title too, not the address it had while loading.
+        const savedTitle = () => { try { return JSON.parse(readFileSync(join(next.profile, 'browser-state.v1.json'), 'utf8')).tabs.find((tab) => tab.url === lateA)?.title } catch { return undefined } }
+        for (let i = 0; i < 25 && savedTitle() !== 'Page /main-a'; i += 1) await next.delay(200)
+        expect(savedTitle() === 'Page /main-a', `The tab Main shows was saved titled "${savedTitle()}".`)
         const other = JSON.parse(await next.evaluate(`${host}.getTabs().then((t) => JSON.stringify(t))`))
         const folders = JSON.parse(await next.evaluate(`${host}.getTabFolders().then((f) => JSON.stringify(f))`))
         // Only the tab Main shows may load; the others stay unloaded until clicked.
         expect(other.map((tab) => tab.title).join() === 'Page /main-pin,Page /main-b,Page /main-a' && other[0].pinned && other.filter((tab) => !tab.active).every((tab) => tab.asleep) && other[0].asleep, `Main after a restart: ${JSON.stringify(other.map((tab) => [tab.title, tab.active, tab.asleep]))}.`)
         expect(folders.length === 1 && other.find((tab) => tab.title === 'Page /main-b').folderId === folders[0].id, `Main's folder after a restart: ${JSON.stringify(folders)}.`)
         return 'restored'
-      })
+      }).finally(() => lateSite.close())
       expect(restored === 'restored', 'The relaunched app did not check its workspaces.')
 
       // A browser state from before workspaces (version 2) opens with all its tabs and folders in Main.
