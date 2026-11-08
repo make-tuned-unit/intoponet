@@ -15,7 +15,8 @@ export function expect(condition, message) {
   if (!condition) throw new CheckFailure(message)
 }
 
-async function connect(url) {
+/** A CDP session. `inFlight` (optional) holds what each unanswered command is, so a check that hangs can say on what. */
+async function connect(url, { inFlight, name = 'session' } = {}) {
   const socket = new WebSocket(url)
   await new Promise((resolve, reject) => { socket.onopen = resolve; socket.onerror = reject })
   let id = 0
@@ -25,9 +26,30 @@ async function connect(url) {
     const entry = message.id && pending.get(message.id)
     if (!entry) return
     pending.delete(message.id)
+    inFlight?.delete(entry.call)
     message.error ? entry.reject(new Error(message.error.message)) : entry.resolve(message.result)
   }
-  const send = (method, params = {}) => new Promise((resolve, reject) => { const n = ++id; pending.set(n, { resolve, reject }); socket.send(JSON.stringify({ id: n, method, params })) })
+  // A connection that closes (its page or the app went away) answers nothing more: what it still owed fails.
+  socket.onclose = () => {
+    for (const entry of pending.values()) {
+      inFlight?.delete(entry.call)
+      entry.reject(new Error(`The ${name} connection closed before answering.`))
+    }
+    pending.clear()
+  }
+  const send = (method, params = {}) => {
+    const answer = new Promise((resolve, reject) => {
+      if (socket.readyState !== WebSocket.OPEN) throw new Error(`The ${name} connection is closed.`)
+      const n = ++id
+      const call = { what: `${name}: ${method === 'Runtime.evaluate' ? String(params.expression).replace(/\s+/g, ' ').slice(0, 200) : method}`, since: Date.now() }
+      inFlight?.add(call)
+      pending.set(n, { resolve, reject, call })
+      socket.send(JSON.stringify({ id: n, method, params }))
+    })
+    // A command nobody waits for must not fail the whole run when it fails; whoever awaits it still gets the error.
+    answer.catch(() => undefined)
+    return answer
+  }
   const evaluate = async (expression, { userGesture = false } = {}) => {
     const result = await send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true, userGesture })
     if (result.exceptionDetails) throw new Error(result.exceptionDetails.exception?.description ?? 'evaluate failed')
@@ -58,15 +80,21 @@ export async function runAppCheck(check, { env: extraEnv = {}, evidenceDir, name
   // be taken by another check's app running at the same time, and this check would then drive that app.
   // DevTools writes its port into the profile; the inspector says its address on stderr.
   rmSync(join(profile, 'DevToolsActivePort'), { force: true })
-  const app = spawn(join(repo, 'node_modules/.bin/electron'), ['--remote-debugging-port=0', '--inspect=127.0.0.1:0', `--user-data-dir=${profile}`, (process.env.E2E_APP_MAIN ?? join(repo, 'apps/desktop/out/main/index.js'))], { env, stdio: ['ignore', 'ignore', 'pipe'], detached: true })
+  // The app's output is kept (its last 64 KB) and saved with the evidence when the check fails.
+  const app = spawn(join(repo, 'node_modules/.bin/electron'), ['--remote-debugging-port=0', '--inspect=127.0.0.1:0', `--user-data-dir=${profile}`, (process.env.E2E_APP_MAIN ?? join(repo, 'apps/desktop/out/main/index.js'))], { env, stdio: ['ignore', 'pipe', 'pipe'], detached: true })
   let inspectPort = null
+  let output = ''
   let head = ''
   // Always drained: a full pipe would stall the app.
-  app.stderr.on('data', (chunk) => {
-    if (inspectPort) return
-    head = (head + chunk).slice(-8192)
-    inspectPort = Number(/Debugger listening on ws:\/\/127\.0\.0\.1:(\d+)\//.exec(head)?.[1]) || null
-  })
+  const record = (chunk) => {
+    if (!inspectPort) {
+      head = (head + chunk).slice(-8192)
+      inspectPort = Number(/Debugger listening on ws:\/\/127\.0\.0\.1:(\d+)\//.exec(head)?.[1]) || null
+    }
+    output = (output + chunk).slice(-65_536)
+  }
+  app.stdout.on('data', record)
+  app.stderr.on('data', record)
   let port = null
   const stopApp = (signal) => {
     try { process.kill(-app.pid, signal) } catch { /* gone */ }
@@ -81,6 +109,7 @@ export async function runAppCheck(check, { env: extraEnv = {}, evidenceDir, name
   process.once('SIGINT', onSignal)
   process.once('SIGTERM', onSignal)
   const sockets = []
+  const inFlight = new Set()
   try {
     let target
     for (let i = 0; i < 200 && !target; i += 1) {
@@ -95,17 +124,25 @@ export async function runAppCheck(check, { env: extraEnv = {}, evidenceDir, name
       if (!target) await delay(100)
     }
     if (!target) throw new CheckFailure('The app window never appeared.')
-    const renderer = await connect(target.webSocketDebuggerUrl)
+    const renderer = await connect(target.webSocketDebuggerUrl, { inFlight, name: 'app window' })
     sockets.push(renderer.socket)
     await renderer.send('Runtime.enable')
     const { evaluate, send } = renderer
     const wait = async (expression, ms = 60_000, label = expression) => {
       const end = Date.now() + ms
+      const silent = Symbol('unanswered')
+      let unanswered = false
       while (Date.now() < end) {
-        if (await evaluate(expression).catch(() => false)) return true
+        // A look at the condition that never answers is a "not yet": the wait still ends on time.
+        let timer
+        const silence = new Promise((resolve) => { timer = setTimeout(() => resolve(silent), Math.max(0, end - Date.now())) })
+        const answer = await Promise.race([evaluate(expression).catch(() => false), silence])
+        clearTimeout(timer)
+        if (answer === silent) { unanswered = true; break }
+        if (answer) return true
         await delay(500)
       }
-      throw new CheckFailure(`Timed out waiting for: ${label}`)
+      throw new CheckFailure(`Timed out waiting for: ${label}${unanswered ? ' (the app did not answer the last look at it)' : ''}`)
     }
     const click = (selector, text) => evaluate(`(() => { const el = [...document.querySelectorAll(${JSON.stringify(selector)})].find((e) => ${text === undefined ? 'true' : `(e.innerText || e.getAttribute('aria-label') || '').includes(${JSON.stringify(text)})`}); if (!el) return false; el.click(); return true })()`)
     const type = (text) => send('Input.insertText', { text })
@@ -136,7 +173,7 @@ export async function runAppCheck(check, { env: extraEnv = {}, evidenceDir, name
         if (!found) await delay(250)
       }
       if (!found) throw new CheckFailure(`No page open at ${urlPart}`)
-      const session = await connect(found.webSocketDebuggerUrl)
+      const session = await connect(found.webSocketDebuggerUrl, { inFlight, name: `page ${urlPart}` })
       sockets.push(session.socket)
       return session
     }
@@ -154,7 +191,7 @@ export async function runAppCheck(check, { env: extraEnv = {}, evidenceDir, name
         if (!inspectPort) throw new CheckFailure('The main process inspector never said its address.')
         const [target] = await (await fetch(`http://127.0.0.1:${inspectPort}/json/list`)).json()
         if (!target) throw new CheckFailure('The main process inspector is not available.')
-        mainSession = await connect(target.webSocketDebuggerUrl)
+        mainSession = await connect(target.webSocketDebuggerUrl, { inFlight, name: 'main process' })
         sockets.push(mainSession.socket)
       }
       return mainSession.evaluate(`((electron) => (${expression}))(process.mainModule.require('electron'))`)
@@ -181,19 +218,26 @@ export async function runAppCheck(check, { env: extraEnv = {}, evidenceDir, name
     // the shell keeps drawing so one check's window cannot stall another's.
     await main(`(() => { electron.BrowserWindow.getAllWindows()[0]?.webContents.setBackgroundThrottling(false); return true })()`).catch(() => undefined)
     let timer
-    const limit = new Promise((_, reject) => { timer = setTimeout(() => reject(new CheckFailure(`Took longer than ${Math.round(timeoutMs / 1000)} s.`)), timeoutMs) })
+    // Out of time: say what the check was still waiting for the app to answer, the oldest first.
+    const stuck = () => [...inFlight].sort((a, b) => a.since - b.since).slice(0, 2).map((call) => `${call.what} (unanswered for ${Math.round((Date.now() - call.since) / 1000)} s)`).join('; ')
+    const limit = new Promise((_, reject) => { timer = setTimeout(() => reject(new CheckFailure(`Took longer than ${Math.round(timeoutMs / 1000)} s.${inFlight.size ? ` Still waiting on ${stuck()}.` : ''}`)), timeoutMs) })
     try {
       const notes = await Promise.race([check({ evaluate, send, delay, wait, click, type, press, shot, pageShot, page, main, detachMain, keyInPage, flyTo, waitForNews, profile, port }), limit])
       return notes ?? ''
     } finally {
       clearTimeout(timer)
     }
+  } catch (error) {
+    // What the app printed (its main process and Chromium), kept with the evidence of a failed check.
+    if (evidenceDir) try { mkdirSync(evidenceDir, { recursive: true }); writeFileSync(join(evidenceDir, `${name ?? 'check'}-app-output.log`), output) } catch { /* evidence only */ }
+    throw error
   } finally {
     for (const socket of sockets) try { socket.close() } catch { /* closed */ }
     stopApp('SIGTERM')
     await delay(800)
     stopApp('SIGKILL')
-    // A helper that outlived the app must not keep this process alive through the pipe.
+    // A helper that outlived the app must not keep this process alive through the pipes.
+    app.stdout.destroy()
     app.stderr.destroy()
     process.removeListener('exit', onExit)
     process.removeListener('SIGINT', onSignal)
