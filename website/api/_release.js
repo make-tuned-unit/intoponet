@@ -1,5 +1,5 @@
 // The current macOS download. Update with each release (see README: Release downloads).
 export const RELEASE = {
-  version: '0.1.23',
-  dmg: 'https://klszmlqipgkquywh.public.blob.vercel-storage.com/releases/0.1.23/Intoponet-0.1.23-arm64.dmg',
+  version: '0.1.24',
+  dmg: 'https://klszmlqipgkquywh.public.blob.vercel-storage.com/releases/0.1.24/Intoponet-0.1.24-arm64.dmg',
 }

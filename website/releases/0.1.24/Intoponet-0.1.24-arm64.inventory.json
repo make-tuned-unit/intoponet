@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "product": "Intoponet",
+  "version": "0.1.24",
+  "platform": "macOS",
+  "architecture": "arm64",
+  "mode": "release",
+  "artifacts": [
+    {
+      "file": "Intoponet-0.1.24-arm64.dmg",
+      "bytes": 125765682,
+      "sha256": "bc9a723956c097d5d39ae7240571c8c82291f1f16d197e49cbbfef8feee422fd"
+    },
+    {
+      "file": "Intoponet-0.1.24-arm64-mac.zip",
+      "bytes": 126147575,
+      "sha256": "8a12a47e1fcf878a2bc24f691443df8357cd62de15d9e4936a19766b4c467921"
+    },
+    {
+      "file": "releases.json",
+      "bytes": 424,
+      "sha256": "af55648184375f32a574da12b993262ecfc05d2e682672eabcc034dca0e3e2c3"
+    },
+    {
+      "file": "Intoponet-0.1.24-arm64.cdx.json",
+      "bytes": 22444,
+      "sha256": "e290146c511b4d3dc1a2094f31147aa63a8d452ea8922c592337e17e21ad6aab"
+    }
+  ],
+  "updates": {
+    "enabled": true,
+    "protocol": "Electron native autoUpdater / Squirrel.Mac JSON feed",
+    "feedUrl": "https://intoponet.com/updates/arm64/releases.json",
+    "manifest": "releases.json",
+    "checks": "manual only; check and download are one explicit user action",
+    "persistentUpdaterIdentifier": false
+  },
+  "runtime": {
+    "electron": "45.0.0",
+    "chromium": "156.0.8078.48",
+    "chromiumVersionEvidence": "electron-to-chromium@1.5.463 full-versions mapping for Electron 45.0.0"
+  },
+  "dependencyTreatment": {
+    "productionDependencyGraph": "npm lockfile graph for @intoponet/desktop; workspace TypeScript packages are bundled into app.asar by electron-vite",
+    "licenseReview": "Package license metadata is inventory input only; no exhaustive license review is asserted."
+  }
+}
