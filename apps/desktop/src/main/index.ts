@@ -175,7 +175,7 @@ import { exportPagePdf } from './pdfExport/exportPdf'
 import { PDF_WORLD_ID } from './pdfExport/pageScripts'
 import { SavedPdfList } from './pdfExport/savedPdfs'
 import { DEFAULT_PDF_SETTINGS, parsePdfSettings, type PdfExportSettings } from './pdfExport/settings'
-import { CrashRecoveryPolicy } from './crashRecovery'
+import { CrashRecoveryPolicy, ShellReloadPolicy } from './crashRecovery'
 import { BeaconPublisher } from './beacons/publisher'
 import { DEFAULT_BEACON_REGISTRY } from './beacons/defaults'
 import { ENCRYPTED_DNS, networkPrivacySnapshot, WEBRTC_POLICY } from './networkPrivacy'
@@ -3866,11 +3866,20 @@ function showShellShortcut(action: ShellShortcut): void {
   // A shortcut for the app (address bar, new tab…) moves on from a link preview.
   closeLinkPreview(false)
   window.webContents.focus()
+  // The app window is still loading (just reopened by this command, or reloading): it gets it once it listens.
+  if (shellShortcutsWaiting) {
+    if (shellShortcutsWaiting.length < 8) shellShortcutsWaiting.push(action)
+    return
+  }
   emit({ type: 'shortcut', action })
 }
+/** Shortcuts for an app window that is not listening yet; null once it is (its first get-state, sent right after it subscribes). */
+let shellShortcutsWaiting: ShellShortcut[] | null = null
 
 /** A menu bar command, or the same key pressed inside a page. */
 function runAppCommand(command: AppCommand): void {
+  // With the app window closed, a menu command brings it back first (a quick window's own commands need none).
+  if ((!window || window.isDestroyed()) && !['new-quick-window', 'open-quick-in-main', 'close-tab'].includes(command.type)) reopenWindow()
   const route = routeAppCommand(command)
   if (route.kind === 'shell') return showShellShortcut(route.action)
   if (route.kind === 'host') {
@@ -4670,6 +4679,12 @@ async function handleBrowserCommand(
       setBrowserTabDockOpen(command.open, command.hold === true)
       return null
     case 'get-state':
+      // The app window has just subscribed to its events: shortcuts chosen while it loaded are carried out now.
+      if (shellShortcutsWaiting) {
+        const waiting = shellShortcutsWaiting
+        shellShortcutsWaiting = null
+        setImmediate(() => { for (const action of waiting) showShellShortcut(action) })
+      }
       break
     case 'site-tweak-state':
       return siteTweakState()
@@ -4801,10 +4816,27 @@ function wireShellSession(): void {
 
 /** While the app window closes (or the app quits), its pages going away is not the user closing tabs. */
 let shellClosing = false
+/** A page was in front when the app window closed: it is shown again when the window comes back. */
+let reshowOnReopen = false
+/** The app window again after it was closed (the Dock icon, a menu command): its tabs, with the one that was in front shown. */
+function reopenWindow(): void {
+  if (window && !window.isDestroyed()) return
+  createWindow()
+  const shown = reshowOnReopen ? openTabs.find((tab) => tab.id === activeTabId) : undefined
+  reshowOnReopen = false
+  if (shown) showTab(shown.id)
+  emitTabs()
+}
+/** The app window's page reloads after a crash, waiting longer while it keeps crashing (crashRecovery.ts). */
+const shellReloads = new ShellReloadPolicy()
+/** How long a hung app window gets to answer again before it is reloaded (it has already not answered for a while). */
+const SHELL_HANG_GRACE_MS = 3_000
 
 function createWindow(): void {
   shellClosing = false
   stateWritesClosed = false
+  // Not listening until its page has loaded: shortcuts wait (showShellShortcut).
+  shellShortcutsWaiting = []
   // Pages whose contents went away while the last window was closed (macOS keeps the app running).
   for (const tab of openTabs.filter((item) => viewGone(item.view))) {
     openTabs.splice(openTabs.indexOf(tab), 1)
@@ -4827,11 +4859,51 @@ function createWindow(): void {
     },
   })
 
-  // A reloaded shell cannot release a page it held before, nor see a screen recording it started.
+  // A reloaded shell cannot release a page it held before, nor see a screen recording it started. It
+  // starts out of full width (toolbar tucked away, no tab dock, sidebar at rest): the page area follows it.
   window.webContents.on('did-start-navigation', (details) => {
     if (!details.isMainFrame || details.isSameDocument) return
+    shellShortcutsWaiting ??= []
     setPageHeld(false)
+    setBrowserFullWidth(false)
+    tabRailExpanded = false
     captures?.shellReloaded()
+  })
+
+  // The app's own page went away (its renderer crashed or was stopped) or hangs: it loads again. Tabs,
+  // workspaces and pages live here in the main process, so the reloaded shell finds them where they were.
+  const shell = window
+  let shellReload: ReturnType<typeof setTimeout> | null = null
+  let shellHang: ReturnType<typeof setTimeout> | null = null
+  shell.webContents.on('render-process-gone', (_event, details) => {
+    if (shellClosing || shell.isDestroyed() || details.reason === 'clean-exit') return
+    if (shellHang) clearTimeout(shellHang)
+    shellHang = null
+    if (shellReload) return
+    const wait = shellReloads.crashed()
+    console.error(`The app window stopped (${details.reason}); it reloads${wait ? ` in ${wait / 1000} s` : ''}.`)
+    shellReload = setTimeout(() => {
+      shellReload = null
+      if (!shell.isDestroyed() && !shellClosing) shell.webContents.reload()
+    }, wait)
+  })
+  // Hung (it has not answered input for a while): after a short grace, its renderer is stopped and it reloads as above.
+  shell.on('unresponsive', () => {
+    if (shellHang || shellClosing) return
+    shellHang = setTimeout(() => {
+      shellHang = null
+      if (!shell.isDestroyed() && !shellClosing && !shell.webContents.isCrashed()) shell.webContents.forcefullyCrashRenderer()
+    }, SHELL_HANG_GRACE_MS)
+  })
+  shell.on('responsive', () => {
+    if (shellHang) clearTimeout(shellHang)
+    shellHang = null
+  })
+  shell.once('closed', () => {
+    if (shellReload) clearTimeout(shellReload)
+    if (shellHang) clearTimeout(shellHang)
+    shellReload = null
+    shellHang = null
   })
 
   // The window shows the app and nothing else: a dropped link or file, or a script changing
@@ -4882,9 +4954,14 @@ function createWindow(): void {
     // in order after any save already on its way.
     if (!stateWritesClosed) savePersistentState().catch((error: unknown) => console.error('Could not save open tabs:', error))
     stateWritesClosed = true
+    // The tab in front (and its pair) is shown again when the window comes back (reopenWindow).
+    reshowOnReopen = pageAttached && activeTabId !== null
     window = null
     pageView = null
+    companionView = null
     pageAttached = false
+    // No tab is in front now: ⌘W is Close Window again (it closes nothing), and page items are off.
+    appMenu.schedule()
   })
 
   if (process.env['ELECTRON_RENDERER_URL']) {
@@ -5638,8 +5715,9 @@ app.whenReady().then(async () => {
     app.once('will-quit', () => clearInterval(onlineTimer))
   })
 
+  // The Dock icon brings the app window back, also while a quick window is open.
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    if (!window || window.isDestroyed()) reopenWindow()
   })
 }).catch((error: unknown) => {
   console.error('Intoponet did not finish starting:', error)

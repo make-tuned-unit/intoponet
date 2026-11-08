@@ -688,6 +688,112 @@ const identityRelaunch = async (ctx, { workId, mainId, gone }) => {
   return 'Kept across a relaunch: the option, Work\'s sign-in and permissions, Main\'s sign-in. Turning the option off deleted Work\'s cookies, permissions and saved passwords, and Main stayed signed in.'
 }
 
+/**
+ * APP_BOOT: the app's own window recovers. Its page crashing or hanging reloads it with the tabs, the pair and the
+ * page area as they were, and nothing added in the main process (no page view, web contents or listener). Closed
+ * with the red button, it comes back with its tabs from the Dock (also with a quick window open) and from a menu command.
+ */
+async function appWindowRecovers(ctx) {
+  const server = createServer((request, response) => {
+    response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
+    response.end(`<!doctype html><title>Boot ${request.url}</title><h1>${request.url}</h1>`)
+  })
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const port = server.address().port
+  const appWindow = `electron.BrowserWindow.getAllWindows().find((w) => w.webContents?.getURL().includes('index.html'))`
+  const shellNow = () => ctx.main(`(() => {
+    const win = ${appWindow}
+    if (!win) return 'null'
+    const wc = win.webContents
+    const counts = (emitter) => emitter.eventNames().map((name) => String(name) + ':' + emitter.listenerCount(name)).sort().join(' ')
+    return JSON.stringify({
+      crashed: wc.isCrashed(),
+      loaded: globalThis.__shellLoaded === true,
+      contents: electron.webContents.getAllWebContents().length,
+      pages: win.contentView.children.filter((v) => v.webContents && /^https?:/.test(v.webContents.getURL())).map((v) => ({ url: v.webContents.getURL(), bounds: v.getBounds(), visible: v.getVisible() })).sort((a, b) => a.bounds.x - b.bounds.x),
+      listeners: [wc, win, electron.app, electron.ipcMain].map(counts),
+    })
+  })()`).then(JSON.parse)
+  /** The next load of the app window's page, finished (set before what reloads it). */
+  const watchLoad = () => ctx.main(`(() => { globalThis.__shellLoaded = false; ${appWindow}.webContents.once('did-finish-load', () => { globalThis.__shellLoaded = true }); return true })()`)
+  const until = async (label, test, ms = 20_000) => {
+    const end = Date.now() + ms
+    while (Date.now() < end) {
+      const value = await test().catch(() => null)
+      if (value) return value
+      await ctx.delay(250)
+    }
+    throw new CheckFailure(`Timed out waiting for ${label}.`)
+  }
+  // A shell still loading (or hung) never answers: each question gets 3 s.
+  const ask = (shell, expression) => Promise.race([shell.evaluate(expression), new Promise((_, reject) => setTimeout(() => reject(new Error('no answer')), 3000))])
+  const ready = (shell, label) => until(label, () => ask(shell, `!!document.querySelector('.topbar') && !!document.querySelector('.command-input input')`))
+  const tabsOf = (shell) => ask(shell, `window.intoponet.browserHost.getTabs().then((t) => JSON.stringify(t.map((x) => [x.id, x.active, x.split?.side ?? null])))`)
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b)
+  try {
+    await openPage(ctx, `http://127.0.0.1:${port}/left`, 1500)
+    await ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: 'http://localhost:${port}/right' }, 'background-tab').then(() => true)`)
+    await ctx.delay(800)
+    await ctx.evaluate(`window.intoponet.browserHost.splitTab().then(() => true)`)
+    await until('the pair on screen', async () => (await shellNow()).pages.filter((page) => page.visible).length === 2)
+    await ctx.delay(800)
+    const before = await shellNow()
+    const tabsBefore = await tabsOf(ctx)
+    // The split's rounding may move a side by a pixel; anything more is a page area out of step with the shell.
+    const near = (a, b) => a.length === b.length && a.every((page, i) => page.url === b[i].url && page.visible === b[i].visible && ['x', 'y', 'width', 'height'].every((key) => Math.abs(page.bounds[key] - b[i].bounds[key]) <= 1))
+    const kept = (label, after) => {
+      expect(near(after.pages, before.pages), `${label}, the pages on screen changed: ${JSON.stringify(before.pages)} → ${JSON.stringify(after.pages)}.`)
+      expect(after.contents === before.contents, `${label}, there are ${after.contents} web contents, not ${before.contents}.`)
+      expect(same(after.listeners, before.listeners), `${label}, listeners were added or lost: ${JSON.stringify(before.listeners)} → ${JSON.stringify(after.listeners)}.`)
+    }
+
+    // Its page crashes while in full width: it reloads at once, not in full width, with everything where it was.
+    await ctx.evaluate(`window.intoponet.browserHost.setFullWidth(true).then(() => true)`)
+    await watchLoad()
+    await ctx.main(`(() => { ${appWindow}.webContents.forcefullyCrashRenderer(); return true })()`)
+    await until('the crashed app window to reload', async () => (await shellNow()).loaded, 15_000)
+    await ready(ctx, 'the reloaded app window')
+    await ctx.delay(1000)
+    expect(await tabsOf(ctx) === tabsBefore, `After the app window crashed, its tabs are ${await tabsOf(ctx)}, not ${tabsBefore}.`)
+    kept('After the app window crashed and reloaded', await shellNow())
+
+    // Its page hangs: once the window reports it unresponsive, it is stopped and reloads.
+    await watchLoad()
+    await ctx.main(`(() => { const win = ${appWindow}; void win.webContents.executeJavaScript('setTimeout(() => { const end = Date.now() + 120000; while (Date.now() < end) {} }, 50); true'); setTimeout(() => win.emit('unresponsive'), 600); return true })()`)
+    await until('the hung app window to reload', async () => (await shellNow()).loaded, 15_000)
+    await ready(ctx, 'the app window reloaded after hanging')
+    await ctx.delay(1000)
+    expect(await tabsOf(ctx) === tabsBefore, `After the app window hung, its tabs are ${await tabsOf(ctx)}, not ${tabsBefore}.`)
+    kept('After the app window hung and reloaded', await shellNow())
+
+    // Closed with the red button while a quick window is open: the Dock icon brings it back, the pair in front.
+    await ctx.main(`(() => { electron.Menu.getApplicationMenu().getMenuItemById('new-quick-window').click(); return true })()`)
+    await until('a quick window', async () => (await ctx.main('electron.BrowserWindow.getAllWindows().length')) === 2)
+    await ctx.main(`(() => { ${appWindow}.close(); return true })()`)
+    await until('the app window to close', async () => (await shellNow()) === null)
+    await ctx.main(`(() => { electron.app.emit('activate', {}, true); return true })()`)
+    await until('the app window back from the Dock', async () => { const now = await shellNow(); return now?.pages.filter((page) => page.visible).length === 2 })
+    let shell = await ctx.page('index.html')
+    await ready(shell, 'the app window back from the Dock')
+    expect(await tabsOf(shell) === tabsBefore, `Back from the Dock, the app window's tabs are ${await tabsOf(shell)}, not ${tabsBefore}.`)
+    const reopened = await shellNow()
+    expect(same(reopened.pages.map((page) => page.url), before.pages.map((page) => page.url)), `Back from the Dock, the pages in front are ${JSON.stringify(reopened.pages.map((page) => page.url))}.`)
+
+    // Closed again, File › New Tab brings it back with the new tab in front.
+    await ctx.main(`(() => { ${appWindow}.close(); return true })()`)
+    await until('the app window to close again', async () => (await shellNow()) === null)
+    await ctx.main(`(() => { electron.Menu.getApplicationMenu().getMenuItemById('new-tab').click(); return true })()`)
+    await until('the app window back from File › New Tab', async () => (await shellNow()) !== null)
+    shell = await ctx.page('index.html')
+    await ready(shell, 'the app window back from File › New Tab')
+    const tabsAfter = JSON.parse(await tabsOf(shell))
+    expect(tabsAfter.length === JSON.parse(tabsBefore).length + 1 && tabsAfter.at(-1)[1] === true, `File › New Tab with the window closed left the tabs as ${JSON.stringify(tabsAfter)}.`)
+    return 'The app window reloaded after its page crashed and after it hung, with its tabs, pair and page area, and no view or listener added; closed, it came back with its tabs from the Dock (a quick window open) and from File › New Tab.'
+  } finally {
+    server.close()
+  }
+}
+
 export const checks = {
   // ---- Foundations ---------------------------------------------------------
   async APP_BOOT(ctx) {
@@ -723,7 +829,8 @@ export const checks = {
       else process.env.E2E_PROFILE = keptProfile
       rmSync(damagedProfile, { recursive: true, force: true })
     }
-    return `Header: ${buttons.join(' · ')}. A damaged profile opened, its unreadable files kept aside.`
+    const recovered = await appWindowRecovers(ctx)
+    return `Header: ${buttons.join(' · ')}. A damaged profile opened, its unreadable files kept aside. ${recovered}`
   },
 
   async GLOBE_LIVE(ctx) {
