@@ -1217,7 +1217,8 @@ export function App() {
       el.removeEventListener('scroll', measure)
       window.removeEventListener('resize', measure)
     }
-  }, [panel.isVisible, tabs])
+    // The strip is drawn again once The Olds closes.
+  }, [panel.isVisible, tabs, !!olds]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!panel.isVisible) setShieldOpen(false)
@@ -4603,7 +4604,8 @@ export function App() {
       )}
 
       <div className="command-dock">
-        {tabs.length > 0 && !railVisible && (
+        {/* Not under The Olds sheet (it would show below its edge). */}
+        {tabs.length > 0 && !railVisible && !(olds && !fieldLabOpen && !panel.isVisible) && (
           <div className="page-tab-row">
             {tabEdges.overflow && (
               <button

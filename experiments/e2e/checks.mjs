@@ -1205,6 +1205,15 @@ export const checks = {
 
   async OLDS_UI(ctx) {
     await keepDrawing(ctx)
+    // A tab open in the background: its strip shows at the foot of the globe, but never below The Olds sheet.
+    const tabServer = createServer((request, response) => {
+      response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
+      response.end('<!doctype html><title>A tab behind The Olds</title><h1>A tab behind The Olds</h1>')
+    })
+    await new Promise((resolve) => tabServer.listen(0, '127.0.0.1', resolve))
+    await ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: 'http://127.0.0.1:${tabServer.address().port}/behind' }, 'background-tab').then(() => true)`)
+    tabServer.close()
+    await ctx.wait(`!!document.querySelector('.page-tab-row')`, 10_000, 'the tab strip with a tab open in the background')
     await ctx.waitForNews()
     await ctx.flyTo('Canada')
     await ctx.delay(2500)
@@ -1213,6 +1222,7 @@ export const checks = {
     await ctx.evaluate(`document.querySelector('.globe-headlines .headline-history').click(); true`)
     await ctx.wait(`!!document.querySelector('.olds-sheet h2') && !document.querySelector('.olds-status .olds-spin')`, 150_000, 'The Olds to open for the headline')
     await ctx.delay(1500)
+    expect(!(await ctx.evaluate(`!!document.querySelector('.page-tab-row')`)), 'The tab strip shows below The Olds sheet.')
     const views = await ctx.evaluate(`[...document.querySelectorAll('.olds-views button')].map((b) => b.innerText.trim())`)
     expect(views.includes('Story') && views.includes('Timeline'), `The Olds is missing views: ${views.join(', ')}`)
     const sections = await ctx.evaluate(`[...document.querySelectorAll('.olds-chronicle h3, .olds-related h3')].map((h) => h.innerText)`)
@@ -1223,7 +1233,8 @@ export const checks = {
     await ctx.press('Escape')
     const closed = await ctx.wait(`!document.querySelector('.olds-sheet')`, 5000).then(() => true, () => false)
     expect(closed, 'Escape does not close The Olds.')
-    return `Views ${views.join('/')}; sections: ${sections.join(', ') || 'path only'}.`
+    await ctx.wait(`!!document.querySelector('.page-tab-row')`, 5000, 'the tab strip to come back once The Olds closed')
+    return `Views ${views.join('/')}; sections: ${sections.join(', ') || 'path only'}; the tab strip hidden while The Olds was open.`
   },
 
   // An outlet's earlier coverage of a story (its topic pages, then Wayback Machine snapshots), newest first.
