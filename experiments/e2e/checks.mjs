@@ -2866,6 +2866,20 @@ export const checks = {
     const byTitle = async (title) => (await tabs()).find((tab) => tab.title === `Page /${title}`)
     const loaded = (path) => ctx.main(`electron.webContents.getAllWebContents().some((c) => c.getURL() === ${JSON.stringify(`${origin}/${path}`)})`)
     const savedState = () => JSON.parse(readFileSync(join(ctx.profile, 'browser-state.v1.json'), 'utf8'))
+    /**
+     * Opens a workspace's actions menu. Menus close when focus leaves the app window, and windows of checks running
+     * side by side can take it at any moment: the app is brought forward and the button clicked again until it opens.
+     */
+    const openWorkspaceMenu = async (name, label) => {
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        await ctx.main(`(() => { electron.app.focus({ steal: true }); electron.BrowserWindow.getAllWindows()[0].focus(); return true })()`)
+        // Focused first, as a real click on the button focuses it.
+        await ctx.evaluate(`document.querySelector('button[aria-label="Actions for workspace ${name}"]')?.focus(); true`)
+        await ctx.click(`button[aria-label="Actions for workspace ${name}"]`)
+        if (await ctx.wait(`!!document.querySelector('.tab-rail-folder-menu [role="menuitem"]')`, 2000, label).then(() => true, () => false)) return
+      }
+      throw new CheckFailure(`Timed out waiting for: ${label}`)
+    }
     const typeCommand = async (text) => {
       await ctx.evaluate(`(() => { const input = document.querySelector('.command-input input'); input.focus(); input.select(); return true })()`)
       await ctx.type(text)
@@ -2988,10 +3002,7 @@ export const checks = {
       await ctx.wait(`${ws}.get().then((s) => s.workspaces[0].id === ${JSON.stringify(researchId)})`, 3000, '⌥⇧← to move Research first')
 
       // Rename from the workspace's actions.
-      // Menus close when focus leaves the app window: bring it forward first (other checks' windows may be in front).
-      await ctx.main(`(() => { electron.app.focus({ steal: true }); electron.BrowserWindow.getAllWindows()[0].focus(); return true })()`)
-      await ctx.click('button[aria-label="Actions for workspace Research"]')
-      await ctx.wait(`!!document.querySelector('.tab-rail-folder-menu [role="menuitem"]')`, 2000, 'the workspace menu')
+      await openWorkspaceMenu('Research', 'the workspace menu')
       await ctx.click('.tab-rail-folder-menu [role="menuitem"]', 'Rename')
       await ctx.wait(`document.activeElement?.classList.contains('tab-rail-workspace-name-input')`, 3000, 'the name field')
       await ctx.evaluate(`document.activeElement.select(); true`)
@@ -3077,19 +3088,13 @@ export const checks = {
 
       // Delete, after confirming (focus starts on Cancel), and Undo brings it back with its tabs, unreloaded.
       const researchC = (await byTitle('research-c')).id
-      // Menus close when focus leaves the app window: bring it forward first (other checks' windows may be in front).
-      await ctx.main(`(() => { electron.app.focus({ steal: true }); electron.BrowserWindow.getAllWindows()[0].focus(); return true })()`)
-      // Focused first, as a real click on the button focuses it.
-      await ctx.evaluate(`document.querySelector('button[aria-label="Actions for workspace Reading"]').focus(); true`)
-      await ctx.click('button[aria-label="Actions for workspace Reading"]')
-      await ctx.wait(`!!document.querySelector('.tab-rail-folder-menu [role="menuitem"]')`, 2000, 'the workspace menu')
+      await openWorkspaceMenu('Reading', 'the workspace menu')
       await ctx.click('.tab-rail-folder-menu [role="menuitem"]', 'Delete workspace')
       await ctx.wait(`!!document.querySelector('.tab-rail-workspace-confirm[role="alertdialog"]') && document.activeElement?.textContent === 'Cancel'`, 3000, 'the delete confirmation, with focus on Cancel')
       // Escape closes the question and focus goes back to the workspace's actions button (not lost to the page).
       await ctx.press('Escape')
       await ctx.wait(`!document.querySelector('.tab-rail-workspace-confirm') && document.activeElement?.getAttribute('aria-label') === 'Actions for workspace Reading'`, 3000, 'Escape to close the delete confirmation and return focus to the actions button')
-      await ctx.click('button[aria-label="Actions for workspace Reading"]')
-      await ctx.wait(`!!document.querySelector('.tab-rail-folder-menu [role="menuitem"]')`, 2000, 'the workspace menu again')
+      await openWorkspaceMenu('Reading', 'the workspace menu again')
       await ctx.click('.tab-rail-folder-menu [role="menuitem"]', 'Delete workspace')
       await ctx.wait(`!!document.querySelector('.tab-rail-workspace-confirm[role="alertdialog"]') && document.activeElement?.textContent === 'Cancel'`, 3000, 'the delete confirmation again')
       expect((await state()).workspaces.length === 2, 'Asking to delete deleted before it was confirmed.')
