@@ -1,3 +1,6 @@
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { IncomingOpenQueue, LocalFileGrants, incomingFileTarget, incomingTargetsFromArgs, incomingWebUrl, parseWebloc, type IncomingTarget } from './incomingOpen'
 
@@ -68,7 +71,8 @@ describe('the queue of things to open', () => {
 
 describe('local files a tab may read', () => {
   it('serves opened files and a saved page’s own assets only', () => {
-    const grants = new LocalFileGrants()
+    // These paths are not on disk: links are taken as already resolved.
+    const grants = new LocalFileGrants((path) => path)
     grants.grant('/Users/me/Downloads/Article.html')
     grants.grant('/Users/me/Documents/Paper.pdf')
     expect(grants.allows('/Users/me/Downloads/Article.html')).toBe(true)
@@ -79,5 +83,35 @@ describe('local files a tab may read', () => {
     expect(grants.allows('/Users/me/Downloads/other.html')).toBe(false)
     expect(grants.allows('/Users/me/Documents/Other.pdf')).toBe(false)
     expect(grants.allows('/etc/passwd')).toBe(false)
+  })
+
+  it('never follows a link in a saved page’s folder out of it', () => {
+    const root = mkdtempSync(join(tmpdir(), 'intoponet-grants-'))
+    try {
+      writeFileSync(join(root, 'secret.txt'), 'secret')
+      mkdirSync(join(root, 'elsewhere'))
+      writeFileSync(join(root, 'elsewhere', 'inside.css'), 'elsewhere')
+      mkdirSync(join(root, 'saved', 'Page_files', 'images'), { recursive: true })
+      writeFileSync(join(root, 'saved', 'Page.html'), '<title>Saved</title>')
+      writeFileSync(join(root, 'saved', 'Page_files', 'style.css'), 'h1{}')
+      writeFileSync(join(root, 'saved', 'Page_files', 'images', 'a.png'), 'png')
+      // As an archive unpacked by Finder can leave them: a file and a whole folder that point elsewhere.
+      symlinkSync('../../secret.txt', join(root, 'saved', 'Page_files', 'leak.css'))
+      symlinkSync('images/a.png', join(root, 'saved', 'Page_files', 'same.png'))
+      writeFileSync(join(root, 'saved', 'Other.html'), '<title>Other</title>')
+      symlinkSync('../elsewhere', join(root, 'saved', 'Other_files'))
+      const grants = new LocalFileGrants()
+      grants.grant(join(root, 'saved', 'Page.html'))
+      grants.grant(join(root, 'saved', 'Other.html'))
+      expect(grants.allows(join(root, 'saved', 'Page_files', 'style.css'))).toBe(true)
+      expect(grants.allows(join(root, 'saved', 'Page_files', 'images', 'a.png'))).toBe(true)
+      // A link that stays inside the folder is still the page's own.
+      expect(grants.allows(join(root, 'saved', 'Page_files', 'same.png'))).toBe(true)
+      expect(grants.allows(join(root, 'saved', 'Page_files', 'leak.css'))).toBe(false)
+      expect(grants.allows(join(root, 'saved', 'Other_files', 'inside.css'))).toBe(false)
+      expect(grants.allows(join(root, 'saved', 'Page_files', 'missing.css'))).toBe(false)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
   })
 })

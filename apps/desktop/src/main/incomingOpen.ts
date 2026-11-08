@@ -1,3 +1,4 @@
+import { realpathSync } from 'node:fs'
 import { basename, extname, isAbsolute, join, resolve as resolvePath, dirname, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
@@ -125,6 +126,9 @@ export class LocalFileGrants {
   private readonly files = new Set<string>()
   private readonly folders = new Set<string>()
 
+  /** `realpath` resolves symbolic links (a test passes its own). */
+  constructor(private readonly realpath: (path: string) => string = realpathSync) {}
+
   grant(path: string): void {
     const absolute = resolvePath(path)
     this.files.add(absolute)
@@ -140,8 +144,23 @@ export class LocalFileGrants {
     if (this.files.has(absolute)) return true
     if (!PAGE_ASSET_EXTENSIONS.has(extname(absolute).toLowerCase())) return false
     for (const folder of this.folders) {
-      if (absolute.startsWith(folder.endsWith(sep) ? folder : `${folder}${sep}`)) return true
+      if (absolute.startsWith(folder.endsWith(sep) ? folder : `${folder}${sep}`) && this.staysIn(absolute, folder)) return true
     }
     return false
+  }
+
+  /**
+   * Whether the asset really is in the page's folder once links are followed. A saved page unpacked
+   * from an archive can carry a link (`style.css` → ~/.ssh/id_rsa, or the whole "_files" folder → a
+   * folder elsewhere) that would hand the page any file on the Mac. The page's own folder (the one it
+   * was opened from) is resolved; the "_files" folder itself must be a real folder inside it.
+   */
+  private staysIn(absolute: string, folder: string): boolean {
+    try {
+      const root = join(this.realpath(dirname(folder)), basename(folder))
+      return this.realpath(absolute).startsWith(`${root}${sep}`)
+    } catch {
+      return false
+    }
   }
 }
