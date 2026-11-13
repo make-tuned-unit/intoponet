@@ -84,8 +84,15 @@ export function summitRadiusKm(_story: StoryMountain): number {
 }
 
 export function storyTerrainKey(stories: StoryMountain[]): string {
-  // Rounded so tiny decay steps between digests don't restart the transition.
-  return stories.map((story) => `${story.id}:${story.height.toFixed(3)}:${story.momentum === null ? 'n' : story.momentum.toFixed(1)}`).join('|')
+  // Every input to the height field belongs here: new coverage abroad and moving
+  // shoulders must update even when the rounded summit height is unchanged.
+  // Display copy is excluded so headline updates don't rebuild a 512 × 256 field.
+  return JSON.stringify(stories.map((story) => [
+    story.id, story.height.toFixed(3), story.momentum?.toFixed(1) ?? null,
+    story.summit.lat, story.summit.lon,
+    story.footprint.map(({ lat, lon, radiusKm, weight }) => [lat, lon, radiusKm, weight]),
+    story.countries.map(({ countryCode, outlets }) => [countryCode, outlets]),
+  ]))
 }
 
 export function buildStoryTerrain(stories: StoryMountain[], width = 512, height = 256): StoryTerrain {
@@ -135,7 +142,9 @@ export function buildStoryTerrain(stories: StoryMountain[], width = 512, height 
 
 /** The story owning the terrain at a point, if any (for hover). */
 export function storyAt(terrain: StoryTerrain, lat: number, lon: number): StoryMountain | null {
-  const x = clamp(Math.floor(((lon + 180) / 360) * terrain.width), 0, terrain.width - 1)
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null
+  const column = Math.floor(((lon + 180) / 360) * terrain.width)
+  const x = ((column % terrain.width) + terrain.width) % terrain.width
   const y = clamp(Math.floor(((lat + 90) / 180) * terrain.height), 0, terrain.height - 1)
   const pixel = y * terrain.width + x
   const index = terrain.owner[pixel]!

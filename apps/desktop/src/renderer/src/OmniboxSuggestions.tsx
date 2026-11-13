@@ -188,6 +188,11 @@ export function useOmnibox(options: OmniboxOptions) {
 
   return {
     submit,
+    /** An explicit command-menu request must reopen a list previously dismissed with Escape. */
+    reopen: (): void => {
+      reset()
+      setDismissed(false)
+    },
     inputProps: {
       value,
       onChange,

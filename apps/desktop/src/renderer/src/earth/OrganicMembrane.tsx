@@ -339,7 +339,7 @@ export function OrganicMembrane({ signals, terrain, settings, phaseTimeSeconds, 
     const nextKind = kind
     const crossesSourceBoundary = state.sourceKind !== nextKind
     // A change too small to see (a minute of decay) is applied at once: no seconds of full-rate frames.
-    const settle = crossesSourceBoundary || maxTextureDelta(visible, next) < ORGANIC_NOOP_DELTA
+    const settle = settings.paused || phaseTimeSeconds !== undefined || crossesSourceBoundary || maxTextureDelta(visible, next) < ORGANIC_NOOP_DELTA
     state.fromData = settle ? next.slice() : visible
     state.toData = next
     state.sourceKind = nextKind
@@ -351,7 +351,7 @@ export function OrganicMembrane({ signals, terrain, settings, phaseTimeSeconds, 
     uniforms.uInterestTransition.value = state.transition
     uniforms.uStoryTerrain.value = nextKind === 'story' ? 1 : 0
     invalidate()
-  }, [key, kind, targetData, uniforms, invalidate])
+  }, [key, kind, targetData, uniforms, invalidate, settings.paused, phaseTimeSeconds])
 
   useEffect(() => {
     lifecycleGeneration.current += 1
@@ -422,7 +422,7 @@ export function OrganicMembrane({ signals, terrain, settings, phaseTimeSeconds, 
     if (phaseTimeSeconds !== undefined) phaseClockRef.current = Math.max(0, phaseTimeSeconds)
     else if (!settings.paused) phaseClockRef.current += Math.min(delta, 0.1)
     uniforms.uOrganicTime.value = phaseClockRef.current
-    const linear = state.transition >= 1
+    const linear = settings.paused || phaseTimeSeconds !== undefined || state.transition >= 1
       ? 1
       : clamp((now - state.transitionStart) / transitionMs, 0, 1)
     state.transition = smoothstep(linear)

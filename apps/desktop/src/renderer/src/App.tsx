@@ -759,8 +759,9 @@ export function App() {
   const [tidyRequest, setTidyRequest] = useState<number | undefined>(undefined)
   const storyMode = fieldView === 'public' && !designPreview && globeLayerSet.has('news') && storyStories.length > 0
   const storyKey = storyMode ? storyTerrainKey(storyStories) : ''
-  // Rebuilt only when a height or story changes, not on every digest.
-  const storyTerrain = useMemo(() => (storyMode ? buildStoryTerrain(storyStories) : null), [storyKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Rebuild geometry only when its inputs change, while hover always uses the latest headlines and coverage.
+  const storyGeometry = useMemo(() => (storyMode ? buildStoryTerrain(storyStories) : null), [storyKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  const storyTerrain = useMemo(() => storyGeometry ? { ...storyGeometry, stories: storyStories } : null, [storyGeometry, storyStories])
   const zoomCommit = useRef(0)
   const [pinnedStoryId, setPinnedStoryId] = useState<string | null>(null)
   const [peakIndex, setPeakIndex] = useState(-1)
@@ -2714,6 +2715,7 @@ export function App() {
   /** ⌘K: the address bar in command mode (out of full width, where it is hidden). */
   const openCommandMenu = (): void => {
     if (fullWidth) setBrowserFullWidth(false)
+    omnibox.reopen()
     setQuery('> ')
     requestAnimationFrame(() => {
       input.current?.focus()

@@ -8,6 +8,7 @@ import { createServer } from 'node:http'
 import { join } from 'node:path'
 import { deflateSync as zlibSync } from 'node:zlib'
 import { CheckFailure, expect, repo, runAppCheck } from './lib.mjs'
+import { terrainUpdates } from './terrain-updates.mjs'
 
 // The app's default: the website's edge proxy in front of the Neon registry (see apps/desktop/src/main/beacons/defaults.ts).
 const LIVE_REGISTRY = 'https://intoponet.com/registry'
@@ -899,6 +900,7 @@ async function appWindowRecovers(ctx) {
 }
 
 export const checks = {
+  STORY_TERRAIN_UPDATES: terrainUpdates,
   // ---- Foundations ---------------------------------------------------------
   async APP_BOOT(ctx) {
     await ctx.wait(`!!document.querySelector('.topbar') && !!document.querySelector('canvas')`, 30_000, 'the header and globe to render')
@@ -1034,6 +1036,7 @@ export const checks = {
     await ctx.delay(180)
     await ctx.shot('morph-late')
     await ctx.wait(`!document.querySelector('.sources-carousel')`, 5_000, 'the carousel to hand over to the browser')
+    await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.isVisible && /^https?:/.test(s.url))`, 30_000, 'the chosen source to navigate in the browser')
     const state = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getState().then((s) => JSON.stringify(s))`))
     expect(state.isVisible, 'The browser did not open the chosen source.')
     await ctx.delay(2500)
@@ -1268,11 +1271,25 @@ export const checks = {
     await ctx.delay(2500)
     const clipped = await ctx.evaluate(`(() => { const t = document.querySelector('.olds-track')?.getBoundingClientRect(); if (!t) return 0; return [...document.querySelectorAll('.olds-card')].filter((c) => { const r = c.getBoundingClientRect(); return r.top < t.top - 1 || r.bottom > t.bottom + 1 }).length })()`)
     expect(clipped === 0, `${clipped} timeline cards are clipped.`)
+    // A settled timeline must not measure itself and re-render on every animation frame.
+    const idleReads = await ctx.evaluate(`new Promise((resolve) => {
+      const track = document.querySelector('.olds-track');
+      const original = track.getBoundingClientRect;
+      let reads = 0;
+      track.getBoundingClientRect = function () { reads += 1; return original.call(this); };
+      setTimeout(() => { track.getBoundingClientRect = original; resolve(reads); }, 1000);
+    })`)
+    expect(idleReads <= 3, `The idle Olds timeline forced ${idleReads} layout reads in one second.`)
+    await ctx.evaluate(`document.querySelector('.olds-track').focus(); true`)
+    await ctx.press('Home')
+    await ctx.wait(`document.querySelector('.olds-track').scrollLeft < 2 && !document.querySelector('.olds-edge.is-left')`, 5000, 'Home to reach the earliest events and update the scroll controls')
+    await ctx.press('End')
+    await ctx.wait(`!document.querySelector('.olds-edge.is-right')`, 5000, 'End to reach the latest events and update the scroll controls')
     await ctx.press('Escape')
     const closed = await ctx.wait(`!document.querySelector('.olds-sheet')`, 5000).then(() => true, () => false)
     expect(closed, 'Escape does not close The Olds.')
     await ctx.wait(`!!document.querySelector('.page-tab-row')`, 5000, 'the tab strip to come back once The Olds closed')
-    return `Views ${views.join('/')}; sections: ${sections.join(', ') || 'path only'}; the tab strip hidden while The Olds was open.`
+    return `Views ${views.join('/')}; sections: ${sections.join(', ') || 'path only'}; ${idleReads} idle timeline layout reads in 1 s; Home/End controls work; the tab strip hidden while The Olds was open.`
   },
 
   // An outlet's earlier coverage of a story (its topic pages, then Wayback Machine snapshots), newest first.
@@ -3379,6 +3396,15 @@ export const checks = {
       times.sort((a, b) => a - b)
       const p95 = times[Math.ceil(times.length * 0.95) - 1]
       expect(p95 < 150, `⌘K took ${Math.round(p95)} ms to show its list (p95; must be under 150 ms, including the round trip from the page).`)
+      // Escape can dismiss ordinary suggestions while leaving the input focused.
+      // Opening Commands explicitly must clear that dismissed state, even without a new focus event.
+      await typeCommand('Ghana')
+      await ctx.wait(`!!document.querySelector('[role="listbox"] [role="option"]')`, 3000, 'ordinary place suggestions')
+      await ctx.press('Escape')
+      await ctx.wait(`!document.querySelector('[role="listbox"]')`, 3000, 'Escape to dismiss ordinary suggestions')
+      await ctx.keyInPage('/second', 'K', ['meta'])
+      await ctx.wait(`document.querySelector('.command-input input').value.startsWith('>') && !!document.querySelector('[role="listbox"] [role="option"]')`, 3000, 'Commands to reopen after Escape dismissed ordinary suggestions')
+      await ctx.press('Escape')
       // Typing ">" first does the same; with nothing typed after it, actions only.
       await typeCommand('>')
       const all = await rows()

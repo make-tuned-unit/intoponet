@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { buildStoryMountains, storyHeight } from './storyMountains'
-import type { NewsItemInput, NewsSourceMeta } from './newsDigest'
+import { NEWS_DIGEST_SCHEMA, parseNewsDigest, type NewsItemInput, type NewsSourceMeta } from './newsDigest'
 import { matchTabsToStories, mountainHeadlines } from './storyTabs'
-import { buildStoryTerrain, storyAt } from '../../renderer/src/globe/storyTerrain'
+import { buildStoryTerrain, heightAt, storyAt, storyTerrainKey } from '../../renderer/src/globe/storyTerrain'
 
 const now = Date.parse('2026-11-06T12:00:00Z')
 const hoursAgo = (hours: number): string => new Date(now - hours * 3_600_000).toISOString()
@@ -158,6 +158,30 @@ describe('story mountains', () => {
     expect(b.id).toBe(a.id)
     expect(b.summit).toEqual(a.summit)
   })
+
+  it('raises an established summit vertically as fresh independent coverage gains momentum', () => {
+    const sources = Array.from({ length: 12 }, (_, i) => source(`s${i}`, 'KE'))
+    const title = 'Kenyan cult leader Paul Mackenzie sentenced to 200 years'
+    const earlier = sources.slice(0, 2).map((s) => item(s.sourceId, title, 8))
+    const first = buildStoryMountains({ sources, items: [...background(sources), ...earlier], now })
+    const growing = buildStoryMountains({ sources, items: [...background(sources), ...earlier, ...sources.slice(2).map((s) => item(s.sourceId, title, 1))], now, previous: first.memory })
+    const a = first.stories.find((story) => story.terms.includes('mackenzie'))!
+    const b = growing.stories.find((story) => story.id === a.id)!
+    expect(b.summit).toEqual(a.summit)
+    expect(b.momentum).toBeGreaterThan(0)
+    expect(b.height).toBeGreaterThan(a.height)
+    expect(heightAt(buildStoryTerrain([b]), b.summit.lat, b.summit.lon)).toBeGreaterThan(heightAt(buildStoryTerrain([a]), a.summit.lat, a.summit.lon))
+  })
+
+  it('keeps large-country mountains through the renderer and cache boundary', () => {
+    const sources = [source('a', 'GB', 'international'), source('b', 'US', 'international')]
+    const { stories } = buildStoryMountains({ sources, items: [...background(sources), ...sources.map((s) => item(s.sourceId, 'Russian athletes barred over Ukraine war'))], now })
+    const russia = stories.find((story) => story.countryCode === 'RU')!
+    expect(russia.footprint[0]!.radiusKm).toBeGreaterThan(2_000)
+    const parse = (mountains: typeof stories) => parseNewsDigest(JSON.stringify({ schema: NEWS_DIGEST_SCHEMA, generatedAt: hoursAgo(0), countries: [], places: [], mountains }))!.mountains
+    expect(parse(stories)).toEqual(stories)
+    expect(parse([{ ...russia, footprint: [{ ...russia.footprint[0]!, radiusKm: 20_000 }] }])).toEqual([])
+  })
 })
 
 describe('story terrain', () => {
@@ -190,5 +214,36 @@ describe('story terrain', () => {
     expect(terrain.data[at(0, 90) + 2]!).toBeGreaterThan(0.9)
     expect(terrain.data[at(0, -120)]!).toBe(0)
     expect(storyAt(terrain, 0, -120)).toBeNull()
+  })
+
+  it('grows upward on the same footprint and wears down on the same scale', () => {
+    const quiet = story('a', 0, 0, storyHeight(2))
+    const busy = { ...quiet, height: storyHeight(40), momentum: 0.7 }
+    const low = buildStoryTerrain([quiet])
+    const high = buildStoryTerrain([busy])
+    for (let pixel = 0; pixel < low.owner.length; pixel += 1) {
+      expect(high.owner[pixel]).toBe(low.owner[pixel])
+      expect(high.data[pixel * 4]!).toBeGreaterThanOrEqual(low.data[pixel * 4]!)
+    }
+    expect(heightAt(high, 0, 0) / heightAt(low, 0, 0)).toBeCloseTo(busy.height / quiet.height, 5)
+    expect(heightAt(buildStoryTerrain([quiet]), 0, 0)).toBeCloseTo(heightAt(low, 0, 0), 6)
+  })
+
+  it('invalidates terrain for changed geography and coverage, but not headline copy', () => {
+    const a = story('a', 0, 0, 0.4)
+    const key = storyTerrainKey([a])
+    expect(storyTerrainKey([{ ...a, title: 'A newer headline', publisher: 'Another outlet' }])).toBe(key)
+    expect(storyTerrainKey([{ ...a, summit: { ...a.summit, lon: 90 } }])).not.toBe(key)
+    expect(storyTerrainKey([{ ...a, footprint: [{ ...a.footprint[0]!, radiusKm: 1200 }] }])).not.toBe(key)
+    const abroad = { countryCode: 'JP', outlets: 4, articles: 4, firstAt: hoursAgo(1), headline: { title: 'Coverage in Japan', url: 'https://example.com/jp', publisher: 'Japan', publishedAt: hoursAgo(1) } }
+    expect(storyTerrainKey([{ ...a, countries: [abroad] }])).not.toBe(key)
+    expect(storyTerrainKey([{ ...a, countries: [abroad] }])).not.toBe(storyTerrainKey([{ ...a, countries: [{ ...abroad, outlets: 6 }] }]))
+  })
+
+  it('picks the same story on either side of the longitude seam', () => {
+    const terrain = buildStoryTerrain([story('a', 0, -178, 0.4), story('b', 0, 178, 0.4)])
+    expect(storyAt(terrain, 0, 180)?.id).toBe(storyAt(terrain, 0, -180)?.id)
+    expect(storyAt(terrain, 0, 540)?.id).toBe(storyAt(terrain, 0, -180)?.id)
+    expect(storyAt(terrain, NaN, 0)).toBeNull()
   })
 })

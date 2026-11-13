@@ -1,7 +1,7 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { Archive, ArrowLeft, BookOpen, ChevronsLeft, ChevronsRight, ExternalLink, GitBranch, History, List, Loader2, Newspaper, Rows3, Scale, X } from 'lucide-react'
 import { OldsStory, SupportBadge, supportWords, type StorySelection } from './OldsStory'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { OLDS_NOTE, coverageOutlet, type OldsChapter, type OldsChronicleEntry, type OldsDate, type OldsEdge, type OldsNode, type OldsThread } from '@intoponet/browser-api'
 import { useGlassSheen } from '../glass/useGlassSheen'
 import { OldsCoverage, type CoverageArticle } from './OldsCoverage'
@@ -39,6 +39,7 @@ export function relationTo(edge: OldsEdge, rootId: string): Relation {
 
 type Entry = { node: OldsNode; edge: OldsEdge; relation: Relation; year: number | null }
 type TimelineItem = { kind: 'root'; year: number } | { kind: 'entry'; entry: Entry; year: number } | { kind: 'event'; event: OldsChronicleEntry; index: number; year: number }
+const NO_CHAPTERS: OldsChapter[] = []
 
 /** Decimal year of an ISO date ("2026-10-27" → 2026.82) for ordering. */
 function isoYear(iso: string): number {
@@ -179,12 +180,12 @@ export function OldsPanel({
     for (const entry of allEntries) counts[supportWords(entry.edge.support).tone] += 1
     return counts
   }, [allEntries])
-  const dated = entries.filter((entry) => entry.year !== null)
-  const undated = entries.filter((entry) => entry.year === null)
+  const dated = useMemo(() => entries.filter((entry) => entry.year !== null), [entries])
+  const undated = useMemo(() => entries.filter((entry) => entry.year === null), [entries])
   const selected = entries.find((entry) => `${entry.node.id}|${entry.relation.key}` === selectedId) ?? null
   const rootYear = root ? yearOf(root) : null
 
-  const chapters = thread?.chapters ?? []
+  const chapters = thread?.chapters ?? NO_CHAPTERS
   const chapter = chapters.find((item) => item.id === chapterId) ?? null
 
   useEffect(() => {
@@ -195,10 +196,12 @@ export function OldsPanel({
   }, [thread?.rootId, thread?.context]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Which way the timeline can still scroll, and which chapter its middle is in.
-  const updateEdges = (): void => {
+  const updateEdges = useCallback((): void => {
     const el = track.current
     if (!el) return
-    setEdges({ left: el.scrollLeft > 8, right: el.scrollLeft + el.clientWidth < el.scrollWidth - 8 })
+    const left = el.scrollLeft > 8
+    const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 8
+    setEdges((previous) => previous.left === left && previous.right === right ? previous : { left, right })
     const middle = el.getBoundingClientRect().left + el.clientWidth / 2
     let nearest: { year: number; distance: number } | null = null
     for (const item of el.querySelectorAll<HTMLElement>('[data-year]')) {
@@ -207,11 +210,7 @@ export function OldsPanel({
       if (!nearest || distance < nearest.distance) nearest = { year: Number(item.dataset['year']), distance }
     }
     setCurrentChapterId(nearest ? chapterAt(chapters, nearest.year)?.id ?? null : null)
-  }
-  useEffect(() => {
-    const id = requestAnimationFrame(updateEdges)
-    return () => cancelAnimationFrame(id)
-  }) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [chapters])
 
   // Esc closes an open chapter or event before it closes The Olds.
   const detailOpen = !!chapterId || !!selectedId || !!story
@@ -262,6 +261,28 @@ export function OldsPanel({
     items.splice(at < 0 ? items.length : at, 0, { kind: 'root', year: rootYear ?? new Date().getFullYear() })
     return items
   }, [dated, chronicle, rootYear, chapterMode])
+
+  // Measure only when the timeline changes, scrolls or resizes. An effect after every
+  // render plus a fresh edges object otherwise keeps this whole panel rendering at 60 Hz.
+  useEffect(() => {
+    const el = track.current
+    if (!el) return
+    let frame = 0
+    const schedule = (): void => {
+      if (!frame) frame = requestAnimationFrame(() => { frame = 0; updateEdges() })
+    }
+    const observer = new ResizeObserver(schedule)
+    observer.observe(el)
+    const content = el.querySelector('.olds-timeline')
+    if (content) observer.observe(content)
+    el.addEventListener('scroll', schedule, { passive: true })
+    schedule()
+    return () => {
+      cancelAnimationFrame(frame)
+      observer.disconnect()
+      el.removeEventListener('scroll', schedule)
+    }
+  }, [timeline, view, updateEdges])
 
   const grouped = useMemo(() => {
     const groups = new Map<string, Entry[]>()
@@ -462,7 +483,6 @@ export function OldsPanel({
               ref={track}
               tabIndex={0}
               aria-label="Timeline: drag, scroll or use the arrow keys to move through time"
-              onScroll={updateEdges}
               onWheel={(event) => {
                 // A vertical wheel or trackpad swipe moves through time.
                 if (Math.abs(event.deltaY) > Math.abs(event.deltaX)) event.currentTarget.scrollLeft += event.deltaY

@@ -704,8 +704,12 @@ function parseMountains(value: unknown[]): StoryMountain[] {
       !finite(row['coverage']) || !finite(row['outlets']) || !finite(row['articles']) || !unit(row['height']) || !text(row['countryCode'], 3) ||
       !text(row['firstAt'], 40) || !text(row['latestAt'], 40) || !isRecord(row['summit']) || !latLon(row['summit']) || !text(row['summit']['name'], 120)) return []
     const summit = row['summit']
+    // Country-wide fallback footprints come from the place catalog. Russia's
+    // 2,068 km footprint exceeds the old blanket 2,000 km cap; discarding it
+    // dropped an otherwise valid story and shifted every peak ranked below it.
+    const footprintRadiusLimit = Math.max(2_000, COUNTRY_ROWS.find((country) => country[0] === row['countryCode'])?.[4] ?? 0)
     const footprint = Array.isArray(row['footprint']) ? row['footprint'].flatMap((anchor): StoryAnchor[] => (
-      isRecord(anchor) && latLon(anchor) && finite(anchor['radiusKm']) && anchor['radiusKm'] > 0 && anchor['radiusKm'] <= 2_000 && unit(anchor['weight']) && text(anchor['name'], 120)
+      isRecord(anchor) && latLon(anchor) && finite(anchor['radiusKm']) && anchor['radiusKm'] > 0 && anchor['radiusKm'] <= footprintRadiusLimit && unit(anchor['weight']) && text(anchor['name'], 120)
         ? [{ lat: anchor['lat'] as number, lon: anchor['lon'] as number, radiusKm: anchor['radiusKm'], weight: anchor['weight'], name: anchor['name'] }] : []
     )).slice(0, 32) : []
     const countries = Array.isArray(row['countries']) ? row['countries'].flatMap((item): StoryCountryCoverage[] => {

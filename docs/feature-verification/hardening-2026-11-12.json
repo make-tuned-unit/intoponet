@@ -1,0 +1,510 @@
+{
+  "schema": "intoponet.hardening.v1",
+  "started": "2026-11-13T03:06:51.605Z",
+  "finished": "2026-11-13T03:33:12.630Z",
+  "baseCommit": "ac3137a93a1e0379c8551d40070b0ae2eaa7619c",
+  "scope": "Desktop product hardening, with particular attention to The Olds and vertical story topography.",
+  "fixes": [
+    "The Olds measures its timeline only when content, scroll position or size changes, rather than continuously re-rendering while idle.",
+    "Terrain cache keys include summit coordinates, footprints and coverage abroad, so geographic updates cannot be silently ignored.",
+    "Hover picking reads current story metadata while unchanged geometry is reused.",
+    "Story picking wraps correctly across the longitude seam.",
+    "Terrain transitions settle immediately under reduced motion, including a transition already in progress.",
+    "Valid country-wide footprints larger than 2,000 km survive digest validation, preserving every story and the peak ranking.",
+    "Opening Commands explicitly resets dismissed address suggestions and any previous selection."
+  ],
+  "validation": {
+    "typecheck": "passed: all workspaces after the final changes",
+    "productionBuild": "passed",
+    "testsPassed": 1664,
+    "testsSkipped": 8,
+    "skippedReason": "Postgres integration tests require BEACON_TEST_DATABASE_URL; no test database was configured.",
+    "featureChecksPassed": 63,
+    "featureChecksFailed": 0,
+    "method": "Broad core/network sweep, full local-model checks, then targeted reruns for changed or failed flows. Native keyboard reruns focused their test window before input."
+  },
+  "measurements": {
+    "oldsIdleTimelineLayoutReadsPerSecond": 0,
+    "commandMenuP95Ms": 56,
+    "workspaceSwitchMs": [
+      20,
+      28
+    ],
+    "storyTerrainBuild": {
+      "stories": 60,
+      "anchors": 140,
+      "runs": 12,
+      "medianMs": 7.160584,
+      "maxMs": 68.089833,
+      "environment": "Local Node benchmark; not an end-to-end frame budget."
+    },
+    "gpuTerrain": {
+      "lowSummit": 0.196,
+      "highSummit": 0.589,
+      "fixedCoordinates": true,
+      "compiledRadialDisplacement": true,
+      "smoothTransition": true,
+      "coverageAbroadUpdates": true,
+      "reducedMotionSettlesImmediately": true
+    }
+  },
+  "localVisualEvidence": [
+    "experiments/e2e/evidence/hardening-2026-11-12/story-low.png",
+    "experiments/e2e/evidence/hardening-2026-11-12/story-high.png"
+  ],
+  "resolvedInitialFailures": [
+    {
+      "id": "STORY_MOUNTAINS",
+      "original": "Peaks lists [\"Nvidia CEO Jensen Huang resigns in big blow to AI boom\",\"Israeli strike on Gaza hospital deadliest since election\",\"Putin agrees to European participation in next round of Ukraine peace talks\",\"Trump pulls Vance from Iran talks in bet on shaky status quo\",\"Major Microsoft Outlook outage disrupts email, including for businesses in Belize\"], not the story mountains in order [\"Nvidia CEO Jensen Huang resigns in big blow to AI boom\",\"Israeli strike on Gaza hospital deadliest since election\",\"Putin agrees to European participation in next round of Ukraine peace talks\",\"Trump pulls Vance from Iran talks in bet on shaky status quo\",\"Major Microsoft Outlook outage disrupts email, including for businesses in Belize\"].",
+      "verified": "60 story mountains, listed in the same order under Peaks; highest \"Nvidia CEO Jensen Huang resigns in big blow to AI boom\" (30 outlets, 13 other countries); a pinned story that wore away stayed unpinned."
+    },
+    {
+      "id": "COMMAND_MENU",
+      "original": "Timed out waiting for: the command menu to show",
+      "verified": "⌘K from a page shows command mode in 56 ms (p95); \">\" too; no requests while typing; actions, tabs and places ranked; keyboard and Enter run them (copy, zoom, sidebar, protection, Knowledge); axe clean."
+    }
+  ],
+  "checks": {
+    "APP_BOOT": {
+      "title": "App starts",
+      "tier": "core",
+      "status": "pass",
+      "seconds": 24,
+      "notes": "Header: Private · Bookmarks · The Olds · Knowledge · My map · Settings. Its page refused an inline script and a stranger's image, and nothing of its own across two reloads. A damaged profile opened, its unreadable files kept aside and an earlier run's unfinished temporary files deleted. The app window reloaded after its page crashed and after it hung, with its tabs, pair and page area, no view or listener added and a running tour's page closed; closed, it paused the pair's videos (a frame's too) and came back with its tabs from the Dock (a quick window open, nothing playing again by itself) and from File › New Tab."
+    },
+    "SETTINGS": {
+      "title": "Settings and Privacy",
+      "tier": "core",
+      "status": "pass",
+      "seconds": 11,
+      "notes": "Settings and Privacy sections present; a page under Settings stays hidden through a re-layout and comes back when it closes."
+    },
+    "ACCESSIBILITY": {
+      "title": "Accessible and keyboard friendly",
+      "tier": "core",
+      "status": "pass",
+      "seconds": 20,
+      "notes": "No WCAG 2.2 AA violations (axe); panels open with Enter, close with Escape, focus returns; link rules keep focus as they move and go."
+    },
+    "TABS": {
+      "title": "Modern tabs",
+      "tier": "core",
+      "status": "pass",
+      "seconds": 28,
+      "notes": "Moved by command, drag and ⌥⇧↓ (focus kept); pinned tab first, icon-only and saved; speaker muted and unmuted a playing tab; spinner while a slow page loaded; a tab dragged or moved past a pair went round it and the pair held; arrows went through a pair in rail and strip, and Delete closed the focused side; no axe violations in rail or strip."
+    },
+    "LIBRARY": {
+      "title": "Encrypted private library, pins and beacon consent",
+      "tier": "core",
+      "status": "pass",
+      "seconds": 9,
+      "notes": "Migrated to encrypted library; pin hidden; beacon consent requires agreement."
+    },
+    "COLLECTIONS_IMPORT": {
+      "title": "Collections explained and split; tags",
+      "tier": "core",
+      "status": "pass",
+      "seconds": 9,
+      "notes": "Explained and split into 2. "
+    },
+    "FLY_TO": {
+      "title": "Fly to a place",
+      "tier": "core",
+      "status": "pass",
+      "seconds": 12,
+      "notes": "Charlottetown PEI and \"Fredericto\" flew on the globe, with the locator shown."
+    },
+    "GLOBE_MOTION": {
+      "title": "Globe stays where you put it",
+      "tier": "core",
+      "status": "pass",
+      "seconds": 10,
+      "notes": "Locator 734,473 → 748,484 after zoom."
+    },
+    "COUNTRY_NAMES": {
+      "title": "Every country named and clickable",
+      "tier": "core",
+      "status": "pass",
+      "seconds": 57,
+      "notes": "16 names at the start; clicked Venezuela → Venezuela; 7 flights named correctly."
+    },
+    "GLOBE_LIVE": {
+      "title": "Live public globe",
+      "tier": "network",
+      "status": "pass",
+      "seconds": 11,
+      "notes": "298 public signals across 4 active layers. Hover to preview, click to explore, or search a place below."
+    },
+    "SOURCE_CAROUSEL": {
+      "title": "Sources carousel",
+      "tier": "network",
+      "status": "pass",
+      "notes": "Cards with 4 images, 3 bylines, 4 summaries. Carousel flipped from South China Morning Post to Daily Mirror (Wijeya Newspapers); chose \"South China Morning Post World: Nvidia’s hunt for Jensen Huang’s successor: insi\" and the browser opened https://www.scmp.com/news/china/diplomacy/article/3374268/nvidias-hunt-jensen-huangs-successor-insiders-rivals-and-trump-pick (page was closed before).",
+      "seconds": 28
+    },
+    "WORLD_STORIES": {
+      "title": "Stories covered across the world",
+      "tier": "network",
+      "status": "pass",
+      "notes": "20 world stories; scrolls 400px; offline, the empty list waits for a connection.",
+      "seconds": 13
+    },
+    "COUNTRY_PANEL": {
+      "title": "A country's news and bigger picture",
+      "tier": "network",
+      "status": "pass",
+      "notes": "Facts ok, recent history 2025, 2024, 2022, 2020, 12 headlines.",
+      "seconds": 31
+    },
+    "OLDS_HEADLINE": {
+      "title": "The history behind a headline",
+      "tier": "network",
+      "status": "pass",
+      "seconds": 93,
+      "notes": "Israel → 2026 Israeli legislative election: 20 dated events from 10 Apr 1973; Ebola, South Africa and Guernsey guards ok; related Judiciary of Israel, Israeli law, Politics of Israel, Elections in Israel. Brazil → 2026 Brazilian general election. Honduras → Honduras."
+    },
+    "OLDS_COUNTRY": {
+      "title": "A country's history",
+      "tier": "network",
+      "status": "pass",
+      "seconds": 5,
+      "notes": "Capital Tórshavn; 7 chapters; latest event 2025."
+    },
+    "OLDS_DEBATE": {
+      "title": "Competing interpretations",
+      "tier": "network",
+      "status": "pass",
+      "seconds": 3,
+      "notes": "Anthropologist Joseph Henrich, Rodney Stark, Historian Joel Mokyr, Williams, Voltaire, Bob Allen"
+    },
+    "OLDS_UI": {
+      "title": "The Olds panel from a headline",
+      "tier": "network",
+      "status": "pass",
+      "notes": "Views Story/Timeline/List; sections: HOW WE GOT HERE, TOPICS BEHIND THIS STORY; 0 idle timeline layout reads in 1 s; Home/End controls work; the tab strip hidden while The Olds was open.",
+      "seconds": 42
+    },
+    "OLDS_COVERAGE": {
+      "title": "An outlet's earlier coverage",
+      "tier": "network",
+      "status": "pass",
+      "seconds": 41,
+      "notes": "“Why did Nvidia CEO Jensen Huang resign, and who is Colette K”: 4 headlines (NOVEMBER 2026 – NOVEMBER 2026), then 4 reaching NOVEMBER 2026; Go further back"
+    },
+    "BROWSE": {
+      "title": "Browse the web",
+      "tier": "network",
+      "status": "pass",
+      "seconds": 43,
+      "notes": "Toolbar: Protected, Translate, Capture, PDF, Pin, Absorb, Bookmarks, never cramped with the sidebar kept open from 180 to 420 px (labelled at no px, icons otherwise) or as icons (labelled); pages see Chrome/156.0.8078.48; tab closed cleanly; a self-closing page took its tab; a background tab loaded in 0.4 s, was throttled again and stayed silent until shown; ⌘W closed tabs from inside the page, ⌘⇧T reopened one, ⌘= zoom shown and kept for the site, ⌘1/⌘9 picked tabs; the app window stayed on the app."
+    },
+    "OMNIBOX": {
+      "title": "Address bar suggestions",
+      "tier": "network",
+      "status": "pass",
+      "notes": "\"localh\" completed to localhost:64090; history row opened in a background tab with ⌘↵; then \"Switch to tab\" landed on it (1 tab); Backspace removed the completion; \"Fredericton\" flew the globe.",
+      "seconds": 25
+    },
+    "PROTECTION": {
+      "title": "Ad and tracker protection",
+      "tier": "network",
+      "status": "pass",
+      "seconds": 16,
+      "notes": "Protected · 3 ads · 0 trackers blocked · Block ads · Block trackers · Encrypted DNS · Local IP hidden · No VPN · Customize site · Pause on this site"
+    },
+    "PERMISSIONS": {
+      "title": "Site permissions and sign-in popups",
+      "tier": "network",
+      "status": "pass",
+      "seconds": 15,
+      "notes": "Location allowed via the bar; a pop-up without a click was blocked and opened with \"Allow once\"; a background tab asking was named (\"Background tab “Example Domain” · example.org\"); a clicked popup kept its opener; a clicked _blank link opened a tab."
+    },
+    "EXTERNAL_APPS": {
+      "title": "Links to other apps",
+      "tier": "core",
+      "status": "pass",
+      "seconds": 16,
+      "notes": "\"Open Mail? 127.0.0.1:64260 wants to open mailto:someone@example.com?subject=Hello\" asked for a mailto: link; the tab stayed on http://127.0.0.1:64260/; Cancel closed it and no prompt storm followed. \"Always allow\" in Main was not used by a workspace with its own sign-ins, which kept its own answer in its own file until its sign-ins were turned off."
+    },
+    "ERROR_PAGE": {
+      "title": "Error page with Retry",
+      "tier": "core",
+      "status": "pass",
+      "seconds": 12,
+      "notes": "\"127.0.0.1:64781 refused to connect\" with Retry; toolbar kept http://127.0.0.1:64781/; Retry loaded the page once a server listened; a self-signed site showed \"Connection not secure\" with its certificate and Back returned."
+    },
+    "PDF_VIEWER": {
+      "title": "PDFs open in the tab",
+      "tier": "core",
+      "status": "pass",
+      "seconds": 7,
+      "notes": "doc.pdf opened in the tab in Chromium's viewer; the attachment downloaded as intoponet-e2e-attachment.pdf."
+    },
+    "PAGE_APPEARANCE": {
+      "title": "Light and dark pages",
+      "tier": "core",
+      "status": "pass",
+      "seconds": 19,
+      "notes": "Pages: dark→dark, light→light, system→dark, dark mode canvas: plain 255,255,255, dark 18,18,18 (system is dark); Settings shows the choice and default-browser status."
+    },
+    "PRIVATE_BROWSING": {
+      "title": "Private browsing",
+      "tier": "network",
+      "status": "pass",
+      "seconds": 21,
+      "notes": "Private tab marked, no footprints, closed when private mode ended; its HTTP sign-in did not outlive it."
+    },
+    "SAVED_PASSWORDS": {
+      "title": "Saved passwords",
+      "tier": "core",
+      "status": "pass",
+      "seconds": 28,
+      "notes": "Failed sign-in not offered; offered, saved, bookmarked in Accounts (sealed file, no plaintext), filled one account (password only after a real click; a script click did not release it), asked between two, listed in Settings; private tab untouched (localhost:49454)."
+    },
+    "EXCLUDED_SITES": {
+      "title": "Sites to leave out",
+      "tier": "network",
+      "status": "pass",
+      "seconds": 11,
+      "notes": "Absorb refused; no recent page kept."
+    },
+    "DOWNLOADS_HISTORY": {
+      "title": "Downloads and History",
+      "tier": "core",
+      "status": "pass",
+      "seconds": 23,
+      "notes": "Downloaded 640 KB with progress → done; on disk with quarantine \"0083;6af68027;Intoponet;7CF49980-489D-4433-82D0-21F17B36E9C0\"; History found and deleted a visit; private visit not kept; a quit waited for the late history and library saves and left no temporary files."
+    },
+    "CAPTURE": {
+      "title": "Screenshots into folders",
+      "tier": "network",
+      "status": "pass",
+      "seconds": 16,
+      "notes": "Screenshot saved; \"New folder…\" offered; a private tab's capture is named neutrally with no address."
+    },
+    "PDF_EXPORT": {
+      "title": "Save page as PDF",
+      "tier": "core",
+      "status": "pass",
+      "seconds": 50,
+      "notes": "Article: 5 pages, 2 images, tagged with outline, ads/hidden/overlay text left out, bookmarked in \"Reading\" with the PDF linked; shop page saved as seen without ads; private tab asked where, neutral name, no Where-from or bookmark; 2 PDFs in Bookmarks › PDFs (private one not listed), removing one keeps the file."
+    },
+    "PAYWALL_ALTERNATIVES": {
+      "title": "Paywall detection",
+      "tier": "network",
+      "status": "pass",
+      "seconds": 23,
+      "notes": "nytimes.com section page: paywalled=false (no signals)."
+    },
+    "ABSORB": {
+      "title": "Absorb, search and claims",
+      "tier": "network",
+      "status": "pass",
+      "seconds": 11,
+      "notes": "Absorbed 10572 words; 40 claims; selection absorb ok."
+    },
+    "BEACONS_REGISTRY": {
+      "title": "Beacon registry on Neon",
+      "tier": "network",
+      "status": "pass",
+      "seconds": 4,
+      "notes": "Live registry healthy and readable from the app."
+    },
+    "AUTO_TRANSLATE": {
+      "title": "Automatic page translation",
+      "tier": "full",
+      "status": "pass",
+      "notes": "fontanka.ru translated from Russian with no clicks (Russian downloaded by itself; 3012 Latin vs 0 Cyrillic letters); \"Never translate this site\" sticks.",
+      "seconds": 161
+    },
+    "ROUGH_TRANSLATE": {
+      "title": "Languages without a model",
+      "tier": "full",
+      "status": "pass",
+      "notes": "Faroese headlines translated roughly via Icelandic, labelled as such.",
+      "seconds": 83
+    },
+    "STORY_TERRAIN_UPDATES": {
+      "title": "Story terrain rises smoothly",
+      "tier": "core",
+      "status": "pass",
+      "notes": "GPU summit 0.196 → 0.589 at the same coordinates, radial displacement, smooth transition, geographic coverage refresh and reduced motion verified.",
+      "seconds": 13
+    },
+    "STORY_MOUNTAINS": {
+      "title": "Story mountains and their strands",
+      "tier": "network",
+      "status": "pass",
+      "notes": "60 story mountains, listed in the same order under Peaks; highest \"Nvidia CEO Jensen Huang resigns in big blow to AI boom\" (30 outlets, 13 other countries); a pinned story that wore away stayed unpinned.",
+      "seconds": 18
+    },
+    "COPY_ADDRESS": {
+      "title": "Copy the page address from the keyboard",
+      "tier": "core",
+      "status": "pass",
+      "seconds": 10,
+      "notes": "Copied without tracking parameters from the page and the toolbar, exactly with ⌥, and not while a text field had focus."
+    },
+    "PINNED_HOME": {
+      "title": "Pinned tabs keep their home",
+      "tier": "core",
+      "status": "pass",
+      "seconds": 15,
+      "notes": "Pinned at home; same-site moves stay home, another site offers the way back; ⌘W unloads it in place and it reopens at home; saved with its home."
+    },
+    "TAB_SLEEP": {
+      "title": "Background tabs sleep",
+      "tier": "core",
+      "status": "pass",
+      "seconds": 42,
+      "notes": "9 background tabs slept (typed text and the front tab stayed awake); their pages' memory 865 MB → 157 MB; woke on the same page, scroll and back list; a busy background page did not hold up the others; a tab closed asleep reopened with its back list; an address typed while a tab woke was not replaced by its old page."
+    },
+    "RECENT_TABS": {
+      "title": "Switch tabs in the order you used them",
+      "tier": "core",
+      "status": "pass",
+      "seconds": 13,
+      "notes": "Hold ⌃, Tab and ⌃⇧Tab step most-recent-first over the page (announced); release shows it, a quick ⌃Tab goes back, Escape keeps the tab; tab-bar order unchanged."
+    },
+    "SIDEBAR_TABS": {
+      "title": "Vertical tabs in every view",
+      "tier": "core",
+      "status": "pass",
+      "seconds": 13,
+      "notes": "Kept open in full width with Pinned and Open sections (page after it, no tabs twice); resized to 331px and kept; ⌃⌘S hid it, the left edge peeked it back, ⌃⌘S restored it; keyboard and axe clean."
+    },
+    "BROWSER_IMPORT": {
+      "title": "Bring your browser with you",
+      "tier": "core",
+      "status": "pass",
+      "seconds": 16,
+      "notes": "Found Chrome (Person 1) and Arc; previewed counts with history and passwords off; imported 4 bookmarks as 4 collections, 2 history pages and 1 sealed password from Chrome, and 2 pinned tabs (with homes), 1 open tab and the Work, Home and Work › Reading collections from Arc; a second run added nothing; keyboard and axe clean."
+    },
+    "TOUR": {
+      "title": "The guided tour shows every feature",
+      "tier": "network",
+      "status": "pass",
+      "seconds": 161,
+      "notes": "All 35 steps shown, each spotlight on what it describes, the same played forward, gone back to and jumped to; the tour put everything back at the end, its own tab closed. With Wikipedia unreachable The Olds step moved on 0.1 s after The Olds had looked (4.0 s in all: \"Could not reach Wikidata. Check your connection and try again.\")."
+    },
+    "TAB_ARCHIVE": {
+      "title": "Tabs tidy themselves away",
+      "tier": "core",
+      "status": "pass",
+      "seconds": 17,
+      "notes": "Unseen unpinned tabs archived (pinned, typed and private ones stayed); \"2 tabs archived\" with Undo, back in their folder; found from the address bar in another workspace and reopened in its own, with its back list; cleared with history."
+    },
+    "COMMAND_MENU": {
+      "title": "Commands from the address bar",
+      "tier": "core",
+      "status": "pass",
+      "notes": "⌘K from a page shows command mode in 56 ms (p95); \">\" too; no requests while typing; actions, tabs and places ranked; keyboard and Enter run them (copy, zoom, sidebar, protection, Knowledge); axe clean.",
+      "seconds": 24
+    },
+    "TAB_FOLDERS": {
+      "title": "Folders in the tab sidebar",
+      "tier": "core",
+      "status": "pass",
+      "seconds": 16,
+      "notes": "Folder named from the sidebar; tab dragged in and moved by command; nested four deep; order follows the sidebar; folded and kept; ⌥⇧↑ into a folded folder opened it with the tab in sight and focused; saved as path-named collections; a collection opened as a folder; delete keeps tabs; axe clean."
+    },
+    "AD_SLOTS": {
+      "title": "No blank boxes where ads were",
+      "tier": "core",
+      "status": "pass",
+      "seconds": 13,
+      "notes": "Blocked ad frame, ad picture and empty slot collapsed (0 px); story text kept (19 px box with text stays); left alone with protection paused."
+    },
+    "LINK_PREVIEW": {
+      "title": "Preview a link without leaving the page",
+      "tier": "network",
+      "status": "pass",
+      "seconds": 28,
+      "notes": "⇧-click and Preview Link opened a 80% × 80% card with no new window or tab and the page under it unchanged; ads blocked (pagead2.googlesyndication.com, securepubads.g.doubleclick.net) and their space hidden in the card; Escape, a click outside and ⌘W closed it with focus back on the link; Tab stayed in the card; Open as Tab kept the page and its back list; a private tab's preview was private; a World list headline was previewed over the globe; axe clean."
+    },
+    "WORKSPACES": {
+      "title": "Workspaces",
+      "tier": "core",
+      "status": "pass",
+      "seconds": 43,
+      "notes": "Created, named (icon and colour), renamed, reordered, deleted with confirmation and Undo; each workspace kept its own pinned tab, folder and open tabs; ⌃1/⌃2 switched in 20–28 ms with the other workspace's sleeping tab left asleep; command menu, swipe and keyboard switched; shared and own favourites; private tabs in no workspace and never saved; restored after a restart and migrated a version 2 state into Main; a tab closed in a folder reopened from another workspace came back in its workspace and folder; axe clean."
+    },
+    "IMPORT_WORKSPACES": {
+      "title": "Import a sidebar's spaces and folders",
+      "tier": "core",
+      "status": "pass",
+      "seconds": 13,
+      "notes": "Previewed 2 spaces and 2 favourites with each space's pinned tabs, folders and open tabs; recreated Work and Home as workspaces (pinned tabs with homes, Reading › Later nesting kept, open tabs unloaded) and the favourites row; a second run added nothing; the older file layout added Travel (split view opened up); an unsupported and a damaged file were reported and changed nothing; keyboard and axe clean. Fixtures are hand-built, not real files."
+    },
+    "SITE_TWEAKS": {
+      "title": "Make a site yours",
+      "tier": "core",
+      "status": "pass",
+      "seconds": 48,
+      "notes": "Escape stops picking; a picked element is previewed, saved, kept after reload, and not on site B. Width, font and dark colours change site A only, with no reload when turned off. @import and script markup are refused and nothing runs. A private tab sees the tweaks and writes nothing. Settings lists and removes the site, and the error page turns tweaks off."
+    },
+    "QUICK_WINDOW": {
+      "title": "Quick window for links from other apps",
+      "tier": "core",
+      "status": "pass",
+      "seconds": 21,
+      "notes": "Setting off: a tab. Settings › Browsing chooses Quick window (saved). A quick window is small and always on top, opens no tab and blocks the ad picture. Navigating inside, then ⌘O: the same page (same id, history kept, not reloaded) is a tab and the quick window is gone. A second one closed with its Close button leaves no tab and nothing to reopen. Private: private partition, labelled. ⌥⌘N opens an empty one; a typed address loads; Escape in an edited address field reverts it and keeps the window; ⌘T opens a tab in the main window; Escape outside the field closes it. Toolbar axe clean."
+    },
+    "AUTO_PIP": {
+      "title": "Video follows you",
+      "tier": "core",
+      "status": "pass",
+      "seconds": 42,
+      "notes": "Off by default; with it on, leaving a playing tab floated its canvas video (playback went on), returning docked it; the now-playing control listed it (labelled, axe clean) and pause, play, mute, unmute and go-to worked from the keyboard; a page with disablePictureInPicture kept playing in place; a floating tab was not put to sleep or archived while other tabs were; once the person closed the small window, the control stopped saying it floats and the tab slept; a playing background tab, closed, left the control."
+    },
+    "SPLIT_PAGES": {
+      "title": "Pages side by side",
+      "tier": "core",
+      "status": "pass",
+      "seconds": 48,
+      "notes": "Shortcut split two pages side by side with the divider and headers (origins 127.0.0.1:63596 · localhost:63596); each side keeps its own address, find and zoom; arrow keys and dragging keep the minimum width; the pair is one row, half and half when narrow or full width; it survives a workspace switch; closing a side returns the other to full size; ⌃⇧- unsplits; an edge drop previews and splits; the relaunch restores the pair. Screenshots and bounds in /var/folders/hq/nx9hk1515831m37ff_h7zhc40000gn/T/intoponet-split-pages-shots."
+    },
+    "LINK_ROUTES": {
+      "title": "Links go where they belong",
+      "tier": "core",
+      "status": "pass",
+      "seconds": 17,
+      "notes": "Rule localhost → Work: a matching link (and a subdomain) opens in Work as a tab and shows it, and the rule is saved to link-routes.json; 127.0.0.1 follows the default. With the quick-window setting, the match still goes to Work and the unmatched link opens a quick window. Private browsing is not routed. The first matching rule wins (moving a rule changes that); a rule for a deleted workspace is skipped. Always open here… offers the workspaces, saves the rule, and moves the same page (history kept) into Work; a private quick window has none. A burst of 9 links opened 6 and held 3 until \"Open the rest\", closing nothing. Settings lists the rules; axe clean."
+    },
+    "COMPARE_COVERAGE": {
+      "title": "Compare two outlets side by side",
+      "tier": "network",
+      "status": "pass",
+      "seconds": 17,
+      "notes": "Compared \"The Guardian World\" with Daily Mirror (Wijeya Newspapers) (Sri Lanka): two pages 642×652 and 641×652, side by side at y 161; headers read \"The Guardian World · International desk\" and \"Daily Mirror (Wijeya Newspapers) · Sri Lanka\"; Neither side is in another language from the reader, so Translate is not offered; The Olds opened for the story; 0 paywall badge(s) on the pair; a side whose article answered 404 showed its error card (Retry asked again, another outlet read the story in that side) while an ordinary tab showed the site's own page."
+    },
+    "PLACE_WORKSPACES": {
+      "title": "Workspaces anchored to a place",
+      "tier": "network",
+      "status": "pass",
+      "seconds": 16,
+      "notes": "Anchored \"Lisbon desk\" to Lisbon, Portugal from the place search (no device location asked); switching away and back flew the globe there with the panel open; Headlines here listed 5 headlines and one opened as a tab in that workspace; its marker showed on My map only; the anchor survived a relaunch; axe clean on the picker and the section."
+    },
+    "STORY_TABS": {
+      "title": "Tabs that know their story",
+      "tier": "network",
+      "status": "pass",
+      "seconds": 18,
+      "notes": "Two articles of \"Nvidia CEO Jensen Huang resigns in big…\" badged; the control and a private tab with a matching title not; Group by story made one folder for it holding only the two articles; Undo restored the order and removed the folder; hovering the folder highlighted the story (sm-sn7vr2) and leaving cleared it; the grouping notice went when another workspace was shown; no page was requested during matching; axe clean."
+    },
+    "TAB_TIDY_LOCAL": {
+      "title": "Tidy tabs with Laya",
+      "tier": "full",
+      "status": "pass",
+      "notes": "Laya off: Tidy explained it and offered Group by story. Laya on: 2 groups (Cooking; Astronomy) separated cooking from astronomy and left a pair side by side alone; nothing moved before Accept; with a suggested tab closed meanwhile, Accept moved the rest and its notice counted 3; Undo restored the order.",
+      "seconds": 34
+    },
+    "WORKSPACE_IDENTITIES": {
+      "title": "Separate sign-ins per workspace",
+      "tier": "core",
+      "status": "pass",
+      "seconds": 66,
+      "notes": "Kept across a relaunch: the option, Work's sign-in and permissions, Main's sign-in. Turning the option off deleted Work's cookies, permissions and saved passwords, and Main stayed signed in."
+    }
+  }
+}

@@ -395,6 +395,16 @@
       "promise": "Faroese headlines translate roughly through Icelandic and say so."
     },
     {
+      "id": "STORY_TERRAIN_UPDATES",
+      "title": "Story terrain rises smoothly",
+      "deps": [
+        "APP_BOOT"
+      ],
+      "tier": "core",
+      "kind": "e2e",
+      "promise": "Growing coverage raises the same summit vertically through the real GPU shader; geographic coverage changes update the terrain and reduced motion settles immediately."
+    },
+    {
       "id": "STORY_MOUNTAINS",
       "title": "Story mountains and their strands",
       "deps": [
