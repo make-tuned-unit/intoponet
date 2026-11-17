@@ -1,0 +1,27 @@
+SPDX-License-Identifier: LicenseRef-NASA-Media-Usage-Guidelines
+
+File: earth-night.jpg (4096x2048 JPEG, 643,960 bytes)
+Source: NASA Earth Observatory, Earth at Night (Black Marble) 2016, colour map
+Source-Page: https://science.nasa.gov/earth/earth-observatory/earth-at-night/maps/
+Source-URL: https://assets.science.nasa.gov/content/dam/science/esd/eo/images/imagerecords/144000/144898/BlackMarble_2016_3km.jpg
+Retrieved: 2026-11-17
+Source-File: BlackMarble_2016_3km.jpg (13500x6750 JPEG, 8,106,233 bytes)
+Source-SHA256: 230aac448ae68c358be433dd518888cccb3a85ccf66f7b44326441c324ad6725
+Processing: resized to 4096x2048 and saved as JPEG, no other change:
+  sips -s format jpeg -s formatOptions 72 -z 2048 4096 BlackMarble_2016_3km.jpg --out earth-night.jpg
+  (sips-316, macOS 26.2; scripts/build-earth-textures.mjs runs it and checks both checksums)
+Output-SHA256: 875cc331b2819e7c667b616b9ef98e05c94b7e9205f4ab8193db1ba1b63a566e
+Credit: NASA Earth Observatory images by Joshua Stevens, using Suomi NPP VIIRS data from Miguel Román, NASA GSFC.
+Credit-Source: the image's Visible Earth record as archived on 2024-12-29
+  (http://web.archive.org/web/20241229082413/https://www.visibleearth.nasa.gov/images/144898/earth-at-night-black-marble-2016-color-maps),
+  as quoted in Intoponet's research notes of 2026-11-17; the live page above shows no credit line.
+Terms: https://www.nasa.gov/nasa-brand-center/images-and-media/ (read 2026-11-17; the passages relied on are
+  quoted in LICENSES/LicenseRef-NASA-Media-Usage-Guidelines.txt at the top of the repository)
+Endorsement: NASA does not endorse Intoponet.
+
+History: the file in the repository since the first commit had no recorded download or resize. On
+  2026-11-17 the command above, run on NASA's original, produced that same file byte for byte (the
+  SHA-256 above), so the file was not replaced; its route is now on record.
+
+No SPDX-FileCopyrightText line is given. NASA says this material is "generally ... not subject to
+copyright in the United States"; whether to state a copyright holder, or none, is left to a lawyer.

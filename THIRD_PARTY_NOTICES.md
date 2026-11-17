@@ -30,8 +30,11 @@ and Intoponet does not modify them.
 
 ### npm packages in the app bundle
 
-These are the production dependencies of `apps/desktop`, plus everything they
-pull in. The workspace packages `@intoponet/*` are Intoponet's own proprietary
+These are the packages the build compiles into the app, together with the
+production dependencies of `apps/desktop` and everything they pull in. The build
+itself records which packages left code in the app (`apps/desktop/bundledPackages.ts`),
+and the release SBOM is made from that record (`scripts/release-bom.cjs`), so a
+package that ships and is missing from this table is caught by comparing the two. The workspace packages `@intoponet/*` are Intoponet's own proprietary
 code and have no third-party runtime dependencies (the ad and tracker blocker,
 `@intoponet/protection-engine`, is written for Intoponet and uses no library and
 no outside list; see "Ad and tracker blocking" in §4). Development-only tools
@@ -70,6 +73,14 @@ and each package's `package.json`.
 | culori | 4.0.2 | MIT | https://github.com/Evercoder/culori |
 | node-html-better-parser | 1.5.9 | MIT | https://github.com/Sharcoux/node-html-parser |
 | html-entities | 2.6.0 | MIT | https://github.com/mdevils/html-entities |
+| @fontsource-variable/inter (the Inter font files and their stylesheet; see §5) | 5.3.0 | OFL-1.1 | https://github.com/fontsource/font-files |
+
+As built on 2026-11-17, the build's record shows 25 npm packages with code or
+files in the app: every row above except `@babel/runtime`, `buffer`, `base64-js`,
+`ieee754` and the two type-declaration packages. Those are in the lock file as
+dependencies of packages that ship, but none of their modules is in the built
+app; they stay listed here, and the SBOM marks the ones npm reports as
+"excluded".
 
 The Export as PDF packages are listed under `devDependencies` because the build
 bundles them into the app's own files (Readability and DOMPurify as scripts run
@@ -89,15 +100,36 @@ these notices, so they have to be added back. Lucide's licence states that
 
 ## 2. Vendored code
 
-### bergamot-translator Emscripten glue: MPL-2.0 (file-level copyleft)
+### bergamot-translator JavaScript glue (`bergamot-translator.js`): MPL-2.0 (file-level copyleft)
 
-- File: `apps/desktop/src/main/translate/vendor/bergamot-translator.js`
-- Upstream: Mozilla Firefox, `toolkit/components/translations/bergamot-translator/bergamot-translator.js`,
-  generated from https://github.com/mozilla/translations release v0.6.0
-  (revision `eea6e5a80aa4ddd86d9cc35ce9a65b79aa3ab96d`). Copied unmodified,
-  SHA-256 `faff1ef6285b0d26f01787776fd49299dfb756ecb9688aa990c250e66797b47d`.
-- Licence: Mozilla Public License 2.0, https://mozilla.org/MPL/2.0/. The licence
-  header is kept in the file:
+Copyright Mozilla and the bergamot-translator contributors. Licensed under the
+Mozilla Public License, v. 2.0. A copy of the licence is included with the
+application as `LICENSES/MPL-2.0.txt` (in the app's `Contents/Resources`
+folder, beside this file) and is available at https://mozilla.org/MPL/2.0/.
+
+- **The file is included unmodified, as a file of its own.** In the source tree
+  it is `apps/desktop/src/main/translate/vendor/bergamot-translator.js`. In the
+  application it is `out/main/vendor/bergamot-translator.js` inside
+  `Contents/Resources/app.asar`, byte for byte the same file, and the app reads
+  it from there when translation starts. None of its text is compiled into
+  Intoponet's own files (the release build checks both: `scripts/shipped-glue.cjs`).
+  SHA-256 of the file: `faff1ef6285b0d26f01787776fd49299dfb756ecb9688aa990c250e66797b47d`.
+- **Where its source is.** The file is its own source code: the copy in the
+  application is the Source Code Form, with its licence header. It was generated
+  by `inference/scripts/build-wasm.py` in https://github.com/mozilla/translations
+  at revision `eea6e5a80aa4ddd86d9cc35ce9a65b79aa3ab96d` (release v0.6.0):
+  https://github.com/mozilla/translations/commit/eea6e5a80aa4ddd86d9cc35ce9a65b79aa3ab96d.
+  The build script and its inputs are in that repository at that revision
+  (https://github.com/mozilla/translations/blob/eea6e5a80aa4ddd86d9cc35ce9a65b79aa3ab96d/inference/scripts/build-wasm.py).
+  The file was copied as shipped in Mozilla Firefox, at
+  `toolkit/components/translations/bergamot-translator/bergamot-translator.js`.
+- **A copy on request.** Intoponet will also provide a copy of this source file
+  to anyone who has received the application and asks through
+  https://intoponet.com, at no charge beyond the cost of sending it.
+- **Your rights in this file.** Intoponet's own licence terms (`LICENSE`) do not
+  limit or alter your rights in this file under the Mozilla Public License. `LICENSE`
+  says the same.
+- The licence header is kept in the file as Mozilla wrote it:
 
   > This Source Code Form is subject to the terms of the Mozilla Public License,
   > v. 2.0. If a copy of the MPL was not distributed with this file, You can
@@ -106,12 +138,12 @@ these notices, so they have to be added back. Lucide's licence states that
 **What MPL-2.0 requires:** the copyleft applies to the file, not to the whole
 app. The vendored file, and any changes ever made to it, stay under MPL-2.0. Its
 source code must be available to anyone who receives the app, and the licence
-header must stay in place. Intoponet's other files, which only call this glue,
-are a "Larger Work" (MPL-2.0 §3.3) and can stay proprietary. To comply:
-(a) do not edit the file in place without publishing the modified version under
-MPL-2.0; (b) when distributing, say where its source can be obtained (the
-upstream URL above while the file is unmodified, or a published copy of the
-modified file); (c) keep this notice.
+header must stay in place. Intoponet's other files, which only call this glue
+and are separate files, are a "Larger Work" (MPL-2.0 §1.7, §3.3) and can stay
+proprietary. To comply: (a) do not edit the file in place without publishing the
+modified version under MPL-2.0; (b) keep shipping it as its own unmodified file,
+with `LICENSES/MPL-2.0.txt` beside these notices; (c) keep this notice, with
+where the source is and the offer of a copy.
 
 No other third-party code is vendored into the source tree. A search for
 `vendor`, `LICENSE`, `Copyright` and `SPDX` found no other copied files.
@@ -187,6 +219,9 @@ list of ad and tracker hosts and the page-element rules are all in
   EasyList, EasyPrivacy, the Ghostery adblocker library (with its `@ghostery/*`
   and `@remusao/*` packages), tldts and the Public Suffix List inside it, which
   one build of 2026-11-17 used, were removed the same day; that build was not pushed or released.
+  `docs/protection-provenance.md` records when they were in the repository and how the
+  replacement was produced. Because they were there, the list is described as independently
+  written and Intoponet's own, not as clean-room work.
   A unit test (`packages/protection-engine/src/blocklist.test.ts`) fails if a
   reference to any of them comes back in the source of the app, the packages
   or the build scripts, or in the dependency lock.
@@ -225,11 +260,18 @@ publisher's terms need checking before release, following the governance in
 
 | Asset | Source | Licence | Attribution |
 |---|---|---|---|
-| `apps/desktop/src/renderer/assets/earth-night.jpg` (4096×2048) | NASA Earth Observatory, Black Marble 2016 (Night Lights), https://earthobservatory.nasa.gov/features/NightLights | Public domain (NASA) | "NASA Earth Observatory / Black Marble" (requested, not required) |
-| `apps/desktop/src/renderer/assets/earth-day.jpg` (4096×2048) | The source comment says "NASA Blue Marble". **The exact file and its origin are not recorded. Check before release.** If it is NASA Visible Earth Blue Marble (https://visibleearth.nasa.gov/collection/1484/blue-marble), it is public domain. If it came from a third-party remix (for example a texture pack), that source's licence applies instead. | Licence not determined; check before release | "NASA Visible Earth / Blue Marble", if confirmed |
+| `apps/desktop/src/renderer/assets/earth-day.jpg` (4096×2048) | NASA Earth Observatory, Blue Marble: Next Generation, October 2004, with topography and bathymetry: https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/base-topography-bathymetry/. Made from NASA's 21600×10800 file by one recorded resize; the file URL, both checksums, the date and the command are in `earth-day.jpg.license` beside it. | NASA content, used under NASA's Media Usage Guidelines (https://www.nasa.gov/nasa-brand-center/images-and-media/): it is "generally … not subject to copyright in the United States", and NASA "should be acknowledged as the source". NASA's page also says its imagery is "not in the public domain". | "NASA Earth Observatory" (the credit NASA asks for; Blue Marble: Next Generation was produced by Reto Stöckli, NASA Goddard Space Flight Center) |
+| `apps/desktop/src/renderer/assets/earth-night.jpg` (4096×2048) | NASA Earth Observatory, Earth at Night (Black Marble) 2016, colour map: https://science.nasa.gov/earth/earth-observatory/earth-at-night/maps/. Made from NASA's 13500×6750 file `BlackMarble_2016_3km.jpg` by the same recorded resize; details in `earth-night.jpg.license` beside it. | The same NASA Media Usage Guidelines | "NASA Earth Observatory images by Joshua Stevens, using Suomi NPP VIIRS data from Miguel Román, NASA GSFC." |
 | Icons | lucide-react (see §1) | ISC / MIT | Covered by §1 |
 | Fonts | Inter (variable, optical size), by Rasmus Andersson and The Inter Project Authors, https://github.com/rsms/inter. Bundled in the app via `@fontsource-variable/inter` 5.3.0 and self-hosted on the website (`website/fonts/`, with `Inter-LICENSE.txt`). Nothing is loaded from web font services. | SIL Open Font License 1.1 | Copyright notice and licence shipped alongside the font files |
 | Brand assets | `apps/desktop/src/renderer/src/brand/`, `apps/desktop/resources/Intoponet.icns`, `website/brand/`, the website icons and Open Graph image: Intoponet Cinematic Brand Kit v3 (October 2026), made for this project. | Owned by the project (not third-party). Not yet trademark-cleared. | None |
+
+**NASA imagery.** The two Earth textures are NASA's pictures, resized and not otherwise changed
+(`scripts/build-earth-textures.mjs` makes them from NASA's originals and checks the checksums). They
+are used as a factual picture of the Earth. **NASA does not endorse Intoponet**, and NASA's insignia
+and logotype are not used. The passages of NASA's guidelines relied on are quoted, with the date
+they were read, in `LICENSES/LicenseRef-NASA-Media-Usage-Guidelines.txt`. NASA's statement is about
+copyright in the United States; the position in other countries has not been established.
 
 ---
 
@@ -237,8 +279,14 @@ publisher's terms need checking before release, following the governance in
 
 1. Ship `LICENSE` and `LICENSES.chromium.html` from Electron, and the npm licence
    notices, with every build (§1).
-2. Keep the MPL-2.0 vendored glue unmodified, or publish any change to it (§2).
-3. Confirm where `earth-day.jpg` came from and what licence it has (§5).
+2. Keep the MPL-2.0 vendored glue unmodified and shipped as its own file, or publish
+   any change to it (§2). `LICENSE` already says that
+   nothing in it restricts rights under the Mozilla Public License; a lawyer should
+   confirm that wording, and that a pointer to Mozilla's repository plus a copy on
+   request meets the source duty if upstream moves.
+3. Done: both Earth textures are made from NASA's original files by a recorded command,
+   with checksums (§5). Still open, for a lawyer: how NASA's United States statement
+   applies to distribution in other countries.
 4. Done: the CC BY-SA 4.0 attribution for Wikipedia text, the CC BY 4.0
    attribution for GeoNames are shown in the app under Settings › Credits and
    licences (§4).

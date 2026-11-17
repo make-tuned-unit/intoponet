@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 'use strict'
 
+const { createHash } = require('node:crypto')
 const { builtinModules } = require('node:module')
 const { spawnSync } = require('node:child_process')
 const { accessSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, constants, statSync } = require('node:fs')
@@ -8,6 +9,7 @@ const path = require('node:path')
 
 const root = path.resolve(__dirname, '..')
 const { macUpdateBuildSetting } = require('./update-config.cjs')
+const { checkShippedGlue, GLUE_SHA256, SHIPPED_GLUE } = require('./shipped-glue.cjs')
 const desktop = path.join(root, 'apps/desktop')
 const packageDir = path.join(desktop, '.release-package')
 const mode = process.argv[2]
@@ -108,6 +110,12 @@ function verifyBundledRuntime() {
       }
     }
   }
+  // The MPL-2.0 translation glue ships unchanged as its own file, and none of its text is in Intoponet's code.
+  try {
+    checkShippedGlue({ outDir: path.join(desktop, 'out') })
+  } catch (error) {
+    fail(error.message)
+  }
 }
 
 function prepareStandaloneApp() {
@@ -150,7 +158,7 @@ function inspectPackagedApp(app) {
   const resources = path.join(contents, 'Resources')
   const archive = path.join(resources, 'app.asar')
   const executable = path.join(contents, 'MacOS/Intoponet')
-  for (const requiredPath of [archive, executable, path.join(resources, 'LICENSE'), path.join(resources, 'THIRD_PARTY_NOTICES.md')]) {
+  for (const requiredPath of [archive, executable, path.join(resources, 'LICENSE'), path.join(resources, 'THIRD_PARTY_NOTICES.md'), path.join(resources, 'LICENSES/MPL-2.0.txt')]) {
     if (!existsSync(requiredPath)) fail(`packaged app is missing ${path.relative(app, requiredPath)}`)
   }
   try {
@@ -174,9 +182,17 @@ function inspectPackagedApp(app) {
   for (const entry of readdirSync(path.join(desktop, 'out/main')).filter((name) => name.endsWith('.js'))) {
     requiredEntries.push(`/out/main/${entry}`)
   }
+  // The MPL-2.0 translation glue, which the main process reads at run time, in a folder of its own.
+  const glueEntry = `/out/${SHIPPED_GLUE}`
+  requiredEntries.push(glueEntry)
   // (The ad and tracker list is part of out/main/index.js: there is no data file beside it to check for.)
   for (const entry of requiredEntries) {
     if (!entries.has(entry)) fail(`app.asar is missing ${entry}`)
+  }
+  const packagedGlue = createHash('sha256').update(asar.extractFile(archive, glueEntry.slice(1))).digest('hex')
+  if (packagedGlue !== GLUE_SHA256) fail(`the packaged ${glueEntry} is not the vendored MPL-2.0 file (SHA-256 ${packagedGlue})`)
+  if (!readFileSync(path.join(resources, 'LICENSES/MPL-2.0.txt')).equals(readFileSync(path.join(root, 'LICENSES/MPL-2.0.txt')))) {
+    fail('the packaged LICENSES/MPL-2.0.txt differs from the repository copy')
   }
   console.log(`Inspected app bundle: ${app} (entry points, workers, license resources, and bundle metadata present)`)
 }

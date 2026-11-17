@@ -157,7 +157,8 @@ export function SettingsPanel({
             <li><strong>Natural Earth</strong> country shapes and map labels, public domain (naturalearthdata.com).</li>
             <li><strong>Firefox Translations</strong> models and the Bergamot engine, Mozilla, MPL-2.0. Run on this Mac.</li>
             <li><strong>all-MiniLM-L6-v2</strong> (Laya’s meaning model), sentence-transformers, Apache-2.0. Runs on this Mac.</li>
-            <li><strong>NASA</strong> Earth imagery (Blue Marble, Black Marble) and EONET natural events; <strong>USGS</strong> earthquakes. Public domain.</li>
+            <li><strong>NASA Earth Observatory</strong> Earth imagery: Blue Marble: Next Generation, and Earth at Night (Black Marble) 2016, NASA Earth Observatory images by Joshua Stevens, using Suomi NPP VIIRS data from Miguel Román, NASA GSFC. NASA content is generally not subject to copyright in the United States. NASA does not endorse Intoponet.</li>
+            <li><strong>NASA EONET</strong> natural events. <strong>USGS</strong> earthquakes, public domain.</li>
             <li><strong>News headlines</strong> belong to their publishers. Intoponet shows titles and links to the original articles.</li>
             <li><strong>Electron and Chromium</strong>, MIT and their component licences. The full list is in THIRD_PARTY_NOTICES.md.</li>
           </ul>

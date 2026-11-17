@@ -2,8 +2,10 @@ import type { FrequencyBand } from '@intoponet/frequency-field'
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber'
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Color, ImageBitmapLoader, type MeshStandardMaterial, SRGBColorSpace, Texture, Vector3 } from 'three'
-import earthDay from '../../assets/earth-day.jpg' // NASA Blue Marble, public domain
-import earthNight from '../../assets/earth-night.jpg' // NASA Black Marble 2016, public domain
+// NASA imagery, resized: where each file came from, how it was made and the credit NASA asks for are in the
+// .license file beside it. Not "public domain": NASA content, generally not subject to copyright in the United States.
+import earthDay from '../../assets/earth-day.jpg' // Blue Marble: Next Generation, October 2004. Credit: NASA Earth Observatory
+import earthNight from '../../assets/earth-night.jpg' // Earth at Night (Black Marble) 2016. Credit: NASA Earth Observatory (Joshua Stevens; VIIRS data from Miguel Román, NASA GSFC)
 import { sunDirection } from './sun'
 import {
   scaleDisplacement,

@@ -22,7 +22,8 @@
     "verify:laya-sandbox": "node experiments/laya-sandbox/run.mjs",
     "verify:laya-privacy": "node --experimental-strip-types experiments/laya-privacy-verification/verify.mjs",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present && node --test experiments/e2e/olds-gold.test.mjs website/api/_registry-proxy.test.mjs website/api/_download-notify.test.mjs website/api/_feedback.test.mjs website/api/_ideas.test.mjs website/api/_permagent.test.mjs website/build.test.mjs",
+    "test": "npm run test --workspaces --if-present && node --test experiments/e2e/olds-gold.test.mjs website/api/_registry-proxy.test.mjs website/api/_download-notify.test.mjs website/api/_feedback.test.mjs website/api/_ideas.test.mjs website/api/_permagent.test.mjs website/build.test.mjs scripts/shipped-glue.test.cjs scripts/release-inventory.test.cjs",
+    "test:build": "npm run build && INTOPONET_REQUIRE_BUILD=1 node --test scripts/shipped-glue.test.cjs scripts/release-inventory.test.cjs",
     "verify:features": "node scripts/verify-features.mjs"
   },
   "engines": {

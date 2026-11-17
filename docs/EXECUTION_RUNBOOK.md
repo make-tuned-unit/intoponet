@@ -408,7 +408,8 @@ Day and night and an easier way into The Olds were added on 2026-10-26.
   equation of time and day/night at four cities) and refreshes every 30 s.
   The day side shows Blue Marble in its natural colour, lit by the sun, with
   daylit sea in blue and a soft sheen toward the sun. The night side is deep
-  navy with NASA Black Marble 2016 city lights (public domain), and a faint
+  navy with NASA Black Marble 2016 city lights (NASA Earth Observatory; see
+  `THIRD_PARTY_NOTICES.md` §5 for the credit and terms), and a faint
   twilight band marks the terminator. Each place's details and hover card
   say whether it is daytime there (with the sun's height), dawn, dusk or
   night. The atmosphere's glow follows
@@ -837,12 +838,14 @@ Licence, Beacons and remaining PRD items, 2026-10-27:
   adopted later, but not withdrawn once published.
   `THIRD_PARTY_NOTICES.md` lists every third-party licence. Obligations
   before a public release:
-  - the vendored MPL-2.0 Bergamot glue stays MPL;
+  - the vendored MPL-2.0 Bergamot glue stays MPL (it ships as its own file,
+    with `LICENSES/MPL-2.0.txt`);
   - ship Electron/Chromium licences and the npm licence texts;
   - attribute Wikipedia (CC BY-SA 4.0) and GeoNames (CC BY 4.0), now in
     Settings › Credits;
   - clear news-feed terms for commercial use;
-  - confirm the source of `earth-day.jpg`.
+  - (done 2026-11-17: both Earth textures are made from NASA's originals by a
+    recorded command; see the `.license` file beside each).
 - **Beacons (BCN-001 to 006), Neon.**
   - `packages/beacon-core` holds the payload rules: canonical URL with
     tracking removed, no sign-in, account, payment or local addresses,

@@ -1,0 +1,39 @@
+NASA Media Usage Guidelines: the passages Intoponet relies on for its two Earth textures
+
+This is not a licence written by Intoponet and not the whole of NASA's page. It quotes, word for
+word, the passages of NASA's "Images and Media" guidelines that the Earth textures
+(apps/desktop/src/renderer/assets/earth-day.jpg and earth-night.jpg) are used under. The page is
+https://www.nasa.gov/nasa-brand-center/images-and-media/ and was read on 17 November 2026. Read the
+page itself for the current and complete text.
+
+"The NASA Insignia, Logotype, identifiers, and imagery are not in the public domain. The use of the
+Insignia, Logotype and NASA identifiers is protected by law, and imagery is made available for use
+consistent with Media Usage Guidelines."
+
+"NASA content – images, audio, video, and media files used in the rendition of 3-dimensional models,
+such as texture maps and polygon data in any format – generally are not subject to copyright in the
+United States. You may use this material for educational or informational purposes, including photo
+collections, textbooks, public exhibits, computer graphical simulations and Internet Web pages. This
+general permission extends to personal Web pages."
+
+"NASA content used in a factual manner that does not imply endorsement may be used without needing
+explicit permission. NASA should be acknowledged as the source of the material. NASA occasionally
+uses copyright-protected material of third parties with permission on its website. Those images will
+be marked identified as copyright protected with the name of the copyright holder. NASA’s use does
+not convey any rights to others to use the same material. Those wishing to use copyright protected
+material of third parties must contact the copyright holder directly."
+
+"If the NASA material is to be used for commercial purposes, including advertisements, it must not
+explicitly or implicitly convey NASA’s endorsement of commercial goods or services."
+
+"NASA will not promote or endorse or appear to promote or endorse a commercial product, service or
+activity."
+
+What follows from them for Intoponet:
+
+- NASA is credited as the source, with the credit lines NASA asks for (each texture's .license file
+  and THIRD_PARTY_NOTICES.md §5).
+- NASA does not endorse Intoponet. NASA's insignia, logotype and name are not used to suggest that
+  it does.
+- NASA's statement is about copyright in the United States. The position in other countries has not
+  been established and is a question for a lawyer.

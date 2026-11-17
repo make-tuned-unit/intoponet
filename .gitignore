@@ -18,6 +18,7 @@ apps/desktop/.eval-build/
 .vercel
 .env*
 apps/desktop/out-*/
+apps/desktop/.bundled-packages/
 website/dist/
 
 # Deep-research working files
