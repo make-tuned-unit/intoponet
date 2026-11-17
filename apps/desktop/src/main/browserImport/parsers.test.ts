@@ -117,7 +117,9 @@ describe('Arc sidebar', () => {
     const raw = JSON.stringify({ sidebar: { containers: [{ spaces: [{ id: 'S', title: 'S', newContainerIDs: [{ pinned: {} }, 'P'] }], items: [{ id: 'P', parentID: null, data: {} }, { id: 'T', parentID: 'P', data: { tab: { savedURL: 'file:///etc/passwd' } } }] }] } })
     const sidebar = parseArcSidebar(raw)
     expect(sidebar.spaces[0]!.pinned).toEqual([])
-    expect(sidebar.skipped).toBe(1)
+    // Counted as a tab that is not a web page (said in the summary), not with the notes and easels.
+    expect(sidebar.spaces[0]!.nonWeb).toEqual({ pinned: 1, open: 0 })
+    expect(sidebar.skipped).toBe(0)
   })
 })
 

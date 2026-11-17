@@ -4297,7 +4297,7 @@ export const checks = {
       expect(travel.map((tab) => tab.title).join() === 'Flights,Kyoto,Osaka,Hotels' && (await folders()).map((f) => f.name).join() === 'Japan', `Travel holds: ${travel.map((tab) => tab.title).join()} in ${(await folders()).map((f) => f.name).join()}.`)
 
       // A space with more pinned tabs than a workspace holds: the workspace is filled, the result says how many were left
-      // out, and the pinned tabs and foldered tabs that found no room are kept in a collection named after the space.
+      // out, and the pinned tabs, foldered tabs and open tabs that found no room are kept in a collection named after the space.
       const crowdedTabs = Array.from({ length: 30 }, (_, n) => sidebarItem(`C${n}`, 'CP', `https://crowded.example.com/pinned-${n}`, `Pinned ${n}`))
       const crowdedFoldered = Array.from({ length: 5 }, (_, n) => sidebarItem(`CF${n}`, 'CFOLDER', `https://crowded.example.com/filed-${n}`, `Filed ${n}`))
       writeFileSync(join(IMPORT_WS_ROOT, 'Arc', 'StorableSidebar.json'), JSON.stringify({ sidebar: { containers: [{ global: {} }, {
@@ -4314,7 +4314,7 @@ export const checks = {
       await choose()
       expect((await sectionText()).includes('Crowded: 30 pinned tabs, 1 folder (5 tabs), 1 open tab'), `The crowded space's preview: ${await sectionText()}`)
       const crowded = await importNow('a space with more tabs than a workspace holds')
-      for (const piece of ['1 new workspace (Crowded)', '12 pinned tabs', '24 items: tabs over the 12-tab limit of a workspace', 'kept in collections named after their spaces']) expect(crowded.includes(piece), `The result for the crowded space does not say "${piece}": ${crowded}`)
+      for (const piece of ['1 new workspace (Crowded)', '12 pinned tabs', '24 items: tabs over the 12-tab limit of a workspace (they are kept in collections named after their spaces)']) expect(crowded.includes(piece), `The result for the crowded space does not say "${piece}": ${crowded}`)
       await show('Crowded')
       const crowdedNow = await tabs()
       expect(crowdedNow.length === 12 && crowdedNow.every((tab) => tab.pinned), `Crowded holds ${crowdedNow.length} tabs (${crowdedNow.filter((tab) => tab.pinned).length} pinned), not the 12 pinned tabs a workspace has room for.`)
@@ -4322,7 +4322,9 @@ export const checks = {
       const keptCrowded = keptLibrary.collections.find((collection) => collection.label === 'Crowded')?.memberUrls ?? []
       const arrivedCrowded = new Set(crowdedNow.map((tab) => tab.url))
       const everyPinned = [...crowdedTabs, ...crowdedFoldered].map((item) => item.data.tab.savedURL)
-      expect(keptCrowded.length === 23 && everyPinned.every((address) => arrivedCrowded.has(address) !== keptCrowded.includes(address)), `Of Crowded's 35 pinned and foldered tabs, ${arrivedCrowded.size} are in the workspace and ${keptCrowded.length} in its collection: some are in neither (or both).`)
+      expect(keptCrowded.length === 24 && everyPinned.every((address) => arrivedCrowded.has(address) !== keptCrowded.includes(address)), `Of Crowded's 35 pinned and foldered tabs, ${arrivedCrowded.size} are in the workspace and ${keptCrowded.length} in its collection (with its open tab, 24 belong there): some are in neither (or both).`)
+      // Its open tab found no room either: it is kept in the same collection, not only counted.
+      expect(keptCrowded.includes('https://crowded.example.com/open') && keptLibrary.bookmarks.some((bookmark) => bookmark.url === 'https://crowded.example.com/open'), `Crowded's open tab, over the workspace's limit, is not in the "Crowded" collection: ${keptCrowded.filter((address) => !address.includes('pinned-') && !address.includes('filed-')).join(', ') || 'no open tab there'}.`)
       const crowdedAgain = await importNow('the crowded space again')
       expect(crowdedAgain.includes('Nothing new'), `A second import of the crowded space added something: ${crowdedAgain}`)
       expect((await tabs()).length === 12, 'A second import of the crowded space changed its workspace.')

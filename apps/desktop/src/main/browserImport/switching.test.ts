@@ -363,18 +363,24 @@ describe('switching in from Arc', () => {
     })
     expect(first.result.added).toMatchObject({ workspaces: 8, pinned: 26, foldered: 0, open: 14, favourites: 12 })
     expect(held.every((workspace) => workspace.tabs.length <= TAB_LIMIT)).toBe(true)
-    // Pinned tabs, tabs in folders and favourites that found no room are in collections named after their spaces.
+    // Pinned tabs, tabs in folders, open tabs and favourites that found no room are in collections named after their spaces.
     const kept = new Map(app.library().collections.map((collection) => [collection.label, collection.memberUrls]))
-    expect(kept.get('Work')).toHaveLength(18 + 60)
+    expect(kept.get('Work')).toHaveLength(18 + 60 + 130)
+    expect(kept.get('Work')!.filter((address) => address.startsWith('https://open.example/'))).toHaveLength(130)
     expect(kept.get('Work')!.filter((address) => address.startsWith('https://deep.example/'))).toHaveLength(20)
     expect(kept.get('Imported favourites')).toHaveLength(8)
-    expect(kept.get('Space 7')).toEqual(['https://s7p.example/0', 'https://s7p.example/1'])
-    expect(kept.get('Space 10')).toHaveLength(2)
-    expect(first.result.skipped.map((item) => item.reason).join(' ')).toMatch(/kept in collections named after/)
+    expect(kept.get('Space 7')).toEqual(['https://s7p.example/0', 'https://s7p.example/1', 'https://s7o.example/0', 'https://s7o.example/1'])
+    expect(kept.get('Space 10')).toHaveLength(4)
+    expect(first.result.skipped).toEqual(expect.arrayContaining([
+      { category: 'workspaces', count: 4, reason: 'spaces over the limit of workspaces (their pinned tabs, the tabs in their folders and their open tabs are kept in collections named after them)' },
+      { category: 'workspaces', count: 18 + 60 + 130 + 8, reason: 'tabs over the 12-tab limit of a workspace (they are kept in collections named after their spaces)' },
+    ]))
     // Every pinned tab, foldered tab and favourite is either in a workspace, in the favourites row, or in a collection.
     const everywhere = new Set([...everyUrl(app.model), ...app.library().bookmarks.map((bookmark) => bookmark.url)])
     for (const space of spaces) for (const address of pinnedAddresses(space.pinned)) expect(everywhere.has(address)).toBe(true)
     for (let index = 0; index < 20; index += 1) expect(everywhere.has(`https://fav.example/${index}`)).toBe(true)
+    // And every open tab: over the limit of its workspace, or in a space that got no workspace, it is kept, not only counted.
+    for (const space of spaces) for (const address of pinnedAddresses(space.open)) expect(everywhere.has(address)).toBe(true)
     // Again: nothing more arrives, in the workspaces or the library.
     const second = await app.run('arc:Default', ['workspaces', 'pinned', 'open'])
     expect(second.result.added).toMatchObject({ workspaces: 0, pinned: 0, foldered: 0, open: 0, favourites: 0 })
@@ -404,17 +410,69 @@ describe('switching in from Arc', () => {
     const second = await app.run('arc:Default', ['workspaces', 'pinned', 'open'])
     expect(second.result.added).toMatchObject({ workspaces: 0, pinned: 0, foldered: 0, open: 0, favourites: 0 })
     expect(app.model.workspaces).toHaveLength(3)
+    // The tabs that are not web pages are said, with their count, as a browser's bookmarks are: seven pinned
+    // or in a folder or split view, a favourite, and one open tab (the note is not a tab).
+    expect(first.result.skipped).toEqual(expect.arrayContaining([
+      { category: 'pinned', count: 8, reason: 'not web addresses (javascript:, file: or browser pages)' },
+      { category: 'open', count: 1, reason: 'not web addresses (javascript:, file: or browser pages)' },
+    ]))
   }, LONG)
 
-  it('still recreates spaces when the profile\'s bookmarks file is damaged, unless Bookmarks is ticked', async () => {
+  it('keeps open tabs over the limit in a collection named after their space, without spaces as workspaces too', async () => {
     const app = arrive((root) => {
-      const profile = arcProfile(root, sidebarFile([{ title: 'W', pinned: [{ folder: 'F', children: tabs(2, 'a') }], open: [] }]))
+      arcProfile(root, sidebarFile([
+        { title: 'Work', pinned: tabs(3, 'pin'), open: [...tabs(10, 'work'), { tab: 'arc://boost' }] },
+        { title: 'Home', pinned: [], open: tabs(6, 'home') },
+      ]))
+    })
+    const first = await app.run('arc:Default', ['pinned', 'open'])
+    // The open workspace holds 12: the 3 pinned tabs and Work's first 9 open tabs.
+    expect(first.result.added).toMatchObject({ pinned: 3, open: 9 })
+    expect(first.result.skipped).toEqual(expect.arrayContaining([
+      { category: 'open', count: 7, reason: 'over the 12-tab limit (they are in the collection named after their space)' },
+      { category: 'open', count: 1, reason: 'not web addresses (javascript:, file: or browser pages)' },
+    ]))
+    const kept = new Map(app.library().collections.map((collection) => [collection.label, collection.memberUrls]))
+    expect(kept.get('Work')).toEqual([...tabs(3, 'pin').map((node) => (node as { tab: string }).tab), 'https://work.example/9'])
+    expect(kept.get('Home')).toEqual(tabs(6, 'home').map((node) => (node as { tab: string }).tab))
+    const everywhere = new Set([...everyUrl(app.model), ...app.library().bookmarks.map((bookmark) => bookmark.url)])
+    for (const node of [...tabs(10, 'work'), ...tabs(6, 'home')]) expect(everywhere.has((node as { tab: string }).tab)).toBe(true)
+    expect(onlyWeb([...everywhere])).toBe(true)
+    // Again: the same tabs find no room, and the library gains nothing.
+    const second = await app.run('arc:Default', ['pinned', 'open'])
+    expect(second.result.added).toMatchObject({ pinned: 0, open: 0 })
+    expect(second.library).toEqual({ bookmarks: 0, collections: 0 })
+    expect(app.library().collections.map((collection) => collection.label).sort()).toEqual(['Home', 'Work'])
+  }, LONG)
+
+  it('still brings the spaces, tabs and history when the profile\'s bookmarks file is damaged and Bookmarks is ticked, and names the file', async () => {
+    const app = arrive((root) => {
+      const profile = arcProfile(root, sidebarFile([{ title: 'W', pinned: [{ tab: 'https://pin.example/' }, { folder: 'F', children: tabs(2, 'a') }], open: tabs(1, 'o') }]))
       writeFileSync(join(profile, 'Bookmarks'), '{"roots":')
+      historyFile(join(profile, 'History'), [{ url: 'https://visited.example/', title: 'Visited', at: Date.UTC(2026, 10, 1) }])
     })
     expect(app.service.preview('arc:Default').counts.bookmarks.note).toMatch(/bookmarks file could not be read/)
-    await expect(app.run('arc:Default', ['bookmarks', 'workspaces', 'pinned'])).rejects.toThrow(/Nothing was imported/)
-    expect(app.model.workspaces).toHaveLength(1)
-    expect((await app.run('arc:Default', ['workspaces', 'pinned'])).result.added).toMatchObject({ workspaces: 1, foldered: 2 })
+    const first = await app.run('arc:Default', ['bookmarks', 'workspaces', 'pinned', 'open', 'history'])
+    expect(first.result.added).toMatchObject({ workspaces: 1, pinned: 1, foldered: 2, open: 1, history: 1 })
+    expect(first.result.notes).toEqual(['Arc\'s “Bookmarks” file could not be read, so the bookmarks in it were left out'])
+    expect(app.model.workspaces[1]!.tabs.map((tab) => tab.url)).toEqual(['https://pin.example/', 'https://a.example/0', 'https://a.example/1', 'https://o.example/0'])
+    expect(app.history.size).toBe(1)
+    // The sidebar's folders still become collections, as Bookmarks asks.
+    expect(app.library().collections.map((collection) => collection.label)).toEqual(['W › F'])
+    // Without spaces as workspaces too.
+    const flat = arrive((root) => {
+      const profile = arcProfile(root, sidebarFile([{ title: 'W', pinned: [{ tab: 'https://pin.example/' }], open: tabs(1, 'o') }]))
+      writeFileSync(join(profile, 'Bookmarks'), '{"roots":')
+    })
+    const flatRun = await flat.run('arc:Default', ['bookmarks', 'pinned', 'open'])
+    expect(flatRun.result.added).toMatchObject({ pinned: 1, open: 1 })
+    expect(flatRun.result.notes).toHaveLength(1)
+    // With nothing else to bring (no sidebar either), it fails as before and says why.
+    const bare = arrive((root) => { writeFileSync(join(arcProfile(root, null), 'Bookmarks'), '{"roots":') })
+    await expect(bare.run('arc:Default', ['bookmarks'])).rejects.toThrow(/bookmarks file could not be read\. Nothing was imported/)
+    // A browser whose bookmarks are what it has to bring still fails whole.
+    const chrome = arrive((root) => { writeFileSync(join(chromeProfile(root), 'Bookmarks'), '{"roots":') })
+    await expect(chrome.run('chrome:Default', ['bookmarks'])).rejects.toThrow(/Nothing was imported/)
   }, LONG)
 })
 

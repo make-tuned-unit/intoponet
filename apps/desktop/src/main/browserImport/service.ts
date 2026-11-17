@@ -8,7 +8,7 @@ import { parseChromiumBookmarks, type ImportedFolder } from './chromiumBookmarks
 import { HISTORY_IMPORT_LIMIT, countHistory, readHistory, type ImportedVisit } from './chromiumHistory'
 import { chromiumKey, countLogins, decryptChromiumPassword, readLogins } from './chromiumLogins'
 import { safeStorageSecret, type RunSecurity } from './keychain'
-import { folderCounts, libraryDocument, planLogins, planTabs, planWorkspaces, type ExistingWorkspace, type ImportedTab, type LoginRow, type WorkspaceImportPlan } from './plan'
+import { folderCounts, libraryDocument, planLogins, planTabs, planWorkspaces, sameAddress, type ExistingWorkspace, type ImportedTab, type LoginRow, type WorkspaceImportPlan } from './plan'
 import { detectProfiles, isFile, PROFILE_FILES, publicProfile, type DetectedProfile } from './sources'
 import { withDatabaseCopy } from './sqliteCopy'
 
@@ -68,6 +68,8 @@ export type BrowserImportDeps = {
 
 const BOOKMARKS_LIMIT = 50_000_000
 const SIDEBAR_LIMIT = 100_000_000
+/** Why an address is left out, in the summary's words (bookmarks and Arc's tabs alike). */
+const NOT_WEB = 'not web addresses (javascript:, file: or browser pages)'
 const sessionNote = (name: string): string => `${name} keeps open and pinned tabs in session files whose format is not published, so they cannot be read reliably and are left out. Its bookmarks come over.`
 
 type SourceData = {
@@ -75,7 +77,7 @@ type SourceData = {
   bookmarksSkipped: number
   bookmarksError: string | null
   /** Arc only (null: not Arc, or its sidebar could not be read). */
-  sidebar: { spaces: ArcSpace[]; favourites: ArcTab[] } | null
+  sidebar: { spaces: ArcSpace[]; favourites: ArcTab[]; favouritesNonWeb: number } | null
   sidebarError: string | null
 }
 
@@ -200,10 +202,17 @@ export class BrowserImportService {
 
     // ---- Stage: read and work out everything first; any failure here writes nothing. ----------
     const folders: ImportedFolder[] = []
+    const notes: string[] = []
     if (chosen.has('bookmarks')) {
-      if (data.bookmarksError) throw new Error(`${data.bookmarksError} Nothing was imported.`)
+      if (data.bookmarksError) {
+        // Arc keeps what its people use in its sidebar, not in this file: a damaged one leaves its own bookmarks
+        // out (and says so), while the spaces, tabs, history and passwords still come over.
+        const rest = isArc && (data.sidebar !== null || chosen.has('history') || chosen.has('passwords'))
+        if (!rest) throw new Error(`${data.bookmarksError} Nothing was imported.`)
+        notes.push(`${name}'s “${PROFILE_FILES.bookmarks}” file could not be read, so the bookmarks in it were left out`)
+      }
       folders.push(...this.folders(data))
-      skip('bookmarks', data.bookmarksSkipped, 'not web addresses (javascript:, file: or browser pages)')
+      skip('bookmarks', data.bookmarksSkipped, NOT_WEB)
     }
     const pinned = this.pinned(data)
     // Spaces as workspaces: their tabs go into them (and their folders into tab folders), not into the open workspace.
@@ -228,9 +237,18 @@ export class BrowserImportService {
       for (const kept of workspacePlan.keep) folders.push({ label: kept.space, pages: kept.pages.map((page) => ({ ...page, addedAt: null })) })
     } else if (chosen.has('pinned') && isArc) folders.push(...pinned.folders)
 
+    // Open tabs that find no room below are kept the same way, by the space they were open in.
+    const spaceOfOpen = new Map<string, string>()
+    for (const space of data.sidebar?.spaces ?? []) for (const tab of space.open) if (!spaceOfOpen.has(sameAddress(tab.url))) spaceOfOpen.set(sameAddress(tab.url), space.title)
     const wantedPinned = chosen.has('pinned') && !asWorkspaces ? pinned.tabs : []
     const wantedOpen = chosen.has('open') && !asWorkspaces ? data.sidebar?.spaces.flatMap((space) => space.open) ?? [] : []
     const tabs = planTabs(wantedPinned, wantedOpen, this.deps.tabs.urls(), this.deps.tabs.room())
+    for (const tab of tabs.leftOutOpen) folders.push({ label: spaceOfOpen.get(sameAddress(tab.url)) ?? name, pages: [{ url: sameAddress(tab.url), title: tab.title.slice(0, 180), addedAt: null }] })
+    // Arc tabs that are not web pages never come over: said, as it is for bookmarks.
+    if (isArc && data.sidebar) {
+      if (chosen.has('pinned')) skip('pinned', data.sidebar.favouritesNonWeb + data.sidebar.spaces.reduce((sum, space) => sum + space.nonWeb.pinned, 0), NOT_WEB)
+      if (chosen.has('open')) skip('open', data.sidebar.spaces.reduce((sum, space) => sum + space.nonWeb.open, 0), NOT_WEB)
+    }
 
     let visits: ImportedVisit[] = []
     const history = chosen.has('history') ? this.deps.history() : null
@@ -309,15 +327,17 @@ export class BrowserImportService {
       added.open += workspacePlan.counts.open
       workspaceNames = workspacePlan.workspaces.map((workspace) => workspace.name)
       const keptPinned = chosen.has('pinned')
-      skip('workspaces', workspacePlan.skipped.spaces, `spaces over the limit of workspaces (${keptPinned ? 'their pinned tabs and the tabs in their folders are kept in collections named after them' : 'their folders are kept as collections when Bookmarks is ticked'})`)
+      const keptOpen = chosen.has('open')
+      const keptOfSpaces = keptPinned && keptOpen ? 'their pinned tabs, the tabs in their folders and their open tabs are kept in collections named after them' : keptPinned ? 'their pinned tabs and the tabs in their folders are kept in collections named after them' : keptOpen ? 'their open tabs are kept in collections named after them' : 'their folders are kept as collections when Bookmarks is ticked'
+      skip('workspaces', workspacePlan.skipped.spaces, `spaces over the limit of workspaces (${keptOfSpaces})`)
       skip('workspaces', workspacePlan.skipped.duplicates, 'tabs or favourites already there')
-      skip('workspaces', workspacePlan.skipped.overLimit, `tabs over the ${this.deps.workspaces!.tabLimit}-tab limit of a workspace${workspacePlan.keep.length ? ' (the pinned tabs, tabs in folders and favourites among them are kept in collections named after their spaces)' : ''}`)
+      skip('workspaces', workspacePlan.skipped.overLimit, `tabs over the ${this.deps.workspaces!.tabLimit}-tab limit of a workspace${workspacePlan.keep.length ? ' (they are kept in collections named after their spaces)' : ''}`)
     }
     if (tabs.duplicates) skip(chosen.has('pinned') ? 'pinned' : 'open', tabs.duplicates, 'already open')
     skip('pinned', tabs.leftOut.pinned, `over the ${this.deps.tabs.limit}-tab limit (they are in the collection named after their space)`)
-    skip('open', tabs.leftOut.open, `over the ${this.deps.tabs.limit}-tab limit`)
+    skip('open', tabs.leftOut.open, `over the ${this.deps.tabs.limit}-tab limit (they are in the collection named after their space)`)
     const library = folders.length ? JSON.stringify(libraryDocument(folders, `From ${name}`.slice(0, 80), (this.deps.now ?? (() => new Date()))())) : null
-    return { library, added, skipped, ...(workspaceNames ? { workspaceNames } : {}) }
+    return { library, added, skipped, ...(notes.length ? { notes } : {}), ...(workspaceNames ? { workspaceNames } : {}) }
   }
 }
 

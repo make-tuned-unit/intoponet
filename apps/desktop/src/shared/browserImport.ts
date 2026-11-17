@@ -49,6 +49,8 @@ export type ImportRunResult = {
   /** Workspaces made or added to, by name. */
   workspaceNames?: string[]
   skipped: ImportSkip[]
+  /** Things left out that have no count (a file that could not be read), each a plain sentence without its full stop. */
+  notes?: string[]
 }
 
 export type BrowserImportCommand =

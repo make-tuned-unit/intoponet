@@ -27,11 +27,13 @@ export const heldAddresses = (tab: { url: string; home?: string }): string[] => 
  * Tabs to open: pinned first, then open ones, each address once and none already open, within
  * the room left under the tab limit. Existing tabs are never closed to make room.
  */
-export function planTabs(pinned: Array<{ url: string; title: string }>, open: Array<{ url: string; title: string }>, existing: readonly string[], room: number): { add: ImportedTab[]; duplicates: number; leftOut: { pinned: number; open: number } } {
+export function planTabs(pinned: Array<{ url: string; title: string }>, open: Array<{ url: string; title: string }>, existing: readonly string[], room: number): { add: ImportedTab[]; duplicates: number; leftOut: { pinned: number; open: number }; leftOutOpen: Array<{ url: string; title: string }> } {
   const seen = new Set(existing.map(sameAddress))
   const add: ImportedTab[] = []
   let duplicates = 0
   const leftOut = { pinned: 0, open: 0 }
+  /** The open tabs that found no room, as they were given (the caller keeps them in a collection). */
+  const leftOutOpen: Array<{ url: string; title: string }> = []
   const take = (tabs: Array<{ url: string; title: string }>, isPinned: boolean): void => {
     for (const tab of tabs) {
       const key = sameAddress(tab.url)
@@ -42,6 +44,7 @@ export function planTabs(pinned: Array<{ url: string; title: string }>, open: Ar
       seen.add(key)
       if (add.length >= Math.max(0, room)) {
         leftOut[isPinned ? 'pinned' : 'open'] += 1
+        if (!isPinned) leftOutOpen.push(tab)
         continue
       }
       add.push({ url: key, title: tab.title.slice(0, 180), pinned: isPinned })
@@ -49,7 +52,7 @@ export function planTabs(pinned: Array<{ url: string; title: string }>, open: Ar
   }
   take(pinned, true)
   take(open, false)
-  return { add, duplicates, leftOut }
+  return { add, duplicates, leftOut, leftOutOpen }
 }
 
 // ---- A sidebar's spaces, recreated as workspaces ------------------------------------------------
@@ -76,8 +79,8 @@ export type WorkspaceImportPlan = {
   counts: { workspaces: number; pinned: number; foldered: number; open: number; favourites: number }
   skipped: { duplicates: number; overLimit: number; spaces: number }
   /**
-   * Pinned tabs, tabs in folders and favourites that found no room (a full workspace, or a space over
-   * the limit of workspaces), by the space they were in: kept as a collection, so none is lost.
+   * Pinned tabs, tabs in folders, open tabs and favourites that found no room (a full workspace, or a
+   * space over the limit of workspaces), by the space they were in: kept as a collection, so none is lost.
    */
   keep: Array<{ space: string; pages: Page[] }>
 }
@@ -121,7 +124,7 @@ export function planWorkspaces(input: {
     if (!entry) plan.keep.push(entry = { space, pages: [] })
     entry.pages.push({ url: sameAddress(page.url), title: page.title.slice(0, 180) })
   }
-  /** `keep`: the space whose collection the page joins when the workspace has no room (pinned tabs, tabs in folders, favourites). */
+  /** `keep`: the space whose collection the page joins when the workspace has no room. */
   const take = (page: Page, seen: Set<string>, room: { left: number }, keep: string | null): Page | null => {
     const url = sameAddress(page.url)
     if (seen.has(url)) {
@@ -148,8 +151,9 @@ export function planWorkspaces(input: {
     if (!entry) {
       if (!existing && free <= 0) {
         plan.skipped.spaces += 1
-        // No workspace for this space: its pinned tabs and the tabs in its folders are kept as a collection.
+        // No workspace for this space: its pinned tabs, the tabs in its folders and its open tabs are kept as a collection.
         if (input.include.pinned) for (const page of pagesOf(space.tree)) kept(name, page)
+        if (input.include.open) for (const page of space.open) kept(name, page)
         continue
       }
       if (!existing) free -= 1
@@ -189,7 +193,7 @@ export function planWorkspaces(input: {
     }
     if (input.include.open) {
       for (const tab of space.open) {
-        const page = take(tab, seen, room, null)
+        const page = take(tab, seen, room, name)
         if (page) entry.plan.open.push(page)
       }
     }
