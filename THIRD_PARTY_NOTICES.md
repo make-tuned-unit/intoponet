@@ -170,11 +170,29 @@ No other third-party code is vendored into the source tree. A search for
 **Ad and tracker blocking.** Nothing third-party is in this path, as code or
 as data. The matcher, the table that says which site a host belongs to, the
 list of ad and tracker hosts and the page-element rules are all in
-`packages/protection-engine` and were written for Intoponet. No filter list,
-tracker database or ad blocker's code is bundled, fetched or consulted
-(EasyList, EasyPrivacy, the Ghostery adblocker library, tldts and the Public
-Suffix List were removed on 2026-11-17), and a unit test fails if a reference to
-one comes back.
+`packages/protection-engine` and were made for Intoponet:
+
+- the list (`data/blocklist.json`) is Intoponet's own compilation. Its entries
+  come from two sources only: services and their hosts written out by hand from
+  general knowledge (`data/authored-services.json`), and Intoponet's own
+  measurement of what news pages ask other sites for
+  (`scripts/protection-crawl.mjs`), where a host is listed only after a person
+  has looked at what it did (`data/reviewed.json`). Every entry says which
+  source it has and, when measured, the numbers. `docs/protection-measurement.md`
+  has the method and the rules;
+- "the same site" is decided by a hand-written table of suffixes
+  (`src/site.ts`), not by the Public Suffix List;
+- no filter list, hosts file, tracker database or ad blocker's code is bundled,
+  fetched or consulted, by the app or by the tools that build the list.
+  EasyList, EasyPrivacy, the Ghostery adblocker library (with its `@ghostery/*`
+  and `@remusao/*` packages), tldts and the Public Suffix List inside it, which
+  one build of 2026-11-17 used, were removed the same day and never released.
+  A unit test (`packages/protection-engine/src/blocklist.test.ts`) fails if a
+  reference to any of them comes back in the app, the packages, the build
+  scripts, the dependency lock or the built app.
+
+Company and product names in the list are used only to say whose hosts they
+are. The list is refreshed by rerunning the measurement before a release.
 
 ### Fetched live at runtime (shown with links, not redistributed)
 

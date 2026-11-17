@@ -299,6 +299,8 @@ if (!measurement) {
     else for (const stats of list) if (!listed(stats.host) && !isNever(stats.host)) candidates.push([stats.host, stats, signals(stats, adHost)])
     for (const [host, stats, found] of candidates) {
       const decision = reviewed.hosts[host]
+      // A host under a domain the reviewer listed whole is covered by that entry.
+      if (!decision && Object.entries(reviewed.hosts).some(([parent, item]) => parent !== host && under(host, parent) && (item.list === 'ad' || item.list === 'tracker'))) continue
       const proposal = found.isFunctional || isShared(host) ? '' : found.publishers >= 3 && found.ad ? 'ad' : found.publishers >= 3 && found.tracker ? 'tracker' : ''
       if (decision) {
         if (decision.list === 'ad' || decision.list === 'tracker') {

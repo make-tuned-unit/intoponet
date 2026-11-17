@@ -161,6 +161,7 @@ export function SettingsPanel({
             <li><strong>News headlines</strong> belong to their publishers. Intoponet shows titles and links to the original articles.</li>
             <li><strong>Electron and Chromium</strong>, MIT and their component licences. The full list is in THIRD_PARTY_NOTICES.md.</li>
           </ul>
+          <p>The ad and tracker blocker and its list of ad and tracker hosts are Intoponet’s own. No outside filter list or blocker is used.</p>
         </section>
 
         <section>
