@@ -100,7 +100,7 @@ export function buildSpreadingStories(input: { sources: NewsSourceMeta[]; items:
       named: named && named.kind !== 'country' ? named : null,
       national: source.scope === 'national',
       lang: headlineLanguage(source.language, title),
-      tokens: storyTokens(title),
+      tokens: storyTokens(title, headlineLanguage(source.language, title)),
     })
   }
   if (entries.length < 10) return []

@@ -58,6 +58,7 @@ export type NewsCountry = {
   radiusKm: number
   /** Distinct stories (duplicate headlines merged) in the window. */
   storyCount: number
+  /** Outlets (by name) with a story in the window. */
   outletCount: number
   feedCount: number
   healthyFeedCount: number
@@ -228,15 +229,27 @@ function matchersFor(countryCode: string): Map<string, Matcher[]> {
   return byFirstWord
 }
 
-/** First city/region of the country named in a headline, matched on word boundaries. */
+/**
+ * First city/region of the country named in a headline, matched on word boundaries. A place is named with a
+ * capital letter (in scripts that have them): a trial "in spring of 2027" is not in Spring, Texas, and "novi
+ * James Bond" (the new James Bond, in Slovenian) is not Novi, Michigan.
+ */
 function placeNamedInUncached(title: string, countryCode: string): Place | null {
   const buckets = matchersFor(countryCode)
   const plainWords = normalizePlaceText(title).split(' ')
   const accentWords = accentText(title).split(' ')
   const plain = ` ${plainWords.join(' ')} `
   const accented = ` ${accentWords.join(' ')} `
+  const names = new Set<string>()
+  for (const word of title.normalize('NFC').split(/[^\p{L}\p{M}\p{N}]+/u)) {
+    const initial = word[0]
+    if (!initial || (initial === initial.toLowerCase() && initial !== initial.toUpperCase())) continue
+    names.add(normalizePlaceText(word))
+    names.add(accentText(word))
+  }
   let best: Matcher | null = null
   for (const word of new Set([...plainWords, ...accentWords])) {
+    if (!names.has(word)) continue
     for (const matcher of buckets.get(word) ?? []) {
       if (best && matcher.needle.length <= best.needle.length) continue
       if ((matcher.accented ? accented : plain).includes(` ${matcher.needle} `)) best = matcher
@@ -261,8 +274,15 @@ function storyKey(title: string): string {
   return normalizePlaceText(title).slice(0, 120)
 }
 
-function cleanTitle(title: string): string {
-  return title.replace(/\s+/g, ' ').trim().slice(0, NEWS_DIGEST_LIMITS.titleChars)
+/** One line, at most `titleChars` long. A longer headline is cut after a whole word and ends "…", never mid-word. */
+export function cleanTitle(title: string): string {
+  const text = title.replace(/\s+/g, ' ').trim()
+  const limit = NEWS_DIGEST_LIMITS.titleChars
+  if (text.length <= limit) return text
+  const cut = text.slice(0, limit - 1).replace(/[\uD800-\uDBFF]$/, '')
+  const end = cut.lastIndexOf(' ')
+  // A headline without spaces that far in (Chinese, Japanese) is cut where it is.
+  return `${(end > limit / 2 ? cut.slice(0, end) : cut).replace(/[\s,;:·|–—-]+$/u, '')}…`
 }
 
 export function buildNewsDigest(input: {
@@ -378,7 +398,8 @@ export function buildNewsDigest(input: {
       lon: anchor.lon,
       radiusKm: Math.min(900, Math.max(250, anchor.radiusKm)),
       storyCount: list.length,
-      outletCount: new Set(list.map((story) => story.publisherGroupId)).size,
+      // Outlets as the headlines name them: a group's seven papers are seven outlets, as the list under the count shows.
+      outletCount: new Set(list.map((story) => story.publisher)).size,
       feedCount: feeds.length,
       healthyFeedCount: feeds.filter((feed) => input.health[feed.sourceId] === 'healthy').length,
       latestAt: new Date(list[0]!.at).toISOString(),
@@ -720,7 +741,7 @@ function parseMountains(value: unknown[]): StoryMountain[] {
         countryCode: item['countryCode'], outlets: item['outlets'], articles: item['articles'], firstAt: item['firstAt'],
         headline: { title: headline['title'], url: headline['url'], publisher: headline['publisher'], publishedAt: headline['publishedAt'], ...(text(headline['lang'], 20) ? { lang: headline['lang'] } : {}) },
       }]
-    }).slice(0, 60) : []
+    }).slice(0, 250) : []
     if (!footprint.length) return []
     const momentum = finite(row['momentum']) && row['momentum'] >= -1 && row['momentum'] <= 1 ? row['momentum'] : null
     return [{

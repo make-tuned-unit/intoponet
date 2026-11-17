@@ -1,6 +1,7 @@
 import { headlineLanguage } from '../translate/detect'
 import { COUNTRY_ALIASES, COUNTRY_ROWS } from '../places/placeData'
 import { countryPlace, normalizePlaceText } from '../places/places'
+import { countriesIn, countryOfToken } from '../places/countryNames'
 import { clusterHeadlines, storyTokens } from './globalStories'
 import { capitalEvidence, declaredPlace, placeNamedIn, type NewsItemInput, type NewsSourceMeta } from './newsDigest'
 
@@ -59,7 +60,8 @@ export type StoryMountain = {
   latestAt: string
 }
 
-export const STORY_MOUNTAIN_LIMITS = { stories: 60, anchors: 24, countries: 40, windowHours: 36, halfLifeHours: 12, minOutlets: 2 } as const
+/** `countries` is above the number of countries with feeds: the panel's "N other countries" counts the list, so it is never cut short. */
+export const STORY_MOUNTAIN_LIMITS = { stories: 60, anchors: 24, countries: 250, windowHours: 36, halfLifeHours: 12, minOutlets: 2 } as const
 
 const HOUR = 3_600_000
 /** An election is the story most often told in several languages at once: these are one event word. */
@@ -91,14 +93,22 @@ type Entry = {
 }
 
 type CountryMatcher = { code: string; needle: string; exact: boolean }
+const IRREGULAR_DEMONYMS: Array<[string, string]> = [
+  ['GB', 'British'], ['FR', 'French'], ['ES', 'Spanish'], ['NL', 'Dutch'], ['DE', 'German'], ['CH', 'Swiss'], ['GR', 'Greek'], ['TR', 'Turkish'],
+  ['IE', 'Irish'], ['PL', 'Polish'], ['DK', 'Danish'], ['SE', 'Swedish'], ['FI', 'Finnish'], ['TH', 'Thai'], ['PH', 'Filipino'], ['CZ', 'Czech'],
+  ['PT', 'Portuguese'], ['BE', 'Belgian'], ['NO', 'Norwegian'], ['UA', 'Ukrainian'], ['IT', 'Italian'], ['MX', 'Mexican'], ['AR', 'Argentine'],
+]
 let countryMatchers: Map<string, CountryMatcher[]> | null = null
 
-/** Countries named in a headline ("Paraguay", "US", "Britain"). Short upper-case names must match exactly. */
-function countriesNamed(title: string): string[] {
+/**
+ * Countries named in a headline ("Paraguay", "US", "Britain"), and in the headline's own language
+ * ("Ruanda", "Países Bajos", "Allemagne"). Short upper-case names must match exactly.
+ */
+function countriesNamed(title: string, lang?: string | null): string[] {
   if (!countryMatchers) {
     countryMatchers = new Map()
-    const add = (code: string, name: string): void => {
-      const exact = name.length <= 3
+    const add = (code: string, name: string, asWritten = false): void => {
+      const exact = asWritten || name.length <= 3
       const needle = exact ? name : normalizePlaceText(name)
       const first = exact ? needle : needle.split(' ')[0]!
       if (!first) return
@@ -119,6 +129,9 @@ function countriesNamed(title: string): string[] {
       for (const name of names) if (name !== 'America') add(key.replace(/^country:/, ''), name)
     }
     for (const name of ['Estados Unidos', 'EEUU', 'EUA', 'Etats-Unis', 'Stati Uniti', 'Vereinigte Staaten']) add('US', name)
+    // English demonyms the endings above cannot make ("British actor named as the new James Bond"),
+    // matched as written: "Polish" is Poland's, "polish" is not.
+    for (const [code, demonym] of IRREGULAR_DEMONYMS) add(code, demonym, true)
   }
   const raw = title.split(/[^\p{L}\d]+/u).filter(Boolean)
   const plain = normalizePlaceText(title)
@@ -129,6 +142,7 @@ function countriesNamed(title: string): string[] {
       if (matcher.exact ? raw.includes(matcher.needle) : padded.includes(` ${matcher.needle} `)) found.add(matcher.code)
     }
   }
+  for (const mention of countriesIn(title, lang)) found.add(mention.code)
   return [...found]
 }
 
@@ -171,7 +185,7 @@ export function buildStoryMountains(input: {
       sourceId: source.sourceId,
       international: source.scope === 'international',
       lang: headlineLanguage(source.language, title),
-      tokens: storyTokens(title),
+      tokens: storyTokens(title, headlineLanguage(source.language, title)),
     })
   }
   if (entries.length < 10) return { stories: [], memory: [] }
@@ -198,8 +212,9 @@ export function buildStoryMountains(input: {
         set.add(member.group)
         local.set(member.countryCode, set)
       }
-      for (const code of countriesNamed(member.title)) {
-        if (!COUNTRY_BY_CODE.has(code) || code === member.countryCode) continue
+      for (const code of countriesNamed(member.title, member.lang)) {
+        // A country's own outlets naming it add nothing; an international desk has no country of its own.
+        if (!COUNTRY_BY_CODE.has(code) || (code === member.countryCode && !member.international)) continue
         const set = named.get(code) ?? new Set<string>()
         set.add(member.group)
         named.set(code, set)
@@ -226,6 +241,8 @@ export function buildStoryMountains(input: {
   const homes = clusters.map((cluster) => homeOf(cluster.indices))
   const stem = (term: string): string => ELECTION_WORDS.has(term) ? 'election' : term.replace(/(?<=\p{L}{4})(es|s)$/u, '')
   const nameLike = (term: string, cluster: (typeof clusters)[number]): boolean => {
+    // A country is a name in every language, whatever its headlines call it.
+    if (countryOfToken(term)) return true
     let capital = 0
     let seen = 0
     for (const index of cluster.indices) {
@@ -261,12 +278,43 @@ export function buildStoryMountains(input: {
   // Share of a cluster's headlines about an election: two same-country clusters both mostly about one are one election.
   const electionShare = (cluster: (typeof clusters)[number]): number => {
     let hits = 0
-    for (const index of cluster.indices) if (storyTokens(entries[index]!.title).some((token) => ELECTION_WORDS.has(token))) hits += 1
+    for (const index of cluster.indices) if (storyTokens(entries[index]!.title, entries[index]!.lang).some((token) => ELECTION_WORDS.has(token))) hits += 1
     return hits / Math.max(1, cluster.indices.size)
   }
   const elections = clusters.map(electionShare)
   const leads = clusters.map((cluster) => new Set([...cluster.terms.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([term]) => stem(term))))
   const eventWords = clusters.map((cluster) => new Set([...cluster.terms.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([term]) => term).filter((term) => !nameLike(term, cluster)).map(stem)))
+  // The same story in two languages shares no words but its names ("Rwanda" with "countries, deportation" and
+  // with "países, centro"). Two clusters about one country, written in different languages and led by the same
+  // name, are one story when that name is theirs: four in ten of the headlines using it are in the two.
+  const languageOf = (cluster: (typeof clusters)[number]): string => {
+    const counts = new Map<string, number>()
+    for (const index of cluster.indices) {
+      const lang = (entries[index]!.lang ?? '').split('-')[0]!
+      counts.set(lang, (counts.get(lang) ?? 0) + 1)
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] ?? ''
+  }
+  const leadingNames = (cluster: (typeof clusters)[number]): string[] =>
+    [...cluster.terms.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2).map(([term]) => term).filter((term) => nameLike(term, cluster))
+  const shareOf = (cluster: (typeof clusters)[number], term: string): number => {
+    let count = 0
+    for (const index of cluster.indices) if (entries[index]!.tokens.includes(term)) count += 1
+    return count / Math.max(1, cluster.indices.size)
+  }
+  const sameInAnotherLanguage = (a: (typeof clusters)[number], b: (typeof clusters)[number]): boolean => {
+    if (languageOf(a) === languageOf(b)) return false
+    const names = leadingNames(a)
+    return leadingNames(b).some((name) => {
+      if (!names.includes(name)) return false
+      // Led by a second name the other never mentions (the Francophonie summit, a deportation centre): two stories.
+      if ([[a, b], [b, a]].some(([one, other]) => leadingNames(one!).some((second) => second !== name && shareOf(one!, second) >= 0.75 && shareOf(other!, second) === 0))) return false
+      let inside = 0
+      for (const index of a.indices) if (entries[index]!.tokens.includes(name)) inside += 1
+      for (const index of b.indices) if (!a.indices.has(index) && entries[index]!.tokens.includes(name)) inside += 1
+      return inside >= (df.get(name) ?? 0) * 0.4
+    })
+  }
   for (let i = 0; i < clusters.length; i += 1) {
     for (let j = clusters.length - 1; j > i; j -= 1) {
       if (!homes[i] || homes[i] !== homes[j]) continue
@@ -275,7 +323,7 @@ export function buildStoryMountains(input: {
       // Vocabulary alone pairs unrelated local stories ("fraud probe" and "rail accident"): also share a leading term.
       const sharesLead = [...leads[j]!].some((word) => leads[i]!.has(word))
       const oneElection = elections[i]! >= 0.2 && elections[j]! >= 0.2
-      if (!((similarity >= STORY_MERGE_SIMILARITY && sharesLead) || oneElection || [...eventWords[j]!].some((word) => eventWords[i]!.has(word)))) continue
+      if (!((similarity >= STORY_MERGE_SIMILARITY && sharesLead) || oneElection || [...eventWords[j]!].some((word) => eventWords[i]!.has(word)) || sameInAnotherLanguage(clusters[i]!, clusters[j]!))) continue
       for (const index of clusters[j]!.indices) clusters[i]!.indices.add(index)
       for (const [term, weight] of clusters[j]!.terms) clusters[i]!.terms.set(term, (clusters[i]!.terms.get(term) ?? 0) + weight)
       for (const [key, value] of bags[j]!) bags[i]!.set(key, (bags[i]!.get(key) ?? 0) + value)
@@ -392,7 +440,7 @@ export function buildStoryMountains(input: {
       Math.min(2, covers(b)) - Math.min(2, covers(a)) || Number(english(b)) - Number(english(a)) ||
       Number(b.countryCode === countryCode) - Number(a.countryCode === countryCode) || b.at - a.at)[0]!
     // An election family is named for what it is, not by one of its many headlines.
-    const electionHeadlines = members.filter((member) => storyTokens(member.title).some((token) => ELECTION_WORDS.has(token)))
+    const electionHeadlines = members.filter((member) => storyTokens(member.title, member.lang).some((token) => ELECTION_WORDS.has(token)))
     const midterm = electionHeadlines.filter((member) => /\bmidterms?\b/i.test(member.title)).length
     const short = SHORT_COUNTRY[countryCode] ?? COUNTRY_BY_CODE.get(countryCode)?.[1] ?? homeName
     const label = electionHeadlines.length >= Math.max(3, members.length * 0.3)

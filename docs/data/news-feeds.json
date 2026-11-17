@@ -1027,7 +1027,7 @@
    "geographicScope": "local",
    "regionName": "Buenos Aires F.D.",
    "cityName": "Buenos Aires",
-   "independentPublisherGroupId": "clarin",
+   "independentPublisherGroupId": "grupo-clarin",
    "termsUrl": null,
    "evidence": {
     "checkedAt": "2026-10-31",
@@ -16539,7 +16539,7 @@
    "geographicScope": "national",
    "regionName": null,
    "cityName": null,
-   "independentPublisherGroupId": "casa-editorial-el-tiempo",
+   "independentPublisherGroupId": "eltiempo",
    "termsUrl": null,
    "evidence": {
     "checkedAt": "2026-10-26",
@@ -21075,7 +21075,7 @@
    "geographicScope": "national",
    "regionName": null,
    "cityName": null,
-   "independentPublisherGroupId": "echorouk-group",
+   "independentPublisherGroupId": "echorouk",
    "termsUrl": null,
    "evidence": {
     "checkedAt": "2026-10-26",
@@ -66997,7 +66997,7 @@
    "geographicScope": "local",
    "regionName": "Alto Paraná Department",
    "cityName": "Ciudad del Este",
-   "independentPublisherGroupId": "abc-py",
+   "independentPublisherGroupId": "grupo-zuccolillo",
    "termsUrl": null,
    "evidence": {
     "checkedAt": "2026-10-31",
@@ -71533,7 +71533,7 @@
    "geographicScope": "local",
    "regionName": "Northern Darfur",
    "cityName": "El Fasher",
-   "independentPublisherGroupId": "dabanga",
+   "independentPublisherGroupId": "radio-dabanga",
    "termsUrl": null,
    "evidence": {
     "checkedAt": "2026-10-31",
@@ -87439,7 +87439,7 @@
    "geographicScope": "national",
    "regionName": null,
    "cityName": null,
-   "independentPublisherGroupId": "el-pitazo",
+   "independentPublisherGroupId": "elpitazo",
    "termsUrl": null,
    "evidence": {
     "checkedAt": "2026-10-26",
