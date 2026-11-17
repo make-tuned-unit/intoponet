@@ -818,7 +818,19 @@ async function appWindowRecovers(ctx) {
     await openTourPage()
     await ctx.evaluate(`${tourTab}.then((id) => id && window.intoponet.browserHost.closeTab(id)).then(() => true)`)
     await ctx.delay(800)
-    const before = await shellNow()
+    // The shell once its pages have stopped moving: read after a fixed wait on a busy Mac, a layout still easing into
+    // place was compared with the settled one (2 px apart, once), which says nothing about the reload.
+    const settledShell = async () => {
+      let last = await shellNow()
+      for (let i = 0; i < 20; i += 1) {
+        await ctx.delay(300)
+        const now = await shellNow()
+        if (same(now.pages, last.pages)) return now
+        last = now
+      }
+      return last
+    }
+    const before = await settledShell()
     const tabsBefore = await tabsOf(ctx)
     // The split's rounding may move a side by a pixel; anything more is a page area out of step with the shell.
     const near = (a, b) => a.length === b.length && a.every((page, i) => page.url === b[i].url && page.visible === b[i].visible && ['x', 'y', 'width', 'height'].every((key) => Math.abs(page.bounds[key] - b[i].bounds[key]) <= 1))
@@ -841,7 +853,7 @@ async function appWindowRecovers(ctx) {
     await ready(ctx, 'the reloaded app window')
     await ctx.delay(1000)
     expect(await tabsOf(ctx) === tabsBefore, `After the app window crashed, its tabs are ${await tabsOf(ctx)}, not ${tabsBefore}.`)
-    kept('After the app window crashed and reloaded', await shellNow())
+    kept('After the app window crashed and reloaded', await settledShell())
 
     // Its page hangs: once the window reports it unresponsive, it is stopped and reloads.
     await watchLoad()
@@ -850,7 +862,7 @@ async function appWindowRecovers(ctx) {
     await ready(ctx, 'the app window reloaded after hanging')
     await ctx.delay(1000)
     expect(await tabsOf(ctx) === tabsBefore, `After the app window hung, its tabs are ${await tabsOf(ctx)}, not ${tabsBefore}.`)
-    kept('After the app window hung and reloaded', await shellNow())
+    kept('After the app window hung and reloaded', await settledShell())
 
     // Videos playing in the pair (one in the left page, one in a frame of the right page): closing the window pauses them.
     const playVideo = `(() => { const c = document.createElement('canvas'); c.width = 160; c.height = 90; const g = c.getContext('2d'); let f = 0; setInterval(() => { g.fillStyle = 'hsl(' + (f++ % 360) + ' 80% 50%)'; g.fillRect(0, 0, 160, 90) }, 33); const v = document.createElement('video'); v.id = 'boot-video'; v.srcObject = c.captureStream(30); v.muted = true; document.body.append(v); return v.play().then(() => true) })()`
@@ -1082,7 +1094,10 @@ export const checks = {
     await ctx.flyTo('Canada')
     await ctx.delay(2500)
     expect(await ctx.click('.globe-list .globe-row', 'Canada'), 'Canada is not in the list after flying there.')
-    await ctx.wait(`!!document.querySelector('.globe-context-facts')`, 90_000, 'key facts in The bigger picture')
+    await ctx.wait(`!!document.querySelector('.globe-context-facts')`, 90_000, 'key facts in The bigger picture').catch(async (error) => {
+      // Timed out under load with nothing to go on: say whether the card was still looking, had given up, or was never shown.
+      throw new CheckFailure(`${error.message} (the panel is "${await ctx.evaluate(`document.querySelector('.globe-header h1')?.textContent ?? 'none'`).catch(() => 'unknown')}"; its card says "${await ctx.evaluate(`document.querySelector('.globe-context-status')?.innerText ?? (document.querySelector('.globe-context') ? 'no status' : 'no card')`).catch(() => 'unknown')}")`)
+    })
     await ctx.wait(`!!document.querySelector('.globe-context-recent, .globe-context-links')`, 90_000, 'recent history')
     const facts = await ctx.evaluate(`document.querySelector('.globe-context-facts').innerText`)
     expect(/Population/.test(facts) && /Capital/.test(facts), `Key facts are incomplete: ${facts}`)
@@ -1380,7 +1395,7 @@ export const checks = {
       const read = () => ctx.evaluate(`JSON.stringify((() => { const i = document.querySelector('.command-input input'); return { value: i.value, selected: i.value.slice(i.selectionStart, i.selectionEnd), expanded: i.getAttribute('aria-expanded'), active: i.getAttribute('aria-activedescendant'), rows: [...document.querySelectorAll('#omnibox-suggestions [role=option]')].map((r) => ({ id: r.id, kind: r.dataset.kind, text: r.innerText.replace(/\\s+/g, ' '), selected: r.getAttribute('aria-selected') })) } })())`).then(JSON.parse)
       /** Types into the bar. `completes`: wait (within a time limit) for the inline completion, which arrives after a
        * history lookup and can take longer than a moment on a busy Mac; otherwise read after a short pause. */
-      const typeHost = async (text, completes = true) => {
+      const typeOnce = async (text, completes) => {
         // The window in front: losing focus blurs the bar, which drops an inline completion (as it should).
         await ctx.main(`(() => { electron.app.focus({ steal: true }); electron.BrowserWindow.getAllWindows()[0].focus(); return true })()`)
         await ctx.evaluate(`(() => { const i = document.querySelector('.command-input input'); i.focus(); i.select(); return true })()`)
@@ -1396,6 +1411,19 @@ export const checks = {
           await ctx.delay(150)
         }
         return read()
+      }
+      // Another app's window taking the keyboard while the bar is typed in (other checks run beside this one) blurs
+      // the bar and drops the completion, as it should. Seen happening (the window's own blur, counted), it is typed again:
+      // a completion that is missing while the window kept the keyboard is the app's own doing, and is returned as it is.
+      const typeHost = async (text, completes = true) => {
+        await ctx.evaluate(`(() => { if (window.__barBlurs === undefined) { window.__barBlurs = 0; window.addEventListener('blur', (event) => { if (event.target === window) window.__barBlurs += 1 }) } return true })()`)
+        let seen
+        for (let attempt = 0; attempt < 4; attempt += 1) {
+          const blursBefore = await ctx.evaluate(`window.__barBlurs`)
+          seen = await typeOnce(text, completes)
+          if (!completes || seen.value !== text || (await ctx.evaluate(`window.__barBlurs`)) === blursBefore) break
+        }
+        return seen
       }
       const enter = async (modifiers = 0) => {
         await ctx.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, modifiers, text: '\r' })
@@ -3135,11 +3163,18 @@ export const checks = {
     const stepTitle = `(document.querySelector('.tour-progress .is-current')?.dataset.title ?? '')`
     // What a step shows: the selector its spotlight found, whether its card is on top, and what is open behind it.
     const scene = `JSON.stringify({ title: ${stepTitle}, onTop: (() => { const r = document.querySelector('.tour-card').getBoundingClientRect(); return !!document.elementFromPoint(r.left + r.width / 2, r.top + 30)?.closest('.tour') })(), lit: document.querySelector('.tour-spotlight')?.dataset.target ?? null, page: !!document.querySelector('.browser-actions'), olds: !!document.querySelector('.olds-sheet'), bookmarks: !!document.querySelector('.bookmark-pane'), paneCovered: (() => { const pane = document.querySelector('.bookmark-pane')?.getBoundingClientRect(); return !!pane && [...document.querySelectorAll('.story-highest, .globe-panel-pill')].some((el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.right > pane.left && r.left < pane.right && r.bottom > pane.top && r.top < pane.bottom }) })(), library: !!document.querySelector('.bookmark-drawer'), knowledge: !!document.querySelector('.knowledge-sheet'), rail: document.querySelector('.tab-rail')?.classList.contains('is-open') ?? null, typed: document.querySelector('.command-input input')?.value ?? '' })`
+    // How long each step takes to be ready, as the tour itself sees it (its "Showing…" state, timed in the app window):
+    // the check ran out of time under load with nothing to say which step was slow.
+    await ctx.evaluate(`(() => { const seen = window.__tourSteps = { log: [], since: performance.now(), showing: false, title: '' }; setInterval(() => { const next = document.querySelector('.tour-next'); if (!next) return; const title = document.querySelector('.tour-progress .is-current')?.dataset.title ?? ''; const showing = next.textContent.includes('Showing'); if (title !== seen.title) { seen.title = title; seen.since = performance.now(); seen.showing = showing } else if (seen.showing && !showing) seen.log.push([title, Math.round(performance.now() - seen.since)]); seen.showing = showing }, 50); return true })()`)
+    const tourStarted = Date.now()
+    let settled = 0
     const settle = async (step) => {
       await ctx.wait(`document.querySelector('.tour-count')?.textContent.startsWith('${step} of') && !document.querySelector('.tour-next')?.textContent.includes('Showing')`, 45_000, `tour step ${step} to finish showing`)
       await ctx.wait(`document.getElementById('tour-title')?.textContent === ${stepTitle}`, 5000, `tour step ${step}'s card`)
       await ctx.delay(700)
       const state = JSON.parse(await ctx.evaluate(scene))
+      settled += 1
+      ctx.note?.(`${settled} tour steps looked at in ${Math.round((Date.now() - tourStarted) / 1000)} s (now on step ${step}, "${state.title}"); slowest to be ready: ${await ctx.evaluate(`window.__tourSteps.log.slice().sort((a, b) => b[1] - a[1]).slice(0, 3).map(([title, ms]) => '"' + title + '" ' + (ms / 1000).toFixed(1) + ' s').join(', ') || 'none timed yet'`).catch(() => 'unknown')}`)
       // A web page is a native view drawn above the whole interface: shown during the tour, it covers the card and the spotlight.
       state.pageOnScreen = await ctx.main(`electron.BrowserWindow.getAllWindows()[0].contentView.children.some((view) => view.getVisible() && /^https?:/.test(view.webContents?.getURL?.() ?? ''))`)
       return state
@@ -3253,6 +3288,8 @@ export const checks = {
     await settle(total)
     await ctx.click('.tour-next')
     await ctx.wait(`!document.querySelector('.tour-card') && !document.querySelector('.story-panel')`, 5000, 'the tour to finish and tidy up')
+    const stepTimes = JSON.parse(await ctx.evaluate(`JSON.stringify(window.__tourSteps.log)`))
+    const slowestSteps = stepTimes.slice().sort((x, y) => y[1] - x[1]).slice(0, 3).map(([title, ms]) => `"${title}" ${(ms / 1000).toFixed(1)} s`).join(', ')
     // Everything it opened is closed again: none of its pages is left in the sidebar.
     const tidy = await ctx.wait(`${tabList}.then((ids) => ids === ${JSON.stringify(tabsBefore)})`, 5000).then(() => true, () => false)
     expect(tidy, `The tour left a tab open: ${await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => t.map((x) => x.title || x.url).join(', '))`)}.`)
@@ -3294,7 +3331,7 @@ export const checks = {
     await ctx.wait(`!document.querySelector('.tour-card')`, 5000, 'Enter on Leave the tour to leave it')
     await ctx.delay(500)
     expect(await ctx.evaluate(`document.activeElement?.dataset.panel === 'settings'`), `After leaving the tour, focus went to "${await focusName()}", not the Settings button.`)
-    return `All ${total} steps shown, each spotlight on what it describes, the same played forward, gone back to and jumped to; the tour put everything back at the end, its own tab closed. With Wikipedia unreachable The Olds step moved on ${((offline.ms - offline.looked) / 1000).toFixed(1)} s after The Olds had looked (${(offline.ms / 1000).toFixed(1)} s in all: "${offline.olds}").`
+    return `All ${total} steps shown, each spotlight on what it describes, the same played forward, gone back to and jumped to; the tour put everything back at the end, its own tab closed. Slowest steps to be ready (of ${stepTimes.length} timed): ${slowestSteps || 'none'}; the whole walk took ${Math.round((Date.now() - tourStarted) / 1000)} s. With Wikipedia unreachable The Olds step moved on ${((offline.ms - offline.looked) / 1000).toFixed(1)} s after The Olds had looked (${(offline.ms / 1000).toFixed(1)} s in all: "${offline.olds}").`
   },
   async TAB_ARCHIVE(ctx) {
     // Started with an "hour" of 200 ms (TAB_ARCHIVE.env below), so "12 hours" is 2.4 seconds.
@@ -3790,7 +3827,10 @@ export const checks = {
       await ctx.press('Enter')
       await ctx.wait(`${ws}.get().then((s) => s.workspaces[0].name === 'Reading')`, 3000, 'the workspace to be renamed Reading')
       // Focus goes back to the actions button (not to nowhere); so it does when the place picker is left with Escape.
-      await ctx.wait(`document.activeElement?.getAttribute('aria-label') === 'Actions for workspace Reading'`, 3000, 'focus to go back to the actions button once the workspace is renamed')
+      await ctx.wait(`document.activeElement?.getAttribute('aria-label') === 'Actions for workspace Reading'`, 3000, 'focus to go back to the actions button once the workspace is renamed').catch(async (error) => {
+        // Failed once in a release check with nothing to go on: say where focus was instead.
+        throw new CheckFailure(`${error.message} (focus is on ${await ctx.evaluate(`(() => { const el = document.activeElement; return !el || el === document.body ? 'nothing' : '"' + (el.getAttribute('aria-label') || el.textContent || el.tagName).slice(0, 60) + '" (' + el.className + ')' })()`).catch(() => 'unknown')}; the editor is ${await ctx.evaluate(`document.querySelector('.tab-rail-workspace-editor') ? 'still open' : 'closed'`).catch(() => 'unknown')})`)
+      })
       await openWorkspaceMenu('Reading', 'the workspace menu for an anchor')
       await ctx.click('.tab-rail-folder-menu [role="menuitem"]', 'Anchor to a place')
       await ctx.wait(`document.activeElement?.getAttribute('role') === 'combobox' && !!document.activeElement.closest('.tab-rail-anchor')`, 3000, 'the place picker to take focus')

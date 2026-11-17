@@ -68,7 +68,7 @@ async function connect(url, { inFlight, name = 'session' } = {}) {
 /**
  * Run `check(ctx)` against a freshly launched app. Returns notes from the check.
  * ctx: evaluate, send, delay, wait, click, type, press, shot, pageShot(session, label), page(urlPart),
- * main(expression), keyInPage(urlPart, keyCode, modifiers), profile, env.
+ * main(expression), keyInPage(urlPart, keyCode, modifiers), note(text), profile, env.
  */
 export async function runAppCheck(check, { env: extraEnv = {}, evidenceDir, name, timeoutMs = 180_000 } = {}) {
   // E2E_PROFILE: a profile kept between runs (e.g. with translation models installed); otherwise a fresh one.
@@ -225,12 +225,25 @@ export async function runAppCheck(check, { env: extraEnv = {}, evidenceDir, name
     // Test windows open in the same spot, and a covered window stops drawing (its exit animations never end):
     // the shell keeps drawing so one check's window cannot stall another's.
     await main(`(() => { electron.BrowserWindow.getAllWindows()[0]?.webContents.setBackgroundThrottling(false); return true })()`).catch(() => undefined)
+    // An error nobody catches in the main process stops the whole app behind an error alert (it answers nothing
+    // more until someone presses OK). Each check hears them instead, and fails on any, saying what was thrown.
+    await main(`(() => { globalThis.__e2eUncaught = []; process.on('uncaughtException', (error) => { globalThis.__e2eUncaught.push(String(error?.stack ?? error).slice(0, 700)) }); return true })()`).catch(() => undefined)
+    const uncaught = () => Promise.race([main('JSON.stringify(globalThis.__e2eUncaught ?? [])').then(JSON.parse, () => []), delay(5000).then(() => [])])
     let timer
     // Out of time: say what the check was still waiting for the app to answer, the oldest first.
     const stuck = () => [...inFlight].sort((a, b) => a.since - b.since).slice(0, 2).map((call) => `${call.what} (unanswered for ${Math.round((Date.now() - call.since) / 1000)} s)`).join('; ')
-    const limit = new Promise((_, reject) => { timer = setTimeout(() => reject(new CheckFailure(`Took longer than ${Math.round(timeoutMs / 1000)} s.${inFlight.size ? ` Still waiting on ${stuck()}.` : ''}`)), timeoutMs) })
+    // A long check says how far it has come (ctx.note), so one that runs out of time says where its time went.
+    let progress = ''
+    const note = (text) => { progress = String(text) }
+    const limit = new Promise((_, reject) => { timer = setTimeout(() => reject(new CheckFailure(`Took longer than ${Math.round(timeoutMs / 1000)} s.${progress ? ` It had come as far as: ${progress}.` : ''}${inFlight.size ? ` Still waiting on ${stuck()}.` : ''}`)), timeoutMs) })
     try {
-      const notes = await Promise.race([check({ evaluate, send, delay, wait, click, type, press, shot, pageShot, page, main, detachMain, keyInPage, flyTo, waitForNews, profile, port }), limit])
+      const notes = await Promise.race([check({ evaluate, send, delay, wait, click, type, press, shot, pageShot, page, main, detachMain, keyInPage, flyTo, waitForNews, note, profile, port }), limit]).catch(async (error) => {
+        const thrown = await uncaught()
+        if (thrown.length && error instanceof Error) error.message += ` (the main process threw: ${thrown.join(' | ')})`
+        throw error
+      })
+      const thrown = await uncaught()
+      if (thrown.length) throw new CheckFailure(`The main process threw ${thrown.length === 1 ? 'an error' : `${thrown.length} errors`} nobody caught: ${thrown.join(' | ')}`)
       return notes ?? ''
     } finally {
       clearTimeout(timer)
@@ -244,6 +257,9 @@ export async function runAppCheck(check, { env: extraEnv = {}, evidenceDir, name
     stopApp('SIGTERM')
     await delay(800)
     stopApp('SIGKILL')
+    // Gone before its profile is: a helper still on its way out writes there, and whoever deletes the folder next
+    // (this check, or the one that opened the app again in a profile of its own) finds it "not empty".
+    for (let i = 0; i < 50 && spawnSync('pgrep', ['-f', '--', `--user-data-dir=${profile}`]).status === 0; i += 1) await delay(100)
     // A helper that outlived the app must not keep this process alive through the pipes.
     app.stdout.destroy()
     app.stderr.destroy()
