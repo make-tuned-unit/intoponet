@@ -36,7 +36,7 @@ export function splitSections(wikitext: string): Section[] {
   const sections: Section[] = []
   let current: Section | null = null
   for (const line of wikitext.split('\n')) {
-    const heading = line.match(/^(={2,4})\s*(.*?)\s*\1\s*$/)
+    const heading = line.match(/^(={2,6})\s*(.*?)\s*\1\s*$/)
     if (heading) {
       current = { level: heading[1]!.length - 1, title: stripWikitext(heading[2]!), body: '', anchor: headingAnchor(heading[2]!) }
       sections.push(current)

@@ -151,4 +151,10 @@ describe('section links that open the section (2026-11-16 audit)', () => {
     // A heading whose rendering cannot be told links to the article rather than to a section that may not exist.
     expect(entries[1]!.url).toBe('https://en.wikipedia.org/wiki/European_Union')
   })
+
+  it('reads a fifth-level heading as a heading', () => {
+    // Was #=_Anti-drug_legislation= (Crime in Costa Rica).
+    const wikitext = '== Drugs ==\n===== Anti-drug legislation =====\nThe Narcotics and Psychotropic Substances law (Law 8204) was reformed in 2009 to cover money laundering as well.'
+    expect(chronologyFromWikitext('Crime in Costa Rica', wikitext, 2026)[0]).toMatchObject({ section: 'Anti-drug legislation', url: 'https://en.wikipedia.org/wiki/Crime_in_Costa_Rica#Anti-drug_legislation' })
+  })
 })
