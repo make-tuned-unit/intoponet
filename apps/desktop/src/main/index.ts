@@ -59,6 +59,7 @@ import { archiveAfterMs, DEFAULT_TAB_ARCHIVE, TabArchive, type ArchivedTab } fro
 import { addLinkRoute, moveLinkRoute, parseLinkRoutes, removeLinkRoute, routeFor, serializeLinkRoutes, siteOfWebUrl, updateLinkRoute, type LinkRoute } from './linkRoutes'
 import { answerWithin, DEFAULT_TAB_SLEEP, parseBrowsingSettingsFile, parseLinksFromOtherApps, sleepAfterMs, tabsDueForSleep, TYPED_CHECK_MS, TYPED_FORM_SCRIPT } from './tabSleep'
 import { QuickWindows, type QuickProtection } from './quickWindow'
+import { ClosedWindowAudio } from './closedWindowAudio'
 import { AUTO_PIP_WORLD_ID, ENTER_PIP_SCRIPT, EXIT_PIP_SCRIPT, NowPlaying, PAUSE_ALL_MEDIA_SCRIPT, PIP_LEFT_SCRIPT, TOGGLE_PLAYBACK_SCRIPT, type PipEnterResult } from './autoPip'
 import { UnseenTabs } from './backgroundLoad'
 import type { NowPlayingSnapshot } from '@intoponet/browser-api'
@@ -291,6 +292,8 @@ const unseenTabs = new UnseenTabs<Electron.WebContents>({
   pause: (contents) => runInEveryFrame(contents, PAUSE_UNSEEN_MEDIA),
   resume: (contents) => runInEveryFrame(contents, RESUME_UNSEEN_MEDIA),
 })
+/** Pages muted because the app window closed, until the person acts in them (closedWindowAudio.ts). */
+const closedWindowAudio = new ClosedWindowAudio<Electron.WebContents>()
 let translateService: TranslateService | null = null
 /** Saved passwords (sealed on this Mac); null until the app is ready. */
 let passwords: PasswordService | null = null
@@ -779,7 +782,7 @@ function nowPlayingSnapshot(): NowPlayingSnapshot | null {
     const tab = allTabs().find((item) => item.id === tabId)
     if (!tab || viewGone(tab.view)) return null
     const contents = tab.view.webContents
-    return { title: capTitle(liveTitle(tab) || tab.title || capUrl(tab.url)), muted: contents.isAudioMuted() }
+    return { title: capTitle(liveTitle(tab) || tab.title || capUrl(tab.url)), muted: contents.isAudioMuted() && !closedWindowAudio.silenced(contents) }
   })
 }
 const emitNowPlaying = coalesce(() => emit({ type: 'now-playing', nowPlaying: nowPlayingSnapshot() }))
@@ -790,6 +793,8 @@ const emitNowPlaying = coalesce(() => emit({ type: 'now-playing', nowPlaying: no
  */
 function pauseAllMedia(): void {
   const views = [...allTabs().map((tab) => tab.view), ...(linkPreview ? [linkPreview.view] : [])]
+  // What pausing cannot reach (a Web Audio player, a player in a closed shadow root) is silenced with its page.
+  closedWindowAudio.windowClosed(allTabs().filter((tab) => !viewGone(tab.view)).map((tab) => tab.view.webContents))
   for (const view of views) {
     if (viewGone(view)) continue
     // The page's own frame in an isolated world (the page cannot override pause there); its frames as they are.
@@ -1984,7 +1989,7 @@ function tabSnapshots(): PageTabSnapshot[] {
       active: tab.id === activeTabId,
       isPrivate: privateViews.has(tab.view),
       ...(tab.start ? { isStartPage: true } : {}),
-      ...liveTabFlags(live ? tab.view.webContents : null, tab, live && unseenTabs.mutedUntilShown(tab.view.webContents)),
+      ...liveTabFlags(live ? tab.view.webContents : null, tab, live && (unseenTabs.mutedUntilShown(tab.view.webContents) || closedWindowAudio.silenced(tab.view.webContents))),
       ...(tab.pinned && tab.home ? { home: capUrl(tab.home), ...(awayFromHome(safeHttpUrl(currentUrl) ? currentUrl : tab.url, tab.home) ? { awayFromHome: true } : {}) } : {}),
       ...(tab.asleep ? { asleep: true } : {}),
       ...(tab.lastShownAt ? { lastShownAt: tab.lastShownAt } : {}),
@@ -3624,6 +3629,8 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
   view.webContents.once('dom-ready', () => { if (!view.webContents.isDestroyed()) view.setBackgroundColor('#ffffff') })
   view.webContents.setWebRTCIPHandlingPolicy(WEBRTC_POLICY)
   view.webContents.on('before-mouse-event', (_event, input) => {
+    // A click in a page silenced when the app window closed: the person is back in this tab, and it is heard again.
+    if (input.type === 'mouseDown') closedWindowAudio.personActed(view.webContents)
     if (shouldCloseTabDockFromNativeMouse({
       isActivePage: pageView === view,
       fullWidth: browserFullWidth,
@@ -3672,6 +3679,8 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
   // Browser keys pressed in a page: carried out here, so a page cannot swallow them. preventDefault
   // also keeps the menu bar from running the same key a second time.
   view.webContents.on('before-input-event', (event, input) => {
+    // A key typed in a page silenced when the app window closed: heard again, as after a click in it.
+    if (input.type === 'keyDown') closedWindowAudio.personActed(view.webContents)
     // Esc always leaves a page's fullscreen (the page cannot keep it for itself).
     if (htmlFullScreenView === view && input.type === 'keyDown' && input.key === 'Escape') {
       event.preventDefault()
@@ -4685,6 +4694,7 @@ async function handleBrowserCommand(
       const tab = allTabs().find((item) => item.id === command.id)
       if (tab && !viewGone(tab.view)) {
         unseenTabs.mutedByPerson(tab.view.webContents)
+        closedWindowAudio.mutedByPerson(tab.view.webContents)
         tab.view.webContents.setAudioMuted(command.muted)
         emitTabs()
         emitNowPlaying()
@@ -4694,7 +4704,8 @@ async function handleBrowserCommand(
     case 'now-playing-toggle': {
       const tab = allTabs().find((item) => item.id === command.id)
       if (!tab || viewGone(tab.view)) break
-      // Play or pause the tab's media (a user gesture, so playback may start).
+      // Play or pause the tab's media (a user gesture, so playback may start, and a tab silenced when the window closed is heard).
+      closedWindowAudio.personActed(tab.view.webContents)
       void tab.view.webContents.executeJavaScriptInIsolatedWorld(AUTO_PIP_WORLD_ID, [{ code: TOGGLE_PLAYBACK_SCRIPT }], true)
         .then((result: string) => {
           // Paused from the control: it stays listed so it can be played again.

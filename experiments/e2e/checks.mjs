@@ -861,6 +861,12 @@ async function appWindowRecovers(ctx) {
     await rightPage.evaluate(`Promise.resolve(document.querySelector('iframe').contentWindow.eval(${JSON.stringify(playVideo)}))`)
     const videos = async () => [await leftPage.evaluate(`document.getElementById('boot-video').paused`), await rightPage.evaluate(`document.querySelector('iframe').contentDocument.getElementById('boot-video').paused`)]
     expect(same(await videos(), [false, false]), `The test videos are not playing before the window closes: ${JSON.stringify(await videos())}.`)
+    // What pausing cannot reach: a Web Audio player (no element to pause) on the left, a video in a closed shadow root on the right.
+    await leftPage.evaluate(`(() => { const audio = new AudioContext(); const tone = audio.createOscillator(); const quiet = audio.createGain(); quiet.gain.value = 0.0001; tone.connect(quiet).connect(audio.destination); tone.start(); window.__bootAudio = audio; return audio.resume().then(() => true) })()`, { userGesture: true })
+    await rightPage.evaluate(`(() => { const c = document.createElement('canvas'); c.width = 32; c.height = 18; const g = c.getContext('2d'); setInterval(() => g.fillRect(0, 0, 32, 18), 100); const v = document.createElement('video'); v.srcObject = c.captureStream(5); v.muted = true; const holder = document.createElement('div'); holder.attachShadow({ mode: 'closed' }).append(v); document.body.append(holder); window.__bootShadowVideo = v; return v.play().then(() => true) })()`)
+    const unreached = async () => [await leftPage.evaluate(`window.__bootAudio.state`), await rightPage.evaluate(`window.__bootShadowVideo.paused`)]
+    const silenced = () => ctx.main(`JSON.stringify(['/left', '/right'].map((part) => electron.webContents.getAllWebContents().find((c) => /^https?:/.test(c.getURL()) && c.getURL().includes(part))?.isAudioMuted() ?? null))`).then(JSON.parse)
+    expect(same(await unreached(), ['running', false]) && same(await silenced(), [false, false]), `The Web Audio player and the video in a closed shadow root are not set up: ${JSON.stringify(await unreached())}, muted ${JSON.stringify(await silenced())}.`)
 
     // Closed with the red button while a quick window is open: the Dock icon brings it back, the pair in front.
     await ctx.main(`(() => { electron.Menu.getApplicationMenu().getMenuItemById('new-quick-window').click(); return true })()`)
@@ -874,6 +880,13 @@ async function appWindowRecovers(ctx) {
     await ready(shell, 'the app window back from the Dock')
     await ctx.delay(1500)
     expect(same(await videos(), [true, true]), `A video started playing again by itself when the app window came back: ${JSON.stringify(await videos())}.`)
+    // The players pausing could not reach go on running, so their pages were silenced, and stay silent with the window back,
+    // without the tabs being listed as muted (that shows the person's own choice).
+    expect(same(await silenced(), [true, true]), `With the app window closed and back, the pages whose players cannot be paused (${JSON.stringify(await unreached())}) are muted ${JSON.stringify(await silenced())}, not both.`)
+    expect(await shell.evaluate(`window.intoponet.browserHost.getTabs().then((tabs) => tabs.every((tab) => !tab.muted))`), 'A tab silenced because the app window closed is listed as muted by the person.')
+    // A key typed in one of them (the person is back in that tab): that tab is heard again, the other stays silent.
+    await ctx.keyInPage('/left', 'Shift')
+    await until('the tab a key was typed in to be heard again', async () => same(await silenced(), [false, true]), 5000)
     expect(await tabsOf(shell) === tabsBefore, `Back from the Dock, the app window's tabs are ${await tabsOf(shell)}, not ${tabsBefore}.`)
     const reopened = await shellNow()
     expect(same(reopened.pages.map((page) => page.url), before.pages.map((page) => page.url)), `Back from the Dock, the pages in front are ${JSON.stringify(reopened.pages.map((page) => page.url))}.`)
