@@ -165,6 +165,7 @@ import { GlobeOverlay, type GlobeLabel } from './globe/GlobeOverlay'
 import { labelViewChanged, viewLabelSignals, type LabelView } from './globe/viewLabels'
 import { GlobeHeader, HoverCardContent, LayerCard, SignalPanel, type FieldView, type ListView } from './globe/GlobeHud'
 import { OldsPanel, type OldsState } from './olds/OldsPanel'
+import { oldsErrorMessage } from './olds/oldsError'
 import type { CoverageArticle } from './olds/OldsCoverage'
 import { MinePanel } from './globe/MinePanel'
 import { normalizeLanguage, type AbsorbScope, type KnowledgeRecord, type OldsNode, type OldsQuery } from '@intoponet/browser-api'
@@ -2397,7 +2398,7 @@ export function App() {
       setOlds({ stack, state: { status: 'ready', thread } })
     }, (reason: unknown) => {
       if (request !== oldsRequest.current) return
-      setOlds({ stack, state: { status: 'error', label: top.label, message: reason instanceof Error && /network|fetch|timed out|ENOTFOUND/i.test(reason.message) ? 'Could not reach Wikidata. Check your connection and try again.' : 'No sourced history could be found for this.' } })
+      setOlds({ stack, state: { status: 'error', label: top.label, message: oldsErrorMessage(reason) } })
     })
   }
   /** The Olds for what you're looking at: the selected signal, the focused place, or the country in view. */
@@ -3531,6 +3532,7 @@ export function App() {
             onFollow={followOlds}
             onBack={olds.stack.length > 1 ? () => loadOlds(olds.stack.slice(0, -1)) : null}
             onClose={closeOlds}
+            onRetry={() => loadOlds(olds.stack)}
             onOpen={(url) => void window.intoponet.browserHost.open({ kind: 'url', value: url })}
             onPickTopic={(topic) => {
               const top = olds.stack[olds.stack.length - 1]

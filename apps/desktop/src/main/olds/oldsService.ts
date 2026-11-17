@@ -29,6 +29,10 @@ import { cleanHeadline, foreignNamesIn, isRelevantCandidate, mentions, properPhr
 
 const USER_AGENT = 'Intoponet/0.1 (+https://github.com/make-tuned-unit/intoponet; The Olds)'
 const TIMEOUT_MS = 15_000
+/** How long a host that kept answering 429 is left alone when it names no time itself. */
+const RATE_LIMIT_REST_S = 30
+/** Said when Wikipedia or Wikidata answered with an error, rate limiting, or something unreadable (the shell tells it by "not answering"). */
+export const OLDS_UNAVAILABLE = 'Wikipedia and Wikidata are not answering properly right now. Try again in a moment.'
 // Nationalities the country detector skips as ambiguous ("Indian": India or the Ocean?) but which, opening a
 // description ("Indian bill"), plainly name a country.
 const DESCRIPTION_DEMONYMS: Record<string, string> = {
@@ -117,6 +121,10 @@ export class OldsService {
   private readonly slots = new Map<string, { active: number; waiting: Array<() => void> }>()
   /** Requests that failed for want of a network (no connection, a dropped one, a timeout), counted since start. */
   private networkFailures = 0
+  /** Requests the servers did not answer properly (an error status, rate limiting, a body that is not JSON), counted since start. */
+  private serviceFailures = 0
+  /** Hosts that kept answering "too many requests": nothing more is asked of them until this time. */
+  private readonly limitedUntil = new Map<string, number>()
 
   constructor(private readonly options: OldsServiceOptions) {
     this.fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis)
@@ -132,6 +140,7 @@ export class OldsService {
     }
     const lang = query.kind === 'wikipedia' ? query.lang ?? 'en' : 'en'
     const failures = this.networkFailures
+    const unanswered = this.serviceFailures
     let thread: OldsThread
     try {
       thread = query.kind === 'country'
@@ -145,8 +154,12 @@ export class OldsService {
     } catch (error) {
       // Searches that failed for want of a network find nothing: that is no reason to say there is no history.
       if (this.networkFailures > failures) throw new Error('Wikipedia could not be reached over the network. Try again once you are online.')
+      // …and neither is a server error, rate limiting, or an answer that could not be read.
+      if (this.serviceFailures > unanswered) throw new Error(OLDS_UNAVAILABLE)
       throw error
     }
+    // Built while some lookups failed: it may lack events or have settled for a broader topic. Shown, marked, and not kept.
+    if (this.networkFailures > failures || this.serviceFailures > unanswered) thread.partial = true
     // A thread whose history article could not be fetched is shown but not kept, so the next open retries.
     if (!(thread as { partial?: boolean }).partial) {
       this.remember(key, thread)
@@ -164,13 +177,13 @@ export class OldsService {
   // ---- Network -----------------------------------------------------------
 
   /** A JSON answer, shared with any identical request made in the last few minutes (or still on its way). */
-  private getJson(url: string, timeoutMs = TIMEOUT_MS): Promise<unknown> {
+  private getJson(url: string, timeoutMs = TIMEOUT_MS, slowIsNormal = false): Promise<unknown> {
     const now = this.now()
     const hit = this.responses.get(url)
     if (hit && now - hit.at < RESPONSE_TTL_MS) return hit.value
     if (hit) this.forgetResponse(url)
     const entry = { at: now, bytes: 0, value: Promise.resolve<unknown>(null) }
-    entry.value = this.fetchJson(url, timeoutMs, (bytes) => {
+    entry.value = this.fetchJson(url, timeoutMs, slowIsNormal, (bytes) => {
       entry.bytes = bytes
       this.responseBytes += bytes
       // Oldest first, until the answers kept fit.
@@ -203,18 +216,32 @@ export class OldsService {
     }
   }
 
-  private async fetchJson(url: string, timeoutMs: number, sized: (bytes: number) => void): Promise<unknown> {
+  private async fetchJson(url: string, timeoutMs: number, slowIsNormal: boolean, sized: (bytes: number) => void): Promise<unknown> {
     const release = await this.slot(new URL(url).host)
     try {
-      const text = await this.fetchText(url, timeoutMs)
+      const text = await this.fetchText(url, timeoutMs, slowIsNormal)
       sized(text.length)
-      return JSON.parse(text) as unknown
+      try {
+        return JSON.parse(text) as unknown
+      } catch {
+        // An error page or a cut-off body where JSON was expected.
+        this.serviceFailures += 1
+        throw new Error(`${new URL(url).host} sent an answer that could not be read.`)
+      }
     } finally {
       release()
     }
   }
 
-  private async fetchText(url: string, timeoutMs: number): Promise<string> {
+  /** `slowIsNormal`: a time-boxed extra (a heavy query) whose timeout says nothing about the network. */
+  private async fetchText(url: string, timeoutMs: number, slowIsNormal = false): Promise<string> {
+    const host = new URL(url).host
+    // A host that kept saying "too many requests" is left alone for a while: later lookups fail at once
+    // instead of each waiting through its own retries (which kept the spinner up for minutes).
+    if ((this.limitedUntil.get(host) ?? 0) > this.now()) {
+      this.serviceFailures += 1
+      throw new Error(`${host} is rate limiting requests.`)
+    }
     for (let attempt = 0; attempt < 5; attempt += 1) {
       let response: Response
       try {
@@ -230,21 +257,31 @@ export class OldsService {
           await new Promise((resolve) => setTimeout(resolve, 500 + Math.random() * 500))
           continue
         }
-        if (error instanceof TypeError || timedOut) this.networkFailures += 1
+        if ((error instanceof TypeError || timedOut) && !(slowIsNormal && timedOut)) this.networkFailures += 1
         throw error
       }
-      if ((response.status === 429 || response.status === 503) && attempt < 4) {
-        // Respect the server's retry-after (up to 20 s); otherwise back off 1, 2, 4, 8 s with jitter.
+      if (response.status === 429 || response.status === 503) {
         const retryAfter = Number(response.headers.get('retry-after'))
-        const wait = Number.isFinite(retryAfter) && retryAfter > 0 ? Math.min(20, retryAfter) * 1_000 : 1_000 * 2 ** attempt + Math.random() * 400
+        const asked = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : null
         await response.body?.cancel().catch(() => undefined)
-        await new Promise((resolve) => setTimeout(resolve, wait))
-        continue
+        if (attempt < 4 && (this.limitedUntil.get(host) ?? 0) <= this.now()) {
+          // Respect the server's retry-after (up to 20 s); otherwise back off 1, 2, 4, 8 s with jitter.
+          const wait = asked !== null ? Math.min(20, asked) * 1_000 : 1_000 * 2 ** attempt + Math.random() * 400
+          await new Promise((resolve) => setTimeout(resolve, wait))
+          continue
+        }
+        this.serviceFailures += 1
+        this.limitedUntil.set(host, this.now() + Math.min(60, asked ?? RATE_LIMIT_REST_S) * 1_000)
+        throw new Error(`${host} is rate limiting requests.`)
       }
-      if (!response.ok) throw new Error(`Wikidata responded ${response.status}.`)
-      return response.text()
+      if (!response.ok) {
+        this.serviceFailures += 1
+        throw new Error(`${host} responded ${response.status}.`)
+      }
+      // A connection dropped while the answer was arriving.
+      return await response.text().catch((error: unknown) => { this.networkFailures += 1; throw error })
     }
-    throw new Error('Wikidata is rate limiting requests.')
+    throw new Error(`${host} is rate limiting requests.`)
   }
 
   private async resolveTitle(title: string, lang: string): Promise<string> {
@@ -281,7 +318,8 @@ export class OldsService {
   private async sparql(query: string, timeoutMs = TIMEOUT_MS): Promise<Array<Record<string, { value?: string }>>> {
     const url = new URL('https://query.wikidata.org/sparql')
     url.search = new URLSearchParams({ query, format: 'json' }).toString()
-    const payload = await this.getJson(url.toString(), timeoutMs) as { results?: { bindings?: Array<Record<string, { value?: string }>> } }
+    // The one query here is an optional, time-boxed extra that is slow for large countries: its timeout is not a failure.
+    const payload = await this.getJson(url.toString(), timeoutMs, true) as { results?: { bindings?: Array<Record<string, { value?: string }>> } }
     return Array.isArray(payload.results?.bindings) ? payload.results.bindings : []
   }
 
@@ -1068,6 +1106,20 @@ export class OldsService {
       while (this.peopleCountries.size > MAX_PEOPLE_COUNTRIES) this.peopleCountries.delete(this.peopleCountries.keys().next().value!)
     }
     const surnameOnly = !!opening && opening.split(/\s+/).length === 1
+    // How many of the people found share each surname.
+    const surnameOf = (label: string): string => foldAccents(label.replace(/\s*\(.*?\)\s*$/, '')).toLowerCase().split(/\s+/).at(-1) ?? ''
+    const surnames = new Map<string, number>()
+    for (const item of new Set([...items.values()].map((entry) => entry.qid))) {
+      const entity = entities.get(item)
+      const label = entity && ids(entity, 'P31').includes('Q5') ? nodeFromEntity(entity, 'en')?.label : null
+      if (label && !isQid(label)) surnames.set(surnameOf(label), (surnames.get(surnameOf(label)) ?? 0) + 1)
+    }
+    // …and which of those the world knows ("Iran’s Pezeshkian" is the president, whoever else has the name).
+    const namesakes = [...new Set([...items.values()].map((entry) => entry.qid))].map((qid) => entities.get(qid)).filter((entity): entity is WikidataEntity => {
+      const label = entity && ids(entity, 'P31').includes('Q5') ? nodeFromEntity(entity, 'en')?.label : null
+      return !!label && (surnames.get(surnameOf(label)) ?? 0) >= 2 && headlineWords.has(surnameOf(label))
+    })
+    const famousNamesakes = namesakes.length ? await this.famousAmong(namesakes).catch(() => new Set<string>()) : new Set<string>()
     // How widely known people are (Wikipedia editions about them): only for foreign people matched by surname.
     const famous = surnameOnly ? await this.famousAmong([...items.values()].map((item) => entities.get(item.qid)).filter((entity): entity is WikidataEntity => !!entity
       && ids(entity, 'P31').includes('Q5') && subjectPerson(nodeFromEntity(entity, 'en')?.label ?? '') && !storyQids.some((qid) => countriesOf(entity).includes(qid)))).catch(() => new Set<string>()) : new Set<string>()
@@ -1125,6 +1177,8 @@ export class OldsService {
       if (person && !filedThread && !native && !namedPerson && !givenNameMentioned(node.label, `${text} ${query.text}`)
         && !(storyQids.length && storyQids.some((qid) => countries.includes(qid)))
         && Object.keys(entity.sitelinks ?? {}).filter((site) => site.endsWith('wiki')).length < 40) return []
+      // …and with several people of that surname among the results ("France’s Diallo": Abdou, Philippe, Amad…), it names none of them.
+      if (person && !filedThread && !native && !namedPerson && !givenNameMentioned(node.label, `${text} ${query.text}`) && (surnames.get(surnameOf(node.label)) ?? 0) >= 2 && !famousNamesakes.has(item.qid)) return []
       // (Only for the person that surname may be: someone named in full elsewhere in the headline is named.)
       if (person && surnameOnly && !fullPersonNameMentioned(node.label, text) && countries.length && storyQids.length && !storyQids.some((qid) => countries.includes(qid)) && !famous.has(item.qid)) return []
       // Known for something the headline never touches ("Butler says investment return…" is not the actor).
@@ -1149,8 +1203,11 @@ export class OldsService {
       const filedBonus = filedThread ? Math.max(4, 6 - threadIndex) : filedLink ? 1.5 : 0
       // A foreign institution or place (not an event) the headline never names is not this story ("Ministry of
       // Education, Culture, Sports…" of Japan for a merger of bureaus in Macau).
+      // (Matched untranslated, a word of its title is not its name: "Premier ministre français" for the Central African
+      // Republic's former "Premier ministre" needs the whole title.)
       const foreign = !filedThread && !isEventLike(entity) && storyQids.length > 0 && countries.length > 0 && countries.length <= 2
-        && !storyQids.some((qid) => countries.includes(qid)) && titleWordsIn(matchTitle, headlineNames) === 0
+        && !storyQids.some((qid) => countries.includes(qid))
+        && (titleWordsIn(matchTitle, headlineNames) === 0 || (native && titleWordsIn(matchTitle, text) < titleContentWords(matchTitle).length))
         // The person the headline opens with is named, though first words are left out of its names ("Mbappe apologises…").
         && !namedPerson
       if (foreign) return []
@@ -1223,7 +1280,15 @@ export class OldsService {
       // of its words ("infrastructure development" for saffron exports).
       // (Linked from the Current events item telling this story, it was chosen by Wikipedia's editors: "Bomb threat" for bomb hoaxes.)
       const partialConcept = !isEventLike(entity) && ids(entity, 'P17').length === 0 && !person && !filedThread && !filedLink && !native && titleWordsIn(node.label, text) < titleContentWords(node.label).length
-      const weakOnly = otherIncident || nativeThin || partialConcept || ((countryOnly || placeOnly) && !(leadingYear >= currentYear - 1 && eventKindMatches(node.label, text)))
+      // Matched untranslated, "Niger (fleuve)" for the country in "Burkina-Niger": the qualifier says it is something else.
+      // (A year in brackets is when, not what; and "(province)" or "(ville)" only says which place of that name: "Kasaï (province)".)
+      const nativeQualified = native && !filedThread && !person && unusedQualifier(matchTitle, text)
+        && !/\(\s*(?:\d{4}|province|provincia|région|region|región|ville|commune|city|ciudad|cidade|stad|stadt|département|departamento|état|estado|pays|país|municipio|município|gemeente|gemeinde)\s*\)\s*$/iu.test(matchTitle)
+      // …and "Presidente de Costa Rica" for a murder "en Costa Rica" shares only the country's name.
+      // (A qualifier the headline uses says which thing of that name it is: "Niger (fleuve)" for "Crue du fleuve Niger".)
+      const nativeCountryOnly = native && !filedThread && !person && titleWordsIn(matchTitle, text) > 0 && titleWordsIn(matchTitle, subjectText) === 0
+        && !(/\([^)]+\)\s*$/.test(matchTitle) && !unusedQualifier(matchTitle, text))
+      const weakOnly = otherIncident || nativeThin || nativeQualified || partialConcept || ((countryOnly || nativeCountryOnly || placeOnly) && !(leadingYear >= currentYear - 1 && eventKindMatches(node.label, text)))
       // A general concept with no country ("Soldier") is a poor starting point for one country's news.
       const general = !isEventLike(entity) && ids(entity, 'P17').length === 0 && !ids(entity, 'P31').includes('Q5')
       // Without translation, one shared word is too weak ("ONU" → "EJ Onu"), unless the title is that one word.
@@ -1896,7 +1961,7 @@ export function isWorkOrThing(description: string | null | undefined, aboutAWork
   // Plants and trees are things; dinosaurs and viruses can be news ("Nanotyrannus").
   if (/\b(species|genus|cultivar|variety) of (tree|plant|flowering plant|shrub|grass|herb|fungus|palm|cactus)\b/i.test(description)) return true
   const head = description.toLowerCase().replace(/\s+(by|directed|written|starring|from|produced|created|released|launched|issued|named|associated|owned|based|bearing|with|that|which|used|about|featuring|for|in|of|on)\b.*$/, '').replace(/,.*$/, '').trim()
-  return /\b(film|movie|documentary|album|song|single|novel|book|(television|tv|drama|comedy|web|animated|anime|reality)( drama| comedy)? series|miniseries|sitcom|episode|video game|band|musical|opera|painting|comic|manga|anime|cultivar|dish|food|snack|nut|drink|beverage|brand|character|surname|given name|family name|name|coin|meme coin|memecoin|cryptocurrency|token|phrase|slogan|idiom|catchphrase|expression|proverb|website|web site|blog|podcast|channel|youtube channel|webcomic|app)$/.test(head)
+  return /\b(film|movie|documentary|album|song|single|novel|book|(television|tv|drama|comedy|web|animated|anime|reality)( drama| comedy)? series|miniseries|sitcom|episode|video game|band|(?:hip[ -]hop|musical|music|rock|pop|rap|punk|metal|jazz|folk|vocal|girl|boy) (?:group|duo|trio|collective)|musical|opera|painting|comic|manga|anime|cultivar|dish|food|snack|nut|drink|beverage|brand|character|surname|given name|family name|name|coin|meme coin|memecoin|cryptocurrency|token|phrase|slogan|idiom|catchphrase|expression|proverb|website|web site|blog|podcast|channel|youtube channel|webcomic|app)$/.test(head)
 }
 
 /** Common European languages by their function words, for headlines whose feed gave no language. */
@@ -2007,7 +2072,8 @@ export function impliedCountries(raw: string): string[] {
 }
 
 export function headlineCountries(raw: string): string[] {
-  const text = cleanHeadline(raw)
+  // Who paid for or built something is not where the story is ("Australian-funded fence … at Gizo prison" is in Solomon Islands).
+  const text = cleanHeadline(raw).replace(/\b\p{Lu}[\p{L}.]*-(?:funded|financed|donated|sponsored|built|made|supplied)\b/gu, ' ')
   // Named countries first, then ones named by adjective ("US, UK back Lebanese state…" is also about Lebanon).
   const found = countriesByName(text)
   return [...new Set([...found, ...countriesByAdjective(text)])]
@@ -2043,7 +2109,7 @@ function countriesByName(text: string): string[] {
 
 const BROAD_CLASSES = new Set(['Q6256', 'Q3624078', 'Q5107', 'Q82794', 'Q35657', 'Q10864048', 'Q1620908', 'Q15642541', 'Q7275', 'Q3336843', 'Q11828004', 'Q107390', 'Q34876', 'Q515'])
 
-const CACHE_VERSION = 'v19'
+const CACHE_VERSION = 'v20'
 
 function cacheKey(query: OldsQuery): string {
   return `${CACHE_VERSION}|${rawCacheKey(query)}`

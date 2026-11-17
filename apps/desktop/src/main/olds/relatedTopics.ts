@@ -73,7 +73,9 @@ export function otherCountries(headline: string, country: string | null, named: 
 export function relatedQueries(headline: string, country: string | null, exclude: string[] = [], regions: string[] = [], others: string[] = []): { titles: string[]; searches: string[]; stems: string[] } {
   const titles: string[] = []
   // Institutions named for a subject are not that subject: "World Bank" says nothing about banking.
-  const subjectText = headline.replace(/\b(World|Asian Development|African Development|Inter-American Development|European Investment|European Central|Islamic Development|West Bank|Gaza)\s+Bank\b|\bWest Bank\b/gi, ' ')
+  // …and what a headline rules out is not its subject: "non-oil exports" are not about oil.
+  // An appeal to someone (for aid, for calm) is not an appeal in court.
+  const subjectText = headline.replace(/\b(World|Asian Development|African Development|Inter-American Development|European Investment|European Central|Islamic Development|West Bank|Gaza)\s+Bank\b|\bWest Bank\b/gi, ' ').replace(/\bnon-\p{L}+/giu, ' ').replace(/\bappeals? (?:to|for)\b/gi, ' ')
   // Province or state first (the story's own level), then the country.
   for (const scope of [...regions.slice(0, 1), country]) {
     for (const family of TOPIC_FAMILIES) {

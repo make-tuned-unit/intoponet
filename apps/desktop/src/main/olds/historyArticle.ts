@@ -10,21 +10,49 @@ import type { OldsChapter, OldsDate } from '@intoponet/browser-api'
 const SKIP_SECTIONS = /^(see also|notes|references|bibliography|sources|further reading|external links|gallery|footnotes|citations|works cited|explanatory notes|primary sources|secondary sources|historiography|reading list|image gallery|images|timeline|chronology|history by region|list of rulers|rulers)$/i
 const MAX_CHAPTERS = 28
 
-type Section = { level: number; title: string; body: string }
+/** `anchor`: the heading's id on the rendered page, or null when it cannot be told (the link then opens the article). */
+type Section = { level: number; title: string; body: string; anchor?: string | null }
+
+/** Dash and space templates, which are part of the text ("1948{{Non breaking en dash}}1957" is "1948–1957"). */
+const DASH_TEMPLATE = /\{\{\s*(non[ -]breaking en dash|nbnd|ndash|en dash|snd|spnd|spaced ndash|spaced en dash|mdash|em dash|nbsp|spaces?)\s*\}\}/gi
+function dashText(name: string): string {
+  const key = name.toLowerCase()
+  if (/^(snd|spnd|spaced)/.test(key)) return ' – '
+  if (/^(mdash|em dash)$/.test(key)) return '—'
+  if (/^(nbsp|spaces?)$/.test(key)) return ' '
+  return '–'
+}
+
+/** The id MediaWiki gives a heading: its rendered text with underscores for spaces. */
+export function headingAnchor(raw: string): string | null {
+  // "Non breaking en dash" renders with a zero-width joiner on each side, which is part of the id.
+  const text = raw.replace(DASH_TEMPLATE, (_, name: string) => (/^(non[ -]breaking en dash|nbnd)$/i.test(name) ? '‍–‍' : dashText(name)))
+  // Any other template renders in ways that cannot be told from here.
+  if (/\{\{|<(?!\/?(?:i|b|em|strong|small|span|nowiki)\b)/i.test(text)) return null
+  return stripWikitext(text).replace(/ /g, '_')
+}
 
 export function splitSections(wikitext: string): Section[] {
   const sections: Section[] = []
   let current: Section | null = null
   for (const line of wikitext.split('\n')) {
-    const heading = line.match(/^(={2,4})\s*(.*?)\s*\1\s*$/)
+    const heading = line.match(/^(={2,6})\s*(.*?)\s*\1\s*$/)
     if (heading) {
-      current = { level: heading[1]!.length - 1, title: stripWikitext(heading[2]!), body: '' }
+      current = { level: heading[1]!.length - 1, title: stripWikitext(heading[2]!), body: '', anchor: headingAnchor(heading[2]!) }
       sections.push(current)
     } else if (current) {
       current.body += `${line}\n`
     }
   }
   return sections
+}
+
+/** Keep the visible text of inline templates ({{lang|fr|Les Nouvelles}} → Les Nouvelles, {{convert|80|km}} → 80 km, dashes). */
+export function inlineTemplateText(text: string): string {
+  return text
+    .replace(/\{\{\s*(?:lang|langx|lang-[a-z-]+|transl|nowrap|nobr|small|nihongo|ill|interlanguage link)\s*\|(?:[^{}|]*\|)*?([^{}|=]+)\}\}/gi, '$1')
+    .replace(/\{\{\s*(?:convert|cvt)\s*\|\s*([\d.,]+)\s*\|\s*([^{}|]+?)\s*(?:\|[^{}]*)?\}\}/gi, '$1 $2')
+    .replace(DASH_TEMPLATE, (_, name: string) => dashText(name))
 }
 
 /** Wikitext → readable plain text (templates, refs, files and markup removed). */
@@ -37,10 +65,7 @@ export function stripWikitext(text: string): string {
     .replace(/^(?!\s*\[\[)[^|\n[\]]{0,200}\.(jpe?g|png|svg|gif|tiff?|webp)\s*\|.*$/gim, '')
     .replace(/<ref[^>]*\/>/gi, '')
     .replace(/<ref[^>]*>[\s\S]*?<\/ref>/gi, '')
-  // Keep the visible text of inline templates ({{lang|fr|Les Nouvelles}} → Les Nouvelles, {{convert|80|km}} → 80 km).
-  out = out
-    .replace(/\{\{\s*(?:lang|langx|lang-[a-z-]+|transl|nowrap|nobr|small|nihongo|ill|interlanguage link)\s*\|(?:[^{}|]*\|)*?([^{}|=]+)\}\}/gi, '$1')
-    .replace(/\{\{\s*convert\s*\|\s*([\d.,]+)\s*\|\s*([^{}|]+?)\s*(?:\|[^{}]*)?\}\}/gi, '$1 $2')
+  out = inlineTemplateText(out)
   // Nested templates and tables: remove innermost first.
   for (let i = 0; i < 6; i += 1) {
     const next = out.replace(/\{\{[^{}]*\}\}/g, '').replace(/\{\|[^{}]*?\|\}/g, '')
@@ -192,9 +217,10 @@ export function mainArticleOf(body: string): string | null {
   return title && !/[<>[\]{}]/.test(title) ? title : null
 }
 
-export function sectionUrl(articleTitle: string, section: string, lang = 'en'): string {
-  const anchor = section.replace(/ /g, '_')
-  return `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(articleTitle.replace(/ /g, '_'))}#${encodeURIComponent(anchor)}`
+export function sectionUrl(articleTitle: string, section: string, lang = 'en', anchor?: string | null): string {
+  const page = `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(articleTitle.replace(/ /g, '_'))}`
+  if (anchor === null) return page
+  return `${page}#${encodeURIComponent(anchor ?? section.replace(/ /g, '_'))}`
 }
 
 export function chaptersFromWikitext(articleTitle: string, wikitext: string, currentYear: number, lang = 'en'): OldsChapter[] {
@@ -222,7 +248,7 @@ export function chaptersFromWikitext(articleTitle: string, wikitext: string, cur
       start: span ? yearDate(span.start, !fromTitle.length) : null,
       end: span && span.end !== span.start ? yearDate(span.end, !fromTitle.length) : null,
       summary: leadSentences(plain),
-      url: sectionUrl(articleTitle, section.title, lang),
+      url: sectionUrl(articleTitle, section.title, lang, section.anchor),
       mainArticle: main ? { title: main, url: `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(main.replace(/ /g, '_'))}` } : null,
     })
   }

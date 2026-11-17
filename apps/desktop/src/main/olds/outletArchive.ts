@@ -586,7 +586,9 @@ export class OutletArchive {
     // What this reader has already been shown of the thread, so going back skips pages that add nothing.
     const shownKey = `${query.url}|${query.headline}`
     if (!steps) this.shown.delete(shownKey)
-    const shown = this.shown.get(shownKey) ?? new Set<string>([current])
+    // The story itself is not its own earlier coverage, under whatever address the topic page lists it
+    // (DW's feed and its topic page spell one article's slug two ways).
+    const shown = this.shown.get(shownKey) ?? new Set<string>([current, `title:${query.headline.trim().toLowerCase()}`])
     this.shown.delete(shownKey)
     this.shown.set(shownKey, shown)
     if (this.shown.size > 50) this.shown.delete(this.shown.keys().next().value!)
@@ -605,11 +607,14 @@ export class OutletArchive {
       }))
       // A live page that could not be read (or lists no dates): start from the archive's newest capture now.
       if (!found.length) {
-        const first = await this.archiveSteps(article, outlet, next.splice(0), found, shown).catch((error: unknown) => { if (error instanceof ArchiveBusy) status = 'busy'; return [] as ArchiveStep[] })
+        // An archive that is busy, unreachable or answering with errors keeps its place, so the reader can
+        // try again (losing it left an empty panel with nothing to press).
+        const starts = next.splice(0)
+        const first = await this.archiveSteps(article, outlet, starts, found, shown).catch(() => { status = 'busy'; return starts })
         next.push(...first)
       }
     } else {
-      const more = await this.archiveSteps(article, outlet, steps, found, shown).catch((error: unknown) => { if (error instanceof ArchiveBusy) status = 'busy'; return steps })
+      const more = await this.archiveSteps(article, outlet, steps, found, shown).catch(() => { status = 'busy'; return steps })
       next.push(...more)
     }
 

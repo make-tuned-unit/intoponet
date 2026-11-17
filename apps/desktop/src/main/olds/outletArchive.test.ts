@@ -395,6 +395,31 @@ describe('OutletArchive.coverage', () => {
     expect(second.cursor).toBe(first.cursor)
   })
 
+  it('keeps its place when neither the live topic page nor the archive can be read, and carries on once they can', async () => {
+    let down = true
+    const fetchImpl = (async (input: string | URL) => {
+      const url = String(input)
+      if (url === articleUrl) return new Response(articleHtml)
+      if (down && url.startsWith('https://www.aljazeera.com/')) return new Response('', { status: 503 })
+      if (url.includes('/cdx/search/cdx')) {
+        if (down) return new Response('upstream error', { status: 500 })
+        return new Response(url.includes('tag%2Fsudan-war') ? '20260910000000 https://www.aljazeera.com/tag/sudan-war/ 200\n' : '')
+      }
+      if (url.includes('20260910000000id_')) return new Response(capture2026)
+      return new Response('<p>Nothing dated</p>')
+    }) as typeof fetch
+    const archive = new OutletArchive({ cacheDir: mkdtempSync(join(tmpdir(), 'outlet-archive-')), fetchImpl, spacingMs: 0, now: () => Date.parse('2026-11-06T12:00:00Z') })
+    const first = await archive.coverage({ url: articleUrl, headline })
+    // Not "ok" with nothing to show and nowhere to go: that renders as an empty panel.
+    expect(first.status).toBe('busy')
+    expect(first.items).toEqual([])
+    expect(first.cursor).not.toBeNull()
+    down = false
+    const again = await archive.coverage({ url: articleUrl, headline, cursor: first.cursor! })
+    expect(again.status).toBe('ok')
+    expect(again.items.map((item) => item.date)).toEqual(['2026-09-02', '2026-06-15'])
+  })
+
   it('makes at most 25 archive requests in ten minutes, then rests', async () => {
     let clock = Date.parse('2026-11-06T12:00:00Z')
     let archiveCalls = 0
@@ -463,6 +488,24 @@ describe('OutletArchive.coverage', () => {
     const archive = new OutletArchive({ cacheDir: mkdtempSync(join(tmpdir(), 'outlet-archive-')), fetchImpl, spacingMs: 0, now: () => Date.parse('2026-11-06T12:00:00Z') })
     const result = await archive.coverage({ url, headline: "A year after the fall of El Fasher, Sudan's war has left a ghost town" })
     expect(result.items.map((item) => item.date)).toEqual(['2026-04-23'])
+  })
+
+  it('does not list the story itself as earlier coverage when the topic page uses another address for it', async () => {
+    // Live, 16 November 2026: DW's feed said /en/france-s-philippe-diallo-…/a-79962843, its topic page /en/frances-philippe-diallo-…/a-79962843.
+    const url = 'https://www.dw.com/en/france-s-philippe-diallo-to-challenge-infantino-for-fifa-presidency/a-79962843?maca=en-rss-en-all-1573-xml-mrss'
+    const title = "France's Philippe Diallo to challenge Infantino for FIFA presidency"
+    const html = '<meta name="keywords" content="Gianni Infantino"><a href="/en/gianni-infantino/t-19023372">Gianni Infantino</a><p>Philippe Diallo will challenge Gianni Infantino for the FIFA presidency with the backing of UEFA.</p>'
+    const page = '<main><a href="/en/klopp-wants-infantino-out-as-fifa-candidate-deadline-looms/a-79990001"><h3>Klopp wants Infantino out as FIFA candidate deadline looms</h3></a><a href="/en/frances-philippe-diallo-to-challenge-infantino-for-fifa-presidency/a-79962843"><h3>France\'s Philippe Diallo to challenge Infantino for FIFA presidency</h3></a></main>'
+    const fetchImpl = (async (input: string | URL) => {
+      const address = String(input)
+      if (address === url) return new Response(html)
+      if (address.includes('/en/gianni-infantino/')) return new Response(page)
+      return new Response('', { status: 404 })
+    }) as typeof fetch
+    const archive = new OutletArchive({ cacheDir: mkdtempSync(join(tmpdir(), 'outlet-archive-')), fetchImpl, spacingMs: 0, now: () => Date.parse('2026-11-16T12:00:00Z') })
+    const result = await archive.coverage({ url, headline: title })
+    expect(result.topics.map((topic) => topic.label)).toEqual(['Gianni Infantino'])
+    expect(result.items.map((item) => item.title)).toEqual(['Klopp wants Infantino out as FIFA candidate deadline looms'])
   })
 
   it('does nothing for outlets it does not know', async () => {

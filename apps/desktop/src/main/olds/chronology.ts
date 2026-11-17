@@ -1,5 +1,5 @@
 import type { OldsChronicleEntry, OldsDate } from '@intoponet/browser-api'
-import { splitSections, stripWikitext } from './historyArticle'
+import { inlineTemplateText, splitSections, stripWikitext } from './historyArticle'
 
 /**
  * "How we got here": dated events quoted from a topic's own Wikipedia
@@ -18,25 +18,41 @@ const SHORT_MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Se
 export function sentenceDate(sentence: string, currentYear: number, impliedYear?: number): OldsDate | null {
   const ok = (year: number): boolean => year >= 1000 && year <= currentYear
   const pad = (n: number): string => String(n).padStart(2, '0')
-  let m = sentence.match(new RegExp(`\\b(\\d{1,2}) ${MONTH},? (\\d{4})\\b`))
+  let m: RegExpMatchArray | null
+  // A sentence that opens with its day ("13 March – France returns a drum looted in 1916", "On 3 November, …") in an
+  // article about one year is about that day, whatever years it goes on to mention.
+  if (impliedYear && ok(impliedYear)) {
+    const opening = leadingDay(sentence, impliedYear)
+    if (opening) return opening
+  }
+  // "In 2016, …" / "By 1998 the …" at the start of a sentence: the sentence is about that year.
+  const leadYear = sentence.match(/^(?:In|By|Since|During|From|After|Before|Until|On|Throughout|Between|Early in|Late in|In early|In late|In mid-)\s*(\d{4})\b/)
+  // The first full date the sentence states, wherever a later one stands ("In June 2015 he was loaned out … on 14 July 2017 he moved").
+  const stated: Array<{ at: number; date: OldsDate }> = []
+  m = sentence.match(new RegExp(`\\b(\\d{1,2}) ${MONTH},? (\\d{4})\\b`))
   if (m && ok(Number(m[3]))) {
     const month = MONTHS.indexOf(m[2]!.toLowerCase()) + 1
-    return { iso: `${m[3]}-${pad(month)}-${pad(Number(m[1]))}`, precision: 'day', label: `${Number(m[1])} ${SHORT_MONTH[month - 1]} ${m[3]}` }
+    stated.push({ at: m.index ?? 0, date: { iso: `${m[3]}-${pad(month)}-${pad(Number(m[1]))}`, precision: 'day', label: `${Number(m[1])} ${SHORT_MONTH[month - 1]} ${m[3]}` } })
   }
   m = sentence.match(new RegExp(`\\b${MONTH} (\\d{1,2}),? (\\d{4})\\b`))
   if (m && ok(Number(m[3]))) {
     const month = MONTHS.indexOf(m[1]!.toLowerCase()) + 1
-    return { iso: `${m[3]}-${pad(month)}-${pad(Number(m[2]))}`, precision: 'day', label: `${Number(m[2])} ${SHORT_MONTH[month - 1]} ${m[3]}` }
+    stated.push({ at: m.index ?? 0, date: { iso: `${m[3]}-${pad(month)}-${pad(Number(m[2]))}`, precision: 'day', label: `${Number(m[2])} ${SHORT_MONTH[month - 1]} ${m[3]}` } })
   }
   m = sentence.match(new RegExp(`\\b(?:[Ii]n|[Bb]y|[Ss]ince|[Ii]n early|[Ii]n late|[Ii]n mid-|[Dd]uring) ?${MONTH} (\\d{4})\\b`))
     ?? sentence.match(new RegExp(`^${MONTH} (\\d{4})\\b`))
   if (m && ok(Number(m[2]))) {
     const month = MONTHS.indexOf(m[1]!.toLowerCase()) + 1
-    return { iso: `${m[2]}-${pad(month)}`, precision: 'month', label: `${SHORT_MONTH[month - 1]} ${m[2]}` }
+    stated.push({ at: m.index ?? 0, date: { iso: `${m[2]}-${pad(month)}`, precision: 'month', label: `${SHORT_MONTH[month - 1]} ${m[2]}` } })
   }
-  // "In 2016, …" / "By 1998 the …" at the start of a sentence: the sentence is about that year.
-  m = sentence.match(/^(?:In|By|Since|During|From|After|Before|Until|On|Throughout|Between|Early in|Late in|In early|In late|In mid-)\s*(\d{4})\b/)
-  if (m && ok(Number(m[1]))) return { iso: m[1]!, precision: 'year', label: m[1]! }
+  const first = stated.sort((a, b) => a.at - b.at)[0]?.date
+  if (leadYear && ok(Number(leadYear[1]))) {
+    // "In 1920 Keynes proposed …, who would later found in June 1947 …" is about 1920: a later date in another year does not move it.
+    // ("Since 2007, …; on 7 October 2023 …" and "After 1945 …" only set the scene: the date stated is the event's.)
+    const inThatYear = /^(?:In|During|Throughout|Early in|Late in|In early|In late|In mid-)\s*\d{4}\b/.test(sentence)
+    return first && (!inThatYear || first.iso.startsWith(leadYear[1]!)) ? first : { iso: leadYear[1]!, precision: 'year', label: leadYear[1]! }
+  }
+  if (first) return first
   // A single explicit year inside a sentence also dates an event ("The first
   // election was held in 1949"). Multiple years or bibliographic years do not.
   const years = [...new Set(sentence.match(/\b(?:1\d{3}|20\d{2})\b/g) ?? [])]
@@ -45,18 +61,29 @@ export function sentenceDate(sentence: string, currentYear: number, impliedYear?
     && !/\b(reported|announced|said|told|which|that|had|when)\b/i.test(sentence.slice(0, m.index))) {
     return { iso: m[1]!, precision: 'year', label: m[1]! }
   }
-  // Articles about one year ("2026 … cyclone season") write "On 7 January, …" without it.
+  // Articles about one year ("2026 … cyclone season") write "…, on 7 January, …" without it.
   if (impliedYear && ok(impliedYear)) {
-    m = sentence.match(new RegExp(`^(?:On|By|Early on|Late on|Later on|Around|From)?\\s*(\\d{1,2}) ${MONTH}\\b(?!,? \\d{4})`)) ?? sentence.match(new RegExp(`(?:^|, )on (\\d{1,2}) ${MONTH}\\b(?!,? \\d{4})`))
+    m = sentence.match(new RegExp(`(?:^|, )on (\\d{1,2}) ${MONTH}\\b(?!,? \\d{4})`))
     if (m) {
       const month = MONTHS.indexOf(m[2]!.toLowerCase()) + 1
       return { iso: `${impliedYear}-${pad(month)}-${pad(Number(m[1]))}`, precision: 'day', label: `${Number(m[1])} ${SHORT_MONTH[month - 1]} ${impliedYear}` }
     }
-    m = sentence.match(new RegExp(`^(?:On|By|Early on|Later on)?\\s*${MONTH} (\\d{1,2})\\b(?!,? \\d{4})`))
-    if (m) {
-      const month = MONTHS.indexOf(m[1]!.toLowerCase()) + 1
-      return { iso: `${impliedYear}-${pad(month)}-${pad(Number(m[2]))}`, precision: 'day', label: `${Number(m[2])} ${SHORT_MONTH[month - 1]} ${impliedYear}` }
-    }
+  }
+  return null
+}
+
+/** The day a sentence opens with, in an article about one year ("On 7 January, …", "July 17 – …"). */
+function leadingDay(sentence: string, impliedYear: number): OldsDate | null {
+  const pad = (n: number): string => String(n).padStart(2, '0')
+  let m = sentence.match(new RegExp(`^(?:On|By|Early on|Late on|Later on|Around|From)?\\s*(\\d{1,2}) ${MONTH}\\b(?!,? \\d{4})`))
+  if (m) {
+    const month = MONTHS.indexOf(m[2]!.toLowerCase()) + 1
+    return { iso: `${impliedYear}-${pad(month)}-${pad(Number(m[1]))}`, precision: 'day', label: `${Number(m[1])} ${SHORT_MONTH[month - 1]} ${impliedYear}` }
+  }
+  m = sentence.match(new RegExp(`^(?:On|By|Early on|Later on)?\\s*${MONTH} (\\d{1,2})\\b(?!,? \\d{4})`))
+  if (m) {
+    const month = MONTHS.indexOf(m[1]!.toLowerCase()) + 1
+    return { iso: `${impliedYear}-${pad(month)}-${pad(Number(m[2]))}`, precision: 'day', label: `${Number(m[2])} ${SHORT_MONTH[month - 1]} ${impliedYear}` }
   }
   return null
 }
@@ -70,6 +97,9 @@ export function sentenceDate(sentence: string, currentYear: number, impliedYear?
 export function isDebris(text: string): boolean {
   if (/\b\d+ pages\b|\bISBN\b|\bRetrieved\b|\bUniversity Press\b|\bpp?\. \d/.test(text)) return true
   if (/\s[,.;:]|\(\s*\)|\b(The|A|An|the|a|an) [,.;]/.test(text)) return true
+  // A piece cut out of a quotation or a bracket ("October 2023 to July 2024] are consistent with…"), or a file caption run in.
+  const count = (pattern: RegExp): number => (text.match(pattern) ?? []).length
+  if (count(/\[/g) !== count(/\]/g) || count(/"/g) % 2 === 1 || count(/“/g) !== count(/”/g) || /\b(File|Image):\S/.test(text)) return true
   return /^(Since then|Then|This|These|That|Those|It|Its|He|She|They|His|Her|Their|Both|The act also|The two|Subsequently)\b/.test(text)
 }
 
@@ -94,13 +124,35 @@ export function impliedYearOf(title: string, wikitext: string, currentYear: numb
 
 /** Wikitext with references, templates and files removed, but [[links]] kept. */
 function proseWithLinks(text: string): string {
-  let out = text.replace(/<!--[\s\S]*?-->/g, '').replace(/<ref[^>]*\/>/gi, '').replace(/<ref[^>]*>[\s\S]*?<\/ref>/gi, '')
+  let out = inlineTemplateText(text.replace(/<!--[\s\S]*?-->/g, '').replace(/<ref[^>]*\/>/gi, '').replace(/<ref[^>]*>[\s\S]*?<\/ref>/gi, ''))
   for (let i = 0; i < 6; i += 1) {
-    const next = out.replace(/\{\{[^{}]*\}\}/g, '').replace(/\{\|[^{}]*?\|\}/g, '')
+    // A removed template leaves a mark: where it stood as a word of the sentence ("a depth of {{…}} occurred"), the sentence has a hole.
+    const next = out.replace(/\{\{[^{}]*\}\}/g, GAP).replace(/\{\|[^{}]*?\|\}/g, '')
     if (next === out) break
     out = next
   }
-  return out.replace(/\[\[(?:File|Image):[^\]]*(?:\[\[[^\]]*\]\][^\]]*)*\]\]/gi, '').replace(/^[*#:;].*$/gm, (line) => line.replace(/^[*#:;]+\s*/, ''))
+  // Each list item is its own sentence ("* 10 February – …" and "* 12 February – …" are two events, not one).
+  return out.replace(/\[\[(?:File|Image):[^\]]*(?:\[\[[^\]]*\]\][^\]]*)*\]\]/gi, '').replace(/^[*#:;].*$/gm, (line) => `${ITEM}${line.replace(/^[*#:;]+\s*/, '')}${ITEM}`)
+}
+
+/** Where a template was removed, and the edges of a list item. */
+const GAP = '⁠'
+const ITEM = ' '
+
+/** Sentences of a section's prose; a split after an initial or a number ("club S.V. Zulte", "club 1. FSV Mainz") is undone. */
+function sentencesOf(prose: string): string[] {
+  const out: string[] = []
+  for (const item of prose.split(ITEM)) {
+    let held = ''
+    for (const piece of item.split(/(?<=[.!?])\s+(?=[A-Z[“"])/)) {
+      const whole = held ? `${held} ${piece}` : piece
+      if (/(?:^|[\s(])(?:(?:\p{Lu}\.){1,3}|\d{1,2}\.)$/u.test(stripWikitext(whole.replaceAll(GAP, '')))) { held = whole; continue }
+      out.push(whole)
+      held = ''
+    }
+    if (held) out.push(held)
+  }
+  return out
 }
 
 function firstLink(sentence: string, exclude: string): string | null {
@@ -126,8 +178,12 @@ export function chronologyFromWikitext(title: string, wikitext: string, currentY
   let order = 0
   const impliedYear = impliedYearOf(title, wikitext, currentYear) ?? yearHint
   let headingYear: number | undefined
+  let skippedLevel = 0
   for (const section of sections) {
-    if (SKIP.test(section.title.trim())) continue
+    // The months under "Deaths" or "Holidays" in a year's article are part of that list, not events.
+    if (skippedLevel && section.level > skippedLevel) continue
+    skippedLevel = SKIP.test(section.title.trim()) ? section.level : 0
+    if (skippedLevel) continue
     // A year heading ("=== 2026 ===") dates the day headings under it.
     const bareYear = section.title.trim().match(/^(1\d{3}|20\d{2})$/)
     if (bareYear) headingYear = Number(bareYear[1])
@@ -135,8 +191,11 @@ export function chronologyFromWikitext(title: string, wikitext: string, currentY
     // A dated heading ("=== 14 October ===" in a timeline article) dates the undated lines beneath it.
     const headingDate = sectionYear || /\d{4}/.test(section.title) ? sentenceDate(section.title.trim(), currentYear, sectionYear) : null
     const prose = proseWithLinks(section.body)
-    for (const raw of prose.split(/(?<=[.!?])\s+(?=[A-Z[“"])/)) {
+    for (const marked of sentencesOf(prose)) {
       order += 1
+      // A template that stood where a word should be took part of the sentence with it.
+      if (new RegExp(`(?:^|[\\s(])${GAP}+(?=\\s|$)`).test(marked.trim())) continue
+      const raw = marked.replaceAll(GAP, '')
       // Drop link debris left at the start of a sentence ("…|start=2:11:11]] On 26 June …").
       const text = stripWikitext(raw).replace(/^[^[\]]*\]\]\s*/, '').replace(/\[\[|\]\]/g, '').trim()
       // Whole sentences only: a fragment ("in Brazil among …") means the split went wrong.
@@ -147,7 +206,8 @@ export function chronologyFromWikitext(title: string, wikitext: string, currentY
       const key = text.toLowerCase().replace(/[^\p{L}\d]+/gu, ' ').trim().slice(0, 60)
       if (seen.has(key)) continue
       seen.add(key)
-      const anchor = section.title === 'Introduction' ? '' : `#${encodeURIComponent(section.title.replace(/ /g, '_'))}`
+      const id = 'anchor' in section ? section.anchor : section.title.replace(/ /g, '_')
+      const anchor = section.title === 'Introduction' || !id ? '' : `#${encodeURIComponent(id)}`
       entries.push({
         at,
         text,

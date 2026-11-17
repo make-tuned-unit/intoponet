@@ -31,6 +31,7 @@ export function OldsCoverage({ article, onOpen }: { article: CoverageArticle; on
   const root = useRef<HTMLDivElement>(null)
   // Loads the reader did not scroll for (a short list keeps the end in view); two at most, then the button.
   const unasked = useRef(0)
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     const id = ++request.current
@@ -44,7 +45,7 @@ export function OldsCoverage({ article, onOpen }: { article: CoverageArticle; on
     }, () => {
       if (id === request.current) setState((current) => ({ ...current, status: 'error' }))
     })
-  }, [article.url, article.title])
+  }, [article.url, article.title, attempt])
 
   const loadMore = useCallback(() => {
     if (state.status !== 'ready' || !state.cursor || state.more) return
@@ -117,7 +118,8 @@ export function OldsCoverage({ article, onOpen }: { article: CoverageArticle; on
       </div>
 
       {state.status === 'loading' && <p className="olds-coverage-note"><Loader2 size={14} className="olds-spin" aria-hidden="true" /> Reading {outlet}’s topic pages…</p>}
-      {state.status === 'error' && <p className="olds-coverage-note">Could not read {outlet}’s earlier coverage. Check your connection and try again.</p>}
+      {state.status === 'error' && <p className="olds-coverage-note" role="alert">Could not read {outlet}’s earlier coverage. Check your connection and try again. <button type="button" onClick={() => setAttempt((count) => count + 1)}>Try again</button></p>}
+      {state.status === 'ready' && state.result === 'ok' && !state.items.length && !state.cursor && <p className="olds-coverage-note">No earlier headlines were found on {outlet}’s {state.topics.length > 1 ? 'topic pages' : 'topic page'}.</p>}
       {state.status === 'ready' && state.result === 'no-topics' && <p className="olds-coverage-note">{outlet} did not file this story under a topic page, so there is no earlier coverage to follow.</p>}
       {state.status === 'ready' && state.result === 'blocked' && <p className="olds-coverage-note">{outlet} has asked the Internet Archive not to list its pages, so earlier coverage is not shown.</p>}
       {state.status === 'ready' && state.result === 'unsupported' && <p className="olds-coverage-note">Earlier coverage is not available for this outlet yet.</p>}
@@ -150,7 +152,7 @@ export function OldsCoverage({ article, onOpen }: { article: CoverageArticle; on
           ))}
           <li ref={sentinel} className="olds-coverage-end">
             {state.more ? <><Loader2 size={14} className="olds-spin" aria-hidden="true" /> Going further back…</>
-              : state.result === 'busy' ? <>The Internet Archive asked us to slow down. <button type="button" onClick={() => { setState((current) => ({ ...current, result: 'ok' })); loadMore() }}>Try again</button></>
+              : state.result === 'busy' ? <>The Internet Archive is busy or could not be reached. <button type="button" onClick={() => { setState((current) => ({ ...current, result: 'ok' })); loadMore() }}>Try again</button></>
                 : state.cursor ? <button type="button" onClick={() => { unasked.current = 0; loadMore() }}>Go further back</button>
                   : state.items.length ? 'The start of the archive for this topic.' : 'No earlier headlines were found.'}
           </li>

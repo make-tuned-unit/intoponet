@@ -398,7 +398,8 @@ export function titleWordsIn(rawTitle: string, rawHeadline: string): number {
     return word.slice(0, Math.max(4, Math.min(word.length, 6)))
   }
   // An acronym ("PAC", the Public Accounts Committee) only matches the same acronym, not "Pac-12".
-  const rawWords = cleanHeadline(headline).split(/[^\p{L}\d]+/u)
+  // …and its plural is that acronym, not another one ("SOs", standing orders, is not "SOS").
+  const rawWords = cleanHeadline(headline).split(/[^\p{L}\d]+/u).map((word) => (/^\p{Lu}{2,5}s$/u.test(word) ? word.slice(0, -1) : word))
   const acronyms = new Set(rawWords.filter((word) => /^\p{Lu}{2,6}$/u.test(word)).map((word) => word.toLowerCase()))
   const titleAcronyms = new Set(title.split(/[^\p{L}\d]+/u).filter((word) => /^\p{Lu}{2,6}$/u.test(word)).map((word) => word.toLowerCase()))
   const words = [...new Set(rawWords.map((word) => word.toLowerCase()).filter((word) => word.length > 2 && !STOPWORDS.has(word) && (!acronyms.has(word) || titleAcronyms.has(word))).map(stem))]
@@ -443,6 +444,9 @@ function unexplainedNames(rawTitle: string, said: string): number {
   return count
 }
 
+/** Head nouns of named institutions and places: on their own they say what kind of thing, not which. */
+const SHARED_KIND_WORDS = new Set('bank university college party court council church union sea river lake island islands bay coast city airport airlines airways group company committee commission agency army league club institute foundation association federation organization organisation fund house street square park bridge station school hospital museum stadium mountain mountains valley desert province state county district republic kingdom times post news service force forces corps guard ministry department office bureau authority board'.split(' '))
+
 export function isRelevantCandidate(title: string, headline: string, countryName?: string, currentYear?: number): boolean {
   const said = countryName ? `${headline} ${countryName}` : headline
   const total = titleContentWords(title).length
@@ -453,6 +457,14 @@ export function isRelevantCandidate(title: string, headline: string, countryName
   const shared = words + (currentYear && leading >= currentYear - 1 && leading <= currentYear + 1 && words > 0 ? 1 : 0)
   if (words < 1 || shared < Math.ceil(total / 3)) return false
   if (unexplainedNames(title, said) > shared) return false
+  // A named body of the story's country ("United States Secret Service", "Journalists of La Nación v. Costa Rica") is the
+  // topic only when the headline has the rest of its name, not the country and one of its words ("services", "journalist").
+  if (countryName && foldAccents(title).toLowerCase().includes(foldAccents(countryName).toLowerCase())) {
+    const rest = title.replace(/\(.*?\)/g, '').replace(new RegExp(escapeRegExp(countryName), 'i'), ' ').split(/[^\p{L}\d]+/u).filter((word) => word.length > 2 && !STOPWORDS.has(word.toLowerCase()))
+    // (The kind of body, "Party" or "Service", may go unsaid: "Labour pledges…" is the New Zealand Labour Party.)
+    const distinctive = rest.filter((word) => !SHARED_KIND_WORDS.has(word.toLowerCase()))
+    if (rest.length >= 2 && distinctive.length >= 1 && rest.every((word) => /^\p{Lu}/u.test(word)) && distinctive.some((word) => titleWordsIn(word, headline) === 0)) return false
+  }
   // An overview of a subject in the country ("Video games in Malaysia") needs the whole subject in the headline,
   // not one of its words ("assault video").
   const overview = countryName ? title.match(new RegExp(`^(.+?) (?:in|of) (?:the )?${escapeRegExp(countryName)}$`, 'i')) : null
@@ -463,6 +475,8 @@ export function isRelevantCandidate(title: string, headline: string, countryName
   // One shared word is only enough when it is a name (capitalised after the headline's first word, or the country)
   // and the title adds no other names ("Education in Honduras" is not a story about a drug seizure in Honduras).
   if (unexplainedNames(title, said) > 0) return false
+  // The kind of thing two names share ("World Bank" and "West Bank", two rivers, two parties) names neither of them.
+  if (total >= 2 && titleContentWords(title).filter((word) => titleWordsIn(word, said) > 0).every((word) => SHARED_KIND_WORDS.has(word))) return false
   // Nationality words ("English cup shocks") describe; they don't name the topic.
   const names = cleanHeadline(headline).split(/\s+/).slice(1)
     .map((word) => word.replace(/^[^\p{L}\d]+|[^\p{L}\d]+$/gu, ''))
