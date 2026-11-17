@@ -107,6 +107,7 @@ export function OldsPanel({
   onFollow,
   onBack,
   onClose,
+  onRetry,
   onOpen,
   onFollowArticle,
   onPickTopic,
@@ -119,6 +120,8 @@ export function OldsPanel({
   onFollow: (node: OldsNode) => void
   onBack: (() => void) | null
   onClose: () => void
+  /** Look the same thread up again (after a failure, or when some of it could not be loaded). */
+  onRetry?: () => void
   onOpen: (url: string) => void
   /** Follow a Wikipedia article by title (a chapter's main article). */
   onFollowArticle?: (title: string) => void
@@ -158,6 +161,7 @@ export function OldsPanel({
   const [chapterEvents, setChapterEvents] = useState<{ key: string; status: 'loading' | 'ready' | 'error'; thread?: OldsThread } | null>(null)
   const chapterFocus = chapterId && thread?.chaptersSource ? thread.chapters?.find((item) => item.id === chapterId) ?? null : null
   const chapterKey = chapterFocus && thread?.chaptersSource ? `${thread.chaptersSource.title}|${chapterFocus.title}` : null
+  const [chapterTry, setChapterTry] = useState(0)
   useEffect(() => {
     if (!chapterKey || !chapterFocus || !thread?.chaptersSource) { setChapterEvents(null); return }
     let cancelled = false
@@ -168,7 +172,7 @@ export function OldsPanel({
       if (!cancelled) setChapterEvents({ key: chapterKey, status: 'error' })
     })
     return () => { cancelled = true }
-  }, [chapterKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [chapterKey, chapterTry]) // eslint-disable-line react-hooks/exhaustive-deps
   const chapterMode = !!chapterEvents && chapterEvents.key === chapterKey && view !== 'story'
   const allEntries = useMemo(() => (
     chapterMode && chapterEvents?.status === 'ready' && chapterEvents.thread ? threadEntries(chapterEvents.thread) : thread ? threadEntries(thread) : []
@@ -383,7 +387,18 @@ export function OldsPanel({
       {!showCoverage && state.status === 'loading' && (
         <div className="olds-status" role="status"><Loader2 size={16} className="olds-spin" aria-hidden="true" /> Looking up sourced history…</div>
       )}
-      {!showCoverage && state.status === 'error' && <div className="olds-status is-error" role="alert">{state.message}</div>}
+      {!showCoverage && state.status === 'error' && (
+        <div className="olds-status is-error" role="alert">
+          {state.message}
+          {onRetry && <button type="button" className="olds-retry" onClick={onRetry}>Try again</button>}
+        </div>
+      )}
+      {!showCoverage && thread?.partial && (
+        <div className="olds-status olds-partial" role="status">
+          Some of this could not be loaded from Wikipedia just now, so it may be incomplete.
+          {onRetry && <button type="button" className="olds-retry" onClick={onRetry}>Try again</button>}
+        </div>
+      )}
       {!showCoverage && thread?.historyNote && <p className="olds-history-note">{thread.historyNote}</p>}
       {!showCoverage && thread?.context && translateOffer && (
         <div className="olds-translate-offer">
@@ -447,7 +462,7 @@ export function OldsPanel({
                 {chapterEvents?.status === 'loading' ? (
                   <span><Loader2 size={12} className="olds-spin" aria-hidden="true" /> Finding the key events of “{chapterFocus.title}”…</span>
                 ) : chapterEvents?.status === 'error' ? (
-                  <span>The key events of this chapter could not be loaded.</span>
+                  <span>The key events of this chapter could not be loaded. <button type="button" className="olds-chapter-prev" onClick={() => setChapterTry((count) => count + 1)}>Try again</button></span>
                 ) : (
                   dated.length ? (
                     <span>Key events of <strong>{chapterFocus.title}</strong>{chapterFocus.start ? ` (${chapterFocus.start.label}${chapterFocus.end ? ` – ${chapterFocus.end.label}` : ''})` : ''}: {dated.length} dated event{dated.length === 1 ? '' : 's'} this chapter of the Wikipedia article links to.</span>

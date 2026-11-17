@@ -117,6 +117,30 @@
   color: #ffb4a3;
 }
 
+.olds-status.olds-partial {
+  flex: none;
+  margin: 0 24px 10px;
+  font-size: 12px;
+}
+
+.olds-retry,
+.olds-coverage-note button {
+  flex: none;
+  padding: 3px 10px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--warm-white);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.olds-retry:hover,
+.olds-coverage-note button:hover {
+  background: var(--lg-hover);
+}
+
 .olds-spin {
   animation: olds-spin 900ms linear infinite;
 }

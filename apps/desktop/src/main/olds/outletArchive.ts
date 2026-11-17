@@ -605,11 +605,14 @@ export class OutletArchive {
       }))
       // A live page that could not be read (or lists no dates): start from the archive's newest capture now.
       if (!found.length) {
-        const first = await this.archiveSteps(article, outlet, next.splice(0), found, shown).catch((error: unknown) => { if (error instanceof ArchiveBusy) status = 'busy'; return [] as ArchiveStep[] })
+        // An archive that is busy, unreachable or answering with errors keeps its place, so the reader can
+        // try again (losing it left an empty panel with nothing to press).
+        const starts = next.splice(0)
+        const first = await this.archiveSteps(article, outlet, starts, found, shown).catch(() => { status = 'busy'; return starts })
         next.push(...first)
       }
     } else {
-      const more = await this.archiveSteps(article, outlet, steps, found, shown).catch((error: unknown) => { if (error instanceof ArchiveBusy) status = 'busy'; return steps })
+      const more = await this.archiveSteps(article, outlet, steps, found, shown).catch(() => { status = 'busy'; return steps })
       next.push(...more)
     }
 

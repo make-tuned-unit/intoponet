@@ -29,6 +29,10 @@ import { cleanHeadline, foreignNamesIn, isRelevantCandidate, mentions, properPhr
 
 const USER_AGENT = 'Intoponet/0.1 (+https://github.com/make-tuned-unit/intoponet; The Olds)'
 const TIMEOUT_MS = 15_000
+/** How long a host that kept answering 429 is left alone when it names no time itself. */
+const RATE_LIMIT_REST_S = 30
+/** Said when Wikipedia or Wikidata answered with an error, rate limiting, or something unreadable (the shell tells it by "not answering"). */
+export const OLDS_UNAVAILABLE = 'Wikipedia and Wikidata are not answering properly right now. Try again in a moment.'
 // Nationalities the country detector skips as ambiguous ("Indian": India or the Ocean?) but which, opening a
 // description ("Indian bill"), plainly name a country.
 const DESCRIPTION_DEMONYMS: Record<string, string> = {
@@ -117,6 +121,10 @@ export class OldsService {
   private readonly slots = new Map<string, { active: number; waiting: Array<() => void> }>()
   /** Requests that failed for want of a network (no connection, a dropped one, a timeout), counted since start. */
   private networkFailures = 0
+  /** Requests the servers did not answer properly (an error status, rate limiting, a body that is not JSON), counted since start. */
+  private serviceFailures = 0
+  /** Hosts that kept answering "too many requests": nothing more is asked of them until this time. */
+  private readonly limitedUntil = new Map<string, number>()
 
   constructor(private readonly options: OldsServiceOptions) {
     this.fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis)
@@ -132,6 +140,7 @@ export class OldsService {
     }
     const lang = query.kind === 'wikipedia' ? query.lang ?? 'en' : 'en'
     const failures = this.networkFailures
+    const unanswered = this.serviceFailures
     let thread: OldsThread
     try {
       thread = query.kind === 'country'
@@ -145,8 +154,12 @@ export class OldsService {
     } catch (error) {
       // Searches that failed for want of a network find nothing: that is no reason to say there is no history.
       if (this.networkFailures > failures) throw new Error('Wikipedia could not be reached over the network. Try again once you are online.')
+      // …and neither is a server error, rate limiting, or an answer that could not be read.
+      if (this.serviceFailures > unanswered) throw new Error(OLDS_UNAVAILABLE)
       throw error
     }
+    // Built while some lookups failed: it may lack events or have settled for a broader topic. Shown, marked, and not kept.
+    if (this.networkFailures > failures || this.serviceFailures > unanswered) thread.partial = true
     // A thread whose history article could not be fetched is shown but not kept, so the next open retries.
     if (!(thread as { partial?: boolean }).partial) {
       this.remember(key, thread)
@@ -164,13 +177,13 @@ export class OldsService {
   // ---- Network -----------------------------------------------------------
 
   /** A JSON answer, shared with any identical request made in the last few minutes (or still on its way). */
-  private getJson(url: string, timeoutMs = TIMEOUT_MS): Promise<unknown> {
+  private getJson(url: string, timeoutMs = TIMEOUT_MS, slowIsNormal = false): Promise<unknown> {
     const now = this.now()
     const hit = this.responses.get(url)
     if (hit && now - hit.at < RESPONSE_TTL_MS) return hit.value
     if (hit) this.forgetResponse(url)
     const entry = { at: now, bytes: 0, value: Promise.resolve<unknown>(null) }
-    entry.value = this.fetchJson(url, timeoutMs, (bytes) => {
+    entry.value = this.fetchJson(url, timeoutMs, slowIsNormal, (bytes) => {
       entry.bytes = bytes
       this.responseBytes += bytes
       // Oldest first, until the answers kept fit.
@@ -203,18 +216,32 @@ export class OldsService {
     }
   }
 
-  private async fetchJson(url: string, timeoutMs: number, sized: (bytes: number) => void): Promise<unknown> {
+  private async fetchJson(url: string, timeoutMs: number, slowIsNormal: boolean, sized: (bytes: number) => void): Promise<unknown> {
     const release = await this.slot(new URL(url).host)
     try {
-      const text = await this.fetchText(url, timeoutMs)
+      const text = await this.fetchText(url, timeoutMs, slowIsNormal)
       sized(text.length)
-      return JSON.parse(text) as unknown
+      try {
+        return JSON.parse(text) as unknown
+      } catch {
+        // An error page or a cut-off body where JSON was expected.
+        this.serviceFailures += 1
+        throw new Error(`${new URL(url).host} sent an answer that could not be read.`)
+      }
     } finally {
       release()
     }
   }
 
-  private async fetchText(url: string, timeoutMs: number): Promise<string> {
+  /** `slowIsNormal`: a time-boxed extra (a heavy query) whose timeout says nothing about the network. */
+  private async fetchText(url: string, timeoutMs: number, slowIsNormal = false): Promise<string> {
+    const host = new URL(url).host
+    // A host that kept saying "too many requests" is left alone for a while: later lookups fail at once
+    // instead of each waiting through its own retries (which kept the spinner up for minutes).
+    if ((this.limitedUntil.get(host) ?? 0) > this.now()) {
+      this.serviceFailures += 1
+      throw new Error(`${host} is rate limiting requests.`)
+    }
     for (let attempt = 0; attempt < 5; attempt += 1) {
       let response: Response
       try {
@@ -230,21 +257,31 @@ export class OldsService {
           await new Promise((resolve) => setTimeout(resolve, 500 + Math.random() * 500))
           continue
         }
-        if (error instanceof TypeError || timedOut) this.networkFailures += 1
+        if ((error instanceof TypeError || timedOut) && !(slowIsNormal && timedOut)) this.networkFailures += 1
         throw error
       }
-      if ((response.status === 429 || response.status === 503) && attempt < 4) {
-        // Respect the server's retry-after (up to 20 s); otherwise back off 1, 2, 4, 8 s with jitter.
+      if (response.status === 429 || response.status === 503) {
         const retryAfter = Number(response.headers.get('retry-after'))
-        const wait = Number.isFinite(retryAfter) && retryAfter > 0 ? Math.min(20, retryAfter) * 1_000 : 1_000 * 2 ** attempt + Math.random() * 400
+        const asked = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : null
         await response.body?.cancel().catch(() => undefined)
-        await new Promise((resolve) => setTimeout(resolve, wait))
-        continue
+        if (attempt < 4 && (this.limitedUntil.get(host) ?? 0) <= this.now()) {
+          // Respect the server's retry-after (up to 20 s); otherwise back off 1, 2, 4, 8 s with jitter.
+          const wait = asked !== null ? Math.min(20, asked) * 1_000 : 1_000 * 2 ** attempt + Math.random() * 400
+          await new Promise((resolve) => setTimeout(resolve, wait))
+          continue
+        }
+        this.serviceFailures += 1
+        this.limitedUntil.set(host, this.now() + Math.min(60, asked ?? RATE_LIMIT_REST_S) * 1_000)
+        throw new Error(`${host} is rate limiting requests.`)
       }
-      if (!response.ok) throw new Error(`Wikidata responded ${response.status}.`)
-      return response.text()
+      if (!response.ok) {
+        this.serviceFailures += 1
+        throw new Error(`${host} responded ${response.status}.`)
+      }
+      // A connection dropped while the answer was arriving.
+      return await response.text().catch((error: unknown) => { this.networkFailures += 1; throw error })
     }
-    throw new Error('Wikidata is rate limiting requests.')
+    throw new Error(`${host} is rate limiting requests.`)
   }
 
   private async resolveTitle(title: string, lang: string): Promise<string> {
@@ -281,7 +318,8 @@ export class OldsService {
   private async sparql(query: string, timeoutMs = TIMEOUT_MS): Promise<Array<Record<string, { value?: string }>>> {
     const url = new URL('https://query.wikidata.org/sparql')
     url.search = new URLSearchParams({ query, format: 'json' }).toString()
-    const payload = await this.getJson(url.toString(), timeoutMs) as { results?: { bindings?: Array<Record<string, { value?: string }>> } }
+    // The one query here is an optional, time-boxed extra that is slow for large countries: its timeout is not a failure.
+    const payload = await this.getJson(url.toString(), timeoutMs, true) as { results?: { bindings?: Array<Record<string, { value?: string }>> } }
     return Array.isArray(payload.results?.bindings) ? payload.results.bindings : []
   }
 

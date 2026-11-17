@@ -395,6 +395,31 @@ describe('OutletArchive.coverage', () => {
     expect(second.cursor).toBe(first.cursor)
   })
 
+  it('keeps its place when neither the live topic page nor the archive can be read, and carries on once they can', async () => {
+    let down = true
+    const fetchImpl = (async (input: string | URL) => {
+      const url = String(input)
+      if (url === articleUrl) return new Response(articleHtml)
+      if (down && url.startsWith('https://www.aljazeera.com/')) return new Response('', { status: 503 })
+      if (url.includes('/cdx/search/cdx')) {
+        if (down) return new Response('upstream error', { status: 500 })
+        return new Response(url.includes('tag%2Fsudan-war') ? '20260910000000 https://www.aljazeera.com/tag/sudan-war/ 200\n' : '')
+      }
+      if (url.includes('20260910000000id_')) return new Response(capture2026)
+      return new Response('<p>Nothing dated</p>')
+    }) as typeof fetch
+    const archive = new OutletArchive({ cacheDir: mkdtempSync(join(tmpdir(), 'outlet-archive-')), fetchImpl, spacingMs: 0, now: () => Date.parse('2026-11-06T12:00:00Z') })
+    const first = await archive.coverage({ url: articleUrl, headline })
+    // Not "ok" with nothing to show and nowhere to go: that renders as an empty panel.
+    expect(first.status).toBe('busy')
+    expect(first.items).toEqual([])
+    expect(first.cursor).not.toBeNull()
+    down = false
+    const again = await archive.coverage({ url: articleUrl, headline, cursor: first.cursor! })
+    expect(again.status).toBe('ok')
+    expect(again.items.map((item) => item.date)).toEqual(['2026-09-02', '2026-06-15'])
+  })
+
   it('makes at most 25 archive requests in ten minutes, then rests', async () => {
     let clock = Date.parse('2026-11-06T12:00:00Z')
     let archiveCalls = 0
