@@ -1,5 +1,5 @@
 import { lookup } from 'node:dns/promises'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { isIP } from 'node:net'
 import { isPrivateAddress } from './publicAddress'
 export { privateIpv4 } from './publicAddress'
@@ -116,6 +116,10 @@ type FeedServiceOptions = {
   tolerant?: boolean
 }
 
+/**
+ * A feed that fails is ordinary: of a few thousand, hundreds time out or answer badly at every start. The failure
+ * carries its code and message only, never a stack trace (collecting one for each is work nobody reads).
+ */
 class FetchFailure extends Error {
   constructor(
     readonly code: FeedDeadLetter['code'],
@@ -123,9 +127,21 @@ class FetchFailure extends Error {
     readonly status?: number,
     readonly retryAfterMs?: number,
   ) {
-    super(message)
+    const limit = Error.stackTraceLimit
+    Error.stackTraceLimit = 0
+    try {
+      super(message)
+    } finally {
+      Error.stackTraceLimit = limit
+    }
   }
 }
+
+/** Why a request that ran out of time was stopped: one shared reason, not a new error for every slow feed. */
+const TIMED_OUT = new FetchFailure('timeout', 'Feed request timed out.')
+
+/** Two hashes per headline, a hundred thousand headlines at a start: computed here, not as a job on another thread each. */
+const sha256Hex = (value: string): string => createHash('sha256').update(value).digest('hex')
 
 const defaultNow = (): number => Date.now()
 const defaultSetTimer = (callback: () => void, delayMs: number): TimerHandle =>
@@ -463,6 +479,8 @@ export class FeedFetchService {
   private readonly timers = new Map<string, TimerHandle>()
   private cache: FeedCacheSnapshot = { schemaVersion: CACHE_SCHEMA_VERSION, updatedAt: timestamp(Date.now()), sources: {} }
   private loaded: Promise<void> | null = null
+  /** The saved cache has been read into `cache` (until then `cache` is empty and must never be written). */
+  private cacheRead = false
   private persistQueue: Promise<void> = Promise.resolve()
   private activeRequests = 0
   private running = false
@@ -602,6 +620,7 @@ export class FeedFetchService {
       updatedAt: timestamp(now),
       sources,
     }
+    this.cacheRead = true
   }
 
   private scheduleSource(sourceId: string): void {
@@ -652,12 +671,16 @@ export class FeedFetchService {
     await this.writeCache()
   }
 
-  /** Write any pending debounced cache state now (e.g. on quit). */
+  /**
+   * Write any pending debounced cache state now (e.g. on quit). Before the saved cache has been read there is
+   * nothing newer to write, and writing then would replace what was saved with an empty cache.
+   */
   async flush(): Promise<void> {
     if (this.persistTimer) {
       this.clearTimer(this.persistTimer)
       this.persistTimer = null
     }
+    if (!this.cacheRead) return
     await this.writeCache().catch(() => undefined)
   }
 
@@ -750,7 +773,7 @@ export class FeedFetchService {
     state.lastAttemptAt = attemptAt
     const controller = new AbortController()
     this.controllers.set(sourceId, controller)
-    const timeout = this.setTimer(() => controller.abort(new Error('Feed request timed out.')), this.timeoutMs)
+    const timeout = this.setTimer(() => controller.abort(TIMED_OUT), this.timeoutMs)
     const headers = new Headers({
       accept: source.kind === 'atom'
         ? 'application/atom+xml, application/xml;q=0.9, text/xml;q=0.8'
@@ -809,6 +832,7 @@ export class FeedFetchService {
             discoveredAt: timestamp(this.now()),
             language: source.languageTags[0] ?? 'und',
             includePublisherTags: source.approvedFields.includes('publisherTags') || source.approvedFields.includes('category'),
+            sha256Hex,
           })
         } catch {
           throw new FetchFailure('invalid-feed', 'Feed XML did not match the supported bounded RSS/Atom subset.')

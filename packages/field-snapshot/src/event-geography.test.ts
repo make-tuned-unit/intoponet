@@ -157,6 +157,25 @@ describe('event geography enrichment', () => {
     expect(output.items[0]?.eventId).toBe(`event:url-${expected}`)
   })
 
+  it('matches Node SHA-256 at every length around the block boundaries, and for a whole snapshot of text', () => {
+    // 55, 56, 63, 64, 65, 119, 120…: where the padding moves to a further block.
+    for (let length = 0; length <= 200; length += 1) {
+      const text = 'a'.repeat(length)
+      expect(sha256Hex(text), `length ${length}`).toBe(createHash('sha256').update(text, 'utf8').digest('hex'))
+    }
+    for (const text of ['', 'abc', 'Peña — Kraków — 東京 🌍', '\u0000￿', 'é'.repeat(64)]) {
+      expect(sha256Hex(text)).toBe(createHash('sha256').update(text, 'utf8').digest('hex'))
+    }
+    // A field snapshot is over 100 KB of JSON and is hashed whole when made and when read; twice running gives the
+    // same answer (the function keeps one working buffer between calls).
+    const large = JSON.stringify(Array.from({ length: 2_000 }, (_, i) => ({ id: `source-${i}`, title: `Título ${i} — 見出し`, lat: i / 7, lon: -i / 3 })))
+    expect(large.length).toBeGreaterThan(120_000)
+    const expected = createHash('sha256').update(large, 'utf8').digest('hex')
+    expect(sha256Hex(large)).toBe(expected)
+    expect(sha256Hex('abc')).toBe(createHash('sha256').update('abc', 'utf8').digest('hex'))
+    expect(sha256Hex(large)).toBe(expected)
+  })
+
   it('merges disjoint reviewed mappings that declare the same event ID', () => {
     const a = item({ id: 'review-a', canonicalUrl: 'https://a.example/a' })
     const b = item({ id: 'review-b', sourceId: 'feed-b', canonicalUrl: 'https://b.example/b', sourceContentHash: '1'.repeat(64) })

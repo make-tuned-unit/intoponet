@@ -142,8 +142,8 @@ app.on('open-file', (event, path) => {
   incomingOpens.push(incomingFileTarget(path, readSmallFile))
 })
 import { cachedPublicField, publicFieldStatus, retryPublicField, startPublicFieldRefresh } from './public-field'
-import { startNewsService } from './news/newsService'
-import { openDigestBuilder } from './news/openDigestBuilder'
+import type { NewsService } from './news/newsService'
+import { openNewsService } from './news/openNewsService'
 import { readSealedPrivateLibrary } from './privateLibraryStorage'
 import { routeProtectionRequest } from './protectionRequest'
 import {
@@ -200,7 +200,7 @@ import { restoreHistoryOrLoad } from './historyRestore'
 import { BeaconPublisher } from './beacons/publisher'
 import { DEFAULT_BEACON_REGISTRY } from './beacons/defaults'
 import { applyNetworkPrivacy, ENCRYPTED_DNS, networkPrivacySnapshot, WEBRTC_POLICY } from './networkPrivacy'
-let newsService: ReturnType<typeof startNewsService> | null = null
+let newsService: NewsService | null = null
 let encryptedDnsActive = false
 import { CaptureLibrary, migrateEncryptedCaptures } from './captureStore'
 import { CaptureService } from './captureService'
@@ -6047,10 +6047,10 @@ app.whenReady().then(async () => {
 
   startup('news', () => {
     // What each country's own outlets are reporting (headlines and links only).
-    newsService = startNewsService({
+    // On its own thread: fetching, reading and saving the feeds never holds up this one.
+    newsService = openNewsService({
       userData: app.getPath('userData'),
       emit: (payload) => emit({ type: 'news-digest', payload }),
-      digestBuilder: openDigestBuilder(),
     })
     app.once('will-quit', () => { void newsService?.stop() })
   })

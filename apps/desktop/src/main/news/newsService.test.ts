@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { fetchOrder, newsFeedEntries, observeNewsCoverage, readCachedNewsDigest, readCoverage } from './newsService'
+import { FIRST_DIGEST_HOLD_MS, fetchOrder, holdFirstDigest, newsFeedEntries, observeNewsCoverage, readCachedNewsDigest, readCoverage } from './newsService'
 import { NEWS_COVERAGE_TOLERANCE_MS, type CoverageIntervals } from '../../shared/news/newsDigest'
 
 const h = 60 * 60 * 1000
@@ -128,5 +128,21 @@ describe('news fetch order', () => {
     const us = order.findIndex((feed) => feed.countryCode === 'US' && feed.geographicScope !== 'international')
     expect(us).toBeLessThan(desks + countries.size)
     expect(order[us]!.geographicScope).toBe('national')
+  })
+})
+
+describe('the first digest of a launch', () => {
+  const waiting = { shown: false, savedHeadlines: false, answered: 0, sinceStartMs: 4_000 }
+  it('waits while nothing is shown, nothing was saved and no feed has answered', () => {
+    expect(holdFirstDigest(waiting)).toBe(true)
+  })
+  it('is built once a feed has answered or failed, when headlines were saved, or when a digest is already shown', () => {
+    expect(holdFirstDigest({ ...waiting, answered: 1 })).toBe(false)
+    expect(holdFirstDigest({ ...waiting, savedHeadlines: true })).toBe(false)
+    expect(holdFirstDigest({ ...waiting, shown: true })).toBe(false)
+  })
+  it('never waits past its limit: with no feed even due, the empty digest is sent', () => {
+    expect(holdFirstDigest({ ...waiting, sinceStartMs: FIRST_DIGEST_HOLD_MS - 1 })).toBe(true)
+    expect(holdFirstDigest({ ...waiting, sinceStartMs: FIRST_DIGEST_HOLD_MS })).toBe(false)
   })
 })

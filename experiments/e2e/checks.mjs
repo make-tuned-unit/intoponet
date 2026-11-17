@@ -981,7 +981,13 @@ export const checks = {
 
   async GLOBE_LIVE(ctx) {
     await keepDrawing(ctx)
+    // While the news arrives the main process stays free: a few thousand feeds are fetched, read and kept on the news
+    // thread. Measured in the app as the CPU time its main thread uses (time it spends waiting for a core on a busy Mac
+    // is not counted): in all, and the most between two looks 10 ms apart.
+    await ctx.main(`(() => { const cpu = () => { const u = process.threadCpuUsage(); return (u.user + u.system) / 1000 }; const busy = globalThis.__mainBusy = { since: Date.now(), from: cpu(), longest: 0, read: () => ({ wall: Date.now() - busy.since, cpu: cpu() - busy.from, longest: busy.longest }) }; let last = cpu(); const timer = setInterval(() => { const now = cpu(); busy.longest = Math.max(busy.longest, now - last); last = now }, 10); timer.unref(); return true })()`)
     await ctx.waitForNews()
+    const mainBusy = await ctx.main('globalThis.__mainBusy.read()')
+    expect(mainBusy.cpu < mainBusy.wall * 0.12 && mainBusy.longest < 400, `While the news arrived the main process was busy for ${Math.round(mainBusy.cpu)} ms of ${Math.round(mainBusy.wall)} ms, ${Math.round(mainBusy.longest)} ms at a stretch (limits: 12% of the time, 400 ms at a stretch). Reading the feeds belongs on the news thread.`)
     // Highlights open on World (story cards); under Peaks, the story mountains (news on) and the other signals.
     expect(await ctx.click('.globe-tabs button', 'Peaks'), 'Highlights tab "Peaks" is missing.')
     await ctx.wait(`document.querySelectorAll('.globe-list .globe-row').length >= 5`, 60_000, 'highlight rows on the globe panel')
@@ -993,7 +999,7 @@ export const checks = {
     expect(layers >= 3, `The globe's signals come from ${layers} kind(s) of source, not local news, reading and hazards ("${summary}").`)
     for (const tab of ['World', 'Peaks', 'Rising', 'Fading']) expect(await ctx.click('.globe-tabs button', tab), `Highlights tab "${tab}" is missing.`)
     await ctx.shot('globe')
-    return summary
+    return `${summary} While the news arrived the main process was busy ${Math.round((mainBusy.cpu / mainBusy.wall) * 100)}% of the time (${Math.round(mainBusy.cpu)} ms of ${Math.round(mainBusy.wall / 1000)} s), ${Math.round(mainBusy.longest)} ms at the longest stretch.`
   },
 
   async SOURCE_CAROUSEL(ctx) {
@@ -1183,6 +1189,10 @@ export const checks = {
     await keepDrawing(ctx)
     // Offline, an empty World list says it waits for a connection (checked while the first headlines are still on their way).
     let offline = 'news came before the offline check'
+    // Before the first news of a launch the empty list says the headlines are being read, never that there is no story
+    // (read first, then asked whether news had come: if none had by then, none had when the text was read).
+    const early = JSON.parse(await ctx.evaluate(`(() => { const text = document.querySelector('.world-stories .globe-empty')?.textContent ?? null; const busy = document.querySelector('.world-stories .globe-empty')?.getAttribute('aria-busy') ?? null; return window.intoponet.browserHost.getNewsDigest().then((raw) => JSON.stringify({ text, busy, news: !!raw, online: navigator.onLine })) })()`))
+    if (early.text !== null && !early.news && early.online) expect(early.text.startsWith('Reading the headlines') && early.busy === 'true', `Before any news had arrived the empty World list said: "${early.text}" (busy: ${early.busy}).`)
     if (await ctx.evaluate(`!!document.querySelector('.world-stories .globe-empty')`)) {
       await ctx.send('Network.enable')
       await ctx.send('Network.emulateNetworkConditions', { offline: true, latency: 0, downloadThroughput: -1, uploadThroughput: -1 })
@@ -1217,7 +1227,32 @@ export const checks = {
       expect(story.outletCount >= story.headlines.length, `"${story.title}" counts ${story.outletCount} outlets and lists ${story.headlines.length}.`)
       expect(!(story.terms.includes('estados') && story.terms.includes('unidos')), `"${story.title}" is a story only because its headlines name the United States: ${story.terms}`)
     }
-    return `${stories} world stories, each covered in ${Math.min(...breadth)}–${Math.max(...breadth)} countries or international desks; scrolls ${scroll.moved}px; ${offline}.`
+    // Newer news does not move rows from under a moving pointer: with the pointer on the list, a digest with a single
+    // story arrives (sent as main sends one); the rows stay, and the single story shows once the pointer has rested.
+    await ctx.evaluate(`document.querySelector('.globe-panel .world-stories').scrollTop = 0`)
+    const raw = await ctx.evaluate(`window.intoponet.browserHost.getNewsDigest()`)
+    const digest = JSON.parse(raw)
+    const sendDigest = (payload) => ctx.main(`(() => { const win = electron.BrowserWindow.getAllWindows().find((w) => w.webContents.getURL().includes('index.html')); win.webContents.send('browser-host:event', { type: 'news-digest', payload: ${JSON.stringify(payload)} }); return true })()`)
+    const rowCount = () => ctx.evaluate(`document.querySelectorAll('.world-list > li').length`)
+    const row = JSON.parse(await ctx.evaluate(`(() => { const r = document.querySelectorAll('.world-list > li .world-row')[1].getBoundingClientRect(); return JSON.stringify({ x: r.x + r.width / 2, y: r.y + r.height / 2 }) })()`))
+    let steady = 'newer news arrived during the steady-rows check'
+    try {
+      for (const dx of [0, 3, 6]) await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: row.x + dx, y: row.y })
+      await sendDigest(JSON.stringify({ ...digest, global: digest.global.slice(-1) }))
+      await ctx.delay(500)
+      expect(await rowCount() > 1, 'Newer news replaced the World rows while the pointer was moving over them.')
+      // The pointer rests: the newer list takes its place within a few seconds (unless real news arrived meanwhile).
+      let shown = false
+      for (let i = 0; i < 24 && !shown; i += 1) { await ctx.delay(250); shown = (await rowCount()) === 1 }
+      const realNews = (await ctx.evaluate(`window.intoponet.browserHost.getNewsDigest()`)) !== raw
+      expect(shown || realNews, 'With the pointer at rest, the World list never showed the news that had arrived.')
+      if (shown) steady = 'rows stay under a moving pointer and update once it rests'
+    } finally {
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 5, y: 5 })
+      await sendDigest(await ctx.evaluate(`window.intoponet.browserHost.getNewsDigest()`))
+    }
+    await ctx.wait(`document.querySelectorAll('.world-list > li').length >= 5`, 10_000, 'the World list to show the real news again')
+    return `${stories} world stories, each covered in ${Math.min(...breadth)}–${Math.max(...breadth)} countries or international desks; scrolls ${scroll.moved}px; ${offline}; ${steady}.`
   },
 
   async STORY_MOUNTAINS(ctx) {
@@ -3579,13 +3614,22 @@ export const checks = {
     try {
       await openPage(ctx, `${origin}/article?id=7&utm_campaign=spring`, 1500)
       await openPage(ctx, `${origin}/second`, 1500)
-      // ⌘K from inside the page opens the address bar in command mode, quickly (p95 under 150 ms).
+      // ⌘K from inside the page opens the address bar in command mode, quickly (p95 under 150 ms). Timed inside the app:
+      // from the key reaching it (stamped in the main process as the key is delivered to the page, where a key from the
+      // OS arrives) until its window shows the list. The check's own round trips to the app are not part of it.
       const times = []
       for (let run = 0; run < 10; run += 1) {
-        await ctx.evaluate(`(() => { window.__shown = 0; const done = () => { if (document.querySelector('[role="listbox"] [role="option"]') && document.querySelector('.command-input input').value.startsWith('>')) { window.__shown = performance.now(); return true } return false }; const watch = new MutationObserver(() => { if (done()) watch.disconnect() }); watch.observe(document.body, { subtree: true, childList: true, attributes: true }); window.__asked = performance.now(); return true })()`)
-        await ctx.keyInPage('/second', 'K', ['meta'])
+        await ctx.evaluate(`(() => { window.__shown = 0; const done = () => { if (document.querySelector('[role="listbox"] [role="option"]') && document.querySelector('.command-input input').value.startsWith('>')) { window.__shown = Date.now(); return true } return false }; const watch = new MutationObserver(() => { if (done()) watch.disconnect() }); watch.observe(document.body, { subtree: true, childList: true, attributes: true }); return true })()`)
+        const keyAt = await ctx.main(`(() => {
+          const page = electron.webContents.getAllWebContents().find((c) => /^https?:/.test(c.getURL()) && c.getURL().includes('/second'))
+          if (!page) return 0
+          const at = Date.now()
+          for (const type of ['keyDown', 'keyUp']) page.sendInputEvent({ type, keyCode: 'K', modifiers: ['meta'] })
+          return at
+        })()`)
+        expect(keyAt > 0, 'No page at /second to press ⌘K in.')
         await ctx.wait(`window.__shown > 0`, 3000, 'the command menu to show')
-        times.push(await ctx.evaluate(`window.__shown - window.__asked`))
+        times.push((await ctx.evaluate(`window.__shown`)) - keyAt)
         // Escape in the bar leaves command mode (and clears it).
         await ctx.evaluate(`document.querySelector('.command-input input').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); true`)
         await ctx.delay(200)
@@ -3596,7 +3640,7 @@ export const checks = {
       await ctx.delay(600)
       times.sort((a, b) => a - b)
       const p95 = times[Math.ceil(times.length * 0.95) - 1]
-      expect(p95 < 150, `⌘K took ${Math.round(p95)} ms to show its list (p95; must be under 150 ms, including the round trip from the page).`)
+      expect(p95 < 150, `⌘K took ${Math.round(p95)} ms to show its list (p95 of ${times.map((ms) => Math.round(ms)).join(', ')}; must be under 150 ms from the key reaching the app).`)
       // Escape can dismiss ordinary suggestions while leaving the input focused.
       // Opening Commands explicitly must clear that dismissed state, even without a new focus event.
       await typeCommand('Ghana')
@@ -3656,7 +3700,7 @@ export const checks = {
       await pick('> open knowledge')
       await ctx.wait(`!!document.querySelector('.knowledge-sheet')`, 3000, '"Open Knowledge" to open it')
       await ctx.press('Escape')
-      return `⌘K from a page shows command mode in ${Math.round(p95)} ms (p95); ">" too; no requests while typing; actions, tabs and places ranked; keyboard and Enter run them (copy, zoom, sidebar, protection, Knowledge); axe clean.`
+      return `⌘K from a page shows command mode in ${Math.round(p95)} ms (p95, median ${Math.round(times[Math.floor(times.length / 2)])} ms, from the key reaching the app); ">" too; no requests while typing; actions, tabs and places ranked; keyboard and Enter run them (copy, zoom, sidebar, protection, Knowledge); axe clean.`
     } finally {
       server.close()
     }
