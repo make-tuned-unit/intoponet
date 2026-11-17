@@ -1257,9 +1257,12 @@ export const checks = {
     await ctx.wait(`!!document.querySelector('.page-tab-row')`, 10_000, 'the tab strip with a tab open in the background')
     await ctx.waitForNews()
     await ctx.flyTo('Canada')
-    await ctx.delay(2500)
-    await ctx.click('.globe-list .globe-row', 'Canada')
-    await ctx.wait(`document.querySelectorAll('.globe-headlines .headline-history').length > 0`, 90_000, 'a headline history button')
+    // Canada's own news row: not a story peak that says "2 in Canada" (its panel has no headline list, so the wait
+    // below used to run out), nor the Wikipedia reads row of the same name.
+    const canadaNews = `[...document.querySelectorAll('.globe-list .globe-row')].find((row) => row.querySelector('strong')?.innerText.trim() === 'Canada' && /\\bstor(y|ies)\\b/.test(row.querySelector('small')?.innerText ?? ''))`
+    await ctx.wait(`!!${canadaNews}`, 30_000, 'Canada’s news in the list after flying there')
+    await ctx.evaluate(`${canadaNews}.click(); true`)
+    await ctx.wait(`document.querySelectorAll('.globe-headlines .headline-history').length > 0`, 15_000, 'a headline history button on Canada’s headlines')
     await ctx.evaluate(`document.querySelector('.globe-headlines .headline-history').click(); true`)
     await ctx.wait(`!!document.querySelector('.olds-sheet h2') && !document.querySelector('.olds-status .olds-spin')`, 150_000, 'The Olds to open for the headline')
     await ctx.delay(1500)
