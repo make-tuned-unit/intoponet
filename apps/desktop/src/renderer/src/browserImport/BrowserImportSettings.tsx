@@ -148,7 +148,7 @@ export function BrowserImportSettings({ libraryReady, onImportLibrary }: {
   return (
     <section className="browser-import" aria-labelledby="browser-import-heading" aria-busy={busy}>
       <h3 id="browser-import-heading"><Import size={13} aria-hidden="true" /> Import from another browser</h3>
-      <p>Bring bookmarks, pinned and open tabs, and if you choose, history and passwords from Arc, Chrome, Brave, Edge, Vivaldi and other Chromium browsers on this Mac. It is all read here; nothing is uploaded. Importing again adds nothing twice.</p>
+      <p>Bring bookmarks and, if you choose, history and passwords from Arc, Chrome, Brave, Edge, Vivaldi and other Chromium browsers on this Mac, and pinned and open tabs from Arc. It is all read here; nothing is uploaded. Importing again adds nothing twice.</p>
       {profiles === null ? (
         <button type="button" className="settings-primary" onClick={find} disabled={busy}>Find browsers on this Mac</button>
       ) : profiles.length === 0 ? (
