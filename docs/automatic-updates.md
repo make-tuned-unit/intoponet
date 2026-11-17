@@ -18,7 +18,7 @@ The generated JSON contains the current build entry; Squirrel.Mac's static JSON 
 
 ## Security and rollout limits
 
-Electron requires a signed macOS app for Squirrel.Mac updates. The release package gate requires Developer ID signing and notarization credentials, but no public update endpoint or credentials are configured in this repository. There is no live signed update check/download/restart evidence, and no claim of end-to-end update verification is made. The native updater and macOS code-signature checks are used; this project adds no custom signature-verification code.
+Electron requires a signed macOS app for Squirrel.Mac updates. The release package gate requires Developer ID signing and notarization credentials, and the credentials are not kept in this repository. Releases use the public feed at `https://intoponet.com/updates/arm64/releases.json` (the file in `website/updates/arm64/`; `website/vercel.json` redirects the ZIP it names to the release Blob store). This document records no live signed update check/download/restart evidence, and no claim of end-to-end update verification is made here. The native updater and macOS code-signature checks are used; this project adds no custom signature-verification code.
 
 Automatic checks are daily and on by default. There is no staged rollout management, in-app rollback, automatic previous-version recovery, or assigned CVE response owner. A recovery release must use a higher version. Operators should retain and distribute the previous known-good installer while a recovery release is prepared. A downloaded update will be applied on the next app launch according to Electron's native updater behavior.
 

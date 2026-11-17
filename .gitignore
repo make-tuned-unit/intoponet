@@ -23,3 +23,6 @@ website/dist/
 # Deep-research working files
 /research_notes/
 /reports/
+
+# Agents' scratch files
+scratchpad/
