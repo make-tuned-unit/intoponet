@@ -1,5 +1,6 @@
 import { headlineLanguage } from '../translate/detect'
 import { memoize, TITLE_CACHE_LIMIT } from '../memo'
+import { countriesIn, countryMentions, countryOfToken } from '../places/countryNames'
 import { capitalEvidence, STOPWORDS, type NewsHeadline, type NewsItemInput, type NewsSourceMeta } from './newsDigest'
 
 /**
@@ -40,22 +41,46 @@ function fold(word: string): string {
   return word.normalize('NFD').replace(/\p{M}+/gu, '').toLowerCase().replace(/['’]s$/, '')
 }
 
-/** Content words of a headline (four letters or more, not stop words), folded. Shared result: do not mutate. */
-export const storyTokens = memoize(storyTokensUncached, (title: string) => title, TITLE_CACHE_LIMIT)
+const titleKey = (title: string, lang?: string | null): string => (lang ? `${lang}\u0000${title}` : title)
 
-function storyTokensUncached(title: string): string[] {
+/**
+ * Content words of a headline (four letters or more, not stop words), folded. A country is one token whatever
+ * it is called in the headline's language (`lang`, when known) and however many words that takes: "Estados Unidos"
+ * and "United States" are both "united-states", not two words that happen to sit together.
+ * Shared result: do not mutate.
+ */
+export const storyTokens = memoize(storyTokensUncached, titleKey, TITLE_CACHE_LIMIT)
+
+function storyTokensUncached(title: string, lang?: string | null): string[] {
   const words = title.normalize('NFKC').split(/[^\p{L}\p{M}\d]+/u).filter(Boolean)
+  const folded = words.map(fold)
   const tokens = new Set<string>()
-  for (const word of words) {
-    const folded = fold(word)
-    if ([...folded].length < 4 || STOPWORDS.has(folded) || /^\d+$/.test(folded)) continue
-    tokens.add(folded)
+  const countries = countryMentions(words, folded, lang)
+  let next = 0
+  for (let i = 0; i < words.length; i += 1) {
+    const country = countries[next]
+    if (country && country.start === i) {
+      tokens.add(country.token)
+      i += country.length - 1
+      next += 1
+      continue
+    }
+    const word = folded[i]!
+    if ([...word].length < 4 || STOPWORDS.has(word) || /^\d+$/.test(word)) continue
+    tokens.add(word)
   }
   return [...tokens]
 }
 
-/** capitalEvidence with each word folded the way tokens are, remembered per title. */
-const foldedCapitalEvidence = memoize((title: string): Array<[string, boolean]> => [...capitalEvidence(title)].map(([word, capital]) => [fold(word), capital]), (title: string) => title, TITLE_CACHE_LIMIT)
+/**
+ * capitalEvidence with each word folded the way tokens are (a country's token is always a name), remembered per
+ * title: the folded word, whether it has a capital, and whether it is written with accents ("Peña", not "pena").
+ */
+const foldedCapitalEvidence = memoize((title: string, lang?: string | null): Array<[string, boolean, boolean]> => {
+  const evidence: Array<[string, boolean, boolean]> = [...capitalEvidence(title)].map(([word, capital]) => [fold(word), capital, fold(word) !== word.replace(/['’]s$/, '')])
+  for (const country of new Set(countriesIn(title, lang).map((mention) => mention.token))) evidence.push([country, true, false])
+  return evidence
+}, titleKey, TITLE_CACHE_LIMIT)
 
 type Entry = {
   index: number
@@ -97,7 +122,7 @@ export function buildGlobalStories(input: { sources: NewsSourceMeta[]; items: Ne
       international: source.scope === 'international',
       english: (headlineLanguage(source.language, title) ?? 'en').startsWith('en'),
       lang: headlineLanguage(source.language, title),
-      tokens: storyTokens(title),
+      tokens: storyTokens(title, headlineLanguage(source.language, title)),
     })
   }
   if (entries.length < 10) return []
@@ -204,20 +229,45 @@ export type HeadlineCluster = { terms: Map<string, number>; indices: Set<number>
  * share them (higher scores merge first), then merged when they share most headlines.
  * Mutates each entry's tokens down to its distinctive ones.
  */
-export function clusterHeadlines(entries: Array<{ title: string; tokens: string[] }>, score: (indices: number[]) => number | null, maxClusters: number, options: { mergeLeadingNames?: boolean } = {}): HeadlineCluster[] {
+export function clusterHeadlines(entries: Array<{ title: string; tokens: string[]; lang?: string | null; group?: string }>, score: (indices: number[]) => number | null, maxClusters: number, options: { mergeLeadingNames?: boolean } = {}): HeadlineCluster[] {
   // Words that look like names: capitalised mid-sentence most of the time.
-  const caps = new Map<string, { cap: number; lower: number }>()
+  type Tally = { cap: number; lower: number }
+  const caps = new Map<string, Tally>()
+  // The same tally for each spelling of a word: without accents, and with them.
+  const spellings = new Map<string, [Tally, Tally]>()
   for (const entry of entries) {
-    for (const [key, capital] of foldedCapitalEvidence(entry.title)) {
+    for (const [key, capital, accented] of foldedCapitalEvidence(entry.title, entry.lang)) {
       const tally = caps.get(key) ?? { cap: 0, lower: 0 }
-      if (capital) tally.cap += 1
-      else tally.lower += 1
+      let spelt = spellings.get(key)
+      if (!spelt) spellings.set(key, spelt = [{ cap: 0, lower: 0 }, { cap: 0, lower: 0 }])
+      if (capital) { tally.cap += 1; spelt[Number(accented)]!.cap += 1 } else { tally.lower += 1; spelt[Number(accented)]!.lower += 1 }
       caps.set(key, tally)
+    }
+  }
+  const nameBy = (tally: Tally): boolean => tally.cap >= 2 && tally.cap / (tally.cap + tally.lower) >= 0.7
+  // A name and an everyday word can fold to one token: "Peña" the former president and "pena" (a sentence, a
+  // pity), "Cayo" and "cayó". Told apart by their accents, the name keeps its weight however often the word is
+  // used, and a headline that only has the word (in lower case) does not carry the name.
+  // token → whether the everyday word is the spelling with accents.
+  const everyday = new Map<string, boolean>()
+  for (const [token, [plain, accented]] of spellings) {
+    if (nameBy(accented) && plain.lower > 0 && !nameBy(plain)) everyday.set(token, false)
+    else if (nameBy(plain) && accented.lower > 0 && !nameBy(accented)) everyday.set(token, true)
+  }
+  if (everyday.size) {
+    for (const entry of entries) {
+      const evidence = foldedCapitalEvidence(entry.title, entry.lang)
+      let word: Set<string> | null = null
+      for (const [key, capital, accented] of evidence) if (!capital && everyday.get(key) === accented) (word ??= new Set()).add(key)
+      if (!word) continue
+      for (const [key, capital] of evidence) if (capital) word.delete(key)
+      const dropped = word
+      if (dropped.size) entry.tokens = entry.tokens.filter((token) => !dropped.has(token))
     }
   }
   const isName = (token: string): boolean => {
     const tally = caps.get(token)
-    return !!tally && tally.cap >= 2 && tally.cap / (tally.cap + tally.lower) >= 0.7
+    return everyday.has(token) || (!!tally && nameBy(tally))
   }
   /** Seen in lower case mid-sentence and not a name (a word that only ever opens headlines is neither). */
   const isOrdinary = (token: string): boolean => (caps.get(token)?.lower ?? 0) > 0 && !isName(token)
@@ -226,6 +276,8 @@ export function clusterHeadlines(entries: Array<{ title: string; tokens: string[
   const df = new Map<string, number>()
   for (const entry of entries) for (const token of entry.tokens) df.set(token, (df.get(token) ?? 0) + 1)
   const ceiling = Math.max(25, entries.length * 0.04)
+  /** Each headline's words in the order it has them, before the common ones are dropped. */
+  const worded = entries.map((entry) => entry.tokens)
   for (const entry of entries) entry.tokens = entry.tokens.filter((token) => (df.get(token) ?? 0) <= ceiling && (df.get(token) ?? 0) >= 2).slice(0, 10)
 
   // Pairs of tokens (at least one a name) and the headlines that share them. Tokens are numbered
@@ -233,7 +285,54 @@ export function clusterHeadlines(entries: Array<{ title: string; tokens: string[
   const vocabulary = [...df.keys()].filter((token) => (df.get(token) ?? 0) <= ceiling && (df.get(token) ?? 0) >= 2).sort()
   const ids = new Map(vocabulary.map((token, id) => [token, id]))
   const named = vocabulary.map(isName)
+  const country = vocabulary.map((token) => countryOfToken(token) !== null)
   const span = vocabulary.length + 1
+  // How many headlines have each pair as neighbouring words ("Black Friday", "Santa Cruz", "Robert Pattinson").
+  const neighbours = new Map<number, number>()
+  for (const tokens of worded) {
+    for (let i = 0; i + 1 < tokens.length; i += 1) {
+      const a = ids.get(tokens[i]!)
+      const b = ids.get(tokens[i + 1]!)
+      if (a === undefined || b === undefined) continue
+      const key = a < b ? a * span + b : b * span + a
+      neighbours.set(key, (neighbours.get(key) ?? 0) + 1)
+    }
+  }
+  /**
+   * Two countries say where, not what: a football match between Germany and the Netherlands and a plan both
+   * signed are named by the same two words, as is every headline about a war. They never make a story by
+   * themselves (what happened does: "Nations League", "deportation").
+   *
+   * Two words that are nearly always neighbours are one name, not two. One name is a story only when its
+   * headlines share something more: three in ten of the outlets using it carry the same third word ("Bond"
+   * with Robert Pattinson, "retrial" with Lindsay Clancy). "Black Friday", "Santa Cruz" or "América Latina"
+   * head a day's unrelated stories, which share nothing else.
+   */
+  const namesNoStory = (pair: number, indices: number[]): boolean => {
+    const first = Math.floor(pair / span)
+    const second = pair % span
+    if (country[first] && country[second]) return true
+    if ((neighbours.get(pair) ?? 0) < indices.length * 0.9) return false
+    const a = vocabulary[first]
+    const b = vocabulary[second]
+    // Outlets, so one outlet's ten headlines ("Black Friday deals") are not ten voices.
+    const outlets = new Set<string>()
+    const users = new Map<string, Set<string>>()
+    let most = 0
+    for (const index of indices) {
+      const entry = entries[index]!
+      const outlet = entry.group ?? String(index)
+      outlets.add(outlet)
+      for (const token of entry.tokens) {
+        if (token === a || token === b) continue
+        let set = users.get(token)
+        if (!set) users.set(token, set = new Set())
+        set.add(outlet)
+        if (set.size > most) most = set.size
+      }
+    }
+    return most < outlets.size * 0.3
+  }
   const pairs = new Map<number, number[]>()
   entries.forEach((entry, index) => {
     const tokens = entry.tokens.map((token) => ids.get(token)!).sort((a, b) => a - b)
@@ -252,7 +351,7 @@ export function clusterHeadlines(entries: Array<{ title: string; tokens: string[
   // A story needs headlines from at least two outlets, so a pair seen once can never qualify (most pairs).
   const candidates: Array<{ key: string; indices: number[]; rank: number }> = []
   for (const [pair, indices] of pairs) {
-    if (indices.length < 2) continue
+    if (indices.length < 2 || namesNoStory(pair, indices)) continue
     const rank = score(indices)
     if (rank !== null) candidates.push({ key: `${vocabulary[Math.floor(pair / span)]} ${vocabulary[pair % span]}`, indices, rank })
   }
@@ -320,11 +419,36 @@ export function clusterHeadlines(entries: Array<{ title: string; tokens: string[
     for (const index of b.indices) if (a.indices.has(index)) shared += 1
     return shared >= 3 && shared / Math.min(a.indices.size, b.indices.size) >= 1 / 3 && leading(a, 4).some((term) => leading(b, 4).includes(term))
   }
+  // A name that most of the day's headlines use elsewhere (a president, a country) leads many stories: it joins
+  // two of them only when they are written in different languages, where no other word could be shared.
+  const language = (cluster: HeadlineCluster): string => {
+    const counts = new Map<string, number>()
+    for (const index of cluster.indices) {
+      const lang = (entries[index]!.lang ?? '').split('-')[0]!
+      counts.set(lang, (counts.get(lang) ?? 0) + 1)
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] ?? ''
+  }
+  const theirOwn = (term: string, a: HeadlineCluster, b: HeadlineCluster): boolean => {
+    let inside = 0
+    for (const index of a.indices) if (entries[index]!.tokens.includes(term)) inside += 1
+    for (const index of b.indices) if (!a.indices.has(index) && entries[index]!.tokens.includes(term)) inside += 1
+    return inside >= (df.get(term) ?? 0) * 0.4
+  }
+  // Nor does it join them when one is led by a second name the other never mentions: "Rwanda" with the
+  // Francophonie summit and with a deportation centre, "Trump" with Biden and with Putin.
+  const share = (cluster: HeadlineCluster, term: string): number => {
+    let count = 0
+    for (const index of cluster.indices) if (entries[index]!.tokens.includes(term)) count += 1
+    return count / Math.max(1, cluster.indices.size)
+  }
+  const ledElsewhere = (term: string, a: HeadlineCluster, b: HeadlineCluster): boolean =>
+    [[a, b], [b, a]].some(([one, other]) => leading(one!, 2).some((name) => name !== term && isName(name) && share(one!, name) >= 0.75 && share(other!, name) === 0))
   for (let i = 0; i < clusters.length; i += 1) {
     for (let j = clusters.length - 1; j > i; j -= 1) {
       const a = clusters[i]!
       const b = clusters[j]!
-      const shared = leading(a, 2).filter((term) => leading(b, 2).includes(term) && isName(term))
+      const shared = leading(a, 2).filter((term) => leading(b, 2).includes(term) && isName(term) && (theirOwn(term, a, b) || language(a) !== language(b)) && !ledElsewhere(term, a, b))
       if (!shared.length && !sameHeadlines(a, b)) continue
       for (const index of b.indices) a.indices.add(index)
       for (const [term, weight] of b.terms) a.terms.set(term, (a.terms.get(term) ?? 0) + weight)

@@ -119,27 +119,28 @@ export function matchTabsToStories(tabs: StoryTabInput[], stories: StoryHeadline
  * A headline names a story when it carries at least two of the story's words (its terms), or the story has
  * fewer than two. A headline that only shares one word with a story (León the city in a story about Pope
  * Leo, a rain alert that happens to name Lima) may have been clustered with it, but a tab showing it is
- * not labelled with that story on its strength.
+ * not labelled with that story on its strength. `lang` is the headline's language when known: a story's words
+ * include countries, which each language names its own way.
  */
-export function namesStory(title: string, terms: readonly string[] | undefined): boolean {
+export function namesStory(title: string, terms: readonly string[] | undefined, lang?: string | null): boolean {
   if (!terms || terms.length < 2) return true
-  const tokens = storyTokens(title)
+  const tokens = storyTokens(title, lang)
   let shared = 0
   for (const term of terms) if (tokens.includes(term)) shared += 1
   return shared >= 2
 }
 
 /** A story mountain as tab evidence: its own headline, and each country's headline that names it. */
-export function mountainHeadlines(story: { id: string; title: string; url: string; terms: readonly string[]; countries: ReadonlyArray<{ headline: { title: string; url: string } }> }, label: string): StoryHeadlines {
+export function mountainHeadlines(story: { id: string; title: string; url: string; terms: readonly string[]; countries: ReadonlyArray<{ headline: { title: string; url: string; lang?: string | undefined } }> }, label: string): StoryHeadlines {
   return {
     id: story.id,
     label,
-    headlines: [{ title: story.title, url: story.url }, ...story.countries.map((country) => country.headline).filter((headline) => namesStory(headline.title, story.terms))],
+    headlines: [{ title: story.title, url: story.url }, ...story.countries.map((country) => country.headline).filter((headline) => namesStory(headline.title, story.terms, headline.lang))],
   }
 }
 
 /** A World tab story as the digest has it (globalStories.ts). */
-export type WorldStoryInput = { id: string; title: string; url: string; terms?: readonly string[]; headlines: ReadonlyArray<{ title: string; url: string }> }
+export type WorldStoryInput = { id: string; title: string; url: string; terms?: readonly string[]; headlines: ReadonlyArray<{ title: string; url: string; lang?: string | undefined }> }
 
 /**
  * The stories tabs are matched against: story mountains, and the World tab's stories. A world
@@ -160,7 +161,7 @@ export function withWorldStories(mountains: readonly StoryHeadlines[], world: re
   }
   const mountainSigns = merged.map((story) => signs(story.headlines))
   for (const story of world) {
-    const headlines = [{ title: story.title, url: story.url }, ...story.headlines.filter((headline) => namesStory(headline.title, story.terms))]
+    const headlines = [{ title: story.title, url: story.url }, ...story.headlines.filter((headline) => namesStory(headline.title, story.terms, headline.lang))]
     const own = signs(headlines)
     const overlapping = mountainSigns.flatMap((set, index) => ([...own].some((sign) => set.has(sign)) ? [index] : []))
     if (overlapping.length === 1) {
