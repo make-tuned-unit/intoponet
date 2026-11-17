@@ -116,6 +116,10 @@ type FeedServiceOptions = {
   tolerant?: boolean
 }
 
+/**
+ * A feed that fails is ordinary: of a few thousand, hundreds time out or answer badly at every start. The failure
+ * carries its code and message only, never a stack trace (collecting one for each is work nobody reads).
+ */
 class FetchFailure extends Error {
   constructor(
     readonly code: FeedDeadLetter['code'],
@@ -123,9 +127,18 @@ class FetchFailure extends Error {
     readonly status?: number,
     readonly retryAfterMs?: number,
   ) {
-    super(message)
+    const limit = Error.stackTraceLimit
+    Error.stackTraceLimit = 0
+    try {
+      super(message)
+    } finally {
+      Error.stackTraceLimit = limit
+    }
   }
 }
+
+/** Why a request that ran out of time was stopped: one shared reason, not a new error for every slow feed. */
+const TIMED_OUT = new FetchFailure('timeout', 'Feed request timed out.')
 
 const defaultNow = (): number => Date.now()
 const defaultSetTimer = (callback: () => void, delayMs: number): TimerHandle =>
@@ -750,7 +763,7 @@ export class FeedFetchService {
     state.lastAttemptAt = attemptAt
     const controller = new AbortController()
     this.controllers.set(sourceId, controller)
-    const timeout = this.setTimer(() => controller.abort(new Error('Feed request timed out.')), this.timeoutMs)
+    const timeout = this.setTimer(() => controller.abort(TIMED_OUT), this.timeoutMs)
     const headers = new Headers({
       accept: source.kind === 'atom'
         ? 'application/atom+xml, application/xml;q=0.9, text/xml;q=0.8'

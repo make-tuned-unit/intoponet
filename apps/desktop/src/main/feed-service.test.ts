@@ -460,6 +460,7 @@ describe('FEED_FETCH service', () => {
 
   it('classifies timeout and cancels queued/in-flight jobs when stopped', async () => {
     const timeoutSource = registry('http://127.0.0.1:40123/timeout')
+    const reasons: unknown[] = []
     const timeout = new FeedFetchService({
       registry: timeoutSource,
       storage: new MemoryStorage(),
@@ -470,14 +471,22 @@ describe('FEED_FETCH service', () => {
       },
       clearTimer: () => undefined,
       fetchImpl: async (_url, init) => {
-        if (init?.signal?.aborted) throw new Error('aborted')
+        if (init?.signal?.aborted) {
+          reasons.push(init.signal.reason)
+          throw new Error('aborted')
+        }
         return await new Promise<Response>((_resolve, reject) => {
-          init?.signal?.addEventListener('abort', () => reject(new Error('aborted')), { once: true })
+          init?.signal?.addEventListener('abort', () => { reasons.push(init.signal!.reason); reject(new Error('aborted')) }, { once: true })
         })
       },
     })
     const timedOut = await timeout.refreshSource('hinckley-bosworth-news')
     expect(timedOut.status).toBe('error')
+    // Hundreds of feeds time out at a start: the reason a request is stopped with carries no stack trace.
+    expect(reasons).toHaveLength(1)
+    expect(reasons[0]).toBeInstanceOf(Error)
+    expect((reasons[0] as Error).message).toBe('Feed request timed out.')
+    expect((reasons[0] as Error).stack ?? '').not.toMatch(/\n\s+at /)
     expect((await timeout.snapshot()).sources['hinckley-bosworth-news']?.deadLetters[0]?.code).toBe('timeout')
 
     const sourceA = registry('http://127.0.0.1:40123/a', 'feed-a').sources[0]!
