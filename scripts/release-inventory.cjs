@@ -147,7 +147,7 @@ function writeReleaseInventory({ outputDir, dmg, zip, updateUrl, mode, arch, ver
       protocol: normalizedUpdateUrl ? 'Electron native autoUpdater / Squirrel.Mac JSON feed' : null,
       feedUrl: normalizedUpdateUrl ? `${normalizedUpdateUrl}/releases.json` : null,
       manifest: updateManifestPath ? path.basename(updateManifestPath) : null,
-      checks: 'manual only; check and download are one explicit user action',
+      checks: 'automatic about once a day while the app is open (can be turned off in Settings), and on request; a found update downloads in the background and installs on restart',
       persistentUpdaterIdentifier: false,
     },
     runtime: {
