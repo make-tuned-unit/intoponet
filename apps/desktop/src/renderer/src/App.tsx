@@ -3468,6 +3468,7 @@ export function App() {
           world={{
             stories: newsDigest?.global ?? [],
             inTheNews: newsDigest?.inTheNews ?? [],
+            reading: newsDigest === null,
             focusedId: worldStory?.id ?? null,
             sourcesFor: worldSources,
             onFocus: setWorldStory,

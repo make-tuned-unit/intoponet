@@ -493,6 +493,8 @@ export function SignalPanel({
   world?: {
     stories: GlobalStory[]
     inTheNews: WikiNewsItem[]
+    /** No news has arrived yet in this launch. */
+    reading?: boolean
     focusedId: string | null
     /** The story whose sources the guided tour shows (its Compare step); null puts them away. */
     sourcesFor?: string | null
@@ -681,6 +683,7 @@ export function SignalPanel({
                   <WorldStories
                     stories={world?.stories ?? []}
                     inTheNews={world?.inTheNews ?? []}
+                    reading={world?.reading ?? false}
                     now={now}
                     focusedId={world?.focusedId ?? null}
                     sourcesFor={world?.sourcesFor ?? null}

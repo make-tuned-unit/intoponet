@@ -192,6 +192,9 @@ export function startNewsService(options: { userData: string; emit: (payload: st
   const coveragePath = join(options.userData, 'news-coverage.json')
   const coverage: CoverageIntervals = readCoverage(coveragePath, new Set(feeds.map((feed) => feed.sourceId)))
   const lastFetch = new Map<string, number>()
+  // Feeds that have answered or failed in this launch, and whether any headlines were saved from an earlier one.
+  let answered = 0
+  let savedHeadlines = false
   const observe = (result: FeedFetchResult): void => {
     observeNewsCoverage(result, coverage, lastFetch)
   }
@@ -205,6 +208,7 @@ export function startNewsService(options: { userData: string; emit: (payload: st
     persistDebounceMs: 60_000,
     tolerant: true,
     onResult: (result) => {
+      answered += 1
       // no-store feeds: keep their latest headlines in memory only, never on disk.
       if (!result.persistenceAllowed && result.status === 'updated') transient.set(result.sourceId, result.receivedItems)
       else if (!result.persistenceAllowed) transient.delete(result.sourceId)
@@ -264,6 +268,9 @@ export function startNewsService(options: { userData: string; emit: (payload: st
       digestTimer = null
       // One build at a time; results arriving meanwhile are picked up by the next one.
       if (building) return scheduleDigest()
+      // Nothing saved and no feed has answered yet (a slow connection, a busy Mac): a digest now would say there is
+      // no news when none has been read. The window says the headlines are being read until the first digest.
+      if (!latest && !savedHeadlines && answered === 0) return scheduleDigest()
       building = true
       void publish().catch((error: unknown) => {
         if (!stopped) console.error('News digest failed.', error instanceof Error ? error.message : error)
@@ -276,7 +283,10 @@ export function startNewsService(options: { userData: string; emit: (payload: st
     digestTimer.unref?.()
   }
 
-  void service.start().then(() => scheduleDigest()).catch((error: unknown) => {
+  void service.start().then(async () => {
+    savedHeadlines = Object.values(await service.liveSources()).some((state) => state.items.length > 0)
+    scheduleDigest()
+  }).catch((error: unknown) => {
     console.error('News feeds could not start.', error instanceof Error ? error.message : error)
   })
 

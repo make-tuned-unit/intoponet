@@ -19,13 +19,61 @@ const regionNames = (() => {
     return null
   }
 })()
-const countryName = (code: string): string => regionNames?.of(code) ?? code
+// Looked up once per country: the list is drawn again several times a second while the globe turns, and every row
+// names its countries.
+const countryNames = new Map<string, string>()
+const countryName = (code: string): string => {
+  let name = countryNames.get(code)
+  if (name === undefined) {
+    name = regionNames?.of(code) ?? code
+    countryNames.set(code, name)
+  }
+  return name
+}
 
-/** What the World list says while no story is covered across several countries: offline, that it waits for a connection. */
-export function worldEmptyText(online: boolean): string {
-  return online
-    ? 'No story is yet covered across several countries. This needs a few hours of headlines from many outlets.'
-    : 'Waiting for a connection: World stories come from the headlines outlets around the world are publishing.'
+/**
+ * What the World list says while it has no story: offline, that it waits for a connection; before the first news of
+ * this launch has arrived (`reading`), that the headlines are being read (a start without recent saved news takes
+ * some seconds, and up to a minute on a busy Mac); otherwise that no story is covered across several countries.
+ */
+export function worldEmptyText(online: boolean, reading = false): string {
+  if (!online) return 'Waiting for a connection: World stories come from the headlines outlets around the world are publishing.'
+  if (reading) return 'Reading the headlines outlets around the world are publishing…'
+  return 'No story is yet covered across several countries. This needs a few hours of headlines from many outlets.'
+}
+
+/** Rows stay where they are for this long after the pointer last moved over them, when newer news arrives. */
+export const STEADY_ROWS_MS = 2_500
+
+/** How much longer (ms) rows under a moving pointer are kept before newer ones take their place; 0 is now. */
+export function steadyRowsWait(pointerMovedAt: number | null, now: number): number {
+  return pointerMovedAt === null ? 0 : Math.max(0, pointerMovedAt + STEADY_ROWS_MS - now)
+}
+
+/**
+ * The rows to show: the latest, except that rows the pointer is moving over are kept until it rests or leaves.
+ * News arrives every 20 to 60 seconds and reorders the list; a row must not move from under a click.
+ */
+function useSteadyRows<T>(latest: T): { rows: T; onPointerMove: () => void; onPointerLeave: () => void } {
+  const shown = useRef(latest)
+  const movedAt = useRef<number | null>(null)
+  const [, redraw] = useState(0)
+  if (shown.current !== latest && steadyRowsWait(movedAt.current, performance.now()) === 0) shown.current = latest
+  const waiting = shown.current !== latest
+  // While newer rows wait: look again when the pointer has rested long enough (it may have moved since).
+  useEffect(() => {
+    if (!waiting) return
+    const timer = window.setTimeout(() => redraw((count) => count + 1), steadyRowsWait(movedAt.current, performance.now()) + 20)
+    return () => window.clearTimeout(timer)
+  })
+  return {
+    rows: shown.current,
+    onPointerMove: () => { movedAt.current = performance.now() },
+    onPointerLeave: () => {
+      movedAt.current = null
+      if (waiting) redraw((count) => count + 1)
+    },
+  }
 }
 
 /** Whether this Mac is connected to a network, kept current. */
@@ -49,8 +97,9 @@ function useOnline(): boolean {
  * "In the news". Breadth of coverage, not importance.
  */
 export function WorldStories({
-  stories,
+  stories: latestStories,
   inTheNews,
+  reading = false,
   now,
   focusedId,
   sourcesFor = null,
@@ -62,6 +111,8 @@ export function WorldStories({
 }: {
   stories: GlobalStory[]
   inTheNews: WikiNewsItem[]
+  /** No news has arrived yet in this launch: an empty list says it is being read, not that there is none. */
+  reading?: boolean
   now: number
   focusedId: string | null
   /** Show this story's sources (the guided tour's Compare step); back to null puts them away again. */
@@ -73,6 +124,7 @@ export function WorldStories({
   onArticleHistory: (title: string) => void
   translation?: TranslateModel | undefined
 }) {
+  const { rows: stories, onPointerMove, onPointerLeave } = useSteadyRows(latestStories)
   const [expanded, setExpanded] = useState<string | null>(focusedId)
   // A story focused from outside the list (the guided tour opens one) shows its sources too.
   useEffect(() => { if (focusedId) setExpanded(focusedId) }, [focusedId])
@@ -125,7 +177,7 @@ export function WorldStories({
           <h3 title="The same story in headlines from at least 3 countries or international desks and 3 independent outlets in the last 24 hours, across 450 local outlets in 200+ countries and 31 international desks. Ranked by countries whose own outlets covered it, then desks. Breadth of coverage, not importance or truth.">
             <Globe2 size={12} aria-hidden="true" /> Covered across the world
           </h3>
-          <ol className="world-list">
+          <ol className="world-list" onPointerMove={onPointerMove} onPointerLeave={onPointerLeave}>
             {stories.map((story, index) => {
               const open = expanded === story.id
               const shown = titles.get(story.id)
@@ -212,7 +264,7 @@ export function WorldStories({
           </ol>
         </section>
       ) : (
-        <p className="globe-empty">{worldEmptyText(online)}</p>
+        <p className="globe-empty" role="status" aria-busy={online && reading}>{worldEmptyText(online, reading)}</p>
       )}
       {inTheNews.length > 0 && (
         <section className="world-itn" aria-label="Wikipedia In the news">
