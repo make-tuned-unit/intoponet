@@ -586,7 +586,9 @@ export class OutletArchive {
     // What this reader has already been shown of the thread, so going back skips pages that add nothing.
     const shownKey = `${query.url}|${query.headline}`
     if (!steps) this.shown.delete(shownKey)
-    const shown = this.shown.get(shownKey) ?? new Set<string>([current])
+    // The story itself is not its own earlier coverage, under whatever address the topic page lists it
+    // (DW's feed and its topic page spell one article's slug two ways).
+    const shown = this.shown.get(shownKey) ?? new Set<string>([current, `title:${query.headline.trim().toLowerCase()}`])
     this.shown.delete(shownKey)
     this.shown.set(shownKey, shown)
     if (this.shown.size > 50) this.shown.delete(this.shown.keys().next().value!)
