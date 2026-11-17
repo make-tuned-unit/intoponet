@@ -408,7 +408,8 @@ Day and night and an easier way into The Olds were added on 2026-10-26.
   equation of time and day/night at four cities) and refreshes every 30 s.
   The day side shows Blue Marble in its natural colour, lit by the sun, with
   daylit sea in blue and a soft sheen toward the sun. The night side is deep
-  navy with NASA Black Marble 2016 city lights (public domain), and a faint
+  navy with NASA Black Marble 2016 city lights (NASA Earth Observatory; see
+  `THIRD_PARTY_NOTICES.md` §5 for the credit and terms), and a faint
   twilight band marks the terminator. Each place's details and hover card
   say whether it is daytime there (with the sun's height), dawn, dusk or
   night. The atmosphere's glow follows

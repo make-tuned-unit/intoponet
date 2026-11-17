@@ -246,11 +246,18 @@ publisher's terms need checking before release, following the governance in
 
 | Asset | Source | Licence | Attribution |
 |---|---|---|---|
-| `apps/desktop/src/renderer/assets/earth-night.jpg` (4096×2048) | NASA Earth Observatory, Black Marble 2016 (Night Lights), https://earthobservatory.nasa.gov/features/NightLights | Public domain (NASA) | "NASA Earth Observatory / Black Marble" (requested, not required) |
-| `apps/desktop/src/renderer/assets/earth-day.jpg` (4096×2048) | The source comment says "NASA Blue Marble". **The exact file and its origin are not recorded. Check before release.** If it is NASA Visible Earth Blue Marble (https://visibleearth.nasa.gov/collection/1484/blue-marble), it is public domain. If it came from a third-party remix (for example a texture pack), that source's licence applies instead. | Licence not determined; check before release | "NASA Visible Earth / Blue Marble", if confirmed |
+| `apps/desktop/src/renderer/assets/earth-day.jpg` (4096×2048) | NASA Earth Observatory, Blue Marble: Next Generation, October 2004, with topography and bathymetry: https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/base-topography-bathymetry/. Made from NASA's 21600×10800 file by one recorded resize; the file URL, both checksums, the date and the command are in `earth-day.jpg.license` beside it. | NASA content, used under NASA's Media Usage Guidelines (https://www.nasa.gov/nasa-brand-center/images-and-media/): it is "generally … not subject to copyright in the United States", and NASA "should be acknowledged as the source". NASA's page also says its imagery is "not in the public domain". | "NASA Earth Observatory" (the credit NASA asks for; Blue Marble: Next Generation was produced by Reto Stöckli, NASA Goddard Space Flight Center) |
+| `apps/desktop/src/renderer/assets/earth-night.jpg` (4096×2048) | NASA Earth Observatory, Earth at Night (Black Marble) 2016, colour map: https://science.nasa.gov/earth/earth-observatory/earth-at-night/maps/. Made from NASA's 13500×6750 file `BlackMarble_2016_3km.jpg` by the same recorded resize; details in `earth-night.jpg.license` beside it. | The same NASA Media Usage Guidelines | "NASA Earth Observatory images by Joshua Stevens, using Suomi NPP VIIRS data from Miguel Román, NASA GSFC." |
 | Icons | lucide-react (see §1) | ISC / MIT | Covered by §1 |
 | Fonts | Inter (variable, optical size), by Rasmus Andersson and The Inter Project Authors, https://github.com/rsms/inter. Bundled in the app via `@fontsource-variable/inter` 5.3.0 and self-hosted on the website (`website/fonts/`, with `Inter-LICENSE.txt`). Nothing is loaded from web font services. | SIL Open Font License 1.1 | Copyright notice and licence shipped alongside the font files |
 | Brand assets | `apps/desktop/src/renderer/src/brand/`, `apps/desktop/resources/Intoponet.icns`, `website/brand/`, the website icons and Open Graph image: Intoponet Cinematic Brand Kit v3 (October 2026), made for this project. | Owned by the project (not third-party). Not yet trademark-cleared. | None |
+
+**NASA imagery.** The two Earth textures are NASA's pictures, resized and not otherwise changed
+(`scripts/build-earth-textures.mjs` makes them from NASA's originals and checks the checksums). They
+are used as a factual picture of the Earth. **NASA does not endorse Intoponet**, and NASA's insignia
+and logotype are not used. The passages of NASA's guidelines relied on are quoted, with the date
+they were read, in `LICENSES/LicenseRef-NASA-Media-Usage-Guidelines.txt`. NASA's statement is about
+copyright in the United States; the position in other countries has not been established.
 
 ---
 
@@ -263,7 +270,9 @@ publisher's terms need checking before release, following the governance in
    nothing in it restricts rights under the Mozilla Public License; a lawyer should
    confirm that wording, and that a pointer to Mozilla's repository plus a copy on
    request meets the source duty if upstream moves.
-3. Confirm where `earth-day.jpg` came from and what licence it has (§5).
+3. Done: both Earth textures are made from NASA's original files by a recorded command,
+   with checksums (§5). Still open, for a lawyer: how NASA's United States statement
+   applies to distribution in other countries.
 4. Done: the CC BY-SA 4.0 attribution for Wikipedia text, the CC BY 4.0
    attribution for GeoNames are shown in the app under Settings › Credits and
    licences (§4).

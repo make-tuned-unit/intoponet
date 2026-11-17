@@ -1,0 +1,29 @@
+SPDX-License-Identifier: LicenseRef-NASA-Media-Usage-Guidelines
+
+File: earth-day.jpg (4096x2048 JPEG, 1,527,946 bytes)
+Source: NASA Earth Observatory, Blue Marble: Next Generation, October 2004,
+  with topography and bathymetry
+Source-Page: https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/base-topography-bathymetry/
+Source-URL: https://assets.science.nasa.gov/content/dam/science/esd/eo/images/bmng/bmng-topography-bathymetry/october/world.topo.bathy.200410.3x21600x10800.jpg
+Retrieved: 2026-11-17
+Source-File: world.topo.bathy.200410.3x21600x10800.jpg (21600x10800 JPEG, 28,835,957 bytes)
+Source-SHA256: af9bea6c86e684923d72842e629be0a9401d0d4f0cb76411199c8519519114ce
+Processing: resized to 4096x2048 and saved as JPEG, no other change:
+  sips -s format jpeg -s formatOptions 72 -z 2048 4096 world.topo.bathy.200410.3x21600x10800.jpg --out earth-day.jpg
+  (sips-316, macOS 26.2; scripts/build-earth-textures.mjs runs it and checks both checksums)
+Output-SHA256: 0a77aaaf07318674a8a38f542924e9ec02486f7ad4981b9082e7e3c8fd091ff4
+Credit: NASA Earth Observatory (Blue Marble: Next Generation, produced by Reto Stöckli, NASA Goddard Space Flight Center)
+Credit-Requested-By-NASA: Anyone using or republishing Blue Marble: Next Generation please credit "NASA Earth Observatory."
+  (https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/, read 2026-11-17)
+Terms: https://www.nasa.gov/nasa-brand-center/images-and-media/ (read 2026-11-17; the passages relied on are
+  quoted in LICENSES/LicenseRef-NASA-Media-Usage-Guidelines.txt at the top of the repository)
+Endorsement: NASA does not endorse Intoponet.
+
+History: this file replaced, on 2026-11-17, a 4096x2048 texture of the same picture whose download and
+  resize had not been recorded (1,461,877 bytes, SHA-256
+  228deba2e4b600146bdcb6cfa359b8ead6aacc2b1c13550a29cd82824cfa1c01, in the repository since the first
+  commit). Downscaled to 256x128, old and new correlate at 0.9999 over all RGB values (RMS error 0.79 of
+  255); at full size, 0.9990 (RMS error 3.43).
+
+No SPDX-FileCopyrightText line is given. NASA says this material is "generally ... not subject to
+copyright in the United States"; whether to state a copyright holder, or none, is left to a lawyer.
