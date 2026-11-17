@@ -1,6 +1,6 @@
 {
  "labelled": "2026-10-28",
- "note": "Hand-judged acceptable topics for live headlines. News moves on: refresh labels when Wikipedia changes.",
+ "note": "Hand-judged acceptable topics for live headlines. News moves on: refresh labels when Wikipedia changes. Ten wrong selections from the live audit of 2026-11-16 added (labelled that day).",
  "stories": [
   {
    "title": "Dinala visits Toleza Farm, Kachenga Police Unit",
@@ -522,6 +522,66 @@
    "title": "Is Donald Trump’s ‘Chinamaxxing’ pushing Beijing’s soft power?",
    "lang": "en",
    "accept": "Soft power of China|China–United States relations"
+  },
+  {
+   "title": "Asesinan a un periodista que denunciaba casos relacionados con el narcotráfico en Costa Rica",
+   "countryCode": "CR",
+   "lang": "es",
+   "accept": "^Costa Rica$|^Crime in Costa Rica$|Illegal drug trade|Freedom of the press"
+  },
+  {
+   "title": "Falha técnica afeta serviços de grandes bancos dos Estados Unidos",
+   "countryCode": "BO",
+   "lang": "pt",
+   "accept": "^United States$|outage|^Banking in the United States$|^Economy of the United States$"
+  },
+  {
+   "title": "Australian-funded fence and landslip works handed over at Gizo prison",
+   "countryCode": "SB",
+   "lang": "en",
+   "accept": "Gizo|Solomon Islands"
+  },
+  {
+   "title": "Central business chambers divided on SOs for their regions",
+   "countryCode": "TT",
+   "lang": "en",
+   "accept": "Trinidad and Tobago"
+  },
+  {
+   "title": "RUTA MAVE: No one is above the law – and no system is invincible",
+   "countryCode": "CK",
+   "lang": "en",
+   "accept": "^Cook Islands$|^Rule of law$"
+  },
+  {
+   "title": "World Bank weighs suspension of budget support to Somalia",
+   "countryCode": "SO",
+   "lang": "en",
+   "accept": "World Bank|Somalia"
+  },
+  {
+   "title": "Singapore’s non-oil exports surge 79.8% in October, driven by pharmaceuticals and ship structures",
+   "countryCode": "SG",
+   "lang": "en",
+   "accept": "^Singapore$|^Economy of Singapore$"
+  },
+  {
+   "title": "Conférence épiscopale Burkina-Niger : Révision des statuts, appel à la solidarité et engagement citoyen au cœur d'une assemblée plénière ordinaire",
+   "countryCode": "BF",
+   "lang": "fr",
+   "accept": "^Burkina Faso$|^Niger$|Episcopal|Catholic Church in"
+  },
+  {
+   "title": "Flash info : c’est confirmé, l’ancien Premier ministre Nicolas Tiangaye, ancien bâtonnier de l’Ordre des avocats centrafricains, est décédé",
+   "countryCode": "CF",
+   "lang": "fr",
+   "accept": "Tiangaye|Central African Republic"
+  },
+  {
+   "title": "UEFA backs France’s Diallo to stand against Infantino in FIFA election",
+   "countryCode": "RE",
+   "lang": "en",
+   "accept": "Philippe Diallo|^FIFA$|FIFA president|FIFA Congress|Infantino"
   }
  ]
 }

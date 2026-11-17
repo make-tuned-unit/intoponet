@@ -1106,6 +1106,20 @@ export class OldsService {
       while (this.peopleCountries.size > MAX_PEOPLE_COUNTRIES) this.peopleCountries.delete(this.peopleCountries.keys().next().value!)
     }
     const surnameOnly = !!opening && opening.split(/\s+/).length === 1
+    // How many of the people found share each surname.
+    const surnameOf = (label: string): string => foldAccents(label.replace(/\s*\(.*?\)\s*$/, '')).toLowerCase().split(/\s+/).at(-1) ?? ''
+    const surnames = new Map<string, number>()
+    for (const item of new Set([...items.values()].map((entry) => entry.qid))) {
+      const entity = entities.get(item)
+      const label = entity && ids(entity, 'P31').includes('Q5') ? nodeFromEntity(entity, 'en')?.label : null
+      if (label && !isQid(label)) surnames.set(surnameOf(label), (surnames.get(surnameOf(label)) ?? 0) + 1)
+    }
+    // …and which of those the world knows ("Iran’s Pezeshkian" is the president, whoever else has the name).
+    const namesakes = [...new Set([...items.values()].map((entry) => entry.qid))].map((qid) => entities.get(qid)).filter((entity): entity is WikidataEntity => {
+      const label = entity && ids(entity, 'P31').includes('Q5') ? nodeFromEntity(entity, 'en')?.label : null
+      return !!label && (surnames.get(surnameOf(label)) ?? 0) >= 2 && headlineWords.has(surnameOf(label))
+    })
+    const famousNamesakes = namesakes.length ? await this.famousAmong(namesakes).catch(() => new Set<string>()) : new Set<string>()
     // How widely known people are (Wikipedia editions about them): only for foreign people matched by surname.
     const famous = surnameOnly ? await this.famousAmong([...items.values()].map((item) => entities.get(item.qid)).filter((entity): entity is WikidataEntity => !!entity
       && ids(entity, 'P31').includes('Q5') && subjectPerson(nodeFromEntity(entity, 'en')?.label ?? '') && !storyQids.some((qid) => countriesOf(entity).includes(qid)))).catch(() => new Set<string>()) : new Set<string>()
@@ -1163,6 +1177,8 @@ export class OldsService {
       if (person && !filedThread && !native && !namedPerson && !givenNameMentioned(node.label, `${text} ${query.text}`)
         && !(storyQids.length && storyQids.some((qid) => countries.includes(qid)))
         && Object.keys(entity.sitelinks ?? {}).filter((site) => site.endsWith('wiki')).length < 40) return []
+      // …and with several people of that surname among the results ("France’s Diallo": Abdou, Philippe, Amad…), it names none of them.
+      if (person && !filedThread && !native && !namedPerson && !givenNameMentioned(node.label, `${text} ${query.text}`) && (surnames.get(surnameOf(node.label)) ?? 0) >= 2 && !famousNamesakes.has(item.qid)) return []
       // (Only for the person that surname may be: someone named in full elsewhere in the headline is named.)
       if (person && surnameOnly && !fullPersonNameMentioned(node.label, text) && countries.length && storyQids.length && !storyQids.some((qid) => countries.includes(qid)) && !famous.has(item.qid)) return []
       // Known for something the headline never touches ("Butler says investment return…" is not the actor).
@@ -1187,8 +1203,11 @@ export class OldsService {
       const filedBonus = filedThread ? Math.max(4, 6 - threadIndex) : filedLink ? 1.5 : 0
       // A foreign institution or place (not an event) the headline never names is not this story ("Ministry of
       // Education, Culture, Sports…" of Japan for a merger of bureaus in Macau).
+      // (Matched untranslated, a word of its title is not its name: "Premier ministre français" for the Central African
+      // Republic's former "Premier ministre" needs the whole title.)
       const foreign = !filedThread && !isEventLike(entity) && storyQids.length > 0 && countries.length > 0 && countries.length <= 2
-        && !storyQids.some((qid) => countries.includes(qid)) && titleWordsIn(matchTitle, headlineNames) === 0
+        && !storyQids.some((qid) => countries.includes(qid))
+        && (titleWordsIn(matchTitle, headlineNames) === 0 || (native && titleWordsIn(matchTitle, text) < titleContentWords(matchTitle).length))
         // The person the headline opens with is named, though first words are left out of its names ("Mbappe apologises…").
         && !namedPerson
       if (foreign) return []
@@ -1261,7 +1280,13 @@ export class OldsService {
       // of its words ("infrastructure development" for saffron exports).
       // (Linked from the Current events item telling this story, it was chosen by Wikipedia's editors: "Bomb threat" for bomb hoaxes.)
       const partialConcept = !isEventLike(entity) && ids(entity, 'P17').length === 0 && !person && !filedThread && !filedLink && !native && titleWordsIn(node.label, text) < titleContentWords(node.label).length
-      const weakOnly = otherIncident || nativeThin || partialConcept || ((countryOnly || placeOnly) && !(leadingYear >= currentYear - 1 && eventKindMatches(node.label, text)))
+      // Matched untranslated, "Niger (fleuve)" for the country in "Burkina-Niger": the qualifier says it is something else.
+      const nativeQualified = native && !filedThread && !person && unusedQualifier(matchTitle, text)
+      // …and "Presidente de Costa Rica" for a murder "en Costa Rica" shares only the country's name.
+      // (A qualifier the headline uses says which thing of that name it is: "Niger (fleuve)" for "Crue du fleuve Niger".)
+      const nativeCountryOnly = native && !filedThread && !person && titleWordsIn(matchTitle, text) > 0 && titleWordsIn(matchTitle, subjectText) === 0
+        && !(/\([^)]+\)\s*$/.test(matchTitle) && !unusedQualifier(matchTitle, text))
+      const weakOnly = otherIncident || nativeThin || nativeQualified || partialConcept || ((countryOnly || nativeCountryOnly || placeOnly) && !(leadingYear >= currentYear - 1 && eventKindMatches(node.label, text)))
       // A general concept with no country ("Soldier") is a poor starting point for one country's news.
       const general = !isEventLike(entity) && ids(entity, 'P17').length === 0 && !ids(entity, 'P31').includes('Q5')
       // Without translation, one shared word is too weak ("ONU" → "EJ Onu"), unless the title is that one word.
@@ -1934,7 +1959,7 @@ export function isWorkOrThing(description: string | null | undefined, aboutAWork
   // Plants and trees are things; dinosaurs and viruses can be news ("Nanotyrannus").
   if (/\b(species|genus|cultivar|variety) of (tree|plant|flowering plant|shrub|grass|herb|fungus|palm|cactus)\b/i.test(description)) return true
   const head = description.toLowerCase().replace(/\s+(by|directed|written|starring|from|produced|created|released|launched|issued|named|associated|owned|based|bearing|with|that|which|used|about|featuring|for|in|of|on)\b.*$/, '').replace(/,.*$/, '').trim()
-  return /\b(film|movie|documentary|album|song|single|novel|book|(television|tv|drama|comedy|web|animated|anime|reality)( drama| comedy)? series|miniseries|sitcom|episode|video game|band|musical|opera|painting|comic|manga|anime|cultivar|dish|food|snack|nut|drink|beverage|brand|character|surname|given name|family name|name|coin|meme coin|memecoin|cryptocurrency|token|phrase|slogan|idiom|catchphrase|expression|proverb|website|web site|blog|podcast|channel|youtube channel|webcomic|app)$/.test(head)
+  return /\b(film|movie|documentary|album|song|single|novel|book|(television|tv|drama|comedy|web|animated|anime|reality)( drama| comedy)? series|miniseries|sitcom|episode|video game|band|(?:hip[ -]hop|musical|music|rock|pop|rap|punk|metal|jazz|folk|vocal|girl|boy) (?:group|duo|trio|collective)|musical|opera|painting|comic|manga|anime|cultivar|dish|food|snack|nut|drink|beverage|brand|character|surname|given name|family name|name|coin|meme coin|memecoin|cryptocurrency|token|phrase|slogan|idiom|catchphrase|expression|proverb|website|web site|blog|podcast|channel|youtube channel|webcomic|app)$/.test(head)
 }
 
 /** Common European languages by their function words, for headlines whose feed gave no language. */
@@ -2045,7 +2070,8 @@ export function impliedCountries(raw: string): string[] {
 }
 
 export function headlineCountries(raw: string): string[] {
-  const text = cleanHeadline(raw)
+  // Who paid for or built something is not where the story is ("Australian-funded fence … at Gizo prison" is in Solomon Islands).
+  const text = cleanHeadline(raw).replace(/\b\p{Lu}[\p{L}.]*-(?:funded|financed|donated|sponsored|built|made|supplied)\b/gu, ' ')
   // Named countries first, then ones named by adjective ("US, UK back Lebanese state…" is also about Lebanon).
   const found = countriesByName(text)
   return [...new Set([...found, ...countriesByAdjective(text)])]
