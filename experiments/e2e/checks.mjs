@@ -2157,6 +2157,42 @@ export const checks = {
     await openAnyPage(ctx)
     const tab = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => JSON.stringify(t[0] ?? null))`))
     expect(tab?.isPrivate === true, 'A tab opened in private mode is not private.')
+    // Marked wherever tabs are listed, for the eye (the Private button's crossed eye, on screen) and for a screen
+    // reader (the name the row is given, as the browser computes it): its sidebar row, its page toolbar, its tab in
+    // the strip under the launcher when the sidebar is hidden, and its row in tab search.
+    await ctx.send('Accessibility.enable').catch(() => undefined)
+    const nameOf = async (selector) => {
+      const { result } = await ctx.send('Runtime.evaluate', { expression: `document.querySelector(${JSON.stringify(selector)})` })
+      if (!result?.objectId) return null
+      const { nodes } = await ctx.send('Accessibility.getPartialAXTree', { objectId: result.objectId, fetchRelatives: false })
+      return nodes?.[0]?.name?.value ?? ''
+    }
+    const onScreen = (selector) => ctx.evaluate(`(() => { const mark = document.querySelector(${JSON.stringify(selector)}); if (!mark) return false; const r = mark.getBoundingClientRect(); return r.width >= 8 && r.height >= 8 && r.left >= 0 && r.top >= 0 && r.right <= innerWidth && r.bottom <= innerHeight && getComputedStyle(mark).visibility === 'visible' && Number(getComputedStyle(mark).opacity) > 0.5 })()`)
+    const toggleSidebar = () => ctx.main(`(() => { electron.BrowserWindow.getAllWindows()[0].webContents.send('browser-host:event', { type: 'shortcut', action: 'toggle-tab-sidebar' }); return true })()`)
+    const sidebarMode = () => ctx.evaluate(`window.intoponet.browserHost.getTabSidebar().then((s) => s?.mode ?? 'icons')`)
+    const sidebarWas = await sidebarMode()
+    if (sidebarWas === 'hidden') await toggleSidebar()
+    await ctx.wait(`!!document.querySelector('.tab-rail-item.is-private')`, 5000, 'the private tab’s row in the sidebar to be marked')
+    expect(await onScreen('.tab-rail-item.is-private .tab-rail-private'), 'The private tab’s sidebar row shows no private mark (the crossed eye at its icon).')
+    const railName = await nameOf('.tab-rail-item.is-private [role="tab"]')
+    expect(/, private tab\b/.test(railName ?? ''), `The private tab’s sidebar row is not named as a private tab for a screen reader: "${railName}".`)
+    expect(await onScreen('.browser-chrome .private-page-mark') && (await nameOf('.browser-chrome .private-page-mark')) === 'Private tab', `The private tab’s page toolbar is not marked private (name: "${await nameOf('.browser-chrome .private-page-mark')}").`)
+    await axeAudit(ctx, 'the sidebar with a private tab', '.tab-rail')
+    await toggleSidebar()
+    await ctx.wait(`!!document.querySelector('.page-tab.is-private')`, 5000, 'the private tab in the strip under the launcher, with the sidebar hidden')
+    expect(await ctx.evaluate(`!!document.querySelector('.page-tab.is-private .tab-private-mark')`), 'The private tab in the tab strip shows no private mark.')
+    const stripName = await nameOf('.page-tab.is-private [role="tab"]')
+    expect(/private tab/i.test(stripName ?? ''), `The private tab in the tab strip is not named as a private tab for a screen reader: "${stripName}".`)
+    await axeAudit(ctx, 'the tab strip with a private tab', '.page-tab-row')
+    await toggleSidebar()
+    if (sidebarWas === 'hidden') await toggleSidebar()
+    await ctx.evaluate(`(() => { const i = document.querySelector('.command-input input'); i.focus(); i.select(); return true })()`)
+    await ctx.type(new URL(tab.url).hostname.replace(/^www\./, '').slice(0, 5))
+    await ctx.wait(`[...document.querySelectorAll('[role="listbox"] [role="option"]')].some((row) => row.dataset.kind === 'tab')`, 5000, 'tab search to offer the private tab')
+    const searchRow = await ctx.evaluate(`(() => { const row = [...document.querySelectorAll('[role="listbox"] [role="option"]')].find((r) => r.dataset.kind === 'tab'); return JSON.stringify({ text: row.innerText, mark: !!row.querySelector('.omnibox-private svg') }) })()`).then(JSON.parse)
+    expect(searchRow.mark && searchRow.text.includes('Switch to private tab'), `Tab search offers the private tab without saying it is private: "${searchRow.text.replace(/\s+/g, ' ')}".`)
+    await ctx.press('Escape')
+    await ctx.evaluate(`(() => { const i = document.querySelector('.command-input input'); const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; set.call(i, ''); i.dispatchEvent(new Event('input', { bubbles: true })); i.blur(); return true })()`)
     // Session parity: the private session has the protections the shared one has.
     const parity = await pageSessionProblems(ctx, { stubbed: [new URL(tab.url).hostname] })
     expect(parity.problems.length === 0 && parity.sessions >= 1, `Session parity in private browsing: ${parity.problems.join(' ') || 'no page was open'}`)
@@ -2213,10 +2249,17 @@ export const checks = {
       await openPrivate(`http://127.0.0.1:${port}/box`)
       expect(of(3).length > 0 && !of(3).some((entry) => entry.sent), 'A private tab opened after private browsing ended was still signed in with a password typed in the earlier private session.')
       await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
+      // A normal tab carries none of the marks.
+      await ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: 'http://127.0.0.1:${port}/page' }).then(() => true, () => false)`)
+      await ctx.wait(`!!document.querySelector('.tab-rail-item:not(.is-private) [role="tab"], .page-tab:not(.is-private) [role="tab"]')`, 5000, 'a normal tab to be listed')
+      // The closed private tabs' rows are gone once they have faded out.
+      await ctx.wait(`window.intoponet.browserHost.getTabs().then((tabs) => tabs.every((t) => !t.isPrivate) && document.querySelectorAll('.tab-rail-item.is-private, .page-tab.is-private').length === 0)`, 5000, 'the closed private tabs’ rows to leave the tab lists').catch(() => undefined)
+      const plain = await ctx.evaluate(`JSON.stringify({ marks: document.querySelectorAll('.is-private, .tab-rail-private, .tab-private-mark, .private-page-mark').length, names: [...document.querySelectorAll('.tab-rail-item [role="tab"], .page-tab [role="tab"]')].map((t) => t.getAttribute('aria-label') ?? t.innerText) })`).then(JSON.parse)
+      expect(plain.marks === 0 && !plain.names.some((name) => /private/i.test(name)), `A normal tab is marked as private (${plain.marks} marks; names: ${plain.names.join(' | ')}).`)
     } finally {
       authSite.close()
     }
-    return 'Private tab marked, no footprints, closed when private mode ended; its HTTP sign-in did not outlive it.'
+    return 'Private tab marked in the sidebar, the page toolbar, the tab strip and tab search (seen and named "private tab"; a normal tab is not), no footprints, closed when private mode ended; its HTTP sign-in did not outlive it.'
   },
 
   async TABS(ctx) {

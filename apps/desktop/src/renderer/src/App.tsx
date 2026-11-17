@@ -4159,6 +4159,7 @@ export function App() {
                 )}
               </button>
             </div>
+            {panel.isPrivate && <span className="private-page-mark" role="img" aria-label="Private tab" title="Private tab: it leaves no footprints"><EyeOff size={13} /></span>}
             {!onStartPage && <button
               type="button"
               className={`origin-badge ${isSecureOrigin ? '' : 'insecure'}`}

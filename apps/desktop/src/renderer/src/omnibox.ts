@@ -62,6 +62,8 @@ export type OmniboxSiteSuggestion = {
   /** The address as shown: host without www., then path. */
   display: string
   tabId?: string
+  /** The open tab is a private one (offered only while private browsing is on): its row is marked. */
+  isPrivate?: boolean
   /** An archived tab: reopened (with its back/forward list) rather than loaded afresh. */
   archivedId?: string
   favicon?: string
@@ -160,6 +162,8 @@ function gatherCandidates(sources: OmniboxSources): Candidate[] {
       if (rank >= 0) candidate.tabRecency = Math.max(candidate.tabRecency ?? 0, 1 - rank / recent.length)
       candidate.kind = 'tab'
       candidate.tabId ??= tab.id
+      // The tab the row switches to is a private one: the row says so.
+      if (candidate.tabId === tab.id && tab.isPrivate) candidate.isPrivate = true
       candidate.url = tab.url
       if (tab.favicon) candidate.favicon ??= tab.favicon
       if (tab.title.trim()) candidate.title = tab.title.trim()

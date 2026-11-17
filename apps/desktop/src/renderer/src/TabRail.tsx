@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion, type Transition } from 'motion/react'
-import { Columns2, Ellipsis, Folder, FolderOpen, FolderPlus, Layers, Mountain, PanelLeftClose, PanelLeftDashed, PanelLeftOpen, Plus, Undo2, Wand2, X } from 'lucide-react'
+import { Columns2, Ellipsis, EyeOff, Folder, FolderOpen, FolderPlus, Layers, Mountain, PanelLeftClose, PanelLeftDashed, PanelLeftOpen, Plus, Undo2, Wand2, X } from 'lucide-react'
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type WheelEvent } from 'react'
 import { MAX_WORKSPACES, TAB_SIDEBAR_WIDTH, type NowPlayingSnapshot, type PageTabSnapshot, type TabFolderSnapshot, type WorkspacesState } from '@intoponet/browser-api'
 import { folderTree } from './tabFolders'
@@ -79,6 +79,14 @@ const SWIPE_GAP_MS = 220
  * keeps it expanded as vertical tabs. Pinned tabs sit first as icons; tabs
  * can be dragged (or moved with ⌥⇧↑ / ⌥⇧↓) into a new order.
  */
+/**
+ * The mark on a private tab's row: the crossed eye of the Private button, in its colour, at the corner of the
+ * tab's icon so it shows with the sidebar collapsed to icons too. The row's name says "private tab".
+ */
+function PrivateMark() {
+  return <span className="tab-rail-private" aria-hidden="true"><EyeOff size={10} /></span>
+}
+
 export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange, onHide, onExpandedChange, onPinnedChange, onNewTab, archivedCount = 0, onUndoArchive, folders = [], renameFolderId = null, onRenameHandled, onSaveFolder, message = '', workspaces = null, workspaceRequest = null, nowPlaying = null, anchorHeadlines = null, onOpenHeadline, storyMatches = EMPTY_MATCHES, onStoryHighlight, groupRequest, tidyRequest }: TabRailProps) {
   const reduceMotion = useReducedMotion()
   const surface = useGlassSheen<HTMLDivElement>()
@@ -427,14 +435,14 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
                 key={half.id}
                 type="button"
                 role="tab"
-                className={`tab-rail-tab tab-rail-half${half.active ? ' is-focused' : ''}`}
+                className={`tab-rail-tab tab-rail-half${half.active ? ' is-focused' : ''}${half.isPrivate ? ' is-private' : ''}`}
                 data-half-id={half.id}
                 aria-selected={half.active}
                 aria-setsize={setSize}
                 aria-posinset={index + 1}
-                aria-label={`${title}, ${at === 0 ? 'left' : 'right'} side by side${half.active ? ', focused' : ''}`}
+                aria-label={`${title}${half.isPrivate ? ', private tab' : ''}, ${at === 0 ? 'left' : 'right'} side by side${half.active ? ', focused' : ''}`}
                 tabIndex={half.active || (!focused && at === 0) ? 0 : -1}
-                title={title}
+                title={half.isPrivate ? `Private tab · ${title}` : title}
                 onFocus={() => setFocusIndex(Math.max(0, visibleTabs.indexOf(half)))}
                 onClick={() => void window.intoponet.browserHost.activateTab(half.id)}
                 onContextMenu={(event) => openTabMenu(event, half.id)}
@@ -443,6 +451,7 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
                 <span className="tab-rail-icon">
                   <TabIcon tab={half} size={18} />
                 </span>
+                {half.isPrivate && <PrivateMark />}
                 <span className="tab-rail-title" aria-hidden={!open}>{title}</span>
               </button>
             )
@@ -469,13 +478,13 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
     if (partner) return tab.split?.side === 'left' ? renderPair(tab, partner, index, setSize) : null
     const title = tab.title || tab.url || 'Untitled page'
     const story = storyMatches.get(tab.id)
-    const label = `${title}${tab.pinned ? ', pinned' : ''}${tabStateLabel(tab)}${tabSoundLabel(tab)}${tab.loading ? ', loading' : ''}${story ? `, part of the story ${story.label}` : ''}`
+    const label = `${title}${tab.isPrivate ? ', private tab' : ''}${tab.pinned ? ', pinned' : ''}${tabStateLabel(tab)}${tabSoundLabel(tab)}${tab.loading ? ', loading' : ''}${story ? `, part of the story ${story.label}` : ''}`
     return (
       <motion.div
         key={tab.id}
         data-tab-id={tab.id}
         layout="position"
-        className={`tab-rail-item${tab.active ? ' is-active' : ''}${tab.pinned ? ' is-pinned-tab' : ''}${tab.asleep ? ' is-asleep' : ''}`}
+        className={`tab-rail-item${tab.active ? ' is-active' : ''}${tab.pinned ? ' is-pinned-tab' : ''}${tab.asleep ? ' is-asleep' : ''}${tab.isPrivate ? ' is-private' : ''}`}
         initial={{ opacity: 0, scale: 0.7 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.7, transition: { duration: 0.14 } }}
@@ -505,6 +514,7 @@ export function TabRail({ tabs, visible, expanded, pinned, width, onWidthChange,
           <span className="tab-rail-icon">
             <TabIcon tab={tab} size={18} />
           </span>
+          {tab.isPrivate && <PrivateMark />}
           <span className="tab-rail-title" aria-hidden={!open}>{title}</span>
           {story && <span className="tab-rail-story" title={`Part of the story: ${story.label}`} aria-hidden="true"><Mountain size={11} /></span>}
         </button>

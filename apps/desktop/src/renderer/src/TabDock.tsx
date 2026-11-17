@@ -1,5 +1,5 @@
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion, type Transition } from 'motion/react'
-import { ArrowRight, Bookmark, Globe2, Search, X } from 'lucide-react'
+import { ArrowRight, Bookmark, EyeOff, Globe2, Search, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { PageTabSnapshot } from '@intoponet/browser-api'
 import { useGlassSheen } from './glass/useGlassSheen'
@@ -199,7 +199,7 @@ export function TabDock({ tabs, fullWidth, visible, currentUrl, bookmarksOpen, f
                     <motion.div
                       key={tab.id}
                       layout="position"
-                      className={`dock-tab${tab.active ? ' is-active' : ''}`}
+                      className={`dock-tab${tab.active ? ' is-active' : ''}${tab.isPrivate ? ' is-private' : ''}`}
                       initial={reduceMotion ? false : { opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0, transition: { ...spring, delay: reduceMotion ? 0 : 0.04 + Math.min(index, 10) * 0.022 } }}
                     >
@@ -208,10 +208,11 @@ export function TabDock({ tabs, fullWidth, visible, currentUrl, bookmarksOpen, f
                         className="dock-tab-activate"
                         type="button"
                         aria-current={tab.active ? 'page' : undefined}
-                        title={title}
+                        title={tab.isPrivate ? `Private tab · ${title}` : title}
                         onClick={() => void window.intoponet.browserHost.activateTab(tab.id)}
                       >
                         {tab.favicon?.startsWith('data:image/') ? <img src={tab.favicon} alt="" /> : <Globe2 size={14} aria-hidden="true" />}
+                        {tab.isPrivate && <EyeOff className="tab-private-mark" role="img" aria-label="Private tab" />}
                         <span>{title}</span>
                       </button>
                       <button

@@ -138,6 +138,21 @@ describe('site ranking', () => {
     expect(rankSites('hosts', input)).toEqual([])
     expect(rankSites('priv', sources({ tabs, privateMode: true }))[0]?.suggestion.tabId).toBe('a')
   })
+
+  it('says which offered tab is a private one', () => {
+    const tabs = [
+      { id: 'p', url: 'https://private.test/', title: 'Private', isPrivate: true },
+      { id: 'n', url: 'https://plain.test/', title: 'Plain private-sounding page' },
+      // The same page in a normal tab and a private one: the row switches to the first, and is marked as that one is.
+      { id: 'n2', url: 'https://both.test/', title: 'Both private' },
+      { id: 'p2', url: 'https://both.test/', title: 'Both private', isPrivate: true },
+    ]
+    const rows = rankSites('private', sources({ tabs, privateMode: true })).map((row) => row.suggestion)
+    expect(rows.find((row) => row.tabId === 'p')?.isPrivate).toBe(true)
+    expect(rows.find((row) => row.tabId === 'n')?.isPrivate).toBeUndefined()
+    expect(rows.find((row) => row.tabId === 'n2')?.isPrivate).toBeUndefined()
+    expect(rows.some((row) => row.tabId === 'p2')).toBe(false)
+  })
 })
 
 describe('omnibox rows', () => {

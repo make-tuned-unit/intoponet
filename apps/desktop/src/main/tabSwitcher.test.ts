@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { recentOrder, switcherHtml, TabSwitcher, type SwitcherTab } from './tabSwitcher'
+import { recentOrder, switcherAnnouncement, switcherHtml, TabSwitcher, type SwitcherTab } from './tabSwitcher'
 
 const tab = (id: string, lastShownAt: number, isPrivate = false): SwitcherTab => ({ id, title: `Tab ${id}`, url: `https://${id}.example/`, favicon: '', lastShownAt, isPrivate })
 
@@ -53,5 +53,16 @@ describe('recent tab switching', () => {
     expect(html).not.toContain('<script>x')
     expect(html).not.toContain('evil.example/i.png')
     expect(html).toContain("default-src 'none'")
+  })
+
+  it('marks private tabs in its rows and in what is announced, and no others', () => {
+    const rows = (html: string): string[] => html.match(/<li[\s\S]*?<\/li>/g) ?? []
+    const privately = rows(switcherHtml(tabs, recentOrder(tabs, 'q'), 0))
+    expect(privately).toHaveLength(2)
+    for (const row of privately) expect(row).toContain('aria-label="Private tab"')
+    for (const row of rows(switcherHtml(tabs, recentOrder(tabs, 'a'), 0))) expect(row).not.toContain('Private tab')
+    expect(switcherAnnouncement(tabs[3])).toBe('Tab p, private tab')
+    expect(switcherAnnouncement(tabs[0])).toBe('Tab a')
+    expect(switcherAnnouncement(undefined)).toBe('Untitled page')
   })
 })

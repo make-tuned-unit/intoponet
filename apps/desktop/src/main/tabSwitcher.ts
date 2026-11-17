@@ -86,6 +86,17 @@ function siteName(url: string): string {
 export const SWITCHER_ROWS = 9
 export const SWITCHER_ROW_HEIGHT = 46
 
+/**
+ * A private tab's row: the crossed eye private tabs carry in the tab strip and the sidebar, in the same colour
+ * (drawn inline: the page loads nothing). The shell announces the highlighted row, and says "private tab" there.
+ */
+const PRIVATE_MARK = '<svg class="private" role="img" aria-label="Private tab" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><title>Private tab</title><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/></svg>'
+
+/** What the shell announces for the highlighted row: its title, and that it is a private tab when it is. */
+export function switcherAnnouncement(tab: Pick<SwitcherTab, 'title' | 'url' | 'isPrivate'> | undefined): string {
+  return `${tab?.title || tab?.url || 'Untitled page'}${tab?.isPrivate ? ', private tab' : ''}`
+}
+
 /** The switcher's page: static (no script), only data: icons, everything else escaped. */
 export function switcherHtml(tabs: readonly SwitcherTab[], order: readonly string[], index: number): string {
   const first = Math.max(0, Math.min(index - Math.floor(SWITCHER_ROWS / 2), order.length - SWITCHER_ROWS))
@@ -94,7 +105,7 @@ export function switcherHtml(tabs: readonly SwitcherTab[], order: readonly strin
     if (!tab) return ''
     const icon = tab.favicon.startsWith('data:image/') ? `<img src="${escape(tab.favicon)}" alt="">` : '<span class="globe"></span>'
     const title = escape(tab.title || siteName(tab.url) || 'Untitled page')
-    return `<li class="${first + offset === index ? 'on' : ''}">${icon}<span class="title">${title}</span><span class="site">${escape(siteName(tab.url))}</span></li>`
+    return `<li class="${first + offset === index ? 'on' : ''}">${icon}${tab.isPrivate ? PRIVATE_MARK : ''}<span class="title">${title}</span><span class="site">${escape(siteName(tab.url))}</span></li>`
   }).join('')
   return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'"><style>
 html,body{margin:0;background:transparent;font:13px -apple-system,system-ui,sans-serif;color:#e9f4f3;overflow:hidden;-webkit-user-select:none;cursor:default}
@@ -103,6 +114,7 @@ li{display:flex;align-items:center;gap:10px;height:${SWITCHER_ROW_HEIGHT - 4}px;
 li.on{background:rgba(32,244,228,.16);box-shadow:inset 0 0 0 1px rgba(32,244,228,.45)}
 img,.globe{flex:0 0 18px;width:18px;height:18px;border-radius:4px}
 .globe{border:1.5px solid rgba(233,244,243,.5);border-radius:50%;box-sizing:border-box}
+.private{flex:0 0 13px;width:13px;height:13px;color:#dcb8ff}
 .title{flex:1 1 auto;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .site{flex:0 0 auto;color:rgba(233,244,243,.55);font-size:12px}
 </style></head><body><ol>${rows}</ol></body></html>`

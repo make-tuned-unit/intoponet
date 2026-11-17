@@ -67,7 +67,7 @@ export function PageTabStrip({ tabs, stripRef, caption, label }: PageTabStripPro
           if (tab.split!.side === 'right') return null
           const halves = [tab, partner]
           return (
-            <div key={tab.id} data-tab-id={tab.id} className={`page-tab page-tab-pair${halves.some((half) => half.active) ? ' selected' : ''}`}>
+            <div key={tab.id} data-tab-id={tab.id} className={`page-tab page-tab-pair${halves.some((half) => half.active) ? ' selected' : ''}${halves.some((half) => half.isPrivate) ? ' is-private' : ''}`}>
               {halves.map((half, at) => (
                 <button
                   key={half.id}
@@ -76,9 +76,9 @@ export function PageTabStrip({ tabs, stripRef, caption, label }: PageTabStripPro
                   role="tab"
                   className={`page-tab-main is-split-half${half.active ? ' is-focused' : ''}`}
                   aria-selected={half.active}
-                  aria-label={`${label(half)}, ${at === 0 ? 'left' : 'right'} side by side${half.active ? ', focused' : ''}`}
+                  aria-label={`${label(half)}${half.isPrivate ? ', private tab' : ''}, ${at === 0 ? 'left' : 'right'} side by side${half.active ? ', focused' : ''}`}
                   tabIndex={half.active || (!halves.some((other) => other.active) && at === 0) ? 0 : -1}
-                  title={label(half)}
+                  title={`${half.isPrivate ? 'Private tab · ' : ''}${label(half)}`}
                   onFocus={() => setFocusId(half.id)}
                   onClick={() => void window.intoponet.browserHost.activateTab(half.id)}
                   onContextMenu={(event) => openTabMenu(event, half.id)}
@@ -86,6 +86,7 @@ export function PageTabStrip({ tabs, stripRef, caption, label }: PageTabStripPro
                   {...dragHandlers(half, index)}
                 >
                   <TabIcon tab={half} size={14} />
+                  {half.isPrivate && <EyeOff size={11} className="tab-private-mark" aria-hidden="true" />}
                   <span>{caption(half)}</span>
                 </button>
               ))}
@@ -115,7 +116,7 @@ export function PageTabStrip({ tabs, stripRef, caption, label }: PageTabStripPro
               className="page-tab-main"
               aria-selected={tab.active}
               aria-busy={tab.loading || undefined}
-              aria-label={tab.pinned ? `${name}, pinned${tabStateLabel(tab)}${tabSoundLabel(tab)}` : undefined}
+              aria-label={tab.pinned ? `${name}${tab.isPrivate ? ', private tab' : ''}, pinned${tabStateLabel(tab)}${tabSoundLabel(tab)}` : undefined}
               aria-keyshortcuts="Alt+Shift+ArrowLeft Alt+Shift+ArrowRight Delete"
               tabIndex={index === rovingIndex ? 0 : -1}
               title={`${tab.isPrivate ? 'Private tab · ' : ''}${tab.pinned ? 'Pinned · ' : ''}${name}${tab.loading ? ' · Loading' : ''}`}
@@ -129,7 +130,7 @@ export function PageTabStrip({ tabs, stripRef, caption, label }: PageTabStripPro
               {...dragHandlers(tab, index)}
             >
               <TabIcon tab={tab} size={14} />
-              {tab.isPrivate && <EyeOff size={11} className="tab-private-mark" aria-label="Private" />}
+              {tab.isPrivate && <EyeOff size={11} className="tab-private-mark" role="img" aria-label="Private tab" />}
               {!tab.pinned && <span>{caption(tab)}</span>}
               {!tab.pinned && (tabSoundLabel(tab) || tabStateLabel(tab)) && <span className="sr-only">{tabStateLabel(tab)}{tabSoundLabel(tab)}</span>}
             </button>

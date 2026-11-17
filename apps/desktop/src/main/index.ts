@@ -52,7 +52,7 @@ import { ExternalOpenBroker, classifyExternalUrl } from './externalOpen'
 import { CertificateErrorMemo, classifyLoadError, httpLoadError, isCertificateError, showsErrorPage, summarizeCertificate } from './errorPage'
 import { IncomingBurst, IncomingOpenQueue, LocalFileGrants, incomingFileTarget, incomingTargetsFromArgs, incomingWebUrl, readSavedLinkFile, type IncomingTarget } from './incomingOpen'
 import { PageAppearanceController } from './pageAppearance'
-import { SWITCHER_KEYS_SCRIPT, switcherHtml, SWITCHER_ROW_HEIGHT, SWITCHER_ROWS, TabSwitcher, type SwitcherTab } from './tabSwitcher'
+import { SWITCHER_KEYS_SCRIPT, switcherAnnouncement, switcherHtml, SWITCHER_ROW_HEIGHT, SWITCHER_ROWS, TabSwitcher, type SwitcherTab } from './tabSwitcher'
 import { focusLinkScript, isLinkPreviewRequest, parsePreviewMessage, PREVIEW_FOCUS_LOOP_SCRIPT, PREVIEW_WORLD_ID, previewFrameHtml, previewHeading, previewLayout, previewSite, type PreviewRect } from './linkPreview'
 import { collapseAdSlotsScript, UNCOLLAPSE_AD_SLOTS_SCRIPT } from './adCollapse'
 import { archiveAfterMs, DEFAULT_TAB_ARCHIVE, TabArchive, type ArchivedTab } from './tabArchive'
@@ -2930,7 +2930,7 @@ function stepTabSwitcher(direction: 'next' | 'previous'): void {
   // On top of everything (adding again moves it to the front).
   window.contentView.addChildView(view)
   const chosen = tabs.find((tab) => tab.id === step.order[step.index])
-  emit({ type: 'tab-switcher', open: true, selected: chosen?.title || chosen?.url || 'Untitled page', position: step.index + 1, count: step.order.length })
+  emit({ type: 'tab-switcher', open: true, selected: switcherAnnouncement(chosen), position: step.index + 1, count: step.order.length })
   // Keys are with the page: it tells when ⌃ is released (or Escape pressed).
   const page = pageView
   if (opening && page && pageAttached && !viewGone(page)) {

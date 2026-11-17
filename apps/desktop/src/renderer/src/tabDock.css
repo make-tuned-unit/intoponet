@@ -189,6 +189,17 @@
   background: rgba(205, 245, 240, 0.07);
 }
 
+/* A private tab: the border and mark private tabs carry in the tab strip (styles.css). */
+.dock-tab.is-private {
+  border-color: rgba(206, 160, 255, 0.5);
+  background: rgba(48, 24, 72, 0.6);
+}
+
+.dock-tab-activate svg.tab-private-mark {
+  width: 11px;
+  height: 11px;
+}
+
 .dock-tab-indicator {
   position: absolute;
   inset: -1px;
