@@ -1,0 +1,938 @@
+{
+ "about": "Written by scripts/protection-holdout.mjs. The verdicts are in protection-holdout-judgement.json.",
+ "measured": "2026-11-17",
+ "outlets": 54,
+ "outletsAttempted": 60,
+ "pages": 106,
+ "otherSiteHostsReached": {
+  "blockingOff": 3395,
+  "blockingOn": 701
+ },
+ "distinctHostsStillReached": 425,
+ "judged": {
+  "adOrTracker": 150,
+  "ofWhichUnsure": 25,
+  "notAdOrTracker": 275,
+  "unjudged": 0
+ },
+ "blocked": {
+  "hostsPerOutlet": 442,
+  "requests": 1538
+ },
+ "missed": {
+  "hostsPerOutlet": 176,
+  "requests": 840
+ },
+ "missRate": {
+  "byHost": 28.5,
+  "byRequest": 35.3
+ },
+ "cookiesFromOtherSites": {
+  "blockingOff": 3590,
+  "blockingOn": 144,
+  "sitesOff": 1378,
+  "sitesOn": 64
+ },
+ "missedHosts": [
+  {
+   "host": "imasdk.googleapis.com",
+   "verdict": "ad",
+   "outlets": 10,
+   "requests": 26
+  },
+  {
+   "host": "play.google.com",
+   "verdict": "unsure",
+   "outlets": 4,
+   "requests": 7
+  },
+  {
+   "host": "qsearch-a.akamaihd.net",
+   "verdict": "unsure",
+   "outlets": 3,
+   "requests": 8
+  },
+  {
+   "host": "ats-wrapper.privacymanager.io",
+   "verdict": "tracker",
+   "outlets": 2,
+   "requests": 7
+  },
+  {
+   "host": "cdn.membrana.media",
+   "verdict": "ad",
+   "outlets": 2,
+   "requests": 35
+  },
+  {
+   "host": "kinesis.us-east-2.amazonaws.com",
+   "verdict": "unsure",
+   "outlets": 2,
+   "requests": 52
+  },
+  {
+   "host": "track-events.membrana.media",
+   "verdict": "ad",
+   "outlets": 2,
+   "requests": 3
+  },
+  {
+   "host": "ym-tack.b-cdn.net",
+   "verdict": "ad",
+   "outlets": 2,
+   "requests": 4
+  },
+  {
+   "host": "membrana-cdn.media",
+   "verdict": "ad",
+   "outlets": 2,
+   "requests": 2
+  },
+  {
+   "host": "notsymembrana.eu-adx-admixer.rtb-stack.com",
+   "verdict": "ad",
+   "outlets": 2,
+   "requests": 2
+  },
+  {
+   "host": "membrana-media-video.rtb.netaddiction.tech",
+   "verdict": "ad",
+   "outlets": 2,
+   "requests": 4
+  },
+  {
+   "host": "cdn.izooto.com",
+   "verdict": "ad",
+   "outlets": 2,
+   "requests": 16
+  },
+  {
+   "host": "s0.wp.com",
+   "verdict": "unsure",
+   "outlets": 2,
+   "requests": 7
+  },
+  {
+   "host": "adserver.cynomedia.com",
+   "verdict": "ad",
+   "outlets": 2,
+   "requests": 38
+  },
+  {
+   "host": "links.services.disqus.com",
+   "verdict": "tracker",
+   "outlets": 2,
+   "requests": 4
+  },
+  {
+   "host": "notifpush.com",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 4
+  },
+  {
+   "host": "js.sddan.com",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 3
+  },
+  {
+   "host": "map.sddan.com",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 1
+  },
+  {
+   "host": "contextual-content.sirdata.io",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 1
+  },
+  {
+   "host": "api.omappapi.com",
+   "verdict": "unsure",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "www.images-home.com",
+   "verdict": "unsure",
+   "outlets": 1,
+   "requests": 4
+  },
+  {
+   "host": "cdn.sophi.io",
+   "verdict": "unsure",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "cdn.q0losid.com",
+   "verdict": "unsure",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "postmedia-ai.wehaacdn.com",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 3
+  },
+  {
+   "host": "cdn-gateflipp.flippback.com",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "cdn.4tm4ezb2lqlx.com",
+   "verdict": "unsure",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "tags.fullcontact.com",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "postmedia.solutions.cdn.optable.co",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "jssdkcdns.mparticle.com",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "az416426.vo.msecnd.net",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "cdn.a3kvau184uea.com",
+   "verdict": "unsure",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "cdn.sy57d8wi.com",
+   "verdict": "unsure",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "cdn.ck4hkyq3myt6.com",
+   "verdict": "unsure",
+   "outlets": 1,
+   "requests": 6
+  },
+  {
+   "host": "p.flipp.com",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 3
+  },
+  {
+   "host": "ingestion-endpoint-a.pro.services.external.data.shopfully.com",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "static.npree.com",
+   "verdict": "unsure",
+   "outlets": 1,
+   "requests": 6
+  },
+  {
+   "host": "beacon.viafoura.io",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "analytics-prd.aws.wehaa.net",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 11
+  },
+  {
+   "host": "identity.mparticle.com",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 3
+  },
+  {
+   "host": "jssdks.mparticle.com",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 4
+  },
+  {
+   "host": "dc.services.visualstudio.com",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 3
+  },
+  {
+   "host": "ads-flipp.com",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 1
+  },
+  {
+   "host": "get.optad360.io",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 6
+  },
+  {
+   "host": "rtb.adxpremium.services",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 7
+  },
+  {
+   "host": "ads.videoadex.com",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 3
+  },
+  {
+   "host": "trck.digiteka.com",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 6
+  },
+  {
+   "host": "waust.at",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "t.dtscout.com",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 5
+  },
+  {
+   "host": "whos.amung.us",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "analytics.webpushr.com",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 4
+  },
+  {
+   "host": "p.mrktmtrcs.net",
+   "verdict": "unsure",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "t.dtscdn.com",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "ksa.tadafuq.com",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 1
+  },
+  {
+   "host": "native-cdn.foxpush.io",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "cdn.ideanetwork.site",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "cdn.stat-track.com",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 1
+  },
+  {
+   "host": "yandex.ru",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 49
+  },
+  {
+   "host": "yastatic.net",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 18
+  },
+  {
+   "host": "avatars.mds.yandex.net",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 1
+  },
+  {
+   "host": "smi24.kz",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 11
+  },
+  {
+   "host": "rum.corewebvitals.io",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "dsh7ky7308k4b.cloudfront.net",
+   "verdict": "unsure",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "go.affec.tv",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 6
+  },
+  {
+   "host": "ivt.fms.azerion.com",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "stats.fms.azerion.com",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 4
+  },
+  {
+   "host": "edge.hyth.io",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "xfcimabzwf2mpmatw.ay.delivery",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 4
+  },
+  {
+   "host": "currency.prebid.org",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "event.ay.delivery",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 6
+  },
+  {
+   "host": "map.go.affec.tv",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "cdn.oribi.io",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "cdn.ftd.agency",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "z.cdn.ftd.agency",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "mowplayer.com",
+   "verdict": "unsure",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "ejs.mowplayer.com",
+   "verdict": "unsure",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "cdn.mowplayer.com",
+   "verdict": "unsure",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "lib.wtg-ads.com",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 5
+  },
+  {
+   "host": "protagcdn.com",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "analytics.contentexchange.me",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 16
+  },
+  {
+   "host": "bisko.gjirafa.net",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "cdn.krakenoptimize.com",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 4
+  },
+  {
+   "host": "tracker-ug.contentexchange.me",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 13
+  },
+  {
+   "host": "adxbid.info",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "clients.adxbid.info",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "hb.contentexchange.me",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 13
+  },
+  {
+   "host": "hbstat.contentexchange.me",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 4
+  },
+  {
+   "host": "images1.krakenoptimize.com",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "ug.contentexchange.me",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 1
+  },
+  {
+   "host": "linker-network.me",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 1
+  },
+  {
+   "host": "d7d3cf2e81d293050033-3dfc0615b0fd7b49143049256703bfce.ssl.cf1.rackcdn.com",
+   "verdict": "unsure",
+   "outlets": 1,
+   "requests": 1
+  },
+  {
+   "host": "d.linker-network.me",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 3
+  },
+  {
+   "host": "cdn.linker-network.me",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 5
+  },
+  {
+   "host": "synchrobox.adswizz.com",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 11
+  },
+  {
+   "host": "delivery-cdn-cf.adswizz.com",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 4
+  },
+  {
+   "host": "synchroscript.deliveryengine.adswizz.com",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 38
+  },
+  {
+   "host": "cdn.unibotscdn.com",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 4
+  },
+  {
+   "host": "bangladesh-static.adfinix.com",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 1
+  },
+  {
+   "host": "bangladesh.adfinix.com",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "benelph.de",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "servg1.net",
+   "verdict": "unsure",
+   "outlets": 1,
+   "requests": 1
+  },
+  {
+   "host": "main.servg1.net",
+   "verdict": "unsure",
+   "outlets": 1,
+   "requests": 1
+  },
+  {
+   "host": "cdn.servg1.net",
+   "verdict": "unsure",
+   "outlets": 1,
+   "requests": 1
+  },
+  {
+   "host": "ecdn.analysis.fi",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 1
+  },
+  {
+   "host": "ecdn.agilesrv.com",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 1
+  },
+  {
+   "host": "measure.analysis.fi",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 1
+  },
+  {
+   "host": "cdn.agilesrv.com",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 1
+  },
+  {
+   "host": "dspcookiematching-prod-aws-us-east-2.dmxleo.com",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 1
+  },
+  {
+   "host": "public-prod-dspcookiematching.dmxleo.com",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 1
+  },
+  {
+   "host": "www.alshishani.com",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 1
+  },
+  {
+   "host": "cdn.dataveu.com",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "erba7.net",
+   "verdict": "unsure",
+   "outlets": 1,
+   "requests": 1
+  },
+  {
+   "host": "api.pse.news",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 5
+  },
+  {
+   "host": "alwakeelnews.dataveu.com",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "dn0qt3r0xannq.cloudfront.net",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 6
+  },
+  {
+   "host": "tempest.services.disqus.com",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 5
+  },
+  {
+   "host": "s.disquscdn.com",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 9
+  },
+  {
+   "host": "ssp.disqus.com",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 80
+  },
+  {
+   "host": "analytics.shareaholic.com",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "partner.shareaholic.com",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "track.gaug.es",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "servedby.revive-adserver.net",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 9
+  },
+  {
+   "host": "cdn.revive-adserver.net",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 3
+  },
+  {
+   "host": "mediadesk.al",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "panel.mediadesk.ai",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 1
+  },
+  {
+   "host": "srv.pyrsahn.com",
+   "verdict": "unsure",
+   "outlets": 1,
+   "requests": 8
+  },
+  {
+   "host": "syndication.x.com",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 4
+  },
+  {
+   "host": "anymind360.com",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 4
+  },
+  {
+   "host": "prod-analytics.qlitics.com",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "rec.izooto.com",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "nh.izooto.com",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 1
+  },
+  {
+   "host": "nhwimp.izooto.com",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "adgebra.co.in",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 1
+  },
+  {
+   "host": "ads.playground.xyz",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 1
+  },
+  {
+   "host": "cdn.pagesense.io",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 4
+  },
+  {
+   "host": "pagesense-collect.zoho.com",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 4
+  },
+  {
+   "host": "publicidades.interactive.co.mz",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 7
+  },
+  {
+   "host": "pagesense-hb-collect.zoho.com",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "cdn.vlitag.com",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 19
+  },
+  {
+   "host": "currency.vlitag.com",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "ts.trafic.ro",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 6
+  },
+  {
+   "host": "trafic.ro",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "360playvid.info",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 9
+  },
+  {
+   "host": "cdn0.360playvid.com",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 9
+  },
+  {
+   "host": "serve.360playvid.info",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 1
+  },
+  {
+   "host": "t.360playvid.info",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 1
+  },
+  {
+   "host": "service.wemass.com",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "www.linkedin.com",
+   "verdict": "unsure",
+   "outlets": 1,
+   "requests": 1
+  },
+  {
+   "host": "d31qbv1cthcecs.cloudfront.net",
+   "verdict": "tracker",
+   "outlets": 1,
+   "requests": 2
+  },
+  {
+   "host": "static.jubnaadserve.com",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 1
+  },
+  {
+   "host": "app.jubnaadserve.com",
+   "verdict": "ad",
+   "outlets": 1,
+   "requests": 2
+  }
+ ]
+}

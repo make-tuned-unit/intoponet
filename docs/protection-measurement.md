@@ -37,9 +37,11 @@ query or the body; which frames asked; what the host put on the page (frames and
 pictures shown inside and outside ad-like containers, stylesheets, video). And the page's ad-like
 containers: their names, and whether they held anything but ads.
 
-MEASUREMENT_NUMBERS
+**The run the current list is built from (2026-11-17, from one Mac in North America):** 520 outlets were
+visited; 504 publishers gave at least one usable page (the others showed an error page or a bot
+check), 970 pages in all, from 220 countries and in 66 languages.
 
-The raw records are not in git (about RAW_SIZE). The crawler, the rules, `reviewed.json` and the
+The raw records are not in git (about 20 MB). The crawler, the rules, `reviewed.json` and the
 evidence on each entry are.
 
 ## The classification rules
@@ -77,11 +79,88 @@ publisher where it was seen, at 5 or more publishers; it is treated as an ad slo
 an ad label is left in it) if it held only ads at 80% of 3 or more. Both need a person's yes in
 `reviewed.json`; the classifier refuses a name that does not meet its bar.
 
-LIST_NUMBERS
+## The list as of 2026-11-17
+
+917 rules for 916 hosts, belonging to 584 services (440 of them written out by hand):
+
+| Source | Rules | Ad | Tracker |
+|---|---|---|---|
+| authored (from knowledge, not seen in the measurement) | 451 | 233 | 218 |
+| authored, measured (from knowledge, and seen at work) | 295 | 172 | 123 |
+| measured (proposed by the rules, accepted on review) | 133 | 107 | 26 |
+| measured, listed on review (seen, below the rules' thresholds or under a portal's domain) | 38 | 27 | 11 |
+| **all** | **917** | **539** | **378** |
+
+65 rules are narrowed to a path. For 26 of the measured rules the company behind the host could not
+be named (`"company": "unidentified"`); they are listed for what they did (cookie matching between
+ad exchanges, mostly) and each says so. The reviewer refused 20 proposals: advertisers' own sites,
+shared hosting, a hosted animation library, two portals and a government agency (only their ad or
+measurement hosts are listed), a booking widget, video players' own reports, and hosts whose
+purpose could not be established. The never-block list has 173 hosts and 73 domains that only a
+hand-written rule may touch.
+
+The hosts seen at the most publishers (of 504): googletagmanager.com 408, doubleclick.net 372,
+googlesyndication.com 278, adtrafficquality.google 258, google-analytics.com 248,
+cloudflareinsights.com 173, 2mdn.net 139, criteo.com 113, mediago.io 91, admaster.cc 89,
+id5-sync.com 85.
+
+Page elements: no measured name met the bar for "always hidden" (the closest, ids starting
+`gpt_unit_/`, held only ads at 30 of 31 publishers). 15 names were accepted as ad slots that are
+hidden once empty. Four names that looked like slots were refused: `.banner_logo` is a site's logo,
+and `.text-ad`, `.text_ad`, `.pub_300x250` and `.afs_ads` are the empty decoys pages use to detect a
+blocker.
+
+Known gaps, by design or for now: a site's own ads and measurement (same site: never blocked);
+video ads served through Google's player SDK (`imasdk.googleapis.com` is on the never-block list
+because players wait for it; a CNN video page still played an ad before the clip); push-notification
+services; a shop's cookie-matching pixel on its own domain (`www.temu.com/api/adx/cm/`); anything
+only served after a consent dialog is answered.
 
 ## The hold-out check
 
-HOLDOUT_NUMBERS
+60 outlets (one per country at most) are never used to build the list. On 2026-11-17, with the
+list frozen (commit `35eef6f`, 886 rules), `scripts/protection-crawl.mjs` visited their home page
+and newest article twice, with blocking off and with `--protect` (the engine deciding as it does
+in the app), each outlet with a cookie jar of its own. 54 outlets gave a usable page in both runs.
+The numbers (`docs/data/protection-holdout.json`; the verdict on every host is in
+`docs/data/protection-holdout-judgement.json`):
+
+| | Blocking off | Blocking on |
+|---|---|---|
+| Hosts of other sites reached, added up over the 54 outlets | 3,395 | 701 |
+| Cookies from other sites left behind, added up | 3,590 | 144 |
+| Other sites that left a cookie, added up | 1,378 | 64 |
+
+With blocking on, pages still reached 425 different hosts of other sites. Reading what each asked
+for, the reviewer judged 275 not to be ad or tracker hosts (fonts, libraries, players and their own
+reports, embeds, consent dialogs, comments, push-notification services, publishers' own other
+domains, widgets), 125 to be ad or tracker hosts the list missed, and 25 could not be established
+and are counted as missed.
+
+**The miss rate: 28.5%.** Counting each ad or tracker host once per outlet it appeared at, the
+list stopped 442 and missed 176 (176 ÷ 618). By requests it is 840 missed to 1,538 stopped (35.3%),
+which is harsh on the list: a stopped script never makes the further requests it would have made,
+while a missed one makes all of its own. Seen from the other side, 3,395 host appearances fell to
+701, of which 176 were ad or tracker hosts.
+
+What was missed, mostly: Google's video ads SDK (`imasdk.googleapis.com`, at 10 outlets, left
+alone on purpose because players wait for it); regional and small ad networks and video-ad
+players seen at one or two outlets each (Membrana, iZooto, Flipp, AdsWizz, Azerion, Content
+Exchange, Linker, 360playvid, Adfinix, Jubna's second domain, Yandex's ad code on yandex.ru);
+analytics and data services (Sirdata, mParticle, Zoho PageSense, Azure Application Insights,
+DTScout, whos.amung.us, Trafic.ro, Affectv); advertising inside Disqus; and 25 hosts of unclear
+purpose.
+
+Caveats that flatter or hurt the number: the crawler answers no consent dialog, so European pages
+loaded fewer ad hosts than they would for a person who agrees; one visit per page from one place
+on one day; a site's own ads and measurement are not counted as misses, because they are never
+blocked; the verdicts are one reviewer's.
+
+After the check, nineteen services and five hosts the author knows, which the hold-out showed
+missing, were added to `authored-services.json` (the list went from 886 to 917 rules), and one
+never-block entry that hid two cookie-matching hosts was removed. The miss rate above was measured
+before that and has not been measured again: these 60 outlets are no longer an untouched test of
+the additions, so the next refresh should quote a new run.
 
 ## Refreshing the list before a release
 

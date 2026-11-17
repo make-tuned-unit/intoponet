@@ -11,14 +11,14 @@
   "to": "2026-11-17"
  },
  "summary": {
-  "entries": 886,
-  "hosts": 885,
-  "services": 565,
-  "companies": 494,
-  "ad": 527,
-  "tracker": 359,
-  "authoredOnly": 436,
-  "authoredMeasured": 279,
+  "entries": 917,
+  "hosts": 916,
+  "services": 584,
+  "companies": 512,
+  "ad": 539,
+  "tracker": 378,
+  "authoredOnly": 451,
+  "authoredMeasured": 295,
   "measured": 171
  },
  "entries": [
@@ -1224,6 +1224,23 @@
    "source": "authored"
   },
   {
+   "host": "ads-flipp.com",
+   "category": "ad",
+   "service": "Flipp",
+   "company": "Flipp",
+   "kind": "flyer ads",
+   "source": "authored, measured",
+   "evidence": {
+    "publishers": 2,
+    "of": 504,
+    "requests": 2,
+    "signals": [
+     "page 2",
+     "beacon 2"
+    ]
+   }
+  },
+  {
    "host": "ads-tinyorbit.com",
    "category": "ad",
    "service": "ads-tinyorbit.com (cookie matching)",
@@ -1405,6 +1422,25 @@
    "company": "Adsterra",
    "kind": "ad network",
    "source": "authored"
+  },
+  {
+   "host": "adswizz.com",
+   "category": "ad",
+   "service": "AdsWizz",
+   "company": "AdsWizz",
+   "kind": "audio ads",
+   "source": "authored, measured",
+   "evidence": {
+    "publishers": 3,
+    "of": 504,
+    "requests": 14,
+    "signals": [
+     "id-cookie 1",
+     "id-query 3",
+     "from-ads"
+    ],
+    "cookieDays": 90
+   }
   },
   {
    "host": "adtarget.biz",
@@ -1626,6 +1662,25 @@
    "source": "authored"
   },
   {
+   "host": "affec.tv",
+   "category": "tracker",
+   "service": "Affectv",
+   "company": "Affectv",
+   "kind": "data management",
+   "source": "authored, measured",
+   "evidence": {
+    "publishers": 2,
+    "of": 504,
+    "requests": 8,
+    "signals": [
+     "same-id",
+     "id-cookie 2",
+     "id-query 2"
+    ],
+    "cookieDays": 365
+   }
+  },
+  {
    "host": "agkn.com",
    "category": "tracker",
    "service": "Neustar",
@@ -1781,6 +1836,14 @@
    "note": "The company could not be named; /openrtb2/auction and /setuid calls."
   },
   {
+   "host": "amung.us",
+   "category": "tracker",
+   "service": "whos.amung.us",
+   "company": "whos.amung.us",
+   "kind": "analytics",
+   "source": "authored"
+  },
+  {
    "host": "amxrtb.com",
    "category": "ad",
    "service": "AdaptMX (AMX)",
@@ -1856,6 +1919,25 @@
      "id-query 233",
      "beacon 234"
     ]
+   }
+  },
+  {
+   "host": "analytics.shareaholic.com",
+   "category": "tracker",
+   "service": "Shareaholic analytics",
+   "company": "Shareaholic",
+   "kind": "data broker",
+   "source": "authored, measured",
+   "evidence": {
+    "publishers": 2,
+    "of": 504,
+    "requests": 4,
+    "signals": [
+     "same-id",
+     "id-cookie 2",
+     "beacon 2"
+    ],
+    "cookieDays": 731
    }
   },
   {
@@ -2148,6 +2230,14 @@
    "service": "CJ Affiliate",
    "company": "Publicis",
    "kind": "affiliate",
+   "source": "authored"
+  },
+  {
+   "host": "ay.delivery",
+   "category": "ad",
+   "service": "Assertive Yield",
+   "company": "Assertive Yield",
+   "kind": "ad analytics",
    "source": "authored"
   },
   {
@@ -3597,6 +3687,23 @@
    }
   },
   {
+   "host": "dc.services.visualstudio.com",
+   "category": "tracker",
+   "service": "Azure Application Insights",
+   "company": "Microsoft",
+   "kind": "performance monitoring",
+   "source": "authored, measured",
+   "evidence": {
+    "publishers": 1,
+    "of": 504,
+    "requests": 3,
+    "signals": [
+     "page 1",
+     "beacon 1"
+    ]
+   }
+  },
+  {
    "host": "de17a.com",
    "category": "ad",
    "service": "Delta Projects",
@@ -3864,6 +3971,44 @@
    "company": "Publicis",
    "kind": "affiliate",
    "source": "authored"
+  },
+  {
+   "host": "dtscdn.com",
+   "category": "tracker",
+   "service": "DTScout",
+   "company": "DTScout",
+   "kind": "data broker",
+   "source": "authored, measured",
+   "evidence": {
+    "publishers": 1,
+    "of": 504,
+    "requests": 2,
+    "signals": [
+     "id-cookie 1",
+     "page 1",
+     "id-query 1"
+    ],
+    "cookieDays": 179
+   }
+  },
+  {
+   "host": "dtscout.com",
+   "category": "tracker",
+   "service": "DTScout",
+   "company": "DTScout",
+   "kind": "data broker",
+   "source": "authored, measured",
+   "evidence": {
+    "publishers": 1,
+    "of": 504,
+    "requests": 5,
+    "signals": [
+     "id-cookie 1",
+     "page 1",
+     "id-query 1"
+    ],
+    "cookieDays": 100
+   }
   },
   {
    "host": "dup.baidustatic.com",
@@ -4347,6 +4492,44 @@
    }
   },
   {
+   "host": "flipp.com",
+   "category": "ad",
+   "service": "Flipp",
+   "company": "Flipp",
+   "kind": "flyer ads",
+   "source": "authored, measured",
+   "evidence": {
+    "publishers": 2,
+    "of": 504,
+    "requests": 48,
+    "signals": [
+     "same-id",
+     "id-cookie 1",
+     "page 2",
+     "beacon 2",
+     "from-ads",
+     "functional 2"
+    ],
+    "cookieDays": 730
+   }
+  },
+  {
+   "host": "flippback.com",
+   "category": "ad",
+   "service": "Flipp",
+   "company": "Flipp",
+   "kind": "flyer ads",
+   "source": "authored, measured",
+   "evidence": {
+    "publishers": 2,
+    "of": 504,
+    "requests": 4,
+    "signals": [
+     "from-ads"
+    ]
+   }
+  },
+  {
    "host": "fluct.jp",
    "category": "ad",
    "service": "fluct",
@@ -4360,6 +4543,14 @@
    "service": "Yahoo analytics and conversion tag",
    "company": "Yahoo",
    "kind": "analytics",
+   "source": "authored"
+  },
+  {
+   "host": "fms.azerion.com",
+   "category": "ad",
+   "service": "Azerion (Improve Digital, Hyth)",
+   "company": "Azerion",
+   "kind": "ad exchange",
    "source": "authored"
   },
   {
@@ -4422,6 +4613,14 @@
    "note": "Only ad scripts and ad data (/display/…json), always inside Google ad frames."
   },
   {
+   "host": "fullcontact.com",
+   "category": "tracker",
+   "service": "FullContact",
+   "company": "FullContact",
+   "kind": "identity",
+   "source": "authored"
+  },
+  {
    "host": "fullstory.com",
    "category": "tracker",
    "service": "FullStory",
@@ -4465,6 +4664,24 @@
    "company": "Digital Turbine",
    "kind": "mobile ad network",
    "source": "authored"
+  },
+  {
+   "host": "gaug.es",
+   "category": "tracker",
+   "service": "Gauges",
+   "company": "Gauges",
+   "kind": "analytics",
+   "source": "authored, measured",
+   "evidence": {
+    "publishers": 2,
+    "of": 504,
+    "requests": 4,
+    "signals": [
+     "page 2",
+     "id-query 2",
+     "beacon 2"
+    ]
+   }
   },
   {
    "host": "gcprivacy.id",
@@ -5715,6 +5932,14 @@
    "note": "Cookie matching (/match); vid cookie for a year."
   },
   {
+   "host": "hyth.io",
+   "category": "ad",
+   "service": "Azerion (Improve Digital, Hyth)",
+   "company": "Azerion",
+   "kind": "ad exchange",
+   "source": "authored"
+  },
+  {
    "host": "i-mobile.co.jp",
    "category": "ad",
    "service": "i-mobile",
@@ -6300,6 +6525,14 @@
   },
   {
    "host": "jubna.com",
+   "category": "ad",
+   "service": "Jubna",
+   "company": "Jubna",
+   "kind": "content recommendation ads",
+   "source": "authored"
+  },
+  {
+   "host": "jubnaadserve.com",
    "category": "ad",
    "service": "Jubna",
    "company": "Jubna",
@@ -7600,6 +7833,14 @@
    "source": "authored"
   },
   {
+   "host": "mparticle.com",
+   "category": "tracker",
+   "service": "mParticle",
+   "company": "mParticle",
+   "kind": "customer data platform",
+   "source": "authored"
+  },
+  {
    "host": "mradx.net",
    "category": "tracker",
    "service": "Top Mail.ru counter and myTarget",
@@ -8246,6 +8487,34 @@
    "note": "OpenX files."
   },
   {
+   "host": "optable.co",
+   "category": "tracker",
+   "service": "Optable",
+   "company": "Optable",
+   "kind": "identity",
+   "source": "authored, measured",
+   "evidence": {
+    "publishers": 1,
+    "of": 504,
+    "requests": 2,
+    "signals": []
+   }
+  },
+  {
+   "host": "optad360.io",
+   "category": "ad",
+   "service": "Optad360",
+   "company": "Optad360",
+   "kind": "ad management",
+   "source": "authored, measured",
+   "evidence": {
+    "publishers": 3,
+    "of": 504,
+    "requests": 10,
+    "signals": []
+   }
+  },
+  {
    "host": "optimizely.com",
    "category": "tracker",
    "service": "Optimizely",
@@ -8435,6 +8704,30 @@
    "note": "The Project Agora ad library."
   },
   {
+   "host": "pagesense-collect.zoho.com",
+   "category": "tracker",
+   "service": "Zoho PageSense",
+   "company": "Zoho",
+   "kind": "A/B testing",
+   "source": "authored"
+  },
+  {
+   "host": "pagesense-hb-collect.zoho.com",
+   "category": "tracker",
+   "service": "Zoho PageSense",
+   "company": "Zoho",
+   "kind": "A/B testing",
+   "source": "authored"
+  },
+  {
+   "host": "pagesense.io",
+   "category": "tracker",
+   "service": "Zoho PageSense",
+   "company": "Zoho",
+   "kind": "A/B testing",
+   "source": "authored"
+  },
+  {
    "host": "pardot.com",
    "category": "tracker",
    "service": "Salesforce Audience Studio (Krux), Pardot, Evergage",
@@ -8465,6 +8758,24 @@
      "page 7",
      "id-query 6",
      "beacon 6"
+    ]
+   }
+  },
+  {
+   "host": "partner.shareaholic.com",
+   "category": "tracker",
+   "service": "Shareaholic analytics",
+   "company": "Shareaholic",
+   "kind": "data broker",
+   "source": "authored, measured",
+   "evidence": {
+    "publishers": 2,
+    "of": 504,
+    "requests": 4,
+    "signals": [
+     "same-id",
+     "page 2",
+     "id-query 2"
     ]
    }
   },
@@ -9397,6 +9708,14 @@
    "source": "authored"
   },
   {
+   "host": "revive-adserver.net",
+   "category": "ad",
+   "service": "Revive Adserver hosted",
+   "company": "Revive",
+   "kind": "ad server",
+   "source": "authored"
+  },
+  {
    "host": "rezync.com",
    "category": "tracker",
    "service": "Zeta Global",
@@ -9838,6 +10157,27 @@
    "source": "authored"
   },
   {
+   "host": "sddan.com",
+   "category": "tracker",
+   "service": "Sirdata",
+   "company": "Sirdata",
+   "kind": "data broker",
+   "source": "authored, measured",
+   "evidence": {
+    "publishers": 2,
+    "of": 504,
+    "requests": 17,
+    "signals": [
+     "same-id",
+     "id-cookie 1",
+     "page 2",
+     "id-query 1",
+     "beacon 2"
+    ],
+    "cookieDays": 365
+   }
+  },
+  {
    "host": "seadform.net",
    "category": "ad",
    "service": "Adform",
@@ -10198,6 +10538,14 @@
    "service": "Singular",
    "company": "Singular",
    "kind": "attribution",
+   "source": "authored"
+  },
+  {
+   "host": "sirdata.io",
+   "category": "tracker",
+   "service": "Sirdata",
+   "company": "Sirdata",
+   "kind": "data broker",
    "source": "authored"
   },
   {
@@ -11400,6 +11748,23 @@
    "source": "authored"
   },
   {
+   "host": "trafic.ro",
+   "category": "tracker",
+   "service": "Trafic.ro",
+   "company": "Trafic.ro",
+   "kind": "audience measurement",
+   "source": "authored, measured",
+   "evidence": {
+    "publishers": 1,
+    "of": 504,
+    "requests": 8,
+    "signals": [
+     "page 1",
+     "beacon 1"
+    ]
+   }
+  },
+  {
    "host": "treasuredata.com",
    "category": "tracker",
    "service": "Treasure Data",
@@ -11629,6 +11994,14 @@
   },
   {
    "host": "unibots.in",
+   "category": "ad",
+   "service": "Unibots",
+   "company": "Unibots",
+   "kind": "video ads",
+   "source": "authored"
+  },
+  {
+   "host": "unibotscdn.com",
    "category": "ad",
    "service": "Unibots",
    "company": "Unibots",
@@ -11935,6 +12308,14 @@
    }
   },
   {
+   "host": "waust.at",
+   "category": "tracker",
+   "service": "whos.amung.us",
+   "company": "whos.amung.us",
+   "kind": "analytics",
+   "source": "authored"
+  },
+  {
    "host": "wcs.naver.com",
    "category": "tracker",
    "service": "Naver Analytics",
@@ -12067,6 +12448,20 @@
    "source": "authored"
   },
   {
+   "host": "wemass.com",
+   "category": "tracker",
+   "service": "Wemass",
+   "company": "Wemass",
+   "kind": "data management",
+   "source": "authored, measured",
+   "evidence": {
+    "publishers": 2,
+    "of": 504,
+    "requests": 10,
+    "signals": []
+   }
+  },
+  {
    "host": "widerplanet.com",
    "category": "ad",
    "service": "Wider Planet",
@@ -12167,6 +12562,17 @@
    "source": "authored"
   },
   {
+   "host": "yandex.ru",
+   "category": "ad",
+   "service": "Yandex Advertising Network and AdFox",
+   "company": "Yandex",
+   "kind": "ad network",
+   "source": "authored",
+   "paths": [
+    "/ads/"
+   ]
+  },
+  {
    "host": "yandexadexchange.net",
    "category": "ad",
    "service": "Yandex Advertising Network and AdFox",
@@ -12182,7 +12588,8 @@
    "kind": "ad network",
    "source": "authored",
    "paths": [
-    "/pcode/"
+    "/pcode/",
+    "/partner-code-bundles/"
    ]
   },
   {
