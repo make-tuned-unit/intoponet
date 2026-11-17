@@ -1,5 +1,5 @@
 import { lookup } from 'node:dns/promises'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { isIP } from 'node:net'
 import { isPrivateAddress } from './publicAddress'
 export { privateIpv4 } from './publicAddress'
@@ -139,6 +139,9 @@ class FetchFailure extends Error {
 
 /** Why a request that ran out of time was stopped: one shared reason, not a new error for every slow feed. */
 const TIMED_OUT = new FetchFailure('timeout', 'Feed request timed out.')
+
+/** Two hashes per headline, a hundred thousand headlines at a start: computed here, not as a job on another thread each. */
+const sha256Hex = (value: string): string => createHash('sha256').update(value).digest('hex')
 
 const defaultNow = (): number => Date.now()
 const defaultSetTimer = (callback: () => void, delayMs: number): TimerHandle =>
@@ -829,6 +832,7 @@ export class FeedFetchService {
             discoveredAt: timestamp(this.now()),
             language: source.languageTags[0] ?? 'und',
             includePublisherTags: source.approvedFields.includes('publisherTags') || source.approvedFields.includes('category'),
+            sha256Hex,
           })
         } catch {
           throw new FetchFailure('invalid-feed', 'Feed XML did not match the supported bounded RSS/Atom subset.')

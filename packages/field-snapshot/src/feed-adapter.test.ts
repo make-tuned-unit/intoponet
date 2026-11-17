@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { FEED_ADAPTER_LIMITS, parseFeedXml } from './feed-adapter'
@@ -77,6 +78,27 @@ describe('controlled RSS and Atom adapter', () => {
     expect(oldItem?.provenanceId).toBe(currentItem?.provenanceId)
     expect(oldItem?.sourceContentHash).not.toBe(currentItem?.sourceContentHash)
     expect(currentItem?.updatedAt).toBe('2026-10-22T08:00:00.000Z')
+  })
+
+  it('gives the same items when the caller supplies a synchronous SHA-256, calling it twice per item', async () => {
+    let calls = 0
+    const sha256Hex = (value: string): string => {
+      calls += 1
+      return createHash('sha256').update(value).digest('hex')
+    }
+    for (const [fixture, feedUrl] of [[rssFixture, options.feedUrl], [atomFixture, 'https://publisher.example/feeds/atom.xml']] as const) {
+      calls = 0
+      const viaWebCrypto = await parseFeedXml(fixture, { ...options, feedUrl })
+      const viaCaller = await parseFeedXml(fixture, { ...options, feedUrl, sha256Hex })
+      expect(viaCaller).toEqual(viaWebCrypto)
+      expect(viaCaller.length).toBeGreaterThan(0)
+      // Every row that became a candidate was hashed twice (its id and its content), none through Web Crypto.
+      expect(calls).toBeGreaterThanOrEqual(viaCaller.length * 2)
+      expect(calls % 2).toBe(0)
+    }
+    // Non-ASCII text is hashed as UTF-8 either way.
+    const accented = rssFixture.replace('Harbour announcement', 'Peña y Kraków — 東京')
+    expect(await parseFeedXml(accented, { ...options, sha256Hex })).toEqual(await parseFeedXml(accented, options))
   })
 
   it('rejects declarations and unknown entities without expanding them', async () => {

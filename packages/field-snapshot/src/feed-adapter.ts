@@ -38,6 +38,12 @@ export type FeedAdapterOptions = {
   topicIds?: string[]
   /** Set false when source approval covers no publisher category fields. */
   includePublisherTags?: boolean
+  /**
+   * SHA-256 of a string as lowercase hex, computed at once. Each item is hashed twice; without this, every hash is
+   * a Web Crypto job handed to another thread and awaited. A caller with a synchronous hash (Node's `createHash`)
+   * passes it here: the ids are the same, without two thread hand-offs per headline.
+   */
+  sha256Hex?: (value: string) => string
 }
 
 export type FeedFormat = 'rss' | 'atom'
@@ -564,15 +570,18 @@ export async function parseFeedXml(xml: string, options: FeedAdapterOptions): Pr
   for (const row of rows) {
     const values = toPlainFeedItem(row, format, coreNamespace, language, options, checked)
     if (!values) continue
-    const identityHash = await sha256(`${options.sourceId}\u0000${values.identity}`)
-    const sourceContentHash = await sha256(JSON.stringify([
+    const identityText = `${options.sourceId}\u0000${values.identity}`
+    const contentText = JSON.stringify([
       values.canonicalUrl,
       values.title,
       values.publishedAt ?? null,
       values.updatedAt ?? null,
       values.language,
       values.topicIds,
-    ]))
+    ])
+    const hash = options.sha256Hex
+    const identityHash = hash ? hash(identityText) : await sha256(identityText)
+    const sourceContentHash = hash ? hash(contentText) : await sha256(contentText)
     const candidate = parsePublicItem({
       schemaVersion: '1.0',
       id: `feed-${identityHash}`,
