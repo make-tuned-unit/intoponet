@@ -975,6 +975,9 @@ export const checks = {
     const summary = await ctx.evaluate(`[...document.querySelectorAll('p')].find((p) => /public signals/.test(p.innerText))?.innerText ?? ''`)
     const count = Number(summary.match(/(\d[\d,]*) public signals/)?.[1]?.replace(/,/g, '') ?? 0)
     expect(count >= 20, `Only ${count} public signals on the globe ("${summary}").`)
+    // Local news, reading and hazards: at least three kinds of signal are on.
+    const layers = Number(summary.match(/across (\d+) active layers?/)?.[1] ?? 0)
+    expect(layers >= 3, `The globe's signals come from ${layers} kind(s) of source, not local news, reading and hazards ("${summary}").`)
     for (const tab of ['World', 'Peaks', 'Rising', 'Fading']) expect(await ctx.click('.globe-tabs button', tab), `Highlights tab "${tab}" is missing.`)
     await ctx.shot('globe')
     return summary
@@ -1002,10 +1005,13 @@ export const checks = {
     const chevron = JSON.parse(await ctx.evaluate(`JSON.stringify((() => { const r = document.querySelector('.world-expand').getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)] })())`))
     expect(chevron[0] >= 32 && chevron[1] >= 32, `The chevron's target is only ${chevron.join('×')} px.`)
     await ctx.delay(1500)
-    await ctx.evaluate(`(() => { const b = document.querySelector('.world-sources-button'); b.focus(); b.click(); return true })()`)
+    // "See all N sources": the carousel holds a card for every one of them (read in the same step as the click, as stories refresh).
+    const promised = await ctx.evaluate(`(() => { const b = document.querySelector('.world-sources-button'); b.focus(); const count = Number(/\\d+/.exec(b.innerText)?.[0] ?? 0); b.click(); return count })()`)
     await ctx.delay(160)
     await ctx.shot('launching')
     await ctx.wait(`document.querySelectorAll('.sc-card').length >= 3`, 5_000, 'the carousel cards')
+    const carded = await ctx.evaluate(`document.querySelectorAll('.sc-card').length`)
+    expect(promised >= 3 && carded === promised, `The story said "See all ${promised} sources" but its carousel holds ${carded} cards.`)
     // Outlets' own pictures and bylines arrive as each article's preview is read.
     await ctx.wait(`document.querySelectorAll('.sc-card .sc-media img').length >= 1`, 25_000, 'an article image on the cards')
     await ctx.delay(2500)
@@ -1117,6 +1123,10 @@ export const checks = {
     await ctx.delay(2000)
     const atStart = await ctx.evaluate(`document.querySelectorAll('.country-name.is-on').length`)
     expect(atStart >= 8, `Only ${atStart} country names at the default view.`)
+    // Shown names never run into one another.
+    const overlapping = () => ctx.evaluate(`JSON.stringify((() => { const shown = [...document.querySelectorAll('.country-name.is-on')].map((el) => ({ name: el.textContent, box: el.getBoundingClientRect() })).filter((item) => item.box.width > 0); const pairs = []; for (let i = 0; i < shown.length; i += 1) for (let j = i + 1; j < shown.length; j += 1) { const a = shown[i].box, b = shown[j].box; if (a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1) pairs.push(shown[i].name + ' over ' + shown[j].name) } return pairs })())`).then(JSON.parse)
+    const overlapAtStart = await overlapping()
+    expect(!overlapAtStart.length, `Country names overlap at the default view: ${overlapAtStart.join('; ')}.`)
     // Click a named country (labels let clicks through to the globe).
     const target = JSON.parse(await ctx.evaluate(`(() => { const el = document.querySelector('.country-name.is-on'); const r = el.getBoundingClientRect(); return JSON.stringify({ name: el.textContent, x: r.left + r.width / 2, y: r.top + r.height / 2 + 1 }) })()`))
     for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) {
@@ -1140,8 +1150,10 @@ export const checks = {
       }
       const focus = await ctx.evaluate(`[...document.querySelectorAll('.country-name.is-focus.is-on')].map((el) => el.textContent).join(', ')`)
       if (focus !== name) wrong.push(`${place} → ${focus || 'no name'}`)
+      const over = await overlapping()
+      if (over.length) wrong.push(`${place}: names overlap (${over.join('; ')})`)
     }
-    expect(!wrong.length, `The country in view was not named: ${wrong.join('; ')}`)
+    expect(!wrong.length, `The country in view was not named, or names overlapped: ${wrong.join('; ')}`)
     await ctx.shot('vatican')
     return `${atStart} names at the start; clicked ${target.name} → ${opened}; ${Object.keys(flights).length} flights named correctly.`
   },
@@ -1172,7 +1184,10 @@ export const checks = {
     const scroll = JSON.parse(await ctx.evaluate(`(() => { const el = document.querySelector('.globe-panel .world-stories'); const before = el.scrollTop; el.scrollTop = 400; return JSON.stringify({ moved: el.scrollTop - before, overflow: el.scrollHeight > el.clientHeight }) })()`))
     expect(!scroll.overflow || scroll.moved > 0, 'The World list overflows but cannot be scrolled.')
     const stories = await ctx.evaluate(`document.querySelectorAll('.world-list > li').length`)
-    return `${stories} world stories; scrolls ${scroll.moved}px; ${offline}.`
+    // "Many countries": each story listed says where it was covered, in at least three countries or international desks.
+    const breadth = JSON.parse(await ctx.evaluate(`JSON.stringify([...document.querySelectorAll('.world-list .world-row small')].map((el) => Number(/(\\d+) countr/.exec(el.innerText)?.[1] ?? 0) + Number(/(\\d+) international desk/.exec(el.innerText)?.[1] ?? 0)))`))
+    expect(breadth.length >= 5 && breadth.every((places) => places >= 3), `A World story is listed with coverage from fewer than three countries or international desks: ${breadth.join(', ')}.`)
+    return `${stories} world stories, each covered in ${Math.min(...breadth)}–${Math.max(...breadth)} countries or international desks; scrolls ${scroll.moved}px; ${offline}.`
   },
 
   async STORY_MOUNTAINS(ctx) {
@@ -1372,6 +1387,7 @@ export const checks = {
   async OLDS_COUNTRY(ctx) {
     const thread = JSON.parse(await ctx.evaluate(`window.intoponet.olds.thread({ kind: 'country', countryCode: 'FO' }).then((t) => JSON.stringify({ facts: t.facts, chapters: (t.chapters ?? []).length, chronicle: (t.chronicle ?? []).map((e) => e.at.iso) }))`))
     expect(!!thread.facts?.capital, 'The Faroe Islands have no key facts.')
+    expect(thread.chapters >= 1, 'The Faroe Islands\' history has no chapters.')
     expect(thread.chronicle.some((iso) => Number(iso.slice(0, 4)) >= new Date().getFullYear() - 10), 'No events from the last ten years in the Faroe Islands chronology.')
     return `Capital ${thread.facts.capital}; ${thread.chapters} chapters; latest event ${thread.chronicle.at(-1)}.`
   },
@@ -2308,7 +2324,35 @@ export const checks = {
     await openPage(ctx, 'https://www.nytimes.com/section/world', 9000)
     const access = JSON.parse(await ctx.evaluate(`window.intoponet.access.page().then((p) => JSON.stringify(p))`))
     expect(access && typeof access.paywalled === 'boolean', 'Paywall detection did not report on the page.')
-    return `nytimes.com section page: paywalled=${access.paywalled} (${access.signals.join(', ') || 'no signals'}).`
+    // The promise itself, on pages of this Mac: an article whose publisher marks it as restricted is recognised and free
+    // coverage is offered beside it (the page is left as it is); an article open to all gets neither.
+    const outlet = createServer((req, res) => {
+      res.setHeader('content-type', 'text/html; charset=utf-8')
+      res.end(req.url === '/open'
+        ? '<!doctype html><title>Harbour bridge reopens after repairs</title><h1>Harbour bridge reopens after repairs</h1><p id="body">Open to all.</p>'
+        : '<!doctype html><title>Harbour bridge closes for repairs</title><script type="application/ld+json">{"@type":"NewsArticle","isAccessibleForFree":false}</script><h1>Harbour bridge closes for repairs</h1><p id="body">The first paragraph.</p>')
+    })
+    await new Promise((resolve) => outlet.listen(0, '127.0.0.1', resolve))
+    try {
+      // Two hosts, two outlets: one seen with a restricted article is remembered as a paywalled outlet from then on.
+      const accessOf = async (address) => {
+        await ctx.evaluate(`window.intoponet.browserHost.navigate(${JSON.stringify(address)}).then(() => true, () => true)`)
+        await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.url === ${JSON.stringify(address)} && !s.isLoading)`, 20_000, `the test article at ${address}`)
+        return JSON.parse(await ctx.evaluate(`window.intoponet.access.page().then((p) => JSON.stringify(p))`))
+      }
+      const open = await accessOf(`http://localhost:${outlet.address().port}/open`)
+      expect(open?.paywalled === false, `An article open to all was taken for a paywalled one: ${JSON.stringify(open)}.`)
+      // (The page's own check runs 1.2 s after it has loaded.)
+      await ctx.delay(2500)
+      expect(!(await ctx.evaluate(`!!document.querySelector('.free-coverage')`)), 'Free coverage was offered beside an article open to all.')
+      const locked = await accessOf(`http://127.0.0.1:${outlet.address().port}/locked`)
+      expect(locked?.paywalled === true && locked.signals.includes('isAccessibleForFree: false'), `An article marked as not free to read was not recognised: ${JSON.stringify(locked)}.`)
+      await ctx.wait(`(document.querySelector('.free-coverage')?.innerText ?? '').length > 0`, 10_000, 'free coverage to be offered beside a paywalled article')
+      expect(await (await ctx.page('/locked')).evaluate(`document.getElementById('body')?.textContent`) === 'The first paragraph.', 'The paywalled page was changed.')
+    } finally {
+      outlet.close()
+    }
+    return `nytimes.com section page: paywalled=${access.paywalled} (${access.signals.join(', ') || 'no signals'}); a local article marked as not free was recognised and free coverage offered beside it, the page unchanged; one open to all was not.`
   },
 
   PDF_EXPORT: pdfExport,
@@ -2611,7 +2655,7 @@ export const checks = {
         await audit(`Highlights › ${tab}`)
       }
     }
-    for (const label of ['Bookmarks', 'My map', 'Settings', 'Knowledge']) {
+    for (const label of ['Bookmarks', 'The Olds', 'My map', 'Settings', 'Knowledge']) {
       await ctx.evaluate(`document.querySelector('[data-panel]') && [...document.querySelectorAll('.bookmark-library-button')].find((b) => (b.innerText || b.getAttribute('aria-label')).includes(${JSON.stringify(label)})).focus(); true`)
       await ctx.press('Enter')
       await ctx.delay(1300)
@@ -2672,7 +2716,28 @@ export const checks = {
       for (const type of ['rawKeyDown', 'keyUp']) await ctx.send('Input.dispatchKeyEvent', { type, key: 'C', code: 'KeyC', windowsVirtualKeyCode: 67, modifiers: 4 | 8 })
       await ctx.delay(800)
       expect(await clip() === `${origin}/article?id=3#part`, `⇧⌘C in the app interface copied "${await clip()}".`)
-      return 'Copied without tracking parameters from the page and the toolbar, exactly with ⌥, and not while a text field had focus.'
+      // The same in the full-width view, and in a private tab.
+      expect(await ctx.click('button[aria-label="Full width"]'), 'The page toolbar has no Full width button.')
+      await ctx.wait(`!!document.querySelector('button[aria-label="Exit full width"]')`, 5000, 'the full-width view')
+      await ctx.wait(`!document.querySelector('.origin-copied')`, 4000, 'the earlier confirmation to go away')
+      await setClip('before')
+      await ctx.keyInPage('/article', 'C', ['meta', 'shift'])
+      await ctx.wait(`!!document.querySelector('.origin-copied') && [...document.querySelectorAll('[role=status]')].some((e) => e.textContent.includes('Address copied'))`, 3000, 'the full-width view to say the address was copied')
+      expect(await clip() === `${origin}/article?id=3#part`, `⇧⌘C in the full-width view copied "${await clip()}".`)
+      expect(await ctx.click('button[aria-label="Exit full width"]'), 'The full-width view has no way out.')
+      await ctx.wait(`!document.querySelector('.origin-copied')`, 4000, 'the full-width confirmation to go away')
+      await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(true).then(() => true)`)
+      try {
+        await openPage(ctx, `${origin}/private-article?id=4&utm_medium=mail`, 2500)
+        expect(await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => t.some((x) => x.isPrivate && x.active && x.url.includes('/private-article')))`), 'The private test tab is not private and in front.')
+        await setClip('before')
+        await ctx.keyInPage('/private-article', 'C', ['meta', 'shift'])
+        await ctx.wait(`!!document.querySelector('.origin-copied') && [...document.querySelectorAll('[role=status]')].some((e) => e.textContent.includes('Address copied'))`, 3000, 'a private tab to say its address was copied')
+        expect(await clip() === `${origin}/private-article?id=4`, `⇧⌘C in a private tab copied "${await clip()}".`)
+      } finally {
+        await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
+      }
+      return 'Copied without tracking parameters from the page and the toolbar, exactly with ⌥, and not while a text field had focus; the same in the full-width view and in a private tab.'
     } finally {
       server.close()
     }
