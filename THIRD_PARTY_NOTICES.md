@@ -89,15 +89,36 @@ these notices, so they have to be added back. Lucide's licence states that
 
 ## 2. Vendored code
 
-### bergamot-translator Emscripten glue: MPL-2.0 (file-level copyleft)
+### bergamot-translator JavaScript glue (`bergamot-translator.js`): MPL-2.0 (file-level copyleft)
 
-- File: `apps/desktop/src/main/translate/vendor/bergamot-translator.js`
-- Upstream: Mozilla Firefox, `toolkit/components/translations/bergamot-translator/bergamot-translator.js`,
-  generated from https://github.com/mozilla/translations release v0.6.0
-  (revision `eea6e5a80aa4ddd86d9cc35ce9a65b79aa3ab96d`). Copied unmodified,
-  SHA-256 `faff1ef6285b0d26f01787776fd49299dfb756ecb9688aa990c250e66797b47d`.
-- Licence: Mozilla Public License 2.0, https://mozilla.org/MPL/2.0/. The licence
-  header is kept in the file:
+Copyright Mozilla and the bergamot-translator contributors. Licensed under the
+Mozilla Public License, v. 2.0. A copy of the licence is included with the
+application as `LICENSES/MPL-2.0.txt` (in the app's `Contents/Resources`
+folder, beside this file) and is available at https://mozilla.org/MPL/2.0/.
+
+- **The file is included unmodified, as a file of its own.** In the source tree
+  it is `apps/desktop/src/main/translate/vendor/bergamot-translator.js`. In the
+  application it is `out/main/vendor/bergamot-translator.js` inside
+  `Contents/Resources/app.asar`, byte for byte the same file, and the app reads
+  it from there when translation starts. None of its text is compiled into
+  Intoponet's own files (the release build checks both: `scripts/shipped-glue.cjs`).
+  SHA-256 of the file: `faff1ef6285b0d26f01787776fd49299dfb756ecb9688aa990c250e66797b47d`.
+- **Where its source is.** The file is its own source code: the copy in the
+  application is the Source Code Form, with its licence header. It was generated
+  by `inference/scripts/build-wasm.py` in https://github.com/mozilla/translations
+  at revision `eea6e5a80aa4ddd86d9cc35ce9a65b79aa3ab96d` (release v0.6.0):
+  https://github.com/mozilla/translations/commit/eea6e5a80aa4ddd86d9cc35ce9a65b79aa3ab96d.
+  The build script and its inputs are in that repository at that revision
+  (https://github.com/mozilla/translations/blob/eea6e5a80aa4ddd86d9cc35ce9a65b79aa3ab96d/inference/scripts/build-wasm.py).
+  The file was copied as shipped in Mozilla Firefox, at
+  `toolkit/components/translations/bergamot-translator/bergamot-translator.js`.
+- **A copy on request.** Intoponet will also provide a copy of this source file
+  to anyone who has received the application and asks through
+  https://intoponet.com, at no charge beyond the cost of sending it.
+- **Your rights in this file.** Intoponet's own licence terms (`LICENSE`) do not
+  limit or alter your rights in this file under the Mozilla Public License. `LICENSE`
+  says the same.
+- The licence header is kept in the file as Mozilla wrote it:
 
   > This Source Code Form is subject to the terms of the Mozilla Public License,
   > v. 2.0. If a copy of the MPL was not distributed with this file, You can
@@ -106,12 +127,12 @@ these notices, so they have to be added back. Lucide's licence states that
 **What MPL-2.0 requires:** the copyleft applies to the file, not to the whole
 app. The vendored file, and any changes ever made to it, stay under MPL-2.0. Its
 source code must be available to anyone who receives the app, and the licence
-header must stay in place. Intoponet's other files, which only call this glue,
-are a "Larger Work" (MPL-2.0 §3.3) and can stay proprietary. To comply:
-(a) do not edit the file in place without publishing the modified version under
-MPL-2.0; (b) when distributing, say where its source can be obtained (the
-upstream URL above while the file is unmodified, or a published copy of the
-modified file); (c) keep this notice.
+header must stay in place. Intoponet's other files, which only call this glue
+and are separate files, are a "Larger Work" (MPL-2.0 §1.7, §3.3) and can stay
+proprietary. To comply: (a) do not edit the file in place without publishing the
+modified version under MPL-2.0; (b) keep shipping it as its own unmodified file,
+with `LICENSES/MPL-2.0.txt` beside these notices; (c) keep this notice, with
+where the source is and the offer of a copy.
 
 No other third-party code is vendored into the source tree. A search for
 `vendor`, `LICENSE`, `Copyright` and `SPDX` found no other copied files.
@@ -237,7 +258,11 @@ publisher's terms need checking before release, following the governance in
 
 1. Ship `LICENSE` and `LICENSES.chromium.html` from Electron, and the npm licence
    notices, with every build (§1).
-2. Keep the MPL-2.0 vendored glue unmodified, or publish any change to it (§2).
+2. Keep the MPL-2.0 vendored glue unmodified and shipped as its own file, or publish
+   any change to it (§2). `LICENSE` already says that
+   nothing in it restricts rights under the Mozilla Public License; a lawyer should
+   confirm that wording, and that a pointer to Mozilla's repository plus a copy on
+   request meets the source duty if upstream moves.
 3. Confirm where `earth-day.jpg` came from and what licence it has (§5).
 4. Done: the CC BY-SA 4.0 attribution for Wikipedia text, the CC BY 4.0
    attribution for GeoNames are shown in the app under Settings › Credits and

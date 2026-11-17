@@ -17,6 +17,8 @@ module.exports = {
   extraResources: [
     { from: path.resolve(__dirname, '../../LICENSE'), to: 'LICENSE' },
     { from: path.resolve(__dirname, '../../THIRD_PARTY_NOTICES.md'), to: 'THIRD_PARTY_NOTICES.md' },
+    // The licence of the one MPL-2.0 file in the app (out/main/vendor/bergamot-translator.js in app.asar).
+    { from: path.resolve(__dirname, '../../LICENSES/MPL-2.0.txt'), to: 'LICENSES/MPL-2.0.txt' },
   ],
   asar: true,
   // Electron fuses (flipped in the binary before signing). Without these, any local program could

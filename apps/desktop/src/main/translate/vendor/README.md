@@ -9,6 +9,14 @@ bergamot-translator WebAssembly build, copied unmodified from Firefox
 - Licence: MPL-2.0 (header in the file).
 - SHA-256: faff1ef6285b0d26f01787776fd49299dfb756ecb9688aa990c250e66797b47d
 
+Do not edit the file. It is MPL-2.0, so it ships as a file of its own and never
+as text inside Intoponet's code: the build copies it byte for byte to
+`out/main/vendor/bergamot-translator.js` (`?asset` in `../openEngine.ts`, named
+in `electron.vite.config.ts`), the main process reads that copy and hands its
+text to the worker, and `scripts/shipped-glue.cjs` fails the release build if
+the copy differs from this file or if any of its text turns up in another built
+file. The licence text ships as `LICENSES/MPL-2.0.txt`.
+
 The matching WebAssembly binary (bergamot-translator 3.0, about 5 MB) is not in
 the repository. It downloads with the first language and is pinned by SHA-256 in
 `../catalog.json`. The glue's own fetch/XMLHttpRequest paths are never used:

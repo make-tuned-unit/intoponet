@@ -38,6 +38,15 @@ export default defineConfig({
   main: {
     define: { __INTOPONET_MAC_UPDATE_URL__: JSON.stringify(updateUrl) },
     plugins: [externalizeDepsPlugin({ exclude: workspacePackages })],
+    // Mozilla's translation glue (MPL-2.0) keeps its own name and place, out/main/vendor/bergamot-translator.js,
+    // so the copy that ships can be found and checked against the vendored file (scripts/shipped-glue.cjs).
+    build: {
+      rollupOptions: {
+        output: {
+          assetFileNames: (asset) => (asset.names.includes('bergamot-translator.js') ? 'vendor/[name][extname]' : 'chunks/[name]-[hash][extname]'),
+        },
+      },
+    },
   },
   preload: {
     plugins: [externalizeDepsPlugin({ exclude: workspacePackages })],

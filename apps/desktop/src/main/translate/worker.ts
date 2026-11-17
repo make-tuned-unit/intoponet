@@ -2,10 +2,13 @@
  * Translation worker. Runs Mozilla's bergamot-translator (Marian NMT compiled
  * to WebAssembly) on verified bytes handed over by the main process. It has no
  * network (stubbed before the engine loads) and never touches the file system.
+ *
+ * The engine's JavaScript glue (vendor/bergamot-translator.js, MPL-2.0) is not
+ * compiled into this file: it ships unchanged as a file of its own, and the
+ * main process reads it and hands its text over as workerData (openEngine.ts).
  */
-import { parentPort } from 'node:worker_threads'
+import { parentPort, workerData } from 'node:worker_threads'
 import { runInThisContext } from 'node:vm'
-import glue from './vendor/bergamot-translator.js?raw'
 import { installNetworkStubs } from '../laya/networkStubs'
 import type { WorkerRequest, WorkerResponse } from './engine'
 
@@ -25,6 +28,9 @@ type Bergamot = {
 }
 
 const ALIGNMENT: Record<string, number> = { model: 256, lex: 64, vocab: 64, srcvocab: 64, trgvocab: 64 }
+
+const glue = (workerData as { glue?: unknown } | null)?.glue
+if (typeof glue !== 'string' || !glue) throw new Error('The translation engine glue was not handed to the worker.')
 
 const loadBergamot = runInThisContext(`${glue}\n;loadBergamot`, { filename: 'bergamot-translator.js' }) as (module: Record<string, unknown>) => Bergamot
 
