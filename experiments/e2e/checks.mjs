@@ -3818,6 +3818,9 @@ export const checks = {
       await ctx.evaluate(`document.querySelector('.tab-rail-workspace.is-active').focus(); true`)
       await key('ArrowLeft', 'ArrowLeft', 37, 1 | 8)
       await ctx.wait(`${ws}.get().then((s) => s.workspaces[0].id === ${JSON.stringify(researchId)})`, 3000, '⌥⇧← to move Research first')
+      // Focus stays on the moved workspace. Waited for before going on: it is put back a frame after the move is
+      // answered, and what follows (the actions menu, the name field) must not be opened under it.
+      await ctx.wait(`document.activeElement?.dataset.workspaceId === ${JSON.stringify(researchId)} && document.activeElement.matches('.tab-rail-workspace')`, 3000, 'focus to stay on the workspace moved with ⌥⇧←')
 
       // Rename from the workspace's actions.
       await chooseInWorkspaceMenu('Research', 'Rename', 'the workspace menu')
