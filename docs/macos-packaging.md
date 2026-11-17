@@ -68,7 +68,8 @@ The command supports `--arm64` and `--x64` overrides using the same syntax as
 the preview command. It emits a DMG, a macOS app ZIP, and release inventory;
 this repository does not publish the files or modify the website download
 page. `INTOPONET_MAC_UPDATE_URL` is optional. When configured on a release
-build, it enables the manual macOS updater and emits a Squirrel.Mac
+build, it enables the macOS updater (daily automatic checks, see
+`docs/automatic-updates.md`) and emits a Squirrel.Mac
 `releases.json`; otherwise the updater remains disabled.
 
 ## Files produced

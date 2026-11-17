@@ -462,7 +462,7 @@
       ],
       "tier": "core",
       "kind": "e2e",
-      "promise": "With vertical tabs on, the tab sidebar stays in both panel and full-width views, shows Pinned and Open sections, collapses to icons or hides fully (⌘⇧S) and slides back in when the pointer rests at the window's edge, keeps its width and state for the next launch, and every tab in it is reachable by keyboard and VoiceOver."
+      "promise": "With vertical tabs on, the tab sidebar stays in both panel and full-width views, shows Pinned and Open sections, collapses to icons or hides fully (⌃⌘S) and slides back in when the pointer rests at the window's edge, keeps its width and state for the next launch, and every tab in it is reachable by keyboard and VoiceOver."
     },
     {
       "id": "BROWSER_IMPORT",

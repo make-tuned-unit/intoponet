@@ -100,7 +100,7 @@ export const TOUR_STEPS: TourStep[] = [
     id: 'signals',
     chapter: 'The living globe',
     title: 'Frequencies are signals from real places',
-    body: 'Each ripple is public activity: local news from 450 outlets, what Wikipedia readers are opening, earthquakes and storms. Brighter and wider means more. Hover to preview, click to explore.',
+    body: 'Each ripple is public activity: local news from more than 1,000 outlets, what Wikipedia readers are opening, earthquakes and storms. Brighter and wider means more. Hover to preview, click to explore.',
     target: '.globe-panel',
     seconds: 9,
     run: (controls) => {
@@ -326,7 +326,7 @@ export const TOUR_STEPS: TourStep[] = [
     id: 'basics',
     chapter: 'Browsing',
     title: 'The everyday things, done carefully',
-    body: 'Saved passwords that fill only when you click, downloads you can pause and check, History (⌘Y), reopening closed tabs (⇧⌘T), per-site zoom, and a real menu bar. Settings brings your bookmarks, tabs, history and passwords over from Chrome, Arc, Brave, Edge or Vivaldi, on this Mac, and makes Intoponet your default browser.',
+    body: 'Saved passwords that fill only when you click, downloads you can pause and check, History (⌘Y), reopening closed tabs (⇧⌘T), per-site zoom, and a real menu bar. Settings brings your bookmarks, history and passwords (and Arc’s tabs) over from Chrome, Arc, Brave, Edge or Vivaldi, on this Mac, and makes Intoponet your default browser.',
     seconds: 10,
     run: showPage,
   },
