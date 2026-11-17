@@ -3702,8 +3702,10 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
     if (pageView !== view) return
     // Escape stops a page still loading; the page gets the key as well.
     if (isPlainEscape(input) && view.webContents.isLoading()) view.webContents.stop()
-    const action = pageKeyAction(input, { developer: developerBuild() })
+    const action = pageKeyAction(input, { developer: developerBuild(), permissionBar: (sitePermissions?.list().length ?? 0) > 0 })
     if (!action) return
+    // F6 with a site's request waiting: the keyboard goes to the bar, and comes back here once it is answered.
+    if (action.kind === 'shell' && action.action === 'focus-permission-bar') permissionBarOpener = view
     if (action.kind === 'command' && TEXT_FIELD_FIRST.has(action.command.type)) {
       // The page keeps the key; the browser acts only when no text field (or editor frame) has focus.
       const command = action.command
@@ -4133,6 +4135,8 @@ function showShellShortcut(action: ShellShortcut): void {
   }
   emit({ type: 'shortcut', action })
 }
+/** The page whose F6 moved the keyboard to the permission bar: it gets the keyboard back when the bar is answered. */
+let permissionBarOpener: WebContentsView | null = null
 /** Shortcuts for an app window that is not listening yet; null once it is (its first get-state, sent right after it subscribes). */
 let shellShortcutsWaiting: ShellShortcut[] | null = null
 
@@ -5706,7 +5710,16 @@ app.whenReady().then(async () => {
       const shownPrivate = Boolean(pageView && privateViews.has(pageView))
       const shownScope = pageView ? scopeOfView(pageView) : 'default'
       const store = permissionStoreFor(shownPrivate, shownScope)
-      if (command.type === 'decide') return sitePermissions!.decide(command.id, command.decision)
+      if (command.type === 'decide') {
+        const answered = await sitePermissions!.decide(command.id, command.decision)
+        // Reached from a page with F6: with nothing more waiting, that page takes the keyboard back.
+        const opener = permissionBarOpener
+        if (opener && sitePermissions!.list().length === 0) {
+          permissionBarOpener = null
+          if (pageView === opener && !viewGone(opener) && pageViewShown(opener)) opener.webContents.focus()
+        }
+        return answered
+      }
       if (command.type === 'pending') return sitePermissions!.list()
       if (command.type === 'reset') {
         sitePermissions!.reset(command.origin, shownPrivate, command.kind, shownScope)

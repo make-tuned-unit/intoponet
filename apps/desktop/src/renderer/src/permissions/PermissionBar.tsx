@@ -37,8 +37,19 @@ export function PermissionBar({ request, more, background = null, onDecide }: { 
       if (before?.isConnected && (!document.activeElement || document.activeElement === document.body)) before.focus()
     }
   }, [])
+  // F6 moves the keyboard to the bar: from a page the browser forwards the key (shellShortcuts.ts), and from
+  // anywhere in the app window it is heard here. Tab then reaches the bar's buttons.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key !== 'F6' || event.metaKey || event.ctrlKey || event.altKey || root.current?.contains(document.activeElement)) return
+      event.preventDefault()
+      root.current?.focus()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
   return (
-    <div ref={root} tabIndex={-1} className="permission-bar" role="alertdialog" aria-label={`${background ? `${background}: ` : ''}${hostOf(request.origin)}${request.topOrigin ? ` on ${hostOf(request.topOrigin)}` : ''} asks for permission`}>
+    <div ref={root} tabIndex={-1} data-permission-bar="" className="permission-bar" role="alertdialog" aria-describedby="permission-bar-keys" aria-label={`${background ? `${background}: ` : ''}${hostOf(request.origin)}${request.topOrigin ? ` on ${hostOf(request.topOrigin)}` : ''} asks for permission`}>
       <span className="permission-bar-ask">
         <Icon size={15} aria-hidden="true" />
         <span>
@@ -47,6 +58,7 @@ export function PermissionBar({ request, more, background = null, onDecide }: { 
           {more > 0 ? ` (${more} more waiting)` : ''}
         </span>
       </span>
+      <span id="permission-bar-keys" className="sr-only">Press F6 to move the keyboard to this bar, from a page too, then Tab to reach its buttons.</span>
       <span className="permission-bar-actions">
         {popup ? (
           <>

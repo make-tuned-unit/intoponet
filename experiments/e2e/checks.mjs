@@ -1679,6 +1679,37 @@ export const checks = {
     expect(/^Background tab “[^”]+” · example\.org wants to show notifications/.test(named), `The bar does not name the background tab that asked: "${named}"`)
     expect(await ctx.click('.permission-bar button', 'Not now'), 'The permission bar has no "Not now" button.')
     await ctx.wait(`!document.querySelector('.permission-bar')`, 5_000, 'the permission bar to go after "Not now"')
+    // From inside a page, F6 moves the keyboard to a waiting bar (with no bar showing it stays the page's own key), and the
+    // bar says so; once answered, the page has the keyboard back.
+    const frontPage = `electron.webContents.getAllWebContents().find((c) => /^https?:/.test(c.getURL()) && c.getURL().includes(${JSON.stringify(host)}))`
+    const focusFrontPage = () => ctx.main(`(() => { electron.app.focus({ steal: true }); electron.BrowserWindow.getAllWindows()[0].focus(); ${frontPage}.focus(); return true })()`)
+    const keyboardIn = () => ctx.main(`(() => (${frontPage}.isFocused() ? 'page' : electron.BrowserWindow.getAllWindows()[0].webContents.isFocused() ? 'shell' : 'neither'))()`)
+    const keyboardReaches = async (where, label) => {
+      let now = await keyboardIn()
+      for (let i = 0; i < 40 && now !== where; i += 1) { await ctx.delay(150); now = await keyboardIn() }
+      expect(now === where, `${label} (the keyboard is in: ${now}).`)
+    }
+    await page.evaluate(`(() => { window.__f6 = 0; addEventListener('keydown', (event) => { if (event.key === 'F6') window.__f6 += 1 }); return true })()`)
+    await focusFrontPage()
+    await keyboardReaches('page', 'The page in front did not take the keyboard')
+    await ctx.keyInPage(host, 'F6')
+    await ctx.delay(400)
+    expect(await page.evaluate(`window.__f6`) === 1 && await keyboardIn() === 'page', `With no bar showing, F6 was taken from the page (the page heard it ${await page.evaluate(`window.__f6`)} times; the keyboard is in: ${await keyboardIn()}).`)
+    void behind.evaluate(`Notification.requestPermission()`).catch(() => undefined)
+    await ctx.wait(`(document.querySelector('.permission-bar')?.innerText ?? '').includes('example.org wants to')`, 15_000, 'the permission bar to ask again for the background tab')
+    await focusFrontPage()
+    await keyboardReaches('page', 'The page in front did not keep the keyboard as the bar appeared')
+    await ctx.keyInPage(host, 'F6')
+    await keyboardReaches('shell', 'F6 in a page did not move the keyboard to the app window while a permission bar is waiting')
+    await ctx.wait(`document.activeElement?.hasAttribute('data-permission-bar')`, 5_000, 'F6 in a page to put focus on the permission bar')
+    expect(await page.evaluate(`window.__f6`) === 1, 'F6 reached the page as well as the permission bar.')
+    const keysHint = await ctx.evaluate(`document.getElementById(document.querySelector('[data-permission-bar]').getAttribute('aria-describedby') ?? '')?.textContent ?? ''`)
+    expect(/F6/.test(keysHint) && /Tab/.test(keysHint), `The permission bar does not say how the keyboard reaches it: "${keysHint}".`)
+    await ctx.press('Tab')
+    expect(await ctx.evaluate(`document.activeElement?.closest('[data-permission-bar]') && document.activeElement.tagName === 'BUTTON'`), 'Tab from the permission bar did not reach its first button.')
+    await ctx.press('Enter')
+    await ctx.wait(`!document.querySelector('.permission-bar')`, 5_000, 'the permission bar to go once answered from the keyboard')
+    await keyboardReaches('page', 'Once the bar reached with F6 was answered, the page did not get the keyboard back')
     // A real click in the page (not a scripted one) lets it open a sign-in window and a new tab.
     const clickPage = async (session) => {
       for (const type of ['mousePressed', 'mouseReleased']) await session.send('Input.dispatchMouseEvent', { type, x: 20, y: 20, button: 'left', clickCount: 1 })

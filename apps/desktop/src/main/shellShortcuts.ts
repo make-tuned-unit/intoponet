@@ -33,10 +33,20 @@ export type PageKeyAction =
   | { kind: 'command'; command: AppCommand }
   | { kind: 'shell'; action: ShellShortcut }
 
-/** What a key pressed inside a page asks of the browser, or null to leave it to the page. */
-export function pageKeyAction(input: KeyInput, options: { developer?: boolean } = {}): PageKeyAction | null {
+/** A plain F6 (⇧F6 too): the key that moves between a browser's panes. */
+export function isPaneKey(input: KeyInput): boolean {
+  return input.type === 'keyDown' && input.key === 'F6' && !input.meta && !input.control && !input.alt
+}
+
+/**
+ * What a key pressed inside a page asks of the browser, or null to leave it to the page.
+ * `permissionBar`: a site's request is waiting in the bar above the page, and F6 moves the keyboard to it
+ * (with no bar showing, F6 stays the page's own key).
+ */
+export function pageKeyAction(input: KeyInput, options: { developer?: boolean; permissionBar?: boolean } = {}): PageKeyAction | null {
   const command = appCommandForInput(input, options)
   if (command) return { kind: 'command', command }
+  if (options.permissionBar && isPaneKey(input)) return { kind: 'shell', action: 'focus-permission-bar' }
   const action = shellShortcutForInput(input)
   return action ? { kind: 'shell', action } : null
 }

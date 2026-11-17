@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isPlainEscape, pageKeyAction, shellShortcutForInput } from './shellShortcuts'
+import { isPaneKey, isPlainEscape, pageKeyAction, shellShortcutForInput } from './shellShortcuts'
 
 const mod = process.platform === 'darwin' ? { meta: true, control: false } : { meta: false, control: true }
 const key = (k: string, extra: Partial<{ shift: boolean; alt: boolean; type: string; code: string }> = {}) =>
@@ -80,5 +80,28 @@ describe('keys pressed while a page has focus', () => {
     expect(isPlainEscape(escape)).toBe(true)
     expect(isPlainEscape({ ...escape, shift: true })).toBe(false)
     expect(isPlainEscape({ ...escape, type: 'keyUp' })).toBe(false)
+  })
+})
+
+describe('F6 with a permission bar waiting', () => {
+  const f6 = (extra: Partial<{ shift: boolean; alt: boolean; meta: boolean; control: boolean; type: string }> = {}) => ({ type: 'keyDown', key: 'F6', shift: false, alt: false, meta: false, control: false, ...extra })
+
+  it('moves the keyboard from the page to the bar, ⇧F6 too', () => {
+    expect(pageKeyAction(f6(), { permissionBar: true })).toEqual({ kind: 'shell', action: 'focus-permission-bar' })
+    expect(pageKeyAction(f6({ shift: true }), { permissionBar: true })).toEqual({ kind: 'shell', action: 'focus-permission-bar' })
+  })
+
+  it('stays the page\'s own key when no bar is showing, on key up, and with ⌘, ⌃ or ⌥ held', () => {
+    expect(pageKeyAction(f6())).toBeNull()
+    expect(pageKeyAction(f6(), { permissionBar: false })).toBeNull()
+    expect(pageKeyAction(f6({ type: 'keyUp' }), { permissionBar: true })).toBeNull()
+    for (const held of ['meta', 'control', 'alt'] as const) expect(pageKeyAction(f6({ [held]: true }), { permissionBar: true })).toBeNull()
+    expect(isPaneKey(f6())).toBe(true)
+    expect(isPaneKey({ ...f6(), key: 'F5' })).toBe(false)
+  })
+
+  it('never takes a menu command\'s place', () => {
+    expect(pageKeyAction(key('l'), { permissionBar: true })).toEqual(pageKeyAction(key('l')))
+    expect(pageKeyAction(key('l'), { permissionBar: true })?.kind).toBe('command')
   })
 })
