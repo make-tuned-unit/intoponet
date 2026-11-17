@@ -171,7 +171,7 @@ function inspectPackagedApp(app) {
     '/out/preload/index.js',
     '/out/renderer/index.html',
   ]
-  for (const entry of readdirSync(path.join(desktop, 'out/main')).filter((name) => name.startsWith('worker-') && name.endsWith('.js'))) {
+  for (const entry of readdirSync(path.join(desktop, 'out/main')).filter((name) => name.endsWith('.js'))) {
     requiredEntries.push(`/out/main/${entry}`)
   }
   for (const entry of requiredEntries) {

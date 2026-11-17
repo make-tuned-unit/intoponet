@@ -120,6 +120,12 @@ const quickWindows: QuickWindows = new QuickWindows({
 const localFileGrants = new LocalFileGrants()
 // A saved link's file: never a pipe or device that would keep the app reading (incomingOpen.ts).
 const readSmallFile = readSavedLinkFile
+// An error nobody caught (a timer reading a page whose renderer has gone, say) must not stop the browser: without a
+// listener Electron shows a blocking alert and the app answers nothing until it is dismissed. It is logged, and the
+// app carries on with its tabs.
+process.on('uncaughtException', (error) => {
+  console.error('[intoponet] uncaught error in the main process:', error)
+})
 if (!app.requestSingleInstanceLock()) {
   // Intoponet is already open (with this profile): it opens what this launch was given.
   app.quit()
