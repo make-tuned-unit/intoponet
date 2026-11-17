@@ -49,6 +49,9 @@ applied. Unattributed blocks do not increment any page's counter.
 This evidence covers the probed redirect, DNS failure, service-worker fetch,
 and main-process session request in Electron 45. It does not establish that all
 service-worker, redirect, subframe, WebSocket, DNS, TLS, or Chromium-internal
-requests are intercepted. The packaged rule set remains a small fixture set;
-this work makes no blanket ad-removal, malware, or phishing-protection claim.
+requests are intercepted. At the time of this probe the packaged rule set was a
+small fixture set; since 2026-11-17 the app ships EasyList and EasyPrivacy (see
+`THIRD_PARTY_NOTICES.md` §4 and `packages/protection-engine/src/lists.ts`), applied
+to other sites' requests only. This work makes no malware or phishing-protection
+claim.
 The probe uses a hidden window, so it is not UI or accessibility evidence.
