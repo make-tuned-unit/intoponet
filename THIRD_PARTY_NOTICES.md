@@ -219,6 +219,9 @@ list of ad and tracker hosts and the page-element rules are all in
   EasyList, EasyPrivacy, the Ghostery adblocker library (with its `@ghostery/*`
   and `@remusao/*` packages), tldts and the Public Suffix List inside it, which
   one build of 2026-11-17 used, were removed the same day; that build was not pushed or released.
+  `docs/protection-provenance.md` records when they were in the repository and how the
+  replacement was produced. Because they were there, the list is described as independently
+  written and Intoponet's own, not as clean-room work.
   A unit test (`packages/protection-engine/src/blocklist.test.ts`) fails if a
   reference to any of them comes back in the source of the app, the packages
   or the build scripts, or in the dependency lock.

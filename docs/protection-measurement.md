@@ -5,6 +5,12 @@ from anyone else: no ad blocker's code, no filter list, no hosts file, no tracke
 the Public Suffix List. None is bundled, fetched or consulted, by the app or by the tools below.
 This page says where every part comes from, so the claim can be checked.
 
+The matcher and the list were independently written. They are not described as clean-room work:
+for about two hours on 17 November 2026, before this list existed, the repository held two outside
+filter lists and an outside blocking library, in commits that were never pushed or released.
+`docs/protection-provenance.md` records when they were there, how the replacement was produced and
+what has not been checked (no overlap comparison has been made).
+
 | Part | Where | How it was produced |
 |---|---|---|
 | The matcher | `packages/protection-engine/src/engine.ts` | Written for Intoponet. Rules by host in a map; a request is looked up by its host and each domain above it. |
