@@ -3405,6 +3405,13 @@ export const checks = {
         // Its page has a session of its own, with every protection a tab's session has.
         tourParity = await pageSessionProblems(ctx)
         const page = await ctx.page(tourPage)
+        // The page's own document, not the blank one before it has loaded (a cookie can't be set there).
+        let tourOrigin = ''
+        for (let i = 0; i < 80 && !tourOrigin.startsWith('http'); i += 1) {
+          tourOrigin = await page.evaluate(`location.origin`).catch(() => '')
+          if (!tourOrigin.startsWith('http')) await ctx.delay(250)
+        }
+        expect(tourOrigin.startsWith('http'), `The tour's page never loaded: its document is at "${tourOrigin}".`)
         await page.evaluate(`document.cookie = 'intoponet_tour=1; max-age=3600; path=/'; true`)
         tourSession = {
           ...(await tourSessionNow()),
