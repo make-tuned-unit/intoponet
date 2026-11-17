@@ -151,4 +151,47 @@ describe('beacon publisher', () => {
     raw = JSON.stringify({ resources: [{ ...good, title: 'x'.repeat(2 * 1024 * 1024) }] })
     expect(await publisher.read()).toEqual([])
   })
+
+  it('finds the beacons near a place without telling the registry which place', async () => {
+    const { files } = setup()
+    const resource = (url: string, topic: string, lat: number, lon: number) => ({ url, title: url, topic, places: [{ label: 'Somewhere', lat, lon }], publishers: '1', prominence: 1, firstAt: '2026-01-01T00:00:00.000Z', lastAt: '2026-01-01T00:00:00.000Z', contested: null })
+    const ottawa = resource('https://a.test/ottawa', 'Rivers', 45.4, -75.7)
+    const suva = resource('https://a.test/suva', 'Harbours', -18.1, 178.4)
+    const asked: string[] = []
+    let fail = false
+    let time = 1_000_000
+    const fetchImpl = (async (url: string) => {
+      asked.push(url)
+      if (fail) throw new TypeError('fetch failed')
+      return new Response(JSON.stringify({ resources: [ottawa, suva] }), { status: 200 })
+    }) as unknown as typeof fetch
+    const publisher = new BeaconPublisher({ files, box, fetchImpl, now: () => time })
+    await publisher.setRegistry('http://localhost:8787')
+
+    // Canada, then Fiji, then Canada for one topic: one request, and no place or topic in it.
+    expect((await publisher.read({ bbox: [39.4, -83.7, 51.4, -67.7] })).map((item) => item.url)).toEqual([ottawa.url])
+    expect((await publisher.read({ bbox: [-24.1, 170.4, -12.1, 186.4] })).map((item) => item.url)).toEqual([suva.url])
+    expect(await publisher.read({ bbox: [39.4, -83.7, 51.4, -67.7], topic: 'harbours' })).toEqual([])
+    expect((await publisher.read({ bbox: [39.4, -83.7, 51.4, -67.7], topic: 'RIVERS' })).map((item) => item.url)).toEqual([ottawa.url])
+    expect(asked).toEqual(['http://localhost:8787/v1/beacons?limit=100'])
+    for (const url of asked) expect(url).not.toMatch(/bbox|cell|topic|39\.4|83\.7|170\.4/)
+
+    // Two looks at once share the request; the list is asked for again only after ten minutes.
+    time += 10 * 60_000 + 1
+    await Promise.all([publisher.read({ bbox: [0, 0, 1, 1] }), publisher.read({ bbox: [2, 2, 3, 3] })])
+    expect(asked).toHaveLength(2)
+
+    // A failed request is reported and not kept: the next look asks again.
+    time += 10 * 60_000 + 1
+    fail = true
+    await expect(publisher.read({ bbox: [0, 0, 1, 1] })).rejects.toThrow()
+    fail = false
+    expect((await publisher.read({ bbox: [39.4, -83.7, 51.4, -67.7] })).map((item) => item.url)).toEqual([ottawa.url])
+    expect(asked).toHaveLength(4)
+
+    // Another registry is asked afresh.
+    await publisher.setRegistry('http://localhost:8788')
+    await publisher.read({ bbox: [0, 0, 1, 1] })
+    expect(asked.at(-1)).toBe('http://localhost:8788/v1/beacons?limit=100')
+  })
 })
