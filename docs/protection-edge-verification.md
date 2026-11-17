@@ -50,8 +50,8 @@ This evidence covers the probed redirect, DNS failure, service-worker fetch,
 and main-process session request in Electron 45. It does not establish that all
 service-worker, redirect, subframe, WebSocket, DNS, TLS, or Chromium-internal
 requests are intercepted. At the time of this probe the packaged rule set was a
-small fixture set; since 2026-11-17 the app ships EasyList and EasyPrivacy (see
-`THIRD_PARTY_NOTICES.md` §4 and `packages/protection-engine/src/lists.ts`), applied
-to other sites' requests only. This work makes no malware or phishing-protection
+small fixture set; since 2026-11-17 the app blocks with Intoponet's own list of ad
+and tracker hosts (`packages/protection-engine/data/blocklist.json`, see
+`docs/protection-measurement.md`), applied to other sites' requests only. This work makes no malware or phishing-protection
 claim.
 The probe uses a hidden window, so it is not UI or accessibility evidence.

@@ -6,8 +6,8 @@
 //   node scripts/protection-classify.mjs --crawl scratchpad/own-protection/crawl
 //   review the classifier's "new" entries (docs/protection-measurement.md says how), run the tests, commit.
 // The hold-out check after that:
-//   npx electron scripts/protection-crawl.mjs --set holdout --out scratchpad/own-protection/holdout-off
-//   npx electron scripts/protection-crawl.mjs --set holdout --protect --out scratchpad/own-protection/holdout-on
+//   npx electron scripts/protection-crawl.mjs --set holdout --isolate --out scratchpad/own-protection/holdout-off
+//   npx electron scripts/protection-crawl.mjs --set holdout --isolate --protect --out scratchpad/own-protection/holdout-on
 //   node scripts/protection-holdout.mjs
 //
 // What it does: with Electron (the repo's own), in a temporary profile that is deleted afterwards,
@@ -25,7 +25,7 @@
 //
 // Options: --set build|holdout  --limit N  --out DIR  --concurrency N (default 5)  --protect (block
 // with the engine as the app does)  --only id,id  --urls FILE (one address per line, instead of outlets)
-// --shots (save a picture of each page)  --fresh-cookies (clear cookies before each outlet)
+// --shots (save a picture of each page)  --isolate (a cookie jar per outlet, for counting cookies)
 
 import { app, BrowserWindow, session } from 'electron'
 import { execFileSync } from 'node:child_process'
@@ -52,6 +52,12 @@ const LOAD_TIMEOUT_MS = 20_000
 const profile = mkdtempSync(join(tmpdir(), 'intoponet-crawl-'))
 app.setPath('userData', profile)
 app.disableHardwareAcceleration()
+// Never in the way of whoever is using this Mac: no Dock icon, no activation, and every window is
+// created hidden and drawn off screen (see visit); nothing here shows a window or asks for focus.
+if (process.platform === 'darwin') {
+  app.setActivationPolicy('accessory')
+  app.dock?.hide()
+}
 app.commandLine.appendSwitch('autoplay-policy', 'user-gesture-required')
 app.userAgentFallback = app.userAgentFallback.replace(/ (?:Electron|Intoponet|intoponet)\/\S+/gi, '').replace(/\s{2,}/g, ' ').trim()
 
@@ -289,11 +295,12 @@ const ARTICLE_LINK = `(() => {
 // ---- Visiting ------------------------------------------------------------------------------------
 
 let ses
+let isolated = 0
 
-async function visit(outlet, kind, url) {
+async function visit(outlet, kind, url, pageSession = ses) {
   const window = new BrowserWindow({
-    show: false, width: 1366, height: 900,
-    webPreferences: { offscreen: true, session: ses, backgroundThrottling: false, sandbox: true, contextIsolation: true, nodeIntegration: false },
+    show: false, focusable: false, skipTaskbar: true, width: 1366, height: 900,
+    webPreferences: { offscreen: true, session: pageSession, backgroundThrottling: false, sandbox: true, contextIsolation: true, nodeIntegration: false },
   })
   const contents = window.webContents
   contents.setAudioMuted(true)
@@ -347,7 +354,7 @@ async function visit(outlet, kind, url) {
       if (image) writeFileSync(join(outDir, `${outlet.id.replace(/[^a-z0-9-]/gi, '_')}-${kind}.png`), image.resize({ width: 1000 }).toPNG())
     }
     try {
-      const cookies = await ses.cookies.get({})
+      const cookies = await pageSession.cookies.get({})
       const other = cookies.filter((cookie) => siteOfHost(cookie.domain.replace(/^\./, '')) !== page.site)
       page.cookies = { own: cookies.length - other.length, other: other.length, otherSites: [...new Set(other.map((cookie) => siteOfHost(cookie.domain.replace(/^\./, ''))))].length }
     } catch { /* not recorded */ }
@@ -375,9 +382,14 @@ async function newestArticle(outlet) {
 }
 
 async function measure(outlet) {
-  if (flag('fresh-cookies')) await ses.clearStorageData({ storages: ['cookies', 'localstorage', 'indexdb', 'serviceworkers', 'cachestorage'] }).catch(() => undefined)
+  // --isolate: every outlet gets a cookie jar of its own, so the cookies counted after its pages are its pages' alone.
+  let pageSession = ses
+  if (flag('isolate')) {
+    pageSession = session.fromPartition(`crawl-${(isolated += 1)}`)
+    wireSession(pageSession)
+  }
   if (outlet.urls) {
-    for (const [index, url] of outlet.urls.entries()) await visit(outlet, index ? 'article' : 'home', url)
+    for (const [index, url] of outlet.urls.entries()) await visit(outlet, index ? 'article' : 'home', url, pageSession)
     return
   }
   let article = await newestArticle(outlet)
@@ -386,14 +398,13 @@ async function measure(outlet) {
     homeUrl = article ? `${new URL(article).origin}/` : `https://${siteOfHost(new URL(outlet.feeds[0]).hostname)}/`
   } catch { return }
   // A feed served by a feed host (feedburner and the like) links to the outlet; a feed that links elsewhere is not used.
-  const home = await visit(outlet, 'home', homeUrl)
+  const home = await visit(outlet, 'home', homeUrl, pageSession)
   if (!article || siteOfHost(hostOf(article)) !== home.site) article = home.articleLink || article
-  if (article && hostOf(article)) await visit(outlet, 'article', article)
+  if (article && hostOf(article)) await visit(outlet, 'article', article, pageSession)
 }
 
 app.on('window-all-closed', () => { /* the run decides when to quit */ })
 app.whenReady().then(async () => {
-  if (app.dock) app.dock.hide()
   ses = session.fromPartition('crawl')
   wireSession(ses)
   let outlets

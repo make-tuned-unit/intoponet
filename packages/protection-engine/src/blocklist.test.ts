@@ -52,20 +52,20 @@ describe("Intoponet's own list of ad and tracker hosts", () => {
   })
 
   it('lists nothing that is on the never-block list', () => {
+    const wrong: string[] = []
     for (const entry of blocklistEntries) {
       const narrowed = !!(entry.paths || entry.pathIncludes)
-      for (const domain of never) {
-        // Not a never-block host and not a host under one.
-        expect(under(entry.host, domain), `${entry.host} is on the never-block list (${domain})`).toBe(false)
-        // (A listed domain above a never-block host is fine: the engine lets the never-block host through, see defaultRules.)
-      }
+      // Not a never-block host and not a host under one.
+      // (A listed domain above a never-block host is fine: the engine lets the never-block host through, see defaultRules.)
+      for (const domain of never) if (under(entry.host, domain)) wrong.push(`${entry.host} is on the never-block list (${domain})`)
       for (const domain of handWrittenOnly) {
         // A domain that also serves what pages need is never blocked whole, and only by a hand-written rule.
-        if (!narrowed) expect(under(domain, entry.host), `${entry.host} would block all of ${domain}`).toBe(false)
-        if (under(entry.host, domain)) expect(entry.source.startsWith('authored'), `${entry.host}: only a hand-written rule may touch ${domain}`).toBe(true)
+        if (!narrowed && under(domain, entry.host)) wrong.push(`${entry.host} would block all of ${domain}`)
+        if (under(entry.host, domain) && !entry.source.startsWith('authored')) wrong.push(`${entry.host}: only a hand-written rule may touch ${domain}`)
       }
     }
-    for (const domain of never) for (const other of handWrittenOnly) expect(domain === other, `${domain} is on both lists`).toBe(false)
+    for (const domain of never) if (handWrittenOnly.includes(domain)) wrong.push(`${domain} is on both lists`)
+    expect(wrong).toEqual([])
   })
 
   it('never blocks what sites need, whatever the page', () => {

@@ -151,6 +151,8 @@
     ["axept.io", "Axeptio consent"],
     ["consentmanager.net", "consentmanager"],
     ["cmp.inmobi.com", "InMobi consent"],
+    ["inmobi-choice.io", "InMobi consent (seen in the measurement)"],
+    ["dmxleo.com", "Dailymotion player (seen in the measurement)"],
     ["sp-prod.net", "Sourcepoint consent"],
     ["privacy-mgmt.com", "Sourcepoint consent"],
     ["privacymanager.io", "LiveRamp consent"],

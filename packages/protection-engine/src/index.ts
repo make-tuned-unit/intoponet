@@ -9,7 +9,7 @@ export type {
   ResourceType,
 } from './types'
 export { fixtureHideSelectors, fixtureRules } from './fixtures'
-export { blocklistEntries, blocklistMeasurement, blocklistSummary, defaultRules } from './blocklist'
+export { blocklistEntries, blocklistMeasurement, blocklistSummary, defaultHideSelectors, defaultRules, measuredSlotSelectors } from './blocklist'
 export type { BlocklistEntry } from './blocklist'
 export { LocalProtectionEngine, mapElectronResourceType } from './engine'
 export { sameSite, siteOfHost } from './site'

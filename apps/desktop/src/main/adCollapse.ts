@@ -7,6 +7,8 @@
  * container that also holds the article is never touched.
  */
 
+import { measuredSlotSelectors } from '@intoponet/protection-engine'
+
 /** What an ad slot's own label may say (it is then hidden with the slot). */
 export const AD_LABEL = /^(advertisement|advertisements|advertising|advert|ad|ads|sponsored|sponsored content|promoted|anzeige|werbung|publicité|publicidade|publicidad|pubblicità|reklama|reklame|annonce|annons|annonse|advertentie|mainos|reklam|διαφήμιση|реклама|реклама и спонсоры|广告|廣告|広告|광고|إعلان|פרסומת|विज्ञापन)$/i
 
@@ -17,6 +19,8 @@ export const AD_SLOT_SELECTOR = [
   '[class~="ad"]', '[class~="ads"]', '[class~="advert"]', '[class~="advertisement"]', '[class*="ad-placeholder"]',
   '[data-ad]', '[data-ad-slot]', '[data-ad-unit]', '[data-ad-placeholder]', '[data-google-query-id]',
   '[aria-label="Advertisement" i]', '[aria-label="Ad" i]', 'amp-ad', 'ins.adsbygoogle',
+  // Slot names Intoponet's own measurement of news pages found (packages/protection-engine/data/element-rules.json).
+  ...measuredSlotSelectors,
 ].join(',')
 
 export function collapseAdSlotsScript(blockedUrls: readonly string[]): string {

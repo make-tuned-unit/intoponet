@@ -1,6 +1,7 @@
 import blocklist from '../data/blocklist.json'
+import elementRules from '../data/element-rules.json'
 import neverBlock from '../data/never-block.json'
-import { fixtureRules } from './fixtures'
+import { fixtureHideSelectors, fixtureRules } from './fixtures'
 import type { CompiledRule } from './types'
 
 /** One entry of data/blocklist.json: a rule, with who it is and how it got on the list. */
@@ -38,3 +39,11 @@ export const defaultRules: CompiledRule[] = [
   })),
   ...neverBlock.never.map(([host]): CompiledRule => ({ id: `never-${host}`, host: host as string, category: 'other', allow: true })),
 ]
+
+type ElementRule = { selector: string; name: string; publishers: number; onlyAds: number; withAnAd: number; of: number }
+
+/** Containers hidden on every page: the hand-written selectors, and the names the measurement showed to hold nothing but ads. */
+export const defaultHideSelectors: string[] = [...fixtureHideSelectors, ...(elementRules.hide as ElementRule[]).map((rule) => rule.selector)]
+
+/** Ad slots the measurement found: hidden only once nothing but an ad label is left in them (the app's empty-slot cleanup). */
+export const measuredSlotSelectors: string[] = (elementRules.whenEmpty as ElementRule[]).map((rule) => rule.selector)

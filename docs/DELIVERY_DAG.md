@@ -124,8 +124,9 @@ flowchart LR
 “Provisional” means implemented behind the engine abstraction before ADR-001;
 it must be revalidated against the selected host.
 
-`PROTECT4` stays blocked until EasyList / EasyPrivacy / adblock-rust licence and
-attribution review. Do not fetch or bundle those lists before that review.
+`PROTECT4` was decided on 2026-11-17: no public filter list and no ad blocker's
+code is used. Intoponet blocks with its own matcher and its own list
+(`docs/protection-measurement.md`). Do not fetch or bundle outside lists.
 
 ### Current implementation evidence
 

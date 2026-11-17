@@ -1,5 +1,4 @@
-import { defaultRules } from './blocklist'
-import { fixtureHideSelectors } from './fixtures'
+import { defaultHideSelectors, defaultRules } from './blocklist'
 import { sameSite } from './site'
 import type {
   BlockingCategory,
@@ -21,7 +20,7 @@ type UrlParts = { origin: string; host: string; path: string }
  * faster than `new URL`, and this runs for every request). Addresses reach the matcher from
  * Chromium, already normalised: lower-case host, no default port. Null for anything else.
  */
-export function urlParts(url: string | null): UrlParts | null {
+export function urlParts(url: string | null, withOrigin = true): UrlParts | null {
   if (!url) return null
   const scheme = url.indexOf('://')
   if (scheme < 2 || scheme > 5) return null
@@ -39,7 +38,8 @@ export function urlParts(url: string | null): UrlParts | null {
   let authority = url.slice(start, end)
   const at = authority.lastIndexOf('@')
   if (at >= 0) authority = authority.slice(at + 1)
-  authority = authority.toLowerCase()
+  // (Chromium sends hosts in lower case; an address from anywhere else is lowered here.)
+  if (/[A-Z]/.test(authority)) authority = authority.toLowerCase()
   let host = authority
   const colon = host.lastIndexOf(':')
   if (colon >= 0 && host.indexOf(']', colon) < 0) host = host.slice(0, colon)
@@ -53,7 +53,7 @@ export function urlParts(url: string | null): UrlParts | null {
       break
     }
   }
-  return { origin: `${url.slice(0, start).toLowerCase()}${authority}`, host, path: url.slice(end, pathEnd) || '/' }
+  return { origin: withOrigin ? `${url.slice(0, start).toLowerCase()}${authority}` : '', host, path: url.slice(end, pathEnd) || '/' }
 }
 
 function ruleApplies(rule: CompiledRule, path: string, type: ResourceType): boolean {
@@ -82,7 +82,7 @@ export class LocalProtectionEngine implements ProtectionAdapter {
   /** The pages requests are coming from: a few addresses, asked about thousands of times. */
   private readonly pageCache = new Map<string, UrlParts | null>()
 
-  constructor(rules: readonly CompiledRule[] = defaultRules, hideSelectors: readonly string[] = fixtureHideSelectors) {
+  constructor(rules: readonly CompiledRule[] = defaultRules, hideSelectors: readonly string[] = defaultHideSelectors) {
     for (const rule of rules) {
       const host = rule.host.toLowerCase()
       const list = this.rulesByHost.get(host)
@@ -171,7 +171,7 @@ export class LocalProtectionEngine implements ProtectionAdapter {
 
   evaluate(ctx: RequestContext): BlockingDecision {
     if (ctx.resourceType === 'document') return allow
-    const request = urlParts(ctx.requestUrl)
+    const request = urlParts(ctx.requestUrl, false)
     if (!request) return allow
     // Nearly every request stops here: there is no rule for its host.
     const rule = this.blockingRule(request.host, request.path, ctx.resourceType)
