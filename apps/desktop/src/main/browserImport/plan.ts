@@ -69,9 +69,17 @@ export type WorkspaceImportPlan = {
   favourites: Page[]
   counts: { workspaces: number; pinned: number; foldered: number; open: number; favourites: number }
   skipped: { duplicates: number; overLimit: number; spaces: number }
+  /**
+   * Pinned tabs, tabs in folders and favourites that found no room (a full workspace, or a space over
+   * the limit of workspaces), by the space they were in: kept as a collection, so none is lost.
+   */
+  keep: Array<{ space: string; pages: Page[] }>
 }
 
 export type ExistingWorkspace = { id: string; name: string; urls: string[]; room: number }
+
+/** The collection that keeps favourites which found no room in the favourites row or a workspace. */
+export const FAVOURITES_KEPT = 'Imported favourites'
 
 /** Every page in a folder plan, depth first. */
 export function folderPages(folders: readonly FolderPlan[]): Page[] {
@@ -99,10 +107,16 @@ export function planWorkspaces(input: {
   include: { pinned: boolean; open: boolean }
   maxFolderDepth: number
 }): WorkspaceImportPlan {
-  const plan: WorkspaceImportPlan = { workspaces: [], favourites: [], counts: { workspaces: 0, pinned: 0, foldered: 0, open: 0, favourites: 0 }, skipped: { duplicates: 0, overLimit: 0, spaces: 0 } }
+  const plan: WorkspaceImportPlan = { workspaces: [], favourites: [], counts: { workspaces: 0, pinned: 0, foldered: 0, open: 0, favourites: 0 }, skipped: { duplicates: 0, overLimit: 0, spaces: 0 }, keep: [] }
   let free = Math.max(0, input.freeWorkspaces)
   const planned: Array<{ plan: WorkspacePlan; seen: Set<string>; room: { left: number } }> = []
-  const take = (page: Page, seen: Set<string>, room: { left: number }): Page | null => {
+  const kept = (space: string, page: Page): void => {
+    let entry = plan.keep.find((item) => item.space === space)
+    if (!entry) plan.keep.push(entry = { space, pages: [] })
+    entry.pages.push({ url: sameAddress(page.url), title: page.title.slice(0, 180) })
+  }
+  /** `keep`: the space whose collection the page joins when the workspace has no room (pinned tabs, tabs in folders, favourites). */
+  const take = (page: Page, seen: Set<string>, room: { left: number }, keep: string | null): Page | null => {
     const url = sameAddress(page.url)
     if (seen.has(url)) {
       plan.skipped.duplicates += 1
@@ -111,20 +125,25 @@ export function planWorkspaces(input: {
     seen.add(url)
     if (room.left <= 0) {
       plan.skipped.overLimit += 1
+      if (keep) kept(keep, page)
       return null
     }
     room.left -= 1
     return { url, title: page.title.slice(0, 180) }
   }
+  const pagesOf = (nodes: readonly TreeNode[]): Page[] => nodes.flatMap((node) => (node.kind === 'tab' ? [node] : pagesOf(node.children)))
   for (const space of input.spaces) {
-    const name = space.title.replace(/\s+/g, ' ').trim().slice(0, 40) || 'Imported'
+    // As a workspace keeps its name (workspaceName): one line, at most 40 characters, no space at either end.
+    const name = space.title.replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40).trim() || 'Imported'
     // The same name twice in one import: one workspace.
     const again = planned.find((entry) => entry.plan.name.toLowerCase() === name.toLowerCase())
-    const existing = input.existing.find((workspace) => workspace.name.toLowerCase() === name.toLowerCase())
+    const existing = input.existing.find((workspace) => workspace.name.trim().toLowerCase() === name.toLowerCase())
     let entry = again
     if (!entry) {
       if (!existing && free <= 0) {
         plan.skipped.spaces += 1
+        // No workspace for this space: its pinned tabs and the tabs in its folders are kept as a collection.
+        if (input.include.pinned) for (const page of pagesOf(space.tree)) kept(name, page)
         continue
       }
       if (!existing) free -= 1
@@ -140,7 +159,7 @@ export function planWorkspaces(input: {
       const made: FolderPlan = into ?? { name: node.name.slice(0, 80) || 'Untitled folder', tabs: [], children: [] }
       for (const child of node.children) {
         if (child.kind === 'tab') {
-          const page = take(child, seen, room)
+          const page = take(child, seen, room, name)
           if (page) made.tabs.push(page)
         } else if (depth >= input.maxFolderDepth) folder(child, depth, made)
         else {
@@ -153,7 +172,7 @@ export function planWorkspaces(input: {
     if (input.include.pinned) {
       for (const node of space.tree) {
         if (node.kind !== 'tab') continue
-        const page = take(node, seen, room)
+        const page = take(node, seen, room, name)
         if (page) entry.plan.pinned.push(page)
       }
       for (const node of space.tree) {
@@ -164,7 +183,7 @@ export function planWorkspaces(input: {
     }
     if (input.include.open) {
       for (const tab of space.open) {
-        const page = take(tab, seen, room)
+        const page = take(tab, seen, room, null)
         if (page) entry.plan.open.push(page)
       }
     }
@@ -185,9 +204,12 @@ export function planWorkspaces(input: {
       continue
     }
     const first = planned[0]
-    const page = first ? take(favourite, first.seen, first.room) : null
+    const page = first ? take(favourite, first.seen, first.room, FAVOURITES_KEPT) : null
     if (page) first!.plan.pinned.push(page)
-    else if (!first) plan.skipped.overLimit += 1
+    else if (!first) {
+      plan.skipped.overLimit += 1
+      kept(FAVOURITES_KEPT, favourite)
+    }
   }
   // An existing workspace that gains nothing is left alone; a new one is made even when empty (the space existed).
   plan.workspaces = planned.map((entry) => entry.plan).filter((workspace) => workspace.existingId === null || workspace.pinned.length || workspace.folders.length || workspace.open.length)

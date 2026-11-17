@@ -5550,6 +5550,9 @@ function addImportedWorkspaces(plan: WorkspaceImportPlan): void {
   schedulePersistentStateSave()
 }
 
+/** The addresses a tab stands for when importing again: where it is now, and (pinned) its home, which it came in as. */
+const heldAddresses = (tab: OpenTab): string[] => (tab.home && tab.home !== tab.url ? [tab.url, tab.home] : [tab.url])
+
 /** Settings › Import from another browser (browserImport/service.ts). */
 function wireImportFromBrowsers(): void {
   const addImportedTabs = (tabs: ImportedTab[]): void => {
@@ -5564,7 +5567,7 @@ function wireImportFromBrowsers(): void {
   }
   wireBrowserImport(handleFromShell, new BrowserImportService({
     root: () => importRoot(process.env, app.getPath('userData')),
-    tabs: { urls: () => openTabs.map((tab) => tab.url), room: () => MAX_TABS - openTabs.length, limit: MAX_TABS, add: addImportedTabs },
+    tabs: { urls: () => openTabs.flatMap(heldAddresses), room: () => MAX_TABS - openTabs.length, limit: MAX_TABS, add: addImportedTabs },
     history: () => browsingData?.history ?? null,
     passwords: () => passwords,
     toOrigin: passwordOrigin,
@@ -5572,7 +5575,7 @@ function wireImportFromBrowsers(): void {
       existing: () => workspaces.workspaces.map((workspace) => {
         const shown = workspace.id === workspaces.activeId
         const held = shown ? openTabs.filter((tab) => !privateViews.has(tab.view)) : workspaces.parkedOf(workspace.id)?.tabs ?? []
-        return { id: workspace.id, name: workspace.name, urls: held.map((tab) => tab.url), room: MAX_TABS - (shown ? openTabs.length : held.length) }
+        return { id: workspace.id, name: workspace.name, urls: held.flatMap(heldAddresses), room: MAX_TABS - (shown ? openTabs.length : held.length) }
       }),
       favouriteUrls: () => workspaces.favourites.map((favourite) => favourite.url),
       freeWorkspaces: () => MAX_WORKSPACES - workspaces.workspaces.length,
