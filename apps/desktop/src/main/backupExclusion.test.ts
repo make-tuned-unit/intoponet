@@ -9,6 +9,7 @@ import {
   backupExclusionStatus,
   readBackupExclusionIntent,
   setBackupExclusion,
+  tmutilTimeoutMs,
   watchBackupExclusionPaths,
   type BackupExclusionAdapter,
   type BackupExclusionWatchAdapter,
@@ -254,6 +255,13 @@ describe('Time Machine backup exclusion intent', () => {
     stop()
     await vi.waitFor(() => expect(onStateChanged).toHaveBeenCalledOnce())
     expect(run).not.toHaveBeenCalled()
+  })
+
+  it('gives tmutil time for every path it is asked about, not one short limit for all of them', () => {
+    // 11 s a path was measured: four stores must not be cut off after the first.
+    expect(tmutilTimeoutMs(['addexclusion', '/a'])).toBeGreaterThanOrEqual(15_000)
+    expect(tmutilTimeoutMs(['addexclusion', '/a', '/b', '/c', '/d'])).toBeGreaterThanOrEqual(4 * 15_000)
+    expect(tmutilTimeoutMs(['isexcluded'])).toBeGreaterThan(0)
   })
 
   it('treats malformed persisted intent as unknown', async () => {

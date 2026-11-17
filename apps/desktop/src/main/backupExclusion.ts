@@ -15,11 +15,21 @@ export type BackupExclusionAdapter = {
   run: (args: string[]) => Promise<{ stdout: string }>
 }
 
+/**
+ * How long one tmutil call may take: time for every path it names. tmutil handles its paths one after another
+ * and can take over ten seconds for each (11 s each was measured on a busy Mac). With one fixed ten-second limit
+ * it was stopped part-way: the switch reported a failure and the paths it had not reached (history, last in
+ * the list) stayed in backups.
+ */
+export function tmutilTimeoutMs(args: string[]): number {
+  return Math.max(1, args.length - 1) * 30_000
+}
+
 const systemAdapter: BackupExclusionAdapter = {
   platform: process.platform,
   available: existsSync(TMUTIL),
   exists: existsSync,
-  run: async (args) => runExecFile(TMUTIL, args, { timeout: 10_000 }),
+  run: async (args) => runExecFile(TMUTIL, args, { timeout: tmutilTimeoutMs(args) }),
 }
 
 /** A missing intent file means the user has not enabled the exclusion. */
