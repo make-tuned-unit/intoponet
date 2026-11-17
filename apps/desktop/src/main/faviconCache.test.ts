@@ -120,6 +120,13 @@ describe('favicon cache', () => {
     await cache.forgetSince(0)
     expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({})
   })
+
+  it('forgets the icons of sites added to the sites to leave out', async () => {
+    writeFileSync(file, JSON.stringify({ 'www.bank.com': { data: 'data:image/png;base64,AA==', at: 1 }, 'news.example.org': { data: 'data:image/png;base64,AA==', at: 1 } }))
+    const cache = new FaviconCache(file, (async () => png()) as unknown as typeof fetch)
+    await cache.forgetHosts((host) => host.replace(/^www\./, '') === 'bank.com')
+    expect(Object.keys(JSON.parse(readFileSync(file, 'utf8')) as Record<string, unknown>)).toEqual(['news.example.org'])
+  })
 })
 
 describe('icon addresses', () => {

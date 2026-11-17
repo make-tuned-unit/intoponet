@@ -47,6 +47,15 @@ describe('HistoryStore', () => {
     expect(history.size).toBe(0)
   })
 
+  it('says whether a visit is kept at all, for what else is remembered about a visit (its site icon)', () => {
+    const { history } = store({ excluded: ['bank.com'] })
+    expect(history.keeps('https://news.example/a')).toBe(true)
+    expect(history.keeps('https://app.bank.com/login')).toBe(false)
+    expect(history.keeps('file:///Users/me/x.html')).toBe(false)
+    history.setPolicy({ footprints: false, retentionDays: 0 })
+    expect(history.keeps('https://news.example/a')).toBe(false)
+  })
+
   it('drops visits older than the retention window', () => {
     const { history, setNow } = store()
     setNow(NOON - 40 * DAY)

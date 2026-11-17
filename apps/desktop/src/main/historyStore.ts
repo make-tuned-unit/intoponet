@@ -111,10 +111,17 @@ export class HistoryStore {
     if (changed || removed) this.options.onChange?.()
   }
 
+  /**
+   * Whether a visit to this address by a tab that is not private is kept at all: recent pages are on, and
+   * the site is not one to leave out. What else is remembered about a visit (its site's icon) follows this.
+   */
+  keeps(url: string): boolean {
+    return this.policyValue.footprints && recordable(url) && !isExcludedSite(url, this.options.excludedSites())
+  }
+
   /** Record a visit. Returns false when the rules say it is not kept. */
   record(input: { url: string; title: string; isPrivate: boolean; workspaceId?: string }): boolean {
-    if (input.isPrivate || !this.policyValue.footprints || !recordable(input.url)) return false
-    if (isExcludedSite(input.url, this.options.excludedSites())) return false
+    if (input.isPrivate || !this.keeps(input.url)) return false
     const now = this.now()
     const title = input.title.trim().slice(0, 1_000)
     const last = this.visits[0]

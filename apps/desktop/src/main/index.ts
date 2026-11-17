@@ -207,7 +207,7 @@ import { KnowledgeService } from './knowledge/service'
 import { LayaService } from './laya/service'
 import { openLayaEmbedder } from './laya/openEmbedder'
 import { TranslateService } from './translate/service'
-import { FaviconCache, isIconHost } from './faviconCache'
+import { FaviconCache, isIconHost, SITE_ICON_PARTITION } from './faviconCache'
 import { ArticlePreviews, previewableUrl } from './articlePreview'
 import { ACCESS_SCRIPT, ACCESS_WORLD_ID, parseAccess } from './access/pageAccess'
 import { backupExclusionAvailable, backupExclusionStatus, readBackupExclusionIntent, setBackupExclusion, watchBackupExclusionPaths } from './backupExclusion'
@@ -3960,8 +3960,9 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
     if (pageView === view || companionView === view) emitPanelState()
   })
   view.webContents.on('page-favicon-updated', (_event, favicons) => {
-    // Private and untracked tabs leave nothing in favicons.json.
-    if (favicons[0] && !privateViews.has(view) && !untrackedViews.has(view)) faviconCache?.remember(view.webContents.getURL(), favicons[0])
+    // Private and untracked tabs leave nothing in favicons.json (it names each site in plain text); nor does a visit
+    // that history does not keep: a site to leave out, or any site while recent pages are off.
+    if (favicons[0] && !privateViews.has(view) && !untrackedViews.has(view) && browsingData?.history.keeps(view.webContents.getURL())) faviconCache?.remember(view.webContents.getURL(), favicons[0])
     updateTabIcon(view, favicons[0] ?? '')
   })
   view.webContents.on('found-in-page', (_event, result) => {
@@ -5845,6 +5846,7 @@ app.whenReady().then(async () => {
         excludedSites = command.sites
         try { await trackedWrite(excludedSitesFile, JSON.stringify(excludedSites)) } catch { /* applies this session */ }
         browsingData?.excludedSitesChanged()
+        void faviconCache?.forgetHosts((host) => isExcludedSite(`https://${host}/`, excludedSites))
         await emitPrivacy()
       }
       if (command.type === 'set-backup-exclusion') {
@@ -5895,7 +5897,13 @@ app.whenReady().then(async () => {
   })
   startup('site icons', () => {
     // Site icons for bookmarks: from visited pages or the site's own /favicon.ico, cached on this Mac.
-    faviconCache = new FaviconCache(join(app.getPath('userData'), 'favicons.json'))
+    // Fetched through Chromium's network stack, in an in-memory profile of its own: the site's name is looked up
+    // over encrypted DNS like the page's was (main's plain fetch asks the system resolver in the clear, naming
+    // each site just visited to the local network), and no cookies or sign-ins from your browsing are sent.
+    faviconCache = new FaviconCache(
+      join(app.getPath('userData'), 'favicons.json'),
+      ((input: unknown, init?: unknown) => session.fromPartition(SITE_ICON_PARTITION).fetch(String(input), init as RequestInit)) as typeof fetch,
+    )
     handleFromShell('intoponet:favicons', (_event, value: unknown) => {
       if (!Array.isArray(value) || value.length > 300) throw new Error('Invalid hosts.')
       return faviconCache!.get(value.filter((host): host is string => typeof host === 'string' && isIconHost(host)))

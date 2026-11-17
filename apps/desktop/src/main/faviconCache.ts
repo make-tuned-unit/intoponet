@@ -9,6 +9,8 @@ import { isPrivateAddress } from './publicAddress'
  * site's own /favicon.ico — never from a third-party icon service, and
  * fetched without cookies. Renderers only ever receive data URLs.
  */
+/** The in-memory profile site icons are fetched in (no cookies, nothing kept on disk). */
+export const SITE_ICON_PARTITION = 'intoponet-site-icons'
 const MAX_BYTES = 100_000
 const RETRY_MS = 7 * 24 * 3_600_000
 /** Hosts kept; the least recently used are dropped beyond this. */
@@ -104,6 +106,19 @@ export class FaviconCache {
   async forgetSince(since: number): Promise<void> {
     this.forgotten += 1
     for (const [host, entry] of this.entries) if (entry.at >= since) this.entries.delete(host)
+    this.remembering.clear()
+    this.inflight.clear()
+    if (this.saveTimer) clearTimeout(this.saveTimer)
+    this.saveTimer = null
+    await writeFileAtomic(this.file, JSON.stringify(Object.fromEntries(this.entries))).catch(() => undefined)
+  }
+
+  /** Sites were added to "Sites to leave out": icons kept for them go, and the file is rewritten now. */
+  async forgetHosts(leftOut: (host: string) => boolean): Promise<void> {
+    let removed = false
+    for (const host of [...this.entries.keys()]) if (leftOut(host)) removed = this.entries.delete(host) || removed
+    if (!removed) return
+    this.forgotten += 1
     this.remembering.clear()
     this.inflight.clear()
     if (this.saveTimer) clearTimeout(this.saveTimer)
