@@ -110,6 +110,10 @@ describe('dates the source states (2026-11-16 audit)', () => {
     // Unchanged: a full date in the same year as the opening one refines it; a lone full date is used wherever it stands.
     expect(sentenceDate('In 2019, the agreement was signed on 5 May 2019 in Geneva.', 2026)?.iso).toBe('2019-05-05')
     expect(sentenceDate('The last recorded was the Hōei eruption which started on December 16, 1707, and ended about January 1, 1708 (16 days).', 2026)?.iso).toBe('1707-12-16')
+    // An opening that only sets the scene ("Since", "After") leaves the stated date as the event's.
+    expect(sentenceDate('Since 2007, Israel and Hamas have fought four wars, and on 7 October 2023 Hamas led an attack on southern Israel.', 2026)?.iso).toBe('2023-10-07')
+    expect(sentenceDate('After 1945 the peninsula was divided, and on 25 June 1950 the North invaded the South.', 2026)?.iso).toBe('1950-06-25')
+    expect(sentenceDate('Since 2007, Israel and Hamas have engaged in conflict, including four wars.', 2026)?.iso).toBe('2007')
   })
 })
 

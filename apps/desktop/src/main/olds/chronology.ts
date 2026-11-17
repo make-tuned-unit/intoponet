@@ -48,7 +48,9 @@ export function sentenceDate(sentence: string, currentYear: number, impliedYear?
   const first = stated.sort((a, b) => a.at - b.at)[0]?.date
   if (leadYear && ok(Number(leadYear[1]))) {
     // "In 1920 Keynes proposed …, who would later found in June 1947 …" is about 1920: a later date in another year does not move it.
-    return first && first.iso.startsWith(leadYear[1]!) ? first : { iso: leadYear[1]!, precision: 'year', label: leadYear[1]! }
+    // ("Since 2007, …; on 7 October 2023 …" and "After 1945 …" only set the scene: the date stated is the event's.)
+    const inThatYear = /^(?:In|During|Throughout|Early in|Late in|In early|In late|In mid-)\s*\d{4}\b/.test(sentence)
+    return first && (!inThatYear || first.iso.startsWith(leadYear[1]!)) ? first : { iso: leadYear[1]!, precision: 'year', label: leadYear[1]! }
   }
   if (first) return first
   // A single explicit year inside a sentence also dates an event ("The first
