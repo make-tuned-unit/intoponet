@@ -9,6 +9,8 @@ import { isPrivateAddress } from './publicAddress'
  * site's own /favicon.ico — never from a third-party icon service, and
  * fetched without cookies. Renderers only ever receive data URLs.
  */
+/** The in-memory profile site icons are fetched in (no cookies, nothing kept on disk). */
+export const SITE_ICON_PARTITION = 'intoponet-site-icons'
 const MAX_BYTES = 100_000
 const RETRY_MS = 7 * 24 * 3_600_000
 /** Hosts kept; the least recently used are dropped beyond this. */
@@ -29,6 +31,8 @@ export class FaviconCache {
   /** Page-reported icons: one fetch per host at a time, then a pause before the next. */
   private readonly remembering = new Map<string, number>()
   private saveTimer: ReturnType<typeof setTimeout> | null = null
+  /** Goes up when icons are forgotten, so a fetch begun before that does not bring its site back. */
+  private forgotten = 0
 
   constructor(private readonly file: string, private readonly fetchImpl: typeof fetch = fetch, private readonly now: () => number = Date.now) {
     try {
@@ -58,9 +62,11 @@ export class FaviconCache {
     if (last !== undefined && (last === Infinity || now - last < REMEMBER_COOLDOWN_MS)) return
     // Infinity marks a fetch in flight; the cooldown starts when it ends.
     this.remembering.set(host, Infinity)
+    const forgotten = this.forgotten
     void this.fetchIcon(iconUrl)
-      .then((data) => { if (data) this.set(host, data) })
+      .then((data) => { if (data && forgotten === this.forgotten) this.set(host, data) })
       .finally(() => {
+        if (forgotten !== this.forgotten) return
         this.remembering.set(host, this.now())
         if (this.remembering.size > 200) {
           const cutoff = this.now() - REMEMBER_COOLDOWN_MS
@@ -92,14 +98,43 @@ export class FaviconCache {
     return out
   }
 
+  /**
+   * History from `since` (ms; 0 for all of it) was deleted: the icons kept since then go too, and the file
+   * is rewritten now. The file names every site whose icon it holds, so it would otherwise still list the
+   * sites just deleted from history. An icon a bookmark needs is fetched again when it is next shown.
+   */
+  async forgetSince(since: number): Promise<void> {
+    this.forgotten += 1
+    for (const [host, entry] of this.entries) if (entry.at >= since) this.entries.delete(host)
+    this.remembering.clear()
+    this.inflight.clear()
+    if (this.saveTimer) clearTimeout(this.saveTimer)
+    this.saveTimer = null
+    await writeFileAtomic(this.file, JSON.stringify(Object.fromEntries(this.entries))).catch(() => undefined)
+  }
+
+  /** Sites were added to "Sites to leave out": icons kept for them go, and the file is rewritten now. */
+  async forgetHosts(leftOut: (host: string) => boolean): Promise<void> {
+    let removed = false
+    for (const host of [...this.entries.keys()]) if (leftOut(host)) removed = this.entries.delete(host) || removed
+    if (!removed) return
+    this.forgotten += 1
+    this.remembering.clear()
+    this.inflight.clear()
+    if (this.saveTimer) clearTimeout(this.saveTimer)
+    this.saveTimer = null
+    await writeFileAtomic(this.file, JSON.stringify(Object.fromEntries(this.entries))).catch(() => undefined)
+  }
+
   private load(host: string): Promise<void> {
     const existing = this.inflight.get(host)
     if (existing) return existing
+    const forgotten = this.forgotten
     const job = (async () => {
       const data = await this.fetchIcon(`https://${host}/favicon.ico`)
         ?? (host.startsWith('www.') ? null : await this.fetchIcon(`https://www.${host}/favicon.ico`))
-      this.store(host, { data, at: this.now() })
-    })().finally(() => this.inflight.delete(host))
+      if (forgotten === this.forgotten) this.store(host, { data, at: this.now() })
+    })().finally(() => { if (this.inflight.get(host) === job) this.inflight.delete(host) })
     this.inflight.set(host, job)
     return job
   }

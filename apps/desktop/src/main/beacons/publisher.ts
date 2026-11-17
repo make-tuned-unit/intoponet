@@ -24,6 +24,9 @@ export type SecretBox = {
 /** Registry answers are small; anything larger is refused rather than read into memory. */
 const MAX_REGISTRY_BYTES = 1024 * 1024
 const MAX_RESOURCES = 60
+/** The most the registry gives in one answer, and how long that answer serves every place looked at. */
+const PUBLIC_LIST_LIMIT = 100
+const PUBLIC_LIST_KEPT_MS = 10 * 60_000
 
 const isText = (value: unknown, max: number): value is string => typeof value === 'string' && value.length <= max
 const isNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value)
@@ -89,6 +92,7 @@ export function normalizeRegistry(value: string): string | null {
 export class BeaconPublisher {
   private key: { privateKey: KeyObject; publisherKey: string } | null = null
   private keyLoading: Promise<{ privateKey: KeyObject; publisherKey: string }> | null = null
+  private listed: { registry: string; at: number; resources: Promise<BeaconResource[]> } | null = null
 
   constructor(private readonly options: { files: Files; box: SecretBox; fetchImpl?: typeof fetch; defaultRegistry?: string; now?: () => number }) {}
 
@@ -239,10 +243,40 @@ export class BeaconPublisher {
     await this.call('/v1/reports', { method: 'POST', body: await this.signed('report', { url: canonical, kind, ...(text ? { text } : {}) }) })
   }
 
+  /**
+   * The registry's public list, asked for without saying why: at most once in ten minutes, however many
+   * places are looked at. A failed request is not kept, so the next look asks again.
+   */
+  private publicList(): Promise<BeaconResource[]> {
+    const registry = this.registry()
+    const now = (this.options.now ?? Date.now)()
+    const kept = this.listed
+    if (kept && kept.registry === registry && now - kept.at < PUBLIC_LIST_KEPT_MS) return kept.resources
+    const resources = this.call(`/v1/beacons?limit=${PUBLIC_LIST_LIMIT}`, { method: 'GET' }).then((body) => {
+      const list = body && typeof body === 'object' ? (body as { resources?: unknown }).resources : undefined
+      return (Array.isArray(list) ? list : []).slice(0, PUBLIC_LIST_LIMIT).map(parseResource).filter((item) => item !== null)
+    })
+    const entry = { registry, at: now, resources }
+    this.listed = entry
+    resources.catch(() => { if (this.listed === entry) this.listed = null })
+    return resources
+  }
+
+  /**
+   * Beacons for a place (`bbox`: minLat, minLon, maxLat, maxLon) are picked out on this Mac from the
+   * registry's public list. The place is never sent: selecting somewhere on the globe must not tell the
+   * registry where the person is looking.
+   */
   async read(filter: { topic?: string; bbox?: [number, number, number, number] } = {}): Promise<BeaconResource[]> {
+    if (filter.bbox) {
+      const [minLat, minLon, maxLat, maxLon] = filter.bbox
+      const topic = filter.topic?.toLowerCase()
+      return (await this.publicList())
+        .filter((item) => (!topic || item.topic.toLowerCase() === topic) && item.places.some((place) => place.lat >= minLat && place.lat <= maxLat && place.lon >= minLon && place.lon <= maxLon))
+        .slice(0, MAX_RESOURCES)
+    }
     const params = new URLSearchParams({ limit: '60' })
     if (filter.topic) params.set('topic', filter.topic)
-    if (filter.bbox) params.set('bbox', filter.bbox.join(','))
     const body = await this.call(`/v1/beacons?${params}`, { method: 'GET' })
     const resources = body && typeof body === 'object' ? (body as { resources?: unknown }).resources : undefined
     return (Array.isArray(resources) ? resources : []).slice(0, MAX_RESOURCES).map(parseResource).filter((item) => item !== null)

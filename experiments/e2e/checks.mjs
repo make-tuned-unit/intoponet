@@ -1699,6 +1699,19 @@ export const checks = {
     const blocked = Number(bar.match(/(\d+) tracker/)?.[1] ?? 0) + Number(bar.match(/(\d+) ad/)?.[1] ?? 0)
     expect(blocked > 0, 'Nothing was blocked on a tracker-heavy news site.')
     expect(!(await ctx.evaluate(`!!document.querySelector('.shield-panel')`)), 'The old tall protection panel still shows.')
+    // Site icons come through the browser's own network stack (encrypted DNS, no cookies), never main's plain fetch,
+    // which would ask the system resolver in the clear for each site an icon is wanted for.
+    const iconHosts = ['www.iana.org', 'www.wikipedia.org', 'www.bbc.com']
+    await ctx.main(`(() => { const real = globalThis.fetch; globalThis.__plainIconFetches = []; globalThis.__plainFetch = real; globalThis.fetch = function (input, init) { const url = String(input?.url ?? input); if (${JSON.stringify(iconHosts)}.some((host) => url === 'https://' + host + '/favicon.ico')) globalThis.__plainIconFetches.push(url); return real.call(this, input, init) }; return true })()`)
+    let icons = {}
+    let plainIconFetches = []
+    try {
+      icons = JSON.parse(await ctx.evaluate(`window.intoponet.favicons.get(${JSON.stringify(iconHosts)}).then((found) => JSON.stringify(found))`))
+    } finally {
+      plainIconFetches = JSON.parse(await ctx.main(`(() => { globalThis.fetch = globalThis.__plainFetch; return JSON.stringify(globalThis.__plainIconFetches) })()`))
+    }
+    expect(Object.values(icons).some((icon) => String(icon).startsWith('data:image/')), `No site icon could be fetched for ${iconHosts.join(', ')}.`)
+    expect(plainIconFetches.length === 0, `Site icons were fetched outside the browser's network stack (no encrypted DNS): ${plainIconFetches.join(', ')}`)
     return bar.replace(/\n+/g, ' · ')
   },
 
@@ -2497,7 +2510,13 @@ export const checks = {
     expect(/left this site out/.test(refusal), `An excluded site could be absorbed: ${refusal}`)
     const recents = await ctx.evaluate(`window.intoponet.browserHost.readPrivateLibrary().then((r) => r.status === 'ok' && r.payload ? JSON.parse(r.payload).recents.map((p) => p.url).join(' ') : '')`)
     expect(!recents.includes(host.replace(/^www\./, '')), 'An excluded site was kept in recent pages.')
-    return 'Absorb refused; no recent page kept.'
+    // The site icon file names its sites in plain text: the icon kept from the visit before the site was left out
+    // goes, and the visit after leaves none (the file is rewritten within a few seconds of a change).
+    await ctx.delay(4000)
+    const iconFile = join(ctx.profile, 'favicons.json')
+    const iconSites = existsSync(iconFile) ? Object.keys(JSON.parse(readFileSync(iconFile, 'utf8'))) : []
+    expect(!iconSites.some((site) => site.replace(/^www\./, '') === host.replace(/^www\./, '')), `A site left out is still named in the site icon file (${iconSites.join(', ')}).`)
+    return 'Absorb refused; no recent page kept; no site icon kept.'
   },
 
   async DOWNLOADS_HISTORY(ctx) {

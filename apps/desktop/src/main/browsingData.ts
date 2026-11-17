@@ -44,6 +44,8 @@ export type BrowsingDataOptions = {
   }
   /** History was cleared from `since` (ms): things kept with it (Archived tabs) go too. */
   onHistoryCleared?: (since: number) => void
+  /** Visits from `since` (ms; 0 for all) were deleted from history: what else names those sites (site icons) goes too. */
+  onVisitsForgotten?: (since: number) => void
   /** Each finished download (for the "Saved … to Downloads" notice). */
   onDownloadDone?: (entry: { filename: string; path: string; state: 'completed' | 'cancelled' | 'interrupted' }) => void
 }
@@ -257,6 +259,7 @@ export function installBrowsingData(options: BrowsingDataOptions): BrowsingData 
       savedHistory.removed((visit) => visit.visitedAt >= since)
       removeSetAside(historyFile)
       options.onHistoryCleared?.(since)
+      options.onVisitsForgotten?.(since)
       cleared.push('history')
     }
     if (request.downloads) {
@@ -293,7 +296,7 @@ export function installBrowsingData(options: BrowsingDataOptions): BrowsingData 
       case 'search': return history.search(command.query, command.cursor, command.limit)
       case 'delete': history.delete(command.ids); return undefined
       case 'delete-day': history.deleteDay(command.day); savedHistory.removed((visit) => dayKey(visit.visitedAt) === command.day); return undefined
-      case 'clear': history.clear(); savedHistory.removed(() => true); removeSetAside(historyFile); return undefined
+      case 'clear': history.clear(); savedHistory.removed(() => true); removeSetAside(historyFile); options.onVisitsForgotten?.(0); return undefined
       case 'set-policy': policySet = true; history.setPolicy(command.policy); return undefined
       case 'clear-browsing-data': return clearBrowsingData(command.request)
     }

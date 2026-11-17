@@ -48,7 +48,7 @@ function keychain() {
   }
 }
 
-function setUp(savedVisits: Array<{ id: string; url: string; title: string; visitedAt: number }>) {
+function setUp(savedVisits: Array<{ id: string; url: string; title: string; visitedAt: number }>, extra: { onVisitsForgotten?: (since: number) => void } = {}) {
   electronStub.userData = mkdtempSync(join(tmpdir(), 'browsing-data-'))
   electronStub.listeners.clear()
   mkdirSync(join(electronStub.userData, 'personal'), { recursive: true })
@@ -63,6 +63,7 @@ function setUp(savedVisits: Array<{ id: string; url: string; title: string; visi
     normalPartition: 'persist:test',
     privatePartition: 'test-private',
     seal: keys.options,
+    ...extra,
   })
   const command = (value: unknown) => handlers.get('intoponet:history')!({} as IpcMainInvokeEvent, value)
   const onDisk = (): string[] => (JSON.parse(keys.open(readFileSync(historyFile))) as { visits: Array<{ url: string }> }).visits.map((visit) => visit.url)
@@ -128,6 +129,24 @@ describe('history saved while the Keychain was unavailable at startup', () => {
     quit('quit')
     await written()
     expect(onDisk()).toEqual(['https://old.example/one', 'https://old.example/two'])
+  })
+})
+
+describe('deleting history', () => {
+  it('says from when, so what else names the visited sites (site icons) is deleted too', async () => {
+    const forgotten: number[] = []
+    const { command } = setUp([], { onVisitsForgotten: (since) => forgotten.push(since) })
+    // Delete footprints: everything.
+    await command({ type: 'clear' })
+    expect(forgotten).toEqual([0])
+    // Clear browsing data for the last hour, with and without history.
+    const before = Date.now()
+    await command({ type: 'clear-browsing-data', request: { range: 'hour', history: true, siteData: false, cache: false, downloads: false } })
+    expect(forgotten).toHaveLength(2)
+    expect(forgotten[1]).toBeGreaterThanOrEqual(before - 3_600_000 - 1_000)
+    expect(forgotten[1]).toBeLessThanOrEqual(Date.now() - 3_600_000 + 1_000)
+    await command({ type: 'clear-browsing-data', request: { range: 'all', history: false, siteData: false, cache: true, downloads: false } })
+    expect(forgotten).toHaveLength(2)
   })
 })
 
