@@ -962,7 +962,7 @@ export const checks = {
     await ctx.main(`(() => { const cpu = () => { const u = process.threadCpuUsage(); return (u.user + u.system) / 1000 }; const busy = globalThis.__mainBusy = { since: Date.now(), from: cpu(), longest: 0, read: () => ({ wall: Date.now() - busy.since, cpu: cpu() - busy.from, longest: busy.longest }) }; let last = cpu(); const timer = setInterval(() => { const now = cpu(); busy.longest = Math.max(busy.longest, now - last); last = now }, 10); timer.unref(); return true })()`)
     await ctx.waitForNews()
     const mainBusy = await ctx.main('globalThis.__mainBusy.read()')
-    expect(mainBusy.cpu < mainBusy.wall * 0.15 && mainBusy.longest < 400, `While the news arrived the main process was busy for ${Math.round(mainBusy.cpu)} ms of ${Math.round(mainBusy.wall)} ms, ${Math.round(mainBusy.longest)} ms at a stretch (limits: 15% of the time, 400 ms at a stretch). Reading the feeds belongs on the news thread.`)
+    expect(mainBusy.cpu < mainBusy.wall * 0.12 && mainBusy.longest < 400, `While the news arrived the main process was busy for ${Math.round(mainBusy.cpu)} ms of ${Math.round(mainBusy.wall)} ms, ${Math.round(mainBusy.longest)} ms at a stretch (limits: 12% of the time, 400 ms at a stretch). Reading the feeds belongs on the news thread.`)
     // Highlights open on World (story cards); under Peaks, the story mountains (news on) and the other signals.
     expect(await ctx.click('.globe-tabs button', 'Peaks'), 'Highlights tab "Peaks" is missing.')
     await ctx.wait(`document.querySelectorAll('.globe-list .globe-row').length >= 5`, 60_000, 'highlight rows on the globe panel')
