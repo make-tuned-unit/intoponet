@@ -514,6 +514,39 @@ describe('FEED_FETCH service', () => {
     expect(requests).toBe(1)
   })
 
+  it('keeps the saved feeds when it is stopped and flushed before it has read them', async () => {
+    // Quitting moments after launch: the saved cache is still being read when the quit asks for a last save.
+    const saved = new MemoryStorage()
+    const first = new FeedFetchService({
+      registry: registry('http://127.0.0.1:40123/feed'),
+      storage: saved,
+      mode: 'fixture',
+      now: () => FIXED_NOW,
+      fetchImpl: async () => new Response(rss, { status: 200, headers: { 'content-type': 'application/rss+xml' } }),
+    })
+    expect((await first.refreshSource('hinckley-bosworth-news')).status).toBe('updated')
+    const before = saved.value!
+    expect(JSON.parse(before).sources['hinckley-bosworth-news'].items).toHaveLength(1)
+
+    let finishRead!: () => void
+    const slow: FeedStorage = {
+      read: () => new Promise((resolve) => { finishRead = () => resolve(saved.value) }),
+      write: async (serialized) => { saved.value = serialized },
+    }
+    const second = new FeedFetchService({ registry: registry('http://127.0.0.1:40123/feed'), storage: slow, mode: 'fixture', now: () => FIXED_NOW + 60_000 })
+    const starting = second.start()
+    await tick()
+    second.stop()
+    await second.flush()
+    expect(saved.value).toBe(before)
+    finishRead()
+    await starting
+    // Once read, a flush saves what it holds (the same feeds, with a newer date).
+    await second.flush()
+    expect(JSON.parse(saved.value!).sources['hinckley-bosworth-news'].items).toHaveLength(1)
+    expect(JSON.parse(saved.value!).updatedAt).not.toBe(JSON.parse(before).updatedAt)
+  })
+
   it('rejects non-finite numeric limits instead of silently disabling guards', () => {
     expect(() => new FeedFetchService({
       registry: { enabledSourceIds: [], sources: [] },

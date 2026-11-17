@@ -476,6 +476,8 @@ export class FeedFetchService {
   private readonly timers = new Map<string, TimerHandle>()
   private cache: FeedCacheSnapshot = { schemaVersion: CACHE_SCHEMA_VERSION, updatedAt: timestamp(Date.now()), sources: {} }
   private loaded: Promise<void> | null = null
+  /** The saved cache has been read into `cache` (until then `cache` is empty and must never be written). */
+  private cacheRead = false
   private persistQueue: Promise<void> = Promise.resolve()
   private activeRequests = 0
   private running = false
@@ -615,6 +617,7 @@ export class FeedFetchService {
       updatedAt: timestamp(now),
       sources,
     }
+    this.cacheRead = true
   }
 
   private scheduleSource(sourceId: string): void {
@@ -665,12 +668,16 @@ export class FeedFetchService {
     await this.writeCache()
   }
 
-  /** Write any pending debounced cache state now (e.g. on quit). */
+  /**
+   * Write any pending debounced cache state now (e.g. on quit). Before the saved cache has been read there is
+   * nothing newer to write, and writing then would replace what was saved with an empty cache.
+   */
   async flush(): Promise<void> {
     if (this.persistTimer) {
       this.clearTimer(this.persistTimer)
       this.persistTimer = null
     }
+    if (!this.cacheRead) return
     await this.writeCache().catch(() => undefined)
   }
 
