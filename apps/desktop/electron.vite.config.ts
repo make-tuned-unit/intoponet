@@ -39,6 +39,14 @@ export default defineConfig({
   main: {
     define: { __INTOPONET_MAC_UPDATE_URL__: JSON.stringify(updateUrl) },
     plugins: [externalizeDepsPlugin({ exclude: workspacePackages }), protectionLists()],
+    // The adblocker library (MPL-2.0) stays in a file of its own, apart from Intoponet's code (THIRD_PARTY_NOTICES.md §1).
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: (id) => (/node_modules\/(@ghostery|@remusao|tldts-experimental|tldts-core)\//.test(id) ? 'adblocker' : undefined),
+        },
+      },
+    },
   },
   preload: {
     plugins: [externalizeDepsPlugin({ exclude: workspacePackages })],

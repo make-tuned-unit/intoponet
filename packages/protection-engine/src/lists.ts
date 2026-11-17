@@ -67,9 +67,14 @@ function isHttpUrl(value: string | null): value is string {
   return !!value && /^https?:\/\//i.test(value)
 }
 
-/** The site an address belongs to (its registrable domain: "cnn.com" for "edition.cnn.com"); the host itself when it has none (an IP address, localhost). */
+/**
+ * The site an address belongs to (its registrable domain: "cnn.com" for "edition.cnn.com"); the host
+ * itself when it has none (an IP address, localhost). Hosting services whose customers each get a
+ * name of their own count as separate sites, as they do in the browser ("alice.github.io" and
+ * "bob.github.io" are two sites).
+ */
 export function siteOfHost(hostname: string): string {
-  return getDomain(hostname) ?? hostname
+  return getDomain(hostname, { allowPrivateDomains: true }) ?? hostname
 }
 
 function requestType(type: ResourceType): RequestType {
@@ -132,6 +137,13 @@ export class ProtectionLists {
     if (categories.ads && categories.trackers) {
       const result = this.engine.match(request)
       if (!result.match || !result.filter) return { action: 'allow' }
+      // When rules of both lists block a request, it counts as an ad, whichever rule was found first
+      // (so the counts do not depend on the order the rules happen to be stored in).
+      if (this.categoryOf(result.filter) === 'tracker') {
+        for (const filter of this.engine.matchAll(request)) {
+          if (!filter.isException() && !filter.isCSP() && !filter.isRemoveParam() && this.categoryOf(filter) === 'ad') return this.block(filter)
+        }
+      }
       return this.block(result.filter)
     }
     if (!categories.ads && !categories.trackers) return { action: 'allow' }

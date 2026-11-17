@@ -84,15 +84,22 @@ and DOMPurify are taken under Apache-2.0, whose licence text must go with the ap
 (neither package has a NOTICE file). DOMPurify's MPL-2.0 option is not used.
 
 **The Ghostery adblocker library and its `@ghostery/*` and `@remusao/*`
-dependencies are MPL-2.0 (file-level copyleft).** The build bundles them,
-unmodified, into the main process's code (`out/main/index.js`), with their
-licence headers kept. What MPL-2.0 requires is the same as for the vendored
-file in §2: the copyleft covers those files only, and Intoponet's own code,
-which calls them, is a "Larger Work" (§3.3) that stays proprietary. Their
-source is the published npm packages at the versions above and the
-repositories named; a recipient can get it there (§3.2). If any of these files
-is ever changed for Intoponet, the changed file must be published under
-MPL-2.0. The Public Suffix List inside tldts is MPL-2.0 data, used unmodified.
+dependencies are MPL-2.0 (file-level copyleft).** The build puts them,
+unmodified and with their licence headers kept, in a file of their own beside
+the main process's code (`out/main/adblocker-<hash>.js`, together with the
+MIT-licensed tldts; see `manualChunks` in `apps/desktop/electron.vite.config.ts`),
+not inside Intoponet's own files. What MPL-2.0 requires is the same as for
+the vendored file in §2: the copyleft covers those files only, and Intoponet's
+own code, which calls them, is a "Larger Work" ("a work that combines Covered
+Software with other material, in a separate file or files, that is not Covered
+Software", §1.7), which §3.3 allows to be distributed "under terms of Your
+choice, provided that You also comply with the requirements of this License for
+the Covered Software". The requirement that applies is §3.2(a): the library
+"must also be made available in Source Code Form", and recipients told how to
+get it. Its source is the published npm packages at the versions above and the
+repositories named. If any of these files is ever changed for Intoponet, the
+changed file must be published under MPL-2.0. The Public Suffix List inside
+tldts is MPL-2.0 data, used unmodified.
 
 No other bundled npm package is copyleft. MIT, ISC and BSD-3-Clause all
 require the copyright and permission notice to go with copies of the software.
@@ -232,8 +239,12 @@ in this app:
   "licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0
   International License"; commercial use needs a separate licence from
   DuckDuckGo.
-- uBlock Origin's and AdGuard's own lists are GPL-3.0 only. They, and uBlock
-  Origin's scriptlet and redirect resources, are not used.
+- uBlock Origin's lists (https://github.com/uBlockOrigin/uAssets) and AdGuard's
+  (https://github.com/AdguardTeam/AdguardFilters) are under the GNU General
+  Public License version 3 (the `LICENSE` file of each repository, read
+  2026-11-17), with no Creative Commons option. They, and uBlock Origin's
+  scriptlet and redirect resources (GPL version 3, https://github.com/gorhill/uBlock),
+  are not used.
 
 ### Fetched live at runtime (shown with links, not redistributed)
 

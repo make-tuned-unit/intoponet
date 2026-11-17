@@ -103,6 +103,13 @@ describe('LocalProtectionEngine with EasyList and EasyPrivacy', () => {
     expect(loaded.evaluate(request('https://bat.bing.com/bat.js', 'script')).ruleId).toMatch(/^easyprivacy-[0-9a-f]+$/)
   })
 
+  it('treats two customers of one hosting service as different sites', () => {
+    const loaded = engine()
+    const tracker = 'https://alice.github.io/assets/fbevents.js'
+    expect(loaded.evaluate(request(tracker, 'script', 'https://alice.github.io/blog/')).action).toBe('allow')
+    expect(loaded.evaluate(request(tracker, 'script', 'https://bob.github.io/')).action).toBe('block')
+  })
+
   it('never blocks a site\'s own requests: each address is allowed on its own site', () => {
     const loaded = engine()
     const blocked = endpoints
@@ -239,6 +246,15 @@ describe('exception rules (@@) and rule options, on small lists', () => {
     expect(loaded.evaluate({ ...request('https://cdn.widgets.example/app.js', 'script'), initiatorOrigin: 'null' }).action).toBe('block')
   })
 
+  it('counts a request both lists block as an ad, whichever rule is found first', () => {
+    const made = new LocalProtectionEngine()
+    made.loadLists(compileProtectionLists({ ads: '||ads.shared.example^', trackers: '||px.ads.shared.example^\n||shared.example/collect' }))
+    expect(made.evaluate(request('https://px.ads.shared.example/collect?id=1', 'image'))).toMatchObject({ action: 'block', category: 'ad' })
+    expect(made.evaluate(request('https://www.shared.example/collect?id=1', 'image'))).toMatchObject({ action: 'block', category: 'tracker' })
+    made.setCategoryEnabled('ad', false)
+    expect(made.evaluate(request('https://px.ads.shared.example/collect?id=1', 'image'))).toMatchObject({ action: 'block', category: 'tracker' })
+  })
+
   it('counts a rule that is in both lists as an ad rule', () => {
     const loaded = engine()
     expect(loaded.evaluate(request('https://both.example/x.js', 'script'))).toMatchObject({ action: 'block', category: 'ad' })
@@ -267,5 +283,8 @@ describe('siteOfHost', () => {
     expect(siteOfHost('www.bbc.co.uk')).toBe('bbc.co.uk')
     expect(siteOfHost('127.0.0.1')).toBe('127.0.0.1')
     expect(siteOfHost('localhost')).toBe('localhost')
+    // Each customer of a hosting service is a site of its own.
+    expect(siteOfHost('alice.github.io')).toBe('alice.github.io')
+    expect(siteOfHost('www.alice.github.io')).toBe('alice.github.io')
   })
 })
