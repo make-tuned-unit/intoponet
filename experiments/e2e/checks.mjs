@@ -1030,6 +1030,10 @@ export const checks = {
     await ctx.main(`(() => { const cpu = () => { const u = process.threadCpuUsage(); return (u.user + u.system) / 1000 }; const busy = globalThis.__mainBusy = { since: Date.now(), from: cpu(), longest: 0, read: () => ({ wall: Date.now() - busy.since, cpu: cpu() - busy.from, longest: busy.longest }) }; let last = cpu(); const timer = setInterval(() => { const now = cpu(); busy.longest = Math.max(busy.longest, now - last); last = now }, 10); timer.unref(); return true })()`)
     await ctx.waitForNews()
     const mainBusy = await ctx.main('globalThis.__mainBusy.read()')
+    // The Highlights panel is anchored on the window's right, inside it (it once lost its place when the app's styles
+    // loaded in another order: the glass surface's position then won over the panel's).
+    const highlights = JSON.parse(await ctx.evaluate(`JSON.stringify((() => { const el = document.querySelector('.globe-panel'); if (!el) return null; const box = el.getBoundingClientRect(); return { position: getComputedStyle(el).position, left: Math.round(box.left), right: Math.round(box.right), top: Math.round(box.top), width: innerWidth } })())`))
+    expect(highlights && highlights.position === 'absolute' && highlights.left > highlights.width / 2 && highlights.right <= highlights.width && highlights.top >= 0, `The Highlights panel is out of place: ${JSON.stringify(highlights)}.`)
     expect(mainBusy.cpu < mainBusy.wall * 0.12 && mainBusy.longest < 400, `While the news arrived the main process was busy for ${Math.round(mainBusy.cpu)} ms of ${Math.round(mainBusy.wall)} ms, ${Math.round(mainBusy.longest)} ms at a stretch (limits: 12% of the time, 400 ms at a stretch). Reading the feeds belongs on the news thread.`)
     // Highlights open on World (story cards); under Peaks, the story mountains (news on) and the other signals.
     expect(await ctx.click('.globe-tabs button', 'Peaks'), 'Highlights tab "Peaks" is missing.')
@@ -1600,6 +1604,33 @@ export const checks = {
       open = await tabs()
       expect(after.isVisible && after.url.startsWith(url), `Enter did not land on ${url} (showing ${after.isVisible ? after.url : 'the globe'}).`)
       expect(open.length === 1, `Switching to the tab opened a duplicate (${open.length} tabs).`)
+
+      // With the page in front the list opens where the page is. A page is a native view that paints above the app's
+      // own interface, so the list was once painted behind the page. A copy of it is floated above the page instead;
+      // the page itself keeps its size.
+      const shownPages = () => ctx.main(`JSON.stringify(electron.BrowserWindow.getAllWindows()[0].contentView.children.filter((view) => view.webContents && /^https?:/.test(view.webContents.getURL()) && view.getVisible()).map((view) => view.getBounds()))`).then(JSON.parse)
+      const floated = () => ctx.main(`(async () => { const children = electron.BrowserWindow.getAllWindows()[0].contentView.children; const top = children[children.length - 1]; if (!top?.webContents || !/overlay\.html/.test(top.webContents.getURL())) return JSON.stringify(null); const rows = await top.webContents.executeJavaScript('JSON.stringify([...document.querySelectorAll("li.omnibox-row")].map((row) => { const box = row.getBoundingClientRect(); return { text: row.innerText.replace(/\\s+/g, " ").trim(), x: box.x + box.width / 2, y: box.y + box.height / 2 } }))'); return JSON.stringify({ bounds: top.getBounds(), rows: JSON.parse(rows) }) })()`).then(JSON.parse)
+      const pagesBefore = await shownPages()
+      expect(pagesBefore.length > 0, 'No page is in front for the suggestions to open over.')
+      seen = await typeHost('localh')
+      expect(seen.rows.length > 0, 'No suggestions opened with a page in front.')
+      const listBox = JSON.parse(await ctx.evaluate(`JSON.stringify((() => { const el = document.querySelector('.omnibox-suggestions'); const below = el.parentElement.getBoundingClientRect(); return { x: below.left, y: below.top - 8 - el.offsetHeight, width: below.width, height: el.offsetHeight } })())`))
+      let copy = null
+      for (let i = 0; i < 30 && !(copy?.rows.length === seen.rows.length); i += 1) { await ctx.delay(150); copy = await floated() }
+      expect(copy, `The suggestions opened behind the page: nothing is floated above it (the list is at ${JSON.stringify(listBox)}, the page at ${JSON.stringify(pagesBefore[0])}).`)
+      expect(copy.bounds.x <= listBox.x && copy.bounds.y <= listBox.y && copy.bounds.x + copy.bounds.width >= listBox.x + listBox.width && copy.bounds.y + copy.bounds.height >= listBox.y + listBox.height, `The floated suggestions (${JSON.stringify(copy.bounds)}) do not cover the list's place (${JSON.stringify(listBox)}).`)
+      expect(copy.rows.length === seen.rows.length && copy.rows.every((row, index) => row.text.includes(seen.rows[index].text.replace(/\s+/g, ' ').trim().slice(0, 12))), `The floated suggestions do not show the list's rows: ${JSON.stringify(copy.rows.map((row) => row.text))} for ${JSON.stringify(seen.rows.map((row) => row.text))}.`)
+      expect(JSON.stringify(await shownPages()) === JSON.stringify(pagesBefore), `The page moved or resized for the suggestions: ${JSON.stringify(await shownPages())}, was ${JSON.stringify(pagesBefore)}.`)
+      await ctx.shot('suggestions-over-page')
+      // A click on a row of the copy chooses it (the open tab here: the bar empties and the page stays in front).
+      expect(/Switch to tab/.test(copy.rows[0].text), `The first floated row is not the open tab: ${copy.rows[0].text}`)
+      await ctx.main(`(() => { const children = electron.BrowserWindow.getAllWindows()[0].contentView.children; const top = children[children.length - 1]; for (const type of ['mouseDown', 'mouseUp']) top.webContents.sendInputEvent({ type, x: ${Math.round(copy.rows[0].x)}, y: ${Math.round(copy.rows[0].y)}, button: 'left', clickCount: 1 }); return true })()`)
+      await ctx.wait(`document.querySelector('.command-input input').value === '' && !document.querySelector('.omnibox-suggestions')`, 6_000, 'the row clicked in the floated suggestions to be chosen')
+      let gone = false
+      for (let i = 0; i < 30 && !gone; i += 1) { await ctx.delay(150); gone = (await floated()) === null }
+      expect(gone, 'The floated suggestions stayed above the page after the list closed.')
+      after = await state()
+      expect(after.isVisible && after.url.startsWith(url) && (await tabs()).length === 1, `Choosing the open tab in the floated suggestions did not keep ${url} in front (showing ${after.isVisible ? after.url : 'the globe'}).`)
 
       // A place name still flies the globe, over the open page.
       await ctx.flyTo('Fredericton')

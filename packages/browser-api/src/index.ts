@@ -321,6 +321,8 @@ export type BrowserHostEvent =
   /** The sidebar's folders changed (`rename`: a folder just made from the tab menu, to name now). */
   | { type: 'tab-folders'; folders: TabFolderSnapshot[]; rename?: string }
   | { type: 'tab-switcher'; open: boolean; selected?: string; position?: number; count?: number }
+  /** A suggestion chosen with the pointer in the copy of the list floated above a page (its row, and the keys held). */
+  | { type: 'omnibox-pick'; index: number; meta: boolean; alt: boolean }
   /** Workspaces changed (or one was switched to: `switchedMs` is how long main took). */
   | { type: 'workspaces'; state: WorkspacesState; switchedMs?: number }
 
@@ -374,6 +376,12 @@ export interface BrowserHostApi {
   holdPage(held: boolean): Promise<void>
   /** `hold` keeps the dock open while the pointer crosses the page (e.g. typing in its search). */
   setTabDockOpen(open: boolean, hold?: boolean): Promise<void>
+  /**
+   * The address bar's suggestions as they are on screen (their box and markup), or null when they have gone. A page
+   * is a native view that paints above the app's own interface, so where the list would open behind a page, a copy of it
+   * is floated above the page; the page itself never moves.
+   */
+  setShellOverlay(overlay: ShellOverlay | null): Promise<void>
   /** Full-screen toolbar reveal; `hold` keeps it while a control has focus. */
   setChromeRevealed(revealed: boolean, hold?: boolean): Promise<void>
   /** Expanded (unpinned) tab rail collapses when the pointer enters the page. */
@@ -492,6 +500,8 @@ export type BrowserHostCommand =
   /** Keep the page view hidden (true) while the shell draws over it, e.g. the sources carousel; false shows it again. */
   | { type: 'hold-page'; held: boolean }
   | { type: 'set-tab-dock-open'; open: boolean; hold?: boolean }
+  /** The address bar's suggestions as shown (floated above a page they would open behind), or null once closed. */
+  | { type: 'set-shell-overlay'; overlay: ShellOverlay | null }
   | { type: 'set-chrome-revealed'; revealed: boolean; hold?: boolean }
   | { type: 'set-tab-rail-expanded'; expanded: boolean }
   /** The tab sidebar's mode and width, kept with the open tabs (null until first set). */
@@ -616,6 +626,7 @@ const commandTypes = new Set<BrowserHostCommand['type']>([
   'set-bounds',
   'set-full-width',
   'set-tab-dock-open',
+  'set-shell-overlay',
   'set-chrome-revealed',
   'set-tab-rail-expanded',
   'get-tab-sidebar',
@@ -720,6 +731,11 @@ function parseIntent(value: unknown): NavigationIntent {
   return { kind, value: input }
 }
 
+/** The address bar's suggestion list as the app window shows it: its box in the window, and its markup. */
+export type ShellOverlay = { rect: BrowserPanelBounds; html: string }
+/** The most markup a suggestion list can be (a dozen rows, some with a small icon as a data: URL). */
+export const SHELL_OVERLAY_MAX_HTML = 400_000
+
 function parseBounds(value: unknown): BrowserPanelBounds {
   if (!isRecord(value)) throw new Error('Invalid panel bounds.')
   const keys = ['x', 'y', 'width', 'height'] as const
@@ -815,6 +831,12 @@ export function parseBrowserHostCommand(value: unknown): BrowserHostCommand {
     case 'set-full-width':
       if (typeof value['enabled'] !== 'boolean') throw new Error('Invalid full-width state.')
       return { type, enabled: value['enabled'] }
+    case 'set-shell-overlay': {
+      const overlay = value['overlay']
+      if (overlay === null) return { type, overlay: null }
+      if (!isRecord(overlay) || typeof overlay['html'] !== 'string' || overlay['html'].length > SHELL_OVERLAY_MAX_HTML) throw new Error('Invalid shell overlay.')
+      return { type, overlay: { rect: parseBounds(overlay['rect']), html: overlay['html'] } }
+    }
     case 'set-tab-dock-open':
       if (typeof value['open'] !== 'boolean') throw new Error('Invalid tab-dock state.')
       if (value['hold'] !== undefined && typeof value['hold'] !== 'boolean') throw new Error('Invalid tab-dock hold.')

@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!--
+      The address bar's suggestions as floated above a page (main/shellOverlay.ts). It only draws the markup the app
+      hands it: its own script and styles, site icons as data: URLs, nothing from the network, nothing inline.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Suggestions</title>
+  </head>
+  <body class="shell-overlay">
+    <div id="shell-overlay"></div>
+    <script type="module" src="/src/overlay.ts"></script>
+  </body>
+</html>

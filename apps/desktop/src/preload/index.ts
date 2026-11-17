@@ -180,6 +180,9 @@ const browserHost: BrowserHostApi = {
   setChromeRevealed: async (revealed, hold) => {
     await invoke({ type: 'set-chrome-revealed', revealed, ...(hold ? { hold: true } : {}) })
   },
+  setShellOverlay: async (overlay) => {
+    await invoke({ type: 'set-shell-overlay', overlay })
+  },
   setTabDockOpen: async (open, hold) => {
     await invoke({ type: 'set-tab-dock-open', open, ...(hold ? { hold: true } : {}) })
   },

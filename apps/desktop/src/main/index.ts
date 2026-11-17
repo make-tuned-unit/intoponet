@@ -63,6 +63,8 @@ import { ClosedWindowAudio } from './closedWindowAudio'
 import { AUTO_PIP_WORLD_ID, ENTER_PIP_SCRIPT, EXIT_PIP_SCRIPT, NowPlaying, PAUSE_ALL_MEDIA_SCRIPT, PIP_LEFT_SCRIPT, TOGGLE_PLAYBACK_SCRIPT, type PipEnterResult } from './autoPip'
 import { UnseenTabs } from './backgroundLoad'
 import type { NowPlayingSnapshot } from '@intoponet/browser-api'
+import type { ShellOverlay } from '@intoponet/browser-api'
+import { shellOverlayNeeded, shellOverlayPick } from './shellOverlay'
 import { browserContextExtras, searchSelectionLabel } from './browserContextMenu'
 
 declare const __INTOPONET_MAC_UPDATE_URL__: string
@@ -3005,6 +3007,91 @@ function endTabSwitcher(action: 'commit' | 'cancel'): void {
   else if (chosen && !pageAttached) showTab(chosen)
 }
 
+// ---- The address bar's suggestions, floated above a page ----
+// A page is a native view that paints above the app window's own interface, so a list the app window opens where a
+// page is would be behind it. The app window reports its list (box and markup); when a shown page is under that box,
+// a copy is drawn in a small transparent view above the page. The page never moves or resizes. The copy takes clicks
+// (told to the app window as a row number) and never keeps the keyboard.
+
+/** Room around the list's box for its shadow. Keep in sync with overlay.css. */
+const SHELL_OVERLAY_PAD_PX = 28
+let shellOverlay: ShellOverlay | null = null
+let shellOverlayView: WebContentsView | null = null
+let shellOverlayReady = false
+/** When the list last closed (a click in the copy closes it just before the click is told). */
+let shellOverlayClosedAt = 0
+
+function shellOverlayUrl(): string {
+  const dev = process.env['ELECTRON_RENDERER_URL']
+  return dev ? new URL('overlay.html', dev.endsWith('/') ? dev : `${dev}/`).href : pathToFileURL(join(__dirname, '../renderer/overlay.html')).href
+}
+
+function ensureShellOverlayView(): WebContentsView {
+  if (shellOverlayView && !viewGone(shellOverlayView)) return shellOverlayView
+  shellOverlayReady = false
+  // The app's own small page (overlay.html): no preload and no bridge; it only draws markup it is handed.
+  const view = new WebContentsView({ webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, spellcheck: false } })
+  view.setBackgroundColor('#00000000')
+  view.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  // Its one way to speak: a row chosen with the pointer, as an address it tries to go to (never followed).
+  view.webContents.on('will-navigate', (event, url) => {
+    event.preventDefault()
+    const pick = shellOverlayPick(url)
+    // The click took the keyboard from the address bar first, which closed the list a moment ago: still a pick.
+    if (pick && (shellOverlay || Date.now() - shellOverlayClosedAt < 2_000)) emit({ type: 'omnibox-pick', ...pick })
+  })
+  // A click gives it the keyboard: straight back to the app window, where the address bar is.
+  view.webContents.on('focus', () => { if (window && !window.isDestroyed()) window.webContents.focus() })
+  view.webContents.on('did-finish-load', () => {
+    shellOverlayReady = true
+    drawShellOverlay()
+  })
+  view.webContents.on('render-process-gone', () => {
+    if (shellOverlayView !== view) return
+    if (window && !window.isDestroyed()) window.contentView.removeChildView(view)
+    shellOverlayView = null
+    shellOverlayReady = false
+  })
+  void view.webContents.loadURL(shellOverlayUrl()).catch(() => undefined)
+  shellOverlayView = view
+  return view
+}
+
+/** Hands the copy its markup (a string literal: nothing in it runs; the copy's own policy allows no inline script). */
+function drawShellOverlay(): void {
+  const view = shellOverlayView
+  if (!view || viewGone(view) || !shellOverlayReady) return
+  // With no list, it is emptied: the next list never opens showing the last one.
+  void view.webContents.executeJavaScript(`window.__intoponetOverlay && window.__intoponetOverlay(${JSON.stringify(shellOverlay?.html ?? '')}); true`).catch(() => undefined)
+}
+
+/** Shows the copy above the pages while a shown page is under the list's box; otherwise takes it away. */
+function placeShellOverlay(): void {
+  const host = window && !window.isDestroyed() ? window : null
+  const overlay = shellOverlay
+  const pages = [pageView, companionView, linkPreview?.view ?? null, linkPreview?.frame ?? null]
+    .filter((view): view is WebContentsView => !!view && !viewGone(view) && !!host?.contentView.children.includes(view) && view.getVisible())
+  const wanted = !!host && !!overlay && shellOverlayNeeded(overlay.rect, pages.map((view) => view.getBounds()))
+  if (!host || !overlay || !wanted) {
+    if (shellOverlayView && host?.contentView.children.includes(shellOverlayView)) host.contentView.removeChildView(shellOverlayView)
+    if (!overlay) drawShellOverlay()
+    return
+  }
+  const view = ensureShellOverlayView()
+  const { rect } = overlay
+  view.setBounds({ x: Math.round(rect.x) - SHELL_OVERLAY_PAD_PX, y: Math.round(rect.y) - SHELL_OVERLAY_PAD_PX, width: Math.round(rect.width) + 2 * SHELL_OVERLAY_PAD_PX, height: Math.round(rect.height) + 2 * SHELL_OVERLAY_PAD_PX })
+  drawShellOverlay()
+  // On top of every page (adding again moves it to the front).
+  const children = host.contentView.children
+  if (children[children.length - 1] !== view) host.contentView.addChildView(view)
+}
+
+function setShellOverlay(overlay: ShellOverlay | null): void {
+  if (shellOverlay && !overlay) shellOverlayClosedAt = Date.now()
+  shellOverlay = overlay
+  placeShellOverlay()
+}
+
 // ---- Link preview (linkPreview.ts): a page in a card over the page or the globe ----
 
 type LinkPreview = {
@@ -3043,6 +3130,8 @@ function layoutLinkPreview(): void {
 
 /** Keeps the card above a page view that was just added to the window. */
 function raiseLinkPreview(): void {
+  // Whatever page has just been added, the floated suggestions stay above it (and above a link preview).
+  setImmediate(placeShellOverlay)
   if (!linkPreview || !window || window.isDestroyed()) return
   window.contentView.addChildView(linkPreview.frame)
   window.contentView.addChildView(linkPreview.view)
@@ -5037,6 +5126,9 @@ async function handleBrowserCommand(
     case 'set-tab-dock-open':
       setBrowserTabDockOpen(command.open, command.hold === true)
       return null
+    case 'set-shell-overlay':
+      setShellOverlay(command.overlay)
+      return null
     case 'get-state':
       // The app window has just subscribed to its events: shortcuts chosen while it loaded are carried out now.
       if (shellShortcutsWaiting) {
@@ -5228,12 +5320,17 @@ function createWindow(): void {
     shellShortcutsWaiting ??= []
     setPageHeld(false)
     setPageCovered(false)
+    // Nor is it showing any suggestions to float above them.
+    setShellOverlay(null)
     setBrowserFullWidth(false)
     tabRailExpanded = false
     captures?.shellReloaded()
     // A tour still running ends with the page it ran in: its own page closes, as the tour would have closed it.
     for (const tab of allTabs().filter((item) => untrackedViews.has(item.view))) discardTab(tab.id, false)
   })
+  // The floated copy of the address bar's suggestions is made ready with the app window, so the first list opened
+  // over a page shows at once (made on demand, it appeared a moment after the list).
+  window.webContents.on('did-finish-load', () => { ensureShellOverlayView() })
 
   // The app's own page went away (its renderer crashed or was stopped) or hangs: it loads again. Tabs,
   // workspaces and pages live here in the main process, so the reloaded shell finds them where they were.

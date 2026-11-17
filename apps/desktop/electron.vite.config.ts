@@ -71,6 +71,10 @@ export default defineConfig({
     },
     plugins: [react(), devShellPolicy],
     // Minified: the app shell parses about half as much script at every launch.
-    build: { minify: 'esbuild' },
+    // index: the app window. overlay: the address bar's suggestions as floated above a page (main/shellOverlay.ts).
+    build: {
+      minify: 'esbuild',
+      rollupOptions: { input: { index: resolve(__dirname, 'src/renderer/index.html'), overlay: resolve(__dirname, 'src/renderer/overlay.html') } },
+    },
   },
 })

@@ -229,10 +229,55 @@ export function OmniboxSuggestions({
   onHover: (index: number) => void
   onPick: (row: OmniboxSuggestion, disposition?: OpenDisposition) => void
 }) {
+  // A page is a native view that paints above the app's own interface, so a list opened where a page is would be
+  // behind it. Main is told where the list is and what it shows; while a page is under it, main floats a copy above
+  // the page (main/shellOverlay.ts). The list's place comes from the launcher it opens above, not from its own box,
+  // which is still animating in.
+  const list = useRef<HTMLUListElement>(null)
+  const shown = useRef({ rows, onPick })
+  shown.current = { rows, onPick }
+  const count = rows.length
+  useLayoutEffect(() => {
+    const el = list.current
+    const launcher = el?.parentElement
+    if (!el || !launcher || count === 0) return
+    const report = (): void => {
+      const below = launcher.getBoundingClientRect()
+      const height = el.offsetHeight
+      const gap = 8
+      void window.intoponet.browserHost.setShellOverlay({
+        rect: { x: Math.floor(below.left), y: Math.floor(below.top - gap - height), width: Math.ceil(below.width), height: Math.ceil(height + gap) },
+        html: el.outerHTML,
+      }).catch(() => undefined)
+    }
+    report()
+    const observer = new ResizeObserver(report)
+    observer.observe(el)
+    window.addEventListener('resize', report)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', report)
+    }
+  }, [count, rows, activeIndex])
+  // Gone only when the list is (not between two lists as the text is typed, which would blink the copy).
+  useEffect(() => {
+    if (count === 0) return
+    return () => { void window.intoponet.browserHost.setShellOverlay(null).catch(() => undefined) }
+  }, [count === 0])
+  // A row clicked in the floated copy. The click takes the keyboard from the address bar for a moment, which closes
+  // the list here, so the rows as last shown are kept to pick from.
+  const lastShown = useRef(rows)
+  if (rows.length > 0) lastShown.current = rows
+  useEffect(() => window.intoponet.browserHost.subscribe((event) => {
+    if (event.type !== 'omnibox-pick') return
+    const row = (shown.current.rows.length > 0 ? shown.current.rows : lastShown.current)[event.index]
+    if (row) shown.current.onPick(row, dispositionFor({ metaKey: event.meta, altKey: event.alt }))
+  }), [])
   return (
     <AnimatePresence>
       {rows.length > 0 && (
         <motion.ul
+          ref={list}
           id={OMNIBOX_LIST_ID}
           className="omnibox-suggestions lg-surface"
           role="listbox"
