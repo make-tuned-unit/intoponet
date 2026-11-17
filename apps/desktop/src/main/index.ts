@@ -59,6 +59,7 @@ import { archiveAfterMs, DEFAULT_TAB_ARCHIVE, TabArchive, type ArchivedTab } fro
 import { addLinkRoute, moveLinkRoute, parseLinkRoutes, removeLinkRoute, routeFor, serializeLinkRoutes, siteOfWebUrl, updateLinkRoute, type LinkRoute } from './linkRoutes'
 import { answerWithin, DEFAULT_TAB_SLEEP, parseBrowsingSettingsFile, parseLinksFromOtherApps, sleepAfterMs, tabsDueForSleep, TYPED_CHECK_MS, TYPED_FORM_SCRIPT } from './tabSleep'
 import { QuickWindows, type QuickProtection } from './quickWindow'
+import { ClosedWindowAudio } from './closedWindowAudio'
 import { AUTO_PIP_WORLD_ID, ENTER_PIP_SCRIPT, EXIT_PIP_SCRIPT, NowPlaying, PAUSE_ALL_MEDIA_SCRIPT, PIP_LEFT_SCRIPT, TOGGLE_PLAYBACK_SCRIPT, type PipEnterResult } from './autoPip'
 import { UnseenTabs } from './backgroundLoad'
 import type { NowPlayingSnapshot } from '@intoponet/browser-api'
@@ -234,7 +235,7 @@ import { compareCountryName, compareLabelFor, landedCompare, savedCompareOf, tab
 import { liveTabFlags } from './tabState'
 import { groupSavedFolders, parseSavedWorkspaces, savedWorkspaceOf, WorkspaceSet, type RemovedWorkspace, type SavedWorkspace, type SavedWorkspaces } from './workspaces'
 import { BrowserImportService, wireBrowserImport } from './browserImport/service'
-import type { FolderPlan, ImportedTab, WorkspaceImportPlan } from './browserImport/plan'
+import { heldAddresses, type FolderPlan, type ImportedTab, type WorkspaceImportPlan } from './browserImport/plan'
 import { importRoot } from './browserImport/sources'
 import {
   browserHostChannels,
@@ -291,6 +292,8 @@ const unseenTabs = new UnseenTabs<Electron.WebContents>({
   pause: (contents) => runInEveryFrame(contents, PAUSE_UNSEEN_MEDIA),
   resume: (contents) => runInEveryFrame(contents, RESUME_UNSEEN_MEDIA),
 })
+/** Pages muted because the app window closed, until the person acts in them (closedWindowAudio.ts). */
+const closedWindowAudio = new ClosedWindowAudio<Electron.WebContents>()
 let translateService: TranslateService | null = null
 /** Saved passwords (sealed on this Mac); null until the app is ready. */
 let passwords: PasswordService | null = null
@@ -779,7 +782,7 @@ function nowPlayingSnapshot(): NowPlayingSnapshot | null {
     const tab = allTabs().find((item) => item.id === tabId)
     if (!tab || viewGone(tab.view)) return null
     const contents = tab.view.webContents
-    return { title: capTitle(liveTitle(tab) || tab.title || capUrl(tab.url)), muted: contents.isAudioMuted() }
+    return { title: capTitle(liveTitle(tab) || tab.title || capUrl(tab.url)), muted: contents.isAudioMuted() && !closedWindowAudio.silenced(contents) }
   })
 }
 const emitNowPlaying = coalesce(() => emit({ type: 'now-playing', nowPlaying: nowPlayingSnapshot() }))
@@ -790,6 +793,8 @@ const emitNowPlaying = coalesce(() => emit({ type: 'now-playing', nowPlaying: no
  */
 function pauseAllMedia(): void {
   const views = [...allTabs().map((tab) => tab.view), ...(linkPreview ? [linkPreview.view] : [])]
+  // What pausing cannot reach (a Web Audio player, a player in a closed shadow root) is silenced with its page.
+  closedWindowAudio.windowClosed(allTabs().filter((tab) => !viewGone(tab.view)).map((tab) => tab.view.webContents))
   for (const view of views) {
     if (viewGone(view)) continue
     // The page's own frame in an isolated world (the page cannot override pause there); its frames as they are.
@@ -1984,7 +1989,7 @@ function tabSnapshots(): PageTabSnapshot[] {
       active: tab.id === activeTabId,
       isPrivate: privateViews.has(tab.view),
       ...(tab.start ? { isStartPage: true } : {}),
-      ...liveTabFlags(live ? tab.view.webContents : null, tab, live && unseenTabs.mutedUntilShown(tab.view.webContents)),
+      ...liveTabFlags(live ? tab.view.webContents : null, tab, live && (unseenTabs.mutedUntilShown(tab.view.webContents) || closedWindowAudio.silenced(tab.view.webContents))),
       ...(tab.pinned && tab.home ? { home: capUrl(tab.home), ...(awayFromHome(safeHttpUrl(currentUrl) ? currentUrl : tab.url, tab.home) ? { awayFromHome: true } : {}) } : {}),
       ...(tab.asleep ? { asleep: true } : {}),
       ...(tab.lastShownAt ? { lastShownAt: tab.lastShownAt } : {}),
@@ -3624,6 +3629,8 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
   view.webContents.once('dom-ready', () => { if (!view.webContents.isDestroyed()) view.setBackgroundColor('#ffffff') })
   view.webContents.setWebRTCIPHandlingPolicy(WEBRTC_POLICY)
   view.webContents.on('before-mouse-event', (_event, input) => {
+    // A click in a page silenced when the app window closed: the person is back in this tab, and it is heard again.
+    if (input.type === 'mouseDown') closedWindowAudio.personActed(view.webContents)
     if (shouldCloseTabDockFromNativeMouse({
       isActivePage: pageView === view,
       fullWidth: browserFullWidth,
@@ -3672,6 +3679,8 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
   // Browser keys pressed in a page: carried out here, so a page cannot swallow them. preventDefault
   // also keeps the menu bar from running the same key a second time.
   view.webContents.on('before-input-event', (event, input) => {
+    // A key typed in a page silenced when the app window closed: heard again, as after a click in it.
+    if (input.type === 'keyDown') closedWindowAudio.personActed(view.webContents)
     // Esc always leaves a page's fullscreen (the page cannot keep it for itself).
     if (htmlFullScreenView === view && input.type === 'keyDown' && input.key === 'Escape') {
       event.preventDefault()
@@ -3693,8 +3702,10 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
     if (pageView !== view) return
     // Escape stops a page still loading; the page gets the key as well.
     if (isPlainEscape(input) && view.webContents.isLoading()) view.webContents.stop()
-    const action = pageKeyAction(input, { developer: developerBuild() })
+    const action = pageKeyAction(input, { developer: developerBuild(), permissionBar: (sitePermissions?.list().length ?? 0) > 0 })
     if (!action) return
+    // F6 with a site's request waiting: the keyboard goes to the bar, and comes back here once it is answered.
+    if (action.kind === 'shell' && action.action === 'focus-permission-bar') permissionBarOpener = view
     if (action.kind === 'command' && TEXT_FIELD_FIRST.has(action.command.type)) {
       // The page keeps the key; the browser acts only when no text field (or editor frame) has focus.
       const command = action.command
@@ -4124,6 +4135,8 @@ function showShellShortcut(action: ShellShortcut): void {
   }
   emit({ type: 'shortcut', action })
 }
+/** The page whose F6 moved the keyboard to the permission bar: it gets the keyboard back when the bar is answered. */
+let permissionBarOpener: WebContentsView | null = null
 /** Shortcuts for an app window that is not listening yet; null once it is (its first get-state, sent right after it subscribes). */
 let shellShortcutsWaiting: ShellShortcut[] | null = null
 
@@ -4685,6 +4698,7 @@ async function handleBrowserCommand(
       const tab = allTabs().find((item) => item.id === command.id)
       if (tab && !viewGone(tab.view)) {
         unseenTabs.mutedByPerson(tab.view.webContents)
+        closedWindowAudio.mutedByPerson(tab.view.webContents)
         tab.view.webContents.setAudioMuted(command.muted)
         emitTabs()
         emitNowPlaying()
@@ -4694,7 +4708,8 @@ async function handleBrowserCommand(
     case 'now-playing-toggle': {
       const tab = allTabs().find((item) => item.id === command.id)
       if (!tab || viewGone(tab.view)) break
-      // Play or pause the tab's media (a user gesture, so playback may start).
+      // Play or pause the tab's media (a user gesture, so playback may start, and a tab silenced when the window closed is heard).
+      closedWindowAudio.personActed(tab.view.webContents)
       void tab.view.webContents.executeJavaScriptInIsolatedWorld(AUTO_PIP_WORLD_ID, [{ code: TOGGLE_PLAYBACK_SCRIPT }], true)
         .then((result: string) => {
           // Paused from the control: it stays listed so it can be played again.
@@ -5564,7 +5579,7 @@ function wireImportFromBrowsers(): void {
   }
   wireBrowserImport(handleFromShell, new BrowserImportService({
     root: () => importRoot(process.env, app.getPath('userData')),
-    tabs: { urls: () => openTabs.map((tab) => tab.url), room: () => MAX_TABS - openTabs.length, limit: MAX_TABS, add: addImportedTabs },
+    tabs: { urls: () => openTabs.flatMap(heldAddresses), room: () => MAX_TABS - openTabs.length, limit: MAX_TABS, add: addImportedTabs },
     history: () => browsingData?.history ?? null,
     passwords: () => passwords,
     toOrigin: passwordOrigin,
@@ -5572,7 +5587,7 @@ function wireImportFromBrowsers(): void {
       existing: () => workspaces.workspaces.map((workspace) => {
         const shown = workspace.id === workspaces.activeId
         const held = shown ? openTabs.filter((tab) => !privateViews.has(tab.view)) : workspaces.parkedOf(workspace.id)?.tabs ?? []
-        return { id: workspace.id, name: workspace.name, urls: held.map((tab) => tab.url), room: MAX_TABS - (shown ? openTabs.length : held.length) }
+        return { id: workspace.id, name: workspace.name, urls: held.flatMap(heldAddresses), room: MAX_TABS - (shown ? openTabs.length : held.length) }
       }),
       favouriteUrls: () => workspaces.favourites.map((favourite) => favourite.url),
       freeWorkspaces: () => MAX_WORKSPACES - workspaces.workspaces.length,
@@ -5692,7 +5707,16 @@ app.whenReady().then(async () => {
       const shownPrivate = Boolean(pageView && privateViews.has(pageView))
       const shownScope = pageView ? scopeOfView(pageView) : 'default'
       const store = permissionStoreFor(shownPrivate, shownScope)
-      if (command.type === 'decide') return sitePermissions!.decide(command.id, command.decision)
+      if (command.type === 'decide') {
+        const answered = await sitePermissions!.decide(command.id, command.decision)
+        // Reached from a page with F6: with nothing more waiting, that page takes the keyboard back.
+        const opener = permissionBarOpener
+        if (opener && sitePermissions!.list().length === 0) {
+          permissionBarOpener = null
+          if (pageView === opener && !viewGone(opener) && pageViewShown(opener)) opener.webContents.focus()
+        }
+        return answered
+      }
       if (command.type === 'pending') return sitePermissions!.list()
       if (command.type === 'reset') {
         sitePermissions!.reset(command.origin, shownPrivate, command.kind, shownScope)

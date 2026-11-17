@@ -52,7 +52,10 @@ export class ArcFormatError extends Error {
 type Item = { id: string; parentID: string | null; title: string | null; childrenIds: string[] | null; data: Record<string, unknown> }
 
 const MAX_ITEMS = 50_000
+/** Folders nested deeper than this keep their tabs in the deepest folder that is named. */
 const MAX_DEPTH = 16
+/** Nothing is followed deeper than this (a file built to exhaust the stack). */
+const MAX_WALK = 1_000
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -147,7 +150,7 @@ export function parseArcSidebar(raw: string): ArcSidebar {
 
   /** Tabs under a container, split views opened up; folders handed to `onFolder`. */
   const tabsUnder = (parent: string, depth: number, onFolder: ((item: Item) => void) | null, seen: Set<string>): ArcTab[] => {
-    if (depth > MAX_DEPTH) return []
+    if (depth > MAX_WALK) return []
     const tabs: ArcTab[] = []
     for (const child of childrenOf(parent)) {
       if (seen.has(child.id)) continue
@@ -156,7 +159,7 @@ export function parseArcSidebar(raw: string): ArcSidebar {
       if (tab) tabs.push(tab)
       else if (isSplit(child)) tabs.push(...tabsUnder(child.id, depth + 1, null, seen))
       else if (isFolder(child)) {
-        if (onFolder) onFolder(child)
+        if (onFolder && depth < MAX_DEPTH) onFolder(child)
         else tabs.push(...tabsUnder(child.id, depth + 1, null, seen))
       } else skipped += 1
     }
@@ -165,7 +168,7 @@ export function parseArcSidebar(raw: string): ArcSidebar {
 
   /** The pinned part as a tree. Split views open up into their tabs; notes and the like are left out (counted above). */
   const treeUnder = (parent: string, depth: number, seen: Set<string>): SidebarNode[] => {
-    if (depth > MAX_DEPTH) return []
+    if (depth > MAX_WALK) return []
     const nodes: SidebarNode[] = []
     for (const child of childrenOf(parent)) {
       if (seen.has(child.id)) continue

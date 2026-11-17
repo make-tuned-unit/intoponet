@@ -224,6 +224,8 @@ export class BrowserImportService {
         include: { pinned: chosen.has('pinned'), open: chosen.has('open') },
         maxFolderDepth: target.maxFolderDepth,
       })
+      // What found no room in a workspace is not lost: it is kept in a collection named after its space.
+      for (const kept of workspacePlan.keep) folders.push({ label: kept.space, pages: kept.pages.map((page) => ({ ...page, addedAt: null })) })
     } else if (chosen.has('pinned') && isArc) folders.push(...pinned.folders)
 
     const wantedPinned = chosen.has('pinned') && !asWorkspaces ? pinned.tabs : []
@@ -306,9 +308,10 @@ export class BrowserImportService {
       added.pinned += workspacePlan.counts.pinned
       added.open += workspacePlan.counts.open
       workspaceNames = workspacePlan.workspaces.map((workspace) => workspace.name)
-      skip('workspaces', workspacePlan.skipped.spaces, `spaces over the limit of workspaces (their folders are kept as collections when Bookmarks is ticked)`)
+      const keptPinned = chosen.has('pinned')
+      skip('workspaces', workspacePlan.skipped.spaces, `spaces over the limit of workspaces (${keptPinned ? 'their pinned tabs and the tabs in their folders are kept in collections named after them' : 'their folders are kept as collections when Bookmarks is ticked'})`)
       skip('workspaces', workspacePlan.skipped.duplicates, 'tabs or favourites already there')
-      skip('workspaces', workspacePlan.skipped.overLimit, `tabs over the ${this.deps.workspaces!.tabLimit}-tab limit of a workspace`)
+      skip('workspaces', workspacePlan.skipped.overLimit, `tabs over the ${this.deps.workspaces!.tabLimit}-tab limit of a workspace${workspacePlan.keep.length ? ' (the pinned tabs, tabs in folders and favourites among them are kept in collections named after their spaces)' : ''}`)
     }
     if (tabs.duplicates) skip(chosen.has('pinned') ? 'pinned' : 'open', tabs.duplicates, 'already open')
     skip('pinned', tabs.leftOut.pinned, `over the ${this.deps.tabs.limit}-tab limit (they are in the collection named after their space)`)

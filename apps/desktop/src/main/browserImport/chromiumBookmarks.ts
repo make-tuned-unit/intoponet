@@ -17,7 +17,10 @@ const ROOT_LABELS: Record<string, string> = {
 }
 
 export const MAX_BOOKMARKS = 20_000
+/** Folders nested deeper than this keep their pages in the collection of the deepest folder that is named. */
 const MAX_DEPTH = 24
+/** Nothing is followed deeper than this (a file built to exhaust the stack). */
+const MAX_WALK = 1_000
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -63,7 +66,7 @@ export function parseChromiumBookmarks(text: string): { folders: ImportedFolder[
     return folder
   }
   const walk = (node: Record<string, unknown>, path: string[], rootLabel: string, depth: number): void => {
-    if (depth > MAX_DEPTH) return
+    if (depth > MAX_WALK) return
     const children = Array.isArray(node['children']) ? node['children'] : []
     for (const child of children) {
       if (!isRecord(child)) continue
@@ -82,7 +85,7 @@ export function parseChromiumBookmarks(text: string): { folders: ImportedFolder[
         }
       } else if (child['type'] === 'folder') {
         const name = typeof child['name'] === 'string' && child['name'].trim() ? child['name'] : 'Untitled folder'
-        walk(child, [...path, name], rootLabel, depth + 1)
+        walk(child, depth >= MAX_DEPTH ? path : [...path, name], rootLabel, depth + 1)
       }
     }
   }

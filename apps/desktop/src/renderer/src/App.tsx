@@ -886,6 +886,7 @@ export function App() {
         else if (event.action === 'bookmark') shortcutHandlers.current.bookmark()
         else if (event.action === 'next-tab' || event.action === 'previous-tab') void window.intoponet.browserHost.cycleTabs(event.action === 'next-tab' ? 'next' : 'previous')
         else if (event.action === 'focus-launcher') shortcutHandlers.current.focusAddress()
+        else if (event.action === 'focus-permission-bar') document.querySelector<HTMLElement>('[data-permission-bar]')?.focus()
         else if (event.action === 'capture') shortcutHandlers.current.capture()
         else if (event.action === 'toggle-private') shortcutHandlers.current.togglePrivate()
         else if (event.action === 'absorb-selection') shortcutHandlers.current.absorbSelection()

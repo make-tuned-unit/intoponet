@@ -324,7 +324,7 @@ export type BrowserHostEvent =
   /** Workspaces changed (or one was switched to: `switchedMs` is how long main took). */
   | { type: 'workspaces'; state: WorkspacesState; switchedMs?: number }
 
-export type ShellShortcut = 'new-tab' | 'find' | 'find-next' | 'find-previous' | 'open-settings' | 'bookmark' | 'next-tab' | 'previous-tab' | 'focus-launcher' | 'toggle-bookmarks' | 'capture' | 'toggle-private' | 'absorb-selection' | 'toggle-tab-sidebar' | 'command-menu'
+export type ShellShortcut = 'new-tab' | 'find' | 'find-next' | 'find-previous' | 'open-settings' | 'bookmark' | 'next-tab' | 'previous-tab' | 'focus-launcher' | 'toggle-bookmarks' | 'capture' | 'toggle-private' | 'absorb-selection' | 'toggle-tab-sidebar' | 'command-menu' | 'focus-permission-bar'
 
 export type PublicFieldStatus = {
   mode: 'local' | 'shared'

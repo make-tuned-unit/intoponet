@@ -861,6 +861,12 @@ async function appWindowRecovers(ctx) {
     await rightPage.evaluate(`Promise.resolve(document.querySelector('iframe').contentWindow.eval(${JSON.stringify(playVideo)}))`)
     const videos = async () => [await leftPage.evaluate(`document.getElementById('boot-video').paused`), await rightPage.evaluate(`document.querySelector('iframe').contentDocument.getElementById('boot-video').paused`)]
     expect(same(await videos(), [false, false]), `The test videos are not playing before the window closes: ${JSON.stringify(await videos())}.`)
+    // What pausing cannot reach: a Web Audio player (no element to pause) on the left, a video in a closed shadow root on the right.
+    await leftPage.evaluate(`(() => { const audio = new AudioContext(); const tone = audio.createOscillator(); const quiet = audio.createGain(); quiet.gain.value = 0.0001; tone.connect(quiet).connect(audio.destination); tone.start(); window.__bootAudio = audio; return audio.resume().then(() => true) })()`, { userGesture: true })
+    await rightPage.evaluate(`(() => { const c = document.createElement('canvas'); c.width = 32; c.height = 18; const g = c.getContext('2d'); setInterval(() => g.fillRect(0, 0, 32, 18), 100); const v = document.createElement('video'); v.srcObject = c.captureStream(5); v.muted = true; const holder = document.createElement('div'); holder.attachShadow({ mode: 'closed' }).append(v); document.body.append(holder); window.__bootShadowVideo = v; return v.play().then(() => true) })()`)
+    const unreached = async () => [await leftPage.evaluate(`window.__bootAudio.state`), await rightPage.evaluate(`window.__bootShadowVideo.paused`)]
+    const silenced = () => ctx.main(`JSON.stringify(['/left', '/right'].map((part) => electron.webContents.getAllWebContents().find((c) => /^https?:/.test(c.getURL()) && c.getURL().includes(part))?.isAudioMuted() ?? null))`).then(JSON.parse)
+    expect(same(await unreached(), ['running', false]) && same(await silenced(), [false, false]), `The Web Audio player and the video in a closed shadow root are not set up: ${JSON.stringify(await unreached())}, muted ${JSON.stringify(await silenced())}.`)
 
     // Closed with the red button while a quick window is open: the Dock icon brings it back, the pair in front.
     await ctx.main(`(() => { electron.Menu.getApplicationMenu().getMenuItemById('new-quick-window').click(); return true })()`)
@@ -874,6 +880,13 @@ async function appWindowRecovers(ctx) {
     await ready(shell, 'the app window back from the Dock')
     await ctx.delay(1500)
     expect(same(await videos(), [true, true]), `A video started playing again by itself when the app window came back: ${JSON.stringify(await videos())}.`)
+    // The players pausing could not reach go on running, so their pages were silenced, and stay silent with the window back,
+    // without the tabs being listed as muted (that shows the person's own choice).
+    expect(same(await silenced(), [true, true]), `With the app window closed and back, the pages whose players cannot be paused (${JSON.stringify(await unreached())}) are muted ${JSON.stringify(await silenced())}, not both.`)
+    expect(await shell.evaluate(`window.intoponet.browserHost.getTabs().then((tabs) => tabs.every((tab) => !tab.muted))`), 'A tab silenced because the app window closed is listed as muted by the person.')
+    // A key typed in one of them (the person is back in that tab): that tab is heard again, the other stays silent.
+    await ctx.keyInPage('/left', 'Shift')
+    await until('the tab a key was typed in to be heard again', async () => same(await silenced(), [false, true]), 5000)
     expect(await tabsOf(shell) === tabsBefore, `Back from the Dock, the app window's tabs are ${await tabsOf(shell)}, not ${tabsBefore}.`)
     const reopened = await shellNow()
     expect(same(reopened.pages.map((page) => page.url), before.pages.map((page) => page.url)), `Back from the Dock, the pages in front are ${JSON.stringify(reopened.pages.map((page) => page.url))}.`)
@@ -1666,6 +1679,40 @@ export const checks = {
     expect(/^Background tab “[^”]+” · example\.org wants to show notifications/.test(named), `The bar does not name the background tab that asked: "${named}"`)
     expect(await ctx.click('.permission-bar button', 'Not now'), 'The permission bar has no "Not now" button.')
     await ctx.wait(`!document.querySelector('.permission-bar')`, 5_000, 'the permission bar to go after "Not now"')
+    // From inside a page, F6 moves the keyboard to a waiting bar (with no bar showing it stays the page's own key), and the
+    // bar says so; once answered, the page has the keyboard back.
+    const frontPage = `electron.webContents.getAllWebContents().find((c) => /^https?:/.test(c.getURL()) && c.getURL().includes(${JSON.stringify(host)}))`
+    const focusFrontPage = () => ctx.main(`(() => { electron.app.focus({ steal: true }); electron.BrowserWindow.getAllWindows()[0].focus(); ${frontPage}.focus(); return true })()`)
+    const keyboardIn = () => ctx.main(`(() => (${frontPage}.isFocused() ? 'page' : electron.BrowserWindow.getAllWindows()[0].webContents.isFocused() ? 'shell' : 'neither'))()`)
+    const keyboardReaches = async (where, label) => {
+      let now = await keyboardIn()
+      for (let i = 0; i < 40 && now !== where; i += 1) { await ctx.delay(150); now = await keyboardIn() }
+      expect(now === where, `${label} (the keyboard is in: ${now}).`)
+    }
+    await page.evaluate(`(() => { window.__f6 = 0; addEventListener('keydown', (event) => { if (event.key === 'F6') window.__f6 += 1 }); return true })()`)
+    await focusFrontPage()
+    await keyboardReaches('page', 'The page in front did not take the keyboard')
+    await ctx.keyInPage(host, 'F6')
+    await ctx.delay(400)
+    // The keyboard staying in the page is the proof (the browser would have moved it to the app window).
+    const heardAlone = await page.evaluate(`window.__f6`)
+    expect(await keyboardIn() === 'page' && !(await ctx.evaluate(`!!document.activeElement?.closest('.permission-bar')`)), `With no bar showing, F6 was taken from the page (the page heard it ${heardAlone} times; the keyboard is in: ${await keyboardIn()}).`)
+    // The page in front asks for something it has not asked for yet.
+    void page.evaluate(`Notification.requestPermission()`).catch(() => undefined)
+    await ctx.wait(`(document.querySelector('.permission-bar')?.innerText ?? '').includes('wants to show notifications')`, 15_000, 'the permission bar when the page in front asks to show notifications')
+    await focusFrontPage()
+    await keyboardReaches('page', 'The page in front did not keep the keyboard as the bar appeared')
+    await ctx.keyInPage(host, 'F6')
+    await keyboardReaches('shell', 'F6 in a page did not move the keyboard to the app window while a permission bar is waiting')
+    await ctx.wait(`document.activeElement?.hasAttribute('data-permission-bar')`, 5_000, 'F6 in a page to put focus on the permission bar')
+    expect(await page.evaluate(`window.__f6`) === heardAlone, 'F6 reached the page as well as the permission bar.')
+    const keysHint = await ctx.evaluate(`document.getElementById(document.querySelector('[data-permission-bar]').getAttribute('aria-describedby') ?? '')?.textContent ?? ''`)
+    expect(/F6/.test(keysHint) && /Tab/.test(keysHint), `The permission bar does not say how the keyboard reaches it: "${keysHint}".`)
+    await ctx.press('Tab')
+    expect(await ctx.evaluate(`document.activeElement?.closest('[data-permission-bar]') && document.activeElement.tagName === 'BUTTON'`), 'Tab from the permission bar did not reach its first button.')
+    await ctx.press('Enter')
+    await ctx.wait(`!document.querySelector('.permission-bar')`, 5_000, 'the permission bar to go once answered from the keyboard')
+    await keyboardReaches('page', 'Once the bar reached with F6 was answered, the page did not get the keyboard back')
     // A real click in the page (not a scripted one) lets it open a sign-in window and a new tab.
     const clickPage = async (session) => {
       for (const type of ['mousePressed', 'mouseReleased']) await session.send('Input.dispatchMouseEvent', { type, x: 20, y: 20, button: 'left', clickCount: 1 })
@@ -3162,6 +3209,8 @@ export const checks = {
     let tourAfterCrash = null
     for (let step = 1; step <= total; step += 1) {
       const state = shown[step] = await settle(step)
+      // Keyboard focus is never left on nothing under the tour (a panel the last step had open closed with focus in it).
+      expect(!(await ctx.evaluate(`document.activeElement === document.body || !document.activeElement`)), `At tour step ${step} ("${state.title}") keyboard focus is on nothing.`)
       if (state.title === 'Every page, with tools built in') {
         await ctx.delay(600)
         savedWithTabs = existsSync(stateFile) && readFileSync(stateFile, 'utf8').includes(tourPage)
@@ -4034,6 +4083,37 @@ export const checks = {
       await show('Travel')
       const travel = await tabs()
       expect(travel.map((tab) => tab.title).join() === 'Flights,Kyoto,Osaka,Hotels' && (await folders()).map((f) => f.name).join() === 'Japan', `Travel holds: ${travel.map((tab) => tab.title).join()} in ${(await folders()).map((f) => f.name).join()}.`)
+
+      // A space with more pinned tabs than a workspace holds: the workspace is filled, the result says how many were left
+      // out, and the pinned tabs and foldered tabs that found no room are kept in a collection named after the space.
+      const crowdedTabs = Array.from({ length: 30 }, (_, n) => sidebarItem(`C${n}`, 'CP', `https://crowded.example.com/pinned-${n}`, `Pinned ${n}`))
+      const crowdedFoldered = Array.from({ length: 5 }, (_, n) => sidebarItem(`CF${n}`, 'CFOLDER', `https://crowded.example.com/filed-${n}`, `Filed ${n}`))
+      writeFileSync(join(IMPORT_WS_ROOT, 'Arc', 'StorableSidebar.json'), JSON.stringify({ sidebar: { containers: [{ global: {} }, {
+        spaces: ['CS', { id: 'CS', title: 'Crowded', profile: { default: true }, newContainerIDs: [{ pinned: {} }, 'CP', { unpinned: {} }, 'CU'] }],
+        items: [
+          'CP', { id: 'CP', parentID: null, childrenIds: [...crowdedTabs.map((item) => item.id), 'CFOLDER'], data: { itemContainer: {} } },
+          ...crowdedTabs.flatMap((item) => [item.id, item]),
+          'CFOLDER', { id: 'CFOLDER', parentID: 'CP', childrenIds: crowdedFoldered.map((item) => item.id), title: 'Later', data: { list: {} } },
+          ...crowdedFoldered.flatMap((item) => [item.id, item]),
+          'CU', { id: 'CU', parentID: null, childrenIds: ['CO'], data: { itemContainer: {} } },
+          'CO', sidebarItem('CO', 'CU', 'https://crowded.example.com/open', 'Open'),
+        ],
+      }] } }))
+      await choose()
+      expect((await sectionText()).includes('Crowded: 30 pinned tabs, 1 folder (5 tabs), 1 open tab'), `The crowded space's preview: ${await sectionText()}`)
+      const crowded = await importNow('a space with more tabs than a workspace holds')
+      for (const piece of ['1 new workspace (Crowded)', '12 pinned tabs', '24 items: tabs over the 12-tab limit of a workspace', 'kept in collections named after their spaces']) expect(crowded.includes(piece), `The result for the crowded space does not say "${piece}": ${crowded}`)
+      await show('Crowded')
+      const crowdedNow = await tabs()
+      expect(crowdedNow.length === 12 && crowdedNow.every((tab) => tab.pinned), `Crowded holds ${crowdedNow.length} tabs (${crowdedNow.filter((tab) => tab.pinned).length} pinned), not the 12 pinned tabs a workspace has room for.`)
+      const keptLibrary = JSON.parse(await ctx.evaluate(`${host}.readPrivateLibrary().then((r) => r.status === 'ok' && r.payload ? r.payload : '{"bookmarks":[],"collections":[]}')`))
+      const keptCrowded = keptLibrary.collections.find((collection) => collection.label === 'Crowded')?.memberUrls ?? []
+      const arrivedCrowded = new Set(crowdedNow.map((tab) => tab.url))
+      const everyPinned = [...crowdedTabs, ...crowdedFoldered].map((item) => item.data.tab.savedURL)
+      expect(keptCrowded.length === 23 && everyPinned.every((address) => arrivedCrowded.has(address) !== keptCrowded.includes(address)), `Of Crowded's 35 pinned and foldered tabs, ${arrivedCrowded.size} are in the workspace and ${keptCrowded.length} in its collection: some are in neither (or both).`)
+      const crowdedAgain = await importNow('the crowded space again')
+      expect(crowdedAgain.includes('Nothing new'), `A second import of the crowded space added something: ${crowdedAgain}`)
+      expect((await tabs()).length === 12, 'A second import of the crowded space changed its workspace.')
 
       // A file in a shape it does not know is reported, and nothing is read from it or written.
       const before = JSON.stringify(await state())
