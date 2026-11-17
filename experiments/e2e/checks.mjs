@@ -3404,16 +3404,18 @@ export const checks = {
     await ctx.main(`(() => { electron.BrowserWindow.getAllWindows()[0].webContents.send('browser-host:event', { type: 'shortcut', action: 'toggle-tab-sidebar' }); return true })()`)
     await ctx.wait(`window.intoponet.browserHost.getTabSidebar().then((s) => s?.mode === 'hidden')`, 5000, '⌃⌘S to hide the sidebar before the tour')
     const keptBefore = await ctx.evaluate(kept)
-    // The Olds step moves on as soon as The Olds has looked, even when it finds nothing: here Wikipedia cannot be reached.
-    // First, before any story's history is kept (the Olds step looks up the tour's own story even when jumped to). How long
-    // The Olds takes to give up depends on the story and the network; the step must not wait longer than that.
+    // The Olds step is ready as soon as The Olds is on screen for the tour's headline, not when its lookup finishes
+    // (6 to 32 s on a real network): here nothing is heard from Wikipedia for 8 s from its first request (then it
+    // cannot be reached), so the lookup is slow whatever the network is. First, before any story's history is kept (the Olds step looks up the tour's own
+    // story even when jumped to). The spotlight is on The Olds while it looks and still on it once it has looked.
+    const OLDS_LOOKUP_DELAY = 8_000
     await ctx.main(`(() => {
       const dns = process.mainModule.require('dns')
       dns.__tourLookup ??= dns.lookup
       const lookup = dns.__tourLookup
       dns.lookup = function (host, options, callback) {
         if (typeof options === 'function') { callback = options; options = {} }
-        if (/(^|\\.)(wikipedia|wikidata|wikimedia)\\.org$/.test(host)) return process.nextTick(callback, Object.assign(new Error('getaddrinfo ENOTFOUND ' + host), { code: 'ENOTFOUND', hostname: host }))
+        if (/(^|\\.)(wikipedia|wikidata|wikimedia)\\.org$/.test(host)) return void setTimeout(callback, Math.max(0, (dns.__tourSlowUntil ??= Date.now() + ${OLDS_LOOKUP_DELAY}) - Date.now()), Object.assign(new Error('getaddrinfo ENOTFOUND ' + host), { code: 'ENOTFOUND', hostname: host }))
         return lookup.call(this, host, options, callback)
       }
       return true
@@ -3428,21 +3430,46 @@ export const checks = {
       expect(await ctx.evaluate(`!!document.activeElement?.closest('.tour-card')`), `Focus did not move into the tour as it opened (it is on "${await ctx.evaluate(`document.activeElement?.getAttribute('aria-label') || document.activeElement?.textContent || document.activeElement?.tagName`)}").`)
       await ctx.evaluate(`(() => {
         const step = window.__oldsStep = { start: performance.now() }
+        // Where the spotlight is against The Olds' sheet (it has a little room around what it lights).
+        const onSheet = () => {
+          const lit = document.querySelector('.tour-spotlight')
+          const sheet = document.querySelector('.olds-sheet')
+          if (!lit || !sheet || lit.dataset.target !== '.olds-sheet') return false
+          const a = lit.getBoundingClientRect()
+          const b = sheet.getBoundingClientRect()
+          return Math.abs(a.left - b.left) < 40 && Math.abs(a.top - b.top) < 40 && Math.abs(a.right - b.right) < 40 && Math.abs(a.bottom - b.bottom) < 40
+        }
         const timer = setInterval(() => {
-          if (!step.looked && document.querySelector('.olds-sheet') && !document.querySelector('.olds-sheet .olds-status[role="status"]')) step.looked = Math.round(performance.now() - step.start)
-          if (document.querySelector('.tour-next')?.textContent.includes('Showing')) step.showing = true
-          else if (step.showing) {
-            step.ms = Math.round(performance.now() - step.start)
+          const looking = !!document.querySelector('.olds-sheet .olds-status[role="status"]')
+          if (!step.looked && document.querySelector('.olds-sheet') && !looking) {
+            step.looked = Math.round(performance.now() - step.start)
             step.olds = (document.querySelector('.olds-sheet .olds-status') ?? document.querySelector('.olds-sheet h2'))?.innerText ?? 'not open'
-            clearInterval(timer)
+            // Once the spotlight has had time to follow what arrived.
+            setTimeout(() => { step.after = { onSheet: onSheet(), title: document.querySelector('.tour-progress .is-current')?.dataset.title ?? '', next: document.querySelector('.tour-next')?.textContent ?? '' }; clearInterval(timer) }, 1200)
+          }
+          if (document.querySelector('.tour-next')?.textContent.includes('Showing')) step.showing = true
+          else if (step.showing && !step.ms) {
+            step.ms = Math.round(performance.now() - step.start)
+            step.lookingWhenReady = looking
+            step.heading = document.querySelector('.olds-sheet .olds-title h2')?.textContent ?? ''
+            setTimeout(() => { step.ready = { onSheet: onSheet() } }, 700)
           }
         }, 50)
         ;[...document.querySelectorAll('.tour-progress [data-step]')].find((b) => b.dataset.title === 'The history behind the news').click()
         return true
       })()`)
-      await ctx.wait(`!!window.__oldsStep.ms`, 45_000, 'The Olds step to finish with Wikipedia unreachable')
+      await ctx.wait(`!!window.__oldsStep.ready`, 20_000, 'The Olds step to be ready while its lookup is slow')
       offline = JSON.parse(await ctx.evaluate(`JSON.stringify(window.__oldsStep)`))
-      expect(offline.looked && offline.ms - offline.looked < 2_000, `With Wikipedia unreachable, The Olds step kept showing for ${Math.round(offline.ms / 1000)} s, ${offline.looked ? `${((offline.ms - offline.looked) / 1000).toFixed(1)} s after The Olds had looked` : 'and The Olds never finished looking'} (The Olds: "${offline.olds}").`)
+      expect(offline.ms < 4_000, `With The Olds' lookup taking at least ${OLDS_LOOKUP_DELAY / 1000} s, its tour step took ${(offline.ms / 1000).toFixed(1)} s to be ready: it waited for the lookup, not for The Olds to be on screen.`)
+      expect(offline.lookingWhenReady && !offline.looked, `The Olds' lookup was not slow in this run (it had ${offline.looked ? `finished after ${offline.looked} ms` : 'no "Looking up" state'} when the step was ready), so the step being ready early proves nothing.`)
+      expect(offline.heading.length > 0 && offline.ready.onSheet, `The Olds step was ready without The Olds on screen for the tour's headline under the spotlight (heading "${offline.heading}", spotlight on the sheet: ${offline.ready.onSheet}).`)
+      // Its words hold whether or not the history has arrived: what The Olds does, not what it found.
+      const oldsWords = await ctx.evaluate(`document.querySelector('.tour-card')?.innerText ?? ''`)
+      expect(oldsWords.includes('The Olds finds the ongoing story a headline belongs to') && !/\\b(found|here is|shown here|below)\\b/i.test(oldsWords), `The Olds step's words claim a history that may not have arrived yet: "${oldsWords.replace(/\\s+/g, ' ').slice(0, 300)}".`)
+      // When the lookup ends (here with nothing: Wikipedia never answered), the step is still this one and the spotlight still on The Olds.
+      await ctx.wait(`!!window.__oldsStep.after`, 60_000, 'The Olds to finish its slow lookup under the tour')
+      offline = JSON.parse(await ctx.evaluate(`JSON.stringify(window.__oldsStep)`))
+      expect(offline.looked >= OLDS_LOOKUP_DELAY - 500 && offline.after.onSheet && offline.after.title === 'The history behind the news' && !offline.after.next.includes('Showing'), `After The Olds finished looking (${offline.looked} ms, "${offline.olds}"), the tour's spotlight was ${offline.after.onSheet ? 'on' : 'off'} The Olds, on step "${offline.after.title}" (button: "${offline.after.next.trim()}").`)
       await ctx.press('Escape')
       await ctx.wait(`!document.querySelector('.tour-card') && !document.querySelector('.olds-sheet')`, 5000, 'the tour to close on Escape')
     } finally {
@@ -3644,7 +3671,7 @@ export const checks = {
     await ctx.wait(`!document.querySelector('.tour-card')`, 5000, 'Enter on Leave the tour to leave it')
     await ctx.delay(500)
     expect(await ctx.evaluate(`document.activeElement?.dataset.panel === 'settings'`), `After leaving the tour, focus went to "${await focusName()}", not the Settings button.`)
-    return `All ${total} steps shown, each spotlight on what it describes, the same played forward, gone back to and jumped to; the tour put everything back at the end, its own tab closed. Slowest steps to be ready (of ${stepTimes.length} timed): ${slowestSteps || 'none'}; the whole walk took ${Math.round((Date.now() - tourStarted) / 1000)} s. With Wikipedia unreachable The Olds step moved on ${((offline.ms - offline.looked) / 1000).toFixed(1)} s after The Olds had looked (${(offline.ms / 1000).toFixed(1)} s in all: "${offline.olds}").`
+    return `All ${total} steps shown, each spotlight on what it describes, the same played forward, gone back to and jumped to; the tour put everything back at the end, its own tab closed. Slowest steps to be ready (of ${stepTimes.length} timed): ${slowestSteps || 'none'}; the whole walk took ${Math.round((Date.now() - tourStarted) / 1000)} s. With The Olds' lookup held up, its step was ready in ${(offline.ms / 1000).toFixed(1)} s with The Olds looking under the spotlight, ${((offline.looked - offline.ms) / 1000).toFixed(1)} s before the lookup ended ("${offline.olds.replace(/\s+/g, ' ')}"), the spotlight still on it then.`
   },
   async TAB_ARCHIVE(ctx) {
     // Started with an "hour" of 200 ms (TAB_ARCHIVE.env below), so "12 hours" is 2.4 seconds.

@@ -37,8 +37,9 @@ export type TourControls = {
   /** Look up a headline's history ahead of time (so its step opens at once). */
   prepareOlds(headline: string): void
   /**
-   * The Olds for a headline, over the globe (the page and other panels put away); resolves when it has
-   * finished looking. Already showing that headline, nothing changes.
+   * The Olds for a headline, over the globe (the page and other panels put away); resolves when its panel
+   * is on screen for that headline, whether or not its lookup has finished (the history fills in when it
+   * arrives). Already showing that headline, nothing changes.
    */
   openOlds(headline: string): Promise<void>
   showBookmarks(open: boolean): void
