@@ -26,3 +26,11 @@ Base `73c5d0a` (0.1.25). Seven agents, one area each, merged on main. Not releas
 ## Known not true as worded
 
 - "Ads and trackers are blocked on every page": the engine blocks 32 hard-coded hosts; 13 of 20 well-known ad and tracker endpoints were allowed. The PROTECTION check asserts only a blocked count above zero.
+
+## Later on 17 November: the full run, and what changed after this page was first written
+
+- **Full end-to-end run on the final build, screen unlocked throughout (19:43 UTC): 64 passed, 0 failed, 0 blocked.** It is the run recorded in `docs/FEATURE_VERIFICATION.md`. Three earlier full runs that day ended 62, 60 and 55 of 64; their failures were a locked screen, the owner's typing landing in a test window, checks that assumed more than the app promises (STORY_TABS), and one real fault since fixed (the session-parity walk meeting the new overlay page).
+- **Ad and tracker blocking is Intoponet's own** (matcher, same-site table and a list of 920 rules for 918 hosts): no outside filter list or blocker ships. The sentence above about 32 hard-coded hosts no longer applies. On 54 outlets the list was not built from, the list as frozen before the test (886 rules) missed 28.5% of ad and tracker hosts; other-site cookies fell from 3,590 to 144. Method: `docs/protection-measurement.md`.
+- **The address bar's suggestions float above a page** in a view of their own; the page keeps its size. **A tab keeps its story mark** while the news is rebuilt under it. **Private tabs are marked** wherever tabs are listed; **the Time Machine exclusion** holds through every library save; Arc's tabs over a limit are kept in collections.
+- Unit tests on the final tree: desktop 1,587 (one, `networkFailures.test.ts`, failed once at load average 53 and passes alone), protection-engine 34, every other workspace and all 50 website and Olds tests green.
+- Not done: a packaged build (the news thread and the overlay page loading from the signed app are unproven); the release SBOM still omits bundled packages.
