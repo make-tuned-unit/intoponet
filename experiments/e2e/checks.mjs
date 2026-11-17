@@ -1099,7 +1099,10 @@ export const checks = {
     await ctx.waitForNews()
     await ctx.flyTo('Canada')
     await ctx.delay(2500)
-    expect(await ctx.click('.globe-list .globe-row', 'Canada'), 'Canada is not in the list after flying there.')
+    // Canada's local news, by what its row says ("12 stories · 5 outlets"): Wikipedia's readers and events near it can
+    // have a row named Canada too, listed first on some days, and those open no country card.
+    const opened = await ctx.wait(`(() => { const row = [...document.querySelectorAll('.globe-list .globe-row')].find((el) => el.querySelector('strong')?.textContent === 'Canada' && /stor(y|ies) · \\d+ outlets?/.test(el.querySelector('small')?.textContent ?? '')); if (!row) return false; row.click(); return true })()`, 10_000).then(() => true, () => false)
+    expect(opened, `Canada's local news is not in the list after flying there (rows: ${await ctx.evaluate(`[...document.querySelectorAll('.globe-list .globe-row')].slice(0, 8).map((el) => el.innerText.replace(/\\s+/g, ' ')).join(' | ')`)}).`)
     await ctx.wait(`!!document.querySelector('.globe-context-facts')`, 90_000, 'key facts in The bigger picture').catch(async (error) => {
       // Timed out under load with nothing to go on: say whether the card was still looking, had given up, or was never shown.
       throw new CheckFailure(`${error.message} (the panel is "${await ctx.evaluate(`document.querySelector('.globe-header h1')?.textContent ?? 'none'`).catch(() => 'unknown')}"; its card says "${await ctx.evaluate(`document.querySelector('.globe-context-status')?.innerText ?? (document.querySelector('.globe-context') ? 'no status' : 'no card')`).catch(() => 'unknown')}")`)
