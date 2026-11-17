@@ -2164,7 +2164,9 @@ function showTab(id: string): WebContentsView | null {
   }
   const now = Date.now()
   const previous = openTabs.find((item) => item.id === activeTabId)
-  if (previous) previous.lastShownAt = now
+  // A moment before the tab shown now: with the same time on both, tab search (which lists tabs most recently
+  // shown first) put whichever came first in the tab list on top, the tab just left or the one in front.
+  if (previous && previous !== tab) previous.lastShownAt = now - 1
   tab.lastShownAt = now
   if (partner) partner.lastShownAt = now
   activeTabId = tab.id

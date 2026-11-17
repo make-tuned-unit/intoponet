@@ -2917,8 +2917,19 @@ export const checks = {
       await ctx.delay(600)
       expect(await activeTitle() === 'Page /c', `In tab-bar order ⌃Tab went to ${await activeTitle()}.`)
       expect(!(await switcherShowing()), 'The switcher opened in tab-bar order.')
-      void a
-      return 'Hold ⌃, Tab and ⌃⇧Tab step most-recent-first over the page (announced); release shows it, a quick ⌃Tab goes back, Escape keeps the tab; tab-bar order unchanged.'
+      // Tab search lists the open tabs most recently used first too, in the address bar and in the command menu
+      // (c was shown last, b before it, then d; a is shown now).
+      await ctx.evaluate(`window.intoponet.browsing.setTabSwitchOrder('recent').then(() => true)`)
+      await ctx.evaluate(`${host}.activateTab(${JSON.stringify(a.id)}).then(() => true)`)
+      await ctx.wait(`${host}.getTabs().then((t) => t.find((x) => x.active)?.title === 'Page /a')`, 3000, 'the first tab to be shown')
+      for (const typed of ['Page /', '> Page /']) {
+        await ctx.evaluate(`(() => { const i = document.querySelector('.command-input input'); i.focus(); i.select(); return true })()`)
+        await ctx.type(typed)
+        await ctx.wait(`[...document.querySelectorAll('[role="listbox"] [role="option"]')].filter((row) => row.dataset.kind === 'tab').length >= 4`, 5000, `tab search for "${typed}" to list the open tabs`)
+        const found = JSON.parse(await ctx.evaluate(`JSON.stringify([...document.querySelectorAll('[role="listbox"] [role="option"]')].filter((row) => row.dataset.kind === 'tab').map((row) => (row.innerText.split('Page /')[1] ?? '?')[0]))`))
+        expect(found.join(' ') === 'a c b d', `Tab search for "${typed}" listed the tabs as ${found.join(', ')}, not most recently used first (a, c, b, d).`)
+      }
+      return 'Hold ⌃, Tab and ⌃⇧Tab step most-recent-first over the page (announced); release shows it, a quick ⌃Tab goes back, Escape keeps the tab; tab-bar order unchanged; tab search in the address bar and the command menu lists the tabs most recently used first.'
     } finally {
       server.close()
     }
