@@ -931,6 +931,49 @@ export const checks = {
     await ctx.wait(`!!document.querySelector('.topbar') && !!document.querySelector('canvas')`, 30_000, 'the header and globe to render')
     const buttons = await ctx.evaluate(`[...document.querySelectorAll('.bookmark-library-button')].map((b) => (b.innerText || b.getAttribute('aria-label')).trim())`)
     for (const label of ['Private', 'Bookmarks', 'The Olds', 'Knowledge', 'My map', 'Settings']) expect(buttons.some((b) => b.includes(label)), `Header is missing "${label}". Found: ${buttons.join(', ')}`)
+    // An error nobody catches in the main process (thrown from a timer here) is logged by the app and it carries on:
+    // without the app's own listener Electron stops everything behind an alert until someone presses OK. The harness
+    // hears uncaught errors too and fails a check on any (lib.mjs), which would both hide a missing app listener
+    // (Electron's alert only shows when nobody else listens) and fail this check on its own throw: its listener is set
+    // aside for the moment of the throw, the alert is recorded instead of shown, and any other error the app logs
+    // meanwhile is handed to the harness as usual.
+    const thrownOnPurpose = 'e2e: an error thrown on purpose from a timer (APP_BOOT)'
+    let uncaught
+    try {
+      await ctx.main(`(() => {
+        const marker = ${JSON.stringify(thrownOnPurpose)}
+        const probe = globalThis.__uncaughtProbe = { boxes: [], logged: 0, windows: electron.BrowserWindow.getAllWindows().length, showErrorBox: electron.dialog.showErrorBox, consoleError: console.error }
+        probe.parked = process.listeners('uncaughtException').filter((listener) => String(listener).includes('__e2eUncaught'))
+        for (const listener of probe.parked) process.removeListener('uncaughtException', listener)
+        electron.dialog.showErrorBox = (title, content) => { probe.boxes.push(String(title) + ': ' + String(content).slice(0, 200)) }
+        console.error = (...args) => {
+          const text = args.map((arg) => String(arg?.stack ?? arg)).join(' ')
+          if (text.includes(marker)) probe.logged += 1
+          else {
+            if (text.includes('uncaught error in the main process')) (globalThis.__e2eUncaught ??= []).push(text.slice(0, 700))
+            probe.consoleError(...args)
+          }
+        }
+        setTimeout(() => { throw new Error(marker) }, 10)
+        return true
+      })()`)
+      await ctx.delay(400)
+    } finally {
+      uncaught = JSON.parse(await ctx.main(`(() => {
+        const probe = globalThis.__uncaughtProbe
+        if (!probe) return 'null'
+        electron.dialog.showErrorBox = probe.showErrorBox
+        console.error = probe.consoleError
+        for (const listener of probe.parked) process.on('uncaughtException', listener)
+        delete globalThis.__uncaughtProbe
+        return JSON.stringify({ boxes: probe.boxes, logged: probe.logged, parked: probe.parked.length, newWindows: electron.BrowserWindow.getAllWindows().length - probe.windows })
+      })()`))
+    }
+    expect(uncaught?.parked === 1, `The harness's own listener for uncaught errors was not found (${uncaught?.parked}), so this step proves nothing.`)
+    expect(uncaught.boxes.length === 0, `An error nobody caught in the main process brought up Electron's blocking alert (the app has no listener of its own): ${uncaught.boxes.join(' | ')}`)
+    expect(uncaught.logged === 1, `An error nobody caught in the main process was logged ${uncaught.logged} times by the app, not once.`)
+    expect(uncaught.newWindows === 0, `An error nobody caught in the main process opened ${uncaught.newWindows} new window(s).`)
+    expect(await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((tabs) => Array.isArray(tabs))`), 'After an error nobody caught in the main process, the app no longer answers its window.')
     // The app's own page runs under its Content-Security-Policy: an inline script, or an image from a host it does not use,
     // is refused there. Main hears each refusal the page reports; none may come from what the app loads itself (it reloads twice below).
     await ctx.main(`(() => { const wc = electron.BrowserWindow.getAllWindows().find((w) => w.webContents.getURL().includes('index.html')).webContents; globalThis.__cspRefusals = []; wc.on('console-message', (details) => { if (/Content Security Policy/.test(String(details.message))) globalThis.__cspRefusals.push(String(details.message).slice(0, 240)) }); return true })()`)
@@ -976,7 +1019,7 @@ export const checks = {
     const recovered = await appWindowRecovers(ctx)
     const refusals = await ctx.main('globalThis.__cspRefusals')
     expect(refusals.length === 0, `The app's own page refused something it loads itself: ${refusals.join(' | ')}`)
-    return `Header: ${buttons.join(' · ')}. Its page refused an inline script and a stranger's image, and nothing of its own across two reloads. A damaged profile opened, its unreadable files kept aside and an earlier run's unfinished temporary files deleted. ${recovered}`
+    return `Header: ${buttons.join(' · ')}. Its page refused an inline script and a stranger's image, and nothing of its own across two reloads. An error thrown from a timer in the main process was logged without an alert and the app carried on. A damaged profile opened, its unreadable files kept aside and an earlier run's unfinished temporary files deleted. ${recovered}`
   },
 
   async GLOBE_LIVE(ctx) {
@@ -2121,6 +2164,42 @@ export const checks = {
     await openAnyPage(ctx)
     const tab = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => JSON.stringify(t[0] ?? null))`))
     expect(tab?.isPrivate === true, 'A tab opened in private mode is not private.')
+    // Marked wherever tabs are listed, for the eye (the Private button's crossed eye, on screen) and for a screen
+    // reader (the name the row is given, as the browser computes it): its sidebar row, its page toolbar, its tab in
+    // the strip under the launcher when the sidebar is hidden, and its row in tab search.
+    await ctx.send('Accessibility.enable').catch(() => undefined)
+    const nameOf = async (selector) => {
+      const { result } = await ctx.send('Runtime.evaluate', { expression: `document.querySelector(${JSON.stringify(selector)})` })
+      if (!result?.objectId) return null
+      const { nodes } = await ctx.send('Accessibility.getPartialAXTree', { objectId: result.objectId, fetchRelatives: false })
+      return nodes?.[0]?.name?.value ?? ''
+    }
+    const onScreen = (selector) => ctx.evaluate(`(() => { const mark = document.querySelector(${JSON.stringify(selector)}); if (!mark) return false; const r = mark.getBoundingClientRect(); return r.width >= 8 && r.height >= 8 && r.left >= 0 && r.top >= 0 && r.right <= innerWidth && r.bottom <= innerHeight && getComputedStyle(mark).visibility === 'visible' && Number(getComputedStyle(mark).opacity) > 0.5 })()`)
+    const toggleSidebar = () => ctx.main(`(() => { electron.BrowserWindow.getAllWindows()[0].webContents.send('browser-host:event', { type: 'shortcut', action: 'toggle-tab-sidebar' }); return true })()`)
+    const sidebarMode = () => ctx.evaluate(`window.intoponet.browserHost.getTabSidebar().then((s) => s?.mode ?? 'icons')`)
+    const sidebarWas = await sidebarMode()
+    if (sidebarWas === 'hidden') await toggleSidebar()
+    await ctx.wait(`!!document.querySelector('.tab-rail-item.is-private')`, 5000, 'the private tab’s row in the sidebar to be marked')
+    expect(await onScreen('.tab-rail-item.is-private .tab-rail-private'), 'The private tab’s sidebar row shows no private mark (the crossed eye at its icon).')
+    const railName = await nameOf('.tab-rail-item.is-private [role="tab"]')
+    expect(/, private tab\b/.test(railName ?? ''), `The private tab’s sidebar row is not named as a private tab for a screen reader: "${railName}".`)
+    expect(await onScreen('.browser-chrome .private-page-mark') && (await nameOf('.browser-chrome .private-page-mark')) === 'Private tab', `The private tab’s page toolbar is not marked private (name: "${await nameOf('.browser-chrome .private-page-mark')}").`)
+    await axeAudit(ctx, 'the sidebar with a private tab', '.tab-rail')
+    await toggleSidebar()
+    await ctx.wait(`!!document.querySelector('.page-tab.is-private')`, 5000, 'the private tab in the strip under the launcher, with the sidebar hidden')
+    expect(await ctx.evaluate(`!!document.querySelector('.page-tab.is-private .tab-private-mark')`), 'The private tab in the tab strip shows no private mark.')
+    const stripName = await nameOf('.page-tab.is-private [role="tab"]')
+    expect(/private tab/i.test(stripName ?? ''), `The private tab in the tab strip is not named as a private tab for a screen reader: "${stripName}".`)
+    await axeAudit(ctx, 'the tab strip with a private tab', '.page-tab-row')
+    await toggleSidebar()
+    if (sidebarWas === 'hidden') await toggleSidebar()
+    await ctx.evaluate(`(() => { const i = document.querySelector('.command-input input'); i.focus(); i.select(); return true })()`)
+    await ctx.type(new URL(tab.url).hostname.replace(/^www\./, '').slice(0, 5))
+    await ctx.wait(`[...document.querySelectorAll('[role="listbox"] [role="option"]')].some((row) => row.dataset.kind === 'tab')`, 5000, 'tab search to offer the private tab')
+    const searchRow = await ctx.evaluate(`(() => { const row = [...document.querySelectorAll('[role="listbox"] [role="option"]')].find((r) => r.dataset.kind === 'tab'); return JSON.stringify({ text: row.innerText, mark: !!row.querySelector('.omnibox-private svg') }) })()`).then(JSON.parse)
+    expect(searchRow.mark && searchRow.text.includes('Switch to private tab'), `Tab search offers the private tab without saying it is private: "${searchRow.text.replace(/\s+/g, ' ')}".`)
+    await ctx.press('Escape')
+    await ctx.evaluate(`(() => { const i = document.querySelector('.command-input input'); const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; set.call(i, ''); i.dispatchEvent(new Event('input', { bubbles: true })); i.blur(); return true })()`)
     // Session parity: the private session has the protections the shared one has.
     const parity = await pageSessionProblems(ctx, { stubbed: [new URL(tab.url).hostname] })
     expect(parity.problems.length === 0 && parity.sessions >= 1, `Session parity in private browsing: ${parity.problems.join(' ') || 'no page was open'}`)
@@ -2177,10 +2256,17 @@ export const checks = {
       await openPrivate(`http://127.0.0.1:${port}/box`)
       expect(of(3).length > 0 && !of(3).some((entry) => entry.sent), 'A private tab opened after private browsing ended was still signed in with a password typed in the earlier private session.')
       await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
+      // A normal tab carries none of the marks.
+      await ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: 'http://127.0.0.1:${port}/page' }).then(() => true, () => false)`)
+      await ctx.wait(`!!document.querySelector('.tab-rail-item:not(.is-private) [role="tab"], .page-tab:not(.is-private) [role="tab"]')`, 5000, 'a normal tab to be listed')
+      // The closed private tabs' rows are gone once they have faded out.
+      await ctx.wait(`window.intoponet.browserHost.getTabs().then((tabs) => tabs.every((t) => !t.isPrivate) && document.querySelectorAll('.tab-rail-item.is-private, .page-tab.is-private').length === 0)`, 5000, 'the closed private tabs’ rows to leave the tab lists').catch(() => undefined)
+      const plain = await ctx.evaluate(`JSON.stringify({ marks: document.querySelectorAll('.is-private, .tab-rail-private, .tab-private-mark, .private-page-mark').length, names: [...document.querySelectorAll('.tab-rail-item [role="tab"], .page-tab [role="tab"]')].map((t) => t.getAttribute('aria-label') ?? t.innerText) })`).then(JSON.parse)
+      expect(plain.marks === 0 && !plain.names.some((name) => /private/i.test(name)), `A normal tab is marked as private (${plain.marks} marks; names: ${plain.names.join(' | ')}).`)
     } finally {
       authSite.close()
     }
-    return 'Private tab marked, no footprints, closed when private mode ended; its HTTP sign-in did not outlive it.'
+    return 'Private tab marked in the sidebar, the page toolbar, the tab strip and tab search (seen and named "private tab"; a normal tab is not), no footprints, closed when private mode ended; its HTTP sign-in did not outlive it.'
   },
 
   async TABS(ctx) {
@@ -2709,12 +2795,27 @@ export const checks = {
     await openPanel(ctx, 'Settings')
     const text = await ctx.evaluate(`document.querySelector('.settings-pane')?.innerText ?? ''`)
     for (const piece of ['Read the web in', 'Translate pages', 'Downloaded languages', 'Beacons', 'Credits and licences', 'Privacy']) expect(text.includes(piece), `Settings is missing "${piece}".`)
+    // Settings › Beacons says where "Beacons near here" comes from, naming the registry the app is using, and that
+    // the place is not sent. With the address cleared it says nothing is fetched, and looking at a place asks nobody.
+    const beaconSource = `document.querySelector('.settings-pane .beacon-source')?.innerText ?? ''`
+    const registryNow = await ctx.evaluate(`window.intoponet.beacons.state().then((s) => s.registry)`)
+    const sourceSaid = await ctx.evaluate(beaconSource)
+    expect(registryNow && sourceSaid.includes(`the public list of Beacons is fetched from ${new URL(registryNow).host}`) && sourceSaid.includes('without saying which place you are looking at'), `Settings › Beacons does not say where the list of Beacons comes from (registry ${registryNow || 'none'}): "${sourceSaid}".`)
+    await ctx.main(`(() => { globalThis.__beaconFetches = []; globalThis.__beaconFetch ??= globalThis.fetch; globalThis.fetch = (input, init) => { const url = String(input?.url ?? input); if (/\\/v1\\/beacons/.test(url)) globalThis.__beaconFetches.push(url); return globalThis.__beaconFetch(input, init) }; return true })()`)
+    try {
+      await ctx.evaluate(`window.intoponet.beacons.setRegistry('').then(() => true)`)
+      const answer = await ctx.evaluate(`window.intoponet.beacons.read({ bbox: [39, -84, 51, -67] }).then(() => 'answered', () => 'refused')`)
+      expect(answer === 'refused' && (await ctx.main('globalThis.__beaconFetches.length')) === 0, `With the registry address cleared, looking at a place still asked for Beacons (${answer}; requests: ${JSON.stringify(await ctx.main('globalThis.__beaconFetches'))}).`)
+    } finally {
+      await ctx.evaluate(`window.intoponet.beacons.setRegistry(${JSON.stringify(registryNow)}).then(() => true)`)
+      await ctx.main(`(() => { globalThis.fetch = globalThis.__beaconFetch; return true })()`)
+    }
     await ctx.click('[aria-label="Settings"]')
     await openPanel(ctx, 'My map')
     await ctx.click('.drawer-tabs button', 'Privacy')
     await ctx.delay(500)
     const privacy = await ctx.evaluate(`document.querySelector('.privacy-pane')?.innerText ?? ''`)
-    for (const piece of ['Private browsing', 'Footprints', 'Sites to leave out', 'Your pins on the globe', 'Backups']) expect(privacy.includes(piece), `Privacy is missing "${piece}".`)
+    for (const piece of ['Private browsing', 'Footprints', 'Sites to leave out', 'Your pins on the globe', 'Backups', 'Leave my private library out of Time Machine', 'It does not cover saved passwords, cookies and site data, open tabs']) expect(privacy.includes(piece), `Privacy is missing "${piece}".`)
     return 'Settings and Privacy sections present; a page under Settings stays hidden through a re-layout and comes back when it closes.'
   },
 
@@ -2755,8 +2856,11 @@ export const checks = {
   async ROUGH_TRANSLATE(ctx) {
     await ctx.waitForNews()
     await ctx.flyTo('Faroe Islands')
-    await ctx.delay(3000)
-    await ctx.click('.globe-list .globe-row', 'Faroe')
+    // The Faroe Islands' own news row ("N stories · M outlets"): not a story peak that names them (its panel has no
+    // headline list, so the waits below would run out), nor the Wikipedia reads row of the same name.
+    const faroeNews = `[...document.querySelectorAll('.globe-list .globe-row')].find((row) => row.querySelector('strong')?.innerText.trim() === 'Faroe Islands' && /\\bstor(y|ies)\\b/.test(row.querySelector('small')?.innerText ?? ''))`
+    await ctx.wait(`!!${faroeNews}`, 30_000, 'the Faroe Islands’ news in the list after flying there')
+    await ctx.evaluate(`${faroeNews}.click(); true`)
     // Nothing to press: Icelandic downloads by itself and the Faroese headlines translate through it.
     await ctx.wait(`!!document.querySelector('.tr-headline-bar')`, 60_000, 'the headline translation bar for Faroese headlines')
     await ctx.wait(`[...document.querySelectorAll('.globe-headlines small')].some((s) => /via Icelandic/.test(s.innerText))`, 240_000, 'headlines labelled "rough, via Icelandic"')
@@ -3288,7 +3392,17 @@ export const checks = {
       expect(after.tabs === before.tabs && after.history === before.history && after.passwords === before.passwords, `A second import doubled something: ${JSON.stringify({ before: { ...before, library: undefined }, after: { ...after, library: undefined } })}`)
       await ctx.shot('second-run')
       await axeAudit(ctx, 'Settings › Import (results)', '.browser-import')
-      return 'Found Chrome (Person 1) and Arc; previewed counts with history and passwords off; imported 4 bookmarks as 4 collections, 2 history pages and 1 sealed password from Chrome, and 2 pinned tabs (with homes), 1 open tab and the Work, Home and Work › Reading collections from Arc; a second run added nothing; keyboard and axe clean.'
+      // Arc's Bookmarks file damaged, with Bookmarks ticked (as it is by default): the import does not fail, the
+      // sidebar still comes over (here it already has), and the result names the file under "Left out".
+      writeFileSync(join(IMPORT_ROOT, 'Arc', 'User Data', 'Default', 'Bookmarks'), '{"roots":')
+      await choose('Arc')
+      expect((await ticked()).Bookmarks === true, `Bookmarks is not ticked by default for Arc with a damaged Bookmarks file (${JSON.stringify(await ticked())}).`)
+      await ctx.evaluate(`(() => { const input = [...document.querySelectorAll('.browser-import-choice input')].find((i) => i.parentElement.innerText.startsWith('Workspaces')); if (input?.checked) input.click(); return true })()`)
+      const damagedArc = (await importNow('Arc with a damaged Bookmarks file')).replace(/\s+/g, ' ')
+      expect(damagedArc.includes('Left out:') && damagedArc.includes('Arc\'s “Bookmarks” file could not be read, so the bookmarks in it were left out.'), `With Arc's Bookmarks file damaged, the result does not name it under "Left out": ${damagedArc}`)
+      expect((await tabs()).length === before.tabs, 'Importing from Arc with a damaged Bookmarks file changed the open tabs (they were already imported).')
+      await axeAudit(ctx, 'Settings › Import (a file left out)', '.browser-import')
+      return 'Arc with a damaged Bookmarks file still imported, the file named under Left out. Found Chrome (Person 1) and Arc; previewed counts with history and passwords off; imported 4 bookmarks as 4 collections, 2 history pages and 1 sealed password from Chrome, and 2 pinned tabs (with homes), 1 open tab and the Work, Home and Work › Reading collections from Arc; a second run added nothing; keyboard and axe clean.'
     } finally {
       rmSync(IMPORT_ROOT, { recursive: true, force: true })
     }
@@ -3307,16 +3421,18 @@ export const checks = {
     await ctx.main(`(() => { electron.BrowserWindow.getAllWindows()[0].webContents.send('browser-host:event', { type: 'shortcut', action: 'toggle-tab-sidebar' }); return true })()`)
     await ctx.wait(`window.intoponet.browserHost.getTabSidebar().then((s) => s?.mode === 'hidden')`, 5000, '⌃⌘S to hide the sidebar before the tour')
     const keptBefore = await ctx.evaluate(kept)
-    // The Olds step moves on as soon as The Olds has looked, even when it finds nothing: here Wikipedia cannot be reached.
-    // First, before any story's history is kept (the Olds step looks up the tour's own story even when jumped to). How long
-    // The Olds takes to give up depends on the story and the network; the step must not wait longer than that.
+    // The Olds step is ready as soon as The Olds is on screen for the tour's headline, not when its lookup finishes
+    // (6 to 32 s on a real network): here nothing is heard from Wikipedia for 8 s from its first request (then it
+    // cannot be reached), so the lookup is slow whatever the network is. First, before any story's history is kept (the Olds step looks up the tour's own
+    // story even when jumped to). The spotlight is on The Olds while it looks and still on it once it has looked.
+    const OLDS_LOOKUP_DELAY = 8_000
     await ctx.main(`(() => {
       const dns = process.mainModule.require('dns')
       dns.__tourLookup ??= dns.lookup
       const lookup = dns.__tourLookup
       dns.lookup = function (host, options, callback) {
         if (typeof options === 'function') { callback = options; options = {} }
-        if (/(^|\\.)(wikipedia|wikidata|wikimedia)\\.org$/.test(host)) return process.nextTick(callback, Object.assign(new Error('getaddrinfo ENOTFOUND ' + host), { code: 'ENOTFOUND', hostname: host }))
+        if (/(^|\\.)(wikipedia|wikidata|wikimedia)\\.org$/.test(host)) return void setTimeout(callback, Math.max(0, (dns.__tourSlowUntil ??= Date.now() + ${OLDS_LOOKUP_DELAY}) - Date.now()), Object.assign(new Error('getaddrinfo ENOTFOUND ' + host), { code: 'ENOTFOUND', hostname: host }))
         return lookup.call(this, host, options, callback)
       }
       return true
@@ -3331,23 +3447,70 @@ export const checks = {
       expect(await ctx.evaluate(`!!document.activeElement?.closest('.tour-card')`), `Focus did not move into the tour as it opened (it is on "${await ctx.evaluate(`document.activeElement?.getAttribute('aria-label') || document.activeElement?.textContent || document.activeElement?.tagName`)}").`)
       await ctx.evaluate(`(() => {
         const step = window.__oldsStep = { start: performance.now() }
+        // Where the spotlight is against The Olds' sheet (it has a little room around what it lights).
+        const onSheet = () => {
+          const lit = document.querySelector('.tour-spotlight')
+          const sheet = document.querySelector('.olds-sheet')
+          if (!lit || !sheet || lit.dataset.target !== '.olds-sheet') return false
+          const a = lit.getBoundingClientRect()
+          const b = sheet.getBoundingClientRect()
+          return Math.abs(a.left - b.left) < 40 && Math.abs(a.top - b.top) < 40 && Math.abs(a.right - b.right) < 40 && Math.abs(a.bottom - b.bottom) < 40
+        }
         const timer = setInterval(() => {
-          if (!step.looked && document.querySelector('.olds-sheet') && !document.querySelector('.olds-sheet .olds-status[role="status"]')) step.looked = Math.round(performance.now() - step.start)
-          if (document.querySelector('.tour-next')?.textContent.includes('Showing')) step.showing = true
-          else if (step.showing) {
-            step.ms = Math.round(performance.now() - step.start)
+          const looking = !!document.querySelector('.olds-sheet .olds-status[role="status"]')
+          if (!step.looked && document.querySelector('.olds-sheet') && !looking) {
+            step.looked = Math.round(performance.now() - step.start)
             step.olds = (document.querySelector('.olds-sheet .olds-status') ?? document.querySelector('.olds-sheet h2'))?.innerText ?? 'not open'
-            clearInterval(timer)
+            // Once the spotlight has had time to follow what arrived.
+            setTimeout(() => { step.after = { onSheet: onSheet(), title: document.querySelector('.tour-progress .is-current')?.dataset.title ?? '', next: document.querySelector('.tour-next')?.textContent ?? '' }; clearInterval(timer) }, 1200)
+          }
+          if (document.querySelector('.tour-next')?.textContent.includes('Showing')) step.showing = true
+          else if (step.showing && !step.ms) {
+            step.ms = Math.round(performance.now() - step.start)
+            step.lookingWhenReady = looking
+            step.heading = document.querySelector('.olds-sheet .olds-title h2')?.textContent ?? ''
+            setTimeout(() => { step.ready = { onSheet: onSheet() } }, 700)
           }
         }, 50)
         ;[...document.querySelectorAll('.tour-progress [data-step]')].find((b) => b.dataset.title === 'The history behind the news').click()
         return true
       })()`)
-      await ctx.wait(`!!window.__oldsStep.ms`, 45_000, 'The Olds step to finish with Wikipedia unreachable')
+      await ctx.wait(`!!window.__oldsStep.ready`, 20_000, 'The Olds step to be ready while its lookup is slow')
       offline = JSON.parse(await ctx.evaluate(`JSON.stringify(window.__oldsStep)`))
-      expect(offline.looked && offline.ms - offline.looked < 2_000, `With Wikipedia unreachable, The Olds step kept showing for ${Math.round(offline.ms / 1000)} s, ${offline.looked ? `${((offline.ms - offline.looked) / 1000).toFixed(1)} s after The Olds had looked` : 'and The Olds never finished looking'} (The Olds: "${offline.olds}").`)
+      expect(offline.ms < 4_000, `With The Olds' lookup taking at least ${OLDS_LOOKUP_DELAY / 1000} s, its tour step took ${(offline.ms / 1000).toFixed(1)} s to be ready: it waited for the lookup, not for The Olds to be on screen.`)
+      expect(offline.lookingWhenReady && !offline.looked, `The Olds' lookup was not slow in this run (it had ${offline.looked ? `finished after ${offline.looked} ms` : 'no "Looking up" state'} when the step was ready), so the step being ready early proves nothing.`)
+      expect(offline.heading.length > 0 && offline.ready.onSheet, `The Olds step was ready without The Olds on screen for the tour's headline under the spotlight (heading "${offline.heading}", spotlight on the sheet: ${offline.ready.onSheet}).`)
+      // Its words hold whether or not the history has arrived: what The Olds does, not what it found.
+      const oldsWords = await ctx.evaluate(`document.querySelector('.tour-card')?.innerText ?? ''`)
+      expect(oldsWords.includes('The Olds finds the ongoing story a headline belongs to') && !/\b(found|here is|shown here|below)\b/i.test(oldsWords), `The Olds step's words claim a history that may not have arrived yet: "${oldsWords.replace(/\s+/g, ' ').slice(0, 300)}".`)
+      // When the lookup ends (here with nothing: Wikipedia never answered), the step is still this one and the spotlight still on The Olds.
+      await ctx.wait(`!!window.__oldsStep.after`, 60_000, 'The Olds to finish its slow lookup under the tour')
+      offline = JSON.parse(await ctx.evaluate(`JSON.stringify(window.__oldsStep)`))
+      expect(offline.looked >= OLDS_LOOKUP_DELAY - 500 && offline.after.onSheet && offline.after.title === 'The history behind the news' && !offline.after.next.includes('Showing'), `After The Olds finished looking (${offline.looked} ms, "${offline.olds}"), the tour's spotlight was ${offline.after.onSheet ? 'on' : 'off'} The Olds, on step "${offline.after.title}" (button: "${offline.after.next.trim()}").`)
       await ctx.press('Escape')
       await ctx.wait(`!document.querySelector('.tour-card') && !document.querySelector('.olds-sheet')`, 5000, 'the tour to close on Escape')
+      // Moving on while The Olds is still looking is now the usual way through: its late answer must not bring The
+      // Olds back over a later step. The lookup is held up again, the tour goes two steps on, and the answer lands.
+      await ctx.main(`(() => { delete process.mainModule.require('dns').__tourSlowUntil; return true })()`)
+      await ctx.click('.settings-button')
+      await ctx.click('button', 'Take the tour')
+      await ctx.wait(`!!document.querySelector('.tour-card')`, 5000, 'the tour to start for the slow lookup again')
+      await ctx.evaluate(`([...document.querySelectorAll('.tour-progress [data-step]')].find((b) => b.dataset.title === 'The history behind the news').click(), true)`)
+      const leftAt = Date.now()
+      await ctx.wait(`!!document.querySelector('.olds-sheet .olds-status[role="status"]') && !document.querySelector('.tour-next')?.textContent.includes('Showing')`, 5000, 'The Olds step to be ready, still looking')
+      for (let presses = 0; presses < 2; presses += 1) {
+        await ctx.evaluate(`(document.querySelector('.tour-next').click(), true)`)
+        await ctx.delay(300)
+        await ctx.wait(`!document.querySelector('.tour-next')?.textContent.includes('Showing')`, 10_000, 'the step after The Olds to be ready')
+      }
+      const movedOn = await ctx.evaluate(`document.querySelector('.tour-progress .is-current')?.dataset.title ?? ''`)
+      // The Olds closes with the step that follows its two (its sheet fades out).
+      await ctx.wait(`!document.querySelector('.olds-sheet')`, 4000, 'The Olds to close two steps on').catch(() => undefined)
+      expect(Date.now() - leftAt < OLDS_LOOKUP_DELAY && !(await ctx.evaluate(`!!document.querySelector('.olds-sheet')`)), `Two steps on from The Olds (on "${movedOn}", ${Date.now() - leftAt} ms later), The Olds is still open or its lookup was no longer held up.`)
+      await ctx.delay(Math.max(0, OLDS_LOOKUP_DELAY - (Date.now() - leftAt)) + 9_000)
+      expect(!(await ctx.evaluate(`!!document.querySelector('.olds-sheet')`)) && (await ctx.evaluate(`document.querySelector('.tour-progress .is-current')?.dataset.title ?? ''`)) === movedOn, `The Olds' late answer came back over the tour's "${movedOn}" step after the tour had moved on.`)
+      await ctx.press('Escape')
+      await ctx.wait(`!document.querySelector('.tour-card') && !document.querySelector('.olds-sheet')`, 5000, 'the tour to close on Escape again')
     } finally {
       await ctx.main(`(() => { const dns = process.mainModule.require('dns'); if (dns.__tourLookup) dns.lookup = dns.__tourLookup; return true })()`)
     }
@@ -3547,7 +3710,7 @@ export const checks = {
     await ctx.wait(`!document.querySelector('.tour-card')`, 5000, 'Enter on Leave the tour to leave it')
     await ctx.delay(500)
     expect(await ctx.evaluate(`document.activeElement?.dataset.panel === 'settings'`), `After leaving the tour, focus went to "${await focusName()}", not the Settings button.`)
-    return `All ${total} steps shown, each spotlight on what it describes, the same played forward, gone back to and jumped to; the tour put everything back at the end, its own tab closed. Slowest steps to be ready (of ${stepTimes.length} timed): ${slowestSteps || 'none'}; the whole walk took ${Math.round((Date.now() - tourStarted) / 1000)} s. With Wikipedia unreachable The Olds step moved on ${((offline.ms - offline.looked) / 1000).toFixed(1)} s after The Olds had looked (${(offline.ms / 1000).toFixed(1)} s in all: "${offline.olds}").`
+    return `All ${total} steps shown, each spotlight on what it describes, the same played forward, gone back to and jumped to; the tour put everything back at the end, its own tab closed. Slowest steps to be ready (of ${stepTimes.length} timed): ${slowestSteps || 'none'}; the whole walk took ${Math.round((Date.now() - tourStarted) / 1000)} s. With The Olds' lookup held up, its step was ready in ${(offline.ms / 1000).toFixed(1)} s with The Olds looking under the spotlight, ${((offline.looked - offline.ms) / 1000).toFixed(1)} s before the lookup ended ("${offline.olds.replace(/\s+/g, ' ')}"), the spotlight still on it then.`
   },
   async TAB_ARCHIVE(ctx) {
     // Started with an "hour" of 200 ms (TAB_ARCHIVE.env below), so "12 hours" is 2.4 seconds.
@@ -4304,7 +4467,7 @@ export const checks = {
       expect(travel.map((tab) => tab.title).join() === 'Flights,Kyoto,Osaka,Hotels' && (await folders()).map((f) => f.name).join() === 'Japan', `Travel holds: ${travel.map((tab) => tab.title).join()} in ${(await folders()).map((f) => f.name).join()}.`)
 
       // A space with more pinned tabs than a workspace holds: the workspace is filled, the result says how many were left
-      // out, and the pinned tabs and foldered tabs that found no room are kept in a collection named after the space.
+      // out, and the pinned tabs, foldered tabs and open tabs that found no room are kept in a collection named after the space.
       const crowdedTabs = Array.from({ length: 30 }, (_, n) => sidebarItem(`C${n}`, 'CP', `https://crowded.example.com/pinned-${n}`, `Pinned ${n}`))
       const crowdedFoldered = Array.from({ length: 5 }, (_, n) => sidebarItem(`CF${n}`, 'CFOLDER', `https://crowded.example.com/filed-${n}`, `Filed ${n}`))
       writeFileSync(join(IMPORT_WS_ROOT, 'Arc', 'StorableSidebar.json'), JSON.stringify({ sidebar: { containers: [{ global: {} }, {
@@ -4321,7 +4484,7 @@ export const checks = {
       await choose()
       expect((await sectionText()).includes('Crowded: 30 pinned tabs, 1 folder (5 tabs), 1 open tab'), `The crowded space's preview: ${await sectionText()}`)
       const crowded = await importNow('a space with more tabs than a workspace holds')
-      for (const piece of ['1 new workspace (Crowded)', '12 pinned tabs', '24 items: tabs over the 12-tab limit of a workspace', 'kept in collections named after their spaces']) expect(crowded.includes(piece), `The result for the crowded space does not say "${piece}": ${crowded}`)
+      for (const piece of ['1 new workspace (Crowded)', '12 pinned tabs', '24 items: tabs over the 12-tab limit of a workspace (they are kept in collections named after their spaces)']) expect(crowded.includes(piece), `The result for the crowded space does not say "${piece}": ${crowded}`)
       await show('Crowded')
       const crowdedNow = await tabs()
       expect(crowdedNow.length === 12 && crowdedNow.every((tab) => tab.pinned), `Crowded holds ${crowdedNow.length} tabs (${crowdedNow.filter((tab) => tab.pinned).length} pinned), not the 12 pinned tabs a workspace has room for.`)
@@ -4329,7 +4492,9 @@ export const checks = {
       const keptCrowded = keptLibrary.collections.find((collection) => collection.label === 'Crowded')?.memberUrls ?? []
       const arrivedCrowded = new Set(crowdedNow.map((tab) => tab.url))
       const everyPinned = [...crowdedTabs, ...crowdedFoldered].map((item) => item.data.tab.savedURL)
-      expect(keptCrowded.length === 23 && everyPinned.every((address) => arrivedCrowded.has(address) !== keptCrowded.includes(address)), `Of Crowded's 35 pinned and foldered tabs, ${arrivedCrowded.size} are in the workspace and ${keptCrowded.length} in its collection: some are in neither (or both).`)
+      expect(keptCrowded.length === 24 && everyPinned.every((address) => arrivedCrowded.has(address) !== keptCrowded.includes(address)), `Of Crowded's 35 pinned and foldered tabs, ${arrivedCrowded.size} are in the workspace and ${keptCrowded.length} in its collection (with its open tab, 24 belong there): some are in neither (or both).`)
+      // Its open tab found no room either: it is kept in the same collection, not only counted.
+      expect(keptCrowded.includes('https://crowded.example.com/open') && keptLibrary.bookmarks.some((bookmark) => bookmark.url === 'https://crowded.example.com/open'), `Crowded's open tab, over the workspace's limit, is not in the "Crowded" collection: ${keptCrowded.filter((address) => !address.includes('pinned-') && !address.includes('filed-')).join(', ') || 'no open tab there'}.`)
       const crowdedAgain = await importNow('the crowded space again')
       expect(crowdedAgain.includes('Nothing new'), `A second import of the crowded space added something: ${crowdedAgain}`)
       expect((await tabs()).length === 12, 'A second import of the crowded space changed its workspace.')

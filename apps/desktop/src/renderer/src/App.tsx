@@ -2935,13 +2935,17 @@ export function App() {
       tourClear(true)
       tourPageAway()
       const top = olds?.stack[olds.stack.length - 1]?.query
+      const label = headline.length > 60 ? `${headline.slice(0, 57)}…` : headline
       if (top?.kind !== 'headline' || top.text !== headline) {
-        loadOlds([{ query: { kind: 'headline', text: headline }, label: headline.length > 60 ? `${headline.slice(0, 57)}…` : headline }])
+        loadOlds([{ query: { kind: 'headline', text: headline }, label }])
       }
-      // Until it has finished looking: its story, or why there is none (no network, nothing found). At most 30 s.
-      for (let i = 0; i < 300; i += 1) {
+      // Until The Olds is on screen for this headline: looking it up counts (the lookup takes 6 to 32 s, and the
+      // step is about the panel, which fills in under the spotlight when the history arrives). A sheet still
+      // showing another story does not count: while it looks, and when it fails, its heading is this headline.
+      for (let i = 0; i < 50; i += 1) {
         await new Promise((resolve) => setTimeout(resolve, 100))
-        if (document.querySelector('.olds-sheet') && !document.querySelector('.olds-sheet .olds-status[role="status"]')) break
+        const sheet = document.querySelector('.olds-sheet')
+        if (sheet && (sheet.querySelector('.olds-title h2')?.textContent === label || !sheet.querySelector('.olds-status[role="status"]'))) break
       }
     },
     showBookmarks: (open) => setBookmarksOpen(open),
@@ -4159,6 +4163,7 @@ export function App() {
                 )}
               </button>
             </div>
+            {panel.isPrivate && <span className="private-page-mark" role="img" aria-label="Private tab" title="Private tab: it leaves no footprints"><EyeOff size={13} /></span>}
             {!onStartPage && <button
               type="button"
               className={`origin-badge ${isSecureOrigin ? '' : 'insecure'}`}

@@ -78,6 +78,15 @@
   font-size: 11px;
 }
 
+/* A private tab among the suggestions: the mark private tabs carry everywhere (styles.css, .tab-private-mark). */
+.omnibox-private {
+  color: #dcb8ff;
+}
+
+.omnibox-private svg {
+  vertical-align: -1px;
+}
+
 .omnibox-url {
   color: var(--teal);
 }

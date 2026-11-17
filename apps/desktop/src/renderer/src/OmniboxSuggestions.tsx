@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { AppWindow, Archive, ArrowUpRight, ChevronRight, Clock, Compass, Globe2, MapPin, Search, Star } from 'lucide-react'
+import { AppWindow, Archive, ArrowUpRight, ChevronRight, Clock, Compass, EyeOff, Globe2, MapPin, Search, Star } from 'lucide-react'
 import {
   useEffect,
   useLayoutEffect,
@@ -334,7 +334,7 @@ function RowText({ row }: { row: OmniboxSuggestion }) {
           <small>
             <span className="omnibox-url">{row.display}</span>
             {' · '}
-            {row.kind === 'tab' ? 'Switch to tab' : row.kind === 'archived' ? 'Reopen archived tab' : row.kind === 'bookmark' ? 'Bookmark' : 'Visited'}
+            {row.kind === 'tab' && row.isPrivate ? <span className="omnibox-private"><EyeOff size={11} aria-hidden="true" /> Switch to private tab</span> : row.kind === 'tab' ? 'Switch to tab' : row.kind === 'archived' ? 'Reopen archived tab' : row.kind === 'bookmark' ? 'Bookmark' : 'Visited'}
           </small>
         </span>
       )

@@ -107,7 +107,8 @@ export function BrowserImportSettings({ libraryReady, onImportLibrary }: {
     })
   }
 
-  const needsLibrary = ticked.has('bookmarks') || ticked.has('pinned')
+  // Open tabs too: the ones over a limit are kept in a collection.
+  const needsLibrary = ticked.has('bookmarks') || ticked.has('pinned') || ticked.has('open')
   const browser = profiles?.find((profile) => profile.id === selected)
   const run = (): void => {
     if (!preview || !browser) return
@@ -212,13 +213,14 @@ export function BrowserImportSettings({ libraryReady, onImportLibrary }: {
       {summary && (
         <div ref={resultRef} className="browser-import-result" role="status">
           <p>{added.length ? `Brought over from ${summary.browser}: ${added.join(', ')}.` : `Nothing new from ${summary.browser}: everything was already here.`}</p>
-          {summary.result.skipped.length > 0 && (
+          {(summary.result.skipped.length > 0 || (summary.result.notes?.length ?? 0) > 0) && (
             <>
               <p>Left out:</p>
               <ul>
                 {summary.result.skipped.map((item, index) => (
                   <li key={`${item.category}-${index}`}>{plural(item.count, ...SKIP_LABELS[item.category])}: {item.reason.replace(/\.$/, '')}.</li>
                 ))}
+                {summary.result.notes?.map((note, index) => <li key={`note-${index}`}>{note.replace(/\.$/, '')}.</li>)}
               </ul>
             </>
           )}

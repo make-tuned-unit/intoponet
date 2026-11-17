@@ -1573,6 +1573,18 @@ button.zoom-indicator:hover {
 .page-tab.is-private { border-color: rgba(206, 160, 255, 0.5); background: rgba(48, 24, 72, 0.82); }
 .page-tab.is-private.selected { border-color: rgba(206, 160, 255, 0.85); background: rgba(74, 36, 110, 0.92); }
 .tab-private-mark { flex: none; color: #dcb8ff; }
+/* The page toolbar of a private tab: the Private button's crossed eye, beside the address. */
+.private-page-mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 31px;
+  height: 31px;
+  border: 1px solid rgba(206, 160, 255, 0.55);
+  border-radius: 50%;
+  color: #f1dcff;
+  background: rgba(88, 44, 130, 0.55);
+}
 
 .privacy-pane { display: grid; gap: 14px; padding: 12px 16px 18px; overflow-y: auto; }
 .privacy-pane section { display: grid; gap: 7px; padding: 12px; border: 1px solid var(--hairline); border-radius: 14px; background: rgba(205, 245, 240, 0.035); }

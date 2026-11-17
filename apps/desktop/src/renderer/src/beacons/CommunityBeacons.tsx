@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Flag, Radio } from 'lucide-react'
 import type { BeaconReportKind, BeaconResource } from '@intoponet/browser-api'
+import { registryHost } from './BeaconSettings'
 import './beacons.css'
 
 const host = (url: string): string => { try { return new URL(url).hostname.replace(/^www\./, '') } catch { return url } }
@@ -34,7 +35,7 @@ export function CommunityBeacons({ lat, lon, onOpen }: { lat: number; lon: numbe
   if (!registry || !items || items.length === 0) return null
   return (
     <section className="community-beacons" aria-label="Beacons near here">
-      <small title="Pages people deliberately recommended for this area. Prominence grows slowly with independent publishers in each region, so volume from one place can’t dominate."><Radio size={11} aria-hidden="true" /> Beacons near here</small>
+      <small title={`Pages people deliberately recommended for this area. Prominence grows slowly with independent publishers in each region, so volume from one place can’t dominate. The public list of Beacons is fetched from ${registryHost(registry)} without saying which place you are looking at.`}><Radio size={11} aria-hidden="true" /> Beacons near here</small>
       <ul>
         {items.slice(0, 5).map((item) => (
           <li key={item.url}>

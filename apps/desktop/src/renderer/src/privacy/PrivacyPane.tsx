@@ -138,6 +138,7 @@ export function PrivacyPane({
               : state.backupExcluded
                 ? 'Time Machine currently skips the named library, knowledge, meaning-index and personal-data paths. Existing backups and local snapshots are unchanged.'
                 : 'Time Machine includes the named paths in future backups with the rest of this Mac.'}</p>
+            <p className="backup-coverage">The switch covers your library (bookmarks, collections, pins and notes), Knowledge and its meaning index, your history, the list of downloads and archived tabs. It does not cover saved passwords, cookies and site data, open tabs, site icons, settings or captures, which Time Machine backs up with the rest of this Mac.</p>
           </>
         )}
       </section>

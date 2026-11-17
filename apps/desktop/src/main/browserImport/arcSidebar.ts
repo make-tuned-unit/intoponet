@@ -33,12 +33,16 @@ export type ArcSpace = {
   open: ArcTab[]
   /** The pinned part in order, folders nested (for recreating the space as a workspace). */
   tree: SidebarNode[]
+  /** Tabs whose address is not a web page (javascript:, file:, arc:), left out: how many were pinned (or in folders) and how many open. */
+  nonWeb: { pinned: number; open: number }
 }
 
 export type ArcSidebar = {
   spaces: ArcSpace[]
   /** Favourites (Arc's top apps): global, shown for the default profile. */
   favourites: ArcTab[]
+  /** Favourites whose address is not a web page, left out. */
+  favouritesNonWeb: number
   /** Items that are not tabs or folders (notes, easels) or could not be read. */
   skipped: number
 }
@@ -148,8 +152,11 @@ export function parseArcSidebar(raw: string): ArcSidebar {
   const isFolder = (item: Item): boolean => isRecord(item.data['list'])
   const isSplit = (item: Item): boolean => isRecord(item.data['splitView'])
 
-  /** Tabs under a container, split views opened up; folders handed to `onFolder`. */
-  const tabsUnder = (parent: string, depth: number, onFolder: ((item: Item) => void) | null, seen: Set<string>): ArcTab[] => {
+  /** A tab that is left out because its address is not a web page (not a note or another kind of item). */
+  const isNonWebTab = (item: Item): boolean => isRecord(item.data['tab'])
+
+  /** Tabs under a container, split views opened up; folders handed to `onFolder`. Tabs that are not web pages are counted in `nonWeb`. */
+  const tabsUnder = (parent: string, depth: number, onFolder: ((item: Item) => void) | null, seen: Set<string>, nonWeb: { count: number }): ArcTab[] => {
     if (depth > MAX_WALK) return []
     const tabs: ArcTab[] = []
     for (const child of childrenOf(parent)) {
@@ -157,10 +164,11 @@ export function parseArcSidebar(raw: string): ArcSidebar {
       seen.add(child.id)
       const tab = asTab(child)
       if (tab) tabs.push(tab)
-      else if (isSplit(child)) tabs.push(...tabsUnder(child.id, depth + 1, null, seen))
+      else if (isNonWebTab(child)) nonWeb.count += 1
+      else if (isSplit(child)) tabs.push(...tabsUnder(child.id, depth + 1, null, seen, nonWeb))
       else if (isFolder(child)) {
         if (onFolder && depth < MAX_DEPTH) onFolder(child)
-        else tabs.push(...tabsUnder(child.id, depth + 1, null, seen))
+        else tabs.push(...tabsUnder(child.id, depth + 1, null, seen, nonWeb))
       } else skipped += 1
     }
     return tabs
@@ -192,25 +200,28 @@ export function parseArcSidebar(raw: string): ArcSidebar {
     const title = text(space['title'], 60) || `Space ${(untitled += 1)}`
     const folders: ImportedFolder[] = []
     const seen = new Set<string>()
+    const nonWebPinned = { count: 0 }
+    const nonWebOpen = { count: 0 }
     const addFolder = (path: string[], folder: Item, depth: number): void => {
       const name = [...path, text(folder.title, 60) || 'Untitled folder']
-      const pages = tabsUnder(folder.id, depth + 1, (inner) => addFolder(name, inner, depth + 1), seen)
+      const pages = tabsUnder(folder.id, depth + 1, (inner) => addFolder(name, inner, depth + 1), seen, nonWebPinned)
       if (pages.length) folders.push({ label: joinLabel(name), pages: pages.map((page) => ({ ...page, addedAt: null })) })
     }
-    const pinnedTabs = pinned ? tabsUnder(pinned, 0, (folder) => addFolder([title], folder, 0), seen) : []
-    const openTabs = unpinned ? tabsUnder(unpinned, 0, null, seen) : []
+    const pinnedTabs = pinned ? tabsUnder(pinned, 0, (folder) => addFolder([title], folder, 0), seen, nonWebPinned) : []
+    const openTabs = unpinned ? tabsUnder(unpinned, 0, null, seen, nonWebOpen) : []
     const tree = pinned ? treeUnder(pinned, 0, new Set()) : []
-    spaces.push({ title, profile: spaceProfile(space), pinned: pinnedTabs, folders, open: openTabs, tree })
+    spaces.push({ title, profile: spaceProfile(space), pinned: pinnedTabs, folders, open: openTabs, tree, nonWeb: { pinned: nonWebPinned.count, open: nonWebOpen.count } })
   }
 
   const favourites: ArcTab[] = []
   const topApps = Array.isArray(main['topAppsContainerIDs']) ? main['topAppsContainerIDs'] : []
   const topId = topApps.find((value): value is string => typeof value === 'string')
-  if (topId) favourites.push(...tabsUnder(topId, 0, null, new Set()))
-  return { spaces, favourites, skipped }
+  const favouritesNonWeb = { count: 0 }
+  if (topId) favourites.push(...tabsUnder(topId, 0, null, new Set(), favouritesNonWeb))
+  return { spaces, favourites, favouritesNonWeb: favouritesNonWeb.count, skipped }
 }
 
 /** The part of the sidebar that belongs to one Arc profile folder. */
-export function sidebarForProfile(sidebar: ArcSidebar, folder: string): { spaces: ArcSpace[]; favourites: ArcTab[] } {
-  return { spaces: sidebar.spaces.filter((space) => space.profile === folder), favourites: folder === 'Default' ? sidebar.favourites : [] }
+export function sidebarForProfile(sidebar: ArcSidebar, folder: string): { spaces: ArcSpace[]; favourites: ArcTab[]; favouritesNonWeb: number } {
+  return { spaces: sidebar.spaces.filter((space) => space.profile === folder), favourites: folder === 'Default' ? sidebar.favourites : [], favouritesNonWeb: folder === 'Default' ? sidebar.favouritesNonWeb : 0 }
 }
