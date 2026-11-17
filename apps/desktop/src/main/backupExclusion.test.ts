@@ -4,9 +4,15 @@ import { EventEmitter } from 'node:events'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { execFileSync } from 'node:child_process'
+import { writeFileAtomic } from './atomicFile'
 import {
+  BACKUP_EXCLUDE_ATTRIBUTE,
+  BACKUP_EXCLUDE_VALUE_HEX,
   backupExclusionAvailable,
+  backupExclusionMarker,
   backupExclusionStatus,
+  markExcludedFromBackup,
   readBackupExclusionIntent,
   setBackupExclusion,
   tmutilTimeoutMs,
@@ -299,6 +305,87 @@ describe('Time Machine backup exclusion intent', () => {
     expect(tmutilTimeoutMs(['addexclusion', '/a', '/b', '/c', '/d'])).toBeGreaterThanOrEqual(4 * 15_000)
     expect(tmutilTimeoutMs(['isexcluded'])).toBeGreaterThan(0)
   })
+
+  it('marks existing stores at once when switched on, before tmutil, and a store the moment it appears', async () => {
+    const base = await makeRoot()
+    const paths = pathsIn(base)
+    const intentPath = join(base, 'backup-exclusion.json')
+    const order: string[] = []
+    const run = vi.fn(async (args: string[]) => {
+      order.push(`tmutil ${args[0]}`)
+      return { stdout: args[0] === 'isexcluded' ? args.slice(1).map((path) => `[Excluded]\t${path}`).join('\n') : '' }
+    })
+    const mark = vi.fn(async (path: string) => { order.push(`mark ${path.slice(base.length + 1)}`) })
+    let notify!: (event: 'rename' | 'change', filename: string | null) => void
+    const watcher = new EventEmitter() as EventEmitter & { close: ReturnType<typeof vi.fn> }
+    watcher.close = vi.fn()
+    const marking: BackupExclusionWatchAdapter = {
+      ...adapter(run, { exists: existsSync, mark }),
+      watchDirectory: (_path, listener) => { notify = listener; return watcher as unknown as FSWatcher },
+    }
+    await mkdir(paths[1]!)
+    await setBackupExclusion(paths, true, intentPath, marking)
+    expect(order).toEqual(['mark knowledge', 'tmutil addexclusion', 'tmutil isexcluded'])
+    // The library file is saved for the first time while a slow tmutil pass is still running: marked at once.
+    order.length = 0
+    let release!: () => void
+    run.mockImplementationOnce(async () => { await new Promise<void>((resolve) => { release = resolve }); return { stdout: '' } })
+    const stop = watchBackupExclusionPaths(base, paths, intentPath, () => undefined, marking)
+    try {
+      await vi.waitFor(() => expect(run).toHaveBeenCalledTimes(3))
+      mark.mockClear()
+      await writeFile(paths[0]!, 'sealed')
+      notify('rename', 'private-library.v1.seal')
+      expect(mark).toHaveBeenCalledWith(paths[0])
+      // Switched off, nothing is marked.
+      release()
+      await setBackupExclusion(paths, false, intentPath, adapter(async (args) => ({ stdout: args[0] === 'isexcluded' ? args.slice(1).map((path) => `[Included]\t${path}`).join('\n') : '' }), { exists: existsSync }))
+      mark.mockClear()
+      notify('rename', 'private-library.v1.seal')
+      expect(mark).not.toHaveBeenCalled()
+      await backupExclusionMarker(intentPath, marking)(paths[0]!)
+      expect(mark).not.toHaveBeenCalled()
+    } finally {
+      stop()
+    }
+  })
+
+  // On a Mac, with the real attribute and the real tmutil: what the built app does on each save of the library.
+  it.skipIf(process.platform !== 'darwin' || !existsSync('/usr/bin/tmutil') || !existsSync('/usr/bin/xattr'))('keeps a file that is saved by replacing it excluded through every save, as tmutil itself reads it', async () => {
+    // Not under the system's temporary folder, which Time Machine skips whatever is set on a file.
+    root = await mkdtemp(join(process.cwd(), '.backup-exclusion-test-'))
+    const base = root
+    const library = join(base, 'private-library.v1.seal')
+    const intentPath = join(base, 'backup-exclusion.json')
+    const excluded = (path: string): boolean => /^\[Excluded\]/m.test(execFileSync('/usr/bin/tmutil', ['isexcluded', path], { encoding: 'utf8' }))
+    const attribute = (path: string): string => { try { return execFileSync('/usr/bin/xattr', ['-px', BACKUP_EXCLUDE_ATTRIBUTE, path], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).replace(/\s+/g, '') } catch { return '' } }
+    const prepare = backupExclusionMarker(intentPath)
+    // Off: saves leave the file in backups.
+    await writeFileAtomic(library, 'one', 0o600, { prepare })
+    expect(attribute(library)).toBe('')
+    expect(excluded(library)).toBe(false)
+    // On: the file that replaces it carries what tmutil itself would set, byte for byte, with nothing more to do.
+    await writeFile(intentPath, JSON.stringify({ excluded: true }))
+    for (const text of ['two', 'three', 'four']) {
+      await writeFileAtomic(library, text, 0o600, { prepare })
+      expect(attribute(library)).toBe(BACKUP_EXCLUDE_VALUE_HEX)
+      await expect(readFile(library, 'utf8')).resolves.toBe(text)
+    }
+    expect(excluded(library)).toBe(true)
+    // A folder marked the same way covers what is put in it.
+    const folder = join(base, 'personal')
+    await mkdir(folder)
+    await markExcludedFromBackup(folder)
+    await writeFile(join(folder, 'history.v1.seal'), 'sealed')
+    expect(excluded(folder)).toBe(true)
+    expect(excluded(join(folder, 'history.v1.seal'))).toBe(true)
+    // Off again: the next save is not marked (tmutil removes the attribute from the file it finds).
+    await rm(intentPath)
+    execFileSync('/usr/bin/xattr', ['-d', BACKUP_EXCLUDE_ATTRIBUTE, library])
+    await writeFileAtomic(library, 'five', 0o600, { prepare })
+    expect(attribute(library)).toBe('')
+    expect(excluded(library)).toBe(false)
+  }, 60_000)
 
   it('treats malformed persisted intent as unknown', async () => {
     const base = await makeRoot()

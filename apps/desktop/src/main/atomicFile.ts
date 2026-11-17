@@ -17,8 +17,17 @@ const temporaries = new Set<string>()
 let ended = false
 const quitting = (): Error => new Error('Intoponet is quitting.')
 
+export type AtomicWriteOptions = {
+  /**
+   * Run on the temporary file as soon as it exists, before any data is in it: what is set on it then (a
+   * Time Machine exclusion) is on the file from the moment it takes the target's place, since the rename
+   * keeps the temporary file's attributes and drops the replaced file's. A failure here does not stop the save.
+   */
+  prepare?: (temporary: string) => Promise<void>
+}
+
 /** Atomic write; writes to the same path run in order (the last one wins). */
-export function writeFileAtomic(path: string, data: string | Uint8Array, mode = 0o600): Promise<void> {
+export function writeFileAtomic(path: string, data: string | Uint8Array, mode = 0o600, options: AtomicWriteOptions = {}): Promise<void> {
   const previous = queues.get(path) ?? Promise.resolve()
   const next = previous.catch(() => undefined).then(async () => {
     if (ended) throw quitting()
@@ -27,6 +36,7 @@ export function writeFileAtomic(path: string, data: string | Uint8Array, mode = 
     try {
       const handle = await open(temporary, 'w', mode)
       try {
+        if (options.prepare) await options.prepare(temporary).catch(() => undefined)
         await handle.writeFile(data)
         await handle.sync()
       } finally {

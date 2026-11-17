@@ -8,11 +8,42 @@ const runExecFile = promisify(execFile)
 const TMUTIL = '/usr/bin/tmutil'
 const operationQueues = new Map<string, Promise<void>>()
 
+const XATTR = '/usr/bin/xattr'
+/**
+ * What `tmutil addexclusion` (the sticky form) leaves on a file or folder: this attribute, holding the binary
+ * property list of the string "com.apple.backupd". Time Machine skips whatever carries it, and whatever is in a
+ * folder that carries it; `tmutil isexcluded` reads it and `tmutil removeexclusion` deletes it. Setting it takes a
+ * few milliseconds, where tmutil takes one to eleven seconds for each path.
+ */
+export const BACKUP_EXCLUDE_ATTRIBUTE = 'com.apple.metadata:com_apple_backup_excludeItem'
+export const BACKUP_EXCLUDE_VALUE_HEX = '62706C69737430305F1011636F6D2E6170706C652E6261636B75706408000000000000010100000000000000010000000000000000000000000000001C'
+
 export type BackupExclusionAdapter = {
   platform: string
   available: boolean
   exists: (path: string) => boolean
   run: (args: string[]) => Promise<{ stdout: string }>
+  /** Sets the exclusion attribute on one path at once (optional: without it only tmutil is used). */
+  mark?: (path: string) => Promise<void>
+}
+
+/** Sets the Time Machine exclusion attribute on a file or folder, at once. */
+export async function markExcludedFromBackup(path: string): Promise<void> {
+  await runExecFile(XATTR, ['-wx', BACKUP_EXCLUDE_ATTRIBUTE, BACKUP_EXCLUDE_VALUE_HEX, path], { timeout: 5_000 })
+}
+
+/**
+ * For a store that is saved by replacing its file (atomicFile.ts): marks the new file, before it takes the old
+ * one's place, when the switch is on. A replaced file loses the exclusion with its old self, and tmutil needs
+ * seconds to give it back; a save and a quit a moment later used to leave the library in backups until the
+ * next launch. Does nothing when the switch is off or unreadable, or off the Mac.
+ */
+export function backupExclusionMarker(intentPath: string, adapter: BackupExclusionAdapter = systemAdapter): (path: string) => Promise<void> {
+  return async (path) => {
+    if (adapter.platform !== 'darwin' || !adapter.mark) return
+    if (readBackupExclusionIntent(intentPath) !== true) return
+    await adapter.mark(path)
+  }
 }
 
 /**
@@ -30,6 +61,7 @@ const systemAdapter: BackupExclusionAdapter = {
   available: existsSync(TMUTIL),
   exists: existsSync,
   run: async (args) => runExecFile(TMUTIL, args, { timeout: tmutilTimeoutMs(args) }),
+  ...(existsSync(XATTR) ? { mark: markExcludedFromBackup } : {}),
 }
 
 /** A missing intent file means the user has not enabled the exclusion. */
@@ -121,6 +153,9 @@ export async function applyBackupExclusion(
   const existing = paths.filter(adapter.exists)
   if (!existing.length) return
   if (on) {
+    // At once, each path by its attribute: tmutil below takes seconds for each, and a quit meanwhile would
+    // leave the later ones in backups. tmutil then confirms them its own way (and is all there is without xattr).
+    if (adapter.mark) await Promise.all(existing.map((path) => adapter.mark!(path).catch(() => undefined)))
     await adapter.run(['addexclusion', ...existing])
     return
   }
@@ -200,6 +235,13 @@ export function watchBackupExclusionPaths(
       if (readBackupExclusionIntent(intentPath) === true) await applyBackupExclusion(paths, true, adapter)
     }).then(() => { if (!disposed) onStateChanged() }, () => { if (!disposed) onStateChanged() })
   }
+  // At once, ahead of tmutil's slow pass (and of any still running): a store that exists, or has just been
+  // made, carries the exclusion within milliseconds, not after the seconds tmutil takes for each path.
+  const markNow = (targets: string[]): void => {
+    if (!adapter.mark || readBackupExclusionIntent(intentPath) !== true) return
+    for (const path of targets) if (adapter.exists(path)) void adapter.mark(path).catch(() => undefined)
+  }
+  markNow(paths)
   reapplyCurrentIntent()
   const onWatcherError = (): void => {
     if (watcherStopped || disposed) return
@@ -210,7 +252,9 @@ export function watchBackupExclusionPaths(
   }
   try {
     watcher = adapter.watchDirectory!(userDataPath, (event, filename) => {
-      if (disposed || watcherStopped || event !== 'rename' || !filename || !targetNames.has(filename) || pending) return
+      if (disposed || watcherStopped || event !== 'rename' || !filename || !targetNames.has(filename)) return
+      markNow(paths.filter((path) => basename(path) === filename))
+      if (pending) return
       pending = true
       timer = setTimeout(() => {
         timer = null

@@ -59,6 +59,23 @@ describe('atomic file writes', () => {
     expect(JSON.parse(readFileSync(path, 'utf8')).n).toBe('sync')
     expect(readdirSync(dir)).toEqual(['state.json'])
   })
+  it('prepares the temporary file before any data is in it, and saves even when preparing fails', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'atomic-'))
+    const path = join(dir, 'library.seal')
+    writeFileSync(path, 'old')
+    const seen: Array<{ name: string; size: number; target: string }> = []
+    await writeFileAtomic(path, 'new', 0o600, {
+      prepare: async (temporary) => { seen.push({ name: temporary, size: readFileSync(temporary).length, target: readFileSync(path, 'utf8') }) },
+    })
+    // Run once, on the temporary file next to the target, while it is empty and the old file is still in place.
+    expect(seen).toHaveLength(1)
+    expect(seen[0]).toMatchObject({ size: 0, target: 'old' })
+    expect(seen[0]!.name).toMatch(/library\.seal\.[0-9a-f-]{36}\.tmp$/)
+    expect(readFileSync(path, 'utf8')).toBe('new')
+    await writeFileAtomic(path, 'newer', 0o600, { prepare: async () => { throw new Error('no xattr here') } })
+    expect(readFileSync(path, 'utf8')).toBe('newer')
+    expect(readdirSync(dir)).toEqual(['library.seal'])
+  })
   it('keeps the old file when a write fails', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'atomic-'))
     const path = join(dir, 'state.json')

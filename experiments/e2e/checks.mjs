@@ -2808,7 +2808,7 @@ export const checks = {
     await ctx.click('.drawer-tabs button', 'Privacy')
     await ctx.delay(500)
     const privacy = await ctx.evaluate(`document.querySelector('.privacy-pane')?.innerText ?? ''`)
-    for (const piece of ['Private browsing', 'Footprints', 'Sites to leave out', 'Your pins on the globe', 'Backups']) expect(privacy.includes(piece), `Privacy is missing "${piece}".`)
+    for (const piece of ['Private browsing', 'Footprints', 'Sites to leave out', 'Your pins on the globe', 'Backups', 'Leave my private library out of Time Machine', 'It does not cover saved passwords, cookies and site data, open tabs']) expect(privacy.includes(piece), `Privacy is missing "${piece}".`)
     return 'Settings and Privacy sections present; a page under Settings stays hidden through a re-layout and comes back when it closes.'
   },
 

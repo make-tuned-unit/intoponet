@@ -218,7 +218,7 @@ import { TranslateService } from './translate/service'
 import { FaviconCache, isIconHost, SITE_ICON_PARTITION } from './faviconCache'
 import { ArticlePreviews, previewableUrl } from './articlePreview'
 import { ACCESS_SCRIPT, ACCESS_WORLD_ID, parseAccess } from './access/pageAccess'
-import { backupExclusionAvailable, backupExclusionStatus, readBackupExclusionIntent, setBackupExclusion, watchBackupExclusionPaths } from './backupExclusion'
+import { backupExclusionAvailable, backupExclusionMarker, backupExclusionStatus, readBackupExclusionIntent, setBackupExclusion, watchBackupExclusionPaths } from './backupExclusion'
 import { TranslateStore } from './translate/store'
 import { openTranslationEngine } from './translate/openEngine'
 import { loadKnowledgeCrypto, retryingKnowledgeCrypto } from './knowledge/crypto'
@@ -1539,6 +1539,10 @@ function privateLibraryPath(): string {
   return join(app.getPath('userData'), 'private-library.v1.seal')
 }
 
+/** Where the Time Machine switch (Privacy › Backups) keeps the choice. */
+const backupExclusionIntentFile = (): string => join(app.getPath('userData'), 'backup-exclusion.json')
+const excludeLibraryFromBackup = (temporary: string): Promise<void> => backupExclusionMarker(backupExclusionIntentFile())(temporary)
+
 async function readSealedLibrary(): Promise<PrivateLibraryReadResult> {
   const result = await readSealedPrivateLibrary({
     encryptionAvailable: await safeStorage.isAsyncEncryptionAvailable(),
@@ -1556,7 +1560,9 @@ const libraryWriter = new LatestWriter<string>(async (payload) => {
     throw new Error('On-device encryption is unavailable.')
   }
   const sealed = await safeStorage.encryptStringAsync(payload)
-  await writeFileAtomic(privateLibraryPath(), sealed)
+  // Each save replaces the file: with "Leave my private library out of Time Machine" on, the new file carries
+  // the exclusion before it takes the old one's place, so there is no moment the library is in backups.
+  await writeFileAtomic(privateLibraryPath(), sealed, 0o600, { prepare: excludeLibraryFromBackup })
 })
 
 function writeSealedLibrary(payload: string): Promise<void> {
@@ -5829,8 +5835,15 @@ app.whenReady().then(async () => {
   startup('privacy', () => {
     // Private browsing and backup exclusion for the private stores (PRD MEM-001, §8.4).
     const userDataPath = app.getPath('userData')
-    const backupPaths = [privateLibraryPath(), join(userDataPath, 'knowledge'), join(userDataPath, 'laya'), join(userDataPath, 'personal')]
-    const backupExclusionIntentPath = join(userDataPath, 'backup-exclusion.json')
+    const backupFolders = [join(userDataPath, 'knowledge'), join(userDataPath, 'laya'), join(userDataPath, 'personal')]
+    const backupPaths = [privateLibraryPath(), ...backupFolders]
+    const backupExclusionIntentPath = backupExclusionIntentFile()
+    // With the switch on, the folders it covers exist from then on, already excluded: one made later (by the first
+    // page absorbed, say) would hold its first files for a moment before the exclusion reached it.
+    const makeBackupFolders = (): void => {
+      for (const folder of backupFolders) try { mkdirSync(folder, { recursive: true }) } catch { /* made when first used, and excluded then */ }
+    }
+    if (backupExclusionAvailable() && readBackupExclusionIntent(backupExclusionIntentPath) === true) makeBackupFolders()
     const excludedSitesFile = join(app.getPath('userData'), 'excluded-sites.json')
     try {
       const raw = JSON.parse(readFileSync(excludedSitesFile, 'utf8')) as unknown
@@ -5887,6 +5900,7 @@ app.whenReady().then(async () => {
       }
       if (command.type === 'set-backup-exclusion') {
         try {
+          if (command.on && backupExclusionAvailable()) makeBackupFolders()
           await setBackupExclusion(backupPaths, command.on, backupExclusionIntentPath)
         } finally {
           await emitPrivacy()
