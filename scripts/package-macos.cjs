@@ -174,6 +174,10 @@ function inspectPackagedApp(app) {
   for (const entry of readdirSync(path.join(desktop, 'out/main')).filter((name) => name.endsWith('.js'))) {
     requiredEntries.push(`/out/main/${entry}`)
   }
+  // The ad and tracker lists the protection engine loads at launch (it falls back to a few built-in hosts without them).
+  for (const entry of readdirSync(path.join(desktop, 'out/main/protection'))) {
+    requiredEntries.push(`/out/main/protection/${entry}`)
+  }
   for (const entry of requiredEntries) {
     if (!entries.has(entry)) fail(`app.asar is missing ${entry}`)
   }
