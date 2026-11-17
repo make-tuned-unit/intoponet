@@ -186,10 +186,10 @@ list of ad and tracker hosts and the page-element rules are all in
   fetched or consulted, by the app or by the tools that build the list.
   EasyList, EasyPrivacy, the Ghostery adblocker library (with its `@ghostery/*`
   and `@remusao/*` packages), tldts and the Public Suffix List inside it, which
-  one build of 2026-11-17 used, were removed the same day and never released.
+  one build of 2026-11-17 used, were removed the same day; that build was not pushed or released.
   A unit test (`packages/protection-engine/src/blocklist.test.ts`) fails if a
-  reference to any of them comes back in the app, the packages, the build
-  scripts, the dependency lock or the built app.
+  reference to any of them comes back in the source of the app, the packages
+  or the build scripts, or in the dependency lock.
 
 Company and product names in the list are used only to say whose hosts they
 are. The list is refreshed by rerunning the measurement before a release.

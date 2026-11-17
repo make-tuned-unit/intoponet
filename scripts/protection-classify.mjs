@@ -83,12 +83,13 @@ function parseAuthored() {
   const entries = new Map()
   for (const [company, service, kind, category, hosts] of authored.services) {
     for (const item of hosts.split(/\s+/).filter(Boolean)) {
-      const entry = { host: item, category, service, company, kind, source: 'authored' }
+      const late = authored.afterHoldout.services.includes(service) || authored.afterHoldout.hosts.includes(item)
+      const entry = { host: item, category, service, company, kind, source: late ? 'authored after hold-out' : 'authored' }
       const slash = item.indexOf('/')
       const tilde = item.indexOf('~')
       if (tilde > 0) Object.assign(entry, { host: item.slice(0, tilde), pathIncludes: [item.slice(tilde + 1)] })
       else if (slash > 0) Object.assign(entry, { host: item.slice(0, slash), paths: [item.slice(slash)] })
-      const key = `${entry.host}|${category}|${service}`
+      const key = `${entry.host}|${category}|${service}${authored.afterHoldout.hosts.includes(item) ? `|${item}` : ''}`
       const existing = entries.get(key)
       if (existing && (existing.paths || existing.pathIncludes) && (entry.paths || entry.pathIncludes)) {
         if (entry.paths) existing.paths = [...new Set([...(existing.paths ?? []), ...entry.paths])]
@@ -240,7 +241,7 @@ const previousEvidence = new Map(previous.entries.map((entry) => [`${entry.host}
 if (!measurement) {
   for (const entry of authoredEntries) {
     const evidence = previousEvidence.get(`${entry.host}|${(entry.paths ?? []).join(',')}|${(entry.pathIncludes ?? []).join(',')}`)
-    entries.push(evidence ? { ...entry, source: 'authored, measured', evidence } : entry)
+    entries.push(evidence ? { ...entry, source: `${entry.source}, measured`, evidence } : entry)
   }
 } else {
   // By registrable domain and by host.
@@ -285,7 +286,7 @@ if (!measurement) {
     const found = signals(merged(list, entry.host), adHost)
     report.authoredSeen += 1
     if (found.isFunctional) report.authoredFunctional.push(`${entry.host} (${entry.service}): functional at ${found.functional} of ${found.publishers} publishers`)
-    entries.push({ ...entry, source: 'authored, measured', evidence: evidenceOf(found) })
+    entries.push({ ...entry, source: `${entry.source}, measured`, evidence: evidenceOf(found) })
   }
 
   // Proposals from the measurement.
@@ -342,6 +343,17 @@ for (const [host, decision] of Object.entries(reviewed.hosts)) {
   entries.push({ host, category: decision.list, service: decision.service, company: decision.company ?? decision.service, kind: decision.kind ?? (decision.list === 'ad' ? 'advertising' : 'tracking'), source: 'measured, listed on review', evidence, ...(decision.note ? { note: decision.note } : {}) })
 }
 
+// Entries added after the hold-out check say at how many hold-out outlets their hosts were reached.
+const holdoutFile = join(repo, 'docs/data/protection-holdout.json')
+if (existsSync(holdoutFile)) {
+  const holdout = JSON.parse(readFileSync(holdoutFile, 'utf8'))
+  for (const entry of entries) {
+    if (!entry.source.startsWith('authored after hold-out')) continue
+    const outlets = holdout.missedHosts.filter((item) => under(item.host, entry.host)).reduce((sum, item) => sum + item.outlets, 0)
+    entry.holdout = { outlets, of: holdout.outlets }
+  }
+}
+
 entries.sort((left, right) => (left.host < right.host ? -1 : left.host > right.host ? 1 : 0))
 const count = (test) => entries.filter(test).length
 const services = new Set(entries.map((entry) => `${entry.company}|${entry.service}`))
@@ -354,6 +366,7 @@ const summary = {
   tracker: count((entry) => entry.category === 'tracker'),
   authoredOnly: count((entry) => entry.source === 'authored'),
   authoredMeasured: count((entry) => entry.source === 'authored, measured'),
+  authoredAfterHoldout: count((entry) => entry.source.startsWith('authored after hold-out')),
   measured: count((entry) => entry.source.startsWith('measured')),
 }
 
@@ -377,7 +390,7 @@ if (measurement) {
 
 // A name becomes a rule only when a person has accepted it in data/reviewed.json ("elements"):
 //   hide       hidden always. Only for a name that held nothing but ads at every publisher where it was seen (5 or more).
-//   whenEmpty  hidden once nothing but an ad label is left in it (the empty-slot cleanup). For a name that held only ads at 80% or more of 3+ publishers.
+//   whenEmpty  hidden once nothing but an ad label is left in it (the empty-slot cleanup). For a name that held only ads at 80% or more of 3+ publishers, with an ad seen in it at one at least (a name only ever seen empty may be a decoy for detecting blockers).
 const selectorOf = (name) => (name.startsWith('#') ? `[id^="${name.slice(1, -1)}"]` : `[class~="${name.slice(1)}"]`)
 const previousElements = readJson('element-rules.json', { hide: [], whenEmpty: [] })
 const elementRules = { hide: [], whenEmpty: [] }
@@ -391,12 +404,12 @@ for (const kind of ['hide', 'whenEmpty']) {
 }
 if (measurement) {
   for (const rule of elementRules.hide) if (rule.onlyAds !== rule.publishers || rule.publishers < 5) throw new Error(`"${rule.name}" can not be hidden always: it held only ads at ${rule.onlyAds} of ${rule.publishers} publishers (all of 5 or more are needed).`)
-  for (const rule of elementRules.whenEmpty) if (rule.onlyAds < rule.publishers * 0.8 || rule.publishers < 3) throw new Error(`"${rule.name}" can not be an ad slot: it held only ads at ${rule.onlyAds} of ${rule.publishers} publishers.`)
+  for (const rule of elementRules.whenEmpty) if (rule.onlyAds < rule.publishers * 0.8 || rule.publishers < 3 || rule.withAnAd < 1) throw new Error(`"${rule.name}" can not be an ad slot: it held only ads at ${rule.onlyAds} of ${rule.publishers} publishers and an ad was seen in it at ${rule.withAnAd}.`)
 }
 
 const out = {
   about: "Intoponet's own list of ad and tracker hosts. Every entry was either written by hand from knowledge (authored-services.json) or found by Intoponet's own measurement of news pages and listed after a person looked at what the host did (reviewed.json). It is not copied or derived from any filter list, hosts file or tracker database. Generated by scripts/protection-classify.mjs; do not edit by hand.",
-  fields: "host: the host and every host under it. paths / pathIncludes: only requests whose path starts with / contains one of these. category: ad or tracker. service, company, kind: what it is. source: authored (from knowledge, not seen in the measurement), 'authored, measured' (from knowledge, and seen), measured (proposed by the classification rules and accepted on review), 'measured, listed on review' (seen, below the rules' thresholds, listed because the reviewer recognised the service). evidence: publishers = how many of the measured publishers' pages asked this host for something, of = how many publishers were measured, requests, signals = the classification signals with the number of publishers showing each.",
+  fields: "host: the host and every host under it. paths / pathIncludes: only requests whose path starts with / contains one of these. category: ad or tracker. service, company, kind: what it is. source: authored (from knowledge, not seen in the measurement), 'authored, measured' (from knowledge, and seen), 'authored after hold-out' (a service the author knows, added because the hold-out check showed it missing; holdout.outlets says at how many of the hold-out outlets its hosts were reached; ', measured' when the build measurement saw it too), measured (proposed by the classification rules and accepted on review), 'measured, listed on review' (seen, below the rules' thresholds, listed because the reviewer recognised the service). evidence: publishers = how many of the measured publishers' pages asked this host for something, of = how many publishers were measured, requests, signals = the classification signals with the number of publishers showing each.",
   generated: new Date().toISOString().slice(0, 10),
   measurement: measurement ?? previous.measurement ?? null,
   summary,

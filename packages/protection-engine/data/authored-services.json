@@ -1,5 +1,10 @@
 {
-  "about": "The advertising and tracking services Intoponet's authors know of, and the hosts they serve from. Written out by hand from general knowledge of the industry for this project, on 2026-11-17. It was not copied or derived from any filter list, hosts file or tracker database, and none was consulted while writing it. A host its author was not confident about is left out unless Intoponet's own measurement (scripts/protection-crawl.mjs) shows it at work. Nineteen services and five hosts were added after the hold-out check of 2026-11-17 showed them missing (services the author knows, whose hosts the hold-out pages named); the miss rate quoted for that check was measured before they were added.",
+  "about": "The advertising and tracking services Intoponet's authors know of, and the hosts they serve from. Written out by hand from general knowledge of the industry for this project, on 2026-11-17. It was not copied or derived from any filter list, hosts file or tracker database, and none was consulted while writing it. A host its author was not confident about is left out unless Intoponet's own measurement (scripts/protection-crawl.mjs) shows it at work.",
+  "afterHoldout": {
+    "about": "Added on 2026-11-17 after the hold-out check showed them missing: services the author knows, whose hosts the hold-out pages named. They are marked 'authored after hold-out' in blocklist.json, with the number of hold-out outlets that reached them. The miss rate quoted for that check was measured before they were added.",
+    "services": ["Gauges", "whos.amung.us", "AdsWizz", "Revive Adserver hosted", "Sirdata", "mParticle", "Zoho PageSense", "Azure Application Insights", "Azerion (Improve Digital, Hyth)", "Assertive Yield", "Affectv", "Flipp", "Optad360", "Shareaholic analytics", "Wemass", "Trafic.ro", "FullContact", "Optable", "DTScout"],
+    "hosts": ["yastatic.net/partner-code-bundles/", "yandex.ru/ads/", "jubnaadserve.com", "unibotscdn.com", "waust.at"]
+  },
   "format": "Each service is [company, service, kind, 'ad' or 'tracker', hosts]. Hosts are separated by spaces. 'example.com' is the host and every host under it. 'example.com/path' only blocks requests whose path starts with /path. 'example.com~part' only blocks requests whose path contains 'part'. scripts/protection-classify.mjs turns this file and the measurement into blocklist.json, which is what the app uses.",
   "services": [
     ["Google", "Google Ad Manager, DoubleClick and Display & Video 360", "ad server and exchange", "ad", "doubleclick.net 2mdn.net doubleclickbygoogle.com googletagservices.com adtrafficquality.google"],
@@ -66,7 +71,7 @@
     ["Mixpanel", "Mixpanel", "analytics", "tracker", "mixpanel.com mxpnl.com"],
     ["Gauges", "Gauges", "analytics", "tracker", "gaug.es"],
     ["whos.amung.us", "whos.amung.us", "analytics", "tracker", "amung.us waust.at"],
-    ["AdsWizz", "AdsWizz", "audio ads", "ad", "adswizz.com"],
+    ["AdsWizz", "AdsWizz", "audio ads", "ad", "synchrobox.adswizz.com deliveryengine.adswizz.com delivery-cdn-cf.adswizz.com"],
     ["Revive", "Revive Adserver hosted", "ad server", "ad", "revive-adserver.net"],
     ["Sirdata", "Sirdata", "data broker", "tracker", "sddan.com sirdata.io"],
     ["mParticle", "mParticle", "customer data platform", "tracker", "mparticle.com"],

@@ -1324,20 +1324,12 @@
   "hide": [],
   "whenEmpty": [
    "#gpt_unit_/*",
-   "._cm-ad-feed-manager",
-   "._cm-video-ad",
-   ".ad-placement",
    ".ads-wrapper",
    ".jeg_ad_top",
    ".jeg_ad_article",
-   ".jnews_mobile_sticky_ads",
    ".jnews_header_top_ads",
-   ".jnews_header_bottom_ads",
    ".jnews_content_top_ads",
-   ".jnews_content_bottom_ads",
-   ".jnews_content_inline_ads",
-   ".jnews_article_bottom_ads",
-   ".jnews_above_footer_ads"
+   ".jnews_content_inline_ads"
   ]
  }
 }

@@ -76,22 +76,25 @@ A "publisher" is one `independentPublisherGroupId`; sister outlets count once.
 
 Page-element rules: a container name is hidden always only if it held nothing but ads at every
 publisher where it was seen, at 5 or more publishers; it is treated as an ad slot (hidden once only
-an ad label is left in it) if it held only ads at 80% of 3 or more. Both need a person's yes in
+an ad label is left in it) if it held only ads at 80% of 3 or more and an ad was seen in it. Both need a person's yes in
 `reviewed.json`; the classifier refuses a name that does not meet its bar.
 
 ## The list as of 2026-11-17
 
-917 rules for 916 hosts, belonging to 584 services (440 of them written out by hand):
+920 rules for 918 hosts. They belong to 584 named services, 440 of them written out by hand; the
+count includes 26 hosts whose company could not be named, and the company names on measured hosts
+are the reviewer's recollection of who runs the host, not something the measurement shows:
 
 | Source | Rules | Ad | Tracker |
 |---|---|---|---|
-| authored (from knowledge, not seen in the measurement) | 451 | 233 | 218 |
-| authored, measured (from knowledge, and seen at work) | 295 | 172 | 123 |
+| authored (from knowledge, not seen in the measurement) | 436 | 226 | 210 |
+| authored, measured (from knowledge, and seen at work) | 279 | 167 | 112 |
+| authored after hold-out (services the author knows, added because the hold-out check showed them missing; 18 of the 34 were also seen in the build measurement) | 34 | 15 | 19 |
 | measured (proposed by the rules, accepted on review) | 133 | 107 | 26 |
 | measured, listed on review (seen, below the rules' thresholds or under a portal's domain) | 38 | 27 | 11 |
-| **all** | **917** | **539** | **378** |
+| **all** | **920** | **542** | **378** |
 
-65 rules are narrowed to a path. For 26 of the measured rules the company behind the host could not
+66 rules are narrowed to a path (the list file has no way to narrow a rule to a kind of request yet, though the matcher can). For 26 of the measured rules the company behind the host could not
 be named (`"company": "unidentified"`); they are listed for what they did (cookie matching between
 ad exchanges, mostly) and each says so. The reviewer refused 20 proposals: advertisers' own sites,
 shared hosting, a hosted animation library, two portals and a government agency (only their ad or
@@ -105,10 +108,11 @@ cloudflareinsights.com 173, 2mdn.net 139, criteo.com 113, mediago.io 91, admaste
 id5-sync.com 85.
 
 Page elements: no measured name met the bar for "always hidden" (the closest, ids starting
-`gpt_unit_/`, held only ads at 30 of 31 publishers). 15 names were accepted as ad slots that are
-hidden once empty. Four names that looked like slots were refused: `.banner_logo` is a site's logo,
-and `.text-ad`, `.text_ad`, `.pub_300x250` and `.afs_ads` are the empty decoys pages use to detect a
-blocker.
+`gpt_unit_/`, held only ads at 30 of 31 publishers). 7 names were accepted as ad slots that are
+hidden once empty: each held only ads at 80% or more of the publishers where it was seen and had an
+ad in it at one at least. Refused: `.banner_logo` (a site's logo); `.text-ad`, `.text_ad`,
+`.pub_300x250` and `.afs_ads` (the empty decoys pages use to detect a blocker); and eight names
+only ever seen empty, which may be decoys too.
 
 Known gaps, by design or for now: a site's own ads and measurement (same site: never blocked);
 video ads served through Google's player SDK (`imasdk.googleapis.com` is on the never-block list
@@ -156,8 +160,13 @@ loaded fewer ad hosts than they would for a person who agrees; one visit per pag
 on one day; a site's own ads and measurement are not counted as misses, because they are never
 blocked; the verdicts are one reviewer's.
 
+Push-notification services were judged not to be ad or tracker hosts. If they are counted as
+misses instead (OneSignal at 7 outlets, webpushr, Pushwoosh, PushPushGo: 25 more host appearances),
+the miss rate is 31.3% (201 ÷ 643).
+
 After the check, nineteen services and five hosts the author knows, which the hold-out showed
-missing, were added to `authored-services.json` (the list went from 886 to 917 rules), and one
+missing, were added to `authored-services.json` (34 rules, marked `authored after hold-out` with the
+number of hold-out outlets that reached them; the list went from 886 to 920 rules), and one
 never-block entry that hid two cookie-matching hosts was removed. The miss rate above was measured
 before that and has not been measured again: these 60 outlets are no longer an untouched test of
 the additions, so the next refresh should quote a new run.
