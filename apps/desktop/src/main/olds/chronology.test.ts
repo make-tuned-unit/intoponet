@@ -76,3 +76,75 @@ describe('timeline articles', () => {
     expect(entries.map((e) => e.at.iso)).toEqual(['2026-10-14', '2026-10-27'])
   })
 })
+
+// Real cases from the live audit of 16 November 2026 (44 headlines, 325 dated events).
+describe('dates the source states (2026-11-16 audit)', () => {
+  it('dates a year-page item by the day it opens with, not a year it mentions', () => {
+    // Was shown at 1916.
+    const wikitext = '==Events==\n=== March ===\n* 13 March – France returns a [[talking drum]] looted in 1916 at a ceremony in [[Abidjan]], the first time it has repatriated a cultural artefact to Ivory Coast.<ref>{{Cite web |date=14 March 2026 |title=France returns talking drum}}</ref>'
+    const entries = chronologyFromWikitext('2026 in Ivory Coast', wikitext, 2026)
+    expect(entries.map((entry) => entry.at.iso)).toEqual(['2026-03-13'])
+    expect(sentenceDate('On 13 March, France returned a talking drum looted in 1916 at a ceremony in Abidjan.', 2026, 2026)?.iso).toBe('2026-03-13')
+  })
+
+  it('makes each list item its own event, and leaves out the deaths listed by month', () => {
+    // Were one event dated 10 Feb holding both items; and "7 Nov 2026: Ritsuko Nakayama, bowler … November 13 – Masaaki Yamazaki".
+    const wikitext = `==Events==
+===February===
+* 10 February – Prosecutors raid legislator [[Kao Chin Su-mei]]'s office and summon her for questioning on suspicion of misappropriating her aides' salaries.<ref>x</ref>
+* 12 February – Taiwan agrees to remove or reduce 99% of its tariffs as part of a trade agreement with the United States.<ref>y</ref>
+==Deaths==
+=== November ===
+* November 7 – [[Ritsuko Nakayama]], bowler and television personality (b. 1942)
+* November 13 – [[Masaaki Yamazaki]], politician (b. 1942) and speaker of the House of Councillors
+==See also==`
+    const entries = chronologyFromWikitext('2026 in Taiwan', wikitext, 2026)
+    expect(entries.map((entry) => [entry.at.iso, entry.text.slice(0, 14)])).toEqual([['2026-02-10', '10 February – '], ['2026-02-12', '12 February – ']])
+    expect(entries[0]!.text).not.toMatch(/12 February/)
+  })
+
+  it('dates a sentence by the year it opens with, or else the first date it states', () => {
+    // Was shown at June 1947.
+    expect(sentenceDate('In 1920 John Maynard Keynes proposed a European customs union for the struggling post-war European economies, and in 1923 the oldest organisation for European integration, the Paneuropean Union was founded, led by Richard von Coudenhove-Kalergi, who would later found in June 1947 the European Parliamentary Union.', 2026)?.iso).toBe('1920')
+    expect(sentenceDate('In June 2015, Diallo was loaned out to Zulte Waregem, and on 14 July 2017 he moved to Mainz 05.', 2026)?.iso).toBe('2015-06')
+    // Unchanged: a full date in the same year as the opening one refines it; a lone full date is used wherever it stands.
+    expect(sentenceDate('In 2019, the agreement was signed on 5 May 2019 in Geneva.', 2026)?.iso).toBe('2019-05-05')
+    expect(sentenceDate('The last recorded was the Hōei eruption which started on December 16, 1707, and ended about January 1, 1708 (16 days).', 2026)?.iso).toBe('1707-12-16')
+  })
+})
+
+describe('quotes that are whole (2026-11-16 audit)', () => {
+  it('does not cut a sentence at an initial or a numbered club name', () => {
+    // Were "…loaned out to Belgian club S.V." and "…moved to Bundesliga club 1."
+    const wikitext = '== Club career ==\nIn June 2015, Diallo was loaned out to Belgian club S.V. Zulte Waregem for the 2015–16 season.<ref>a</ref> On 14 July 2017, Diallo moved to [[Bundesliga]] club 1. FSV Mainz 05, and signed a five-year contract.<ref>b</ref>'
+    const entries = chronologyFromWikitext('Abdou Diallo', wikitext, 2026)
+    expect(entries.map((entry) => entry.text)).toEqual([
+      'In June 2015, Diallo was loaned out to Belgian club S.V. Zulte Waregem for the 2015–16 season.',
+      'On 14 July 2017, Diallo moved to Bundesliga club 1. FSV Mainz 05, and signed a five-year contract.',
+    ])
+  })
+
+  it('keeps a measurement written with a template, and drops a sentence a template left a hole in', () => {
+    // Was "…earthquake with a shallow depth of occurred in the Pacific Ocean, east-southeast of Nikolskoye…".
+    const wikitext = '== Geology ==\nA significant 7.7-magnitude earthquake with a shallow depth of {{convert|10|km|ft|sigfig=2}} occurred in the Pacific Ocean, {{convert|202|km|nmi}} east-southeast of [[Nikolskoye, Kamchatka Krai|Nikolskoye]], on July 18, 2017.<ref>{{cite web|title=M 7.7}}</ref> The volcano, which rises to {{height|m=4750}} above the sea, last erupted on 2 August 2020 according to observers.'
+    const entries = chronologyFromWikitext('Kamchatka Peninsula', wikitext, 2026)
+    expect(entries.map((entry) => entry.text)).toEqual(['A significant 7.7-magnitude earthquake with a shallow depth of 10 km occurred in the Pacific Ocean, 202 km east-southeast of Nikolskoye, on July 18, 2017.'])
+  })
+
+  it('drops a piece cut out of a quotation, and a file caption run into a sentence', () => {
+    expect(isDebris('October 2023 to July 2024] are consistent with the characteristics of genocide."')).toBe(true)
+    expect(isDebris('The most recent death of a former prime minister was that of Édouard Balladur (1993–1995), on 31 August 2026. File:17.10.27 Recepción Tribunales Constitucionales.')).toBe(true)
+    expect(isDebris('In September 2024, a UN Special Committee concluded that "the policies and practices of Israel" were consistent with it.')).toBe(false)
+  })
+})
+
+describe('section links that open the section (2026-11-16 audit)', () => {
+  it('uses the heading’s id as Wikipedia renders it', () => {
+    // Was #Initial_years_and_the_Paris_Treaty_(19481957), which is no section of the article.
+    const wikitext = '==History==\n===Initial years and the Paris Treaty (1948{{Non breaking en dash}}1957)===\nOn 9 May 1950, French Foreign Minister Robert Schuman proposed a community to integrate the coal and steel industries of Europe.\n=== The {{lang|fr|Acquis}} today ===\nIn 2004, ten further countries joined the union under the terms that had been agreed.'
+    const entries = chronologyFromWikitext('European Union', wikitext, 2026)
+    expect(entries[0]).toMatchObject({ section: 'Initial years and the Paris Treaty (1948–1957)', url: `https://en.wikipedia.org/wiki/European_Union#${encodeURIComponent('Initial_years_and_the_Paris_Treaty_(1948‍–‍1957)')}` })
+    // A heading whose rendering cannot be told links to the article rather than to a section that may not exist.
+    expect(entries[1]!.url).toBe('https://en.wikipedia.org/wiki/European_Union')
+  })
+})
