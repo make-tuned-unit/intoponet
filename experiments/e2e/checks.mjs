@@ -687,8 +687,9 @@ const pageSessionProblems = async (ctx, { stubbed = [] } = {}) => JSON.parse(awa
   const problems = []
   const shared = electron.session.fromPartition('persist:intoponet-default')
   const within = (promise, ms = 2000) => Promise.race([promise.catch((error) => '(failed: ' + error + ')'), new Promise((resolve) => setTimeout(() => resolve('(no answer)'), ms))])
-  // Web pages and local files in tabs; not the app's own page, its data: toolbars and cards, or DevTools.
-  const pages = electron.webContents.getAllWebContents().filter((c) => !c.isDestroyed() && /^(https?|file):/.test(c.getURL()) && !/\\/renderer\\/index\\.html$/.test(new URL(c.getURL()).pathname))
+  // Web pages and local files in tabs; not the app's own pages (the app window, and the address bar's suggestions as
+  // floated above a page), its data: toolbars and cards, or DevTools.
+  const pages = electron.webContents.getAllWebContents().filter((c) => !c.isDestroyed() && /^(https?|file):/.test(c.getURL()) && !/\\/renderer\\/(index|overlay)\\.html$/.test(new URL(c.getURL()).pathname))
   const firstOf = new Map()
   for (const c of pages) {
     const where = c.getURL().slice(0, 80)
