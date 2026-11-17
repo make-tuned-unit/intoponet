@@ -2,6 +2,14 @@ import { useEffect, useState } from 'react'
 import { Radio } from 'lucide-react'
 import type { BeaconState } from '@intoponet/browser-api'
 
+/** The registry as the app names it in a sentence: its host (intoponet.com), whatever address is saved. */
+export const registryHost = (registry: string): string => { try { return new URL(registry).host } catch { return registry } }
+
+/** Where "Beacons near here" comes from, said in Settings: true for whichever registry is saved, and for none. */
+export const beaconSourceSentence = (registry: string): string => (registry
+  ? `When you select a place on the globe, the public list of Beacons is fetched from ${registryHost(registry)}, at most once every 10 minutes, without saying which place you are looking at.`
+  : 'No registry address is saved, so the list of Beacons is not fetched.')
+
 /** Settings › Beacons: the registry address and your published beacons, each withdrawable (BCN-005). */
 export function BeaconSettings() {
   const api = window.intoponet.beacons
@@ -15,6 +23,7 @@ export function BeaconSettings() {
     <section>
       <h3><Radio size={13} aria-hidden="true" /> Beacons</h3>
       <p>Beacons are public recommendations you choose to publish from a pin in My map. Only what the consent screen shows is sent.</p>
+      <p className="beacon-source">{beaconSourceSentence(state.registry)}</p>
       <form className="privacy-site-form" onSubmit={(event) => { event.preventDefault(); void api.setRegistry(draft).then((value) => { setState(value); setMessage(value.registry ? 'Registry saved.' : 'Registry removed.') }, (caught: unknown) => setMessage(clean(caught))) }}>
         <input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="https://beacons.example.org" aria-label="Beacon registry address" />
         <button type="submit">Save</button>

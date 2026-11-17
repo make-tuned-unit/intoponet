@@ -2702,6 +2702,21 @@ export const checks = {
     await openPanel(ctx, 'Settings')
     const text = await ctx.evaluate(`document.querySelector('.settings-pane')?.innerText ?? ''`)
     for (const piece of ['Read the web in', 'Translate pages', 'Downloaded languages', 'Beacons', 'Credits and licences', 'Privacy']) expect(text.includes(piece), `Settings is missing "${piece}".`)
+    // Settings › Beacons says where "Beacons near here" comes from, naming the registry the app is using, and that
+    // the place is not sent. With the address cleared it says nothing is fetched, and looking at a place asks nobody.
+    const beaconSource = `document.querySelector('.settings-pane .beacon-source')?.innerText ?? ''`
+    const registryNow = await ctx.evaluate(`window.intoponet.beacons.state().then((s) => s.registry)`)
+    const sourceSaid = await ctx.evaluate(beaconSource)
+    expect(registryNow && sourceSaid.includes(`the public list of Beacons is fetched from ${new URL(registryNow).host}`) && sourceSaid.includes('without saying which place you are looking at'), `Settings › Beacons does not say where the list of Beacons comes from (registry ${registryNow || 'none'}): "${sourceSaid}".`)
+    await ctx.main(`(() => { globalThis.__beaconFetches = []; globalThis.__beaconFetch ??= globalThis.fetch; globalThis.fetch = (input, init) => { const url = String(input?.url ?? input); if (/\\/v1\\/beacons/.test(url)) globalThis.__beaconFetches.push(url); return globalThis.__beaconFetch(input, init) }; return true })()`)
+    try {
+      await ctx.evaluate(`window.intoponet.beacons.setRegistry('').then(() => true)`)
+      const answer = await ctx.evaluate(`window.intoponet.beacons.read({ bbox: [39, -84, 51, -67] }).then(() => 'answered', () => 'refused')`)
+      expect(answer === 'refused' && (await ctx.main('globalThis.__beaconFetches.length')) === 0, `With the registry address cleared, looking at a place still asked for Beacons (${answer}; requests: ${JSON.stringify(await ctx.main('globalThis.__beaconFetches'))}).`)
+    } finally {
+      await ctx.evaluate(`window.intoponet.beacons.setRegistry(${JSON.stringify(registryNow)}).then(() => true)`)
+      await ctx.main(`(() => { globalThis.fetch = globalThis.__beaconFetch; return true })()`)
+    }
     await ctx.click('[aria-label="Settings"]')
     await openPanel(ctx, 'My map')
     await ctx.click('.drawer-tabs button', 'Privacy')

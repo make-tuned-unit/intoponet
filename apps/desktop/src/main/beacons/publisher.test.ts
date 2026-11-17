@@ -193,5 +193,13 @@ describe('beacon publisher', () => {
     await publisher.setRegistry('http://localhost:8788')
     await publisher.read({ bbox: [0, 0, 1, 1] })
     expect(asked.at(-1)).toBe('http://localhost:8788/v1/beacons?limit=100')
+
+    // With the registry address cleared (Settings › Beacons), looking at a place asks nobody, even though a
+    // list fetched earlier is still within its ten minutes.
+    const before = asked.length
+    expect((await publisher.setRegistry('')).registry).toBe('')
+    await expect(publisher.read({ bbox: [39.4, -83.7, 51.4, -67.7] })).rejects.toThrow(/No beacon registry/)
+    await expect(publisher.read()).rejects.toThrow(/No beacon registry/)
+    expect(asked).toHaveLength(before)
   })
 })
