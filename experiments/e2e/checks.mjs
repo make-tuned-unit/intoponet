@@ -3206,6 +3206,8 @@ export const checks = {
     let tourAfterCrash = null
     for (let step = 1; step <= total; step += 1) {
       const state = shown[step] = await settle(step)
+      // Keyboard focus is never left on nothing under the tour (a panel the last step had open closed with focus in it).
+      expect(!(await ctx.evaluate(`document.activeElement === document.body || !document.activeElement`)), `At tour step ${step} ("${state.title}") keyboard focus is on nothing.`)
       if (state.title === 'Every page, with tools built in') {
         await ctx.delay(600)
         savedWithTabs = existsSync(stateFile) && readFileSync(stateFile, 'utf8').includes(tourPage)

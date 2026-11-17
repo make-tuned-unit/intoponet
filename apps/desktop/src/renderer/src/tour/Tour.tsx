@@ -73,7 +73,13 @@ export function Tour({ controls, onClose }: { controls: TourControls; onClose: (
     setBusy(true)
     setElapsed(0)
     void Promise.resolve(step.run?.(controls, context.current)).catch(() => undefined).finally(() => { if (!cancelled) setBusy(false) })
-    const follow = window.setInterval(() => setLit(litOf(step.target)), 120)
+    const follow = window.setInterval(() => {
+      setLit(litOf(step.target))
+      // A panel the last step had open closes with keyboard focus inside it: focus is never left on nothing
+      // under the tour (it is modal), it comes back to Next. Focus a step put somewhere on purpose (the
+      // address bar it types in, The Olds) stays there; Tab brings it back to the card.
+      if (document.activeElement === document.body || !document.activeElement) nextButton.current?.focus({ preventScroll: true })
+    }, 120)
     return () => {
       cancelled = true
       window.clearInterval(follow)
