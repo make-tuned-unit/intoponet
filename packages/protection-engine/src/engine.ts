@@ -1,4 +1,5 @@
-import { fixtureHideSelectors, fixtureRules } from './fixtures'
+import { defaultRules } from './blocklist'
+import { fixtureHideSelectors } from './fixtures'
 import { sameSite } from './site'
 import type {
   BlockingCategory,
@@ -81,7 +82,7 @@ export class LocalProtectionEngine implements ProtectionAdapter {
   /** The pages requests are coming from: a few addresses, asked about thousands of times. */
   private readonly pageCache = new Map<string, UrlParts | null>()
 
-  constructor(rules: readonly CompiledRule[] = fixtureRules, hideSelectors: readonly string[] = fixtureHideSelectors) {
+  constructor(rules: readonly CompiledRule[] = defaultRules, hideSelectors: readonly string[] = fixtureHideSelectors) {
     for (const rule of rules) {
       const host = rule.host.toLowerCase()
       const list = this.rulesByHost.get(host)

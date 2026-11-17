@@ -1780,19 +1780,18 @@ export const checks = {
     const blocked = Number(bar.match(/(\d+) tracker/)?.[1] ?? 0) + Number(bar.match(/(\d+) ad/)?.[1] ?? 0)
     expect(blocked > 0, 'Nothing was blocked on a tracker-heavy news site.')
     expect(!(await ctx.evaluate(`!!document.querySelector('.shield-panel')`)), 'The old tall protection panel still shows.')
-    // The well-known ad and tracker addresses a page asks other sites for are all stopped (EasyList and EasyPrivacy),
+    // The well-known ad and tracker addresses a page asks other sites for are all stopped (by Intoponet's own list),
     // not just some. A page on this Mac asks for twenty of them. None may get as far as being sent: the app cancels
     // them when they are first asked for. To be sure none leaves this Mac even if the app lets one through, each
     // session also gets a later stop (before any header is sent) that the app itself does not use; what reaches it
-    // is recorded and cancelled there. Thirteen of the twenty got through the built-in rules used before the lists.
+    // is recorded and cancelled there.
     const wellKnown = [
       ['https://bat.bing.com/bat.js', 'script', 'tracker'],
       ['https://analytics.tiktok.com/i18n/pixel/events.js?sdkid=TEST', 'script', 'tracker'],
       ['https://snap.licdn.com/li.lms-analytics/insight.min.js', 'script', 'tracker'],
-      // (In both lists: counted as an ad, and still blocked as a tracker with "Block ads" off.)
-      ['https://px.ads.linkedin.com/collect/?pid=1&fmt=gif', 'img', 'ad', 'both'],
+      ['https://px.ads.linkedin.com/collect/?pid=1&fmt=gif', 'img', 'tracker'],
       ['https://www.facebook.com/tr?id=1&ev=PageView&noscript=1', 'img', 'tracker'],
-      ['https://static.criteo.net/js/ld/ld.js', 'script', 'tracker'],
+      ['https://static.criteo.net/js/ld/ld.js', 'script', 'ad'],
       ['https://ads.yahoo.com/get-user-id?ver=2', 'script', 'ad'],
       ['https://cdn.krxd.net/controltag/test.js', 'script', 'tracker'],
       ['https://cdn.adsafeprotected.com/iasPET.1.js', 'script', 'ad'],
@@ -1817,7 +1816,7 @@ export const checks = {
       hits.push(`${request.headers.host}${path}`)
       if (path === '/trackers') {
         response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' })
-        // Its own script sits at a path the lists block on other sites; a harmless script comes from another host.
+        // Its own script sits at a path the list blocks on other sites; a harmless script comes from another host.
         response.end(`<!doctype html><html lang="en"><title>Tracker test</title><body><h1>Tracker test</h1>
           <script src="/pagead/js/adsbygoogle.js"></script><script src="http://localhost:${trackerSite.address().port}/library.js"></script>
           <script>
@@ -1878,15 +1877,15 @@ export const checks = {
       // The site's own script (at an "ad" path) and another site's harmless script both ran.
       expect(first.own, `The page's own script at /pagead/js/adsbygoogle.js was blocked (a site's own requests never are). The server saw: ${hits.join(', ')}`)
       expect(first.other, 'A harmless script from another site was blocked.')
-      // The bar counts each blocked request once, as an ad or a tracker by the list that blocked it.
+      // The bar counts each blocked request once, as an ad or a tracker by the rule that blocked it.
       const counted = await counts()
       expect(counted.ads === adCount && counted.trackers === trackerCount, `The protection counts are ${counted.ads} ads and ${counted.trackers} trackers; the page asked for ${adCount} and ${trackerCount}.`)
       // "Block ads" off: the ad addresses are let through (and stopped by the test), the trackers still blocked.
       await ctx.evaluate(`window.intoponet.browserHost.setProtectionCategories({ ads: false, trackers: true }).then(() => true)`)
       await loadTrackerPage('reloading')
       const adsOff = (await reachedSending()).map((url) => new URL(url).hostname).sort()
-      const adHosts = wellKnown.filter(([, , kind, lists]) => kind === 'ad' && lists !== 'both').map(([url]) => new URL(url).hostname).sort()
-      expect(JSON.stringify(adsOff) === JSON.stringify(adHosts), `With "Block ads" off and "Block trackers" on, these were let through: ${adsOff.join(', ') || 'none'} (expected the ${adHosts.length} addresses only EasyList blocks: ${adHosts.join(', ')}).`)
+      const adHosts = wellKnown.filter(([, , kind]) => kind === 'ad').map(([url]) => new URL(url).hostname).sort()
+      expect(JSON.stringify(adsOff) === JSON.stringify(adHosts), `With "Block ads" off and "Block trackers" on, these were let through: ${adsOff.join(', ') || 'none'} (expected the ${adHosts.length} ad addresses: ${adHosts.join(', ')}).`)
       const adsOffCounts = await counts()
       expect(adsOffCounts.ads === 0 && adsOffCounts.trackers === wellKnown.length - adHosts.length, `With "Block ads" off the counts are ${adsOffCounts.ads} ads and ${adsOffCounts.trackers} trackers (expected 0 and ${wellKnown.length - adHosts.length}).`)
       await ctx.evaluate(`window.intoponet.browserHost.setProtectionCategories({ ads: true, trackers: true }).then(() => true)`)
@@ -1904,7 +1903,7 @@ export const checks = {
       await loadTrackerPage('reload')
       const back = await reachedSending()
       expect(back.length === 0, `With protection back on, ${back.length} tracker requests were not blocked.`)
-      // The private session blocks the same (a tracker only the lists know), asked through the session itself.
+      // The private session blocks the same, asked through the session itself.
       for (const name of pageSessions) {
         const answer = await ctx.main(`Promise.race([electron.session.fromPartition(${JSON.stringify(name)}).fetch('https://bat.bing.com/bat.js', { cache: 'no-store' }).then(() => 'loaded', (error) => String(error)), new Promise((resolve) => setTimeout(() => resolve('no answer'), 8000))])`)
         expect(String(answer).includes('ERR_BLOCKED_BY_CLIENT') && (await reachedSending()).length === 0, `The session ${name} does not block a well-known tracker (${answer}).`)
@@ -4660,12 +4659,11 @@ export const checks = {
         <div id="slot-image" style="min-height:90px;background:#eee"><img src="https://pagead2.googlesyndication.com/pagead/banner.png" width="728" height="90" alt=""></div>
         <div id="slot-empty" class="ad" style="height:120px;background:#eee"></div>
         <div id="slot-with-story" class="ad" style="background:#eee"><p>A paragraph of the story that happens to sit in an "ad" box.</p></div>
-        <div id="slot-listed" class="textad" style="background:#eee"><p>Buy one, get one free. Only today.</p></div>
+        <div id="slot-listed" class="adsbygoogle" style="display:block;background:#eee"><p>Buy one, get one free. Only today.</p></div>
         <p id="tail">The story goes on.</p></article></body>`
     const server = createServer((request, response) => { response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); response.end(page) })
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
-    // A name under .localhost (always this Mac): EasyList itself leaves pages at plain localhost and 127.0.0.1 alone
-    // (its "@@://127.0.0.1$generichide" exceptions), and the list's own element rules are part of what is checked.
+    // A name under .localhost (always this Mac), so the page is a site with a name like any other.
     const origin = `http://news.localhost:${server.address().port}`
     const boxes = async () => JSON.parse(await (await ctx.page('/story')).evaluate(`JSON.stringify(Object.fromEntries(['lead', 'slot-frame', 'slot-image', 'slot-empty', 'slot-with-story', 'slot-listed', 'tail'].map((id) => [id, Math.round(document.getElementById(id).getBoundingClientRect().height)])))`))
     try {
@@ -4675,8 +4673,8 @@ export const checks = {
       expect(shown['slot-image'] === 0, `The blocked ad picture left a ${shown['slot-image']} px box.`)
       expect(shown['slot-empty'] === 0, `The empty ad slot is still ${shown['slot-empty']} px tall.`)
       expect(shown['slot-with-story'] > 0 && shown.lead > 0 && shown.tail > 0, `Story text was hidden: ${JSON.stringify(shown)}.`)
-      // An ad with words in it, known only by its class name in EasyList's general rules (".textad"): hidden by the list.
-      expect(shown['slot-listed'] === 0, `An ad element the filter list hides by its class name is still ${shown['slot-listed']} px tall.`)
+      // An ad with words in it, in a container Intoponet's own element rules name (".adsbygoogle"): hidden by the rule.
+      expect(shown['slot-listed'] === 0, `An ad element the element rules hide by its class name is still ${shown['slot-listed']} px tall.`)
       // With protection paused for the site, the page is left as it is.
       await ctx.evaluate(`window.intoponet.browserHost.setSiteProtection(false).then(() => true)`)
       await ctx.delay(4500)
@@ -4686,7 +4684,7 @@ export const checks = {
       await ctx.delay(1500)
       const again = await boxes()
       expect(again['slot-frame'] === 0 && again['slot-empty'] === 0 && again['slot-listed'] === 0 && again['slot-with-story'] > 0, `Protection back on did not hide the ad spaces again: ${JSON.stringify(again)}.`)
-      return `Blocked ad frame, ad picture and empty slot collapsed (0 px); an ad element named in the filter list hidden; story text kept (${shown['slot-with-story']} px box with text stays); left alone with protection paused.`
+      return `Blocked ad frame, ad picture and empty slot collapsed (0 px); an ad element named in Intoponet's element rules hidden; story text kept (${shown['slot-with-story']} px box with text stays); left alone with protection paused.`
     } finally {
       server.close()
     }
