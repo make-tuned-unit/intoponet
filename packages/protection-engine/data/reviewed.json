@@ -1,0 +1,1335 @@
+{
+ "about": "The reviewer's decisions on what Intoponet's own measurement found (scripts/protection-crawl.mjs, rules in scripts/protection-classify.mjs). For each host: list it as an ad host, as a tracker, or not ('no'), which service it is, and why, after looking at what the host did on the measured pages (its request paths, cookies and the frames that asked). 'unidentified' means the company behind the host could not be named and the decision rests on its behaviour alone. Nothing here was taken from a filter list or tracker database. elements: container names accepted as always hidden ('hide') or as ad slots hidden when empty ('whenEmpty').",
+ "reviewed": "2026-11-17",
+ "hosts": {
+  "admaster.cc": {
+   "list": "ad",
+   "service": "MediaGo ad serving (admaster.cc)",
+   "company": "Baidu (MediaGo)",
+   "kind": "ad network",
+   "note": "Seen with mediago.io inside Google ad frames: win and impression calls, cookie sync frame, ad pictures and ad stylesheets."
+  },
+  "mediago.io": {
+   "list": "ad",
+   "service": "MediaGo",
+   "company": "Baidu (MediaGo)",
+   "kind": "ad network",
+   "note": "Tracking and creative hosts of the MediaGo ad network, requested inside ad frames."
+  },
+  "mediagotechnology.com": {
+   "list": "ad",
+   "service": "MediaGo",
+   "company": "Baidu (MediaGo)",
+   "kind": "ad network",
+   "note": "Same network's hosts."
+  },
+  "creativecdn.com": {
+   "list": "ad",
+   "service": "RTB House",
+   "company": "RTB House",
+   "kind": "retargeting",
+   "note": "Creative and cookie-matching host of RTB House."
+  },
+  "a-mo.net": {
+   "list": "ad",
+   "service": "AdaptMX (AMX)",
+   "company": "AdaptMX",
+   "kind": "ad exchange",
+   "note": "Cookie-sync chains (/cchain/) and prebid endpoints; amuid2 cookie for a year."
+  },
+  "a-mx.com": {
+   "list": "ad",
+   "service": "AdaptMX (AMX)",
+   "company": "AdaptMX",
+   "kind": "ad exchange",
+   "note": "Same company's hosts."
+  },
+  "amxrtb.com": {
+   "list": "ad",
+   "service": "AdaptMX (AMX)",
+   "company": "AdaptMX",
+   "kind": "ad exchange",
+   "note": "Same company's hosts."
+  },
+  "rtb.mx": {
+   "list": "ad",
+   "service": "AdaptMX (AMX)",
+   "company": "AdaptMX",
+   "kind": "ad exchange",
+   "note": "id.rtb.mx sets the same amuid2 cookies as a-mo.net, from a-mo.net frames."
+  },
+  "csdata3.com": {
+   "list": "ad",
+   "service": "AdaptMX (AMX)",
+   "company": "AdaptMX",
+   "kind": "ad exchange",
+   "note": "Impression pixels setting the same amuid2 cookies."
+  },
+  "deepintent.com": {
+   "list": "ad",
+   "service": "DeepIntent",
+   "company": "DeepIntent",
+   "kind": "ad buying platform",
+   "note": "Cookie matching from ad frames."
+  },
+  "ymmobi.com": {
+   "list": "ad",
+   "service": "Yeahmobi",
+   "company": "Yeahmobi",
+   "kind": "ad exchange",
+   "note": "Only cookie-sync pixels (/adx/user/cookie_syn), ym_user_cookie for 360 days."
+  },
+  "intentiq.com": {
+   "list": "tracker",
+   "service": "Intent IQ",
+   "company": "Intent IQ",
+   "kind": "identity",
+   "note": "Identity matching: id cookie, the same value at many publishers."
+  },
+  "liadm.com": {
+   "list": "tracker",
+   "service": "LiveIntent",
+   "company": "LiveIntent",
+   "kind": "identity",
+   "note": "Identity matching host of LiveIntent."
+  },
+  "mfadsrvr.com": {
+   "list": "ad",
+   "service": "MediaForce",
+   "company": "MediaForce",
+   "kind": "ad buying platform",
+   "note": "Cookie matching and ad serving from ad frames."
+  },
+  "ftstatic.com": {
+   "list": "ad",
+   "service": "Flashtalking static files",
+   "company": "Mediaocean",
+   "kind": "ad server",
+   "note": "Only ad scripts and ad data (/display/…json), always inside Google ad frames."
+  },
+  "yellowblue.io": {
+   "list": "ad",
+   "service": "Rise (yellowblue.io)",
+   "company": "Rise",
+   "kind": "ad exchange",
+   "note": "Only 1×1 cookie-sync frames and pixels."
+  },
+  "acuityplatform.com": {
+   "list": "ad",
+   "service": "AcuityAds (illumin)",
+   "company": "AcuityAds",
+   "kind": "ad buying platform",
+   "note": "Cookie matching from ad frames."
+  },
+  "ad-score.com": {
+   "list": "ad",
+   "service": "Adscore",
+   "company": "Adscore",
+   "kind": "ad verification",
+   "note": "Beacons from inside ad frames."
+  },
+  "loopme.me": {
+   "list": "ad",
+   "service": "LoopMe",
+   "company": "LoopMe",
+   "kind": "video ads",
+   "note": "Cookie matching and ad serving from ad frames."
+  },
+  "bttrack.com": {
+   "list": "ad",
+   "service": "Bidtellect",
+   "company": "Bidtellect",
+   "kind": "native ads",
+   "note": "Cookie matching from ad frames."
+  },
+  "admanmedia.com": {
+   "list": "ad",
+   "service": "Adman Media",
+   "company": "Adman Media",
+   "kind": "ad exchange",
+   "note": "Cookie matching from ad frames."
+  },
+  "cootlogix.com": {
+   "list": "ad",
+   "service": "Cootlogix",
+   "company": "Cootlogix",
+   "kind": "ad exchange",
+   "note": "Cookie-sync frames and prebid endpoints only."
+  },
+  "sparteo.com": {
+   "list": "ad",
+   "service": "Sparteo",
+   "company": "Sparteo",
+   "kind": "ad exchange",
+   "note": "Bidding and cookie matching."
+  },
+  "kueezrtb.com": {
+   "list": "ad",
+   "service": "Kueez",
+   "company": "Kueez",
+   "kind": "ad exchange",
+   "note": "Bidding and cookie matching."
+  },
+  "kueez.com": {
+   "list": "ad",
+   "service": "Kueez",
+   "company": "Kueez",
+   "kind": "ad exchange",
+   "note": "sync.kueez.com cookie matching."
+  },
+  "smilewanted.com": {
+   "list": "ad",
+   "service": "Smile Wanted",
+   "company": "Smile Wanted",
+   "kind": "ad exchange",
+   "note": "Bidding and cookie matching."
+  },
+  "plusoneads.com": {
+   "list": "ad",
+   "service": "PlusOne Ads (cookie matching)",
+   "company": "PlusOne Ads",
+   "kind": "ad exchange",
+   "note": "Only /sync/ frames between ad exchanges; rxid cookie for a year."
+  },
+  "minutemedia-prebid.com": {
+   "list": "ad",
+   "service": "Minute Media",
+   "company": "Minute Media",
+   "kind": "ad exchange",
+   "note": "Prebid server and cookie matching."
+  },
+  "activemetering.com": {
+   "list": "ad",
+   "service": "Active Metering",
+   "company": "Active Metering",
+   "kind": "ad measurement",
+   "note": "Only 1×1 pixels from inside Google ad frames."
+  },
+  "4dex.io": {
+   "list": "ad",
+   "service": "Adagio",
+   "company": "Adagio",
+   "kind": "ad exchange",
+   "note": "Bidding and cookie matching."
+  },
+  "adx.opera.com": {
+   "list": "ad",
+   "service": "Opera Ads",
+   "company": "Opera",
+   "kind": "ad exchange",
+   "note": "Only cookie-sync pixels; OAU cookie for a year. opera.com itself is not listed."
+  },
+  "oa.opera.com": {
+   "list": "ad",
+   "service": "Opera Ads",
+   "company": "Opera",
+   "kind": "ad exchange",
+   "note": "Only cookie-sync pixels. opera.com itself is not listed."
+  },
+  "opera.com": {
+   "list": "no",
+   "service": "Opera",
+   "company": "Opera",
+   "note": "A browser maker's site; only its two ad hosts are listed."
+  },
+  "presage.io": {
+   "list": "ad",
+   "service": "Ogury",
+   "company": "Ogury",
+   "kind": "ad network",
+   "note": "Cookie matching (ms-cookie-sync.presage.io)."
+  },
+  "shb-sync.com": {
+   "list": "ad",
+   "service": "SmartHub cookie matching (shb-sync.com)",
+   "company": "SmartHub",
+   "kind": "ad exchange",
+   "note": "Only 1×1 .gif cookie-sync pixels with a partner id."
+  },
+  "blismedia.com": {
+   "list": "ad",
+   "service": "Blis",
+   "company": "Blis",
+   "kind": "ad buying platform",
+   "note": "Cookie matching from ad frames."
+  },
+  "ingage.tech": {
+   "list": "ad",
+   "service": "InGage",
+   "company": "InGage",
+   "kind": "ad exchange",
+   "note": "Bidding and cookie matching."
+  },
+  "connectad.io": {
+   "list": "ad",
+   "service": "ConnectAd",
+   "company": "ConnectAd",
+   "kind": "ad exchange",
+   "note": "Bidding and cookie matching."
+  },
+  "copper6.com": {
+   "list": "ad",
+   "service": "Copper6",
+   "company": "Copper6",
+   "kind": "ad exchange",
+   "note": "Only .gif cookie-sync pixels and frames (csync.copper6.com)."
+  },
+  "copper6.live": {
+   "list": "ad",
+   "service": "Copper6",
+   "company": "Copper6",
+   "kind": "ad exchange",
+   "note": "Same company's hosts."
+  },
+  "sundaysky.com": {
+   "list": "ad",
+   "service": "SundaySky",
+   "company": "SundaySky",
+   "kind": "video ads",
+   "note": "Cookie matching."
+  },
+  "nextmillmedia.com": {
+   "list": "ad",
+   "service": "Next Millennium",
+   "company": "Next Millennium",
+   "kind": "ad management",
+   "note": "Bidding and cookie matching."
+  },
+  "ads-tinyorbit.com": {
+   "list": "ad",
+   "service": "ads-tinyorbit.com (cookie matching)",
+   "company": "unidentified",
+   "kind": "ad exchange",
+   "note": "The company could not be named; it only set a year-long id cookie that came back at many publishers."
+  },
+  "syncingbridge.com": {
+   "list": "ad",
+   "service": "syncingbridge.com (cookie matching)",
+   "company": "unidentified",
+   "kind": "ad exchange",
+   "note": "The company could not be named; only /user and /userBack cookie-sync calls from ad exchanges' frames."
+  },
+  "trustedstack.com": {
+   "list": "ad",
+   "service": "Trusted Stack",
+   "company": "Trusted Stack",
+   "kind": "ad exchange",
+   "note": "Bidding and cookie matching."
+  },
+  "rbstsystems.live": {
+   "list": "ad",
+   "service": "rbstsystems.live (cookie matching)",
+   "company": "unidentified",
+   "kind": "ad exchange",
+   "note": "The company could not be named; only /psync frames; xeroid cookie for a year."
+  },
+  "mygaru.com": {
+   "list": "tracker",
+   "service": "MyGaru",
+   "company": "MyGaru",
+   "kind": "identity",
+   "note": "Identity matching: id cookie, the same value at many publishers."
+  },
+  "mgaru.dev": {
+   "list": "tracker",
+   "service": "MyGaru",
+   "company": "MyGaru",
+   "kind": "identity",
+   "note": "Serves the MyGaru identity script."
+  },
+  "newsroom.bi": {
+   "list": "tracker",
+   "service": "Smartocto (newsroom.bi)",
+   "company": "Smartocto",
+   "kind": "analytics",
+   "note": "Editorial analytics beacons with the page's address."
+  },
+  "contentinsights.com": {
+   "list": "tracker",
+   "service": "Smartocto Content Insights",
+   "company": "Smartocto",
+   "kind": "analytics",
+   "note": "Editorial analytics."
+  },
+  "ad.gt": {
+   "list": "tracker",
+   "service": "Audigent",
+   "company": "Audigent",
+   "kind": "data management",
+   "note": "Id matching with the page's address."
+  },
+  "hadronid.net": {
+   "list": "tracker",
+   "service": "Audigent Hadron ID",
+   "company": "Audigent",
+   "kind": "identity",
+   "note": "Receives the page's address at every publisher where seen."
+  },
+  "pmbmonetize.live": {
+   "list": "ad",
+   "service": "pmbmonetize.live (cookie matching)",
+   "company": "unidentified",
+   "kind": "ad exchange",
+   "note": "The company could not be named; only cookie-matching calls with an id."
+  },
+  "marphezis.com": {
+   "list": "ad",
+   "service": "marphezis.com (bidding and cookie matching)",
+   "company": "unidentified",
+   "kind": "ad exchange",
+   "note": "The company could not be named; /hb bidding calls and /sync pixels; bcu cookie."
+  },
+  "missena.io": {
+   "list": "ad",
+   "service": "Missena",
+   "company": "Missena",
+   "kind": "ad formats",
+   "note": "Bidding and beacons."
+  },
+  "openwebmp.com": {
+   "list": "ad",
+   "service": "OpenWeb marketplace",
+   "company": "OpenWeb",
+   "kind": "ad exchange",
+   "note": "Bidding and cookie matching."
+  },
+  "iqm.com": {
+   "list": "ad",
+   "service": "IQM",
+   "company": "IQM",
+   "kind": "ad buying platform",
+   "note": "Cookie matching from ad frames."
+  },
+  "ssp.wp.pl": {
+   "list": "ad",
+   "service": "WP ad exchange",
+   "company": "Wirtualna Polska",
+   "kind": "ad exchange",
+   "note": "Bidding and cookie matching. wp.pl itself is a portal and is not listed."
+  },
+  "wp.pl": {
+   "list": "no",
+   "service": "Wirtualna Polska",
+   "company": "Wirtualna Polska",
+   "note": "A portal; only its ad exchange host is listed."
+  },
+  "krushmedia.com": {
+   "list": "ad",
+   "service": "Krush Media",
+   "company": "Krush Media",
+   "kind": "ad exchange",
+   "note": "Cookie matching."
+  },
+  "servenobid.com": {
+   "list": "ad",
+   "service": "Nobid",
+   "company": "Nobid",
+   "kind": "ad exchange",
+   "note": "Bidding and cookie matching."
+  },
+  "getrockerbox.com": {
+   "list": "tracker",
+   "service": "Rockerbox",
+   "company": "Rockerbox",
+   "kind": "attribution",
+   "note": "Id cookie from ad frames."
+  },
+  "onelink.me": {
+   "list": "no",
+   "service": "AppsFlyer OneLink",
+   "company": "AppsFlyer",
+   "note": "App links people follow; not listed."
+  },
+  "dotmetrics.net": {
+   "list": "tracker",
+   "service": "Dotmetrics",
+   "company": "Dotmetrics",
+   "kind": "audience measurement",
+   "note": "Audience measurement script with the page's address."
+  },
+  "dotmetrics.rocks": {
+   "list": "tracker",
+   "service": "Dotmetrics",
+   "company": "Dotmetrics",
+   "kind": "audience measurement",
+   "note": "Same service."
+  },
+  "smartytech.io": {
+   "list": "ad",
+   "service": "SmartyAds (smartytech.io)",
+   "company": "SmartyAds",
+   "kind": "ad exchange",
+   "note": "Only cookie-matching pixels; uid cookie for a year."
+  },
+  "smartytouch.co": {
+   "list": "ad",
+   "service": "SmartyAds (smartytouch.co)",
+   "company": "SmartyAds",
+   "kind": "ad exchange",
+   "note": "Only /ssp/match cookie-matching pixels."
+  },
+  "ck-ie.com": {
+   "list": "ad",
+   "service": "ck-ie.com (cookie matching)",
+   "company": "unidentified",
+   "kind": "ad exchange",
+   "note": "The company could not be named; only 1×1 .gif cookie-sync pixels from ad exchanges' frames."
+  },
+  "tq-tungsten.com": {
+   "list": "ad",
+   "service": "Amazon ad event collection (tq-tungsten.com)",
+   "company": "Amazon",
+   "kind": "ad measurement",
+   "note": "Only /collect/3pEvent calls from amazon-adsystem.com frames."
+  },
+  "thrtle.com": {
+   "list": "tracker",
+   "service": "Throtle",
+   "company": "Throtle",
+   "kind": "identity",
+   "note": "Identity matching."
+  },
+  "rtactivate.com": {
+   "list": "tracker",
+   "service": "Throtle",
+   "company": "Throtle",
+   "kind": "identity",
+   "note": "Identity matching from ad frames."
+  },
+  "bids.ws": {
+   "list": "ad",
+   "service": "bids.ws",
+   "company": "unidentified",
+   "kind": "ad exchange",
+   "note": "The company could not be named; bidding and cookie matching."
+  },
+  "vistarsagency.com": {
+   "list": "ad",
+   "service": "Vistars",
+   "company": "Vistars",
+   "kind": "ad exchange",
+   "note": "Cookie matching from ad frames."
+  },
+  "loudecho.ai": {
+   "list": "ad",
+   "service": "LoudEcho",
+   "company": "LoudEcho",
+   "kind": "native ads",
+   "note": "Cookie matching from ad frames."
+  },
+  "adtarget.com.tr": {
+   "list": "ad",
+   "service": "AdTarget",
+   "company": "AdTarget",
+   "kind": "ad network",
+   "note": "Cookie matching."
+  },
+  "pixad.com.tr": {
+   "list": "ad",
+   "service": "Pixad",
+   "company": "Pixad",
+   "kind": "ad network",
+   "note": "Cookie matching."
+  },
+  "adtarget.biz": {
+   "list": "ad",
+   "service": "AdTarget",
+   "company": "AdTarget",
+   "kind": "ad network",
+   "note": "Cookie matching."
+  },
+  "ew3.io": {
+   "list": "tracker",
+   "service": "Eulerian",
+   "company": "Eulerian",
+   "kind": "ad measurement",
+   "note": "Ad view measurement calls naming the publisher and creative."
+  },
+  "withgoogle.com": {
+   "list": "no",
+   "service": "Google",
+   "company": "Google",
+   "note": "Only browser security reports."
+  },
+  "impactify.media": {
+   "list": "ad",
+   "service": "Impactify",
+   "company": "Impactify",
+   "kind": "video ads",
+   "note": "Bidding and beacons."
+  },
+  "playdigo.com": {
+   "list": "ad",
+   "service": "Digo",
+   "company": "Digo",
+   "kind": "ad exchange",
+   "note": "Cookie matching from ad frames."
+  },
+  "pinklion.io": {
+   "list": "ad",
+   "service": "pinklion.io",
+   "company": "unidentified",
+   "kind": "ad exchange",
+   "note": "The company could not be named; cookie matching from ad frames."
+  },
+  "ortb.net": {
+   "list": "ad",
+   "service": "ortb.net",
+   "company": "unidentified",
+   "kind": "ad exchange",
+   "note": "The company could not be named; cookie matching from ad frames."
+  },
+  "anyrtb.com": {
+   "list": "ad",
+   "service": "anyrtb.com",
+   "company": "unidentified",
+   "kind": "ad exchange",
+   "note": "The company could not be named; cookie matching from ad frames."
+  },
+  "rqtrk.eu": {
+   "list": "tracker",
+   "service": "Roq.ad",
+   "company": "Roq.ad",
+   "kind": "identity",
+   "note": "Identity matching."
+  },
+  "pem-teads.tv": {
+   "list": "ad",
+   "service": "Teads",
+   "company": "Teads",
+   "kind": "video ads",
+   "note": "Win notices and ad tracking calls of Teads."
+  },
+  "teads-xo.com": {
+   "list": "ad",
+   "service": "Teads",
+   "company": "Teads",
+   "kind": "video ads",
+   "note": "Teads host."
+  },
+  "admatic.de": {
+   "list": "ad",
+   "service": "Admatic",
+   "company": "Admatic",
+   "kind": "ad network",
+   "note": "Cookie matching."
+  },
+  "contobox.com": {
+   "list": "ad",
+   "service": "Contobox",
+   "company": "Crucial Interactive",
+   "kind": "ad creative",
+   "note": "Ad creatives and their measurement, only inside ad frames."
+  },
+  "homedepot.ca": {
+   "list": "no",
+   "service": "The Home Depot",
+   "company": "The Home Depot",
+   "note": "An advertiser's own site (pictures in an ad)."
+  },
+  "streamrail.com": {
+   "list": "ad",
+   "service": "Streamrail",
+   "company": "Unity (ironSource)",
+   "kind": "video ads",
+   "note": "Video ad serving."
+  },
+  "pbstck.com": {
+   "list": "tracker",
+   "service": "Pubstack",
+   "company": "Pubstack",
+   "kind": "ad analytics",
+   "note": "Ad analytics beacons with the page's address."
+  },
+  "run.app": {
+   "list": "no",
+   "service": "Google Cloud Run",
+   "company": "Google",
+   "note": "Shared hosting."
+  },
+  "on.aws": {
+   "list": "no",
+   "service": "Amazon Web Services",
+   "company": "Amazon",
+   "note": "Shared hosting."
+  },
+  "geistm.com": {
+   "list": "ad",
+   "service": "GeistM",
+   "company": "GeistM",
+   "kind": "ad buying platform",
+   "note": "Id pixels from ad frames."
+  },
+  "rtbsystem.com": {
+   "list": "ad",
+   "service": "rtbsystem.com",
+   "company": "unidentified",
+   "kind": "ad exchange",
+   "note": "The company could not be named; only /usermatch calls."
+  },
+  "spadsync.com": {
+   "list": "ad",
+   "service": "spadsync.com (cookie matching)",
+   "company": "unidentified",
+   "kind": "ad exchange",
+   "note": "The company could not be named; only /sync calls with a shared id and the page's address."
+  },
+  "cadent.com": {
+   "list": "ad",
+   "service": "Cadent",
+   "company": "Cadent",
+   "kind": "ad buying platform",
+   "note": "Cookie matching."
+  },
+  "clean.gg": {
+   "list": "ad",
+   "service": "Clean.io",
+   "company": "HUMAN",
+   "kind": "ad verification",
+   "note": "Ad-quality script beacons."
+  },
+  "technoratimedia.com": {
+   "list": "ad",
+   "service": "Technorati",
+   "company": "Synacor",
+   "kind": "ad exchange",
+   "note": "Ad serving and cookie matching."
+  },
+  "pro-market.net": {
+   "list": "tracker",
+   "service": "Datonics",
+   "company": "AlmondNet",
+   "kind": "data broker",
+   "note": "Cookie matching from ad frames."
+  },
+  "api-taboola.com": {
+   "list": "ad",
+   "service": "Taboola",
+   "company": "Taboola",
+   "kind": "content recommendation ads",
+   "note": "Win and billing notices of Taboola."
+  },
+  "narrative.io": {
+   "list": "tracker",
+   "service": "Narrative",
+   "company": "Narrative",
+   "kind": "data broker",
+   "note": "Id matching."
+  },
+  "aditude.cloud": {
+   "list": "ad",
+   "service": "Aditude",
+   "company": "Aditude",
+   "kind": "ad management",
+   "note": "Ad management beacons."
+  },
+  "aditude.io": {
+   "list": "ad",
+   "service": "Aditude",
+   "company": "Aditude",
+   "kind": "ad management",
+   "note": "Ad management scripts."
+  },
+  "gjigle.com": {
+   "list": "tracker",
+   "service": "gjigle.com",
+   "company": "unidentified",
+   "kind": "identity",
+   "note": "The company could not be named; hidden frames, an id cookie for 180 days."
+  },
+  "gcprivacy.id": {
+   "list": "tracker",
+   "service": "gcprivacy.id (id matching)",
+   "company": "unidentified",
+   "kind": "identity",
+   "note": "The company could not be named; /sync and /link calls with an id and the page's address; gcid cookie."
+  },
+  "secureserver.net": {
+   "list": "no",
+   "service": "GoDaddy",
+   "company": "GoDaddy",
+   "note": "A site builder's own files."
+  },
+  "clinch.co": {
+   "list": "ad",
+   "service": "Clinch",
+   "company": "Clinch",
+   "kind": "ad creative",
+   "note": "Ad creatives and their tracking."
+  },
+  "tribalfusion.com": {
+   "list": "ad",
+   "service": "Exponential (Tribal Fusion)",
+   "company": "Exponential",
+   "kind": "ad network",
+   "note": "Cookie matching from ad frames."
+  },
+  "rtbwise.com": {
+   "list": "ad",
+   "service": "rtbwise.com",
+   "company": "unidentified",
+   "kind": "ad exchange",
+   "note": "The company could not be named; id cookie, same value at several publishers."
+  },
+  "ccgateway.net": {
+   "list": "tracker",
+   "service": "Carbon",
+   "company": "Magnite",
+   "kind": "data management",
+   "note": "Carbon scripts: user id and the page's address."
+  },
+  "measureadv.com": {
+   "list": "ad",
+   "service": "measureadv.com",
+   "company": "unidentified",
+   "kind": "ad measurement",
+   "note": "The company could not be named; id cookie, same value at several publishers."
+  },
+  "rtb-oveeo.com": {
+   "list": "ad",
+   "service": "Oveeo",
+   "company": "Oveeo",
+   "kind": "ad exchange",
+   "note": "Cookie matching from ad frames."
+  },
+  "nexx360.io": {
+   "list": "ad",
+   "service": "Nexx360",
+   "company": "Nexx360",
+   "kind": "ad exchange",
+   "note": "Bidding and cookie matching."
+  },
+  "t13.io": {
+   "list": "ad",
+   "service": "Tradelab",
+   "company": "Tradelab",
+   "kind": "ad buying platform",
+   "note": "Cookie matching."
+  },
+  "orangeclickmedia.com": {
+   "list": "ad",
+   "service": "Orange Click Media",
+   "company": "Orange Click Media",
+   "kind": "ad management",
+   "note": "Ad management scripts and beacons."
+  },
+  "pubmine.com": {
+   "list": "ad",
+   "service": "WordAds",
+   "company": "Automattic",
+   "kind": "ad network",
+   "note": "Ad serving for WordPress.com sites."
+  },
+  "amspbs.com": {
+   "list": "ad",
+   "service": "amspbs.com (prebid server)",
+   "company": "unidentified",
+   "kind": "ad exchange",
+   "note": "The company could not be named; /openrtb2/auction and /setuid calls."
+  },
+  "advolve.io": {
+   "list": "ad",
+   "service": "Advolve",
+   "company": "Advolve",
+   "kind": "ad exchange",
+   "note": "Cookie matching."
+  },
+  "resetdigital.co": {
+   "list": "ad",
+   "service": "Reset Digital",
+   "company": "Reset Digital",
+   "kind": "ad buying platform",
+   "note": "Cookie matching from ad frames."
+  },
+  "tappx.com": {
+   "list": "ad",
+   "service": "Tappx",
+   "company": "Tappx",
+   "kind": "ad exchange",
+   "note": "Bidding and cookie matching."
+  },
+  "adotmob.com": {
+   "list": "ad",
+   "service": "Adot",
+   "company": "Adot",
+   "kind": "ad buying platform",
+   "note": "Cookie matching."
+  },
+  "adtdp.com": {
+   "list": "ad",
+   "service": "AdTDP",
+   "company": "Supership",
+   "kind": "ad buying platform",
+   "note": "Cookie matching."
+  },
+  "digital-services.solutions": {
+   "list": "ad",
+   "service": "digital-services.solutions (cookie matching)",
+   "company": "unidentified",
+   "kind": "ad exchange",
+   "note": "The company could not be named; only /api/usersync pixels."
+  },
+  "ottadvisors.com": {
+   "list": "ad",
+   "service": "ottadvisors.com (cookie matching)",
+   "company": "unidentified",
+   "kind": "ad exchange",
+   "note": "The company could not be named; only .gif cookie-sync pixels and frames."
+  },
+  "js7k.com": {
+   "list": "no",
+   "service": "js7k.com",
+   "company": "unidentified",
+   "note": "One script inside ad frames; not enough to say what it is."
+  },
+  "ahrefs.com": {
+   "list": "no",
+   "service": "Ahrefs",
+   "company": "Ahrefs",
+   "note": "A search tools company's site; its analytics host could be listed alone once seen more."
+  },
+  "k-words.io": {
+   "list": "tracker",
+   "service": "K-words",
+   "company": "K-words",
+   "kind": "analytics",
+   "note": "Page-view events with the page's address."
+  },
+  "bidmatic.io": {
+   "list": "ad",
+   "service": "Bidmatic",
+   "company": "Bidmatic",
+   "kind": "ad exchange",
+   "note": "Bidding and cookie matching."
+  },
+  "ntesgsght.com": {
+   "list": "ad",
+   "service": "ntesgsght.com (ad impression pixels)",
+   "company": "unidentified",
+   "kind": "ad measurement",
+   "note": "The company could not be named; impression pixels naming campaign, ad and The Trade Desk id."
+  },
+  "player-feedback-v1.glomex.com": {
+   "list": "no",
+   "service": "glomex",
+   "company": "glomex",
+   "note": "A video player's own reports."
+  },
+  "dm-event.net": {
+   "list": "no",
+   "service": "Dailymotion",
+   "company": "Dailymotion",
+   "note": "A video player's own reports."
+  },
+  "tiktokw.us": {
+   "list": "tracker",
+   "service": "TikTok Pixel",
+   "company": "ByteDance",
+   "kind": "social pixel",
+   "note": "analytics-ipv6.tiktokw.us pings from the TikTok pixel with the page's address."
+  },
+  "connextra.com": {
+   "list": "ad",
+   "service": "Connextra",
+   "company": "Connextra",
+   "kind": "ad server",
+   "note": "Betting ad serving."
+  },
+  "createjs.com": {
+   "list": "no",
+   "service": "CreateJS",
+   "company": "CreateJS",
+   "note": "A hosted animation library (used by ad creatives, and by pages)."
+  },
+  "temu.com": {
+   "list": "no",
+   "service": "Temu",
+   "company": "Temu",
+   "note": "A shop's site. Its cookie-matching pixel (/api/adx/cm/) is a known miss: it would need a rule narrowed to that path."
+  },
+  "dv.tech": {
+   "list": "ad",
+   "service": "DoubleVerify",
+   "company": "DoubleVerify",
+   "kind": "ad verification",
+   "note": "Only beacons with an id, at every publisher where seen."
+  },
+  "eu-1-id5-sync.com": {
+   "list": "tracker",
+   "service": "ID5",
+   "company": "ID5",
+   "kind": "identity",
+   "note": "ID5's European host."
+  },
+  "openxcdn.net": {
+   "list": "ad",
+   "service": "OpenX",
+   "company": "OpenX",
+   "kind": "ad exchange",
+   "note": "OpenX files."
+  },
+  "servedbyopenx.org": {
+   "list": "ad",
+   "service": "OpenX",
+   "company": "OpenX",
+   "kind": "ad exchange",
+   "note": "OpenX host."
+  },
+  "colossusssp.com": {
+   "list": "ad",
+   "service": "Colossus SSP",
+   "company": "Colossus Media",
+   "kind": "ad exchange",
+   "note": "Cookie matching."
+  },
+  "iqzone.com": {
+   "list": "ad",
+   "service": "IQzone",
+   "company": "IQzone",
+   "kind": "ad exchange",
+   "note": "Bidding."
+  },
+  "iqzonertb.live": {
+   "list": "ad",
+   "service": "IQzone",
+   "company": "IQzone",
+   "kind": "ad exchange",
+   "note": "Bidding and cookie matching."
+  },
+  "metricool.com": {
+   "list": "tracker",
+   "service": "Metricool",
+   "company": "Metricool",
+   "kind": "analytics",
+   "note": "A tracking pixel with the page's address and an id at every publisher where seen."
+  },
+  "upscale.digital": {
+   "list": "ad",
+   "service": "Upscale (dsp.upscale.digital)",
+   "company": "Upscale",
+   "kind": "ad buying platform",
+   "note": "Only /csync cookie-matching pixels."
+  },
+  "cleverwebserver.com": {
+   "list": "ad",
+   "service": "Clever Advertising",
+   "company": "Clever Advertising",
+   "kind": "ad network",
+   "note": "Ad serving."
+  },
+  "adretriever.com": {
+   "list": "ad",
+   "service": "AdRetriever",
+   "company": "AdRetriever",
+   "kind": "ad exchange",
+   "note": "Bidding calls with an id."
+  },
+  "clickagy.com": {
+   "list": "tracker",
+   "service": "Clickagy",
+   "company": "ZoomInfo",
+   "kind": "data broker",
+   "note": "Only beacons."
+  },
+  "tsdtocl.com": {
+   "list": "ad",
+   "service": "The Trade Desk (tsdtocl.com)",
+   "company": "The Trade Desk",
+   "kind": "ad buying platform",
+   "note": "Hidden frames used for id storage."
+  },
+  "paerlib.tech": {
+   "list": "ad",
+   "service": "Project Agora",
+   "company": "Project Agora",
+   "kind": "ad management",
+   "note": "The Project Agora ad library."
+  },
+  "qovani.com": {
+   "list": "ad",
+   "service": "qovani.com (ad pixels)",
+   "company": "unidentified",
+   "kind": "ad measurement",
+   "note": "The company could not be named; only 1×1 pixels naming the publisher."
+  },
+  "ad-delivery.net": {
+   "list": "ad",
+   "service": "Admiral",
+   "company": "Admiral",
+   "kind": "ad-block recovery",
+   "note": "Only beacons."
+  },
+  "btloader.com": {
+   "list": "ad",
+   "service": "Blockthrough",
+   "company": "Blockthrough",
+   "kind": "ad-block recovery",
+   "note": "Calls with the page's address and an id."
+  },
+  "stickyadstv.com": {
+   "list": "ad",
+   "service": "FreeWheel (StickyAds)",
+   "company": "Comcast",
+   "kind": "video ad server",
+   "note": "Video ad serving."
+  },
+  "omni-sync.io": {
+   "list": "ad",
+   "service": "omni-sync.io (cookie matching)",
+   "company": "unidentified",
+   "kind": "ad exchange",
+   "note": "The company could not be named; only user-sync scripts."
+  },
+  "besafe.global": {
+   "list": "ad",
+   "service": "BeSafe passback ads",
+   "company": "unidentified",
+   "kind": "ad network",
+   "note": "The company could not be named; only ad-sized fallback pictures (728×90, 300×600, 160×600)."
+  },
+  "adipolo.co": {
+   "list": "ad",
+   "service": "Adipolo",
+   "company": "Adipolo",
+   "kind": "video ads",
+   "note": "Only video ad calls (/ctv/ad)."
+  },
+  "onthe.io": {
+   "list": "tracker",
+   "service": ".io Technologies",
+   "company": "IO Technologies",
+   "kind": "analytics",
+   "note": "Editorial analytics."
+  },
+  "alexametrics.com": {
+   "list": "tracker",
+   "service": "Alexa metrics",
+   "company": "Amazon",
+   "kind": "analytics",
+   "note": "Certification pixel."
+  },
+  "lunamedia.live": {
+   "list": "ad",
+   "service": "Luna Media",
+   "company": "Luna Media",
+   "kind": "ad exchange",
+   "note": "Bidding and cookie matching."
+  },
+  "bricks-co.com": {
+   "list": "ad",
+   "service": "Bricks",
+   "company": "Bricks",
+   "kind": "ad exchange",
+   "note": "Bidding and cookie matching."
+  },
+  "pa-cd.com": {
+   "list": "tracker",
+   "service": "pa-cd.com (event collection)",
+   "company": "unidentified",
+   "kind": "analytics",
+   "note": "The company could not be named; only /event calls with a client id and the page's address, from hosts with random names."
+  },
+  "hybrid.ai": {
+   "list": "ad",
+   "service": "Hybrid",
+   "company": "Hybrid",
+   "kind": "ad buying platform",
+   "note": "Cookie matching (/match); vid cookie for a year."
+  },
+  "kleekr.com": {
+   "list": "ad",
+   "service": "Kleekr",
+   "company": "Kleekr",
+   "kind": "ad network",
+   "note": "Ad delivery and tracking pixel calls (advapi.kleekr.com)."
+  },
+  "truvidplayer.com": {
+   "list": "ad",
+   "service": "Truvid",
+   "company": "Truvid",
+   "kind": "video ads",
+   "note": "Video ad player calls with the page's address; cookie matching with several exchanges."
+  },
+  "startappnetwork.com": {
+   "list": "ad",
+   "service": "Start.io",
+   "company": "Start.io",
+   "kind": "ad network",
+   "note": "Only cookie-sync frames and pixels."
+  },
+  "programmaticx.ai": {
+   "list": "ad",
+   "service": "ProgrammaticX",
+   "company": "ProgrammaticX",
+   "kind": "ad exchange",
+   "note": "Only cookie-sync pixels and frames."
+  },
+  "dxtech.ai": {
+   "list": "ad",
+   "service": "DXTech",
+   "company": "DXTech",
+   "kind": "ad exchange",
+   "note": "Cookie matching."
+  },
+  "serverbid.com": {
+   "list": "ad",
+   "service": "Consumable (ServerBid)",
+   "company": "Consumable",
+   "kind": "ad exchange",
+   "note": "Cookie matching from ad frames."
+  },
+  "mxptint.net": {
+   "list": "tracker",
+   "service": "Valassis Digital (MaxPoint)",
+   "company": "Vericast",
+   "kind": "data broker",
+   "note": "Cookie matching; mxpim cookie for two years."
+  },
+  "iprom.net": {
+   "list": "ad",
+   "service": "iPROM",
+   "company": "iPROM",
+   "kind": "ad server",
+   "note": "Ad serving and cookie matching."
+  },
+  "pgammedia.com": {
+   "list": "ad",
+   "service": "PGAM Media",
+   "company": "PGAM Media",
+   "kind": "ad exchange",
+   "note": "Only .gif cookie-sync pixels."
+  },
+  "adipolo.live": {
+   "list": "ad",
+   "service": "Adipolo",
+   "company": "Adipolo",
+   "kind": "video ads",
+   "note": "Bidding, impression and cookie-matching calls."
+  },
+  "stay22.com": {
+   "list": "no",
+   "service": "Stay22",
+   "company": "Stay22",
+   "note": "A travel booking widget; left alone."
+  },
+  "track1.avplayer.com": {
+   "list": "ad",
+   "service": "Aniview player tracking",
+   "company": "Aniview",
+   "kind": "video ads",
+   "note": "Only tracking pings from the Aniview ad player."
+  },
+  "medietall.no": {
+   "list": "tracker",
+   "service": "Medietall",
+   "company": "Medietall",
+   "kind": "audience measurement",
+   "note": "Analytics script and pings with the page's address."
+  },
+  "analitik.bik.gov.tr": {
+   "list": "tracker",
+   "service": "BİK Analitik",
+   "company": "Basın İlan Kurumu",
+   "kind": "audience measurement",
+   "note": "Turkey's press advertising agency's measurement: collector calls with the page's address."
+  },
+  "bik.gov.tr": {
+   "list": "no",
+   "service": "Basın İlan Kurumu",
+   "company": "Basın İlan Kurumu",
+   "note": "A government agency's site; only its measurement host is listed."
+  },
+  "pbxai.com": {
+   "list": "tracker",
+   "service": "Pubx.ai",
+   "company": "Pubx.ai",
+   "kind": "ad analytics",
+   "note": "Ad analytics calls with the page's address."
+  },
+  "sojern.com": {
+   "list": "ad",
+   "service": "Sojern",
+   "company": "Sojern",
+   "kind": "ad buying platform",
+   "note": "Impression pixels; id cookies for a year."
+  },
+  "samplicio.us": {
+   "list": "tracker",
+   "service": "Lucid (Cint)",
+   "company": "Cint",
+   "kind": "ad measurement",
+   "note": "Only tracking pixels naming a creative; cookie for two years."
+  },
+  "track.us.org": {
+   "list": "tracker",
+   "service": "track.us.org",
+   "company": "unidentified",
+   "kind": "analytics",
+   "note": "The company could not be named; only /events calls with the page's address."
+  },
+  "widget-sheriff.tradingview-widget.com": {
+   "list": "no",
+   "service": "TradingView",
+   "company": "TradingView",
+   "note": "A chart widget's own calls."
+  },
+  "ocmthood.com": {
+   "list": "ad",
+   "service": "Orange Click Media",
+   "company": "Orange Click Media",
+   "kind": "ad management",
+   "note": "Its ad tag script."
+  },
+  "ocmtag.com": {
+   "list": "ad",
+   "service": "Orange Click Media",
+   "company": "Orange Click Media",
+   "kind": "ad management",
+   "note": "Its ad tag script."
+  },
+  "gcprivacy.net": {
+   "list": "tracker",
+   "service": "gcprivacy.id (id matching)",
+   "company": "unidentified",
+   "kind": "identity",
+   "note": "Serves the script of the gcprivacy.id matching above."
+  },
+  "ebxcdn.com": {
+   "list": "no",
+   "service": "ebxcdn.com",
+   "company": "unidentified",
+   "note": "Scripts per site and a \"trackerapi\" host, but what they do could not be established; left alone."
+  },
+  "script.ac": {
+   "list": "no",
+   "service": "script.ac",
+   "company": "unidentified",
+   "note": "Scripts whose purpose could not be established; left alone."
+  },
+  "mrf.io": {
+   "list": "no",
+   "service": "Marfeel",
+   "company": "Marfeel",
+   "note": "Marfeel also builds publishers' pages; left alone."
+  },
+  "zeotap.com": {
+   "list": "tracker",
+   "service": "Zeotap",
+   "company": "Zeotap",
+   "kind": "identity",
+   "note": "Only id calls and beacons."
+  }
+ },
+ "elements": {
+  "hide": [],
+  "whenEmpty": [
+   "#gpt_unit_/*",
+   ".ads-wrapper",
+   ".jeg_ad_top",
+   ".jeg_ad_article",
+   ".jnews_header_top_ads",
+   ".jnews_content_top_ads",
+   ".jnews_content_inline_ads"
+  ]
+ }
+}

@@ -155,13 +155,13 @@ export function SettingsPanel({
             <li><strong>Wikidata</strong> facts and links, CC0. <strong>Wikimedia</strong> pageviews, CC0.</li>
             <li><strong>GeoNames</strong> place names and coordinates, CC BY 4.0 (geonames.org).</li>
             <li><strong>Natural Earth</strong> country shapes and map labels, public domain (naturalearthdata.com).</li>
-            <li><strong>EasyList</strong> and <strong>EasyPrivacy</strong>, the lists of ads and trackers to block, by The EasyList authors (easylist.to), CC BY-SA 3.0. Matched on this Mac with <strong>Ghostery’s adblocker library</strong>, MPL-2.0.</li>
             <li><strong>Firefox Translations</strong> models and the Bergamot engine, Mozilla, MPL-2.0. Run on this Mac.</li>
             <li><strong>all-MiniLM-L6-v2</strong> (Laya’s meaning model), sentence-transformers, Apache-2.0. Runs on this Mac.</li>
             <li><strong>NASA</strong> Earth imagery (Blue Marble, Black Marble) and EONET natural events; <strong>USGS</strong> earthquakes. Public domain.</li>
             <li><strong>News headlines</strong> belong to their publishers. Intoponet shows titles and links to the original articles.</li>
             <li><strong>Electron and Chromium</strong>, MIT and their component licences. The full list is in THIRD_PARTY_NOTICES.md.</li>
           </ul>
+          <p>The ad and tracker blocker and its list of ad and tracker hosts are Intoponet’s own. No outside filter list or blocker is used.</p>
         </section>
 
         <section>

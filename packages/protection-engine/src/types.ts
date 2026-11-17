@@ -45,24 +45,30 @@ export type ProtectionSnapshot = {
   trackersEnabled: boolean
 }
 
+/**
+ * One rule of the blocker. It applies to a host and every host under it ("doubleclick.net" also
+ * covers "ad.doubleclick.net"), and only on pages of other sites.
+ */
 export type CompiledRule = {
   host: string
   category: BlockingCategory
   id: string
+  /** Narrows the rule to requests whose path starts with one of these ("/tr" on facebook.com). */
+  paths?: readonly string[]
+  /** Narrows the rule to requests whose path contains one of these ("/fbevents.js" on connect.facebook.net). */
+  pathIncludes?: readonly string[]
+  /** Narrows the rule to these kinds of request. */
+  types?: readonly ResourceType[]
   /**
-   * Applies beside the public filter lists too. The other built-in rules are only a fallback for
-   * when the lists could not be loaded: with the lists in place they would override the lists'
-   * own exceptions for the same hosts.
+   * An exception: a matching request is let through, even when a rule for the same host or for a
+   * domain above it would block it. `category` is then not used.
    */
-  always?: boolean
+  allow?: boolean
 }
 
 export interface ProtectionAdapter {
   evaluate(ctx: RequestContext): BlockingDecision
-  cosmeticRules(
-    documentUrl: string,
-    topLevelUrl: string,
-  ): { hideSelectors: string[]; cssRules: string[] }
+  cosmeticRules(): { hideSelectors: string[]; cssRules: string[] }
   setSiteEnabled(origin: string, profileId: string, enabled: boolean): void
   isSiteEnabled(origin: string, profileId: string): boolean
 }
