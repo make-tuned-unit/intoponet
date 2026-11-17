@@ -141,12 +141,15 @@ export function newsSourceMeta(feeds: NewsFeedEntry[]): NewsSourceMeta[] {
   }))
 }
 
+export type NewsService = { stop: () => Promise<void>; latest: () => string | null; trends: (place: PlaceQuery & { geonameId?: string }) => Promise<PlaceTrends>; retryOffline: () => void }
+
 /**
  * Polls every registered local news feed and publishes a digest of what each
- * country's outlets are reporting. Runs in the main process; nothing personal
- * is sent, and the renderer only ever receives the validated digest.
+ * country's outlets are reporting. Runs on the news thread (newsWorker.ts), so
+ * that fetching, reading and saving a few thousand feeds never holds up the app;
+ * nothing personal is sent, and the renderer only ever receives the validated digest.
  */
-export function startNewsService(options: { userData: string; emit: (payload: string) => void; digestBuilder?: DigestBuilder }): { stop: () => Promise<void>; latest: () => string | null; trends: (place: PlaceQuery & { geonameId?: string }) => Promise<PlaceTrends>; retryOffline: () => void } {
+export function startNewsService(options: { userData: string; emit: (payload: string) => void; digestBuilder?: DigestBuilder }): NewsService {
   const feeds = newsFeedEntries()
   const meta = newsSourceMeta(feeds)
   const digestPath = join(options.userData, 'news-digest.json')
