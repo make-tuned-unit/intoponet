@@ -1281,7 +1281,9 @@ export class OldsService {
       // (Linked from the Current events item telling this story, it was chosen by Wikipedia's editors: "Bomb threat" for bomb hoaxes.)
       const partialConcept = !isEventLike(entity) && ids(entity, 'P17').length === 0 && !person && !filedThread && !filedLink && !native && titleWordsIn(node.label, text) < titleContentWords(node.label).length
       // Matched untranslated, "Niger (fleuve)" for the country in "Burkina-Niger": the qualifier says it is something else.
+      // (A year in brackets is when, not what; and "(province)" or "(ville)" only says which place of that name: "Kasaï (province)".)
       const nativeQualified = native && !filedThread && !person && unusedQualifier(matchTitle, text)
+        && !/\(\s*(?:\d{4}|province|provincia|région|region|región|ville|commune|city|ciudad|cidade|stad|stadt|département|departamento|état|estado|pays|país|municipio|município|gemeente|gemeinde)\s*\)\s*$/iu.test(matchTitle)
       // …and "Presidente de Costa Rica" for a murder "en Costa Rica" shares only the country's name.
       // (A qualifier the headline uses says which thing of that name it is: "Niger (fleuve)" for "Crue du fleuve Niger".)
       const nativeCountryOnly = native && !filedThread && !person && titleWordsIn(matchTitle, text) > 0 && titleWordsIn(matchTitle, subjectText) === 0

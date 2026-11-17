@@ -62,10 +62,10 @@ describe('through the service (2026-11-16 audit)', () => {
   afterEach(async () => { await Promise.all(dirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true }))) })
   const item = (id: string, label: string, description: string, claims: Record<string, unknown>) => ({ id, labels: { en: { value: label } }, descriptions: { en: { value: description } }, sitelinks: { enwiki: { title: label } }, claims })
   const country = (id: string, label: string, code: string) => item(id, label, 'sovereign state', { P31: claim({ id: 'Q6256' }), P297: claim(code) })
-  const COUNTRIES: Record<string, string> = { FR: 'Q142', CF: 'Q929', BF: 'Q965', NE: 'Q1032', CR: 'Q800', IR: 'Q794', RU: 'Q159' }
+  const COUNTRIES: Record<string, string> = { FR: 'Q142', CF: 'Q929', BF: 'Q965', NE: 'Q1032', CR: 'Q800', IR: 'Q794', RU: 'Q159', CD: 'Q974' }
   const everyCountry = {
     Q142: country('Q142', 'France', 'FR'), Q929: country('Q929', 'Central African Republic', 'CF'), Q965: country('Q965', 'Burkina Faso', 'BF'),
-    Q1032: country('Q1032', 'Niger', 'NE'), Q800: country('Q800', 'Costa Rica', 'CR'), Q794: country('Q794', 'Iran', 'IR'), Q159: country('Q159', 'Russia', 'RU'),
+    Q1032: country('Q1032', 'Niger', 'NE'), Q800: country('Q800', 'Costa Rica', 'CR'), Q794: country('Q794', 'Iran', 'IR'), Q159: country('Q159', 'Russia', 'RU'), Q974: country('Q974', 'Democratic Republic of the Congo', 'CD'),
   }
 
   /** The topic The Olds settles on when the wiki's search returns `titles` (title → item) for the headline. */
@@ -130,6 +130,19 @@ describe('through the service (2026-11-16 audit)', () => {
     const river = { Q300: item('Q300', 'Niger River', 'river in West Africa', { P31: claim({ id: 'Q4022' }), P17: [...claim({ id: 'Q1032' }), ...claim({ id: 'Q912' }), ...claim({ id: 'Q1033' })], P625: claim({ latitude: 5.3, longitude: 6.4 }) }) }
     expect(await topic(bishops, { 'Niger (fleuve)': 'Q300' }, river)).not.toBe('Niger River')
     expect(await topic({ text: 'Crue du fleuve Niger : des milliers de sinistrés à Niamey', countryCode: 'NE', lang: 'fr' }, { 'Niger (fleuve)': 'Q300' }, river)).toBe('Niger River')
+  }, 30_000)
+
+  it('a place qualified as a province is still that place', async () => {
+    // From the labelled set: an early form of the rule above gave this up for the whole country.
+    const province = { Q700: item('Q700', 'Kasaï Province', 'province of the Democratic Republic of the Congo', { P31: claim({ id: 'Q24746' }), P17: claim({ id: 'Q974' }), P625: claim({ latitude: -5.3, longitude: 21.4 }) }) }
+    expect(await topic({ text: 'Fin des travaux de signalisation sur 605 kilomètres de la rivière Kasaï', countryCode: 'CD', lang: 'fr' }, { 'Kasaï (province)': 'Q700' }, province)).toBe('Kasaï Province')
+  }, 30_000)
+
+  it('a year in brackets does not make a title something else', async () => {
+    // A bracketed year says when, not what.
+    const attack = { Q600: item('Q600', '2026 Trappes and La Verrière shootings', 'attack in France', { P31: claim({ id: 'Q2223653' }), P17: claim({ id: 'Q142' }), P585: claim({ time: '+2026-10-20T00:00:00Z', precision: 11 }) }) }
+    const headline = { text: "Kévin T., suspect de l'attentat de Trappes, un profil nourri d'idéologie raciste", countryCode: 'FR', lang: 'fr' }
+    expect(await topic(headline, { 'Attentat de Trappes (2026)': 'Q600' }, attack)).toBe('2026 Trappes and La Verrière shootings')
   }, 30_000)
 
   it('sharing only the country’s name is not enough', async () => {
