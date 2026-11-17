@@ -1805,7 +1805,14 @@ export const checks = {
       expect(now === where, `${label} (the keyboard is in: ${now}).`)
     }
     await page.evaluate(`(() => { window.__f6 = 0; addEventListener('keydown', (event) => { if (event.key === 'F6') window.__f6 += 1 }); return true })()`)
-    await focusFrontPage()
+    // Putting the keyboard in the page is this step's setup: another app coming forward meanwhile (other runs open
+    // windows) can keep the app window from being key, so it is asked again until the page has it.
+    for (let i = 0; i < 5; i += 1) {
+      await focusFrontPage()
+      await ctx.delay(300)
+      if (await keyboardIn() === 'page') break
+      await ctx.delay(900)
+    }
     await keyboardReaches('page', 'The page in front did not take the keyboard')
     await ctx.keyInPage(host, 'F6')
     await ctx.delay(400)
