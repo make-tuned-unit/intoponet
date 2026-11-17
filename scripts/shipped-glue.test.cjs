@@ -92,9 +92,13 @@ test('the built translation worker runs the glue it is handed from the shipped f
   // The worker evaluates the glue as it starts; a reply means that worked.
   assert.deepEqual(await ask(worker, { id: 1, type: 'unload', key: 'none' }), { id: 1, ok: true })
   // The glue itself runs: handed bytes that are not WebAssembly, the engine it sets up refuses to start.
-  const refused = await ask(worker, { id: 2, type: 'init', wasm: new ArrayBuffer(8) })
-  assert.equal(refused.id, 2)
-  assert.equal(refused.ok, false)
+  // The refusal arrives as the worker's reply or as the glue's own abort, whichever comes first; a
+  // worker that had not run the glue would answer neither way.
+  const second = new Worker(script, { workerData: { glue } })
+  t.after(() => second.terminate())
+  const refused = await ask(second, { id: 2, type: 'init', wasm: new ArrayBuffer(8) }).catch((error) => error)
+  if (refused instanceof Error) assert.match(`${refused.message}\n${refused.stack}`, /Aborted\(CompileError[\s\S]*bergamot-translator\.js/)
+  else assert.deepEqual(refused, { id: 2, ok: false, error: 'The translation engine failed to start.' })
 
   // Without the file's text the worker does not start at all: the glue is not inside the chunk.
   const bare = new Worker(script)
