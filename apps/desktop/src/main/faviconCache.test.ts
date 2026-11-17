@@ -85,6 +85,41 @@ describe('favicon cache', () => {
     // The least recently used one made room for the new host.
     expect(saved['h51.example.org']).toBeUndefined()
   })
+
+  it('forgets the icons kept since history was deleted, on disk at once, and a fetch already begun does not bring one back', async () => {
+    let now = 5_000_000
+    const releases: Array<() => void> = []
+    let held = false
+    const fetchImpl = (() => (held ? new Promise<Response>((resolve) => releases.push(() => resolve(png()))) : Promise.resolve(png()))) as unknown as typeof fetch
+    writeFileSync(file, JSON.stringify({ 'old.example.org': { data: 'data:image/png;base64,AA==', at: 1_000 } }))
+    const cache = new FaviconCache(file, fetchImpl, () => now)
+    cache.remember('https://visited.example.org/a', 'https://visited.example.org/icon.png')
+    await flush()
+    await flush()
+    expect(Object.keys(await cache.get(['visited.example.org', 'old.example.org'])).sort()).toEqual(['old.example.org', 'visited.example.org'])
+    // A visit whose icon is still on its way when history is deleted.
+    held = true
+    now += 60_000
+    cache.remember('https://slow.example.org/', 'https://slow.example.org/icon.png')
+    // History of the last hour is deleted: the icon kept in that hour goes, the older one stays.
+    await cache.forgetSince(now - 3_600_000)
+    expect(Object.keys(JSON.parse(readFileSync(file, 'utf8')) as Record<string, unknown>)).toEqual(['old.example.org'])
+    for (const release of releases) release()
+    await flush()
+    await flush()
+    held = false
+    expect(Object.keys(await cache.get(['old.example.org']))).toEqual(['old.example.org'])
+    vi.useFakeTimers()
+    await vi.advanceTimersByTimeAsync(3_000)
+    vi.useRealTimers()
+    await pendingWrite(file)
+    const kept = readFileSync(file, 'utf8')
+    expect(kept).not.toContain('visited.example.org')
+    expect(kept).not.toContain('slow.example.org')
+    // All history deleted: nothing is left.
+    await cache.forgetSince(0)
+    expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({})
+  })
 })
 
 describe('icon addresses', () => {

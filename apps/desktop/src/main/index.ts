@@ -1931,6 +1931,8 @@ function installDownloadsAndHistory(): void {
       availableSync: () => safeStorage.isEncryptionAvailable(),
     },
     onDownloadDone: (entry) => emit({ type: 'download-finished', ...entry }),
+    // The site icon file names the sites it holds icons for: deleted history must not stay readable there.
+    onVisitsForgotten: (since) => { void faviconCache?.forgetSince(since) },
     onHistoryCleared: (since) => {
       tabArchive.deleteSince(since)
       savedTabArchive.removed((entry) => entry.archivedAt >= since)
