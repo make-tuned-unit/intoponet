@@ -3385,7 +3385,17 @@ export const checks = {
       expect(after.tabs === before.tabs && after.history === before.history && after.passwords === before.passwords, `A second import doubled something: ${JSON.stringify({ before: { ...before, library: undefined }, after: { ...after, library: undefined } })}`)
       await ctx.shot('second-run')
       await axeAudit(ctx, 'Settings › Import (results)', '.browser-import')
-      return 'Found Chrome (Person 1) and Arc; previewed counts with history and passwords off; imported 4 bookmarks as 4 collections, 2 history pages and 1 sealed password from Chrome, and 2 pinned tabs (with homes), 1 open tab and the Work, Home and Work › Reading collections from Arc; a second run added nothing; keyboard and axe clean.'
+      // Arc's Bookmarks file damaged, with Bookmarks ticked (as it is by default): the import does not fail, the
+      // sidebar still comes over (here it already has), and the result names the file under "Left out".
+      writeFileSync(join(IMPORT_ROOT, 'Arc', 'User Data', 'Default', 'Bookmarks'), '{"roots":')
+      await choose('Arc')
+      expect((await ticked()).Bookmarks === true, `Bookmarks is not ticked by default for Arc with a damaged Bookmarks file (${JSON.stringify(await ticked())}).`)
+      await ctx.evaluate(`(() => { const input = [...document.querySelectorAll('.browser-import-choice input')].find((i) => i.parentElement.innerText.startsWith('Workspaces')); if (input?.checked) input.click(); return true })()`)
+      const damagedArc = (await importNow('Arc with a damaged Bookmarks file')).replace(/\s+/g, ' ')
+      expect(damagedArc.includes('Left out:') && damagedArc.includes('Arc\'s “Bookmarks” file could not be read, so the bookmarks in it were left out.'), `With Arc's Bookmarks file damaged, the result does not name it under "Left out": ${damagedArc}`)
+      expect((await tabs()).length === before.tabs, 'Importing from Arc with a damaged Bookmarks file changed the open tabs (they were already imported).')
+      await axeAudit(ctx, 'Settings › Import (a file left out)', '.browser-import')
+      return 'Arc with a damaged Bookmarks file still imported, the file named under Left out. Found Chrome (Person 1) and Arc; previewed counts with history and passwords off; imported 4 bookmarks as 4 collections, 2 history pages and 1 sealed password from Chrome, and 2 pinned tabs (with homes), 1 open tab and the Work, Home and Work › Reading collections from Arc; a second run added nothing; keyboard and axe clean.'
     } finally {
       rmSync(IMPORT_ROOT, { recursive: true, force: true })
     }
@@ -3465,13 +3475,35 @@ export const checks = {
       expect(offline.heading.length > 0 && offline.ready.onSheet, `The Olds step was ready without The Olds on screen for the tour's headline under the spotlight (heading "${offline.heading}", spotlight on the sheet: ${offline.ready.onSheet}).`)
       // Its words hold whether or not the history has arrived: what The Olds does, not what it found.
       const oldsWords = await ctx.evaluate(`document.querySelector('.tour-card')?.innerText ?? ''`)
-      expect(oldsWords.includes('The Olds finds the ongoing story a headline belongs to') && !/\\b(found|here is|shown here|below)\\b/i.test(oldsWords), `The Olds step's words claim a history that may not have arrived yet: "${oldsWords.replace(/\\s+/g, ' ').slice(0, 300)}".`)
+      expect(oldsWords.includes('The Olds finds the ongoing story a headline belongs to') && !/\b(found|here is|shown here|below)\b/i.test(oldsWords), `The Olds step's words claim a history that may not have arrived yet: "${oldsWords.replace(/\s+/g, ' ').slice(0, 300)}".`)
       // When the lookup ends (here with nothing: Wikipedia never answered), the step is still this one and the spotlight still on The Olds.
       await ctx.wait(`!!window.__oldsStep.after`, 60_000, 'The Olds to finish its slow lookup under the tour')
       offline = JSON.parse(await ctx.evaluate(`JSON.stringify(window.__oldsStep)`))
       expect(offline.looked >= OLDS_LOOKUP_DELAY - 500 && offline.after.onSheet && offline.after.title === 'The history behind the news' && !offline.after.next.includes('Showing'), `After The Olds finished looking (${offline.looked} ms, "${offline.olds}"), the tour's spotlight was ${offline.after.onSheet ? 'on' : 'off'} The Olds, on step "${offline.after.title}" (button: "${offline.after.next.trim()}").`)
       await ctx.press('Escape')
       await ctx.wait(`!document.querySelector('.tour-card') && !document.querySelector('.olds-sheet')`, 5000, 'the tour to close on Escape')
+      // Moving on while The Olds is still looking is now the usual way through: its late answer must not bring The
+      // Olds back over a later step. The lookup is held up again, the tour goes two steps on, and the answer lands.
+      await ctx.main(`(() => { delete process.mainModule.require('dns').__tourSlowUntil; return true })()`)
+      await ctx.click('.settings-button')
+      await ctx.click('button', 'Take the tour')
+      await ctx.wait(`!!document.querySelector('.tour-card')`, 5000, 'the tour to start for the slow lookup again')
+      await ctx.evaluate(`([...document.querySelectorAll('.tour-progress [data-step]')].find((b) => b.dataset.title === 'The history behind the news').click(), true)`)
+      const leftAt = Date.now()
+      await ctx.wait(`!!document.querySelector('.olds-sheet .olds-status[role="status"]') && !document.querySelector('.tour-next')?.textContent.includes('Showing')`, 5000, 'The Olds step to be ready, still looking')
+      for (let presses = 0; presses < 2; presses += 1) {
+        await ctx.evaluate(`(document.querySelector('.tour-next').click(), true)`)
+        await ctx.delay(300)
+        await ctx.wait(`!document.querySelector('.tour-next')?.textContent.includes('Showing')`, 10_000, 'the step after The Olds to be ready')
+      }
+      const movedOn = await ctx.evaluate(`document.querySelector('.tour-progress .is-current')?.dataset.title ?? ''`)
+      // The Olds closes with the step that follows its two (its sheet fades out).
+      await ctx.wait(`!document.querySelector('.olds-sheet')`, 4000, 'The Olds to close two steps on').catch(() => undefined)
+      expect(Date.now() - leftAt < OLDS_LOOKUP_DELAY && !(await ctx.evaluate(`!!document.querySelector('.olds-sheet')`)), `Two steps on from The Olds (on "${movedOn}", ${Date.now() - leftAt} ms later), The Olds is still open or its lookup was no longer held up.`)
+      await ctx.delay(Math.max(0, OLDS_LOOKUP_DELAY - (Date.now() - leftAt)) + 9_000)
+      expect(!(await ctx.evaluate(`!!document.querySelector('.olds-sheet')`)) && (await ctx.evaluate(`document.querySelector('.tour-progress .is-current')?.dataset.title ?? ''`)) === movedOn, `The Olds' late answer came back over the tour's "${movedOn}" step after the tour had moved on.`)
+      await ctx.press('Escape')
+      await ctx.wait(`!document.querySelector('.tour-card') && !document.querySelector('.olds-sheet')`, 5000, 'the tour to close on Escape again')
     } finally {
       await ctx.main(`(() => { const dns = process.mainModule.require('dns'); if (dns.__tourLookup) dns.lookup = dns.__tourLookup; return true })()`)
     }
