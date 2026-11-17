@@ -9,7 +9,7 @@ import type { ImportCategory, ImportRunResult } from '../../shared/browserImport
 import { HistoryStore } from '../historyStore'
 import { passwordOrigin } from '../passwords/origin'
 import { PasswordVault, type VaultFile } from '../passwords/vault'
-import type { ImportedTab, WorkspaceImportPlan } from './plan'
+import { heldAddresses, planTabs, planWorkspaces, type ImportedTab, type WorkspaceImportPlan } from './plan'
 import { BrowserImportService } from './service'
 import { importRoot } from './sources'
 import { FIXTURE_TEST_KEY, toChromiumTime, writeLogins } from './testFixtures'
@@ -444,4 +444,26 @@ describe('the browsers the site names', () => {
     expect(result.added).toMatchObject({ history: 1, passwords: 1, pinned: 0, open: 0 })
     expect((await app.vault.find('https://a.example', 'someone'))?.password).toBe('kept-secret')
   }, LONG)
+})
+
+describe('importing again after the imported tabs have been used', () => {
+  // A pinned tab came in at its home and has since moved on within the site.
+  const pinned = { url: 'https://docs.example.com/drafts/7', home: 'https://docs.example.com/' }
+  const open = { url: 'https://news.example.com/today' }
+
+  it('counts a pinned tab as its home too, so it is not imported a second time', () => {
+    expect(heldAddresses(pinned)).toEqual(['https://docs.example.com/drafts/7', 'https://docs.example.com/'])
+    expect(heldAddresses(open)).toEqual(['https://news.example.com/today'])
+    expect(heldAddresses({ url: 'https://a.example/', home: 'https://a.example/' })).toEqual(['https://a.example/'])
+    const flat = planTabs([{ url: 'https://docs.example.com/', title: 'Docs' }], [{ url: 'https://news.example.com/today', title: 'Today' }], [pinned, open].flatMap(heldAddresses), 10)
+    expect(flat).toMatchObject({ add: [], duplicates: 2 })
+    const spaces = planWorkspaces({
+      spaces: [{ title: 'Work', tree: [{ kind: 'tab', url: 'https://docs.example.com/', title: 'Docs' }], open: [{ url: 'https://news.example.com/today', title: 'Today' }] }],
+      favourites: [], existing: [{ id: 'w1', name: 'Work', urls: [pinned, open].flatMap(heldAddresses), room: 10 }], existingFavourites: [], freeWorkspaces: 8, tabLimit: 12, favouriteRoom: 12, include: { pinned: true, open: true }, maxFolderDepth: 6,
+    })
+    expect(spaces.workspaces).toEqual([])
+    expect(spaces.skipped.duplicates).toBe(2)
+    // Without the home it would come in again.
+    expect(planTabs([{ url: 'https://docs.example.com/', title: 'Docs' }], [], [pinned.url], 10).add).toHaveLength(1)
+  })
 })

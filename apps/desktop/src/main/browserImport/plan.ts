@@ -18,6 +18,12 @@ export function sameAddress(url: string): string {
 }
 
 /**
+ * The addresses an open tab stands for when importing again: where it is now, and (pinned) its home, which
+ * is the address it came in as. A pinned tab that has moved on from its home is still that imported tab.
+ */
+export const heldAddresses = (tab: { url: string; home?: string }): string[] => (tab.home && tab.home !== tab.url ? [tab.url, tab.home] : [tab.url])
+
+/**
  * Tabs to open: pinned first, then open ones, each address once and none already open, within
  * the room left under the tab limit. Existing tabs are never closed to make room.
  */

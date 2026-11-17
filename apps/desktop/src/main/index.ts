@@ -235,7 +235,7 @@ import { compareCountryName, compareLabelFor, landedCompare, savedCompareOf, tab
 import { liveTabFlags } from './tabState'
 import { groupSavedFolders, parseSavedWorkspaces, savedWorkspaceOf, WorkspaceSet, type RemovedWorkspace, type SavedWorkspace, type SavedWorkspaces } from './workspaces'
 import { BrowserImportService, wireBrowserImport } from './browserImport/service'
-import type { FolderPlan, ImportedTab, WorkspaceImportPlan } from './browserImport/plan'
+import { heldAddresses, type FolderPlan, type ImportedTab, type WorkspaceImportPlan } from './browserImport/plan'
 import { importRoot } from './browserImport/sources'
 import {
   browserHostChannels,
@@ -5564,9 +5564,6 @@ function addImportedWorkspaces(plan: WorkspaceImportPlan): void {
   emitWorkspaces()
   schedulePersistentStateSave()
 }
-
-/** The addresses a tab stands for when importing again: where it is now, and (pinned) its home, which it came in as. */
-const heldAddresses = (tab: OpenTab): string[] => (tab.home && tab.home !== tab.url ? [tab.url, tab.home] : [tab.url])
 
 /** Settings › Import from another browser (browserImport/service.ts). */
 function wireImportFromBrowsers(): void {
