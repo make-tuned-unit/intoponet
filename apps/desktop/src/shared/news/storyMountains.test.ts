@@ -221,10 +221,17 @@ describe('story terrain', () => {
     const busy = { ...quiet, height: storyHeight(40), momentum: 0.7 }
     const low = buildStoryTerrain([quiet])
     const high = buildStoryTerrain([busy])
+    // Every pixel is looked at, and the two findings asserted once each: an expect() per pixel (two for each of the
+    // terrain's pixels) took over 5 s on a busy Mac, and the test timed out.
+    let ownerChanged = 0
+    let lowered = 0
     for (let pixel = 0; pixel < low.owner.length; pixel += 1) {
-      expect(high.owner[pixel]).toBe(low.owner[pixel])
-      expect(high.data[pixel * 4]!).toBeGreaterThanOrEqual(low.data[pixel * 4]!)
+      if (high.owner[pixel] !== low.owner[pixel]) ownerChanged += 1
+      if (high.data[pixel * 4]! < low.data[pixel * 4]!) lowered += 1
     }
+    expect(low.owner.length).toBe(high.owner.length)
+    expect(ownerChanged).toBe(0)
+    expect(lowered).toBe(0)
     expect(heightAt(high, 0, 0) / heightAt(low, 0, 0)).toBeCloseTo(busy.height / quiet.height, 5)
     expect(heightAt(buildStoryTerrain([quiet]), 0, 0)).toBeCloseTo(heightAt(low, 0, 0), 6)
   })

@@ -818,7 +818,19 @@ async function appWindowRecovers(ctx) {
     await openTourPage()
     await ctx.evaluate(`${tourTab}.then((id) => id && window.intoponet.browserHost.closeTab(id)).then(() => true)`)
     await ctx.delay(800)
-    const before = await shellNow()
+    // The shell once its pages have stopped moving: read after a fixed wait on a busy Mac, a layout still easing into
+    // place was compared with the settled one (2 px apart, once), which says nothing about the reload.
+    const settledShell = async () => {
+      let last = await shellNow()
+      for (let i = 0; i < 20; i += 1) {
+        await ctx.delay(300)
+        const now = await shellNow()
+        if (same(now.pages, last.pages)) return now
+        last = now
+      }
+      return last
+    }
+    const before = await settledShell()
     const tabsBefore = await tabsOf(ctx)
     // The split's rounding may move a side by a pixel; anything more is a page area out of step with the shell.
     const near = (a, b) => a.length === b.length && a.every((page, i) => page.url === b[i].url && page.visible === b[i].visible && ['x', 'y', 'width', 'height'].every((key) => Math.abs(page.bounds[key] - b[i].bounds[key]) <= 1))
@@ -841,7 +853,7 @@ async function appWindowRecovers(ctx) {
     await ready(ctx, 'the reloaded app window')
     await ctx.delay(1000)
     expect(await tabsOf(ctx) === tabsBefore, `After the app window crashed, its tabs are ${await tabsOf(ctx)}, not ${tabsBefore}.`)
-    kept('After the app window crashed and reloaded', await shellNow())
+    kept('After the app window crashed and reloaded', await settledShell())
 
     // Its page hangs: once the window reports it unresponsive, it is stopped and reloads.
     await watchLoad()
@@ -850,7 +862,7 @@ async function appWindowRecovers(ctx) {
     await ready(ctx, 'the app window reloaded after hanging')
     await ctx.delay(1000)
     expect(await tabsOf(ctx) === tabsBefore, `After the app window hung, its tabs are ${await tabsOf(ctx)}, not ${tabsBefore}.`)
-    kept('After the app window hung and reloaded', await shellNow())
+    kept('After the app window hung and reloaded', await settledShell())
 
     // Videos playing in the pair (one in the left page, one in a frame of the right page): closing the window pauses them.
     const playVideo = `(() => { const c = document.createElement('canvas'); c.width = 160; c.height = 90; const g = c.getContext('2d'); let f = 0; setInterval(() => { g.fillStyle = 'hsl(' + (f++ % 360) + ' 80% 50%)'; g.fillRect(0, 0, 160, 90) }, 33); const v = document.createElement('video'); v.id = 'boot-video'; v.srcObject = c.captureStream(30); v.muted = true; document.body.append(v); return v.play().then(() => true) })()`
@@ -976,6 +988,9 @@ export const checks = {
     const summary = await ctx.evaluate(`[...document.querySelectorAll('p')].find((p) => /public signals/.test(p.innerText))?.innerText ?? ''`)
     const count = Number(summary.match(/(\d[\d,]*) public signals/)?.[1]?.replace(/,/g, '') ?? 0)
     expect(count >= 20, `Only ${count} public signals on the globe ("${summary}").`)
+    // Local news, reading and hazards: at least three kinds of signal are on.
+    const layers = Number(summary.match(/across (\d+) active layers?/)?.[1] ?? 0)
+    expect(layers >= 3, `The globe's signals come from ${layers} kind(s) of source, not local news, reading and hazards ("${summary}").`)
     for (const tab of ['World', 'Peaks', 'Rising', 'Fading']) expect(await ctx.click('.globe-tabs button', tab), `Highlights tab "${tab}" is missing.`)
     await ctx.shot('globe')
     return summary
@@ -1003,10 +1018,13 @@ export const checks = {
     const chevron = JSON.parse(await ctx.evaluate(`JSON.stringify((() => { const r = document.querySelector('.world-expand').getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)] })())`))
     expect(chevron[0] >= 32 && chevron[1] >= 32, `The chevron's target is only ${chevron.join('×')} px.`)
     await ctx.delay(1500)
-    await ctx.evaluate(`(() => { const b = document.querySelector('.world-sources-button'); b.focus(); b.click(); return true })()`)
+    // "See all N sources": the carousel holds a card for every one of them (read in the same step as the click, as stories refresh).
+    const promised = await ctx.evaluate(`(() => { const b = document.querySelector('.world-sources-button'); b.focus(); const count = Number(/\\d+/.exec(b.innerText)?.[0] ?? 0); b.click(); return count })()`)
     await ctx.delay(160)
     await ctx.shot('launching')
     await ctx.wait(`document.querySelectorAll('.sc-card').length >= 3`, 5_000, 'the carousel cards')
+    const carded = await ctx.evaluate(`document.querySelectorAll('.sc-card').length`)
+    expect(promised >= 3 && carded === promised, `The story said "See all ${promised} sources" but its carousel holds ${carded} cards.`)
     // Outlets' own pictures and bylines arrive as each article's preview is read.
     await ctx.wait(`document.querySelectorAll('.sc-card .sc-media img').length >= 1`, 25_000, 'an article image on the cards')
     await ctx.delay(2500)
@@ -1094,8 +1112,14 @@ export const checks = {
     await ctx.waitForNews()
     await ctx.flyTo('Canada')
     await ctx.delay(2500)
-    expect(await ctx.click('.globe-list .globe-row', 'Canada'), 'Canada is not in the list after flying there.')
-    await ctx.wait(`!!document.querySelector('.globe-context-facts')`, 90_000, 'key facts in The bigger picture')
+    // Canada's local news, by what its row says ("12 stories · 5 outlets"): Wikipedia's readers and events near it can
+    // have a row named Canada too, listed first on some days, and those open no country card.
+    const opened = await ctx.wait(`(() => { const row = [...document.querySelectorAll('.globe-list .globe-row')].find((el) => el.querySelector('strong')?.textContent === 'Canada' && /stor(y|ies) · \\d+ outlets?/.test(el.querySelector('small')?.textContent ?? '')); if (!row) return false; row.click(); return true })()`, 10_000).then(() => true, () => false)
+    expect(opened, `Canada's local news is not in the list after flying there (rows: ${await ctx.evaluate(`[...document.querySelectorAll('.globe-list .globe-row')].slice(0, 8).map((el) => el.innerText.replace(/\\s+/g, ' ')).join(' | ')`)}).`)
+    await ctx.wait(`!!document.querySelector('.globe-context-facts')`, 90_000, 'key facts in The bigger picture').catch(async (error) => {
+      // Timed out under load with nothing to go on: say whether the card was still looking, had given up, or was never shown.
+      throw new CheckFailure(`${error.message} (the panel is "${await ctx.evaluate(`document.querySelector('.globe-header h1')?.textContent ?? 'none'`).catch(() => 'unknown')}"; its card says "${await ctx.evaluate(`document.querySelector('.globe-context-status')?.innerText ?? (document.querySelector('.globe-context') ? 'no status' : 'no card')`).catch(() => 'unknown')}")`)
+    })
     await ctx.wait(`!!document.querySelector('.globe-context-recent, .globe-context-links')`, 90_000, 'recent history')
     const facts = await ctx.evaluate(`document.querySelector('.globe-context-facts').innerText`)
     expect(/Population/.test(facts) && /Capital/.test(facts), `Key facts are incomplete: ${facts}`)
@@ -1115,6 +1139,10 @@ export const checks = {
     await ctx.delay(2000)
     const atStart = await ctx.evaluate(`document.querySelectorAll('.country-name.is-on').length`)
     expect(atStart >= 8, `Only ${atStart} country names at the default view.`)
+    // Shown names never run into one another.
+    const overlapping = () => ctx.evaluate(`JSON.stringify((() => { const shown = [...document.querySelectorAll('.country-name.is-on')].map((el) => ({ name: el.textContent, box: el.getBoundingClientRect() })).filter((item) => item.box.width > 0); const pairs = []; for (let i = 0; i < shown.length; i += 1) for (let j = i + 1; j < shown.length; j += 1) { const a = shown[i].box, b = shown[j].box; if (a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1) pairs.push(shown[i].name + ' over ' + shown[j].name) } return pairs })())`).then(JSON.parse)
+    const overlapAtStart = await overlapping()
+    expect(!overlapAtStart.length, `Country names overlap at the default view: ${overlapAtStart.join('; ')}.`)
     // Click a named country (labels let clicks through to the globe).
     const target = JSON.parse(await ctx.evaluate(`(() => { const el = document.querySelector('.country-name.is-on'); const r = el.getBoundingClientRect(); return JSON.stringify({ name: el.textContent, x: r.left + r.width / 2, y: r.top + r.height / 2 + 1 }) })()`))
     for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) {
@@ -1138,8 +1166,10 @@ export const checks = {
       }
       const focus = await ctx.evaluate(`[...document.querySelectorAll('.country-name.is-focus.is-on')].map((el) => el.textContent).join(', ')`)
       if (focus !== name) wrong.push(`${place} → ${focus || 'no name'}`)
+      const over = await overlapping()
+      if (over.length) wrong.push(`${place}: names overlap (${over.join('; ')})`)
     }
-    expect(!wrong.length, `The country in view was not named: ${wrong.join('; ')}`)
+    expect(!wrong.length, `The country in view was not named, or names overlapped: ${wrong.join('; ')}`)
     await ctx.shot('vatican')
     return `${atStart} names at the start; clicked ${target.name} → ${opened}; ${Object.keys(flights).length} flights named correctly.`
   },
@@ -1170,7 +1200,10 @@ export const checks = {
     const scroll = JSON.parse(await ctx.evaluate(`(() => { const el = document.querySelector('.globe-panel .world-stories'); const before = el.scrollTop; el.scrollTop = 400; return JSON.stringify({ moved: el.scrollTop - before, overflow: el.scrollHeight > el.clientHeight }) })()`))
     expect(!scroll.overflow || scroll.moved > 0, 'The World list overflows but cannot be scrolled.')
     const stories = await ctx.evaluate(`document.querySelectorAll('.world-list > li').length`)
-    return `${stories} world stories; scrolls ${scroll.moved}px; ${offline}.`
+    // "Many countries": each story listed says where it was covered, in at least three countries or international desks.
+    const breadth = JSON.parse(await ctx.evaluate(`JSON.stringify([...document.querySelectorAll('.world-list .world-row small')].map((el) => Number(/(\\d+) countr/.exec(el.innerText)?.[1] ?? 0) + Number(/(\\d+) international desk/.exec(el.innerText)?.[1] ?? 0)))`))
+    expect(breadth.length >= 5 && breadth.every((places) => places >= 3), `A World story is listed with coverage from fewer than three countries or international desks: ${breadth.join(', ')}.`)
+    return `${stories} world stories, each covered in ${Math.min(...breadth)}–${Math.max(...breadth)} countries or international desks; scrolls ${scroll.moved}px; ${offline}.`
   },
 
   async STORY_MOUNTAINS(ctx) {
@@ -1370,6 +1403,7 @@ export const checks = {
   async OLDS_COUNTRY(ctx) {
     const thread = JSON.parse(await ctx.evaluate(`window.intoponet.olds.thread({ kind: 'country', countryCode: 'FO' }).then((t) => JSON.stringify({ facts: t.facts, chapters: (t.chapters ?? []).length, chronicle: (t.chronicle ?? []).map((e) => e.at.iso) }))`))
     expect(!!thread.facts?.capital, 'The Faroe Islands have no key facts.')
+    expect(thread.chapters >= 1, 'The Faroe Islands\' history has no chapters.')
     expect(thread.chronicle.some((iso) => Number(iso.slice(0, 4)) >= new Date().getFullYear() - 10), 'No events from the last ten years in the Faroe Islands chronology.')
     return `Capital ${thread.facts.capital}; ${thread.chapters} chapters; latest event ${thread.chronicle.at(-1)}.`
   },
@@ -1393,7 +1427,7 @@ export const checks = {
       const read = () => ctx.evaluate(`JSON.stringify((() => { const i = document.querySelector('.command-input input'); return { value: i.value, selected: i.value.slice(i.selectionStart, i.selectionEnd), expanded: i.getAttribute('aria-expanded'), active: i.getAttribute('aria-activedescendant'), rows: [...document.querySelectorAll('#omnibox-suggestions [role=option]')].map((r) => ({ id: r.id, kind: r.dataset.kind, text: r.innerText.replace(/\\s+/g, ' '), selected: r.getAttribute('aria-selected') })) } })())`).then(JSON.parse)
       /** Types into the bar. `completes`: wait (within a time limit) for the inline completion, which arrives after a
        * history lookup and can take longer than a moment on a busy Mac; otherwise read after a short pause. */
-      const typeHost = async (text, completes = true) => {
+      const typeOnce = async (text, completes) => {
         // The window in front: losing focus blurs the bar, which drops an inline completion (as it should).
         await ctx.main(`(() => { electron.app.focus({ steal: true }); electron.BrowserWindow.getAllWindows()[0].focus(); return true })()`)
         await ctx.evaluate(`(() => { const i = document.querySelector('.command-input input'); i.focus(); i.select(); return true })()`)
@@ -1409,6 +1443,19 @@ export const checks = {
           await ctx.delay(150)
         }
         return read()
+      }
+      // Another app's window taking the keyboard while the bar is typed in (other checks run beside this one) blurs
+      // the bar and drops the completion, as it should. Seen happening (the window's own blur, counted), it is typed again:
+      // a completion that is missing while the window kept the keyboard is the app's own doing, and is returned as it is.
+      const typeHost = async (text, completes = true) => {
+        await ctx.evaluate(`(() => { if (window.__barBlurs === undefined) { window.__barBlurs = 0; window.addEventListener('blur', (event) => { if (event.target === window) window.__barBlurs += 1 }) } return true })()`)
+        let seen
+        for (let attempt = 0; attempt < 4; attempt += 1) {
+          const blursBefore = await ctx.evaluate(`window.__barBlurs`)
+          seen = await typeOnce(text, completes)
+          if (!completes || seen.value !== text || (await ctx.evaluate(`window.__barBlurs`)) === blursBefore) break
+        }
+        return seen
       }
       const enter = async (modifiers = 0) => {
         await ctx.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, modifiers, text: '\r' })
@@ -2327,7 +2374,35 @@ export const checks = {
     await openPage(ctx, 'https://www.nytimes.com/section/world', 9000)
     const access = JSON.parse(await ctx.evaluate(`window.intoponet.access.page().then((p) => JSON.stringify(p))`))
     expect(access && typeof access.paywalled === 'boolean', 'Paywall detection did not report on the page.')
-    return `nytimes.com section page: paywalled=${access.paywalled} (${access.signals.join(', ') || 'no signals'}).`
+    // The promise itself, on pages of this Mac: an article whose publisher marks it as restricted is recognised and free
+    // coverage is offered beside it (the page is left as it is); an article open to all gets neither.
+    const outlet = createServer((req, res) => {
+      res.setHeader('content-type', 'text/html; charset=utf-8')
+      res.end(req.url === '/open'
+        ? '<!doctype html><title>Harbour bridge reopens after repairs</title><h1>Harbour bridge reopens after repairs</h1><p id="body">Open to all.</p>'
+        : '<!doctype html><title>Harbour bridge closes for repairs</title><script type="application/ld+json">{"@type":"NewsArticle","isAccessibleForFree":false}</script><h1>Harbour bridge closes for repairs</h1><p id="body">The first paragraph.</p>')
+    })
+    await new Promise((resolve) => outlet.listen(0, '127.0.0.1', resolve))
+    try {
+      // Two hosts, two outlets: one seen with a restricted article is remembered as a paywalled outlet from then on.
+      const accessOf = async (address) => {
+        await ctx.evaluate(`window.intoponet.browserHost.navigate(${JSON.stringify(address)}).then(() => true, () => true)`)
+        await ctx.wait(`window.intoponet.browserHost.getState().then((s) => s.url === ${JSON.stringify(address)} && !s.isLoading)`, 20_000, `the test article at ${address}`)
+        return JSON.parse(await ctx.evaluate(`window.intoponet.access.page().then((p) => JSON.stringify(p))`))
+      }
+      const open = await accessOf(`http://localhost:${outlet.address().port}/open`)
+      expect(open?.paywalled === false, `An article open to all was taken for a paywalled one: ${JSON.stringify(open)}.`)
+      // (The page's own check runs 1.2 s after it has loaded.)
+      await ctx.delay(2500)
+      expect(!(await ctx.evaluate(`!!document.querySelector('.free-coverage')`)), 'Free coverage was offered beside an article open to all.')
+      const locked = await accessOf(`http://127.0.0.1:${outlet.address().port}/locked`)
+      expect(locked?.paywalled === true && locked.signals.includes('isAccessibleForFree: false'), `An article marked as not free to read was not recognised: ${JSON.stringify(locked)}.`)
+      await ctx.wait(`(document.querySelector('.free-coverage')?.innerText ?? '').length > 0`, 10_000, 'free coverage to be offered beside a paywalled article')
+      expect(await (await ctx.page('/locked')).evaluate(`document.getElementById('body')?.textContent`) === 'The first paragraph.', 'The paywalled page was changed.')
+    } finally {
+      outlet.close()
+    }
+    return `nytimes.com section page: paywalled=${access.paywalled} (${access.signals.join(', ') || 'no signals'}); a local article marked as not free was recognised and free coverage offered beside it, the page unchanged; one open to all was not.`
   },
 
   PDF_EXPORT: pdfExport,
@@ -2630,7 +2705,7 @@ export const checks = {
         await audit(`Highlights › ${tab}`)
       }
     }
-    for (const label of ['Bookmarks', 'My map', 'Settings', 'Knowledge']) {
+    for (const label of ['Bookmarks', 'The Olds', 'My map', 'Settings', 'Knowledge']) {
       await ctx.evaluate(`document.querySelector('[data-panel]') && [...document.querySelectorAll('.bookmark-library-button')].find((b) => (b.innerText || b.getAttribute('aria-label')).includes(${JSON.stringify(label)})).focus(); true`)
       await ctx.press('Enter')
       await ctx.delay(1300)
@@ -2691,7 +2766,28 @@ export const checks = {
       for (const type of ['rawKeyDown', 'keyUp']) await ctx.send('Input.dispatchKeyEvent', { type, key: 'C', code: 'KeyC', windowsVirtualKeyCode: 67, modifiers: 4 | 8 })
       await ctx.delay(800)
       expect(await clip() === `${origin}/article?id=3#part`, `⇧⌘C in the app interface copied "${await clip()}".`)
-      return 'Copied without tracking parameters from the page and the toolbar, exactly with ⌥, and not while a text field had focus.'
+      // The same in the full-width view, and in a private tab.
+      expect(await ctx.click('button[aria-label="Full width"]'), 'The page toolbar has no Full width button.')
+      await ctx.wait(`!!document.querySelector('button[aria-label="Exit full width"]')`, 5000, 'the full-width view')
+      await ctx.wait(`!document.querySelector('.origin-copied')`, 4000, 'the earlier confirmation to go away')
+      await setClip('before')
+      await ctx.keyInPage('/article', 'C', ['meta', 'shift'])
+      await ctx.wait(`!!document.querySelector('.origin-copied') && [...document.querySelectorAll('[role=status]')].some((e) => e.textContent.includes('Address copied'))`, 3000, 'the full-width view to say the address was copied')
+      expect(await clip() === `${origin}/article?id=3#part`, `⇧⌘C in the full-width view copied "${await clip()}".`)
+      expect(await ctx.click('button[aria-label="Exit full width"]'), 'The full-width view has no way out.')
+      await ctx.wait(`!document.querySelector('.origin-copied')`, 4000, 'the full-width confirmation to go away')
+      await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(true).then(() => true)`)
+      try {
+        await openPage(ctx, `${origin}/private-article?id=4&utm_medium=mail`, 2500)
+        expect(await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => t.some((x) => x.isPrivate && x.active && x.url.includes('/private-article')))`), 'The private test tab is not private and in front.')
+        await setClip('before')
+        await ctx.keyInPage('/private-article', 'C', ['meta', 'shift'])
+        await ctx.wait(`!!document.querySelector('.origin-copied') && [...document.querySelectorAll('[role=status]')].some((e) => e.textContent.includes('Address copied'))`, 3000, 'a private tab to say its address was copied')
+        expect(await clip() === `${origin}/private-article?id=4`, `⇧⌘C in a private tab copied "${await clip()}".`)
+      } finally {
+        await ctx.evaluate(`window.intoponet.privacy.setPrivateMode(false).then(() => true)`)
+      }
+      return 'Copied without tracking parameters from the page and the toolbar, exactly with ⌥, and not while a text field had focus; the same in the full-width view and in a private tab.'
     } finally {
       server.close()
     }
@@ -2936,8 +3032,19 @@ export const checks = {
       await ctx.delay(600)
       expect(await activeTitle() === 'Page /c', `In tab-bar order ⌃Tab went to ${await activeTitle()}.`)
       expect(!(await switcherShowing()), 'The switcher opened in tab-bar order.')
-      void a
-      return 'Hold ⌃, Tab and ⌃⇧Tab step most-recent-first over the page (announced); release shows it, a quick ⌃Tab goes back, Escape keeps the tab; tab-bar order unchanged.'
+      // Tab search lists the open tabs most recently used first too, in the address bar and in the command menu
+      // (c was shown last, b before it, then d; a is shown now).
+      await ctx.evaluate(`window.intoponet.browsing.setTabSwitchOrder('recent').then(() => true)`)
+      await ctx.evaluate(`${host}.activateTab(${JSON.stringify(a.id)}).then(() => true)`)
+      await ctx.wait(`${host}.getTabs().then((t) => t.find((x) => x.active)?.title === 'Page /a')`, 3000, 'the first tab to be shown')
+      for (const typed of ['Page /', '> Page /']) {
+        await ctx.evaluate(`(() => { const i = document.querySelector('.command-input input'); i.focus(); i.select(); return true })()`)
+        await ctx.type(typed)
+        await ctx.wait(`[...document.querySelectorAll('[role="listbox"] [role="option"]')].filter((row) => row.dataset.kind === 'tab').length >= 4`, 5000, `tab search for "${typed}" to list the open tabs`)
+        const found = JSON.parse(await ctx.evaluate(`JSON.stringify([...document.querySelectorAll('[role="listbox"] [role="option"]')].filter((row) => row.dataset.kind === 'tab').map((row) => (row.innerText.split('Page /')[1] ?? '?')[0]))`))
+        expect(found.join(' ') === 'a c b d', `Tab search for "${typed}" listed the tabs as ${found.join(', ')}, not most recently used first (a, c, b, d).`)
+      }
+      return 'Hold ⌃, Tab and ⌃⇧Tab step most-recent-first over the page (announced); release shows it, a quick ⌃Tab goes back, Escape keeps the tab; tab-bar order unchanged; tab search in the address bar and the command menu lists the tabs most recently used first.'
     } finally {
       server.close()
     }
@@ -3182,11 +3289,18 @@ export const checks = {
     const stepTitle = `(document.querySelector('.tour-progress .is-current')?.dataset.title ?? '')`
     // What a step shows: the selector its spotlight found, whether its card is on top, and what is open behind it.
     const scene = `JSON.stringify({ title: ${stepTitle}, onTop: (() => { const r = document.querySelector('.tour-card').getBoundingClientRect(); return !!document.elementFromPoint(r.left + r.width / 2, r.top + 30)?.closest('.tour') })(), lit: document.querySelector('.tour-spotlight')?.dataset.target ?? null, page: !!document.querySelector('.browser-actions'), olds: !!document.querySelector('.olds-sheet'), bookmarks: !!document.querySelector('.bookmark-pane'), paneCovered: (() => { const pane = document.querySelector('.bookmark-pane')?.getBoundingClientRect(); return !!pane && [...document.querySelectorAll('.story-highest, .globe-panel-pill')].some((el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.right > pane.left && r.left < pane.right && r.bottom > pane.top && r.top < pane.bottom }) })(), library: !!document.querySelector('.bookmark-drawer'), knowledge: !!document.querySelector('.knowledge-sheet'), rail: document.querySelector('.tab-rail')?.classList.contains('is-open') ?? null, typed: document.querySelector('.command-input input')?.value ?? '' })`
+    // How long each step takes to be ready, as the tour itself sees it (its "Showing…" state, timed in the app window):
+    // the check ran out of time under load with nothing to say which step was slow.
+    await ctx.evaluate(`(() => { const seen = window.__tourSteps = { log: [], since: performance.now(), showing: false, title: '' }; setInterval(() => { const next = document.querySelector('.tour-next'); if (!next) return; const title = document.querySelector('.tour-progress .is-current')?.dataset.title ?? ''; const showing = next.textContent.includes('Showing'); if (title !== seen.title) { seen.title = title; seen.since = performance.now(); seen.showing = showing } else if (seen.showing && !showing) seen.log.push([title, Math.round(performance.now() - seen.since)]); seen.showing = showing }, 50); return true })()`)
+    const tourStarted = Date.now()
+    let settled = 0
     const settle = async (step) => {
       await ctx.wait(`document.querySelector('.tour-count')?.textContent.startsWith('${step} of') && !document.querySelector('.tour-next')?.textContent.includes('Showing')`, 45_000, `tour step ${step} to finish showing`)
       await ctx.wait(`document.getElementById('tour-title')?.textContent === ${stepTitle}`, 5000, `tour step ${step}'s card`)
       await ctx.delay(700)
       const state = JSON.parse(await ctx.evaluate(scene))
+      settled += 1
+      ctx.note?.(`${settled} tour steps looked at in ${Math.round((Date.now() - tourStarted) / 1000)} s (now on step ${step}, "${state.title}"); slowest to be ready: ${await ctx.evaluate(`window.__tourSteps.log.slice().sort((a, b) => b[1] - a[1]).slice(0, 3).map(([title, ms]) => '"' + title + '" ' + (ms / 1000).toFixed(1) + ' s').join(', ') || 'none timed yet'`).catch(() => 'unknown')}`)
       // A web page is a native view drawn above the whole interface: shown during the tour, it covers the card and the spotlight.
       state.pageOnScreen = await ctx.main(`electron.BrowserWindow.getAllWindows()[0].contentView.children.some((view) => view.getVisible() && /^https?:/.test(view.webContents?.getURL?.() ?? ''))`)
       return state
@@ -3302,6 +3416,8 @@ export const checks = {
     await settle(total)
     await ctx.click('.tour-next')
     await ctx.wait(`!document.querySelector('.tour-card') && !document.querySelector('.story-panel')`, 5000, 'the tour to finish and tidy up')
+    const stepTimes = JSON.parse(await ctx.evaluate(`JSON.stringify(window.__tourSteps.log)`))
+    const slowestSteps = stepTimes.slice().sort((x, y) => y[1] - x[1]).slice(0, 3).map(([title, ms]) => `"${title}" ${(ms / 1000).toFixed(1)} s`).join(', ')
     // Everything it opened is closed again: none of its pages is left in the sidebar.
     const tidy = await ctx.wait(`${tabList}.then((ids) => ids === ${JSON.stringify(tabsBefore)})`, 5000).then(() => true, () => false)
     expect(tidy, `The tour left a tab open: ${await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((t) => t.map((x) => x.title || x.url).join(', '))`)}.`)
@@ -3343,7 +3459,7 @@ export const checks = {
     await ctx.wait(`!document.querySelector('.tour-card')`, 5000, 'Enter on Leave the tour to leave it')
     await ctx.delay(500)
     expect(await ctx.evaluate(`document.activeElement?.dataset.panel === 'settings'`), `After leaving the tour, focus went to "${await focusName()}", not the Settings button.`)
-    return `All ${total} steps shown, each spotlight on what it describes, the same played forward, gone back to and jumped to; the tour put everything back at the end, its own tab closed. With Wikipedia unreachable The Olds step moved on ${((offline.ms - offline.looked) / 1000).toFixed(1)} s after The Olds had looked (${(offline.ms / 1000).toFixed(1)} s in all: "${offline.olds}").`
+    return `All ${total} steps shown, each spotlight on what it describes, the same played forward, gone back to and jumped to; the tour put everything back at the end, its own tab closed. Slowest steps to be ready (of ${stepTimes.length} timed): ${slowestSteps || 'none'}; the whole walk took ${Math.round((Date.now() - tourStarted) / 1000)} s. With Wikipedia unreachable The Olds step moved on ${((offline.ms - offline.looked) / 1000).toFixed(1)} s after The Olds had looked (${(offline.ms / 1000).toFixed(1)} s in all: "${offline.olds}").`
   },
   async TAB_ARCHIVE(ctx) {
     // Started with an "hour" of 200 ms (TAB_ARCHIVE.env below), so "12 hours" is 2.4 seconds.
@@ -3830,6 +3946,9 @@ export const checks = {
       await ctx.evaluate(`document.querySelector('.tab-rail-workspace.is-active').focus(); true`)
       await key('ArrowLeft', 'ArrowLeft', 37, 1 | 8)
       await ctx.wait(`${ws}.get().then((s) => s.workspaces[0].id === ${JSON.stringify(researchId)})`, 3000, '⌥⇧← to move Research first')
+      // Focus stays on the moved workspace. Waited for before going on: it is put back a frame after the move is
+      // answered, and what follows (the actions menu, the name field) must not be opened under it.
+      await ctx.wait(`document.activeElement?.dataset.workspaceId === ${JSON.stringify(researchId)} && document.activeElement.matches('.tab-rail-workspace')`, 3000, 'focus to stay on the workspace moved with ⌥⇧←')
 
       // Rename from the workspace's actions.
       await chooseInWorkspaceMenu('Research', 'Rename', 'the workspace menu')
@@ -3839,7 +3958,10 @@ export const checks = {
       await ctx.press('Enter')
       await ctx.wait(`${ws}.get().then((s) => s.workspaces[0].name === 'Reading')`, 3000, 'the workspace to be renamed Reading')
       // Focus goes back to the actions button (not to nowhere); so it does when the place picker is left with Escape.
-      await ctx.wait(`document.activeElement?.getAttribute('aria-label') === 'Actions for workspace Reading'`, 3000, 'focus to go back to the actions button once the workspace is renamed')
+      await ctx.wait(`document.activeElement?.getAttribute('aria-label') === 'Actions for workspace Reading'`, 3000, 'focus to go back to the actions button once the workspace is renamed').catch(async (error) => {
+        // Failed once in a release check with nothing to go on: say where focus was instead.
+        throw new CheckFailure(`${error.message} (focus is on ${await ctx.evaluate(`(() => { const el = document.activeElement; return !el || el === document.body ? 'nothing' : '"' + (el.getAttribute('aria-label') || el.textContent || el.tagName).slice(0, 60) + '" (' + el.className + ')' })()`).catch(() => 'unknown')}; the editor is ${await ctx.evaluate(`document.querySelector('.tab-rail-workspace-editor') ? 'still open' : 'closed'`).catch(() => 'unknown')})`)
+      })
       await openWorkspaceMenu('Reading', 'the workspace menu for an anchor')
       await ctx.click('.tab-rail-folder-menu [role="menuitem"]', 'Anchor to a place')
       await ctx.wait(`document.activeElement?.getAttribute('role') === 'combobox' && !!document.activeElement.closest('.tab-rail-anchor')`, 3000, 'the place picker to take focus')

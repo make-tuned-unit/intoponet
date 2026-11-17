@@ -195,6 +195,7 @@ import { PDF_WORLD_ID } from './pdfExport/pageScripts'
 import { SavedPdfList } from './pdfExport/savedPdfs'
 import { DEFAULT_PDF_SETTINGS, parsePdfSettings, type PdfExportSettings } from './pdfExport/settings'
 import { CrashRecoveryPolicy, ShellReloadPolicy } from './crashRecovery'
+import { framesOf, mainFrameOf } from './mainFrame'
 import { restoreHistoryOrLoad } from './historyRestore'
 import { BeaconPublisher } from './beacons/publisher'
 import { DEFAULT_BEACON_REGISTRY } from './beacons/defaults'
@@ -283,7 +284,7 @@ const PAUSE_UNSEEN_MEDIA = `(() => { for (const media of document.querySelectorA
 const RESUME_UNSEEN_MEDIA = `(() => { for (const media of document.querySelectorAll('video, audio')) if (media[${UNSEEN_MEDIA}]) { delete media[${UNSEEN_MEDIA}]; media.play().catch(() => {}) } })()`
 function runInEveryFrame(contents: Electron.WebContents, code: string): void {
   if (contents.isDestroyed()) return
-  for (const frame of contents.mainFrame?.framesInSubtree ?? []) {
+  for (const frame of framesOf(contents)) {
     if (!frame.detached) void frame.executeJavaScript(code).catch(() => undefined)
   }
 }
@@ -977,7 +978,7 @@ async function applyCosmeticFilters(
     const css = [rules?.cssRules.join('\n') ?? '', hideCss(siteHiddenSelectors(contents, pageUrl))].filter(Boolean).join('\n')
     // With protection on, blocked tracker globals get quiet stand-ins so the page's own buttons don't throw.
     const script = rules ? `${cosmeticInjection(css)};${TRACKER_STUB_SCRIPT}` : `${cosmeticInjection(css)};${UNCOLLAPSE_AD_SLOTS_SCRIPT}`
-    const frames = options.only ? [options.only] : contents.mainFrame?.framesInSubtree ?? []
+    const frames = options.only ? [options.only] : framesOf(contents)
     let injected = cosmeticFrames.get(contents)
     if (!injected) cosmeticFrames.set(contents, (injected = new Set()))
     const done = injected
@@ -1040,7 +1041,7 @@ async function applySiteStyle(view: WebContentsView): Promise<void> {
   const site = siteOf(contents.getURL())
   const tweak = site && siteTweaks ? siteTweaks.get(site, privateViews.has(view)) : null
   const css = tweak ? tweakCss(tweak) : ''
-  const frame = contents.mainFrame
+  const frame = mainFrameOf(contents)
   if (!frame || frame.detached) return
   await frame.executeJavaScript(cosmeticInjection(css, siteStyleElementId)).catch(() => undefined)
 }
@@ -1112,7 +1113,8 @@ function scheduleAdCollapse(contentsId: number, url?: string, delay = 250): void
     const origin = (() => { try { return new URL(contents.getURL()).origin } catch { return '' } })()
     if (!origin.startsWith('http') || !protection.isSiteEnabled(origin, 'default') || !protection.cosmeticRules('', '').hideSelectors.length) return
     const script = collapseAdSlotsScript(pending.urls)
-    for (const frame of contents.mainFrame?.framesInSubtree ?? []) {
+    // (Not contents.mainFrame: this timer can come after the page's renderer crashed, and reading it throws then.)
+    for (const frame of framesOf(contents)) {
       if (!frame.detached) void frame.executeJavaScript(script).catch(() => undefined)
     }
   }, delay)
@@ -1590,9 +1592,9 @@ function passwordPage(view: WebContentsView): PasswordPage {
     isPrivate: privateViews.has(view),
     // A workspace with separate sign-ins offers only its own logins; everywhere else, the shared ones.
     workspaceId: privateViews.has(view) ? null : scopeWorkspaceId(scopeOfView(view)),
-    origin: () => (contents.isDestroyed() ? null : passwordOrigin(contents.mainFrame.url)),
+    origin: () => { const frame = mainFrameOf(contents); return frame ? passwordOrigin(frame.url) : null },
     fill: (message) => {
-      if (!contents.isDestroyed()) contents.mainFrame.send(passwordPageChannels.fill, message)
+      mainFrameOf(contents)?.send(passwordPageChannels.fill, message)
     },
   }
 }
@@ -1647,7 +1649,7 @@ function wirePasswords(): void {
   // Only the top frame of a normal tab may report a sign-in; its origin is read here, not trusted from the page.
   ipcMain.on(passwordPageChannels.report, (event, value: unknown) => {
     const tab = allTabs().find((item) => !viewGone(item.view) && item.view.webContents === event.sender)
-    if (!tab || !event.senderFrame || event.senderFrame !== event.sender.mainFrame) return
+    if (!tab || !event.senderFrame || event.senderFrame !== mainFrameOf(event.sender)) return
     const message = parsePasswordPageMessage(value)
     if (!message) return
     void passwords!.report(passwordPage(tab.view), message).catch(() => undefined)
@@ -2167,7 +2169,9 @@ function showTab(id: string): WebContentsView | null {
   }
   const now = Date.now()
   const previous = openTabs.find((item) => item.id === activeTabId)
-  if (previous) previous.lastShownAt = now
+  // A moment before the tab shown now: with the same time on both, tab search (which lists tabs most recently
+  // shown first) put whichever came first in the tab list on top, the tab just left or the one in front.
+  if (previous && previous !== tab) previous.lastShownAt = now - 1
   tab.lastShownAt = now
   if (partner) partner.lastShownAt = now
   activeTabId = tab.id
@@ -3056,7 +3060,8 @@ function openLinkPreview(urlValue: string, opener: WebContentsView | null): bool
   // The same protection as a tab: blocked requests (wireProtectionSession), hidden ads and empty ad space.
   view.webContents.on('dom-ready', () => {
     if (!current()) return
-    void applyCosmeticFilters(view.webContents, { only: view.webContents.mainFrame, url: view.webContents.getURL() })
+    const ready = mainFrameOf(view.webContents)
+    if (ready) void applyCosmeticFilters(view.webContents, { only: ready, url: view.webContents.getURL() })
     armLinkPreviewFocusLoop(preview)
   })
   view.webContents.on('did-frame-finish-load', (_event, _isMainFrame, frameProcessId, frameRoutingId) => {
@@ -3402,7 +3407,7 @@ function wirePopupWindow(child: BrowserWindow, opener: WebContentsView): void {
   // The same protection as a tab: blocked ads hidden, and quiet stand-ins for blocked trackers
   // (a sign-in button that calls gtag() would otherwise throw and do nothing).
   const popup = child.webContents
-  popup.on('dom-ready', () => { void applyCosmeticFilters(popup, { only: popup.mainFrame, url: popup.getURL() }) })
+  popup.on('dom-ready', () => { const ready = mainFrameOf(popup); if (ready) void applyCosmeticFilters(popup, { only: ready, url: popup.getURL() }) })
   popup.on('did-frame-navigate', (_event, _url, _code, _status, isMainFrame, frameProcessId, frameRoutingId) => {
     forgetCosmeticFrame(popup, isMainFrame, frameProcessId, frameRoutingId)
   })
@@ -3906,7 +3911,8 @@ function buildView(isPrivate = privateMode, workspaceId: string | null = workspa
     void applySiteStyle(view)
     if (pageView !== view && companionView !== view) return
     // This page's own address: the other side of a split has its own site's rules, not the focused side's.
-    void applyCosmeticFilters(view.webContents, { only: view.webContents.mainFrame, url: view.webContents.getURL() })
+    const ready = mainFrameOf(view.webContents)
+    if (ready) void applyCosmeticFilters(view.webContents, { only: ready, url: view.webContents.getURL() })
   })
   // A side of a split that takes the keyboard becomes the focused side (the toolbar and find follow it).
   view.webContents.on('focus', () => {
@@ -5081,7 +5087,7 @@ function appShellUrl(): string {
 function isFromShell(event: IpcMainInvokeEvent): boolean {
   if (!window || window.isDestroyed() || event.sender !== window.webContents) return false
   const frame = event.senderFrame
-  return !!frame && frame === window.webContents.mainFrame && isAppShellUrl(frame.url, appShellUrl())
+  return !!frame && frame === mainFrameOf(window.webContents) && isAppShellUrl(frame.url, appShellUrl())
 }
 
 /** ipcMain.handle for the app window's API: calls from anywhere else are refused. */

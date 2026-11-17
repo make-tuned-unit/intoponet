@@ -126,7 +126,14 @@ export function WorkspaceBar({ state, open, onExpand, request }: {
     event.stopPropagation()
     if (event.altKey && event.shiftKey) {
       const to = at + delta
-      if (to >= 0 && to < state.workspaces.length) void api.move(workspace.id, to).then(() => requestAnimationFrame(() => switcher.current?.querySelector<HTMLButtonElement>(`[data-workspace-id="${workspace.id}"]`)?.focus()), fail)
+      // Focus stays on the moved workspace (its button is put elsewhere in the row). Only while focus is still in the
+      // row, or was dropped: this runs a frame after main answers, and someone who has since gone on (opened the
+      // actions menu, started renaming) keeps their place.
+      if (to >= 0 && to < state.workspaces.length) void api.move(workspace.id, to).then(() => requestAnimationFrame(() => {
+        const focused = document.activeElement
+        if (focused && focused !== document.body && !switcher.current?.contains(focused)) return
+        switcher.current?.querySelector<HTMLButtonElement>(`[data-workspace-id="${workspace.id}"]`)?.focus()
+      }), fail)
       return
     }
     buttons[(at + delta + buttons.length) % buttons.length]?.focus()
