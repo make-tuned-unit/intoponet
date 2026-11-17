@@ -838,12 +838,14 @@ Licence, Beacons and remaining PRD items, 2026-10-27:
   adopted later, but not withdrawn once published.
   `THIRD_PARTY_NOTICES.md` lists every third-party licence. Obligations
   before a public release:
-  - the vendored MPL-2.0 Bergamot glue stays MPL;
+  - the vendored MPL-2.0 Bergamot glue stays MPL (it ships as its own file,
+    with `LICENSES/MPL-2.0.txt`);
   - ship Electron/Chromium licences and the npm licence texts;
   - attribute Wikipedia (CC BY-SA 4.0) and GeoNames (CC BY 4.0), now in
     Settings › Credits;
   - clear news-feed terms for commercial use;
-  - confirm the source of `earth-day.jpg`.
+  - (done 2026-11-17: both Earth textures are made from NASA's originals by a
+    recorded command; see the `.license` file beside each).
 - **Beacons (BCN-001 to 006), Neon.**
   - `packages/beacon-core` holds the payload rules: canonical URL with
     tracking removed, no sign-in, account, payment or local addresses,

@@ -87,12 +87,13 @@ carried by each list entry are.
 ## What has not been done
 
 - **No overlap comparison has been made** between Intoponet's list and the two removed lists. The
-  removed files have deliberately not been opened since their removal, including to write this
-  note, which was written from commit times, commit messages and file names only. Some overlap is
-  to be expected: any measurement of news pages finds the largest advertising and tracking hosts,
-  and they are in every list of this kind. How much there is has not been counted. If a count is
-  ever wanted, it should be made by someone who does not go on to edit the list, and from a copy of
-  the original history kept outside the working repository.
+  owner's instruction is that the removed files are not to be opened, so that nobody who works on
+  the list reads them; this note was written under that instruction, from commit times, commit
+  messages and file names only, and its author did not open them. Whether anyone else has opened
+  them since their removal is not recorded. How much the two overlap has not been counted, and
+  nothing is claimed here about what the removed lists contain. If a count is ever wanted, it
+  should be made by someone who does not go on to edit the list, and from a copy of the original
+  history kept outside the working repository.
 - **The matcher has not been compared with the removed library** by anyone writing this note. The
   statements above are the project's own description of it.
 - **No copy of the original history has been recorded here.** If the commits that held the lists

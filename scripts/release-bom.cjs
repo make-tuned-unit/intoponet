@@ -144,7 +144,8 @@ function shippedFilesAndData(root = repoRoot) {
       version: '48',
       supplier: 'Unicode, Inc.',
       description: 'Country names in the languages of the news feeds, from Unicode CLDR. Copyright © 1991-2026 Unicode, Inc. Compiled into the app.',
-      licenses: [{ license: { id: 'Unicode-3.0' } }],
+      // (By name: the licence id list of CycloneDX 1.5, which npm writes, is older than SPDX's Unicode-3.0.)
+      licenses: [{ license: { name: 'Unicode License v3 (SPDX: Unicode-3.0)', url: 'https://www.unicode.org/license.txt' } }],
       files: ['apps/desktop/src/shared/places/countryNameData.ts'],
       source: [['website', 'https://cldr.unicode.org/'], ['license', 'https://www.unicode.org/license.txt']],
     }),
