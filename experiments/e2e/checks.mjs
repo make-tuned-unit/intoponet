@@ -931,6 +931,49 @@ export const checks = {
     await ctx.wait(`!!document.querySelector('.topbar') && !!document.querySelector('canvas')`, 30_000, 'the header and globe to render')
     const buttons = await ctx.evaluate(`[...document.querySelectorAll('.bookmark-library-button')].map((b) => (b.innerText || b.getAttribute('aria-label')).trim())`)
     for (const label of ['Private', 'Bookmarks', 'The Olds', 'Knowledge', 'My map', 'Settings']) expect(buttons.some((b) => b.includes(label)), `Header is missing "${label}". Found: ${buttons.join(', ')}`)
+    // An error nobody catches in the main process (thrown from a timer here) is logged by the app and it carries on:
+    // without the app's own listener Electron stops everything behind an alert until someone presses OK. The harness
+    // hears uncaught errors too and fails a check on any (lib.mjs), which would both hide a missing app listener
+    // (Electron's alert only shows when nobody else listens) and fail this check on its own throw: its listener is set
+    // aside for the moment of the throw, the alert is recorded instead of shown, and any other error the app logs
+    // meanwhile is handed to the harness as usual.
+    const thrownOnPurpose = 'e2e: an error thrown on purpose from a timer (APP_BOOT)'
+    let uncaught
+    try {
+      await ctx.main(`(() => {
+        const marker = ${JSON.stringify(thrownOnPurpose)}
+        const probe = globalThis.__uncaughtProbe = { boxes: [], logged: 0, windows: electron.BrowserWindow.getAllWindows().length, showErrorBox: electron.dialog.showErrorBox, consoleError: console.error }
+        probe.parked = process.listeners('uncaughtException').filter((listener) => String(listener).includes('__e2eUncaught'))
+        for (const listener of probe.parked) process.removeListener('uncaughtException', listener)
+        electron.dialog.showErrorBox = (title, content) => { probe.boxes.push(String(title) + ': ' + String(content).slice(0, 200)) }
+        console.error = (...args) => {
+          const text = args.map((arg) => String(arg?.stack ?? arg)).join(' ')
+          if (text.includes(marker)) probe.logged += 1
+          else {
+            if (text.includes('uncaught error in the main process')) (globalThis.__e2eUncaught ??= []).push(text.slice(0, 700))
+            probe.consoleError(...args)
+          }
+        }
+        setTimeout(() => { throw new Error(marker) }, 10)
+        return true
+      })()`)
+      await ctx.delay(400)
+    } finally {
+      uncaught = JSON.parse(await ctx.main(`(() => {
+        const probe = globalThis.__uncaughtProbe
+        if (!probe) return 'null'
+        electron.dialog.showErrorBox = probe.showErrorBox
+        console.error = probe.consoleError
+        for (const listener of probe.parked) process.on('uncaughtException', listener)
+        delete globalThis.__uncaughtProbe
+        return JSON.stringify({ boxes: probe.boxes, logged: probe.logged, parked: probe.parked.length, newWindows: electron.BrowserWindow.getAllWindows().length - probe.windows })
+      })()`))
+    }
+    expect(uncaught?.parked === 1, `The harness's own listener for uncaught errors was not found (${uncaught?.parked}), so this step proves nothing.`)
+    expect(uncaught.boxes.length === 0, `An error nobody caught in the main process brought up Electron's blocking alert (the app has no listener of its own): ${uncaught.boxes.join(' | ')}`)
+    expect(uncaught.logged === 1, `An error nobody caught in the main process was logged ${uncaught.logged} times by the app, not once.`)
+    expect(uncaught.newWindows === 0, `An error nobody caught in the main process opened ${uncaught.newWindows} new window(s).`)
+    expect(await ctx.evaluate(`window.intoponet.browserHost.getTabs().then((tabs) => Array.isArray(tabs))`), 'After an error nobody caught in the main process, the app no longer answers its window.')
     // The app's own page runs under its Content-Security-Policy: an inline script, or an image from a host it does not use,
     // is refused there. Main hears each refusal the page reports; none may come from what the app loads itself (it reloads twice below).
     await ctx.main(`(() => { const wc = electron.BrowserWindow.getAllWindows().find((w) => w.webContents.getURL().includes('index.html')).webContents; globalThis.__cspRefusals = []; wc.on('console-message', (details) => { if (/Content Security Policy/.test(String(details.message))) globalThis.__cspRefusals.push(String(details.message).slice(0, 240)) }); return true })()`)
@@ -976,7 +1019,7 @@ export const checks = {
     const recovered = await appWindowRecovers(ctx)
     const refusals = await ctx.main('globalThis.__cspRefusals')
     expect(refusals.length === 0, `The app's own page refused something it loads itself: ${refusals.join(' | ')}`)
-    return `Header: ${buttons.join(' · ')}. Its page refused an inline script and a stranger's image, and nothing of its own across two reloads. A damaged profile opened, its unreadable files kept aside and an earlier run's unfinished temporary files deleted. ${recovered}`
+    return `Header: ${buttons.join(' · ')}. Its page refused an inline script and a stranger's image, and nothing of its own across two reloads. An error thrown from a timer in the main process was logged without an alert and the app carried on. A damaged profile opened, its unreadable files kept aside and an earlier run's unfinished temporary files deleted. ${recovered}`
   },
 
   async GLOBE_LIVE(ctx) {
@@ -2763,8 +2806,11 @@ export const checks = {
   async ROUGH_TRANSLATE(ctx) {
     await ctx.waitForNews()
     await ctx.flyTo('Faroe Islands')
-    await ctx.delay(3000)
-    await ctx.click('.globe-list .globe-row', 'Faroe')
+    // The Faroe Islands' own news row ("N stories · M outlets"): not a story peak that names them (its panel has no
+    // headline list, so the waits below would run out), nor the Wikipedia reads row of the same name.
+    const faroeNews = `[...document.querySelectorAll('.globe-list .globe-row')].find((row) => row.querySelector('strong')?.innerText.trim() === 'Faroe Islands' && /\\bstor(y|ies)\\b/.test(row.querySelector('small')?.innerText ?? ''))`
+    await ctx.wait(`!!${faroeNews}`, 30_000, 'the Faroe Islands’ news in the list after flying there')
+    await ctx.evaluate(`${faroeNews}.click(); true`)
     // Nothing to press: Icelandic downloads by itself and the Faroese headlines translate through it.
     await ctx.wait(`!!document.querySelector('.tr-headline-bar')`, 60_000, 'the headline translation bar for Faroese headlines')
     await ctx.wait(`[...document.querySelectorAll('.globe-headlines small')].some((s) => /via Icelandic/.test(s.innerText))`, 240_000, 'headlines labelled "rough, via Icelandic"')
