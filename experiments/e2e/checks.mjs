@@ -1090,6 +1090,11 @@ export const checks = {
     expect(recent.length >= 2 && recent.every((y) => y >= new Date().getFullYear() - 25), `"Recent history" is not recent: ${recent.join(', ') || 'none'}`)
     const headlines = await ctx.evaluate(`document.querySelectorAll('.globe-headlines li').length`)
     expect(headlines >= 3, `Only ${headlines} local headlines for Canada.`)
+    // "N stories from M local outlets": never fewer outlets than the headlines under it name.
+    const counted = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getNewsDigest().then((raw) => JSON.stringify(JSON.parse(raw).countries.map((c) => ({ code: c.countryCode, outlets: c.outletCount, named: new Set(c.headlines.map((h) => h.publisher)).size, long: c.headlines.filter((h) => h.title.length > 220).length }))))`))
+    const short = counted.filter((country) => country.outlets < country.named)
+    expect(short.length === 0, `Countries counting fewer outlets than their headlines name: ${JSON.stringify(short.slice(0, 5))}`)
+    expect(counted.every((country) => country.long === 0), `Headlines longer than a line allows: ${JSON.stringify(counted.filter((country) => country.long).slice(0, 5))}`)
     // The panel must fit: no clipped sections.
     const clipped = await ctx.evaluate(`(() => { const el = document.querySelector('.globe-context'); return el.scrollHeight > el.clientHeight + 2 })()`)
     expect(!clipped, 'The bigger picture card is clipped inside the panel.')
@@ -1157,6 +1162,15 @@ export const checks = {
     const scroll = JSON.parse(await ctx.evaluate(`(() => { const el = document.querySelector('.globe-panel .world-stories'); const before = el.scrollTop; el.scrollTop = 400; return JSON.stringify({ moved: el.scrollTop - before, overflow: el.scrollHeight > el.clientHeight }) })()`))
     expect(!scroll.overflow || scroll.moved > 0, 'The World list overflows but cannot be scrolled.')
     const stories = await ctx.evaluate(`document.querySelectorAll('.world-list > li').length`)
+    // Counted truthfully: every country a story lists headlines from is one it counts, it lists no more outlets than it
+    // counts, and a country is one of its words, never two ("estados" and "unidos" once made a story).
+    const world = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getNewsDigest().then((raw) => JSON.stringify(JSON.parse(raw).global))`))
+    for (const story of world) {
+      const listed = [...new Set(story.headlines.filter((headline) => !headline.international).map((headline) => headline.countryCode))]
+      expect(listed.every((code) => story.countries.includes(code)), `"${story.title}" lists a headline from a country it does not count: ${listed.filter((code) => !story.countries.includes(code))}`)
+      expect(story.outletCount >= story.headlines.length, `"${story.title}" counts ${story.outletCount} outlets and lists ${story.headlines.length}.`)
+      expect(!(story.terms.includes('estados') && story.terms.includes('unidos')), `"${story.title}" is a story only because its headlines name the United States: ${story.terms}`)
+    }
     return `${stories} world stories; scrolls ${scroll.moved}px; ${offline}.`
   },
 
@@ -1168,6 +1182,9 @@ export const checks = {
     const heights = digest.mountains.map((m) => m.height)
     expect(heights.every((h, i) => i === 0 || heights[i - 1] >= h), `Story mountains are not ordered tallest first: ${JSON.stringify(digest.mountains.map((m, i) => [i, m.coverage, m.height]).filter(([i], _, all) => i > 0 && all[i - 1][2] < all[i][2]))}`)
     expect(digest.mountains.every((m) => m.height > 0 && m.height < 1 && m.outlets >= 2), 'A story mountain has an out-of-range height or fewer than two outlets.')
+    // "N outlets · H in its country · K other countries": the countries listed account for every outlet counted (the list is never cut short).
+    const uncounted = digest.mountains.filter((m) => m.homeOutlets + m.internationalDesks + m.countries.reduce((sum, country) => sum + country.outlets, 0) < m.outlets)
+    expect(uncounted.length === 0, `Story mountains whose listed countries do not account for their outlets: ${JSON.stringify(uncounted.slice(0, 3).map((m) => [m.title, m.outlets, m.homeOutlets, m.countries.length]))}`)
     // Highlights › Peaks ranks the same way as the summits: the story mountains, tallest first. Choosing one pins it.
     expect(await ctx.click('.globe-tabs button', 'Peaks'), 'Highlights tab "Peaks" is missing.')
     await ctx.wait(`document.querySelectorAll('.story-peak-list .story-peak-row').length >= 5`, 15_000, 'the story peaks under Peaks')

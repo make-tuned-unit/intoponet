@@ -20,6 +20,8 @@ const regionNames = (() => {
   }
 })()
 const countryName = (code: string): string => regionNames?.of(code) ?? code
+/** A story's word as a person reads it: a country's is its name ("south-africa" is "south africa"). */
+export const termLabel = (term: string): string => term.replace(/-/g, ' ')
 
 /** What the World list says while no story is covered across several countries: offline, that it waits for a connection. */
 export function worldEmptyText(online: boolean): string {
@@ -136,7 +138,7 @@ export function WorldStories({
                     type="button"
                     className="world-row"
                     onClick={(event) => { if (event.shiftKey) previewLink(story.url); else toggle(story) }}
-                    title={`Open the article and see where it was covered (⇧-click to preview it over the globe). Local outlets in ${story.countries.length} countries${story.internationalDesks ? ` and ${story.internationalDesks} international desks` : ''} covered it (${story.outletCount} outlets in all). Shared words: ${story.terms.join(', ')}.`}
+                    title={`Open the article and see where it was covered (⇧-click to preview it over the globe). Local outlets in ${story.countries.length} countries${story.internationalDesks ? ` and ${story.internationalDesks} international desks` : ''} covered it (${story.outletCount} outlets in all). Shared words: ${story.terms.map(termLabel).join(', ')}.`}
                   >
                     <span className="world-rank">{index + 1}</span>
                     <span className="world-text">
