@@ -257,6 +257,42 @@ describe('Time Machine backup exclusion intent', () => {
     expect(run).not.toHaveBeenCalled()
   })
 
+  it('keeps at most one reapply waiting while a slow one runs, however often the stores are saved', async () => {
+    const path = await makeRoot()
+    const paths = pathsIn(path)
+    const intentPath = join(path, 'backup-exclusion.json')
+    await writeFile(intentPath, JSON.stringify({ excluded: true }))
+    await writeFile(paths[0]!, 'sealed')
+    const finish: Array<() => void> = []
+    const run = vi.fn((args: string[]) => args[0] === 'addexclusion' ? new Promise<{ stdout: string }>((resolve) => finish.push(() => resolve({ stdout: '' }))) : Promise.resolve({ stdout: '' }))
+    let listener: ((event: 'rename' | 'change', filename: string | null) => void) | null = null
+    const watcher = new EventEmitter() as FSWatcher
+    watcher.close = () => undefined
+    const stop = watchBackupExclusionPaths(path, paths, intentPath, () => undefined, {
+      platform: 'darwin', available: true, exists: existsSync, run,
+      watchDirectory: (_path, onEvent) => { listener = onEvent; return watcher },
+    })
+    try {
+      await vi.waitFor(() => expect(run).toHaveBeenCalledTimes(1))
+      // The startup apply is still running: twenty saves, each a moment apart.
+      for (let i = 0; i < 20; i += 1) {
+        listener!('rename', 'private-library.v1.seal')
+        await new Promise((resolve) => setTimeout(resolve, 110))
+      }
+      finish.shift()!()
+      await vi.waitFor(() => expect(run).toHaveBeenCalledTimes(2))
+      finish.shift()!()
+      await new Promise((resolve) => setTimeout(resolve, 150))
+      expect(run).toHaveBeenCalledTimes(2)
+      // A save after that is applied again.
+      listener!('rename', 'private-library.v1.seal')
+      await vi.waitFor(() => expect(run).toHaveBeenCalledTimes(3))
+      finish.shift()!()
+    } finally {
+      stop()
+    }
+  }, 15_000)
+
   it('gives tmutil time for every path it is asked about, not one short limit for all of them', () => {
     // 11 s a path was measured: four stores must not be cut off after the first.
     expect(tmutilTimeoutMs(['addexclusion', '/a'])).toBeGreaterThanOrEqual(15_000)

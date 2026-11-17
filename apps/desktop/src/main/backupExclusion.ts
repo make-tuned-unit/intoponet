@@ -188,8 +188,14 @@ export function watchBackupExclusionPaths(
     timer = null
     pending = false
   }
+  // One reapply waiting at most: every save of the library asks for one, and tmutil can take many seconds, so
+  // without this a busy hour would queue reapplies faster than they finish (and switching it off would wait behind them).
+  let reapplyWaiting = false
   const reapplyCurrentIntent = (): void => {
+    if (reapplyWaiting) return
+    reapplyWaiting = true
     void enqueueBackupOperation(intentPath, async () => {
+      reapplyWaiting = false
       if (disposed) return
       if (readBackupExclusionIntent(intentPath) === true) await applyBackupExclusion(paths, true, adapter)
     }).then(() => { if (!disposed) onStateChanged() }, () => { if (!disposed) onStateChanged() })
