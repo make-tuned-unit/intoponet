@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import type { Plugin } from 'vite'
 import { withDevShellPolicy } from './src/renderer/shellPolicy'
+import { bundledPackagesPlugin } from './bundledPackages'
 
 const updateUrlInput = process.env.INTOPONET_MAC_UPDATE_URL ?? ''
 const updateUrl = updateUrlInput
@@ -34,10 +35,13 @@ const workspacePackages = [
   '@intoponet/protection-engine',
 ]
 
+// What each build compiled in from node_modules, for the release SBOM (scripts/release-inventory.cjs).
+const bundled = (target: 'main' | 'preload' | 'renderer'): Plugin => bundledPackagesPlugin(target, resolve(__dirname, `.bundled-packages/${target}.json`))
+
 export default defineConfig({
   main: {
     define: { __INTOPONET_MAC_UPDATE_URL__: JSON.stringify(updateUrl) },
-    plugins: [externalizeDepsPlugin({ exclude: workspacePackages })],
+    plugins: [externalizeDepsPlugin({ exclude: workspacePackages }), bundled('main')],
     // Mozilla's translation glue (MPL-2.0) keeps its own name and place, out/main/vendor/bergamot-translator.js,
     // so the copy that ships can be found and checked against the vendored file (scripts/shipped-glue.cjs).
     build: {
@@ -49,7 +53,7 @@ export default defineConfig({
     },
   },
   preload: {
-    plugins: [externalizeDepsPlugin({ exclude: workspacePackages })],
+    plugins: [externalizeDepsPlugin({ exclude: workspacePackages }), bundled('preload')],
     // index: the app shell. page: the sign-in helper for web pages (no shared chunks: sandboxed preloads are one file).
     build: {
       rollupOptions: {
@@ -69,7 +73,7 @@ export default defineConfig({
         '@intoponet/local-knowledge': localKnowledge,
       },
     },
-    plugins: [react(), devShellPolicy],
+    plugins: [react(), devShellPolicy, bundled('renderer')],
     // Minified: the app shell parses about half as much script at every launch.
     // index: the app window. overlay: the address bar's suggestions as floated above a page (main/shellOverlay.ts).
     build: {

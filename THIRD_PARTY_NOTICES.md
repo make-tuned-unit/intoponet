@@ -30,8 +30,11 @@ and Intoponet does not modify them.
 
 ### npm packages in the app bundle
 
-These are the production dependencies of `apps/desktop`, plus everything they
-pull in. The workspace packages `@intoponet/*` are Intoponet's own proprietary
+These are the packages the build compiles into the app, together with the
+production dependencies of `apps/desktop` and everything they pull in. The build
+itself records which packages left code in the app (`apps/desktop/bundledPackages.ts`),
+and the release SBOM is made from that record (`scripts/release-bom.cjs`), so a
+package that ships and is missing from this table is caught by comparing the two. The workspace packages `@intoponet/*` are Intoponet's own proprietary
 code and have no third-party runtime dependencies (the ad and tracker blocker,
 `@intoponet/protection-engine`, is written for Intoponet and uses no library and
 no outside list; see "Ad and tracker blocking" in §4). Development-only tools
@@ -70,6 +73,14 @@ and each package's `package.json`.
 | culori | 4.0.2 | MIT | https://github.com/Evercoder/culori |
 | node-html-better-parser | 1.5.9 | MIT | https://github.com/Sharcoux/node-html-parser |
 | html-entities | 2.6.0 | MIT | https://github.com/mdevils/html-entities |
+| @fontsource-variable/inter (the Inter font files and their stylesheet; see §5) | 5.3.0 | OFL-1.1 | https://github.com/fontsource/font-files |
+
+As built on 2026-11-17, the build's record shows 25 npm packages with code or
+files in the app: every row above except `@babel/runtime`, `buffer`, `base64-js`,
+`ieee754` and the two type-declaration packages. Those are in the lock file as
+dependencies of packages that ship, but none of their modules is in the built
+app; they stay listed here, and the SBOM marks the ones npm reports as
+"excluded".
 
 The Export as PDF packages are listed under `devDependencies` because the build
 bundles them into the app's own files (Readability and DOMPurify as scripts run

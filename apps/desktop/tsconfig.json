@@ -7,5 +7,5 @@
     "allowImportingTsExtensions": true,
     "types": ["node", "vite/client"]
   },
-  "include": ["electron.vite.config.ts", "src"]
+  "include": ["electron.vite.config.ts", "bundledPackages.ts", "bundledPackages.test.ts", "src"]
 }

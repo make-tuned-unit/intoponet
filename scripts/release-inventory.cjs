@@ -2,10 +2,10 @@
 'use strict'
 
 const { createHash } = require('node:crypto')
-const { execFileSync } = require('node:child_process')
 const { readFileSync, statSync, writeFileSync } = require('node:fs')
 const path = require('node:path')
 const { normalizeMacUpdateUrl } = require('./update-config.cjs')
+const { generateReleaseBom } = require('./release-bom.cjs')
 
 const root = path.resolve(__dirname, '..')
 
@@ -56,6 +56,8 @@ function addBundledRuntimes(bom, { electronVersion, chromiumVersion, electronToC
     purl: electronRef,
     scope: 'required',
     description: 'Electron runtime shipped in the macOS app bundle.',
+    licenses: [{ license: { id: 'MIT' } }],
+    externalReferences: [{ type: 'vcs', url: 'https://github.com/electron/electron' }],
   })
   components.push({
     type: 'framework',
@@ -65,6 +67,8 @@ function addBundledRuntimes(bom, { electronVersion, chromiumVersion, electronToC
     purl: chromiumRef,
     scope: 'required',
     description: 'Chromium runtime embedded by the shipped Electron version.',
+    licenses: [{ license: { name: 'BSD-3-Clause and others: Chromium, Node.js, V8 and what they include each keep their own licence; the texts ship in the app as LICENSES.chromium.html' } }],
+    externalReferences: [{ type: 'website', url: 'https://www.chromium.org' }],
     properties: [
       { name: 'intoponet:version-evidence', value: `electron-to-chromium@${electronToChromiumVersion} full-versions mapping` },
       { name: 'intoponet:runtime-component', value: 'bundled with Electron; not a separately installed package' },
@@ -156,7 +160,7 @@ function writeReleaseInventory({ outputDir, dmg, zip, updateUrl, mode, arch, ver
       chromiumVersionEvidence: `electron-to-chromium@${runtime.electronToChromiumVersion} full-versions mapping for Electron ${runtime.electronVersion}`,
     },
     dependencyTreatment: {
-      productionDependencyGraph: 'npm lockfile graph for @intoponet/desktop; workspace TypeScript packages are bundled into app.asar by electron-vite',
+      productionDependencyGraph: 'npm packages whose modules the build compiled into app.asar (recorded by the build itself), merged with the npm lockfile graph for @intoponet/desktop; a lockfile dependency with no module in the app is marked excluded. Workspace TypeScript packages are compiled into app.asar by electron-vite.',
       licenseReview: 'Package license metadata is inventory input only; no exhaustive license review is asserted.',
     },
   }
@@ -181,13 +185,15 @@ function main(args) {
   }
   const chromiumVersion = require(path.join(root, 'node_modules/electron-to-chromium/full-versions.js'))[electronPackage.version]
   if (!chromiumVersion) throw new Error(`No Chromium version mapping for Electron ${electronPackage.version}`)
-  const sbomText = execFileSync('npm', [
-    'sbom', '--workspace', '@intoponet/desktop', '--omit=dev', '--sbom-format=cyclonedx', '--package-lock-only',
-  ], { cwd: root, encoding: 'utf8' })
-  const bom = addBundledRuntimes(JSON.parse(sbomText), {
-    electronVersion: electronPackage.version,
-    chromiumVersion,
-    electronToChromiumVersion: e2cPackage.version,
+  // The application's SBOM: what the build compiled in, Electron and Chromium, and the shipped files and
+  // data (release-bom.cjs). It throws, and the release stops, if a library known to ship is missing.
+  const bom = generateReleaseBom({
+    root,
+    addRuntimes: (npmBom) => addBundledRuntimes(npmBom, {
+      electronVersion: electronPackage.version,
+      chromiumVersion,
+      electronToChromiumVersion: e2cPackage.version,
+    }),
   })
   setReproducibleBomMetadata(bom)
   const outputDir = path.dirname(path.resolve(dmg))
