@@ -9,6 +9,9 @@ export type ResourceType =
   | 'xhr'
   | 'fetch'
   | 'websocket'
+  | 'ping'
+  | 'object'
+  | 'csp_report'
   | 'other'
 
 export type BlockingCategory = 'ad' | 'tracker' | 'other'
@@ -46,6 +49,12 @@ export type CompiledRule = {
   host: string
   category: BlockingCategory
   id: string
+  /**
+   * Applies beside the public filter lists too. The other built-in rules are only a fallback for
+   * when the lists could not be loaded: with the lists in place they would override the lists'
+   * own exceptions for the same hosts.
+   */
+  always?: boolean
 }
 
 export interface ProtectionAdapter {

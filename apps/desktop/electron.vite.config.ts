@@ -2,6 +2,7 @@ import { resolve } from 'node:path'
 import react from '@vitejs/plugin-react'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import type { Plugin } from 'vite'
+import { protectionLists } from './protectionListsPlugin'
 import { withDevShellPolicy } from './src/renderer/shellPolicy'
 
 const updateUrlInput = process.env.INTOPONET_MAC_UPDATE_URL ?? ''
@@ -37,7 +38,15 @@ const workspacePackages = [
 export default defineConfig({
   main: {
     define: { __INTOPONET_MAC_UPDATE_URL__: JSON.stringify(updateUrl) },
-    plugins: [externalizeDepsPlugin({ exclude: workspacePackages })],
+    plugins: [externalizeDepsPlugin({ exclude: workspacePackages }), protectionLists()],
+    // The adblocker library (MPL-2.0) stays in a file of its own, apart from Intoponet's code (THIRD_PARTY_NOTICES.md §1).
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: (id) => (/node_modules\/(@ghostery|@remusao|tldts-experimental|tldts-core)\//.test(id) ? 'adblocker' : undefined),
+        },
+      },
+    },
   },
   preload: {
     plugins: [externalizeDepsPlugin({ exclude: workspacePackages })],

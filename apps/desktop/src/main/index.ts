@@ -385,6 +385,14 @@ let panelBoundsReported = false
 let lastKnownUrl = ''
 let persistenceTimer: ReturnType<typeof setTimeout> | null = null
 const protection = new LocalProtectionEngine()
+// The public filter lists (EasyList, EasyPrivacy), compiled when the app was built (protectionListsPlugin.ts).
+// Read here, before any page session exists, so no request is ever judged without them; it takes a few
+// milliseconds. If the file cannot be read, the engine's built-in rules still block the best-known hosts.
+try {
+  if (!protection.loadLists(readFileSync(join(__dirname, 'protection/engine.bin')))) console.error('The filter lists could not be read; blocking with the built-in rules only.')
+} catch (error) {
+  console.error('The filter lists could not be loaded; blocking with the built-in rules only:', error)
+}
 const protectionPages = new ProtectionPageContextStore()
 /** Recently closed tabs (⌘⇧T, History › Recently Closed): this session only, never private tabs. */
 const closedTabs = new ClosedTabs(25)
@@ -908,6 +916,38 @@ async function loadExceptions(): Promise<void> {
 }
 
 const cosmeticStyleId = 'intoponet-cosmetic'
+/** The filter list's general hiding rules for what a frame contains (see applyElementRules); a style element of its own. */
+const cosmeticElementsStyleId = 'intoponet-cosmetic-elements'
+/** The class names, ids and link addresses in a frame (bounded), for looking up the list's general hiding rules. */
+const COLLECT_ELEMENT_NAMES_SCRIPT = `(() => {
+  const classes = new Set(), ids = new Set(), hrefs = new Set();
+  const max = 4000;
+  for (const element of document.querySelectorAll('[class],[id],a[href]')) {
+    if (classes.size < max && element.classList) for (const name of element.classList) classes.add(name);
+    if (ids.size < max && element.id && typeof element.id === 'string') ids.add(element.id);
+    if (hrefs.size < 1000 && element.tagName === 'A') { const href = element.getAttribute('href'); if (href && href.length < 300) hrefs.add(href); }
+  }
+  return { classes: [...classes].slice(0, max), ids: [...ids].slice(0, max), hrefs: [...hrefs] };
+})()`
+
+/**
+ * The filter list has tens of thousands of general rules for hiding ad elements (".ad-slot", "#sponsored-links", …).
+ * Only those that can apply are put in a frame: the frame says which class names, ids and link addresses it has,
+ * and gets the rules for those. With protection off for the page (`pageUrl` null), the rules are taken out.
+ */
+async function applyElementRules(frame: Electron.WebFrameMain, pageUrl: string | null): Promise<void> {
+  try {
+    if (frame.detached) return
+    let css = ''
+    if (pageUrl) {
+      const found = (await frame.executeJavaScript(COLLECT_ELEMENT_NAMES_SCRIPT)) as { classes?: string[]; ids?: string[]; hrefs?: string[] } | null
+      if (found && typeof found === 'object') css = protection.cosmeticRulesForElements(pageUrl, found)
+    }
+    if (!frame.detached) await frame.executeJavaScript(cosmeticInjection(css, cosmeticElementsStyleId))
+  } catch {
+    // The frame went away or navigated; its next document is handled when it loads.
+  }
+}
 
 function cosmeticInjection(css: string, styleId = cosmeticStyleId): string {
   return `(() => {
@@ -974,8 +1014,9 @@ async function applyCosmeticFilters(
 ): Promise<void> {
   try {
     if (contents.isDestroyed()) return
-    const pageUrl = options.url ?? lastKnownUrl
-    const origin = options.url === undefined ? currentOrigin() : (() => { try { return new URL(options.url).origin } catch { return '' } })()
+    // The page's own address: a tab loading in the background is not the page shown (lastKnownUrl).
+    const pageUrl = options.url ?? (contents.getURL() || lastKnownUrl)
+    const origin = originOfUrl(pageUrl)
     const rules =
       origin && !protection.isSiteEnabled(origin, 'default')
         ? null
@@ -999,7 +1040,9 @@ async function applyCosmeticFilters(
         } catch {
           // The frame can detach between the snapshot and the injection; a later load may try again.
           done.delete(key)
+          return
         }
+        await applyElementRules(frame, rules && protection.hasLists() ? pageUrl : null)
       }),
     )
   } catch {
@@ -1100,7 +1143,7 @@ async function pickSiteElement(): Promise<SiteTweakPick> {
 }
 
 /** Addresses of blocked ad frames, pictures and media, per page, so their empty boxes can be hidden. */
-const blockedAdAddresses = new Map<number, { urls: string[]; timer: ReturnType<typeof setTimeout> | null }>()
+const blockedAdAddresses = new Map<number, { urls: string[]; timer: ReturnType<typeof setTimeout> | null; elementRulesAt?: number }>()
 
 /** Hides the space blocked ads leave behind (adCollapse.ts), in every frame, soon (batched). */
 function scheduleAdCollapse(contentsId: number, url?: string, delay = 250): void {
@@ -1119,9 +1162,14 @@ function scheduleAdCollapse(contentsId: number, url?: string, delay = 250): void
     const origin = (() => { try { return new URL(contents.getURL()).origin } catch { return '' } })()
     if (!origin.startsWith('http') || !protection.isSiteEnabled(origin, 'default') || !protection.cosmeticRules('', '').hideSelectors.length) return
     const script = collapseAdSlotsScript(pending.urls)
+    // Elements added since the page loaded get the list's hiding rules too (at most every two seconds per page).
+    const elementRules = protection.hasLists() && Date.now() - (pending.elementRulesAt ?? 0) > 2_000
+    if (elementRules) pending.elementRulesAt = Date.now()
     // (Not contents.mainFrame: this timer can come after the page's renderer crashed, and reading it throws then.)
     for (const frame of framesOf(contents)) {
-      if (!frame.detached) void frame.executeJavaScript(script).catch(() => undefined)
+      if (frame.detached) continue
+      if (elementRules) void applyElementRules(frame, contents.getURL()).then(() => { if (!frame.detached) void frame.executeJavaScript(script).catch(() => undefined) })
+      else void frame.executeJavaScript(script).catch(() => undefined)
     }
   }, delay)
 }

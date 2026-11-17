@@ -1,10 +1,11 @@
 import type { CompiledRule } from './types'
 
-// Local fixture hosts only. EasyList / EasyPrivacy are not bundled until
-// licence and attribution review (AB-06 / definition of done).
+// The built-in host rules. The two test hosts always apply. The rest are what the app blocks when
+// the public filter lists (EasyList and EasyPrivacy, see lists.ts and ../lists) could not be
+// loaded; with the lists loaded, the lists decide for these hosts, exceptions included.
 export const fixtureRules: CompiledRule[] = [
-  { id: 'fix-ads-intoponet-test', host: 'ads.intoponet.test', category: 'ad' },
-  { id: 'fix-track-intoponet-test', host: 'track.intoponet.test', category: 'tracker' },
+  { id: 'fix-ads-intoponet-test', host: 'ads.intoponet.test', category: 'ad', always: true },
+  { id: 'fix-track-intoponet-test', host: 'track.intoponet.test', category: 'tracker', always: true },
   { id: 'fix-doubleclick', host: 'doubleclick.net', category: 'ad' },
   { id: 'fix-googlesyndication', host: 'googlesyndication.com', category: 'ad' },
   { id: 'fix-googleadservices', host: 'googleadservices.com', category: 'ad' },
@@ -37,7 +38,9 @@ export const fixtureRules: CompiledRule[] = [
   { id: 'fix-hotjar-io', host: 'hotjar.io', category: 'tracker' },
 ]
 
-// Conservative container selectors only. Not a licensed public list.
+// Conservative container selectors, Intoponet's own (not from a public list). They are also what
+// Export as PDF removes and what the empty-slot cleanup looks for; EasyList's element rules are added
+// to pages as CSS beside them (see ProtectionLists.pageCss and elementCss).
 export const fixtureHideSelectors = [
   '.adsbygoogle',
   '[id^="google_ads"]',

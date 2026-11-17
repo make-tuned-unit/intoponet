@@ -32,6 +32,7 @@ Do not promise 100% ad removal, circumvent paywalls, automatically consent to co
 - **Primary evaluation:** [Brave adblock-rust](https://github.com/brave/adblock-rust), for Adblock-compatible network and cosmetic rules. Verify exact release APIs, licence, and distribution obligations before integration.
 - **Reference:** [uBlock Origin](https://github.com/gorhill/uBlock), for semantics and test cases; do not copy implementation without licence review.
 - **Filter lists:** [EasyList and EasyPrivacy](https://easylist.to/). Review current licences and attribution requirements before bundling. Maintain a pinned last-known-good version.
+- **Chosen (2026-11-17):** the matcher is [Ghostery's adblocker library](https://github.com/ghostery/adblocker) (`@ghostery/adblocker`, MPL-2.0), behind `LocalProtectionEngine`: it is plain JavaScript and runs in Electron's main process as it is, where adblock-rust's Node binding (`adblock-rs`, also MPL-2.0) is a native module that its install step compiles with Cargo, and that a signed Mac app would have to build per architecture, sign and keep outside app.asar. It loads a list compiled at build time in about 10 ms. The lists are EasyList and EasyPrivacy, shipped unmodified as data files under CC BY-SA 3.0 with a recorded source, date and checksum (`packages/protection-engine/lists/manifest.json`, `scripts/update-protection-lists.mjs`). The licence review is in `THIRD_PARTY_NOTICES.md` §4. Rules apply to other sites' requests only; a site's own requests are never blocked.
 - **Browser shell:** CEF or Electron with Chromium. Keep engine-specific request interception behind a common interface. Do not fork Chromium for this feature alone.
 
 ## Architecture
@@ -179,7 +180,7 @@ Profile on actual midrange hardware; revise thresholds from benchmarks, never by
 - [ ] Untrusted pages cannot access privileged settings or other profiles.
 - [ ] No personal browsing data is transmitted by the blocking subsystem.
 - [ ] Performance and compatibility results are documented.
-- [ ] Dependencies and filter-list licences/attribution are reviewed.
+- [x] Dependencies and filter-list licences/attribution are reviewed (`THIRD_PARTY_NOTICES.md` §1 and §4, 2026-11-17; not yet seen by a lawyer).
 
 ## Implementation sequence for Cursor
 
