@@ -57,9 +57,9 @@ describe('LocalProtectionEngine', () => {
 
   it('returns fixture cosmetic hide rules when advertising is on', () => {
     const engine = new LocalProtectionEngine()
-    expect(engine.cosmeticRules('', '').hideSelectors.length).toBeGreaterThan(0)
+    expect(engine.cosmeticRules().hideSelectors.length).toBeGreaterThan(0)
     engine.setCategoryEnabled('ad', false)
-    expect(engine.cosmeticRules('', '').hideSelectors).toEqual([])
+    expect(engine.cosmeticRules().hideSelectors).toEqual([])
   })
 })
 

@@ -1,11 +1,10 @@
 import type { CompiledRule } from './types'
 
-// The built-in host rules. The two test hosts always apply. The rest are what the app blocks when
-// the public filter lists (EasyList and EasyPrivacy, see lists.ts and ../lists) could not be
-// loaded; with the lists loaded, the lists decide for these hosts, exceptions included.
+// The host rules this project started with, written for it by hand. The two test hosts are what
+// the unit tests and the e2e checks ask for.
 export const fixtureRules: CompiledRule[] = [
-  { id: 'fix-ads-intoponet-test', host: 'ads.intoponet.test', category: 'ad', always: true },
-  { id: 'fix-track-intoponet-test', host: 'track.intoponet.test', category: 'tracker', always: true },
+  { id: 'fix-ads-intoponet-test', host: 'ads.intoponet.test', category: 'ad' },
+  { id: 'fix-track-intoponet-test', host: 'track.intoponet.test', category: 'tracker' },
   { id: 'fix-doubleclick', host: 'doubleclick.net', category: 'ad' },
   { id: 'fix-googlesyndication', host: 'googlesyndication.com', category: 'ad' },
   { id: 'fix-googleadservices', host: 'googleadservices.com', category: 'ad' },
@@ -15,7 +14,7 @@ export const fixtureRules: CompiledRule[] = [
   { id: 'fix-scorecardresearch', host: 'scorecardresearch.com', category: 'tracker' },
   { id: 'fix-adsrvr', host: 'adsrvr.org', category: 'ad' },
   { id: 'fix-ads-twitter', host: 'ads-twitter.com', category: 'ad' },
-  { id: 'fix-facebook-pixel', host: 'facebook.net', category: 'tracker' },
+  { id: 'fix-facebook-pixel', host: 'connect.facebook.net', category: 'tracker', pathIncludes: ['/fbevents.js', '/signals/'] },
   { id: 'fix-hotjar', host: 'hotjar.com', category: 'tracker' },
   { id: 'fix-taboola', host: 'taboola.com', category: 'ad' },
   { id: 'fix-outbrain', host: 'outbrain.com', category: 'ad' },
@@ -38,9 +37,8 @@ export const fixtureRules: CompiledRule[] = [
   { id: 'fix-hotjar-io', host: 'hotjar.io', category: 'tracker' },
 ]
 
-// Conservative container selectors, Intoponet's own (not from a public list). They are also what
-// Export as PDF removes and what the empty-slot cleanup looks for; EasyList's element rules are added
-// to pages as CSS beside them (see ProtectionLists.pageCss and elementCss).
+// Conservative container selectors, Intoponet's own. They are also what Export as PDF removes and
+// what the empty-slot cleanup looks for.
 export const fixtureHideSelectors = [
   '.adsbygoogle',
   '[id^="google_ads"]',
