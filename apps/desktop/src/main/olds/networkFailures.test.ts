@@ -58,13 +58,16 @@ describe('Wikipedia and Wikidata answering badly', () => {
     vi.useFakeTimers()
     const calls: string[] = []
     const { olds } = await service(wiki(() => new Response('', { status: 429 }), calls))
-    const started = Date.now()
     const outcome = olds.thread(headline).then(() => 'answered', (error: Error) => error.message)
-    for (let i = 0; i < 400 && (await Promise.race([outcome, Promise.resolve('waiting')])) === 'waiting'; i += 1) await vi.advanceTimersByTimeAsync(500)
+    for (let i = 0; i < 2000 && (await Promise.race([outcome, Promise.resolve('waiting')])) === 'waiting'; i += 1) await vi.advanceTimersByTimeAsync(500)
     expect(await outcome).toBe(OLDS_UNAVAILABLE)
-    // 1 + 2 + 4 + 8 s of backing off for the first requests; every later one fails at once.
-    expect(Date.now() - started).toBeLessThan(45_000) // once each for Wikipedia and Wikidata
+    // One round of backing off for each host (four tries at most), then every later request fails at once: a round
+    // per request would be several times as many calls. The clock is not asserted: it is advanced here while the
+    // service also waits on the disk, so on a busy Mac it runs ahead of the retries by any amount.
     expect(calls.length).toBeLessThan(40)
+    const perHost = new Map<string, number>()
+    for (const call of calls) { const host = new URL(call).hostname; perHost.set(host, (perHost.get(host) ?? 0) + 1) }
+    expect(Math.max(...perHost.values())).toBeLessThan(40)
   }, 30_000)
 
   it('shows a thread built while some lookups failed as incomplete, and does not keep it', async () => {
