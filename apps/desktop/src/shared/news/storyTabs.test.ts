@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canonicalAddress, matchTabsToStories, mountainHeadlines, namesStory, sameHeadline, titleKeys, withWorldStories, type StoryHeadlines } from './storyTabs'
+import { canonicalAddress, keepStoryMatches, matchTabsToStories, mountainHeadlines, namesStory, sameHeadline, titleKeys, withWorldStories, type StoryHeadlines } from './storyTabs'
 
 const HEADLINE = 'Flood waters rise across the northern river delta as rescue teams reach villages'
 const STORIES: StoryHeadlines[] = [
@@ -183,5 +183,43 @@ describe('story evidence', () => {
     ], merged)
     expect(labels.has('theatre')).toBe(false)
     expect(labels.get('vigil')?.storyId).toBe('world:gs-leon-papa')
+  })
+})
+
+describe('keepStoryMatches', () => {
+  const story = (id: string, label: string, title: string): StoryHeadlines => ({ id, label, headlines: [{ title, url: `https://example.org/${id}` }] })
+  const tab = { id: 't1', url: 'https://harbour.example/a', title: 'Trump meets leaders of the Quad nations | Harbour Daily' }
+
+  it('keeps a tab with its story when the story takes a newer headline', () => {
+    const first = [story('s1', 'Quad talks', 'Trump meets leaders of the Quad nations')]
+    const matched = matchTabsToStories([tab], first)
+    expect(matched.get('t1')?.storyId).toBe('s1')
+    const held = keepStoryMatches([tab], matched, new Map(), first)
+    // The news is rebuilt: the same story, now under another outlet's headline and a new name.
+    const later = [story('s1', 'Asia trip', 'Trump to kick off Asia trip with Quad talks in Manila')]
+    const now = matchTabsToStories([tab], later)
+    expect(now.has('t1')).toBe(false)
+    const after = keepStoryMatches([tab], now, held.kept, later)
+    expect(after.matches.get('t1')).toEqual({ storyId: 's1', label: 'Asia trip' })
+  })
+
+  it('lets go when the story leaves the news, the tab goes elsewhere, or the tab is private', () => {
+    const first = [story('s1', 'Quad talks', 'Trump meets leaders of the Quad nations')]
+    const held = keepStoryMatches([tab], matchTabsToStories([tab], first), new Map(), first)
+    const other = [story('s2', 'Grammys', 'Grammy Awards: Raye and Rosalia lead nominations')]
+    expect(keepStoryMatches([tab], new Map(), held.kept, other).matches.size).toBe(0)
+    const later = [story('s1', 'Asia trip', 'Trump to kick off Asia trip')]
+    expect(keepStoryMatches([{ ...tab, url: 'https://harbour.example/b' }], new Map(), held.kept, later).matches.size).toBe(0)
+    expect(keepStoryMatches([{ ...tab, title: 'Cooking pasta for a crowd | Kitchen Notes' }], new Map(), held.kept, later).matches.size).toBe(0)
+    expect(keepStoryMatches([{ ...tab, isPrivate: true }], new Map(), held.kept, later).matches.size).toBe(0)
+    // Nothing is kept for a tab that was let go: it does not come back by itself.
+    expect(keepStoryMatches([tab], new Map(), keepStoryMatches([tab], new Map(), held.kept, other).kept, first).matches.size).toBe(0)
+  })
+
+  it('takes a match made now over the one it held', () => {
+    const stories = [story('s1', 'Quad talks', 'Trump meets leaders of the Quad nations'), story('s2', 'Summit', 'Xi, Trump and Putin to meet in Shenzhen')]
+    const held = keepStoryMatches([tab], new Map([['t1', { storyId: 's1', label: 'Quad talks' }]]), new Map(), stories)
+    const after = keepStoryMatches([tab], new Map([['t1', { storyId: 's2', label: 'Summit' }]]), held.kept, stories)
+    expect(after.matches.get('t1')?.storyId).toBe('s2')
   })
 })

@@ -6575,13 +6575,32 @@ export const checks = {
     await ctx.waitForNews()
     // A country's headline labels tabs only when it names the story: two of its terms (storyTabs.ts namesStory).
     const namesStory = (m, title) => { const words = new Set(title.normalize('NFKC').split(/[^\p{L}\p{M}\d]+/u).map((w) => w.normalize('NFD').replace(/\p{M}+/gu, '').toLowerCase().replace(/['’]s$/, ''))); return (m.terms ?? []).filter((t) => words.has(t)).length >= 2 }
-    const secondOf = (m) => (m.countries ?? []).find((c) => c.headline && c.headline.title !== m.title && namesStory(m, c.headline.title))
+    // An English headline when there is one: the app reads each language's own names for countries, which this
+    // plain reading of a headline's words does not.
+    const secondOf = (m) => { const fits = (m.countries ?? []).filter((c) => c.headline && c.headline.title !== m.title && namesStory(m, c.headline.title)); return fits.find((c) => /^en/i.test(c.headline.lang ?? '')) ?? fits[0] }
     await ctx.wait(`window.intoponet.browserHost.getNewsDigest().then((raw) => { const namesStory = ${namesStory}; const secondOf = ${secondOf}; return (JSON.parse(raw).mountains ?? []).some((m) => !!secondOf(m)) })`, 120_000, 'a story with two headlines in the news digest')
-    const digest = JSON.parse(await ctx.evaluate(`window.intoponet.browserHost.getNewsDigest()`))
-    const story = digest.mountains.find((m) => !!secondOf(m))
-    const second = secondOf(story).headline
-    const label = story.label ?? story.title
-    const storyName = label.length > 40 ? `${label.slice(0, 38)}…` : label
+    // In the first minutes of a launch the feeds are still arriving and the digest is rebuilt every few seconds; a
+    // story's headline can change with each one, and a tab is matched on the headlines the digest has now. The two
+    // articles are taken from a digest that has settled (the same one for 30 s), so they are still its headlines when
+    // the tabs are looked at.
+    {
+      const digestTime = () => ctx.evaluate(`window.intoponet.browserHost.getNewsDigest().then((raw) => JSON.parse(raw).generatedAt ?? '')`)
+      let seenAt = await digestTime()
+      let since = Date.now()
+      for (const started = Date.now(); Date.now() - started < 150_000 && Date.now() - since < 30_000;) {
+        await ctx.delay(2000)
+        const at = await digestTime()
+        if (at !== seenAt) { seenAt = at; since = Date.now() }
+      }
+    }
+    const digestRaw = await ctx.evaluate(`window.intoponet.browserHost.getNewsDigest()`)
+    const digest = JSON.parse(digestRaw)
+    // Stories to try, an English second headline first. Which two headlines are one story is the app's to say (a
+    // mountain's headline can belong to a World story of its own): the first pair the app marks with one story is used.
+    const candidates = [...digest.mountains.filter((m) => /^en/i.test(secondOf(m)?.headline.lang ?? '')), ...digest.mountains.filter((m) => !!secondOf(m) && !/^en/i.test(secondOf(m).headline.lang ?? ''))].slice(0, 6)
+    let story = candidates[0]
+    let second = secondOf(story).headline
+    let storyName = ''
     const escape = (text) => text.replace(/[&<>"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[char])
     // Two articles of the story (matched by their titles), a control and a private tab with a matching title.
     const titles = { '/a': `${story.title} | Harbour Daily`, '/b': `${second.title} | Tide Wire`, '/private': `${story.title} | Harbour Daily`, '/control': 'Cooking pasta for a crowd: ten easy sauces | Kitchen Notes' }
@@ -6602,7 +6621,32 @@ export const checks = {
     const requestCounts = () => JSON.stringify([...hits].sort())
     try {
       await ctx.click('button[aria-label="Pin tabs open"]')
-      for (const path of ['/a', '/b', '/control']) await openPage(ctx, `${origin}${path}`, 900)
+      // The tabs meet the news they were taken from: a rebuild that arrived while they opened may have replaced these
+      // headlines already, so that digest is shown again (sent as main sends one). Once matched, a tab keeps its story
+      // through the rebuilds that follow, which the rest of this check runs under.
+      const showDigest = () => ctx.main(`(() => { const win = electron.BrowserWindow.getAllWindows().find((w) => w.webContents.getURL().includes('index.html')); win.webContents.send('browser-host:event', { type: 'news-digest', payload: ${JSON.stringify(digestRaw)} }); return true })()`)
+      const badgeStories = () => ctx.evaluate(`JSON.stringify([...document.querySelectorAll('.tab-rail-story')].map((el) => (el.getAttribute('title') ?? '').replace(/^Part of the story: /, '')))`).then(JSON.parse)
+      const tried = []
+      let marked = []
+      for (const candidate of candidates) {
+        story = candidate
+        second = secondOf(story).headline
+        titles['/a'] = `${story.title} | Harbour Daily`
+        titles['/b'] = `${second.title} | Tide Wire`
+        titles['/private'] = titles['/a']
+        for (const path of ['/a', '/b']) await openPage(ctx, `${origin}${path}`, 900)
+        await showDigest()
+        for (let i = 0; i < 40; i += 1) { marked = await badgeStories(); if (marked.length === 2) break; await ctx.delay(250) }
+        if (marked.length === 2 && marked[0] === marked[1]) break
+        // Not one story to the app (no mark, or two stories): these tabs go, and the next pair is tried.
+        tried.push(`"${story.title.slice(0, 50)}" + "${second.title.slice(0, 50)}": ${marked.length ? marked.join(' / ') : 'no mark'}`)
+        for (const tab of await tabs()) await ctx.evaluate(`${host}.closeTab(${JSON.stringify(tab.id)}).then(() => true)`)
+        await ctx.delay(600)
+        marked = []
+      }
+      expect(marked.length === 2 && marked[0] === marked[1], `No two headlines of a story mountain were marked as one story when opened as tabs: ${tried.join('; ')}.`)
+      storyName = marked[0].length > 40 ? `${marked[0].slice(0, 38)}…` : marked[0]
+      await openPage(ctx, `${origin}/control`, 900)
       await ctx.wait(`document.querySelectorAll('.tab-rail-story').length === 2`, 30_000, 'a story badge on each of the two articles')
       const [a, b, control] = [await byUrl('/a'), await byUrl('/b'), await byUrl('/control')]
       expect(!!a && !!b && !!control, 'The test pages did not open as tabs.')
@@ -6622,7 +6666,9 @@ export const checks = {
       // The button shows while a loose tab matches a story (news rebuilds can briefly change the matches).
       await ctx.wait(`!!document.querySelector('button[aria-label="Group by story"]')`, 15_000, 'the Group by story button')
       expect(await ctx.click('button[aria-label="Group by story"]'), 'Group by story could not be clicked.')
-      await ctx.wait(`window.intoponet.browserHost.getTabFolders().then((f) => f.some((x) => x.storyId))`, 8000, 'the story folder')
+      let storyFolder = false
+      for (let i = 0; i < 40 && !storyFolder; i += 1) { await ctx.delay(200); storyFolder = (await folders()).some((folder) => folder.storyId) }
+      expect(storyFolder, `Group by story made no story folder: folders ${JSON.stringify(await folders())}; tabs ${JSON.stringify((await tabs()).map((tab) => ({ title: tab.title.slice(0, 40), private: tab.isPrivate, folder: tab.folderId ?? null })))}; badges ${await ctx.evaluate(`document.querySelectorAll('.tab-rail-story').length`)}; the sidebar says "${(await ctx.evaluate(`document.querySelector('.tab-rail')?.innerText ?? ''`)).replace(/\n+/g, ' | ').slice(-260)}".`)
       const made = (await folders()).find((folder) => folder.storyId)
       expect(made.name === storyName, `The folder is named "${made.name}", not for the story "${storyName}".`)
       const grouped = await tabs()
@@ -6644,7 +6690,7 @@ export const checks = {
       await ctx.delay(800)
       expect((await folders()).length === 0 && (await byUrl('/b'))?.split?.partnerId === control.id, `Group by story broke a pair or made a folder for one article: ${JSON.stringify({ folders: await folders(), b: await byUrl('/b') })}.`)
       // ...and main, asked for both articles anyway, moves only the one not in a pair.
-      const pairUndo = JSON.parse(await ctx.evaluate(`${host}.groupTabs([{ name: ${JSON.stringify(label)}, tabIds: [${JSON.stringify(a.id)}, ${JSON.stringify(b.id)}], storyId: ${JSON.stringify(made.storyId)} }]).then((r) => JSON.stringify(r))`))
+      const pairUndo = JSON.parse(await ctx.evaluate(`${host}.groupTabs([{ name: ${JSON.stringify(made.name)}, tabIds: [${JSON.stringify(a.id)}, ${JSON.stringify(b.id)}], storyId: ${JSON.stringify(made.storyId)} }]).then((r) => JSON.stringify(r))`))
       const [pairA, pairB] = [await byUrl('/a'), await byUrl('/b')]
       expect(!!pairA?.folderId && !pairB?.folderId && pairB?.split?.partnerId === control.id && (await byUrl('/control'))?.split?.partnerId === b.id, `Grouping one side of a pair moved it out of the pair: ${JSON.stringify({ a: pairA, b: pairB })}.`)
       expect(pairUndo.moved === 1 && pairUndo.folders === 1, `Grouping reported ${JSON.stringify(pairUndo)}; one tab moved, into one folder.`)

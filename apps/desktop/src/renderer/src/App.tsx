@@ -204,7 +204,7 @@ import { cityAliases, countryPlace, distanceKm as placeDistanceKm, nearestCountr
 import { Tour } from './tour/Tour'
 import type { TourControls } from './tour/steps'
 import { parseNewsDigest, type NewsDigest, type NewsHeadline, type RisingTerm } from '../../shared/news/newsDigest'
-import { matchTabsToStories, mountainHeadlines, withWorldStories, type StoryHeadlines } from '../../shared/news/storyTabs'
+import { keepStoryMatches, matchTabsToStories, mountainHeadlines, withWorldStories, type KeptStoryMatch, type StoryHeadlines } from '../../shared/news/storyTabs'
 import type { GlobalStory } from '../../shared/news/globalStories'
 import { isExcludedSite, type PrivacyState } from '@intoponet/browser-api'
 import { PrivacyPane } from './privacy/PrivacyPane'
@@ -753,7 +753,14 @@ export function App() {
   // Open tabs that are articles of a story, matched here on this Mac against the digest (nothing about tabs is sent).
   // Story mountains first (their summits can be highlighted), then the World tab's stories (storyTabs.ts withWorldStories).
   const storyEvidence = useMemo<StoryHeadlines[]>(() => withWorldStories(storyStories.map((story) => mountainHeadlines(story, storyLabel(story))), newsDigest?.global ?? []), [storyStories, newsDigest])
-  const tabStories = useMemo(() => matchTabsToStories(tabs, storyEvidence), [tabs, storyEvidence])
+  // A tab keeps its story while it shows the same page and the story is still in the news: the news is rebuilt every
+  // few seconds as feeds arrive, and a story's headlines change with it (storyTabs.ts keepStoryMatches).
+  const keptStoryMatches = useRef<Map<string, KeptStoryMatch>>(new Map())
+  const tabStories = useMemo(() => {
+    const held = keepStoryMatches(tabs, matchTabsToStories(tabs, storyEvidence), keptStoryMatches.current, storyEvidence)
+    keptStoryMatches.current = held.kept
+    return held.matches
+  }, [tabs, storyEvidence])
   /** A story folder hovered or focused in the sidebar: its summit and strands are drawn, the camera stays put. */
   const [storyHighlightId, setStoryHighlightId] = useState<string | null>(null)
   const [groupRequest, setGroupRequest] = useState<number | undefined>(undefined)

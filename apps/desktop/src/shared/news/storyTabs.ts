@@ -115,6 +115,39 @@ export function matchTabsToStories(tabs: StoryTabInput[], stories: StoryHeadline
   return matches
 }
 
+/** What a tab showed when it was matched to a story: the match holds while the tab still shows it. */
+export type KeptStoryMatch = { url: string; title: string; match: StoryMatch }
+
+/**
+ * Matches that stay put while the news changes under them. A story's headlines are replaced as newer ones arrive
+ * (every few seconds in the first minutes of a launch), and a tab matched a moment ago would lose its story, then get
+ * it back, with each rebuild. A tab keeps its story while the tab still shows the same page (address and title) and
+ * the story is still in the news; the story's name follows the news. A match made now always wins. Private tabs are
+ * never matched, kept or not.
+ */
+export function keepStoryMatches(
+  tabs: readonly StoryTabInput[],
+  now: ReadonlyMap<string, StoryMatch>,
+  before: ReadonlyMap<string, KeptStoryMatch>,
+  stories: readonly StoryHeadlines[],
+): { matches: Map<string, StoryMatch>; kept: Map<string, KeptStoryMatch> } {
+  const labels = new Map(stories.map((story) => [story.id, story.label]))
+  const matches = new Map<string, StoryMatch>()
+  const kept = new Map<string, KeptStoryMatch>()
+  for (const tab of tabs) {
+    if (tab.isPrivate) continue
+    const earlier = before.get(tab.id)
+    const held = earlier && earlier.url === tab.url && earlier.title === tab.title && labels.has(earlier.match.storyId)
+      ? { storyId: earlier.match.storyId, label: labels.get(earlier.match.storyId) ?? earlier.match.label }
+      : undefined
+    const match = now.get(tab.id) ?? held
+    if (!match) continue
+    matches.set(tab.id, match)
+    kept.set(tab.id, { url: tab.url, title: tab.title, match })
+  }
+  return { matches, kept }
+}
+
 /**
  * A headline names a story when it carries at least two of the story's words (its terms), or the story has
  * fewer than two. A headline that only shares one word with a story (León the city in a story about Pope
