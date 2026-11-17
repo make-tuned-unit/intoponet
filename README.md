@@ -51,7 +51,7 @@ Build and verify:
 npm run typecheck
 npm test
 npm run build
-npm run verify:features   # drives the built app through every feature check
+npm run verify:features   # drives the built app through the feature checks (add -- --tier full for those that download language models)
 ```
 
 ## Security posture

@@ -12,7 +12,7 @@ The `.openai/hosting.json` file records an earlier reserved Sites project; this 
 
 Validation (latest motion pass): Chrome guest browser desktop and 400px and 320px responsive visual checks; globe mode switches, motion pause/resume, feature selection and arrow-key tab navigation checked. JavaScript syntax and deployed-source checks also run. This is targeted website QA, not an accessibility certification.
 
-The globe uses a resized NASA Black Marble night texture already used by the desktop app. Its signal contours are procedural artwork, not live data. Feature screenshots are labeled with the version they were captured in. No external font, animation library, third-party analytics or runtime CDN is used; page views are counted by the site's own endpoint (`api/permagent-analytics`, no cookies).
+The globe uses a resized NASA Black Marble night texture already used by the desktop app. Its signal contours are procedural artwork, not live data. Feature screenshots are labeled with the version they were captured in. No external font, animation library or runtime CDN is used. Page views are counted through the site's own endpoint (`api/permagent-analytics`: no cookies, no stored IP address or user agent), kept in the registry's database and drained by the Permagent daemon.
 
 Motion is paused offscreen and when the document is hidden. The visitor can pause continuous motion, and the reduced-motion media preference disables decorative CSS motion and stops the globe loop. A static globe fallback remains when WebGL or its texture is unavailable. See `docs/WEBSITE_MOTION_DIRECTION.md` for research and implementation rationale.
 
