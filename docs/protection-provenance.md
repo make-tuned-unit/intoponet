@@ -14,29 +14,44 @@ original; here they could have opened it. What the records support is "independe
 ## What was in the repository, and when
 
 All times are commit times on 17 November 2026, UTC−4. Commits are named by time and subject as
-well as by hash, because the hashes change if the history is rewritten before it is first pushed.
+well as by hash. The hashes below are the ones the commits have had since 18 November 2026, when
+the history was rewritten (see "The history was rewritten before the first push" below); the table
+describes what each commit did when it was made.
 
 | Time | Commit | What it did |
 |---|---|---|
-| 08:20:05 | `74acae7` "EasyList and EasyPrivacy are in the repository as unmodified data files, with their source, date and checksum recorded" | Added `packages/protection-engine/lists/` (`easylist.txt`, `easyprivacy.txt`, `manifest.json`, `NOTICE.txt`) and `scripts/update-protection-lists.mjs`, which fetched the two lists as published. |
-| 08:20:05 | `80bff91` "Ads and trackers on other sites are blocked with EasyList and EasyPrivacy, in every page session" | Made the engine match requests against the two lists with the Ghostery adblocker library (`@ghostery/adblocker`, MPL-2.0), added as a dependency, and added a build step that compiled the two lists into a binary file the app read. (The removal commit names `tldts-experimental` as a dependency removed with it.) |
-| 08:49:52 and 08:55:44 | `00ac8bd`, `6b0abb0` | Changes to how blocked requests were counted and to how the library was built into the app. |
-| 09:30:09 | `87ee920` "Website says what the ad and tracker blocking does and does not block; packaging requires the lists in the app" | The packaging script was made to require the list files. |
-| 10:27:49 | `696ff4a` "The ad and tracker blocker no longer uses EasyList, EasyPrivacy, the Ghostery library or tldts: Intoponet's own matcher and site table take their place" | Removed the `lists/` folder and its four files, the build step, `scripts/update-protection-lists.mjs`, and the two dependencies with everything they pulled in. Added `packages/protection-engine/src/site.ts` and rewrote the matcher. |
-| 10:53:54 | `8cba1e0` "Intoponet blocks with its own list of ad and tracker hosts: 421 services written out by hand, …" | Added `data/authored-services.json`, `data/never-block.json`, `data/blocklist.json`, the classifier and the crawler. |
-| 11:46:11 | `35eef6f` "The list now carries what Intoponet measured on 504 publishers' pages: …" | Added the measured and reviewed hosts. The list was frozen here for the hold-out check. |
-| 12:19:03 and 12:40:49 | `d7fe8a9`, `5fe68f4` | Recorded the hold-out check; added services it showed missing, marked as added after it. |
+| 08:20:05 | `47c44a1` "EasyList and EasyPrivacy are in the repository as unmodified data files, with their source, date and checksum recorded" | Added `packages/protection-engine/lists/` (`easylist.txt`, `easyprivacy.txt`, `manifest.json`, `NOTICE.txt`) and `scripts/update-protection-lists.mjs`, which fetched the two lists as published. |
+| 08:20:05 | `b13e50f` "Ads and trackers on other sites are blocked with EasyList and EasyPrivacy, in every page session" | Made the engine match requests against the two lists with the Ghostery adblocker library (`@ghostery/adblocker`, MPL-2.0), added as a dependency, and added a build step that compiled the two lists into a binary file the app read. (The removal commit names `tldts-experimental` as a dependency removed with it.) |
+| 08:49:52 and 08:55:44 | `7ab634c`, `d54db80` | Changes to how blocked requests were counted and to how the library was built into the app. |
+| 09:30:09 | `690acc6` "Website says what the ad and tracker blocking does and does not block; packaging requires the lists in the app" | The packaging script was made to require the list files. |
+| 10:27:49 | `b2e6b42` "The ad and tracker blocker no longer uses EasyList, EasyPrivacy, the Ghostery library or tldts: Intoponet's own matcher and site table take their place" | Removed the `lists/` folder and its four files, the build step, `scripts/update-protection-lists.mjs`, and the two dependencies with everything they pulled in. Added `packages/protection-engine/src/site.ts` and rewrote the matcher. |
+| 10:53:54 | `0792193` "Intoponet blocks with its own list of ad and tracker hosts: 421 services written out by hand, …" | Added `data/authored-services.json`, `data/never-block.json`, `data/blocklist.json`, the classifier and the crawler. |
+| 11:46:11 | `7132e32` "The list now carries what Intoponet measured on 504 publishers' pages: …" | Added the measured and reviewed hosts. The list was frozen here for the hold-out check. |
+| 12:19:03 and 12:40:49 | `e38d20a`, `2076c54` | Recorded the hold-out check; added services it showed missing, marked as added after it. |
 
 So the two lists were in the working tree from 08:20 to 10:27, two hours and eight minutes, and
 the first version of Intoponet's own list was committed 26 minutes after they were removed.
 
 **Not pushed, not released.** On 17 November 2026 no remote branch and no tag contained the commit
-that added the lists (`git branch -r --contains 74acae7` and `git tag --contains 74acae7` print
+that added the lists (`git branch -r --contains` and `git tag --contains` for that commit printed
 nothing), and the published branch (`origin/main`, at the commit that published version 0.1.25 on
 13 November 2026) is older than all of the commits above. `THIRD_PARTY_NOTICES.md` §4 says the
 same: the build that used the lists "was not pushed or released". Whether a local build made in
 those two hours was ever given to anyone is not something the repository can show; no record says
 one was.
+
+**The history was rewritten before the first push.** On 18 November 2026, at the owner's
+instruction and before any of these commits had been pushed, the 100 commits made since version
+0.1.25 were rewritten so that the folder `packages/protection-engine/lists/` (the two list files,
+`manifest.json` and `NOTICE.txt`) is in none of them. Nothing else was changed: the files at the
+tip of the branch were identical before and after, and every commit kept its message, author and
+date. A compiled copy of the lists was never committed (it was build output). So the commit in the
+first row of the table now adds only the script that fetched the lists, and its subject line
+describes what it did when it was made, not what it holds now; the same goes for the row that
+removes the folder. The commits' earlier hashes, in table order, were `74acae7`, `80bff91`,
+`00ac8bd`, `6b0abb0`, `87ee920`, `696ff4a`, `8cba1e0`, `35eef6f`, `d7fe8a9` and `5fe68f4`. The
+history as it was before the rewrite is kept by the owner outside this repository, as one backup
+file made that day.
 
 ## Who and what could see the lists
 

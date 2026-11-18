@@ -129,7 +129,7 @@ only served after a consent dialog is answered.
 ## The hold-out check
 
 60 outlets (one per country at most) are never used to build the list. On 2026-11-17, with the
-list frozen (commit `35eef6f`, 886 rules), `scripts/protection-crawl.mjs` visited their home page
+list frozen (commit `7132e32`, 886 rules), `scripts/protection-crawl.mjs` visited their home page
 and newest article twice, with blocking off and with `--protect` (the engine deciding as it does
 in the app), each outlet with a cookie jar of its own. 54 outlets gave a usable page in both runs.
 The numbers (`docs/data/protection-holdout.json`; the verdict on every host is in
