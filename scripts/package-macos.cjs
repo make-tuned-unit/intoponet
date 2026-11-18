@@ -130,7 +130,7 @@ function prepareStandaloneApp() {
     productName: 'Intoponet',
     version: desktopPackage.version,
     description: 'A privacy-first spatial browser for exploring the living web.',
-    license: 'UNLICENSED',
+    license: 'MPL-2.0',
     main: 'out/main/index.js',
   }, null, 2)}\n`)
 }

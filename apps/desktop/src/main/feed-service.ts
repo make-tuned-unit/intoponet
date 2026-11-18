@@ -778,7 +778,7 @@ export class FeedFetchService {
       accept: source.kind === 'atom'
         ? 'application/atom+xml, application/xml;q=0.9, text/xml;q=0.8'
         : 'application/rss+xml, application/xml;q=0.9, text/xml;q=0.8',
-      'user-agent': 'Intoponet/0.1 public-feed metadata pilot',
+      'user-agent': 'Intoponet/0.1 (news reader; +https://intoponet.com/publishers)',
     })
     if (state.etag) headers.set('if-none-match', state.etag)
     if (state.lastModified) headers.set('if-modified-since', state.lastModified)

@@ -149,7 +149,7 @@ export function SettingsPanel({
 
         <section>
           <h3>Credits and licences</h3>
-          <p>Intoponet is proprietary software (all rights reserved). It is built on, and shows, the work of others:</p>
+          <p>Intoponet is open source under the Mozilla Public License 2.0. Its source code is at intoponet.com/source. It is built on, and shows, the work of others:</p>
           <ul className="settings-credits">
             <li><strong>Wikipedia</strong> text in The Olds and World stories, CC BY-SA 4.0, often shortened or translated on this Mac. Each passage links to its article.</li>
             <li><strong>Wikidata</strong> facts and links, CC0. <strong>Wikimedia</strong> pageviews, CC0.</li>

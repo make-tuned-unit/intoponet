@@ -63,6 +63,11 @@
   "cleanUrls": true,
   "redirects": [
     {
+      "source": "/source",
+      "destination": "https://github.com/make-tuned-unit/intoponet",
+      "permanent": false
+    },
+    {
       "source": "/updates/arm64/Intoponet-0.1.26-arm64-mac.zip",
       "destination": "https://klszmlqipgkquywh.public.blob.vercel-storage.com/releases/0.1.26/Intoponet-0.1.26-arm64-mac.zip",
       "permanent": false
