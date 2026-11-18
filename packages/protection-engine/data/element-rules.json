@@ -7,8 +7,8 @@
    "name": "#gpt_unit_/*",
    "publishers": 31,
    "onlyAds": 30,
-   "withAnAd": 29,
-   "of": 504
+   "withAnAd": 30,
+   "of": 505
   },
   {
    "selector": "[class~=\"ads-wrapper\"]",
@@ -16,7 +16,7 @@
    "publishers": 11,
    "onlyAds": 10,
    "withAnAd": 1,
-   "of": 504
+   "of": 505
   },
   {
    "selector": "[class~=\"jeg_ad_top\"]",
@@ -24,7 +24,7 @@
    "publishers": 11,
    "onlyAds": 9,
    "withAnAd": 1,
-   "of": 504
+   "of": 505
   },
   {
    "selector": "[class~=\"jeg_ad_article\"]",
@@ -32,7 +32,7 @@
    "publishers": 5,
    "onlyAds": 4,
    "withAnAd": 2,
-   "of": 504
+   "of": 505
   },
   {
    "selector": "[class~=\"jnews_header_top_ads\"]",
@@ -40,7 +40,7 @@
    "publishers": 11,
    "onlyAds": 10,
    "withAnAd": 1,
-   "of": 504
+   "of": 505
   },
   {
    "selector": "[class~=\"jnews_content_top_ads\"]",
@@ -48,7 +48,7 @@
    "publishers": 10,
    "onlyAds": 10,
    "withAnAd": 1,
-   "of": 504
+   "of": 505
   },
   {
    "selector": "[class~=\"jnews_content_inline_ads\"]",
@@ -56,7 +56,7 @@
    "publishers": 5,
    "onlyAds": 4,
    "withAnAd": 2,
-   "of": 504
+   "of": 505
   }
  ]
 }

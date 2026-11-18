@@ -1,6 +1,6 @@
 {
  "about": "The reviewer's decisions on what Intoponet's own measurement found (scripts/protection-crawl.mjs, rules in scripts/protection-classify.mjs). For each host: list it as an ad host, as a tracker, or not ('no'), which service it is, and why, after looking at what the host did on the measured pages (its request paths, cookies and the frames that asked). 'unidentified' means the company behind the host could not be named and the decision rests on its behaviour alone. Nothing here was taken from a filter list or tracker database. elements: container names accepted as always hidden ('hide') or as ad slots hidden when empty ('whenEmpty').",
- "reviewed": "2026-11-17",
+ "reviewed": "2026-11-18",
  "hosts": {
   "admaster.cc": {
    "list": "ad",
@@ -1318,6 +1318,240 @@
    "company": "Zeotap",
    "kind": "identity",
    "note": "Only id calls and beacons."
+  },
+  "dmxleo.com": {
+   "list": "no",
+   "service": "Dailymotion",
+   "company": "Dailymotion",
+   "note": "Dailymotion's player is served from hosts here too; only its cookie-matching hosts are listed."
+  },
+  "public-prod-dspcookiematching.dmxleo.com": {
+   "list": "tracker",
+   "service": "Dailymotion ad cookie matching",
+   "company": "Dailymotion",
+   "kind": "identity",
+   "note": "Only cookie-matching pictures and the list of buyers to match with, at 26 publishers; the same id on several."
+  },
+  "dspcookiematching-prod-aws-us-east-2.dmxleo.com": {
+   "list": "tracker",
+   "service": "Dailymotion ad cookie matching",
+   "company": "Dailymotion",
+   "kind": "identity",
+   "note": "The same cookie matching from another host."
+  },
+  "bing.net": {
+   "list": "no",
+   "service": "Bing",
+   "company": "Microsoft",
+   "note": "Bing's picture thumbnails come from here (tse1.mm.bing.net); only the two ad hosts are listed."
+  },
+  "bat.bing.net": {
+   "list": "tracker",
+   "service": "Microsoft Advertising (Bing UET)",
+   "company": "Microsoft",
+   "kind": "ad measurement",
+   "note": "The UET script and its log calls, as on bat.bing.com."
+  },
+  "adsdk.bing.net": {
+   "list": "ad",
+   "service": "Microsoft Advertising ad SDK",
+   "company": "Microsoft",
+   "kind": "ad measurement",
+   "note": "Viewability script requested inside ad frames."
+  },
+  "a47b.com": {
+   "list": "tracker",
+   "service": "unidentified",
+   "company": "unidentified",
+   "kind": "ad measurement",
+   "note": "Only an ad-measurement script and tracking pictures (viewed, heartbeat) that carry the page, at 6 publishers."
+  },
+  "nexverse.ai": {
+   "list": "tracker",
+   "service": "Nexverse",
+   "company": "Nexverse",
+   "kind": "identity",
+   "note": "Only user-sync frames and pictures; a 30-day id cookie, the same id on several publishers."
+  },
+  "cognitivlabs.com": {
+   "list": "ad",
+   "service": "Cognitiv",
+   "company": "Cognitiv",
+   "kind": "ad buying platform",
+   "note": "Only cookie-matching pictures requested inside ad frames; a one-year id cookie."
+  },
+  "ib-ibi.com": {
+   "list": "tracker",
+   "service": "unidentified",
+   "company": "unidentified",
+   "kind": "identity",
+   "note": "Only cookie-matching pictures carrying Google's id; the same id on four publishers."
+  },
+  "kntxy.com": {
+   "list": "ad",
+   "service": "unidentified",
+   "company": "unidentified",
+   "kind": "ad exchange",
+   "note": "A bidder for the page's ad auction, its ad-rotation script and a cookie sync."
+  },
+  "driftpixel.live": {
+   "list": "tracker",
+   "service": "unidentified",
+   "company": "unidentified",
+   "kind": "identity",
+   "note": "Only user-sync frames and pictures; the same id on four publishers."
+  },
+  "adprime.com": {
+   "list": "tracker",
+   "service": "AdPrime",
+   "company": "AdPrime",
+   "kind": "ad exchange",
+   "note": "Only user-sync pictures and a sync frame."
+  },
+  "insightexpressai.com": {
+   "list": "tracker",
+   "service": "InsightExpress",
+   "company": "Kantar",
+   "kind": "ad measurement",
+   "note": "One call per ad shown, with the placement and a one-year id cookie; the same id on four publishers."
+  },
+  "theagenticx.ai": {
+   "list": "ad",
+   "service": "unidentified",
+   "company": "unidentified",
+   "kind": "ad exchange",
+   "note": "Only cookie-sync pictures requested inside ad frames; a 30-day id cookie."
+  },
+  "inmobicdn.net": {
+   "list": "ad",
+   "service": "InMobi",
+   "company": "InMobi",
+   "kind": "ad creative",
+   "note": "Banner scripts and the InMobi mark, only inside ad frames."
+  },
+  "liftdsp.com": {
+   "list": "ad",
+   "service": "unidentified",
+   "company": "unidentified",
+   "kind": "ad buying platform",
+   "note": "Ad frames (/uimp/adi/) and cookie syncs; a one-year id cookie."
+  },
+  "gsspcln.jp": {
+   "list": "ad",
+   "service": "Geniee SSP",
+   "company": "Geniee",
+   "kind": "ad exchange",
+   "note": "Ad tag and in-view scripts, requested inside ad frames."
+  },
+  "visx.net": {
+   "list": "ad",
+   "service": "YOC VIS.X",
+   "company": "YOC",
+   "kind": "ad exchange",
+   "note": "Only server-to-server sync pictures from ad frames."
+  },
+  "adswizz.com": {
+   "list": "no",
+   "service": "AdsWizz",
+   "company": "AdsWizz",
+   "note": "Its ad delivery and sync hosts are already listed by hand; the rest of the domain is left alone because radio streams can run through it."
+  },
+  "refinery89.com": {
+   "list": "ad",
+   "service": "Refinery89",
+   "company": "Refinery89",
+   "kind": "ad management",
+   "note": "The publisher's ad set-up: its auction build and per-site ad tags; a 90-day id cookie, the same id on several publishers."
+  },
+  "t.360playvid.info": {
+   "list": "tracker",
+   "service": "unidentified",
+   "company": "unidentified",
+   "kind": "analytics",
+   "note": "Only event pictures from a video player, carrying the page's domain."
+  },
+  "voltaxam.com": {
+   "list": "no",
+   "service": "Voltax",
+   "company": "Minute Media",
+   "note": "Minute Media's video player loads its videos from here as well as its ads; left alone."
+  },
+  "ad-m.net": {
+   "list": "ad",
+   "service": "unidentified",
+   "company": "unidentified",
+   "kind": "ad measurement",
+   "note": "Only impression pictures (/imp/) from inside ad frames."
+  },
+  "sync.ex.co": {
+   "list": "tracker",
+   "service": "EX.CO",
+   "company": "EX.CO",
+   "kind": "identity",
+   "note": "Only cookie-sync frames and pictures. ex.co itself is a video player and is not listed."
+  },
+  "rkdms.com": {
+   "list": "tracker",
+   "service": "Merkle",
+   "company": "Dentsu (Merkle)",
+   "kind": "identity",
+   "note": "Only id pictures; a one-year id cookie, the same id on three publishers."
+  },
+  "yrxtam.com": {
+   "list": "ad",
+   "service": "unidentified",
+   "company": "unidentified",
+   "kind": "ad exchange",
+   "note": "Only user-sync pictures requested inside ad frames."
+  },
+  "cdnwebcloud.com": {
+   "list": "ad",
+   "service": "unidentified",
+   "company": "unidentified",
+   "kind": "ad buying platform",
+   "note": "An advertiser's tag and its tracking calls, inside ad frames; a one-year id cookie."
+  },
+  "gpm-ssp.ru": {
+   "list": "ad",
+   "service": "GPM SSP",
+   "company": "Gazprom-Media",
+   "kind": "ad exchange",
+   "note": "Only cookie-matching pictures from ad frames; a one-year id cookie."
+  },
+  "gnezdo.ru": {
+   "list": "ad",
+   "service": "Gnezdo",
+   "company": "Gnezdo",
+   "kind": "native ads",
+   "note": "Ad requests for the page and cookie matching with other exchanges; an id cookie lasting years."
+  },
+  "cpmstar.com": {
+   "list": "ad",
+   "service": "CPMStar",
+   "company": "CPMStar",
+   "kind": "ad network",
+   "note": "Only user-sync pictures from ad frames; a 30-day id cookie."
+  },
+  "digitaltarget.ru": {
+   "list": "tracker",
+   "service": "Digital Target",
+   "company": "Digital Target",
+   "kind": "data management",
+   "note": "Only id pictures; an id cookie lasting three years, the same id on three publishers."
+  },
+  "silvermob.com": {
+   "list": "tracker",
+   "service": "SilverMob",
+   "company": "SilverMob",
+   "kind": "ad exchange",
+   "note": "Only cookie-sync pictures; a one-year id cookie."
+  },
+  "aidata.io": {
+   "list": "tracker",
+   "service": "Aidata",
+   "company": "Aidata",
+   "kind": "data management",
+   "note": "Only id pictures; a two-year id cookie, the same id on three publishers."
   }
  },
  "elements": {

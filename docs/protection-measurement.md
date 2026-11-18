@@ -43,9 +43,10 @@ query or the body; which frames asked; what the host put on the page (frames and
 pictures shown inside and outside ad-like containers, stylesheets, video). And the page's ad-like
 containers: their names, and whether they held anything but ads.
 
-**The run the current list is built from (2026-11-17, from one Mac in North America):** 520 outlets were
-visited; 504 publishers gave at least one usable page (the others showed an error page or a bot
-check), 970 pages in all, from 220 countries and in 66 languages.
+**The run the current list is built from (2026-11-18, from one Mac in North America):** 520 outlets were
+visited; 505 publishers gave at least one usable page (the others showed an error page or a bot
+check), 988 pages in all, from 220 countries and in 66 languages. (The run before it, on 2026-11-17,
+measured 504 publishers and gave a list of 920 rules.)
 
 The raw records are not in git (about 20 MB). The crawler, the rules, `reviewed.json` and the
 evidence on each entry are.
@@ -85,33 +86,36 @@ publisher where it was seen, at 5 or more publishers; it is treated as an ad slo
 an ad label is left in it) if it held only ads at 80% of 3 or more and an ad was seen in it. Both need a person's yes in
 `reviewed.json`; the classifier refuses a name that does not meet its bar.
 
-## The list as of 2026-11-17
+## The list as of 2026-11-18
 
-920 rules for 918 hosts. They belong to 584 named services, 440 of them written out by hand; the
-count includes 26 hosts whose company could not be named, and the company names on measured hosts
+950 rules for 948 hosts. They belong to 602 named services, 440 of them written out by hand; the
+count includes 36 hosts whose company could not be named, and the company names on measured hosts
 are the reviewer's recollection of who runs the host, not something the measurement shows:
 
 | Source | Rules | Ad | Tracker |
 |---|---|---|---|
-| authored (from knowledge, not seen in the measurement) | 436 | 226 | 210 |
-| authored, measured (from knowledge, and seen at work) | 279 | 167 | 112 |
-| authored after hold-out (services the author knows, added because the hold-out check showed them missing; 18 of the 34 were also seen in the build measurement) | 34 | 15 | 19 |
-| measured (proposed by the rules, accepted on review) | 133 | 107 | 26 |
-| measured, listed on review (seen, below the rules' thresholds or under a portal's domain) | 38 | 27 | 11 |
-| **all** | **920** | **542** | **378** |
+| authored (from knowledge, not seen in the measurement) | 433 | 222 | 211 |
+| authored, measured (from knowledge, and seen at work) | 282 | 171 | 111 |
+| authored after hold-out (services the author knows, added because the hold-out check showed them missing; 20 of the 34 were also seen in the build measurement) | 34 | 15 | 19 |
+| measured (proposed by the rules, accepted on review) | 145 | 107 | 38 |
+| measured, listed on review (seen, below the rules' thresholds or under a portal's domain) | 56 | 42 | 14 |
+| **all** | **950** | **557** | **393** |
 
-66 rules are narrowed to a path (the list file has no way to narrow a rule to a kind of request yet, though the matcher can). For 26 of the measured rules the company behind the host could not
+66 rules are narrowed to a path (the list file has no way to narrow a rule to a kind of request yet, though the matcher can). For 36 of the measured rules the company behind the host could not
 be named (`"company": "unidentified"`); they are listed for what they did (cookie matching between
-ad exchanges, mostly) and each says so. The reviewer refused 20 proposals: advertisers' own sites,
+ad exchanges, mostly) and each says so. The reviewer refused 24 proposals: advertisers' own sites,
 shared hosting, a hosted animation library, two portals and a government agency (only their ad or
-measurement hosts are listed), a booking widget, video players' own reports, and hosts whose
-purpose could not be established. The never-block list has 173 hosts and 73 domains that only a
+measurement hosts are listed), a booking widget, video players' own reports and the domains two
+video players and a search engine's picture thumbnails are served from (only their cookie-matching
+and ad hosts are listed), an audio-ad company's domain that radio streams can run through, and
+hosts whose purpose could not be established. The 30 proposals of the 2026-11-18 run were reviewed
+by the assistant that ran it, not by the owner. The never-block list has 173 hosts and 73 domains that only a
 hand-written rule may touch.
 
-The hosts seen at the most publishers (of 504): googletagmanager.com 408, doubleclick.net 372,
-googlesyndication.com 278, adtrafficquality.google 258, google-analytics.com 248,
-cloudflareinsights.com 173, 2mdn.net 139, criteo.com 113, mediago.io 91, admaster.cc 89,
-id5-sync.com 85.
+The listed hosts seen at the most publishers (of 505): googletagmanager.com 410, doubleclick.net 376,
+googlesyndication.com 281, adtrafficquality.google 257, google-analytics.com 249,
+analytics.google.com 239, cloudflareinsights.com 172, 360yield.com 163, criteo.com 116,
+admaster.cc 105, 2mdn.net 101.
 
 Page elements: no measured name met the bar for "always hidden" (the closest, ids starting
 `gpt_unit_/`, held only ads at 30 of 31 publishers). 7 names were accepted as ad slots that are
@@ -128,11 +132,12 @@ only served after a consent dialog is answered.
 
 ## The hold-out check
 
-60 outlets (one per country at most) are never used to build the list. On 2026-11-17, with the
+60 outlets (one per country at most) are never used to build the list. The check has run twice;
+the second run is at the end of this section. On 2026-11-17, with the
 list frozen (commit `7132e32`, 886 rules), `scripts/protection-crawl.mjs` visited their home page
 and newest article twice, with blocking off and with `--protect` (the engine deciding as it does
 in the app), each outlet with a cookie jar of its own. 54 outlets gave a usable page in both runs.
-The numbers (`docs/data/protection-holdout.json`; the verdict on every host is in
+The numbers of that run (`docs/data/protection-holdout.json` now holds the second run; the first run is in that file in git history, before 18 November 2026; the verdict on every host of both runs is in
 `docs/data/protection-holdout-judgement.json`):
 
 | | Blocking off | Blocking on |
@@ -174,8 +179,26 @@ After the check, nineteen services and five hosts the author knows, which the ho
 missing, were added to `authored-services.json` (34 rules, marked `authored after hold-out` with the
 number of hold-out outlets that reached them; the list went from 886 to 920 rules), and one
 never-block entry that hid two cookie-matching hosts was removed. The miss rate above was measured
-before that and has not been measured again: these 60 outlets are no longer an untouched test of
-the additions, so the next refresh should quote a new run.
+before that; these 60 outlets are no longer an untouched test of the additions.
+
+**The second run, 2026-11-18, on the list as it ships (950 rules): the miss rate was 22.3%.** 58 of
+the 60 outlets gave a usable page in both runs (113 pages). Counted the same way, the list stopped
+467 and missed 134 (134 ÷ 601); by requests, 608 missed to 2,434 stopped (20.0%).
+
+| | Blocking off | Blocking on |
+|---|---|---|
+| Hosts of other sites reached, added up over the 58 outlets | 4,938 | 679 |
+| Cookies from other sites left behind, added up | 5,569 | 113 |
+| Other sites that left a cookie, added up | 1,955 | 55 |
+
+With blocking on, pages still reached 380 different hosts of other sites: 274 judged not to be ad
+or tracker hosts, 79 ad or tracker hosts the list missed, and 27 that could not be established and
+are counted as missed. The largest miss is still Google's video ads SDK (at 12 outlets, left alone
+on purpose). This figure flatters the list in one way the first did not: 34 of its rules were
+written after looking at what these same outlets reached, so it is not a test on outlets the list
+has never seen. It is a different day and a different number of usable outlets as well, so the two
+rates are not a like-for-like before and after. The verdicts on the 30 hosts new to this run were
+the assistant's, not the owner's.
 
 ## Refreshing the list before a release
 
