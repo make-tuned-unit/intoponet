@@ -4,6 +4,7 @@ import { spawn, spawnSync } from 'node:child_process'
 import { mkdtempSync, rmSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { describeBehind, watchBehindPage } from './behindPage.mjs'
 
 export const repo = resolve(import.meta.dirname, '../..')
 const delay = (ms) => new Promise((r) => setTimeout(r, ms))
@@ -193,6 +194,7 @@ export async function runAppCheck(check, { env: extraEnv = {}, evidenceDir, name
     }
     /** Evaluates an expression in the app's main process (Node inspector); `electron` is in scope. */
     let mainSession = null
+    let behind = null
     const main = (expression) => quiet((async () => {
       if (!mainSession) {
         for (let i = 0; i < 100 && !inspectPort; i += 1) await delay(100)
@@ -206,6 +208,8 @@ export async function runAppCheck(check, { env: extraEnv = {}, evidenceDir, name
     })())
     /** Ends the main-process inspector session: an app that quits waits for its debugger to disconnect first. */
     const detachMain = () => {
+      // The watch below asks the main process too: it ends here, or its next look would attach the debugger again.
+      behind?.end()
       try { mainSession?.socket.close() } catch { /* closed */ }
       mainSession = null
     }
@@ -229,6 +233,10 @@ export async function runAppCheck(check, { env: extraEnv = {}, evidenceDir, name
     // more until someone presses OK). Each check hears them instead, and fails on any, saying what was thrown.
     await main(`(() => { globalThis.__e2eUncaught = []; process.on('uncaughtException', (error) => { globalThis.__e2eUncaught.push(String(error?.stack ?? error).slice(0, 700)) }); return true })()`).catch(() => undefined)
     const uncaught = () => Promise.race([main('JSON.stringify(globalThis.__e2eUncaught ?? [])').then(JSON.parse, () => []), delay(5000).then(() => [])])
+    // Through the whole check: nothing the window draws may lie under a shown page (behindPage.mjs).
+    // E2E_BEHIND_PAGE=report notes what it finds without failing the check; =off leaves the watch out.
+    const behindMode = process.env.E2E_BEHIND_PAGE ?? 'fail'
+    behind = behindMode === 'off' ? null : watchBehindPage({ evaluate, main, delay })
     let timer
     // Out of time: say what the check was still waiting for the app to answer, the oldest first.
     const stuck = () => [...inFlight].sort((a, b) => a.since - b.since).slice(0, 2).map((call) => `${call.what} (unanswered for ${Math.round((Date.now() - call.since) / 1000)} s)`).join('; ')
@@ -244,9 +252,14 @@ export async function runAppCheck(check, { env: extraEnv = {}, evidenceDir, name
       })
       const thrown = await uncaught()
       if (thrown.length) throw new CheckFailure(`The main process threw ${thrown.length === 1 ? 'an error' : `${thrown.length} errors`} nobody caught: ${thrown.join(' | ')}`)
+      await behind?.stop()
+      const hidden = behind?.report().found ?? []
+      if (hidden.length && behindMode !== 'report') throw new CheckFailure(`The window drew ${hidden.length === 1 ? 'something' : `${hidden.length} things`} under a shown page, where nobody can see ${hidden.length === 1 ? 'it' : 'them'}: ${describeBehind(hidden)}`)
+      if (hidden.length) return `${notes ?? ''} [under a shown page: ${describeBehind(hidden)}]`
       return notes ?? ''
     } finally {
       clearTimeout(timer)
+      behind?.end()
     }
   } catch (error) {
     // What the app printed (its main process and Chromium), kept with the evidence of a failed check.

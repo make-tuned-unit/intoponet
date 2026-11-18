@@ -805,8 +805,10 @@
 .app-shell.page-open .globe-header,
 .app-shell.page-open .globe-layers,
 .app-shell.page-open .globe-panel,
+.app-shell.page-open .globe-panel-pill,
 .app-shell.page-open .globe-overlay,
-.app-shell.bookmarks-open .globe-panel {
+.app-shell.bookmarks-open .globe-panel,
+.app-shell.bookmarks-open .globe-panel-pill {
   display: none;
 }
 

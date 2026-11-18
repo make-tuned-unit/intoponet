@@ -1047,6 +1047,16 @@ export const checks = {
     expect(layers >= 3, `The globe's signals come from ${layers} kind(s) of source, not local news, reading and hazards ("${summary}").`)
     for (const tab of ['World', 'Peaks', 'Rising', 'Fading']) expect(await ctx.click('.globe-tabs button', tab), `Highlights tab "${tab}" is missing.`)
     await ctx.shot('globe')
+    // Highlights folded away to its pill, then a page opened: the pill goes with the rest of the globe's panels (it once
+    // stayed, over the page's toolbar and partly under the page).
+    expect(await ctx.click('.globe-panel-collapse'), 'Highlights has no button to fold it away.')
+    await ctx.wait(`!!document.querySelector('.globe-panel-pill')`, 5000, 'Highlights to fold into its pill')
+    await ctx.evaluate(`window.intoponet.browserHost.open({ kind: 'url', value: 'http://127.0.0.1:9/nothing-here' }).then(() => true, () => true)`)
+    await ctx.wait(`!!document.querySelector('.app-shell.page-open')`, 15_000, 'the page panel to open')
+    const pillShown = await ctx.evaluate(`(document.querySelector('.globe-panel-pill')?.getClientRects().length ?? 0) > 0`)
+    expect(!pillShown, 'With a page open, the folded Highlights pill still stands over the page toolbar.')
+    expect(await ctx.click('button[aria-label="Return to field"]'), 'The page panel has no way back to the globe.')
+    await ctx.wait(`(document.querySelector('.globe-panel-pill')?.getClientRects().length ?? 0) > 0`, 5000, 'the Highlights pill to come back with the globe')
     return `${summary} While the news arrived the main process was busy ${Math.round((mainBusy.cpu / mainBusy.wall) * 100)}% of the time (${Math.round(mainBusy.cpu)} ms of ${Math.round(mainBusy.wall / 1000)} s), ${Math.round(mainBusy.longest)} ms at the longest stretch.`
   },
 
@@ -2351,6 +2361,9 @@ export const checks = {
     const railName = await nameOf('.tab-rail-item.is-private [role="tab"]')
     expect(/, private tab\b/.test(railName ?? ''), `The private tab’s sidebar row is not named as a private tab for a screen reader: "${railName}".`)
     expect(await onScreen('.browser-chrome .private-page-mark') && (await nameOf('.browser-chrome .private-page-mark')) === 'Private tab', `The private tab’s page toolbar is not marked private (name: "${await nameOf('.browser-chrome .private-page-mark')}").`)
+    // The mark is one more thing in the toolbar: everything there still fits in it (the tools once dropped to a second row, out of the toolbar).
+    const spilled = await ctx.evaluate(`JSON.stringify((() => { const bar = document.querySelector('.browser-chrome'); const box = bar.getBoundingClientRect(); return [...bar.children].filter((el) => el.getClientRects().length && !el.classList.contains('chrome-rail')).map((el) => ({ what: el.className, box: el.getBoundingClientRect() })).filter(({ box: b }) => b.top < box.top - 1 || b.bottom > box.bottom + 1 || b.left < box.left - 1 || b.right > box.right + 1).map(({ what, box: b }) => what + ' at ' + Math.round(b.left) + ',' + Math.round(b.top) + ' ' + Math.round(b.width) + '×' + Math.round(b.height) + ' (toolbar ' + Math.round(box.left) + ',' + Math.round(box.top) + ' ' + Math.round(box.width) + '×' + Math.round(box.height) + ')') })())`).then(JSON.parse)
+    expect(!spilled.length, `In a private tab the toolbar's contents leave the toolbar: ${spilled.join('; ')}.`)
     await axeAudit(ctx, 'the sidebar with a private tab', '.tab-rail')
     await toggleSidebar()
     await ctx.wait(`!!document.querySelector('.page-tab.is-private')`, 5000, 'the private tab in the strip under the launcher, with the sidebar hidden')
@@ -4692,18 +4705,21 @@ export const checks = {
         <div id="slot-empty" class="ad" style="height:120px;background:#eee"></div>
         <div id="slot-with-story" class="ad" style="background:#eee"><p>A paragraph of the story that happens to sit in an "ad" box.</p></div>
         <div id="slot-listed" class="adsbygoogle" style="display:block;background:#eee"><p>Buy one, get one free. Only today.</p></div>
+        <div id="slot-reserved"><div style="min-height:250px;background:#eee" data-creative-placeholder-wrapper><div><div data-hsm-adunit="top"></div></div></div></div>
         <p id="tail">The story goes on.</p></article></body>`
     const server = createServer((request, response) => { response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); response.end(page) })
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
     // A name under .localhost (always this Mac), so the page is a site with a name like any other.
     const origin = `http://news.localhost:${server.address().port}`
-    const boxes = async () => JSON.parse(await (await ctx.page('/story')).evaluate(`JSON.stringify(Object.fromEntries(['lead', 'slot-frame', 'slot-image', 'slot-empty', 'slot-with-story', 'slot-listed', 'tail'].map((id) => [id, Math.round(document.getElementById(id).getBoundingClientRect().height)])))`))
+    const boxes = async () => JSON.parse(await (await ctx.page('/story')).evaluate(`JSON.stringify(Object.fromEntries(['lead', 'slot-frame', 'slot-image', 'slot-empty', 'slot-with-story', 'slot-listed', 'slot-reserved', 'tail'].map((id) => [id, Math.round(document.getElementById(id).getBoundingClientRect().height)])))`))
     try {
       await openPage(ctx, `${origin}/story`, 4500)
       const shown = await boxes()
       expect(shown['slot-frame'] === 0, `The blocked ad frame left a ${shown['slot-frame']} px box.`)
       expect(shown['slot-image'] === 0, `The blocked ad picture left a ${shown['slot-image']} px box.`)
       expect(shown['slot-empty'] === 0, `The empty ad slot is still ${shown['slot-empty']} px tall.`)
+      // A banner's place kept open by the page whether or not a banner comes (a news site's top box of 250 px).
+      expect(shown['slot-reserved'] === 0, `The space a page keeps for a banner that never came is still ${shown['slot-reserved']} px tall.`)
       expect(shown['slot-with-story'] > 0 && shown.lead > 0 && shown.tail > 0, `Story text was hidden: ${JSON.stringify(shown)}.`)
       // An ad with words in it, in a container Intoponet's own element rules name (".adsbygoogle"): hidden by the rule.
       expect(shown['slot-listed'] === 0, `An ad element the element rules hide by its class name is still ${shown['slot-listed']} px tall.`)

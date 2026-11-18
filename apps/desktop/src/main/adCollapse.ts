@@ -19,6 +19,9 @@ export const AD_SLOT_SELECTOR = [
   '[class~="ad"]', '[class~="ads"]', '[class~="advert"]', '[class~="advertisement"]', '[class*="ad-placeholder"]',
   '[data-ad]', '[data-ad-slot]', '[data-ad-unit]', '[data-ad-placeholder]', '[data-google-query-id]',
   '[aria-label="Advertisement" i]', '[aria-label="Ad" i]', 'amp-ad', 'ins.adsbygoogle',
+  // The ad units of fontanka.ru and its sister city sites (read from their pages, 17 November 2026): each keeps
+  // 250 to 400 px for a banner whether or not one arrives. The site's own promotions carry none of these names.
+  '[data-hsm-adunit]', '[data-creative-placeholder-wrapper]', '[class~="inline-adv-slot"]',
   // Slot names Intoponet's own measurement of news pages found (packages/protection-engine/data/element-rules.json).
   ...measuredSlotSelectors,
 ].join(',')

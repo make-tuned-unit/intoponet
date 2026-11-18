@@ -1618,6 +1618,9 @@ button.zoom-indicator:hover {
 
 /* The address is a compact display (editing happens in the launcher), so the toolbar names its features. */
 .browser-chrome { grid-template-columns: 120px minmax(120px, 340px) minmax(0, 1fr); }
+/* A private tab's mark stands between the buttons and the address: a column of its own, or the tools after it
+   drop to a second row, out of the toolbar. */
+.browser-chrome:has(> .private-page-mark + .origin-badge) { grid-template-columns: 120px auto minmax(120px, 340px) minmax(0, 1fr); }
 .browser-actions { min-width: 0; }
 .browser-chrome .browser-actions > button,
 .browser-chrome .browser-actions > .shield-control > button,
