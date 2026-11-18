@@ -70,8 +70,14 @@ export function visitorHash(salt, userAgent, acceptLanguage, now = new Date()) {
   return createHash('sha256').update(`${salt}${userAgent ?? ''}${acceptLanguage ?? ''}${day}`).digest('hex').slice(0, 32)
 }
 
+/** The browser asked not to be counted: Global Privacy Control or Do Not Track. Nothing is recorded for it. */
+export function optedOut(headers) {
+  return headers.get('sec-gpc') === '1' || headers.get('dnt') === '1'
+}
+
 /** A beacon body (text/plain from sendBeacon, or anything else) into a clean event, or null if it is not one. */
 export function eventFromBeacon(bodyText, headers, env = process.env, now = new Date()) {
+  if (optedOut(headers)) return null
   let body
   try { body = JSON.parse(bodyText) } catch { return null }
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null
@@ -129,6 +135,7 @@ export async function collect(request, env = process.env, fetchImpl = fetch) {
 export async function recordServerEvent(request, { name, path, properties = null, isBot = null }, env = process.env, fetchImpl = fetch, now = new Date()) {
   const upstream = upstreamConfig(env)
   if (!upstream) return { recorded: false, reason: 'not-configured' }
+  if (optedOut(request.headers)) return { recorded: false, reason: 'opted-out' }
   const userAgent = request.headers.get('user-agent')
   const country = request.headers.get('x-vercel-ip-country')?.trim().toUpperCase() ?? ''
   const event = {

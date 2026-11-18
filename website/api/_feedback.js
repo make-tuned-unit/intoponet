@@ -2,8 +2,8 @@ import { recordServerEvent } from './_permagent.js'
 import { countryName, sendNotification } from './_download-notify.js'
 
 // POST /api/feedback: a rating and/or comment from the desktop app, emailed to the owner and
-// counted in analytics. Privacy: only what the person wrote, their rating, the app version and a
-// country name are kept. No IP address, user agent or identifier.
+// counted in analytics (with the first 256 characters of the comment). Privacy: only what the person
+// wrote, their rating, the app version and a country name are kept. No IP address or user agent.
 
 const COMMENT_LIMIT = 2_000
 const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } })

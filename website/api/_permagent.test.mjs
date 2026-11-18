@@ -98,3 +98,17 @@ test('every page source carries the snippet tag once, in <head>, and the snippet
     assert.ok(html.indexOf('/permagent.js') < html.indexOf('</head>'), page)
   }
 })
+
+test('a browser that sends Global Privacy Control or Do Not Track is not counted', async () => {
+  const { eventFromBeacon, recordServerEvent, optedOut } = await import('./_permagent.js')
+  const body = JSON.stringify({ k: 'pv', p: '/' })
+  const env = { PERMAGENT_ANALYTICS_SALT: 'salt', BEACON_REGISTRY_ORIGIN: 'https://registry.example', BEACON_EDGE_SECRET: 'x'.repeat(40) }
+  assert.ok(eventFromBeacon(body, new Headers({ 'user-agent': 'Mozilla/5.0 Safari' }), env))
+  assert.equal(eventFromBeacon(body, new Headers({ 'user-agent': 'Mozilla/5.0 Safari', 'sec-gpc': '1' }), env), null)
+  assert.equal(eventFromBeacon(body, new Headers({ 'user-agent': 'Mozilla/5.0 Safari', dnt: '1' }), env), null)
+  assert.equal(optedOut(new Headers({ dnt: '0' })), false)
+  let calls = 0
+  const result = await recordServerEvent(new Request('https://intoponet.com/download/mac', { headers: { 'sec-gpc': '1', 'user-agent': 'Mozilla/5.0 Safari' } }), { name: 'download', path: '/download/mac' }, env, async () => { calls += 1; return new Response(null) })
+  assert.deepEqual(result, { recorded: false, reason: 'opted-out' })
+  assert.equal(calls, 0)
+})
