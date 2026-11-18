@@ -1,6 +1,6 @@
 {
-  "started": "2026-11-18T04:07:59.189Z",
-  "finished": "2026-11-18T04:38:46.243Z",
+  "started": "2026-11-18T14:09:30.667Z",
+  "finished": "2026-11-18T14:40:09.963Z",
   "tier": "full",
   "only": null,
   "summary": "64 passed, 0 failed, 0 blocked, 0 skipped",
@@ -13,7 +13,7 @@
     "APP_BOOT": {
       "status": "pass",
       "notes": "Header: Private · Bookmarks · The Olds · Knowledge · My map · Settings. Its page refused an inline script and a stranger's image, and nothing of its own across two reloads. An error thrown from a timer in the main process was logged without an alert and the app carried on. A damaged profile opened, its unreadable files kept aside and an earlier run's unfinished temporary files deleted. The app window reloaded after its page crashed and after it hung, with its tabs, pair and page area, no view or listener added and a running tour's page closed; closed, it paused the pair's videos (a frame's too) and came back with its tabs from the Dock (a quick window open, nothing playing again by itself) and from File › New Tab.",
-      "seconds": 23
+      "seconds": 22
     },
     "SETTINGS": {
       "status": "pass",
@@ -28,7 +28,7 @@
     "TABS": {
       "status": "pass",
       "notes": "Moved by command, drag and ⌥⇧↓ (focus kept); pinned tab first, icon-only and saved; speaker muted and unmuted a playing tab; spinner while a slow page loaded; a tab dragged or moved past a pair went round it and the pair held; arrows went through a pair in rail and strip, and Delete closed the focused side; no axe violations in rail or strip.",
-      "seconds": 25
+      "seconds": 24
     },
     "LIBRARY": {
       "status": "pass",
@@ -57,18 +57,18 @@
     },
     "GLOBE_LIVE": {
       "status": "pass",
-      "notes": "294 public signals across 4 active layers. Hover to preview, click to explore, or search a place below. While the news arrived the main process was busy 3% of the time (261 ms of 8 s), 3 ms at the longest stretch.",
-      "seconds": 11
+      "notes": "243 public signals across 4 active layers. Hover to preview, click to explore, or search a place below. While the news arrived the main process was busy 4% of the time (301 ms of 8 s), 3 ms at the longest stretch.",
+      "seconds": 12
     },
     "SOURCE_CAROUSEL": {
       "status": "pass",
-      "notes": "Cards with 9 images, 3 bylines, 3 summaries. Carousel flipped from CNA to ANTARA News Agency; chose \"CNA: Trump seeks diplomatic gains on Asia tour as Putin arrives in China. Press \" and the browser opened https://www.channelnewsasia.com/asia/donald-trump-asia-tour-vladimir-putin-china-6560741 (page was closed before).",
-      "seconds": 25
+      "notes": "Cards with 12 images, 3 bylines, 4 summaries. Carousel flipped from the Guardian to Daily Mirror (Wijeya Newspapers); chose \"The Guardian World: Apec summit live: Xi welcomes Trump on China visit as Putin \" and the browser opened https://www.theguardian.com/world/live/2026/nov/18/apec-summit-live-updates-xi-putin-trump-world-leaders-gather-in-china (page was closed before).",
+      "seconds": 23
     },
     "WORLD_STORIES": {
       "status": "pass",
-      "notes": "20 world stories, each covered in 3–28 countries or international desks; scrolls 400px; offline, the empty list waits for a connection; rows stay under a moving pointer and update once it rests.",
-      "seconds": 14
+      "notes": "20 world stories, each covered in 3–40 countries or international desks; scrolls 400px; offline, the empty list waits for a connection; rows stay under a moving pointer and update once it rests.",
+      "seconds": 13
     },
     "COUNTRY_PANEL": {
       "status": "pass",
@@ -78,7 +78,7 @@
     "OLDS_HEADLINE": {
       "status": "pass",
       "notes": "Israel → 2026 Israeli legislative election: 20 dated events from 10 Apr 1973; Ebola, South Africa and Guernsey guards ok; related Judiciary of Israel, Israeli law, Politics of Israel, Elections in Israel. Brazil → 2026 Brazilian general election. Honduras → Honduras.",
-      "seconds": 82
+      "seconds": 116
     },
     "OLDS_COUNTRY": {
       "status": "pass",
@@ -92,13 +92,13 @@
     },
     "OLDS_UI": {
       "status": "pass",
-      "notes": "Views Story/Timeline/List; sections: HOW WE GOT HERE; 0 idle timeline layout reads in 1 s; Home/End controls work; the tab strip hidden while The Olds was open.",
-      "seconds": 27
+      "notes": "Views Story/Timeline/List; sections: HOW WE GOT HERE, TOPICS BEHIND THIS STORY; 0 idle timeline layout reads in 1 s; Home/End controls work; the tab strip hidden while The Olds was open.",
+      "seconds": 51
     },
     "OLDS_COVERAGE": {
       "status": "pass",
-      "notes": "“Trump seeks diplomatic gains on Asia tour as Putin arrives i”: 6 headlines (NOVEMBER 2026 – SEPTEMBER 2026), then 9 reaching MAY 2026; Go further back",
-      "seconds": 40
+      "notes": "“Why Democrat Mary Peltola’s US Senate win in Alaska matters”: 8 headlines (NOVEMBER 2026 – NOVEMBER 2026), then 16 reaching SEPTEMBER 2026; Go further back",
+      "seconds": 47
     },
     "BROWSE": {
       "status": "pass",
@@ -107,13 +107,13 @@
     },
     "OMNIBOX": {
       "status": "pass",
-      "notes": "\"localh\" completed to localhost:64516; history row opened in a background tab with ⌘↵; then \"Switch to tab\" landed on it (1 tab); Backspace removed the completion; \"Fredericton\" flew the globe.",
-      "seconds": 24
+      "notes": "\"localh\" completed to localhost:55593; history row opened in a background tab with ⌘↵; then \"Switch to tab\" landed on it (1 tab); Backspace removed the completion; \"Fredericton\" flew the globe.",
+      "seconds": 25
     },
     "PROTECTION": {
       "status": "pass",
       "notes": "Protected · 3 ads · 0 trackers blocked · Block ads · Block trackers · Encrypted DNS · Local IP hidden · No VPN · Customize site · Pause on this site · 20 of 20 well-known ad and tracker requests blocked before sending (7 ads, 13 trackers); the site's own and a harmless third-party script ran; \"Block ads\" off and \"Pause on this site\" let them through",
-      "seconds": 25
+      "seconds": 24
     },
     "PERMISSIONS": {
       "status": "pass",
@@ -122,12 +122,12 @@
     },
     "EXTERNAL_APPS": {
       "status": "pass",
-      "notes": "\"Open Mail? 127.0.0.1:49522 wants to open mailto:someone@example.com?subject=Hello\" asked for a mailto: link; the tab stayed on http://127.0.0.1:49522/; Cancel closed it and no prompt storm followed. \"Always allow\" in Main was not used by a workspace with its own sign-ins, which kept its own answer in its own file until its sign-ins were turned off.",
+      "notes": "\"Open Mail? 127.0.0.1:57209 wants to open mailto:someone@example.com?subject=Hello\" asked for a mailto: link; the tab stayed on http://127.0.0.1:57209/; Cancel closed it and no prompt storm followed. \"Always allow\" in Main was not used by a workspace with its own sign-ins, which kept its own answer in its own file until its sign-ins were turned off.",
       "seconds": 14
     },
     "ERROR_PAGE": {
       "status": "pass",
-      "notes": "\"127.0.0.1:49820 refused to connect\" with Retry; toolbar kept http://127.0.0.1:49820/; Retry loaded the page once a server listened; a self-signed site showed \"Connection not secure\" with its certificate and Back returned.",
+      "notes": "\"127.0.0.1:57573 refused to connect\" with Retry; toolbar kept http://127.0.0.1:57573/; Retry loaded the page once a server listened; a self-signed site showed \"Connection not secure\" with its certificate and Back returned.",
       "seconds": 12
     },
     "PDF_VIEWER": {
@@ -137,7 +137,7 @@
     },
     "PAGE_APPEARANCE": {
       "status": "pass",
-      "notes": "Pages: dark→dark, light→light, system→dark, dark mode canvas: plain 255,255,255, dark 18,18,18 (system is dark); Settings shows the choice and default-browser status.",
+      "notes": "Pages: dark→dark, light→light, system→light, dark mode canvas: plain 255,255,255, dark 18,18,18 (system is light); Settings shows the choice and default-browser status.",
       "seconds": 18
     },
     "PRIVATE_BROWSING": {
@@ -147,23 +147,23 @@
     },
     "SAVED_PASSWORDS": {
       "status": "pass",
-      "notes": "Failed sign-in not offered; offered, saved, bookmarked in Accounts (sealed file, no plaintext), filled one account (password only after a real click; a script click did not release it), asked between two, listed in Settings; private tab untouched (localhost:51168).",
+      "notes": "Failed sign-in not offered; offered, saved, bookmarked in Accounts (sealed file, no plaintext), filled one account (password only after a real click; a script click did not release it), asked between two, listed in Settings; private tab untouched (localhost:59174).",
       "seconds": 25
     },
     "EXCLUDED_SITES": {
       "status": "pass",
       "notes": "Absorb refused; no recent page kept; no site icon kept.",
-      "seconds": 15
+      "seconds": 14
     },
     "DOWNLOADS_HISTORY": {
       "status": "pass",
-      "notes": "Downloaded 640 KB with progress → done; on disk with quarantine \"0083;6afd2729;Intoponet;3666FB70-00F3-427A-BF86-9261987C4D2E\"; History found and deleted a visit; private visit not kept; a quit waited for the late history and library saves and left no temporary files.",
-      "seconds": 21
+      "notes": "Downloaded 640 KB with progress → done; on disk with quarantine \"0083;6afdb461;Intoponet;2D330D6E-C692-47FD-AA9A-57F77A1AE0E7\"; History found and deleted a visit; private visit not kept; a quit waited for the late history and library saves and left no temporary files.",
+      "seconds": 22
     },
     "CAPTURE": {
       "status": "pass",
       "notes": "Screenshot saved; \"New folder…\" offered; a private tab's capture is named neutrally with no address.",
-      "seconds": 15
+      "seconds": 13
     },
     "PDF_EXPORT": {
       "status": "pass",
@@ -173,12 +173,12 @@
     "PAYWALL_ALTERNATIVES": {
       "status": "pass",
       "notes": "nytimes.com section page: paywalled=false (no signals); a local article marked as not free was recognised and free coverage offered beside it, the page unchanged; one open to all was not.",
-      "seconds": 26
+      "seconds": 24
     },
     "ABSORB": {
       "status": "pass",
       "notes": "Absorbed 10572 words; 40 claims; selection absorb ok.",
-      "seconds": 13
+      "seconds": 11
     },
     "BEACONS_REGISTRY": {
       "status": "pass",
@@ -187,13 +187,13 @@
     },
     "AUTO_TRANSLATE": {
       "status": "pass",
-      "notes": "fontanka.ru translated from Russian with no clicks (Russian downloaded by itself; 3056 Latin vs 0 Cyrillic letters); \"Never translate this site\" sticks.",
-      "seconds": 118
+      "notes": "fontanka.ru translated from Russian with no clicks (Russian downloaded by itself; 3027 Latin vs 0 Cyrillic letters); \"Never translate this site\" sticks.",
+      "seconds": 108
     },
     "ROUGH_TRANSLATE": {
       "status": "pass",
       "notes": "Faroese headlines translated roughly via Icelandic, labelled as such.",
-      "seconds": 32
+      "seconds": 20
     },
     "STORY_TERRAIN_UPDATES": {
       "status": "pass",
@@ -202,7 +202,7 @@
     },
     "STORY_MOUNTAINS": {
       "status": "pass",
-      "notes": "60 story mountains, listed in the same order under Peaks; highest \"Live Updates: Trump Meets Philippine Leader Before Flying to China\" (31 outlets, 11 other countries); a pinned story that wore away stayed unpinned.",
+      "notes": "60 story mountains, listed in the same order under Peaks; highest \"Trump shakes hands with Putin and Xi ahead of historic talks in China\" (43 outlets, 20 other countries); a pinned story that wore away stayed unpinned.",
       "seconds": 16
     },
     "COPY_ADDRESS": {
@@ -217,13 +217,13 @@
     },
     "TAB_SLEEP": {
       "status": "pass",
-      "notes": "9 background tabs slept (typed text and the front tab stayed awake); their pages' memory 961 MB → 177 MB; woke on the same page, scroll and back list; a busy background page did not hold up the others; a tab closed asleep reopened with its back list; an address typed while a tab woke was not replaced by its old page.",
+      "notes": "9 background tabs slept (typed text and the front tab stayed awake); their pages' memory 1020 MB → 186 MB; woke on the same page, scroll and back list; a busy background page did not hold up the others; a tab closed asleep reopened with its back list; an address typed while a tab woke was not replaced by its old page.",
       "seconds": 41
     },
     "RECENT_TABS": {
       "status": "pass",
       "notes": "Hold ⌃, Tab and ⌃⇧Tab step most-recent-first over the page (announced); release shows it, a quick ⌃Tab goes back, Escape keeps the tab; tab-bar order unchanged; tab search in the address bar and the command menu lists the tabs most recently used first.",
-      "seconds": 12
+      "seconds": 11
     },
     "SIDEBAR_TABS": {
       "status": "pass",
@@ -237,8 +237,8 @@
     },
     "TOUR": {
       "status": "pass",
-      "notes": "All 35 steps shown, each spotlight on what it describes, the same played forward, gone back to and jumped to; the tour put everything back at the end, its own tab closed. Slowest steps to be ready (of 28 timed): \"A browser with the whole world in view\" 6.0 s, \"A browser with the whole world in view\" 6.0 s, \"A browser with the whole world in view\" 5.0 s; the whole walk took 136 s. With The Olds' lookup held up, its step was ready in 0.2 s with The Olds looking under the spotlight, 14.8 s before the lookup ended (\"Could not reach Wikidata. Check your connection and try again. Try again\"), the spotlight still on it then.",
-      "seconds": 182
+      "notes": "All 35 steps shown, each spotlight on what it describes, the same played forward, gone back to and jumped to; the tour put everything back at the end, its own tab closed. Slowest steps to be ready (of 26 timed): \"A browser with the whole world in view\" 6.0 s, \"A browser with the whole world in view\" 6.0 s, \"A browser with the whole world in view\" 5.0 s; the whole walk took 135 s. With The Olds' lookup held up, its step was ready in 0.2 s with The Olds looking under the spotlight, 13.5 s before the lookup ended (\"Could not reach Wikidata. Check your connection and try again. Try again\"), the spotlight still on it then.",
+      "seconds": 180
     },
     "TAB_ARCHIVE": {
       "status": "pass",
@@ -247,13 +247,13 @@
     },
     "COMMAND_MENU": {
       "status": "pass",
-      "notes": "⌘K from a page shows command mode in 11 ms (p95, median 4 ms, from the key reaching the app); \">\" too; no requests while typing; actions, tabs and places ranked; keyboard and Enter run them (copy, zoom, sidebar, protection, Knowledge); axe clean.",
-      "seconds": 20
+      "notes": "⌘K from a page shows command mode in 31 ms (p95, median 3 ms, from the key reaching the app); \">\" too; no requests while typing; actions, tabs and places ranked; keyboard and Enter run them (copy, zoom, sidebar, protection, Knowledge); axe clean.",
+      "seconds": 21
     },
     "TAB_FOLDERS": {
       "status": "pass",
       "notes": "Folder named from the sidebar; tab dragged in and moved by command; nested four deep; order follows the sidebar; folded and kept; ⌥⇧↑ into a folded folder opened it with the tab in sight and focused; saved as path-named collections; a collection opened as a folder; delete keeps tabs; axe clean.",
-      "seconds": 15
+      "seconds": 16
     },
     "AD_SLOTS": {
       "status": "pass",
@@ -263,11 +263,11 @@
     "LINK_PREVIEW": {
       "status": "pass",
       "notes": "⇧-click and Preview Link opened a 80% × 80% card with no new window or tab and the page under it unchanged; ads blocked (pagead2.googlesyndication.com, securepubads.g.doubleclick.net) and their space hidden in the card; Escape, a click outside and ⌘W closed it with focus back on the link; Tab stayed in the card; Open as Tab kept the page and its back list; a private tab's preview was private; a World list headline was previewed over the globe; axe clean.",
-      "seconds": 28
+      "seconds": 27
     },
     "WORKSPACES": {
       "status": "pass",
-      "notes": "Created, named (icon and colour), renamed, reordered, deleted with confirmation and Undo; each workspace kept its own pinned tab, folder and open tabs; ⌃1/⌃2 switched in 8–11 ms with the other workspace's sleeping tab left asleep; command menu, swipe and keyboard switched; shared and own favourites; private tabs in no workspace and never saved; restored after a restart and migrated a version 2 state into Main; a tab closed in a folder reopened from another workspace came back in its workspace and folder; axe clean.",
+      "notes": "Created, named (icon and colour), renamed, reordered, deleted with confirmation and Undo; each workspace kept its own pinned tab, folder and open tabs; ⌃1/⌃2 switched in 7–14 ms with the other workspace's sleeping tab left asleep; command menu, swipe and keyboard switched; shared and own favourites; private tabs in no workspace and never saved; restored after a restart and migrated a version 2 state into Main; a tab closed in a folder reopened from another workspace came back in its workspace and folder; axe clean.",
       "seconds": 35
     },
     "IMPORT_WORKSPACES": {
@@ -278,7 +278,7 @@
     "SITE_TWEAKS": {
       "status": "pass",
       "notes": "Escape stops picking; a picked element is previewed, saved, kept after reload, and not on site B. Width, font and dark colours change site A only, with no reload when turned off. @import and script markup are refused and nothing runs. A private tab sees the tweaks and writes nothing. Settings lists and removes the site, and the error page turns tweaks off.",
-      "seconds": 41
+      "seconds": 42
     },
     "QUICK_WINDOW": {
       "status": "pass",
@@ -292,18 +292,18 @@
     },
     "SPLIT_PAGES": {
       "status": "pass",
-      "notes": "Shortcut split two pages side by side with the divider and headers (origins 127.0.0.1:52339 · localhost:52339); each side keeps its own address, find and zoom; arrow keys and dragging keep the minimum width; the pair is one row, half and half when narrow or full width; it survives a workspace switch; closing a side returns the other to full size; ⌃⇧- unsplits; an edge drop previews and splits; the relaunch restores the pair. Screenshots and bounds in /var/folders/hq/nx9hk1515831m37ff_h7zhc40000gn/T/intoponet-split-pages-shots.",
+      "notes": "Shortcut split two pages side by side with the divider and headers (origins 127.0.0.1:61303 · localhost:61303); each side keeps its own address, find and zoom; arrow keys and dragging keep the minimum width; the pair is one row, half and half when narrow or full width; it survives a workspace switch; closing a side returns the other to full size; ⌃⇧- unsplits; an edge drop previews and splits; the relaunch restores the pair. Screenshots and bounds in /var/folders/hq/nx9hk1515831m37ff_h7zhc40000gn/T/intoponet-split-pages-shots.",
       "seconds": 40
     },
     "LINK_ROUTES": {
       "status": "pass",
       "notes": "Rule localhost → Work: a matching link (and a subdomain) opens in Work as a tab and shows it, and the rule is saved to link-routes.json; 127.0.0.1 follows the default. With the quick-window setting, the match still goes to Work and the unmatched link opens a quick window. Private browsing is not routed. The first matching rule wins (moving a rule changes that); a rule for a deleted workspace is skipped. Always open here… offers the workspaces, saves the rule, and moves the same page (history kept) into Work; a private quick window has none. A burst of 9 links opened 6 and held 3 until \"Open the rest\", closing nothing. Settings lists the rules; axe clean.",
-      "seconds": 14
+      "seconds": 15
     },
     "COMPARE_COVERAGE": {
       "status": "pass",
-      "notes": "Compared \"CNA\" with ANTARA News Agency (Indonesia): two pages 642×652 and 641×652, side by side at y 161; headers read \"CNA · International desk\" and \"ANTARA News Agency · Indonesia\"; Translate on the right side focused that side's page (https://www.antaranews.com/berita/5861567/mengapa-china-kekuatan-produktif-berkualitas-baru-peluang-baru-bagi-asia-pasifik) and opened the translate bar; The Olds opened for the story; 0 paywall badge(s) on the pair; a side whose article answered 404 showed its error card (Retry asked again, another outlet read the story in that side) while an ordinary tab showed the site's own page.",
-      "seconds": 21
+      "notes": "Compared \"The Guardian World\" with Daily Mirror (Wijeya Newspapers) (Sri Lanka): two pages 642×652 and 641×652, side by side at y 161; headers read \"The Guardian World · International desk\" and \"Daily Mirror (Wijeya Newspapers) · Sri Lanka\"; Neither side is in another language from the reader, so Translate is not offered; The Olds opened for the story; 0 paywall badge(s) on the pair; a side whose article answered 404 showed its error card (Retry asked again, another outlet read the story in that side) while an ordinary tab showed the site's own page.",
+      "seconds": 17
     },
     "PLACE_WORKSPACES": {
       "status": "pass",
@@ -312,13 +312,13 @@
     },
     "STORY_TABS": {
       "status": "pass",
-      "notes": "Two articles of \"Trump heads to China, betting on unscr…\" badged; the control and a private tab with a matching title not; Group by story made one folder for it holding only the two articles; Undo restored the order and removed the folder; hovering the folder highlighted the story (sm-3z4zg3) and leaving cleared it; the grouping notice went when another workspace was shown; no page was requested during matching; axe clean.",
+      "notes": "Two articles of \"Trump seeks to show strength in China …\" badged; the control and a private tab with a matching title not; Group by story made one folder for it holding only the two articles; Undo restored the order and removed the folder; hovering the folder highlighted the story (sm-1ty6d3p) and leaving cleared it; the grouping notice went when another workspace was shown; no page was requested during matching; axe clean.",
       "seconds": 173
     },
     "TAB_TIDY_LOCAL": {
       "status": "pass",
       "notes": "Laya off: Tidy explained it and offered Group by story. Laya on: 2 groups (Cooking; Astronomy) separated cooking from astronomy and left a pair side by side alone; nothing moved before Accept; with a suggested tab closed meanwhile, Accept moved the rest and its notice counted 3; Undo restored the order.",
-      "seconds": 52
+      "seconds": 17
     },
     "WORKSPACE_IDENTITIES": {
       "status": "pass",
