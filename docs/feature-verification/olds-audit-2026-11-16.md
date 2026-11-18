@@ -1,6 +1,6 @@
 # The Olds: live audit, 16 November 2026 (round 5, area B)
 
-Build audited: `73c5d0a` (0.1.25), fresh profile, Laya off. Sample taken with `sample.mjs` (this directory) from the
+Build audited: `2207083` (0.1.25), fresh profile, Laya off. Sample taken with `sample.mjs` (this directory) from the
 app's own digest: 12 World stories, 14 local English, 14 local non-English, 4 more World (44 headlines, 30 countries'
 outlets, 13 languages). Full threads: `sample1.json`. Mechanical check of every dated event against its Wikipedia
 source (`verify.mjs`): `verify1.json`, `verify1.log`. Wrong topics re-run with candidate scores: `wrong-scores.jsonl`.

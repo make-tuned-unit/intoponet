@@ -1,6 +1,6 @@
 {
   "checkedAt": "2026-10-29T01:15:06.484Z",
-  "baseCommit": "8637f4f",
+  "baseCommit": "1673eeb",
   "buildMainSha256": "0e16a324bf57ae6634cc8577bd2d9dd8be1a75152b6136acfad79267e5399fca",
   "method": "Apply the production historical-enrichment stage to 80 saved headline threads from the completed evaluation profile, preserving topic selection and original chronicle. Uses live Wikipedia sources. This is a historical-depth audit, not another full end-to-end matching comparison.",
   "coverage": {

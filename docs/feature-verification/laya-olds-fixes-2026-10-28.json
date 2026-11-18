@@ -1,6 +1,6 @@
 {
   "evaluatedAt": "2026-10-28T22:20:47.751762+00:00",
-  "baseCommit": "3894e65",
+  "baseCommit": "f0f96df",
   "buildMainSha256": "35ac6856b2d9a4be4d51ba1133f0174fcd2b68ead8d8e80fe611278f1beeb9fc",
   "scope": "Five focused live regressions, sequential Laya on then off, same frozen build and profile. Not a full 78-story rerun.",
   "changes": [

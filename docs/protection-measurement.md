@@ -134,7 +134,7 @@ only served after a consent dialog is answered.
 
 60 outlets (one per country at most) are never used to build the list. The check has run twice;
 the second run is at the end of this section. On 2026-11-17, with the
-list frozen (commit `7132e32`, 886 rules), `scripts/protection-crawl.mjs` visited their home page
+list frozen (commit `fbd1fa3`, 886 rules), `scripts/protection-crawl.mjs` visited their home page
 and newest article twice, with blocking off and with `--protect` (the engine deciding as it does
 in the app), each outlet with a cookie jar of its own. 54 outlets gave a usable page in both runs.
 The numbers of that run (`docs/data/protection-holdout.json` now holds the second run; the first run is in that file in git history, before 18 November 2026; the verdict on every host of both runs is in

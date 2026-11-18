@@ -1,6 +1,6 @@
 {
   "evaluatedAt": "2026-10-29T00:56:46.133Z",
-  "baseCommit": "2e8a6d8",
+  "baseCommit": "ce038b0",
   "buildMainSha256": "df1318170ea80478102923405d73960cd20173fa20a12c28b8ec3bc1f5ca0395",
   "goldSha256": "71cff18bb9d706cbc6384371883c4bf986d252454ed9a3d8c0a7e0b792de6072",
   "execution": "Sequential live Laya on then off, identical frozen build and persistent profile, 11 installed translation languages. Gold labels unchanged. Later hover edit is not part of this evaluated build.",

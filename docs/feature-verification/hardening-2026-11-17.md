@@ -1,6 +1,6 @@
 # Hardening round 5 (16–17 November 2026)
 
-Base `73c5d0a` (0.1.25). Seven agents, one area each, merged on main. Not released.
+Base `2207083` (0.1.25). Seven agents, one area each, merged on main. Not released.
 
 ## State of the evidence
 

@@ -20,14 +20,14 @@ describes what each commit did when it was made.
 
 | Time | Commit | What it did |
 |---|---|---|
-| 08:20:05 | `47c44a1` "EasyList and EasyPrivacy are in the repository as unmodified data files, with their source, date and checksum recorded" | Added `packages/protection-engine/lists/` (`easylist.txt`, `easyprivacy.txt`, `manifest.json`, `NOTICE.txt`) and `scripts/update-protection-lists.mjs`, which fetched the two lists as published. |
-| 08:20:05 | `b13e50f` "Ads and trackers on other sites are blocked with EasyList and EasyPrivacy, in every page session" | Made the engine match requests against the two lists with the Ghostery adblocker library (`@ghostery/adblocker`, MPL-2.0), added as a dependency, and added a build step that compiled the two lists into a binary file the app read. (The removal commit names `tldts-experimental` as a dependency removed with it.) |
-| 08:49:52 and 08:55:44 | `7ab634c`, `d54db80` | Changes to how blocked requests were counted and to how the library was built into the app. |
-| 09:30:09 | `690acc6` "Website says what the ad and tracker blocking does and does not block; packaging requires the lists in the app" | The packaging script was made to require the list files. |
-| 10:27:49 | `b2e6b42` "The ad and tracker blocker no longer uses EasyList, EasyPrivacy, the Ghostery library or tldts: Intoponet's own matcher and site table take their place" | Removed the `lists/` folder and its four files, the build step, `scripts/update-protection-lists.mjs`, and the two dependencies with everything they pulled in. Added `packages/protection-engine/src/site.ts` and rewrote the matcher. |
+| 08:20:05 | `1f48897` "EasyList and EasyPrivacy are in the repository as unmodified data files, with their source, date and checksum recorded" | Added `packages/protection-engine/lists/` (`easylist.txt`, `easyprivacy.txt`, `manifest.json`, `NOTICE.txt`) and `scripts/update-protection-lists.mjs`, which fetched the two lists as published. |
+| 08:20:05 | `22c7c94` "Ads and trackers on other sites are blocked with EasyList and EasyPrivacy, in every page session" | Made the engine match requests against the two lists with the Ghostery adblocker library (`@ghostery/adblocker`, MPL-2.0), added as a dependency, and added a build step that compiled the two lists into a binary file the app read. (The removal commit names `tldts-experimental` as a dependency removed with it.) |
+| 08:49:52 and 08:55:44 | `9e375a9`, `9b28986` | Changes to how blocked requests were counted and to how the library was built into the app. |
+| 09:30:09 | `dcf567e` "Website says what the ad and tracker blocking does and does not block; packaging requires the lists in the app" | The packaging script was made to require the list files. |
+| 10:27:49 | `102d8e0` "The ad and tracker blocker no longer uses EasyList, EasyPrivacy, the Ghostery library or tldts: Intoponet's own matcher and site table take their place" | Removed the `lists/` folder and its four files, the build step, `scripts/update-protection-lists.mjs`, and the two dependencies with everything they pulled in. Added `packages/protection-engine/src/site.ts` and rewrote the matcher. |
 | 10:53:54 | `0792193` "Intoponet blocks with its own list of ad and tracker hosts: 421 services written out by hand, …" | Added `data/authored-services.json`, `data/never-block.json`, `data/blocklist.json`, the classifier and the crawler. |
-| 11:46:11 | `7132e32` "The list now carries what Intoponet measured on 504 publishers' pages: …" | Added the measured and reviewed hosts. The list was frozen here for the hold-out check. |
-| 12:19:03 and 12:40:49 | `e38d20a`, `2076c54` | Recorded the hold-out check; added services it showed missing, marked as added after it. |
+| 11:46:11 | `fbd1fa3` "The list now carries what Intoponet measured on 504 publishers' pages: …" | Added the measured and reviewed hosts. The list was frozen here for the hold-out check. |
+| 12:19:03 and 12:40:49 | `ac49f82`, `a400254` | Recorded the hold-out check; added services it showed missing, marked as added after it. |
 
 So the two lists were in the working tree from 08:20 to 10:27, two hours and eight minutes, and
 the first version of Intoponet's own list was committed 26 minutes after they were removed.
@@ -52,6 +52,16 @@ removes the folder. The commits' earlier hashes, in table order, were `74acae7`,
 `00ac8bd`, `6b0abb0`, `87ee920`, `696ff4a`, `8cba1e0`, `35eef6f`, `d7fe8a9` and `5fe68f4`. The
 history as it was before the rewrite is kept by the owner outside this repository, as one backup
 file made that day.
+
+**A second rewrite, when the repository was opened.** Later on 18 November 2026 the source was
+published under the Mozilla Public License 2.0. Before that, every commit was rewritten once more
+to take the owner's personal details out: the author and committer of every commit became the
+project's name and a no-reply address, and the owner's name, an Apple team identifier and
+home-folder paths were replaced in the few files that held them. No list, rule or source file was
+otherwise changed. The hashes changed again, and the table above gives the hashes as they are now;
+between the two rewrites they were, in table order, `47c44a1`, `b13e50f`, `7ab634c`, `d54db80`,
+`690acc6`, `b2e6b42`, `0792193`, `7132e32`, `e38d20a` and `2076c54`. A backup of the history as
+it was before this rewrite is also kept by the owner outside the repository.
 
 ## Who and what could see the lists
 
