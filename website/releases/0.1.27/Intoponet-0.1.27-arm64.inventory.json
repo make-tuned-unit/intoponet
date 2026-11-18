@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "product": "Intoponet",
+  "version": "0.1.27",
+  "platform": "macOS",
+  "architecture": "arm64",
+  "mode": "release",
+  "artifacts": [
+    {
+      "file": "Intoponet-0.1.27-arm64.dmg",
+      "bytes": 125953862,
+      "sha256": "11c6934f50c933099508e2fa7286a3db0d1d17ad90691845faa4fa42bd9280d9"
+    },
+    {
+      "file": "Intoponet-0.1.27-arm64-mac.zip",
+      "bytes": 126361104,
+      "sha256": "110a4c5e3369da4fa711d5e162a01a7fd28b652de233562326e8e57310139dc8"
+    },
+    {
+      "file": "releases.json",
+      "bytes": 424,
+      "sha256": "76d474f156c8d74105e48083d67b4e8ec1c0099cd760910b8b486b40e2c641f1"
+    },
+    {
+      "file": "Intoponet-0.1.27-arm64.cdx.json",
+      "bytes": 49483,
+      "sha256": "fd929360d6272252aabe90411cee2cb99b8f06cdc084df0b8e5b595b5292a161"
+    }
+  ],
+  "updates": {
+    "enabled": true,
+    "protocol": "Electron native autoUpdater / Squirrel.Mac JSON feed",
+    "feedUrl": "https://intoponet.com/updates/arm64/releases.json",
+    "manifest": "releases.json",
+    "checks": "automatic about once a day while the app is open (can be turned off in Settings), and on request; a found update downloads in the background and installs on restart",
+    "persistentUpdaterIdentifier": false
+  },
+  "runtime": {
+    "electron": "45.0.0",
+    "chromium": "156.0.8078.48",
+    "chromiumVersionEvidence": "electron-to-chromium@1.5.463 full-versions mapping for Electron 45.0.0"
+  },
+  "dependencyTreatment": {
+    "productionDependencyGraph": "npm packages whose modules the build compiled into app.asar (recorded by the build itself), merged with the npm lockfile graph for @intoponet/desktop; a lockfile dependency with no module in the app is marked excluded. Workspace TypeScript packages are compiled into app.asar by electron-vite.",
+    "licenseReview": "Package license metadata is inventory input only; no exhaustive license review is asserted."
+  }
+}
