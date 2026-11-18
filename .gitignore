@@ -27,3 +27,7 @@ website/dist/
 
 # Agents' scratch files
 scratchpad/
+
+# Agent tool files (third-party skill documents)
+/.claude/
+/skills-lock.json
