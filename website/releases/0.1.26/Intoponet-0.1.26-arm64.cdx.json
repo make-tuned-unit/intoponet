@@ -1,0 +1,1802 @@
+{
+  "$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:883db118-e3cd-5255-8423-023c79502321",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-11-18T14:45:29.740Z",
+    "lifecycles": [
+      {
+        "phase": "build"
+      }
+    ],
+    "tools": [
+      {
+        "vendor": "npm",
+        "name": "cli",
+        "version": "11.17.0"
+      },
+      {
+        "vendor": "Intoponet",
+        "name": "release-bom (bundled packages recorded by the build)"
+      }
+    ],
+    "component": {
+      "bom-ref": "pkg:generic/intoponet@0.1.26",
+      "type": "application",
+      "supplier": {
+        "name": "Intoponet",
+        "url": [
+          "https://intoponet.com"
+        ]
+      },
+      "name": "Intoponet",
+      "version": "0.1.26",
+      "description": "Intoponet for macOS, a web browser.",
+      "licenses": [
+        {
+          "license": {
+            "name": "Proprietary: Intoponet's own, all rights reserved (see LICENSE)"
+          }
+        }
+      ],
+      "purl": "pkg:generic/intoponet@0.1.26"
+    },
+    "supplier": {
+      "name": "Intoponet",
+      "url": [
+        "https://intoponet.com"
+      ]
+    },
+    "properties": [
+      {
+        "name": "intoponet:known-unknowns",
+        "value": "The third-party code inside Electron's own binaries (Chromium, Node.js, V8 and their dependencies) is not listed one by one; its licences ship in the app as LICENSES.chromium.html. Translation and embedding models are downloaded on demand, are not part of the shipped app and are not listed."
+      },
+      {
+        "name": "intoponet:library-evidence",
+        "value": "npm libraries are those whose modules the build compiled into the app (apps/desktop/bundledPackages.ts), merged with the production dependencies in package-lock.json; the latter are marked excluded when none of their modules is in the app."
+      }
+    ]
+  },
+  "components": [
+    {
+      "bom-ref": "@babel/runtime@7.29.10",
+      "type": "library",
+      "name": "@babel/runtime",
+      "version": "7.29.10",
+      "scope": "excluded",
+      "purl": "pkg:npm/%40babel/runtime@7.29.10",
+      "properties": [
+        {
+          "name": "intoponet:evidence",
+          "value": "a production dependency in package-lock.json; the build left none of its modules in the app"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@babel/runtime/-/runtime-7.29.10.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "369ba04f36ca806acd7b8e548b7d9c37cbc214533156d3fff6bb5fc2fd273f91510c08ef601c4970b569600f66af58f13fa727213ef1f4b533b834db59860d44"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "@react-three/fiber@9.8.2",
+      "type": "library",
+      "name": "@react-three/fiber",
+      "version": "9.8.2",
+      "scope": "required",
+      "purl": "pkg:npm/%40react-three/fiber@9.8.2",
+      "properties": [
+        {
+          "name": "intoponet:evidence",
+          "value": "compiled into the app by the build (renderer)"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@react-three/fiber/-/fiber-9.8.2.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "eacd1e8f0d1b4f59b243f68b2ee81c8a5f3fcc198d9e71f0fc0212585d727c32cec5f5f7c986934bed089292484c49e6fd248c2edc637ba0890edd22e56bb54b"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "@types/react-reconciler@0.28.9",
+      "type": "library",
+      "name": "@types/react-reconciler",
+      "version": "0.28.9",
+      "scope": "excluded",
+      "purl": "pkg:npm/%40types/react-reconciler@0.28.9",
+      "properties": [
+        {
+          "name": "intoponet:evidence",
+          "value": "a production dependency in package-lock.json; the build left none of its modules in the app"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@types/react-reconciler/-/react-reconciler-0.28.9.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "1c73379f1c94677cc0ca55fc644cab0cd7765d93a74340f95dfba7245e452d09d96c71d8ab8516bd6d507de950357bf5202364c1885fc63c1f9ea8af601e9b16"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "buffer@6.0.3",
+      "type": "library",
+      "name": "buffer",
+      "version": "6.0.3",
+      "scope": "excluded",
+      "purl": "pkg:npm/buffer@6.0.3",
+      "properties": [
+        {
+          "name": "intoponet:evidence",
+          "value": "a production dependency in package-lock.json; the build left none of its modules in the app"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/buffer/-/buffer-6.0.3.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "153882a4dc6dc226591c465b71b4c87198c44552029fdcaafe90c591397de7f031cc3d6768172d37b60eebcae233f80b48363bb1dacc6f2f21a1f00362ebaa38"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "framer-motion@12.43.0",
+      "type": "library",
+      "name": "framer-motion",
+      "version": "12.43.0",
+      "scope": "required",
+      "purl": "pkg:npm/framer-motion@12.43.0",
+      "properties": [
+        {
+          "name": "intoponet:evidence",
+          "value": "compiled into the app by the build (renderer)"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/framer-motion/-/framer-motion-12.43.0.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "d5e68bdd1bd1fe40256c6ed461ca4ca6d132ccfa0434ed1ceb0ed99c1dff861daf480cffeae180167e9f768a93060b8db2d7f732c161247b03ff40c789c946fa"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "ieee754@1.2.1",
+      "type": "library",
+      "name": "ieee754",
+      "version": "1.2.1",
+      "scope": "excluded",
+      "purl": "pkg:npm/ieee754@1.2.1",
+      "properties": [
+        {
+          "name": "intoponet:evidence",
+          "value": "a production dependency in package-lock.json; the build left none of its modules in the app"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/ieee754/-/ieee754-1.2.1.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "75ccaa843bd7d42e3a95765c56a0a92be16d31141574830debf0dfe63b36ce8b94b2a1bb23ab05c62b480beeca60adbd29d5ce2c776ef732f8b059e85509ea68"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "its-fine@2.1.1",
+      "type": "library",
+      "name": "its-fine",
+      "version": "2.1.1",
+      "scope": "required",
+      "purl": "pkg:npm/its-fine@2.1.1",
+      "properties": [
+        {
+          "name": "intoponet:evidence",
+          "value": "compiled into the app by the build (renderer)"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/its-fine/-/its-fine-2.1.1.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "0b96685647aa4add008ded2dcc448efa24ff110a4d14d2f7f4690fee60800ada195050fa19cc9eac50abea4a7466d8882385bd1e8624638f12a32e7113fb872b"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "lucide-react@0.468.0",
+      "type": "library",
+      "name": "lucide-react",
+      "version": "0.468.0",
+      "scope": "required",
+      "purl": "pkg:npm/lucide-react@0.468.0",
+      "properties": [
+        {
+          "name": "intoponet:evidence",
+          "value": "compiled into the app by the build (renderer)"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/lucide-react/-/lucide-react-0.468.0.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "ea4a184619ccd8dd0619921d5f349e88dc20bafd60b7f1408d93a23e5efaae8062df12845dae1699fa71810c134cbe0a8a95e379fae77f7a15e08b18862e0914"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "ISC"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "motion@12.43.0",
+      "type": "library",
+      "name": "motion",
+      "version": "12.43.0",
+      "scope": "required",
+      "purl": "pkg:npm/motion@12.43.0",
+      "properties": [
+        {
+          "name": "intoponet:evidence",
+          "value": "compiled into the app by the build (renderer)"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/motion/-/motion-12.43.0.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "0508106d26bd1e7dff9ad6e26f430ae77cba25200d6be60a50a95a6275b30150c7e36e11610e4b569577a4d8961f4d01036cf8a23b1274ccea4fb836150c23b9"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "motion-dom@12.43.0",
+      "type": "library",
+      "name": "motion-dom",
+      "version": "12.43.0",
+      "scope": "required",
+      "purl": "pkg:npm/motion-dom@12.43.0",
+      "properties": [
+        {
+          "name": "intoponet:evidence",
+          "value": "compiled into the app by the build (renderer)"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/motion-dom/-/motion-dom-12.43.0.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "6b328e37877d4bae4f1281548904cc4e03e17849b37f642781d45ce7400a7c9a7d43d9a6701570db673c78cabd93c9313851dd2fbf96658ecdff917f9708836a"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "motion-utils@12.39.0",
+      "type": "library",
+      "name": "motion-utils",
+      "version": "12.39.0",
+      "scope": "required",
+      "purl": "pkg:npm/motion-utils@12.39.0",
+      "properties": [
+        {
+          "name": "intoponet:evidence",
+          "value": "compiled into the app by the build (renderer)"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/motion-utils/-/motion-utils-12.39.0.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "f2769d2402634eda91926445dfa168253af2c0af679c59a73f09d2332c5a38253b1838cdf514cc248c71f437bc12b33ebe93e131c72bffa7e8e56722c902e731"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "react@19.3.1",
+      "type": "library",
+      "name": "react",
+      "version": "19.3.1",
+      "scope": "required",
+      "purl": "pkg:npm/react@19.3.1",
+      "properties": [
+        {
+          "name": "intoponet:evidence",
+          "value": "compiled into the app by the build (renderer)"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/react/-/react-19.3.1.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "40d85676dee7ae05565901b9f10b86b004778efdc76dee266f8bf3ef0d9cb271dabdc89926075ad423cd6a5745e9e571bfdd2e7778d45e92a51cbebd80edfccb"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "react-dom@19.3.1",
+      "type": "library",
+      "name": "react-dom",
+      "version": "19.3.1",
+      "scope": "required",
+      "purl": "pkg:npm/react-dom@19.3.1",
+      "properties": [
+        {
+          "name": "intoponet:evidence",
+          "value": "compiled into the app by the build (renderer)"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/react-dom/-/react-dom-19.3.1.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "6346c0473e77961102d4d302012b34fe3f9f681ff3aaddd1f21a6f8357bcfbad59549e142f451d0b87016d77d931c22e86b7e07882d32def9978109abd03ed29"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "react-use-measure@2.1.7",
+      "type": "library",
+      "name": "react-use-measure",
+      "version": "2.1.7",
+      "scope": "required",
+      "purl": "pkg:npm/react-use-measure@2.1.7",
+      "properties": [
+        {
+          "name": "intoponet:evidence",
+          "value": "compiled into the app by the build (renderer)"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/react-use-measure/-/react-use-measure-2.1.7.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "2abbdc028d7723feb41e9c063b98e95bb13d0dfbac2b22cf2efb87954c8fe73aa79803e135ceaa4d18d442b7530039749693e90d5536fc6839d5494e1875db76"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "scheduler@0.28.0",
+      "type": "library",
+      "name": "scheduler",
+      "version": "0.28.0",
+      "scope": "required",
+      "purl": "pkg:npm/scheduler@0.28.0",
+      "properties": [
+        {
+          "name": "intoponet:evidence",
+          "value": "compiled into the app by the build (renderer)"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/scheduler/-/scheduler-0.28.0.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "8eea2b7c2988908c3cb53fa9e415d29ba3c98d017fc9c11898acb3511088b7f45a64884bf8fba56d0f58bb6cf51dd3890dda834e5c40d7ec4a0661d726c73303"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "suspend-react@0.1.3",
+      "type": "library",
+      "name": "suspend-react",
+      "version": "0.1.3",
+      "scope": "required",
+      "purl": "pkg:npm/suspend-react@0.1.3",
+      "properties": [
+        {
+          "name": "intoponet:evidence",
+          "value": "compiled into the app by the build (renderer)"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/suspend-react/-/suspend-react-0.1.3.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "6aa95d2a05fd699aa9a03a777bcfc167c0e6ef1d69265faa23764ac433748bf2104d6530071fcc6a79a5549df0a30a9b9e8e9cd9b9a221fb3e526e8b6ec8c9c9"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "three@0.172.0",
+      "type": "library",
+      "name": "three",
+      "version": "0.172.0",
+      "scope": "required",
+      "purl": "pkg:npm/three@0.172.0",
+      "properties": [
+        {
+          "name": "intoponet:evidence",
+          "value": "compiled into the app by the build (renderer)"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/three/-/three-0.172.0.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "e87320325cd4f7b32c57b0ffb58f156b7f1bf37933f18257f8179f2a3b2930d02fd15c7a7713288073ab9d197fb1b308b3704f50a8a33ea0ea27ff94c096c8a3"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "use-sync-external-store@1.7.0",
+      "type": "library",
+      "name": "use-sync-external-store",
+      "version": "1.7.0",
+      "scope": "required",
+      "purl": "pkg:npm/use-sync-external-store@1.7.0",
+      "properties": [
+        {
+          "name": "intoponet:evidence",
+          "value": "compiled into the app by the build (renderer)"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/use-sync-external-store/-/use-sync-external-store-1.7.0.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "e8bf847a280731085d6883cd20550ac1f5894b058543c8096c9d832ceb39b0321e813c11f5f471be7337b9c8872a3219845cfe280bf67a6856311bc398c718f0"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "zustand@5.0.16",
+      "type": "library",
+      "name": "zustand",
+      "version": "5.0.16",
+      "scope": "required",
+      "purl": "pkg:npm/zustand@5.0.16",
+      "properties": [
+        {
+          "name": "intoponet:evidence",
+          "value": "compiled into the app by the build (renderer)"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/zustand/-/zustand-5.0.16.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "52fededf6ee286509f6b27e36b784373433ae14a5ebf52d604aa51a1b74ae0dca8bc30cf79e5f88a659773fc330b5c9ce9f9183e8018fe770a54f02cda3aed43"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "@intoponet/beacon-core@0.1.0",
+      "type": "library",
+      "name": "beacon-core",
+      "version": "0.1.0",
+      "scope": "required",
+      "purl": "pkg:npm/%40intoponet/beacon-core@0.1.0",
+      "properties": [
+        {
+          "name": "cdx:npm:package:private",
+          "value": "true"
+        },
+        {
+          "name": "intoponet:evidence",
+          "value": "Intoponet's own workspace package; its source is compiled into the app"
+        }
+      ],
+      "externalReferences": [],
+      "licenses": [
+        {
+          "license": {
+            "name": "Proprietary: Intoponet's own, all rights reserved (see LICENSE)"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "@intoponet/browser-api@0.1.0",
+      "type": "library",
+      "name": "browser-api",
+      "version": "0.1.0",
+      "scope": "required",
+      "purl": "pkg:npm/%40intoponet/browser-api@0.1.0",
+      "properties": [
+        {
+          "name": "cdx:npm:package:private",
+          "value": "true"
+        },
+        {
+          "name": "intoponet:evidence",
+          "value": "Intoponet's own workspace package; its source is compiled into the app"
+        }
+      ],
+      "externalReferences": [],
+      "licenses": [
+        {
+          "license": {
+            "name": "Proprietary: Intoponet's own, all rights reserved (see LICENSE)"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "@intoponet/field-snapshot@0.1.0",
+      "type": "library",
+      "name": "field-snapshot",
+      "version": "0.1.0",
+      "scope": "required",
+      "purl": "pkg:npm/%40intoponet/field-snapshot@0.1.0",
+      "properties": [
+        {
+          "name": "cdx:npm:package:private",
+          "value": "true"
+        },
+        {
+          "name": "intoponet:evidence",
+          "value": "Intoponet's own workspace package; its source is compiled into the app"
+        }
+      ],
+      "externalReferences": [],
+      "licenses": [
+        {
+          "license": {
+            "name": "Proprietary: Intoponet's own, all rights reserved (see LICENSE)"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "@intoponet/frequency-field@0.1.0",
+      "type": "library",
+      "name": "frequency-field",
+      "version": "0.1.0",
+      "scope": "required",
+      "purl": "pkg:npm/%40intoponet/frequency-field@0.1.0",
+      "properties": [
+        {
+          "name": "cdx:npm:package:private",
+          "value": "true"
+        },
+        {
+          "name": "intoponet:evidence",
+          "value": "Intoponet's own workspace package; its source is compiled into the app"
+        }
+      ],
+      "externalReferences": [],
+      "licenses": [
+        {
+          "license": {
+            "name": "Proprietary: Intoponet's own, all rights reserved (see LICENSE)"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "@intoponet/local-knowledge@0.1.0",
+      "type": "library",
+      "name": "local-knowledge",
+      "version": "0.1.0",
+      "scope": "required",
+      "purl": "pkg:npm/%40intoponet/local-knowledge@0.1.0",
+      "properties": [
+        {
+          "name": "cdx:npm:package:private",
+          "value": "true"
+        },
+        {
+          "name": "intoponet:evidence",
+          "value": "Intoponet's own workspace package; its source is compiled into the app"
+        }
+      ],
+      "externalReferences": [],
+      "licenses": [
+        {
+          "license": {
+            "name": "Proprietary: Intoponet's own, all rights reserved (see LICENSE)"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "@intoponet/protection-engine@0.1.0",
+      "type": "library",
+      "name": "protection-engine",
+      "version": "0.1.0",
+      "scope": "required",
+      "purl": "pkg:npm/%40intoponet/protection-engine@0.1.0",
+      "properties": [
+        {
+          "name": "cdx:npm:package:private",
+          "value": "true"
+        },
+        {
+          "name": "intoponet:evidence",
+          "value": "Intoponet's own workspace package; its source is compiled into the app"
+        }
+      ],
+      "externalReferences": [],
+      "licenses": [
+        {
+          "license": {
+            "name": "Proprietary: Intoponet's own, all rights reserved (see LICENSE)"
+          }
+        }
+      ]
+    },
+    {
+      "type": "framework",
+      "bom-ref": "pkg:npm/electron@45.0.0",
+      "name": "electron",
+      "version": "45.0.0",
+      "purl": "pkg:npm/electron@45.0.0",
+      "scope": "required",
+      "description": "Electron runtime shipped in the macOS app bundle.",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/electron/electron"
+        }
+      ]
+    },
+    {
+      "type": "framework",
+      "bom-ref": "pkg:generic/chromium@156.0.8078.48",
+      "name": "Chromium",
+      "version": "156.0.8078.48",
+      "purl": "pkg:generic/chromium@156.0.8078.48",
+      "scope": "required",
+      "description": "Chromium runtime embedded by the shipped Electron version.",
+      "licenses": [
+        {
+          "license": {
+            "name": "BSD-3-Clause and others: Chromium, Node.js, V8 and what they include each keep their own licence; the texts ship in the app as LICENSES.chromium.html"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://www.chromium.org"
+        }
+      ],
+      "properties": [
+        {
+          "name": "intoponet:version-evidence",
+          "value": "electron-to-chromium@1.5.463 full-versions mapping"
+        },
+        {
+          "name": "intoponet:runtime-component",
+          "value": "bundled with Electron; not a separately installed package"
+        }
+      ]
+    },
+    {
+      "bom-ref": "@cantoo/pdf-lib@2.11.1",
+      "type": "library",
+      "name": "@cantoo/pdf-lib",
+      "version": "2.11.1",
+      "scope": "required",
+      "purl": "pkg:npm/%40cantoo/pdf-lib@2.11.1",
+      "properties": [
+        {
+          "name": "intoponet:evidence",
+          "value": "compiled into the app by the build (main); a development dependency in package.json"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@cantoo/pdf-lib/-/pdf-lib-2.11.1.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "958b912457d78283fc59513c1d849ea0b7c37274979a330b99d652ed8be66079e06dc65f8aa0ceaee1eb641aa3622ce4acd6b869dd725b8582acf6326f6e93dd"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "@mozilla/readability@0.6.0",
+      "type": "library",
+      "name": "@mozilla/readability",
+      "version": "0.6.0",
+      "scope": "required",
+      "purl": "pkg:npm/%40mozilla/readability@0.6.0",
+      "properties": [
+        {
+          "name": "intoponet:evidence",
+          "value": "compiled into the app by the build (main); a development dependency in package.json"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@mozilla/readability/-/readability-0.6.0.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "8ee1b9556878a808afcd301e333bd8f71b3d1d8e6b01caf613823bb624920a8911162ed7219080bbdd999124ec223d4e3dc78289f2f77297ed78fde90d3f7f41"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "culori@4.0.2",
+      "type": "library",
+      "name": "culori",
+      "version": "4.0.2",
+      "scope": "required",
+      "purl": "pkg:npm/culori@4.0.2",
+      "properties": [
+        {
+          "name": "intoponet:evidence",
+          "value": "compiled into the app by the build (main); a development dependency in package.json"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/culori/-/culori-4.0.2.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "d7e061381f1a8429f83b471ea744a1da5f4a08e7ce758f815c99ca307145cc3128b92aff7a5d7c4305c431194e8fd518e6709e03c50dddaffcdab5164417b207"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "dompurify@3.4.17",
+      "type": "library",
+      "name": "dompurify",
+      "version": "3.4.17",
+      "scope": "required",
+      "purl": "pkg:npm/dompurify@3.4.17",
+      "properties": [
+        {
+          "name": "intoponet:evidence",
+          "value": "compiled into the app by the build (main); a development dependency in package.json"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/dompurify/-/dompurify-3.4.17.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "07fa52958547439f24a88483ff20e3b89d727f3237e26d60178940a1dd9bc1246188de0ae429771fc01fee1a81d8f9932fdd75b5d12e7679d79f9167851a33d3"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "(MPL-2.0 OR Apache-2.0)"
+        }
+      ]
+    },
+    {
+      "bom-ref": "fflate@0.8.3",
+      "type": "library",
+      "name": "fflate",
+      "version": "0.8.3",
+      "scope": "required",
+      "purl": "pkg:npm/fflate@0.8.3",
+      "properties": [
+        {
+          "name": "intoponet:evidence",
+          "value": "compiled into the app by the build (main); a development dependency in package.json"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/fflate/-/fflate-0.8.3.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "b5b64db89acbc06529df3b2106d772e16f8e47166e221f1ae629722044030b9ad8d5fdd4db424caf2d0b977581cd4e7c1192ac12e2455e16f9830bfc0ac3ef80"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "html-entities@2.6.0",
+      "type": "library",
+      "name": "html-entities",
+      "version": "2.6.0",
+      "scope": "required",
+      "purl": "pkg:npm/html-entities@2.6.0",
+      "properties": [
+        {
+          "name": "intoponet:evidence",
+          "value": "compiled into the app by the build (main); a development dependency in package.json"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/html-entities/-/html-entities-2.6.0.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "92283eacc9ff40e551bebedcf3a810f25597abe1e4bfa09b007d612eef911b7dfc4ad4e913c6746f8e120d56aa56eec718a7f6edfadd994604b3d853517fdc2d"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "jpeg-js@0.4.4",
+      "type": "library",
+      "name": "jpeg-js",
+      "version": "0.4.4",
+      "scope": "required",
+      "purl": "pkg:npm/jpeg-js@0.4.4",
+      "properties": [
+        {
+          "name": "intoponet:evidence",
+          "value": "compiled into the app by the build (main); a development dependency in package.json"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/jpeg-js/-/jpeg-js-0.4.4.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "599cde0ce12d4ce04ae0c76c6abd08a84539b0caf7bd257646a9002335045760479d47ca1b2b305853c5c0ae44783a3ddcadc5a214876cb0238f4b355b377e76"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "node-html-better-parser@1.5.9",
+      "type": "library",
+      "name": "node-html-better-parser",
+      "version": "1.5.9",
+      "scope": "required",
+      "purl": "pkg:npm/node-html-better-parser@1.5.9",
+      "properties": [
+        {
+          "name": "intoponet:evidence",
+          "value": "compiled into the app by the build (main); a development dependency in package.json"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/node-html-better-parser/-/node-html-better-parser-1.5.9.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "cf523950834c7b325760bf5c1f78746bd281b61d86f7bf2048b95f92943e090cf3547550cbd829011826f5e0eccf53b8827d47b6052a8dd008631285666eae1d"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "tslib@2.8.1",
+      "type": "library",
+      "name": "tslib",
+      "version": "2.8.1",
+      "scope": "required",
+      "purl": "pkg:npm/tslib@2.8.1",
+      "properties": [
+        {
+          "name": "intoponet:evidence",
+          "value": "compiled into the app by the build (main); a development dependency in package.json"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/tslib/-/tslib-2.8.1.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "a0916ef781d06fe29576e49440bef09e99aa9df98bb0e03f9c087a6fa107d30084a0ad3f98f79753a737c0a0d5f373243ae1cf447b525ca294f7d2016b34bfdb"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "0BSD"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "@fontsource-variable/inter@5.3.0",
+      "type": "library",
+      "name": "@fontsource-variable/inter",
+      "version": "5.3.0",
+      "scope": "required",
+      "purl": "pkg:npm/%40fontsource-variable/inter@5.3.0",
+      "properties": [
+        {
+          "name": "intoponet:evidence",
+          "value": "compiled into the app by the build (renderer); a development dependency in package.json"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@fontsource-variable/inter/-/inter-5.3.0.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "3aea4be3cbdae093687dbf7bc3a358785f52ed6fe41cd28cd04afc0de9b99ea8b88de38bad5243a04f2d644a673099ad92f35b0751083cfc0771d905e9bd6850"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "OFL-1.1"
+          }
+        }
+      ]
+    },
+    {
+      "type": "file",
+      "bom-ref": "intoponet:file:bergamot-translator.js",
+      "supplier": {
+        "name": "Mozilla"
+      },
+      "name": "bergamot-translator.js",
+      "version": "v0.6.0+eea6e5a8",
+      "scope": "required",
+      "description": "Mozilla's bergamot-translator JavaScript glue, unmodified. Ships as its own file, out/main/vendor/bergamot-translator.js in app.asar.",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "faff1ef6285b0d26f01787776fd49299dfb756ecb9688aa990c250e66797b47d"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MPL-2.0"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/mozilla/translations/commit/eea6e5a80aa4ddd86d9cc35ce9a65b79aa3ab96d"
+        },
+        {
+          "type": "license",
+          "url": "https://mozilla.org/MPL/2.0/"
+        }
+      ],
+      "properties": [
+        {
+          "name": "intoponet:source-file",
+          "value": "apps/desktop/src/main/translate/vendor/bergamot-translator.js sha256:faff1ef6285b0d26f01787776fd49299dfb756ecb9688aa990c250e66797b47d"
+        },
+        {
+          "name": "intoponet:modified",
+          "value": "no"
+        },
+        {
+          "name": "intoponet:shipped-as",
+          "value": "out/main/vendor/bergamot-translator.js"
+        },
+        {
+          "name": "intoponet:licence-text",
+          "value": "LICENSES/MPL-2.0.txt in the app resources"
+        }
+      ]
+    },
+    {
+      "type": "file",
+      "bom-ref": "intoponet:file:earth-day.jpg",
+      "supplier": {
+        "name": "NASA Earth Observatory"
+      },
+      "name": "earth-day.jpg",
+      "version": "2004-10",
+      "scope": "required",
+      "description": "Blue Marble: Next Generation, October 2004, with topography and bathymetry, resized to 4096x2048. Credit: NASA Earth Observatory. NASA does not endorse Intoponet.",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "0a77aaaf07318674a8a38f542924e9ec02486f7ad4981b9082e7e3c8fd091ff4"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "name": "NASA Media Usage Guidelines (NASA content, generally not subject to copyright in the United States; NASA to be acknowledged as the source)",
+            "url": "https://www.nasa.gov/nasa-brand-center/images-and-media/"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://assets.science.nasa.gov/content/dam/science/esd/eo/images/bmng/bmng-topography-bathymetry/october/world.topo.bathy.200410.3x21600x10800.jpg"
+        },
+        {
+          "type": "website",
+          "url": "https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/base-topography-bathymetry/"
+        }
+      ],
+      "properties": [
+        {
+          "name": "intoponet:source-file",
+          "value": "apps/desktop/src/renderer/assets/earth-day.jpg sha256:0a77aaaf07318674a8a38f542924e9ec02486f7ad4981b9082e7e3c8fd091ff4"
+        },
+        {
+          "name": "intoponet:provenance",
+          "value": "apps/desktop/src/renderer/assets/earth-day.jpg.license"
+        }
+      ]
+    },
+    {
+      "type": "file",
+      "bom-ref": "intoponet:file:earth-night.jpg",
+      "supplier": {
+        "name": "NASA Earth Observatory"
+      },
+      "name": "earth-night.jpg",
+      "version": "2016",
+      "scope": "required",
+      "description": "Earth at Night (Black Marble) 2016, colour map, resized to 4096x2048. Credit: NASA Earth Observatory images by Joshua Stevens, using Suomi NPP VIIRS data from Miguel Román, NASA GSFC. NASA does not endorse Intoponet.",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "875cc331b2819e7c667b616b9ef98e05c94b7e9205f4ab8193db1ba1b63a566e"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "name": "NASA Media Usage Guidelines (NASA content, generally not subject to copyright in the United States; NASA to be acknowledged as the source)",
+            "url": "https://www.nasa.gov/nasa-brand-center/images-and-media/"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://assets.science.nasa.gov/content/dam/science/esd/eo/images/imagerecords/144000/144898/BlackMarble_2016_3km.jpg"
+        },
+        {
+          "type": "website",
+          "url": "https://science.nasa.gov/earth/earth-observatory/earth-at-night/maps/"
+        }
+      ],
+      "properties": [
+        {
+          "name": "intoponet:source-file",
+          "value": "apps/desktop/src/renderer/assets/earth-night.jpg sha256:875cc331b2819e7c667b616b9ef98e05c94b7e9205f4ab8193db1ba1b63a566e"
+        },
+        {
+          "name": "intoponet:provenance",
+          "value": "apps/desktop/src/renderer/assets/earth-night.jpg.license"
+        }
+      ]
+    },
+    {
+      "type": "data",
+      "bom-ref": "intoponet:data:geonames-place-directory",
+      "supplier": {
+        "name": "GeoNames"
+      },
+      "name": "GeoNames place directory",
+      "scope": "required",
+      "description": "Countries, first-level regions, and cities of 250,000 people or more and capitals, taken from GeoNames. Place data © GeoNames, CC BY 4.0. Compiled into the app.",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "86ff1596a8d60b23dda8fbe76889e2d00b12b8dd0dc1cf547bc67fed20b1a1b5"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "CC-BY-4.0"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://www.geonames.org/"
+        }
+      ],
+      "properties": [
+        {
+          "name": "intoponet:source-file",
+          "value": "apps/desktop/src/shared/places/placeData.ts sha256:86ff1596a8d60b23dda8fbe76889e2d00b12b8dd0dc1cf547bc67fed20b1a1b5"
+        }
+      ]
+    },
+    {
+      "type": "data",
+      "bom-ref": "intoponet:data:unicode-cldr-region-names",
+      "supplier": {
+        "name": "Unicode, Inc."
+      },
+      "name": "Unicode CLDR region names",
+      "version": "48",
+      "scope": "required",
+      "description": "Country names in the languages of the news feeds, from Unicode CLDR. Copyright © 1991-2026 Unicode, Inc. Compiled into the app.",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "2d96dac78b1ba587c7a7972e78f4f72ba8c43ca9b2fe7fdc61b34765cb2fcc11"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "name": "Unicode License v3 (SPDX: Unicode-3.0)",
+            "url": "https://www.unicode.org/license.txt"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://cldr.unicode.org/"
+        },
+        {
+          "type": "license",
+          "url": "https://www.unicode.org/license.txt"
+        }
+      ],
+      "properties": [
+        {
+          "name": "intoponet:source-file",
+          "value": "apps/desktop/src/shared/places/countryNameData.ts sha256:2d96dac78b1ba587c7a7972e78f4f72ba8c43ca9b2fe7fdc61b34765cb2fcc11"
+        }
+      ]
+    },
+    {
+      "type": "data",
+      "bom-ref": "intoponet:data:natural-earth-country-shapes",
+      "supplier": {
+        "name": "Natural Earth"
+      },
+      "name": "Natural Earth country shapes",
+      "scope": "required",
+      "description": "Country outlines derived from Natural Earth 1:50m Admin 0 Countries, simplified. Compiled into the app.",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "5a3c934403f65c6baf5ec7c9e41b6a27cd78f341c42adb12ffe9cf5348c6d7d5"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "name": "Public domain (Natural Earth terms of use)",
+            "url": "https://www.naturalearthdata.com/about/terms-of-use/"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://www.naturalearthdata.com/"
+        }
+      ],
+      "properties": [
+        {
+          "name": "intoponet:source-file",
+          "value": "apps/desktop/src/shared/places/countryShapes.ts sha256:5a3c934403f65c6baf5ec7c9e41b6a27cd78f341c42adb12ffe9cf5348c6d7d5"
+        }
+      ]
+    },
+    {
+      "type": "data",
+      "bom-ref": "intoponet:data:intoponet-news-feed-directory",
+      "supplier": {
+        "name": "Intoponet"
+      },
+      "name": "Intoponet news feed directory",
+      "scope": "required",
+      "description": "Feed addresses and publisher names of local and international news outlets. The compilation is Intoponet's own; each feed and what it carries belong to its publisher. Compiled into the app.",
+      "licenses": [
+        {
+          "license": {
+            "name": "Proprietary: Intoponet's own compilation, all rights reserved (see LICENSE). Each feed belongs to its publisher."
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "intoponet:source-file",
+          "value": "apps/desktop/src/main/news/newsFeeds.json sha256:2bc4ef4a6e744cf17d8a9cbe1fb4a583422456a0766857ac9573f60e365aa83a"
+        },
+        {
+          "name": "intoponet:source-file",
+          "value": "apps/desktop/src/main/news/internationalFeeds.json sha256:fb26d71195c672c485da585b0e8ab469ceb9b27914d35b9e2f2a916f0c89f1ac"
+        }
+      ]
+    },
+    {
+      "type": "data",
+      "bom-ref": "intoponet:data:intoponet-ad-and-tracker-list",
+      "supplier": {
+        "name": "Intoponet"
+      },
+      "name": "Intoponet ad and tracker list",
+      "scope": "required",
+      "description": "Intoponet's own list of advertising and tracking hosts, with its page-element rules. No outside list is included. Compiled into the app.",
+      "licenses": [
+        {
+          "license": {
+            "name": "Proprietary: Intoponet's own, all rights reserved (see LICENSE)"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "intoponet:source-file",
+          "value": "packages/protection-engine/data/blocklist.json sha256:c0b51f3a501c73d900271ea60ca1a97c954b51566071f2bb3468d654d6d197f2"
+        },
+        {
+          "name": "intoponet:source-file",
+          "value": "packages/protection-engine/data/element-rules.json sha256:66a4ad49754ea7c5849a8b97fdf8699b7221669e7d1054cfa41b388436f8664c"
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "pkg:generic/intoponet@0.1.26",
+      "dependsOn": [
+        "@cantoo/pdf-lib@2.11.1",
+        "@fontsource-variable/inter@5.3.0",
+        "@intoponet/beacon-core@0.1.0",
+        "@intoponet/browser-api@0.1.0",
+        "@intoponet/field-snapshot@0.1.0",
+        "@intoponet/frequency-field@0.1.0",
+        "@intoponet/local-knowledge@0.1.0",
+        "@intoponet/protection-engine@0.1.0",
+        "@mozilla/readability@0.6.0",
+        "@react-three/fiber@9.8.2",
+        "dompurify@3.4.17",
+        "intoponet:data:geonames-place-directory",
+        "intoponet:data:intoponet-ad-and-tracker-list",
+        "intoponet:data:intoponet-news-feed-directory",
+        "intoponet:data:natural-earth-country-shapes",
+        "intoponet:data:unicode-cldr-region-names",
+        "intoponet:file:bergamot-translator.js",
+        "intoponet:file:earth-day.jpg",
+        "intoponet:file:earth-night.jpg",
+        "jpeg-js@0.4.4",
+        "lucide-react@0.468.0",
+        "motion@12.43.0",
+        "pkg:npm/electron@45.0.0",
+        "react-dom@19.3.1",
+        "react@19.3.1",
+        "three@0.172.0"
+      ]
+    },
+    {
+      "ref": "@babel/runtime@7.29.10",
+      "dependsOn": []
+    },
+    {
+      "ref": "@react-three/fiber@9.8.2",
+      "dependsOn": [
+        "react@19.3.1",
+        "three@0.172.0",
+        "react-dom@19.3.1",
+        "@babel/runtime@7.29.10",
+        "buffer@6.0.3",
+        "its-fine@2.1.1",
+        "react-use-measure@2.1.7",
+        "scheduler@0.28.0",
+        "suspend-react@0.1.3",
+        "use-sync-external-store@1.7.0",
+        "zustand@5.0.16"
+      ]
+    },
+    {
+      "ref": "@types/react-reconciler@0.28.9",
+      "dependsOn": []
+    },
+    {
+      "ref": "buffer@6.0.3",
+      "dependsOn": [
+        "ieee754@1.2.1"
+      ]
+    },
+    {
+      "ref": "framer-motion@12.43.0",
+      "dependsOn": [
+        "react@19.3.1",
+        "react-dom@19.3.1",
+        "motion-dom@12.43.0",
+        "motion-utils@12.39.0"
+      ]
+    },
+    {
+      "ref": "ieee754@1.2.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "its-fine@2.1.1",
+      "dependsOn": [
+        "react@19.3.1",
+        "@types/react-reconciler@0.28.9"
+      ]
+    },
+    {
+      "ref": "lucide-react@0.468.0",
+      "dependsOn": [
+        "react@19.3.1"
+      ]
+    },
+    {
+      "ref": "motion@12.43.0",
+      "dependsOn": [
+        "react@19.3.1",
+        "react-dom@19.3.1",
+        "framer-motion@12.43.0"
+      ]
+    },
+    {
+      "ref": "motion-dom@12.43.0",
+      "dependsOn": [
+        "motion-utils@12.39.0"
+      ]
+    },
+    {
+      "ref": "motion-utils@12.39.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "react@19.3.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "react-dom@19.3.1",
+      "dependsOn": [
+        "react@19.3.1",
+        "scheduler@0.28.0"
+      ]
+    },
+    {
+      "ref": "react-use-measure@2.1.7",
+      "dependsOn": [
+        "react@19.3.1",
+        "react-dom@19.3.1"
+      ]
+    },
+    {
+      "ref": "scheduler@0.28.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "suspend-react@0.1.3",
+      "dependsOn": [
+        "react@19.3.1"
+      ]
+    },
+    {
+      "ref": "three@0.172.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "use-sync-external-store@1.7.0",
+      "dependsOn": [
+        "react@19.3.1"
+      ]
+    },
+    {
+      "ref": "zustand@5.0.16",
+      "dependsOn": [
+        "react@19.3.1",
+        "use-sync-external-store@1.7.0"
+      ]
+    },
+    {
+      "ref": "@intoponet/beacon-core@0.1.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "@intoponet/browser-api@0.1.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "@intoponet/field-snapshot@0.1.0",
+      "dependsOn": [
+        "@intoponet/frequency-field@0.1.0"
+      ]
+    },
+    {
+      "ref": "@intoponet/frequency-field@0.1.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "@intoponet/local-knowledge@0.1.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "@intoponet/protection-engine@0.1.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/electron@45.0.0",
+      "dependsOn": [
+        "pkg:generic/chromium@156.0.8078.48"
+      ]
+    },
+    {
+      "ref": "@cantoo/pdf-lib@2.11.1",
+      "dependsOn": [
+        "culori@4.0.2",
+        "fflate@0.8.3",
+        "node-html-better-parser@1.5.9",
+        "tslib@2.8.1",
+        "html-entities@2.6.0"
+      ]
+    },
+    {
+      "ref": "@mozilla/readability@0.6.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "culori@4.0.2",
+      "dependsOn": []
+    },
+    {
+      "ref": "dompurify@3.4.17",
+      "dependsOn": []
+    },
+    {
+      "ref": "fflate@0.8.3",
+      "dependsOn": []
+    },
+    {
+      "ref": "html-entities@2.6.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "jpeg-js@0.4.4",
+      "dependsOn": []
+    },
+    {
+      "ref": "node-html-better-parser@1.5.9",
+      "dependsOn": [
+        "html-entities@2.6.0"
+      ]
+    },
+    {
+      "ref": "tslib@2.8.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "@fontsource-variable/inter@5.3.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "intoponet:file:bergamot-translator.js",
+      "dependsOn": []
+    },
+    {
+      "ref": "intoponet:file:earth-day.jpg",
+      "dependsOn": []
+    },
+    {
+      "ref": "intoponet:file:earth-night.jpg",
+      "dependsOn": []
+    },
+    {
+      "ref": "intoponet:data:geonames-place-directory",
+      "dependsOn": []
+    },
+    {
+      "ref": "intoponet:data:unicode-cldr-region-names",
+      "dependsOn": []
+    },
+    {
+      "ref": "intoponet:data:natural-earth-country-shapes",
+      "dependsOn": []
+    },
+    {
+      "ref": "intoponet:data:intoponet-news-feed-directory",
+      "dependsOn": []
+    },
+    {
+      "ref": "intoponet:data:intoponet-ad-and-tracker-list",
+      "dependsOn": []
+    }
+  ]
+}

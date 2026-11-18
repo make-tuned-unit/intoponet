@@ -1,0 +1,16 @@
+{
+  "currentRelease": "0.1.26",
+  "releases": [
+    {
+      "version": "0.1.26",
+      "updateTo": {
+        "version": "0.1.26",
+        "name": "Intoponet",
+        "pub_date": "2026-11-18T14:45:29.991Z",
+        "url": "https://intoponet.com/updates/arm64/Intoponet-0.1.26-arm64-mac.zip",
+        "sha256": "f7138f9bd20e3e694485718b6985038963b2b003e935ba5c9884b23ab77ef971",
+        "size": 126356391
+      }
+    }
+  ]
+}
