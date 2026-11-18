@@ -41,7 +41,7 @@ Built from a UX research brief (NN/g, Baymard and others: plain headline, groupe
 
 Styles for these are in `site.css` (loaded after `style.css` and `cinematic.css`). `nav.js` runs the phone menu, the header that stays on screen (opaque once the page scrolls), the header link for the section in view, and the phone share button.
 
-Screenshots are real window captures of the app (`assets/app/0123/`, 2880×1880, WebP at 1200 and 2400 wide), taken from the 0.1.23 build on an isolated profile with the day's live news (7 November 2026). Every claim on the page must match the app; check `docs/FEATURE_DAG.json` and the app before changing copy.
+Screenshots are real window captures of the app (`assets/app/0126/`, 2880×1880, WebP at 1200 and 2400 wide), taken from the 0.1.26 build on an isolated profile with the day's live news (18 November 2026) by `node scripts/site-screenshots.mjs`. Every claim on the page must match the app; check `docs/FEATURE_DAG.json` and the app before changing copy.
 
 The hero drift and the concept illustration follow the system reduced-motion setting. Sections are never hidden waiting for a scroll.
 
