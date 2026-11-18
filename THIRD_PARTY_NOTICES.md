@@ -1,6 +1,7 @@
 # Third-Party Notices
 
-Intoponet's own source code is proprietary; all rights reserved (see `LICENSE`).
+Intoponet's own source code is open source under the Mozilla Public License 2.0
+(see `LICENSE`). Its name and logos are not licensed with it (see `TRADEMARKS.md`).
 The licence on Intoponet's own code does not cover the third-party software,
 models, data and content listed below. Each of them stays under its own licence
 or terms, as set out here. Where a licence requires a notice or attribution,
@@ -34,8 +35,8 @@ These are the packages the build compiles into the app, together with the
 production dependencies of `apps/desktop` and everything they pull in. The build
 itself records which packages left code in the app (`apps/desktop/bundledPackages.ts`),
 and the release SBOM is made from that record (`scripts/release-bom.cjs`), so a
-package that ships and is missing from this table is caught by comparing the two. The workspace packages `@intoponet/*` are Intoponet's own proprietary
-code and have no third-party runtime dependencies (the ad and tracker blocker,
+package that ships and is missing from this table is caught by comparing the two. The workspace packages `@intoponet/*` are Intoponet's own
+code, under MPL-2.0, and have no third-party runtime dependencies (the ad and tracker blocker,
 `@intoponet/protection-engine`, is written for Intoponet and uses no library and
 no outside list; see "Ad and tracker blocking" in §4). Development-only tools
 (TypeScript, Vite, electron-vite, Vitest, `@types/*`) are not distributed and are
@@ -139,8 +140,9 @@ folder, beside this file) and is available at https://mozilla.org/MPL/2.0/.
 app. The vendored file, and any changes ever made to it, stay under MPL-2.0. Its
 source code must be available to anyone who receives the app, and the licence
 header must stay in place. Intoponet's other files, which only call this glue
-and are separate files, are a "Larger Work" (MPL-2.0 §1.7, §3.3) and can stay
-proprietary. To comply: (a) do not edit the file in place without publishing the
+and are separate files, are under MPL-2.0 as well, since Intoponet chose that licence for its own code
+(before November 2026 they were proprietary, and the app was a "Larger Work"
+under §1.7 and §3.3). To comply: (a) do not edit the file in place without publishing the
 modified version under MPL-2.0; (b) keep shipping it as its own unmodified file,
 with `LICENSES/MPL-2.0.txt` beside these notices; (c) keep this notice, with
 where the source is and the offer of a copy.

@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>For publishers — intoponet</title>
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="intoponet">
+  <meta property="og:title" content="For publishers — intoponet">
+  <meta property="og:description" content="What intoponet shows from a news outlet’s feed, how it fetches it, and how to change or remove an outlet.">
+  <meta property="og:url" content="https://intoponet.com/publishers">
+  <meta property="og:image" content="https://intoponet.com/open-graph-1200x630.png">
+  <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="intoponet — Explore beyond the expected.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="description" content="What intoponet shows from a news outlet’s feed, how it fetches it, and how to change or remove an outlet.">
+  <meta name="theme-color" content="#061320"><link rel="stylesheet" href="/style.css">
+  <link rel="canonical" href="https://intoponet.com/publishers">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/brand/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <link rel="preload" href="/fonts/inter-latin-opsz-normal.woff2" as="font" type="font/woff2" crossorigin>
+<script src="/permagent.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header><a class="brand" href="/" aria-label="intoponet home"><img class="brand-logo" src="/brand/intoponet-horizontal-on-dark.svg" alt="intoponet" width="175" height="34"></a><nav aria-label="Main navigation"><a href="/#features">The browser</a><a href="/ideas">Ideas</a><details class="nav-menu"><summary aria-label="Menu"><span class="nav-menu-bars" aria-hidden="true"><i></i><i></i><i></i></span>Menu</summary><div class="nav-menu-panel"><a href="/#features">The browser</a><a href="/#vision">The vision</a><a href="/ideas">Share an idea</a><a href="/beacon-policy">Beacon policy</a></div></details><a class="nav-cta" href="/download/mac">Download<span class="nav-cta-long"> for macOS</span> <span class="ico"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg></span></a></nav></header>
+<main id="main" class="policy">
+<p class="eyebrow">News outlets</p>
+<h1>For publishers</h1>
+<p>intoponet is a free web browser that opens on a globe of the world’s news. It exists to help people find reporting they would not otherwise see, and to send them to the outlet that did the reporting. This page says what the app does with your feed and how to change it.</p>
+
+<h2>What intoponet shows</h2>
+<ul>
+  <li>Your headline, your outlet’s name, and the time the item was published, taken from the RSS or Atom feed you publish.</li>
+  <li>Where your feed provides them, a short summary and a picture address from the feed.</li>
+  <li>A link. Choosing a headline opens the article on your own site, in a browser tab, as any browser would.</li>
+</ul>
+<p>Headlines from different outlets about the same event are grouped so a reader can see who is covering it and from where. A reader can ask for a headline to be translated; that is done on their own Mac and the original is one click away.</p>
+
+<h2>What intoponet does not do</h2>
+<ul>
+  <li>It does not copy your articles. The app reads the feed; the article is only ever loaded from your site, by the reader, in a tab.</li>
+  <li>It does not re-host or redistribute your feed. There is no intoponet server between you and the reader: each person’s copy of the app fetches your feed directly.</li>
+  <li>It does not sell access, show its own advertising, or charge for the app.</li>
+  <li>It does not get around sign-in walls, paywalls or other access controls.</li>
+</ul>
+<p>You should also know that intoponet, like several browsers, blocks requests to a list of advertising and tracking hosts run by other companies. A site’s own advertising and measurement are not blocked, and a reader can turn the blocking off for any site.</p>
+
+<h2>How the app fetches a feed</h2>
+<ul>
+  <li>It identifies itself: the request’s <code>User-Agent</code> begins with <code>Intoponet/</code> and carries this page’s address.</li>
+  <li>It asks only for what has changed, using the <code>ETag</code> and <code>Last-Modified</code> values your server sent, and it waits as long as a <code>Retry-After</code> answer asks.</li>
+</ul>
+
+<h2>Change or remove your outlet</h2>
+<p>Email <a href="mailto:support@atlasatlantic.co">support@atlasatlantic.co</a> from an address at your outlet and say which feed you mean. You can ask for your outlet to be removed, for a different feed to be used, for summaries or pictures not to be shown, or for a wrong name or country to be corrected. Removals and changes are made in the next release of the app, which copies already installed pick up when they update.</p>
+<p>If your terms of use do not allow a feed to be read by an application like this one, tell us and it will be removed. We would rather ask than assume, and we are working through outlets’ terms; hearing from you first is welcome.</p>
+
+<h2>Open source</h2>
+<p>intoponet’s source code is public, under the Mozilla Public License 2.0, so everything on this page can be checked: <a href="/source">intoponet.com/source</a>.</p>
+<p class="note">Last updated 18 November 2026.</p>
+</main>
+<footer><a class="brand" href="/"><img class="brand-logo" src="/brand/intoponet-horizontal-on-dark.svg" alt="intoponet" width="144" height="28"></a><p>support@atlasatlantic.co</p><span><a class="footer-credit" href="https://atlasatlantic.co" rel="noopener">Built by Atlas Atlantic</a></span></footer>
+<script src="/nav.js" defer></script>
+</body>
+</html>

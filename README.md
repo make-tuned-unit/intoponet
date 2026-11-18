@@ -67,3 +67,29 @@ not been done. See
 Useful shortcuts once a page is open: `⌘L` launcher, `⌘F` find, `⌘R` reload,
 `⌘[` / `⌘]` back and forward, `⌘+` / `⌘-` / `⌘0` zoom, `⌘⇧C` copy address,
 `⌘P` print, `⌘W` close the page, `⌘K` every command.
+
+## Licence
+
+Intoponet is open source. Its own source code, data and documentation in this
+repository are under the [Mozilla Public License 2.0](LICENSE):
+
+> This Source Code Form is subject to the terms of the Mozilla Public
+> License, v. 2.0. If a copy of the MPL was not distributed with this
+> file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+Copyright (c) 2026 the Intoponet authors.
+
+Three things are not covered by that licence:
+
+- **The name and logos.** "Intoponet" and its marks are not licensed with the
+  code. A changed version needs its own name and artwork; see
+  [TRADEMARKS.md](TRADEMARKS.md).
+- **Other people's work.** Libraries, models, map data, imagery and the text
+  the app shows from Wikipedia stay under their own licences, listed in
+  [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+- **The news.** The feed directory is Intoponet's compilation, but each feed
+  and everything it carries belongs to its publisher. See
+  [intoponet.com/publishers](https://intoponet.com/publishers).
+
+To report a security problem, see [SECURITY.md](SECURITY.md). To contribute,
+see [CONTRIBUTING.md](CONTRIBUTING.md).

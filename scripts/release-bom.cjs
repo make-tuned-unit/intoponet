@@ -22,7 +22,8 @@ const repoRoot = path.resolve(__dirname, '..')
 const BUILD_TARGETS = ['main', 'preload', 'renderer']
 /** Libraries the app cannot be built without. If one is missing from the SBOM, the SBOM is wrong. */
 const SENTINELS = ['react', 'react-dom', 'three', 'dompurify', '@cantoo/pdf-lib', '@mozilla/readability', '@fontsource-variable/inter', 'electron', 'Chromium']
-const PROPRIETARY = "Proprietary: Intoponet's own, all rights reserved (see LICENSE)"
+/** Intoponet's own code and data: Mozilla Public License 2.0 (see LICENSE). */
+const OWN_LICENCE = { license: { id: 'MPL-2.0' } }
 
 const sha256 = (file) => createHash('sha256').update(readFileSync(file)).digest('hex')
 const npmRef = (name, version) => `${name}@${version}`
@@ -163,7 +164,7 @@ function shippedFilesAndData(root = repoRoot) {
       name: 'Intoponet news feed directory',
       supplier: 'Intoponet',
       description: "Feed addresses and publisher names of local and international news outlets. The compilation is Intoponet's own; each feed and what it carries belong to its publisher. Compiled into the app.",
-      licenses: [{ license: { name: "Proprietary: Intoponet's own compilation, all rights reserved (see LICENSE). Each feed belongs to its publisher." } }],
+      licenses: [{ license: { name: "MPL-2.0 for Intoponet's own compilation (see LICENSE). Each feed, and what it carries, belongs to its publisher." } }],
       files: ['apps/desktop/src/main/news/newsFeeds.json', 'apps/desktop/src/main/news/internationalFeeds.json'],
     }),
     component({
@@ -171,7 +172,7 @@ function shippedFilesAndData(root = repoRoot) {
       name: 'Intoponet ad and tracker list',
       supplier: 'Intoponet',
       description: "Intoponet's own list of advertising and tracking hosts, with its page-element rules. No outside list is included. Compiled into the app.",
-      licenses: [{ license: { name: PROPRIETARY } }],
+      licenses: [OWN_LICENCE],
       files: ['packages/protection-engine/data/blocklist.json', 'packages/protection-engine/data/element-rules.json'],
     }),
   ]
@@ -209,7 +210,7 @@ function buildReleaseBom({ npmBom, bundled, version, lockfile = { packages: {} }
     const isNpm = String(component.purl ?? '').startsWith('pkg:npm/') && component.type === 'library'
     if (isNpm && String(ref).startsWith('@intoponet/')) {
       // Intoponet's own workspace packages: source compiled into the app.
-      component.licenses = [{ license: { name: PROPRIETARY } }]
+      component.licenses = [OWN_LICENCE]
       component.properties = [...(component.properties ?? []), { name: 'intoponet:evidence', value: "Intoponet's own workspace package; its source is compiled into the app" }]
     } else if (isNpm && bundledByRef.has(ref)) {
       component.scope = 'required'
@@ -291,7 +292,7 @@ function buildReleaseBom({ npmBom, bundled, version, lockfile = { packages: {} }
       name: 'Intoponet',
       version,
       description: 'Intoponet for macOS, a web browser.',
-      licenses: [{ license: { name: PROPRIETARY } }],
+      licenses: [OWN_LICENCE],
       purl: rootRef,
     },
     properties: [
