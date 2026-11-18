@@ -21,6 +21,9 @@ Intoponet is maintained by one person, so these are honest targets, not a
 contract. Please give us a reasonable time to ship a fix before publishing
 details.
 
+What the maintainer does when a flaw is being exploited is written down in
+`docs/security/reporting-runbook.md`.
+
 ## Supported versions
 
 Only the latest release is supported. Intoponet checks for updates once a day

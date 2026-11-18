@@ -155,7 +155,7 @@ export function SettingsPanel({
             <li><strong>Wikidata</strong> facts and links, CC0. <strong>Wikimedia</strong> pageviews, CC0.</li>
             <li><strong>GeoNames</strong> place names and coordinates, CC BY 4.0 (geonames.org).</li>
             <li><strong>Natural Earth</strong> country shapes and map labels, public domain (naturalearthdata.com).</li>
-            <li><strong>Firefox Translations</strong> models and the Bergamot engine, Mozilla, MPL-2.0. Run on this Mac.</li>
+            <li><strong>Firefox Translations</strong> models and the Bergamot engine, Mozilla, MPL-2.0. Run on this Mac. Intoponet is not affiliated with or endorsed by Mozilla.</li>
             <li><strong>all-MiniLM-L6-v2</strong> (Laya’s meaning model), sentence-transformers, Apache-2.0. Runs on this Mac.</li>
             <li><strong>NASA Earth Observatory</strong> Earth imagery: Blue Marble: Next Generation, and Earth at Night (Black Marble) 2016, NASA Earth Observatory images by Joshua Stevens, using Suomi NPP VIIRS data from Miguel Román, NASA GSFC. NASA content is generally not subject to copyright in the United States. NASA does not endorse Intoponet.</li>
             <li><strong>NASA EONET</strong> natural events. <strong>USGS</strong> earthquakes, public domain.</li>

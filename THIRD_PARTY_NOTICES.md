@@ -124,9 +124,15 @@ folder, beside this file) and is available at https://mozilla.org/MPL/2.0/.
   (https://github.com/mozilla/translations/blob/eea6e5a80aa4ddd86d9cc35ce9a65b79aa3ab96d/inference/scripts/build-wasm.py).
   The file was copied as shipped in Mozilla Firefox, at
   `toolkit/components/translations/bergamot-translator/bergamot-translator.js`.
-- **A copy on request.** Intoponet will also provide a copy of this source file
-  to anyone who has received the application and asks through
-  https://intoponet.com, at no charge beyond the cost of sending it.
+- **Get a copy.** The file is published, unchanged, in Intoponet's public
+  repository:
+  https://github.com/make-tuned-unit/intoponet/blob/main/apps/desktop/src/main/translate/vendor/bergamot-translator.js
+  (check it against the SHA-256 above). Intoponet will also send a copy to anyone
+  who has received the application and asks at support@atlasatlantic.co, at no
+  charge.
+- **No affiliation.** Intoponet is not affiliated with, sponsored by or endorsed
+  by Mozilla. Mozilla and Firefox are trademarks of the Mozilla Foundation, used
+  here only to say whose work this is.
 - **Your rights in this file.** Intoponet's own licence terms (`LICENSE`) do not
   limit or alter your rights in this file under the Mozilla Public License. `LICENSE`
   says the same.

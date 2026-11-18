@@ -63,6 +63,11 @@ between the two rewrites they were, in table order, `47c44a1`, `b13e50f`, `7ab63
 `690acc6`, `b2e6b42`, `0792193`, `7132e32`, `e38d20a` and `2076c54`. A backup of the history as
 it was before this rewrite is also kept by the owner outside the repository.
 
+The two backup files are git bundles. Their SHA-256 values, recorded on 18 November 2026, are
+`0d9c65ddfaa947fc1557ddf3811859a28138a8075ad7a62773d09f64d160b174` (the history before the first
+rewrite, with the list files in it) and
+`e767aa4a7a3fd0e844230a8fee9b54f08ba240905fb6291ec82fa137381488dd` (the history before the second).
+
 ## Who and what could see the lists
 
 Anyone and any tool working in the repository between 08:20 and 10:27 could open the two list files
